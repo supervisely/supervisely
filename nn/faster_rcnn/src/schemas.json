@@ -1,0 +1,301 @@
+{
+  "definitions": {
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "positive_int": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonnegative_int": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "positive_float": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+    "nonnegative_float": {
+      "type": "number",
+      "minimum": 0
+    },
+    "positive_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "$ref": "#/definitions/positive_int"
+        },
+        "height": {
+          "$ref": "#/definitions/positive_int"
+        }
+      }
+    },
+    "nonnegative_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/definitions/nonnegative_int"
+        },
+        "y": {
+          "$ref": "#/definitions/nonnegative_int"
+        }
+      }
+    },
+    "gpu_devices_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nonnegative_int"
+      },
+      "minItems": 1
+    },
+    "gpu_devices_list_with_single_item": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/gpu_devices_list"
+        },
+        {
+          "maxItems": 1
+        }
+      ]
+    },
+    "str_list_or_all": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "__all__"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonempty_string"
+          }
+        }
+      ]
+    },
+    "int_percent_or_px": {
+      "type": "string",
+      "pattern": "^-?[0-9]+(%|px)$"
+    },
+    "box_from_img_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "properties": {
+        "left": {
+          "$ref": "#/definitions/int_percent_or_px"
+        },
+        "top": {
+          "$ref": "#/definitions/int_percent_or_px"
+        },
+        "right": {
+          "$ref": "#/definitions/int_percent_or_px"
+        },
+        "bottom": {
+          "$ref": "#/definitions/int_percent_or_px"
+        }
+      }
+    }
+  },
+  "inference_config": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpu_devices",
+      "model_classes",
+      "existing_objects",
+      "mode"
+    ],
+    "properties": {
+      "gpu_devices": {
+        "$ref": "#/definitions/gpu_devices_list_with_single_item"
+      },
+      "min_score_threshold": {
+        "allOf": [
+        {
+          "$ref": "#/definitions/positive_float"
+        },
+        {
+          "maximum": 1
+        }
+      ]
+      },
+      "model_classes": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "save_classes",
+          "add_suffix"
+        ],
+        "properties": {
+          "save_classes": {
+            "$ref": "#/definitions/str_list_or_all"
+          },
+          "add_suffix": {
+            "type": "string"
+          }
+        }
+      },
+      "existing_objects": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "save_classes",
+          "add_suffix"
+        ],
+        "properties": {
+          "save_classes": {
+            "$ref": "#/definitions/str_list_or_all"
+          },
+          "add_suffix": {
+            "type": "string"
+          }
+        }
+      },
+      "mode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "full_image"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source",
+              "bounds",
+              "save",
+              "class_name"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "roi"
+                ]
+              },
+              "bounds": {
+                "$ref": "#/definitions/box_from_img_size"
+              },
+              "save": {
+                "type": "boolean"
+              },
+              "class_name": {
+                "$ref": "#/definitions/nonempty_string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source",
+              "from_classes",
+              "padding",
+              "save",
+              "add_suffix"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "bboxes"
+                ]
+              },
+              "from_classes": {
+                "$ref": "#/definitions/str_list_or_all"
+              },
+              "padding": {
+                "$ref": "#/definitions/box_from_img_size"
+              },
+              "save": {
+                "type": "boolean"
+              },
+              "add_suffix": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source",
+              "window",
+              "min_overlap",
+              "save",
+              "class_name",
+              "nms_after"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sliding_window_det"
+                ]
+              },
+              "window": {
+                "$ref": "#/definitions/positive_size"
+              },
+              "min_overlap": {
+                "$ref": "#/definitions/nonnegative_point"
+              },
+              "save": {
+                "type": "boolean"
+              },
+              "class_name": {
+                "$ref": "#/definitions/nonempty_string"
+              },
+              "nms_after": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enable",
+                  "iou_threshold"
+                ],
+                "properties": {
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "iou_threshold": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

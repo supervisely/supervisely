@@ -1,0 +1,11 @@
+.idea
+*.pyc
+*.pyo
+.ipynb_checkpoints
+.ipynb_checkpoints/
+**/__pycache__
+
+tasks_data/*
+!tasks_data/.gitkeep
+
+**/params.local.sh
