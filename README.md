@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/o8QhNOv.png" width="250"></a>
+  <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/bFuEQ4K.png" width="250"></a>
   <br>
   Supervisely
   <br>
