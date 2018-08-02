@@ -70,9 +70,10 @@ class YOLOApplier:
         logger.info('Read model out classes', extra={'classes': self.train_classes.py_container})
 
     def _construct_and_fill_model(self):
+        model_dir = self.helper.paths.model_dir
         self.device_ids = sly.remap_gpu_devices(self.config['gpu_devices'])
 
-        src_train_cfg_path = join(self.helper.paths.model_dir, 'model.cfg')
+        src_train_cfg_path = join(model_dir, 'model.cfg')
         with open(src_train_cfg_path) as f:
             src_config = f.readlines()
 
@@ -85,13 +86,13 @@ class YOLOApplier:
 
         changed_config = [repl_batch(x) for x in src_config]
 
-        inf_cfg_path = join(self.helper.paths.model_dir, 'inf_model.cfg')
+        inf_cfg_path = join(model_dir, 'inf_model.cfg')
         if not os.path.exists(inf_cfg_path):
             with open(inf_cfg_path, 'w') as f:
                 f.writelines(changed_config)
 
         self.net = load_net(inf_cfg_path.encode('utf-8'),
-                            join(self.helper.paths.model_dir, 'model.weights').encode('utf-8'),
+                            join(model_dir, 'model.weights').encode('utf-8'),
                             0)
         # self.meta = load_meta(join(self.helper.paths.model_dir, 'model.names').encode('utf-8'))
         logger.info('Weights are loaded.')

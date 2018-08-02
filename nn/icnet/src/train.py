@@ -253,6 +253,12 @@ class ICNetTrainer:
         self.samples_dct = sly.samples_by_tags(
             tags=list(name_to_tag.values()), project_fs=project_fs, project_meta=self.helper.in_project_meta
         )
+        for the_name, the_tag in name_to_tag.items():
+            samples_lst = self.samples_dct[the_tag]
+            sly.ensure_samples_nonempty(samples_lst, the_tag)
+            logger.info('Prepared dataset.', extra={
+                'dataset_purpose': the_name, 'dataset_tag': the_tag, 'sample_cnt': len(samples_lst)
+            })
         logger.info('Annotations are splitted by tags.')
 
         self.samples_cnt = {k: len(self.samples_dct[v]) for k, v in name_to_tag.items()}

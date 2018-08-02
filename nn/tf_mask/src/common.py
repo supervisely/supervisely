@@ -2,13 +2,17 @@
 
 import math
 import os.path as osp
-import tensorflow as tf
-import numpy as np
 
+import numpy as np
+import tensorflow as tf
+from google.protobuf import text_format
 import supervisely_lib as sly
 from supervisely_lib import FigureBitmap, FigClasses
 from supervisely_lib import logger
 from supervisely_lib.utils.jsonschema import MultiTypeValidator
+
+from object_detection import exporter
+from object_detection.protos import pipeline_pb2
 from object_detection.utils import ops as utils_ops
 
 
@@ -108,6 +112,26 @@ def create_detection_graph(model_dirpath):
             tf.import_graph_def(od_graph_def, name='')
     logger.info('Restored model weights from training.')
     return detection_graph
+
+
+def freeze_graph(input_type,
+                 pipeline_config_path,
+                 trained_checkpoint_prefix,
+                 output_directory,
+                 input_shape=None):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    with tf.gfile.GFile(pipeline_config_path, 'r') as f:
+        text_format.Merge(f.read(), pipeline_config)
+    if input_shape:
+        input_shape = [
+            int(dim) if dim != '-1' else None
+            for dim in input_shape.split(',')
+        ]
+    else:
+        input_shape = None
+    exporter.export_inference_graph(input_type, pipeline_config,
+                                    trained_checkpoint_prefix,
+                                    output_directory, input_shape)
 
 
 def inverse_mapping(mapping):

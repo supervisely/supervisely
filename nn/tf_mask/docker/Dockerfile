@@ -1,4 +1,4 @@
-FROM docker.deepsystems.io/supervisely/nn/tf_mask/base:v1.01
+FROM docker.deepsystems.io/supervisely/nn/tf_mask/base:v1.2
 
 ############### copy code ###############
 ARG MODULE_PATH
@@ -9,7 +9,7 @@ COPY ${MODULE_PATH}/src /workdir/src
 COPY ${PUBLIC_PATH} /workdir/supervisely_lib
 
 WORKDIR /workdir/src
-ENV PYTHONPATH /workdir:$PYTHONPATH
+ENV PYTHONPATH /workdir:/workdir/supervisely_lib/worker_proto:/workdir/src/models/research:/workdir/src/models/research/object_detection:/workdir/src/models/research/slim:$PYTHONPATH
 
 ARG WORKER_PATH
 ENV WORKER_PATH=$WORKER_PATH

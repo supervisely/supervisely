@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from enum import Enum
+from threading import Lock
 
 from docker.errors import ImageNotFound as DockerImageNotFound
 import supervisely_lib as sly
@@ -8,6 +9,7 @@ from supervisely_lib import EventType, json_loads
 
 from .agent_utils import TaskDirCleaner
 from . import constants
+from .task_logged import StopTaskException
 from .task_sly import TaskSly
 
 
@@ -37,10 +39,11 @@ class TaskDockerized(TaskSly):
 
         self._docker_api = None  # must be set by someone
 
-        # pre-init for static analysis
-        self.container = None
-        self.container_status = {}
+        self._container = None
+        self._container_lock = Lock()  # to drop container from different threads
         self.docker_image_name = self.info['docker_image']
+        if ':' not in self.docker_image_name:
+            self.docker_image_name += ':latest'
         self.docker_pulled = False  # in task
 
     @property
@@ -90,21 +93,24 @@ class TaskDockerized(TaskSly):
         self.before_main_step()
         self.spawn_container()
         self.process_logs()
-        self.drop_container_and_check()
+        self.drop_container_and_check_status()
         self.report_step_done(TaskStep.MAIN)
 
     def run(self):
         try:
             super().run()
         finally:
-            self.drop_container()  # if something occurred
+            if self._stop_event.is_set():
+                self.task_dir_cleaner.allow_cleaning()
+            self._drop_container()  # if something occurred
 
     def clean_task_dir(self):
         self.task_dir_cleaner.clean()
 
     def _docker_pull(self):
         self.logger.info('Docker image will be pulled', extra={'image_name': self.docker_image_name})
-        _ = sly.ProgressCounter('Pulling image...', 1, ext_logger=self.logger)
+        progress_dummy = sly.ProgressCounter('Pulling image...', 1, ext_logger=self.logger)
+        progress_dummy.iter_done_report()
         pulled_img = self._docker_api.images.pull(self.docker_image_name)
         self.logger.info('Docker image has been pulled',
                          extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
@@ -126,43 +132,54 @@ class TaskDockerized(TaskSly):
     def spawn_container(self, add_envs=None):
         if add_envs is None:
             add_envs = {}
-        self.container = self._docker_api.containers.run(
-            self.docker_image_name,
-            runtime=self.docker_runtime,
-            detach=True,
-            name='sly_task_{}_'.format(self.info['task_id'], sly.generate_random_string(5)),
-            remove=False,
-            volumes={self.dir_task_host: {'bind': '/sly_task_data',
-                                          'mode': 'rw'}},
-            environment={'LOG_LEVEL': 'DEBUG', **add_envs},
-            labels={'ecosystem': 'supervisely',
-                    'ecosystem_token': constants.TASKS_DOCKER_LABEL,
-                    'task_id': str(self.info['task_id'])},
-            shm_size="1G",
-            stdin_open=False,
-            tty=False
-        )
-        self.logger.info('Docker container spawned',
-                         extra={'container_id': self.container.id, 'container_name': self.container.name})
+        self._container_lock.acquire()
+        try:
+            self._container = self._docker_api.containers.run(
+                self.docker_image_name,
+                runtime=self.docker_runtime,
+                detach=True,
+                name='sly_task_{}_{}'.format(self.info['task_id'], sly.generate_random_string(5)),
+                remove=False,
+                volumes={self.dir_task_host: {'bind': '/sly_task_data',
+                                              'mode': 'rw'}},
+                environment={'LOG_LEVEL': 'DEBUG', **add_envs},
+                labels={'ecosystem': 'supervisely',
+                        'ecosystem_token': constants.TASKS_DOCKER_LABEL,
+                        'task_id': str(self.info['task_id'])},
+                shm_size="1G",
+                stdin_open=False,
+                tty=False
+            )
+            self._container.reload()
+            self.logger.debug('After spawning. Container status: {}'.format(str(self._container.status)))
+            self.logger.info('Docker container spawned',
+                             extra={'container_id': self._container.id, 'container_name': self._container.name})
+        finally:
+            self._container_lock.release()
 
-    def get_container_status(self):
-        if self.container is not None:
-            self.container_status = self.container.wait()
-        return self.container_status
-
-    def drop_container(self):
+    def _stop_wait_container(self):
         status = {}
-        if self.container is not None:
-            self.container.stop(timeout=2)
-            status = self.get_container_status()
-            self.container.remove(force=True)
-            self.container = None
+        container = self._container  # don't lock, fail if someone will remove container
+        if container is not None:
+            container.stop(timeout=2)
+            status = container.wait()
         return status
 
-    def drop_container_and_check(self):
-        status = self.drop_container()
+    def _drop_container(self):
+        self._container_lock.acquire()
+        try:
+            if self._container is not None:
+                self._container.remove(force=True)
+                self._container = None
+        finally:
+            self._container_lock.release()
+
+    def drop_container_and_check_status(self):
+        status = self._stop_wait_container()
         if (len(status) > 0) and (status['StatusCode'] != 0):  # StatusCode must exist
             raise RuntimeError('Task container finished with non-zero status: {}'.format(str(status)))
+        self.logger.debug('Task container finished with status: {}'.format(str(status)))
+        self._drop_container()
         return status
 
     @classmethod
@@ -186,8 +203,13 @@ class TaskDockerized(TaskSly):
         return {}
 
     def process_logs(self):
-        for log_line in self.container.logs(stream=True):
+        logs_found = False
+        for log_line in self._container.logs(stream=True):
+            logs_found = True
             log_line = log_line.decode("utf-8")
             msg, res_log = self.parse_log_line(log_line)
             output = self.call_event_function(res_log)
             self.logger.info(msg, extra={**res_log, **output})
+
+        if not logs_found:
+            self.logger.warn('No logs obtained from container.')  # check if bug occurred

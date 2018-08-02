@@ -32,7 +32,7 @@ class TaskInferenceRPC(TaskDockerized):
         self.data_mgr.download_nn(nn_id, nn_hash, self.dir_model)
 
         out_cfg = {
-            **self.info,
+            **self.info['task_settings'],  # settings from server
             'connection': {
                 'server_address': constants.SERVER_ADDRESS,
                 'token': constants.TOKEN,

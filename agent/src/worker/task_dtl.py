@@ -86,7 +86,7 @@ class TaskDTL(TaskDockerized):
         self.docker_pull_if_needed()
         self.spawn_container(add_envs={'VERIFICATION': '1'})
         self.process_logs()
-        self.drop_container_and_check()
+        self.drop_container_and_check_status()
 
         self.logger.info('VERIFY_END')
         sly.clean_dir(self.dir_data)

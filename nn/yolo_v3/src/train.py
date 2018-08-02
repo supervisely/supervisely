@@ -92,8 +92,7 @@ class YOLOTrainer:
         self.iters_cnt = {}
         for the_name, the_tag in name_to_tag.items():
             samples_lst = samples_dct[the_tag]
-            if len(samples_lst) < 1:
-                raise RuntimeError('Dataset %s should contain at least 1 element.' % the_name)
+            sly.ensure_samples_nonempty(samples_lst, the_tag)
 
             img_paths, labels, num_boxes = load_dataset(samples_lst, self.class_title_to_idx, self.helper.in_project_meta)
             dataset_dict = {

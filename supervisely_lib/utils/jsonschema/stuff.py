@@ -53,6 +53,6 @@ class MultiTypeValidator(object):
         try:
             self.concrete_vtors[type_name].validate(obj)
         except Exception as e:
-            raise RuntimeError('Error occured during JSON validation. Type: {}. Exc: {}'.format(
+            raise RuntimeError('Error occurred during JSON validation. Type: {}. Exc: {}'.format(
                 type_name, str(e)
             )) from None  # suppress previous stacktrace, save all required info

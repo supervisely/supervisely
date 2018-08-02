@@ -1,21 +1,21 @@
 # coding: utf-8
-import sys
-sys.path.append('/workdir/src/deeplab')
-sys.path.append('/workdir/src/slim')
+
 import os
 from copy import copy, deepcopy
 import shutil
+from collections import namedtuple
 
 import tensorflow as tf
 import cv2
 import numpy as np
 import supervisely_lib as sly
 from supervisely_lib import logger
-from collections import namedtuple
+
 from common import SettingsValidator, TrainConfigRW
 from deeplab.model_utils import ModelOptions
 import deeplab.model as model
 import deeplab.input_preprocess as input_preprocess
+
 
 slim = tf.contrib.slim
 

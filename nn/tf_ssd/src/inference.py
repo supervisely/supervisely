@@ -1,9 +1,5 @@
 # coding: utf-8
 
-import sys
-sys.path.append('/workdir/src/models/research')
-sys.path.append('/workdir/src/models/research/object_detection')
-sys.path.append('/workdir/src/models/research/slim')
 import os
 from copy import copy, deepcopy
 import shutil
@@ -14,30 +10,9 @@ import numpy as np
 import supervisely_lib as sly
 from supervisely_lib import logger
 
-from common import create_detection_graph, inverse_mapping, get_scope_vars,  SettingsValidator, TrainConfigRW
-from google.protobuf import text_format
-from object_detection import exporter
-from object_detection.protos import pipeline_pb2
+from common import create_detection_graph, freeze_graph, inverse_mapping, get_scope_vars, \
+    SettingsValidator, TrainConfigRW
 
-
-def freeze_graph(input_type,
-                 pipeline_config_path,
-                 trained_checkpoint_prefix,
-                 output_directory,
-                 input_shape=None):
-    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-    with tf.gfile.GFile(pipeline_config_path, 'r') as f:
-        text_format.Merge(f.read(), pipeline_config)
-    if input_shape:
-        input_shape = [
-            int(dim) if dim != '-1' else None
-            for dim in input_shape.split(',')
-        ]
-    else:
-        input_shape = None
-    exporter.export_inference_graph(input_type, pipeline_config,
-                                    trained_checkpoint_prefix,
-                                    output_directory, input_shape)
 
 class SSDApplier:
     default_settings = {
@@ -125,10 +100,6 @@ class SSDApplier:
             raise RuntimeError('Unable to run inference, config from training wasn\'t found.')
         self.train_config = train_config_rw.load()
 
-        logger.info('Model input size is read (for auto-rescale).', extra={'input_size': {
-            'width': 1200, 'height': 1200  # input shape is fixed for Faster with NasNet encoder
-        }})
-
         self.class_title_to_idx = self.train_config['mapping']
         self.train_classes = sly.FigClasses(self.train_config['classes'])
         logger.info('Read model internal class mapping', extra={'class_mapping': self.class_title_to_idx})
@@ -139,15 +110,15 @@ class SSDApplier:
         self.inv_mapping = inverse_mapping(out_class_mapping)
 
     def _construct_and_fill_model(self):
+        model_dir = self.helper.paths.model_dir
         self.device_ids = sly.remap_gpu_devices(self.config['gpu_devices'])
-        if 'model.pb' not in os.listdir(self.helper.paths.model_dir):
+        if 'model.pb' not in os.listdir(model_dir):
             logger.info('Freezing training checkpoint!')
             freeze_graph('image_tensor',
-                         self.helper.paths.model_dir + '/model.config',
-                         self.helper.paths.model_dir + '/model_weights/model.ckpt',
-                         self.helper.paths.model_dir
-                         )
-        self.detection_graph = create_detection_graph(self.helper.paths.model_dir)
+                         model_dir + '/model.config',
+                         model_dir + '/model_weights/model.ckpt',
+                         model_dir)
+        self.detection_graph = create_detection_graph(model_dir)
         self.session = tf.Session(graph=self.detection_graph)
         logger.info('Weights are loaded.')
 

@@ -7,17 +7,18 @@ cd "${REL_PATH_TO_SCRIPT}"
 
 NAME='icnet'
 
-TAG_VERS="v1.01"
+TAG_VERS="v1.2"
 
-BASE_TAG_VERS="v1.01"
+BASE_TAG_VERS="v1.2"
 
 PUBLIC_HUB_TAG_VERS="1.0"
 
 IMAGENAME_PREFIX="supervisely/nn"
 
 ENTRY_POINTS=\
-"train      = /workdir/src/train.py
- inf        = /workdir/src/inference.py"
+"train = /workdir/src/train.py
+ inf   = /workdir/src/inference.py
+ serv  = /workdir/src/servicer.py"
 
 DEFAULT_RUN_ENTRY="inf"
 

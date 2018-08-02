@@ -7,7 +7,7 @@ cd "${REL_PATH_TO_SCRIPT}"
 
 NAME='agent'
 
-TAG_VERS="v2.4.5"
+TAG_VERS="v2.4.9"
 
 BASE_TAG_VERS="v1.05"
 

@@ -109,9 +109,9 @@ class ImporterCityscapes:
             try:
                 self._convert_sample(s)
             except AnnConvException:
-                logger.warn('Error occured while processing input sample annotation.', exc_info=True, extra=log_dct)
+                logger.warn('Error occurred while processing input sample annotation.', exc_info=True, extra=log_dct)
             except Exception:
-                logger.error('Error occured while processing input sample.', exc_info=False, extra=log_dct)
+                logger.error('Error occurred while processing input sample.', exc_info=False, extra=log_dct)
                 raise
             else:
                 ok_cnt += 1

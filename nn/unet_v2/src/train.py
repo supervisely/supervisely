@@ -228,6 +228,7 @@ class UnetV2Trainer:
         self.pytorch_datasets = {}
         for the_name, the_tag in name_to_tag.items():
             samples_lst = samples_dct[the_tag]
+            sly.ensure_samples_nonempty(samples_lst, the_tag)
             the_ds = PytorchSlyDataset(
                 project_meta=self.helper.in_project_meta,
                 samples=samples_lst,

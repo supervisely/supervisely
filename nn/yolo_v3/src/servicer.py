@@ -5,7 +5,7 @@ import supervisely_lib as sly
 from supervisely_lib import logger
 from supervisely_lib.worker_api import AgentRPCServicer, SimpleCache
 
-from fast_inference import UnetV2FastApplier
+from fast_inference import YOLOFastApplier
 
 
 def single_img_pipeline(image, message, model_applier):
@@ -23,6 +23,7 @@ def serve():
             'token': None,
             'task_id': None,
         },
+        'min_score_threshold': 0.5
     }
 
     new_settings = sly.json_load(sly.TaskPaths(determine_in_project=False).settings_path)
@@ -31,8 +32,9 @@ def serve():
     logger.info('Full settings', extra={'settings': settings})
 
     def model_creator():
-        res = UnetV2FastApplier(settings={
-            'device_id': settings['device_id']
+        res = YOLOFastApplier(settings={
+            'device_id': settings['device_id'],
+            'min_score_threshold': settings['min_score_threshold'],
         })
         return res
 
@@ -47,4 +49,4 @@ def serve():
 
 if __name__ == '__main__':
     cv2.setNumThreads(0)
-    sly.main_wrapper('UNET_V2_SERVICE', serve)
+    sly.main_wrapper('YOLO_SERVICE', serve)

@@ -187,7 +187,7 @@ class AgentAPI:
     # will not log it now
     def simple_request(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
         data_to_send = proto_request.SerializeToString()
-        timeout = (2, 5)
+        timeout = (4, 60)  # @TODO: separate timeout for /Log
         retrier = self.retriers.get(api_method_name, self.retriers['default'])
         resp = retrier.request(self._send_request,
                                api_method_name, data_to_send, timeout, in_stream=False, addit_headers=addit_headers)
@@ -199,28 +199,28 @@ class AgentAPI:
 
     def get_stream_with_data(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
         data_to_send = proto_request.SerializeToString()
-        timeout = (2, 5)
+        timeout = (4, 60)
         retrier = self.retriers['data_stream_in']
         yield from retrier.request(self._get_input_stream,
                                    api_method_name, res_proto_fn, data_to_send, timeout, addit_headers)
 
     def get_endless_stream(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
         data_to_send = proto_request.SerializeToString()
-        timeout = (2, 15)
+        timeout = (4, 15)
         retrier = self.retriers['endless_stream_in']
         yield from retrier.request(self._get_input_stream,
                                    api_method_name, res_proto_fn, data_to_send, timeout, addit_headers)
         self.logger.warn('Endless input stream end', extra={'method': api_method_name})
 
     def put_stream_with_data(self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None):
-        timeout = (2, 5)
+        timeout = (4, 60)
         retrier = self.retriers['data_stream_out']
         res = retrier.request(self._put_out_stream,
                               api_method_name, res_proto_fn, chunk_generator, timeout, addit_headers)
         return res
 
     def put_endless_stream(self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None):
-        timeout = (2, 15)
+        timeout = (4, 15)
         retrier = self.retriers['endless_stream_out']
         retrier.request(self._put_out_stream,
                         api_method_name, res_proto_fn, chunk_generator, timeout, addit_headers)

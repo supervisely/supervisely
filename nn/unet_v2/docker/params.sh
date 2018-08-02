@@ -7,7 +7,7 @@ cd "${REL_PATH_TO_SCRIPT}"
 
 NAME='unet_v2'
 
-TAG_VERS="v1.4"
+TAG_VERS="v1.6"
 
 BASE_TAG_VERS="v1.1"
 

@@ -6,8 +6,8 @@ from .inference_modes import ObjRenamer, InferenceFeederFactory, InfResultsToFee
     InfFeederFullImage, InfFeederBboxes, InfFeederRoi, InfFeederSlWindow
 from .json_utils import json_load, json_dump, json_loads, json_dumps
 from .logging_utils import main_wrapper
-from .nn_data import samples_by_tags, CorruptedSampleCatcher, create_segmentation_classes, prediction_to_sly_bitmaps, \
-    detection_preds_to_sly_rects, create_detection_classes
+from .nn_data import samples_by_tags, ensure_samples_nonempty, CorruptedSampleCatcher, create_segmentation_classes, \
+    prediction_to_sly_bitmaps, detection_preds_to_sly_rects, create_detection_classes
 from .os_utils import mkdir, ensure_base_path, required_env, silent_remove, remap_gpu_devices, get_subdirs, \
     clean_dir, get_image_hash, get_file_size, get_file_ext, list_dir, copy_file, \
     archive_directory, file_exists, remove_dir

@@ -1,19 +1,19 @@
 # coding: utf-8
-import sys
-sys.path.append('/workdir/src/deeplab')
-sys.path.append('/workdir/src/slim')
+
 import os
+from copy import deepcopy
+from os.path import join
+
 import cv2
 import numpy as np
 import tensorflow as tf
 import supervisely_lib as sly
-import deeplab.model as model
-
-from copy import deepcopy
-from os.path import join
 from supervisely_lib import logger
+
+import deeplab.model as model
 from common import SettingsValidator, TrainConfigRW
 from custom_train import train
+
 
 slim = tf.contrib.slim
 
@@ -108,8 +108,7 @@ class DeepLabTrainer:
         self.iters_cnt = {}
         for the_name, the_tag in name_to_tag.items():
             samples_lst = samples_dct[the_tag]
-            if len(samples_lst) < 1:
-                raise RuntimeError('Dataset %s should contain at least 1 element.' % the_name)
+            sly.ensure_samples_nonempty(samples_lst, the_tag)
             dataset_dict = {
                 "samples": samples_lst,
                 "classes_mapping": self.class_title_to_idx,

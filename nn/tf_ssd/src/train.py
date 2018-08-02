@@ -1,9 +1,5 @@
 # coding: utf-8
-import sys
-sys.path.append('/workdir/src')
-sys.path.append('/workdir/src/models/research')
-sys.path.append('/workdir/src/models/research/object_detection')
-sys.path.append('/workdir/src/models/research/slim')
+
 import os
 import os.path as osp
 from copy import deepcopy
@@ -17,6 +13,7 @@ from tf_config_converter import load_sample_config, remake_ssd_config, save_conf
 from common import SettingsValidator, TrainConfigRW
 
 from custom_train import train
+
 
 class SSDTrainer:
     default_settings = {
@@ -100,8 +97,7 @@ class SSDTrainer:
         self.iters_cnt = {}
         for the_name, the_tag in name_to_tag.items():
             samples_lst = samples_dct[the_tag]
-            if len(samples_lst) < 1:
-                raise RuntimeError('Dataset %s should contain at least 1 element.' % the_name)
+            sly.ensure_samples_nonempty(samples_lst, the_tag)
             dataset_dict = {
                 "samples": samples_lst,
                 "classes_mapping": self.class_title_to_idx,

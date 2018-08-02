@@ -76,7 +76,7 @@ class ImporterSlyFormat:
                 _ = sly.Annotation.from_packed(packed_ann, in_pr_meta)  # to check if it is correct
                 sly.copy_file(src_ann_path, s.ann_path)  # ann is ready
             except Exception:
-                logger.error('Error occured while processing input sample', exc_info=False, extra={
+                logger.error('Error occurred while processing input sample', exc_info=False, extra={
                              'dataset_name': s.ds_name, 'image_name': s.image_name,
                              })
                 raise

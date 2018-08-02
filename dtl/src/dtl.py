@@ -50,7 +50,7 @@ def main():
                     'ds_name': sample.ds_name,
                     'image_name': sample.image_name
                 }
-                logger.warn('Image was skipped because some error occured', exc_info=True, extra=ex)
+                logger.warn('Image was skipped because some error occurred', exc_info=True, extra=ex)
             progress.iter_done_report()
 
     logger.info('DTL finished', extra={'event_type': EventType.DTL_APPLIED, 'new_proj_size': results_counter})

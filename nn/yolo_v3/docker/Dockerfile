@@ -1,4 +1,4 @@
-FROM docker.deepsystems.io/supervisely/nn/yolo_v3/base:v1.00
+FROM docker.deepsystems.io/supervisely/nn/yolo_v3/base:v1.1
 
 ############### copy code ###############
 ARG MODULE_PATH
@@ -11,12 +11,10 @@ COPY ${PUBLIC_PATH} /workdir/supervisely_lib
 RUN cd /workdir/src/darknet && make clean && make -j4 all
 
 WORKDIR /workdir/src
-ENV PYTHONPATH /workdir:$PYTHONPATH
+ENV PYTHONPATH /workdir:/workdir/supervisely_lib/worker_proto:$PYTHONPATH
 
 ARG WORKER_PATH
 ENV WORKER_PATH=$WORKER_PATH
 RUN echo 'worker path = '${WORKER_PATH}
 
 ENTRYPOINT ["sh", "-c", "python -u ${WORKER_PATH}"]
-
-# @TODO: add step rto build darknet

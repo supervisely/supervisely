@@ -18,9 +18,17 @@ def samples_by_tags(tags, project_fs, project_meta):
         ann = Annotation.from_packed(ann_packed, project_meta)
         for req_tag in tags:
             if (req_tag == '__all__') or (req_tag in ann['tags']):
+                item_descr.ia_data['obj_cnt'] = len(ann['objects'])
                 samples[req_tag].append(item_descr)
 
     return samples
+
+
+def ensure_samples_nonempty(samples_lst, tag_name):
+    if len(samples_lst) < 1:
+        raise RuntimeError('There are no annotations with tag "{}"'.format(tag_name))
+    if sum(x.ia_data['obj_cnt'] for x in samples_lst) == 0:
+        raise RuntimeError('There are no objects in annotations with tag "{}"'.format(tag_name))
 
 
 class CorruptedSampleCatcher(object):
@@ -41,7 +49,7 @@ class CorruptedSampleCatcher(object):
             self._lock.release()
 
             if fail_cnt > self.fails_allowed:
-                raise RuntimeError('Too many errors occured while processing samples. '
+                raise RuntimeError('Too many errors occurred while processing samples. '
                                    'Allowed: {}.'.format(self.fails_allowed))
 
 

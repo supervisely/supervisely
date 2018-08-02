@@ -132,13 +132,11 @@ class DataManager(object):
 
     # required infos: list of api_proto.Image(hash=, ext=, meta=)
     def upload_images_to_remote(self, fpaths, infos):
-        def chunk_generator():
-            progress = sly.ProgressCounter('Upload images', len(fpaths), ext_logger=self.logger)
-
-            for batch_paths_infos in sly.batched(list(zip(fpaths, infos)), constants.BATCH_SIZE_UPLOAD_IMAGES):
+        progress = sly.ProgressCounter('Upload images', len(fpaths), ext_logger=self.logger)
+        for batch_paths_infos in sly.batched(list(zip(fpaths, infos)), constants.BATCH_SIZE_UPLOAD_IMAGES):
+            def chunk_generator():
                 for fpath, proto_img_info in batch_paths_infos:
                     self.logger.trace('image upload start', extra={'img_path': fpath})
-
                     freader = ChunkedFileReader(fpath, constants.NETW_CHUNK_SIZE)
                     for chunk_bytes in freader:
                         current_chunk = api_proto.Chunk(buffer=chunk_bytes, total_size=freader.file_size)
@@ -147,14 +145,14 @@ class DataManager(object):
                     self.logger.trace('image uploaded', extra={'img_path': fpath})
                     progress.iter_done_report()
 
-        self.api.put_stream_with_data('UploadImages', api_proto.Empty, chunk_generator())
+            self.api.put_stream_with_data('UploadImages', api_proto.Empty, chunk_generator())
+            self.logger.debug('Batch of images has been sent.', extra={'batch_len': len(batch_paths_infos)})
 
     def _upload_annotations_to_remote(self, project_id, img_ids, img_names, ann_paths):
-        def chunk_generator():
-            progress = sly.ProgressCounter('Upload annotations', len(img_ids), ext_logger=self.logger)
-
-            for batch_some in sly.batched(list(zip(img_ids, img_names, ann_paths)),
-                                          constants.BATCH_SIZE_UPLOAD_ANNOTATIONS):
+        progress = sly.ProgressCounter('Upload annotations', len(img_ids), ext_logger=self.logger)
+        for batch_some in sly.batched(list(zip(img_ids, img_names, ann_paths)),
+                                      constants.BATCH_SIZE_UPLOAD_ANNOTATIONS):
+            def chunk_generator():
                 for img_id, img_name, ann_path in batch_some:
                     proto_img = api_proto.Image(id=img_id, title=img_name, project_id=project_id)
                     freader = ChunkedFileReader(ann_path, constants.NETW_CHUNK_SIZE)
@@ -164,7 +162,8 @@ class DataManager(object):
                     self.logger.trace('annotation is uploaded', extra={'img_name': img_name, 'img_path': ann_path})
                     progress.iter_done_report()
 
-        self.api.put_stream_with_data('UploadAnnotations', api_proto.ImageArray, chunk_generator())
+            self.api.put_stream_with_data('UploadAnnotations', api_proto.ImageArray, chunk_generator())
+            self.logger.debug('Batch of annotations has been sent.', extra={'batch_len': len(batch_some)})
 
     def _create_project(self, project_name, project_meta):
         remote_name = project_name

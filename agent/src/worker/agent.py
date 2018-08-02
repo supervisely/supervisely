@@ -48,8 +48,14 @@ class Agent:
         self.logger.info('Agent is ready to get tasks.', extra={'event_type': EventType.AGENT_READY_FOR_TASKS})
 
     def agent_connect_initially(self):
+        try:
+            hw_info = get_hw_info()
+        except Exception:
+            hw_info = {}
+            self.logger.debug('Hardware information can not be obtained')
+
         agent_info = {
-            'hardware_info': get_hw_info(),
+            'hardware_info': hw_info,
             'agent_image_digest': get_self_docker_image_digest()
         }
 
@@ -154,10 +160,10 @@ class Agent:
         doc_pasws = constants.DOCKER_PASSWORD.split(',')
         doc_regs = constants.DOCKER_REGISTRY.split(',')
 
-        self.logger.info('Before Docker login.')
         for login, password, registry in zip(doc_logs, doc_pasws, doc_regs):
-            doc_login = self.docker_api.login(username=login, password=password, registry=registry)
-            self.logger.info('DOCKER_CLIENT_LOGIN_SUCCESS', extra={**doc_login, 'registry': registry})
+            if registry:
+                doc_login = self.docker_api.login(username=login, password=password, registry=registry)
+                self.logger.info('DOCKER_CLIENT_LOGIN_SUCCESS', extra={**doc_login, 'registry': registry})
 
     def submit_log(self):
         while True:
