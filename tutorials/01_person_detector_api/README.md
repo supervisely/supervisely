@@ -11,7 +11,8 @@ to pull docker image and run the container. Then, within the container:
 ``` 
 jupyter notebook --allow-root --ip=0.0.0.0
 ```
-Your token will be shown in terminal
+Your token will be shown in terminal.
+After that, run in browser: 
 ```
-Run in browser: http://localhost:8888/?token=your_token
+http://localhost:8888/?token=your_token
 ```
