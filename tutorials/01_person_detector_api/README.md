@@ -5,7 +5,7 @@ This repo contains a Jupyter Notebook that makes API requests to person detectio
 Execute the following commands:
 ``` 
 git clone https://github.com/supervisely/supervisely.git
-cd tutorials/01_person_detector_api/docker
+cd supervisely/tutorials/01_person_detector_api/docker
 ./run.sh 
 ```
 to build docker image and run the container. Then, within the container:
