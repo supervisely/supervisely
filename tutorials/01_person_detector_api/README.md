@@ -18,4 +18,4 @@ http://localhost:8888/?token=your_token
 ```
 # Example
 After running deploy_faster-rcnn_as_api.ipynb, you get the following results:
-![Image description](dl_heroes.jpg)
+![Image description](dl_heroes_detected.png)
