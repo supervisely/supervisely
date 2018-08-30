@@ -2,12 +2,13 @@
 This repo contains a Jupyter Notebook that makes API requests to person detection model. Step by step guide on how to run a person detector is given in this blog post
 
 # How to run
-Clone this repo, then
+Execute the following commands:
 ``` 
-cd docker
+git clone https://github.com/supervisely/supervisely.git
+cd tutorials/01_person_detector_api/docker
 ./run.sh 
 ```
-to pull docker image and run the container. Then, within the container:
+to build docker image and run the container. Then, within the container:
 ``` 
 jupyter notebook --allow-root --ip=0.0.0.0
 ```
