@@ -9,3 +9,4 @@ tasks_data/*
 !tasks_data/.gitkeep
 
 **/params.local.sh
+*.DS_Store
