@@ -16,3 +16,6 @@ After that, run in browser:
 ```
 http://localhost:8888/?token=your_token
 ```
+# Example
+After running deploy_faster-rcnn_as_api.ipynb, you get the following results:
+![Image description](link-to-image)
