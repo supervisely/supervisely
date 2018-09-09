@@ -1,4 +1,4 @@
-FROM docker.deepsystems.io/supervisely/nn/unet_v2/base:v1.1
+FROM supervisely/nn-unet-v2-base
 
 
 ##############################################################################
@@ -58,6 +58,5 @@ RUN conda install -y -c soumith \
     && conda clean --all --yes
 RUN pip install shapely python-json-logger scikit-image
 ENV PYTHONPATH /src/unet_src
-COPY supervisely_lib/ /src/supervisely_lib
 WORKDIR /src
 
