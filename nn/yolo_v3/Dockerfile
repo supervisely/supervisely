@@ -17,7 +17,6 @@ RUN apt-get update && \
     qt-sdk=2ubuntu3 && \
     ldconfig
 
-
 ENV CONDA_DIR /opt/conda
 ENV PATH $CONDA_DIR/bin:$PATH
 
@@ -56,3 +55,16 @@ RUN pip install --no-cache-dir \
     pandas==0.22.0 \
     grpcio==1.12.1 \
     grpcio-tools==1.12.1
+
+# sources
+ENV PYTHONPATH /workdir:$PYTHONPATH
+WORKDIR /workdir/src
+
+ARG SOURCE_PATH
+ARG RUN_SCRIPT
+ENV RUN_SCRIPT=$RUN_SCRIPT
+
+COPY supervisely_lib /workdir/supervisely_lib
+COPY $SOURCE_PATH /workdir/src
+
+ENTRYPOINT ["sh", "-c", "python -u ${RUN_SCRIPT}"]
