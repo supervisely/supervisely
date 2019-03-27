@@ -1,13 +1,13 @@
 # coding: utf-8
 
 import os.path as osp
-
+import os
+import json
+from collections import defaultdict
 import supervisely_lib as sly
-from supervisely_lib import EventType
-import supervisely_lib.worker_proto as api_proto
 
-from .task_dockerized import TaskDockerized, TaskStep
-from .agent_utils import ann_special_fields
+from worker.task_dockerized import TaskDockerized, TaskStep
+from worker.agent_utils import ann_special_fields
 
 
 class TaskDTL(TaskDockerized):
@@ -15,8 +15,8 @@ class TaskDTL(TaskDockerized):
         super().__init__(*args, **kwargs)
 
         self.action_map = {
-            str(EventType.DTL_APPLIED): self.upload_result_project,
-            str(EventType.TASK_VERIFIED): self.on_verify
+            str(sly.EventType.DTL_APPLIED): self.upload_result_project,
+            str(sly.EventType.TASK_VERIFIED): self.on_verify
         }
 
         self.download_images = None
@@ -30,56 +30,28 @@ class TaskDTL(TaskDockerized):
     def _read_verif_status(self):
         if not osp.isfile(self.verif_status_path):
             raise RuntimeError('VERIFY_FAILED')
-        res = sly.json_load(self.verif_status_path)
-        self.download_images = res['download_images']
+        res = json.load(open(self.verif_status_path, 'r'))
         self.is_archive = res['is_archive']
 
     def init_additional(self):
         super().init_additional()
-        sly.mkdir(self.dir_data)
-        sly.mkdir(self.dir_results)
-        sly.json_dump(self.info['graph'], self.graph_path)
+        sly.fs.mkdir(self.dir_data)
+        sly.fs.mkdir(self.dir_results)
+        json.dump(self.info['graph'], open(self.graph_path, 'w'))
 
     def download_data_sources(self, only_meta=False):
-        self.logger.info("download_data_sources started")
-        data_sources = sly.get_data_sources(self.info['graph'])
-        for proj, datasets in data_sources.items():
-            pr_name = proj
-            pr_proto = self.api.simple_request('GetProjectByName', api_proto.Project, api_proto.Project(title=pr_name))
-            if pr_proto.id == -1:
-                self.logger.critical('Project not found', extra={'project_name': pr_name})
-                raise RuntimeError('Project not found')
-
-            datasets_proto_arr = []
-            if datasets != "*":
-                for ds_name in datasets:
-                    ds_proto = self.api.simple_request(
-                        'GetDatasetByName',
-                        api_proto.Dataset,
-                        api_proto.ProjectDataset(project=api_proto.Project(id=pr_proto.id),
-                                                 dataset=api_proto.Dataset(title=ds_name)))
-                    if ds_proto.id == -1:
-                        self.logger.critical('Dataset not found', extra={'project_id': pr_proto.id,
-                                                                         'project_title': pr_name,
-                                                                         'dataset_title': ds_name})
-                        raise RuntimeError('Dataset not found')
-                    datasets_proto_arr.append(api_proto.Dataset(id=ds_proto.id, title=ds_name))
-            else:
-                datasets_proto = self.api.simple_request('GetProjectDatasets',
-                                                         api_proto.DatasetArray,
-                                                         api_proto.Id(id=pr_proto.id))
-                datasets_proto_arr = datasets_proto.datasets
-
+        data_sources = _get_data_sources(self.info['graph'])
+        for project_name, datasets in data_sources.items():
+            project_id = self.public_api.project.get_info_by_name(self.data_mgr.workspace_id, project_name).id
             if only_meta is True:
-                project_info = self.api.simple_request('GetProjectMeta',
-                                                       api_proto.Project,
-                                                       api_proto.Id(id=pr_proto.id))
-                pr_writer = sly.ProjectWriterFS(self.dir_data, project_info.title)
-                pr_meta = sly.ProjectMeta(sly.json_loads(project_info.meta))
-                pr_writer.write_meta(pr_meta)
+                meta_json = self.public_api.project.get_meta(project_id)
+                project = sly.Project(os.path.join(self.dir_data, project_name), sly.OpenMode.CREATE)
+                project.set_meta(sly.ProjectMeta.from_json(meta_json))
             else:
-                self.data_mgr.download_project(self.dir_data, pr_proto, datasets_proto_arr,
-                                               download_images=self.download_images)
+                datasets_to_download = None  #will download all datasets
+                if datasets != "*":
+                    datasets_to_download = datasets
+                self.data_mgr.download_project(self.dir_data, project_name, datasets_to_download)
 
     def verify(self):
         self.download_data_sources(only_meta=True)
@@ -89,7 +61,7 @@ class TaskDTL(TaskDockerized):
         self.drop_container_and_check_status()
 
         self.logger.info('VERIFY_END')
-        sly.clean_dir(self.dir_data)
+        sly.fs.clean_dir(self.dir_data)
         self._read_verif_status()
 
     def download_step(self):
@@ -99,18 +71,12 @@ class TaskDTL(TaskDockerized):
         self.report_step_done(TaskStep.DOWNLOAD)
 
     def on_verify(self, jlog):
-        download_images = jlog.get('output', {}).get('download_images', None)
-        is_archive = jlog.get('output', {}).get('is_archive', None)
-        if download_images is None or is_archive is None:
-            raise ValueError('VERIFY_IS_NONE')
-        sly.json_dump(
-            {'download_images': download_images, 'is_archive': is_archive},
-            self.verif_status_path
-        )
+        is_archive = jlog['output']['is_archive']
+        json.dump({'is_archive': is_archive}, open(self.verif_status_path, 'w'))
         return {}
 
     def before_main_step(self):
-        sly.clean_dir(self.dir_results)
+        sly.fs.clean_dir(self.dir_results)
 
     def upload_step(self):
         self.upload_result_project({})
@@ -118,25 +84,41 @@ class TaskDTL(TaskDockerized):
     def upload_result_project(self, _):
         self.report_step_done(TaskStep.MAIN)
         self._read_verif_status()
-        graph_pr_name = sly.get_res_project_name(self.info['graph'])
 
-        no_image_files = not self.download_images
-
+        graph_pr_name = _get_res_project_name(self.info['graph'])
         if self.is_archive is False:
-            pr_id = self.data_mgr.upload_project(self.dir_results, graph_pr_name, no_image_files=no_image_files)
-            self.logger.info('PROJECT_CREATED', extra={'event_type': EventType.PROJECT_CREATED, 'project_id': pr_id})
+            self.data_mgr.upload_project(self.dir_results, graph_pr_name, graph_pr_name, legacy=True)
         else:
-            # remove excess fields from json
-            root_path, project_name = sly.ProjectFS.split_dir_project(self.dir_results)
-            project_fs = sly.ProjectFS.from_disk(root_path, project_name, by_annotations=True)
-            for item in project_fs:
-                ann_path = item.ann_path
-                ann = sly.json_load(ann_path)
-                for exc_field in ann_special_fields():
-                    ann.pop(exc_field, None)
-                sly.json_dump(ann, ann_path)
-
-            self.data_mgr.upload_archive(self.dir_results, graph_pr_name)
+            self.data_mgr.upload_archive(self.info['task_id'], self.dir_results, graph_pr_name)
 
         self.report_step_done(TaskStep.UPLOAD)
         return {}
+
+
+def _get_data_sources(graph_json):
+    all_ds_marker = '*'
+    data_sources = defaultdict(set)
+    for layer in graph_json:
+        if layer['action'] == 'data':
+            for src in layer['src']:
+                src_parts = src.split('/')
+                src_project_name = src_parts[0]
+                src_dataset_name = src_parts[1] if len(src_parts) > 1 else all_ds_marker
+                data_sources[src_project_name].add(src_dataset_name)
+
+    def _squeeze_datasets(datasets):
+        if all_ds_marker in datasets:
+            res = all_ds_marker
+        else:
+            res = list(datasets)
+        return res
+
+    data_sources = {k: _squeeze_datasets(v) for k, v in data_sources.items()}
+    return data_sources
+
+
+def _get_res_project_name(graph_json):
+    for layer in graph_json:
+        if layer['action'] in ['supervisely', 'save', 'save_masks']:
+            return layer['dst']
+    raise RuntimeError('Supervisely save layer not found.')

@@ -19,10 +19,138 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='worker_api.proto',
   package='',
   syntax='proto3',
-  serialized_pb=_b('\n\x10worker_api.proto\",\n\x10ModelDescription\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04hash\x18\x02 \x01(\t\"\x19\n\tAgentInfo\x12\x0c\n\x04info\x18\x01 \x01(\t\"\x1a\n\nServerInfo\x12\x0c\n\x04info\x18\x01 \x01(\t\"N\n\x11ImagesInfoRequest\x12\x12\n\nproject_id\x18\x01 \x01(\r\x12\x12\n\ndataset_id\x18\x02 \x01(\r\x12\x11\n\timage_ids\x18\x03 \x03(\r\"#\n\nImagesInfo\x12\x15\n\x05infos\x18\x01 \x03(\x0b\x32\x06.Image\"\"\n\x04\x46ile\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04meta\x18\x02 \x01(\t\"!\n\tListFiles\x12\x14\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x05.File\"6\n\rImportRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\r\x12\x14\n\x05\x66iles\x18\x02 \x03(\x0b\x32\x05.File\"7\n\tChunkFile\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12\x13\n\x04\x66ile\x18\x02 \x01(\x0b\x32\x05.File\"E\n\nChunkModel\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12 \n\x05model\x18\x02 \x01(\x0b\x32\x11.ModelDescription\"\x07\n\x05\x45mpty\"%\n\x06Result\x12\x0c\n\x04\x63ode\x18\x01 \x01(\r\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"\x10\n\x02Id\x12\n\n\x02id\x18\x01 \x01(\r\"s\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0b\n\x03\x65xt\x18\x04 \x01(\t\x12\x12\n\ndataset_id\x18\x05 \x01(\r\x12\x12\n\nproject_id\x18\x06 \x01(\r\x12\x0c\n\x04meta\x18\x07 \x01(\t\"\x1c\n\nImageArray\x12\x0e\n\x06images\x18\x01 \x03(\r\"M\n\x0bImagesToAdd\x12\x16\n\x06images\x18\x01 \x03(\x0b\x32\x06.Image\x12\x12\n\ndataset_id\x18\x02 \x01(\r\x12\x12\n\nproject_id\x18\x03 \x01(\r\"=\n\x0cImagesHashes\x12\x15\n\rimages_hashes\x18\x01 \x03(\t\x12\x16\n\x0esrc_node_token\x18\x02 \x01(\t\"+\n\x05\x43hunk\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\x12\x12\n\ntotal_size\x18\x02 \x01(\x04\":\n\nChunkImage\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12\x15\n\x05image\x18\x02 \x01(\x0b\x32\x06.Image\"+\n\x0eNodeObjectHash\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x0b\n\x03\x65xt\x18\x02 \x01(\t\"0\n\x0cGeneralEvent\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"2\n\x07Project\x12\n\n\x02id\x18\x01 \x01(\r\x12\r\n\x05title\x18\x02 \x01(\t\x12\x0c\n\x04meta\x18\x03 \x01(\t\"$\n\x07\x44\x61taset\x12\n\n\x02id\x18\x01 \x01(\r\x12\r\n\x05title\x18\x02 \x01(\t\"*\n\x0cProjectArray\x12\x1a\n\x08projects\x18\x01 \x03(\x0b\x32\x08.Project\"*\n\x0c\x44\x61tasetArray\x12\x1a\n\x08\x64\x61tasets\x18\x01 \x03(\x0b\x32\x08.Dataset\"F\n\x0eProjectDataset\x12\x19\n\x07project\x18\x01 \x01(\x0b\x32\x08.Project\x12\x19\n\x07\x64\x61taset\x18\x02 \x01(\x0b\x32\x08.Dataset\"\"\n\x0cProjectStats\x12\x12\n\ncnt_images\x18\x01 \x01(\r\"\x18\n\x08LogLines\x12\x0c\n\x04\x64\x61ta\x18\x01 \x03(\t\"\x14\n\x04Task\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2\xac\x0b\n\nGeneralAPI\x12 \n\rCreateProject\x12\x08.Project\x1a\x03.Id\"\x00\x12\'\n\rCreateDataset\x12\x0f.ProjectDataset\x1a\x03.Id\"\x00\x12(\n\x10GetProjectByName\x12\x08.Project\x1a\x08.Project\"\x00\x12/\n\x10GetDatasetByName\x12\x0f.ProjectDataset\x1a\x08.Dataset\"\x00\x12!\n\x0eGetProjectMeta\x12\x03.Id\x1a\x08.Project\"\x00\x12*\n\x12GetProjectDatasets\x12\x03.Id\x1a\r.DatasetArray\"\x00\x12&\n\x10GetDatasetImages\x12\x03.Id\x1a\x0b.ImageArray\"\x00\x12+\n\rGetImagesInfo\x12\x0b.ImageArray\x1a\x0b.ImagesInfo\"\x00\x12\x30\n\x0e\x44ownloadImages\x12\r.ImagesHashes\x1a\x0b.ChunkImage\"\x00\x30\x01\x12\x33\n\x13\x44ownloadAnnotations\x12\x0b.ImageArray\x1a\x0b.ChunkImage\"\x00\x30\x01\x12\x31\n\x0f\x46indImagesExist\x12\r.ImagesHashes\x1a\r.ImagesHashes\"\x00\x12\x39\n\x1a\x41\x64\x64\x45xistingImagesToDataset\x12\x0c.ImagesToAdd\x1a\x0b.ImageArray\"\x00\x12\x31\n\x11UploadAnnotations\x12\x0b.ChunkImage\x1a\x0b.ImageArray\"\x00(\x01\x12#\n\rUploadArchive\x12\x06.Chunk\x1a\x06.Empty\"\x00(\x01\x12\'\n\x0fGetProjectStats\x12\x03.Id\x1a\r.ProjectStats\"\x00\x12#\n\x12SetProjectFinished\x12\x03.Id\x1a\x06.Empty\"\x00\x12\x1a\n\x03Log\x12\t.LogLines\x1a\x06.Empty\"\x00\x12\'\n\x12GetImportStructure\x12\x03.Id\x1a\n.ListFiles\"\x00\x12\x30\n\x0eGetImportFiles\x12\x0e.ImportRequest\x1a\n.ChunkFile\"\x00\x30\x01\x12\x1f\n\nGetNewTask\x12\x06.Empty\x1a\x05.Task\"\x00\x30\x01\x12\x1e\n\x0bGetStopTask\x12\x06.Empty\x1a\x03.Id\"\x00\x30\x01\x12+\n\x0e\x41gentConnected\x12\n.AgentInfo\x1a\x0b.ServerInfo\"\x00\x12&\n\x0bUploadModel\x12\x0b.ChunkModel\x1a\x06.Empty\"\x00(\x01\x12.\n\rDownloadModel\x12\x11.ModelDescription\x1a\x06.Chunk\"\x00\x30\x01\x12\x31\n\x12GenerateNewModelId\x12\x06.Empty\x1a\x11.ModelDescription\"\x00\x12)\n\x0fUpdateTelemetry\x12\n.AgentInfo\x1a\x06.Empty\"\x00(\x01\x12\'\n\tAddImages\x12\x0b.ImagesInfo\x1a\x0b.ImageArray\"\x00\x12\'\n\x0cUploadImages\x12\x0b.ChunkImage\x1a\x06.Empty\"\x00(\x01\x12/\n\x10GetUsedImageList\x12\x06.Empty\x1a\x0f.NodeObjectHash\"\x00\x30\x01\x12/\n\x10GetUsedModelList\x12\x06.Empty\x1a\x0f.NodeObjectHash\"\x00\x30\x01\x12\x33\n\x16GetGeneralEventsStream\x12\x06.Empty\x1a\r.GeneralEvent\"\x00\x30\x01\x12)\n\x13GetGeneralEventData\x12\x06.Empty\x1a\x06.Chunk\"\x00\x30\x01\x12*\n\x14SendGeneralEventData\x12\x06.Chunk\x1a\x06.Empty\"\x00(\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x10worker_api.proto\"\x19\n\tModelName\x12\x0c\n\x04name\x18\x01 \x01(\t\"{\n\x11ModelArchitecture\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0ctrain_docker\x18\x02 \x01(\t\x12\x12\n\ninf_docker\x18\x03 \x01(\t\x12\x15\n\rdeploy_docker\x18\x04 \x01(\t\x12\x17\n\x0f\x64\x65ploysm_docker\x18\x05 \x01(\t\"N\n\tModelInfo\x12\x1f\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x11.ModelDescription\x12 \n\x04\x61rch\x18\x02 \x01(\x0b\x32\x12.ModelArchitecture\",\n\x10ModelDescription\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04hash\x18\x02 \x01(\t\"\x19\n\tAgentInfo\x12\x0c\n\x04info\x18\x01 \x01(\t\"\x1a\n\nServerInfo\x12\x0c\n\x04info\x18\x01 \x01(\t\"N\n\x11ImagesInfoRequest\x12\x12\n\nproject_id\x18\x01 \x01(\r\x12\x12\n\ndataset_id\x18\x02 \x01(\r\x12\x11\n\timage_ids\x18\x03 \x03(\r\"#\n\nImagesInfo\x12\x15\n\x05infos\x18\x01 \x03(\x0b\x32\x06.Image\"\"\n\x04\x46ile\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04meta\x18\x02 \x01(\t\"!\n\tListFiles\x12\x14\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x05.File\"6\n\rImportRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\r\x12\x14\n\x05\x66iles\x18\x02 \x03(\x0b\x32\x05.File\"7\n\tChunkFile\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12\x13\n\x04\x66ile\x18\x02 \x01(\x0b\x32\x05.File\"E\n\nChunkModel\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12 \n\x05model\x18\x02 \x01(\x0b\x32\x11.ModelDescription\"\x07\n\x05\x45mpty\"%\n\x06Result\x12\x0c\n\x04\x63ode\x18\x01 \x01(\r\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"\x10\n\x02Id\x12\n\n\x02id\x18\x01 \x01(\r\"s\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0b\n\x03\x65xt\x18\x04 \x01(\t\x12\x12\n\ndataset_id\x18\x05 \x01(\r\x12\x12\n\nproject_id\x18\x06 \x01(\r\x12\x0c\n\x04meta\x18\x07 \x01(\t\"\x1c\n\nImageArray\x12\x0e\n\x06images\x18\x01 \x03(\r\"M\n\x0bImagesToAdd\x12\x16\n\x06images\x18\x01 \x03(\x0b\x32\x06.Image\x12\x12\n\ndataset_id\x18\x02 \x01(\r\x12\x12\n\nproject_id\x18\x03 \x01(\r\"=\n\x0cImagesHashes\x12\x15\n\rimages_hashes\x18\x01 \x03(\t\x12\x16\n\x0esrc_node_token\x18\x02 \x01(\t\":\n\x05\x43hunk\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\x12\x12\n\ntotal_size\x18\x02 \x01(\x04\x12\r\n\x05\x65rror\x18\x03 \x01(\t\":\n\nChunkImage\x12\x15\n\x05\x63hunk\x18\x01 \x01(\x0b\x32\x06.Chunk\x12\x15\n\x05image\x18\x02 \x01(\x0b\x32\x06.Image\"+\n\x0eNodeObjectHash\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x0b\n\x03\x65xt\x18\x02 \x01(\t\"0\n\x0cGeneralEvent\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"2\n\x07Project\x12\n\n\x02id\x18\x01 \x01(\r\x12\r\n\x05title\x18\x02 \x01(\t\x12\x0c\n\x04meta\x18\x03 \x01(\t\"$\n\x07\x44\x61taset\x12\n\n\x02id\x18\x01 \x01(\r\x12\r\n\x05title\x18\x02 \x01(\t\"*\n\x0cProjectArray\x12\x1a\n\x08projects\x18\x01 \x03(\x0b\x32\x08.Project\"*\n\x0c\x44\x61tasetArray\x12\x1a\n\x08\x64\x61tasets\x18\x01 \x03(\x0b\x32\x08.Dataset\"F\n\x0eProjectDataset\x12\x19\n\x07project\x18\x01 \x01(\x0b\x32\x08.Project\x12\x19\n\x07\x64\x61taset\x18\x02 \x01(\x0b\x32\x08.Dataset\"\"\n\x0cProjectStats\x12\x12\n\ncnt_images\x18\x01 \x01(\r\"\x18\n\x08LogLines\x12\x0c\n\x04\x64\x61ta\x18\x01 \x03(\t\"\x14\n\x04Task\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2\xc4\x0c\n\nGeneralAPI\x12 \n\rCreateProject\x12\x08.Project\x1a\x03.Id\"\x00\x12\'\n\rCreateDataset\x12\x0f.ProjectDataset\x1a\x03.Id\"\x00\x12(\n\x10GetProjectByName\x12\x08.Project\x1a\x08.Project\"\x00\x12/\n\x10GetDatasetByName\x12\x0f.ProjectDataset\x1a\x08.Dataset\"\x00\x12*\n\x0eGetModelByName\x12\n.ModelName\x1a\n.ModelInfo\"\x00\x12!\n\x0eGetProjectMeta\x12\x03.Id\x1a\x08.Project\"\x00\x12*\n\x12GetProjectDatasets\x12\x03.Id\x1a\r.DatasetArray\"\x00\x12&\n\x10GetDatasetImages\x12\x03.Id\x1a\x0b.ImageArray\"\x00\x12+\n\rGetImagesInfo\x12\x0b.ImageArray\x1a\x0b.ImagesInfo\"\x00\x12\x30\n\x0e\x44ownloadImages\x12\r.ImagesHashes\x1a\x0b.ChunkImage\"\x00\x30\x01\x12\x33\n\x13\x44ownloadAnnotations\x12\x0b.ImageArray\x1a\x0b.ChunkImage\"\x00\x30\x01\x12\x31\n\x0f\x46indImagesExist\x12\r.ImagesHashes\x1a\r.ImagesHashes\"\x00\x12\x39\n\x1a\x41\x64\x64\x45xistingImagesToDataset\x12\x0c.ImagesToAdd\x1a\x0b.ImageArray\"\x00\x12\x31\n\x11UploadAnnotations\x12\x0b.ChunkImage\x1a\x0b.ImageArray\"\x00(\x01\x12#\n\rUploadArchive\x12\x06.Chunk\x1a\x06.Empty\"\x00(\x01\x12\'\n\x0fGetProjectStats\x12\x03.Id\x1a\r.ProjectStats\"\x00\x12#\n\x12SetProjectFinished\x12\x03.Id\x1a\x06.Empty\"\x00\x12\x1a\n\x03Log\x12\t.LogLines\x1a\x06.Empty\"\x00\x12\'\n\x12GetImportStructure\x12\x03.Id\x1a\n.ListFiles\"\x00\x12\x30\n\x0eGetImportFiles\x12\x0e.ImportRequest\x1a\n.ChunkFile\"\x00\x30\x01\x12\x1f\n\nGetNewTask\x12\x06.Empty\x1a\x05.Task\"\x00\x30\x01\x12\x1e\n\x0bGetStopTask\x12\x06.Empty\x1a\x03.Id\"\x00\x30\x01\x12+\n\x0e\x41gentConnected\x12\n.AgentInfo\x1a\x0b.ServerInfo\"\x00\x12\x1d\n\tAgentPing\x12\x06.Empty\x1a\x06.Empty\"\x00\x12&\n\x0bUploadModel\x12\x0b.ChunkModel\x1a\x06.Empty\"\x00(\x01\x12.\n\rDownloadModel\x12\x11.ModelDescription\x1a\x06.Chunk\"\x00\x30\x01\x12\x31\n\x12GenerateNewModelId\x12\x06.Empty\x1a\x11.ModelDescription\"\x00\x12%\n\x10GetTelemetryTask\x12\x06.Empty\x1a\x05.Task\"\x00\x30\x01\x12\'\n\x0fUpdateTelemetry\x12\n.AgentInfo\x1a\x06.Empty\"\x00\x12\'\n\tAddImages\x12\x0b.ImagesInfo\x1a\x0b.ImageArray\"\x00\x12\'\n\x0cUploadImages\x12\x0b.ChunkImage\x1a\x06.Empty\"\x00(\x01\x12/\n\x10GetUsedImageList\x12\x06.Empty\x1a\x0f.NodeObjectHash\"\x00\x30\x01\x12/\n\x10GetUsedModelList\x12\x06.Empty\x1a\x0f.NodeObjectHash\"\x00\x30\x01\x12\x33\n\x16GetGeneralEventsStream\x12\x06.Empty\x1a\r.GeneralEvent\"\x00\x30\x01\x12)\n\x13GetGeneralEventData\x12\x06.Empty\x1a\x06.Chunk\"\x00\x30\x01\x12*\n\x14SendGeneralEventData\x12\x06.Chunk\x1a\x06.Empty\"\x00(\x01\x12&\n\x10\x41\x64\x64MetaToProject\x12\x08.Project\x1a\x06.Empty\"\x00\x62\x06proto3')
 )
 
 
+
+
+_MODELNAME = _descriptor.Descriptor(
+  name='ModelName',
+  full_name='ModelName',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ModelName.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=20,
+  serialized_end=45,
+)
+
+
+_MODELARCHITECTURE = _descriptor.Descriptor(
+  name='ModelArchitecture',
+  full_name='ModelArchitecture',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ModelArchitecture.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='train_docker', full_name='ModelArchitecture.train_docker', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inf_docker', full_name='ModelArchitecture.inf_docker', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deploy_docker', full_name='ModelArchitecture.deploy_docker', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deploysm_docker', full_name='ModelArchitecture.deploysm_docker', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=47,
+  serialized_end=170,
+)
+
+
+_MODELINFO = _descriptor.Descriptor(
+  name='ModelInfo',
+  full_name='ModelInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='desc', full_name='ModelInfo.desc', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='arch', full_name='ModelInfo.arch', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=172,
+  serialized_end=250,
+)
 
 
 _MODELDESCRIPTION = _descriptor.Descriptor(
@@ -58,8 +186,8 @@ _MODELDESCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=20,
-  serialized_end=64,
+  serialized_start=252,
+  serialized_end=296,
 )
 
 
@@ -89,8 +217,8 @@ _AGENTINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=66,
-  serialized_end=91,
+  serialized_start=298,
+  serialized_end=323,
 )
 
 
@@ -120,8 +248,8 @@ _SERVERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=93,
-  serialized_end=119,
+  serialized_start=325,
+  serialized_end=351,
 )
 
 
@@ -165,8 +293,8 @@ _IMAGESINFOREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=121,
-  serialized_end=199,
+  serialized_start=353,
+  serialized_end=431,
 )
 
 
@@ -196,8 +324,8 @@ _IMAGESINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=201,
-  serialized_end=236,
+  serialized_start=433,
+  serialized_end=468,
 )
 
 
@@ -234,8 +362,8 @@ _FILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=238,
-  serialized_end=272,
+  serialized_start=470,
+  serialized_end=504,
 )
 
 
@@ -265,8 +393,8 @@ _LISTFILES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=274,
-  serialized_end=307,
+  serialized_start=506,
+  serialized_end=539,
 )
 
 
@@ -303,8 +431,8 @@ _IMPORTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=309,
-  serialized_end=363,
+  serialized_start=541,
+  serialized_end=595,
 )
 
 
@@ -341,8 +469,8 @@ _CHUNKFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=365,
-  serialized_end=420,
+  serialized_start=597,
+  serialized_end=652,
 )
 
 
@@ -379,8 +507,8 @@ _CHUNKMODEL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=422,
-  serialized_end=491,
+  serialized_start=654,
+  serialized_end=723,
 )
 
 
@@ -403,8 +531,8 @@ _EMPTY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=493,
-  serialized_end=500,
+  serialized_start=725,
+  serialized_end=732,
 )
 
 
@@ -441,8 +569,8 @@ _RESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=502,
-  serialized_end=539,
+  serialized_start=734,
+  serialized_end=771,
 )
 
 
@@ -472,8 +600,8 @@ _ID = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=541,
-  serialized_end=557,
+  serialized_start=773,
+  serialized_end=789,
 )
 
 
@@ -545,8 +673,8 @@ _IMAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=559,
-  serialized_end=674,
+  serialized_start=791,
+  serialized_end=906,
 )
 
 
@@ -576,8 +704,8 @@ _IMAGEARRAY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=676,
-  serialized_end=704,
+  serialized_start=908,
+  serialized_end=936,
 )
 
 
@@ -621,8 +749,8 @@ _IMAGESTOADD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=706,
-  serialized_end=783,
+  serialized_start=938,
+  serialized_end=1015,
 )
 
 
@@ -659,8 +787,8 @@ _IMAGESHASHES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=785,
-  serialized_end=846,
+  serialized_start=1017,
+  serialized_end=1078,
 )
 
 
@@ -685,6 +813,13 @@ _CHUNK = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='error', full_name='Chunk.error', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -697,8 +832,8 @@ _CHUNK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=848,
-  serialized_end=891,
+  serialized_start=1080,
+  serialized_end=1138,
 )
 
 
@@ -735,8 +870,8 @@ _CHUNKIMAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=893,
-  serialized_end=951,
+  serialized_start=1140,
+  serialized_end=1198,
 )
 
 
@@ -773,8 +908,8 @@ _NODEOBJECTHASH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=953,
-  serialized_end=996,
+  serialized_start=1200,
+  serialized_end=1243,
 )
 
 
@@ -811,8 +946,8 @@ _GENERALEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=998,
-  serialized_end=1046,
+  serialized_start=1245,
+  serialized_end=1293,
 )
 
 
@@ -856,8 +991,8 @@ _PROJECT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1048,
-  serialized_end=1098,
+  serialized_start=1295,
+  serialized_end=1345,
 )
 
 
@@ -894,8 +1029,8 @@ _DATASET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1100,
-  serialized_end=1136,
+  serialized_start=1347,
+  serialized_end=1383,
 )
 
 
@@ -925,8 +1060,8 @@ _PROJECTARRAY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1138,
-  serialized_end=1180,
+  serialized_start=1385,
+  serialized_end=1427,
 )
 
 
@@ -956,8 +1091,8 @@ _DATASETARRAY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1182,
-  serialized_end=1224,
+  serialized_start=1429,
+  serialized_end=1471,
 )
 
 
@@ -994,8 +1129,8 @@ _PROJECTDATASET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1226,
-  serialized_end=1296,
+  serialized_start=1473,
+  serialized_end=1543,
 )
 
 
@@ -1025,8 +1160,8 @@ _PROJECTSTATS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1298,
-  serialized_end=1332,
+  serialized_start=1545,
+  serialized_end=1579,
 )
 
 
@@ -1056,8 +1191,8 @@ _LOGLINES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1334,
-  serialized_end=1358,
+  serialized_start=1581,
+  serialized_end=1605,
 )
 
 
@@ -1087,10 +1222,12 @@ _TASK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1360,
-  serialized_end=1380,
+  serialized_start=1607,
+  serialized_end=1627,
 )
 
+_MODELINFO.fields_by_name['desc'].message_type = _MODELDESCRIPTION
+_MODELINFO.fields_by_name['arch'].message_type = _MODELARCHITECTURE
 _IMAGESINFO.fields_by_name['infos'].message_type = _IMAGE
 _LISTFILES.fields_by_name['files'].message_type = _FILE
 _IMPORTREQUEST.fields_by_name['files'].message_type = _FILE
@@ -1105,6 +1242,9 @@ _PROJECTARRAY.fields_by_name['projects'].message_type = _PROJECT
 _DATASETARRAY.fields_by_name['datasets'].message_type = _DATASET
 _PROJECTDATASET.fields_by_name['project'].message_type = _PROJECT
 _PROJECTDATASET.fields_by_name['dataset'].message_type = _DATASET
+DESCRIPTOR.message_types_by_name['ModelName'] = _MODELNAME
+DESCRIPTOR.message_types_by_name['ModelArchitecture'] = _MODELARCHITECTURE
+DESCRIPTOR.message_types_by_name['ModelInfo'] = _MODELINFO
 DESCRIPTOR.message_types_by_name['ModelDescription'] = _MODELDESCRIPTION
 DESCRIPTOR.message_types_by_name['AgentInfo'] = _AGENTINFO
 DESCRIPTOR.message_types_by_name['ServerInfo'] = _SERVERINFO
@@ -1135,6 +1275,27 @@ DESCRIPTOR.message_types_by_name['ProjectStats'] = _PROJECTSTATS
 DESCRIPTOR.message_types_by_name['LogLines'] = _LOGLINES
 DESCRIPTOR.message_types_by_name['Task'] = _TASK
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+ModelName = _reflection.GeneratedProtocolMessageType('ModelName', (_message.Message,), dict(
+  DESCRIPTOR = _MODELNAME,
+  __module__ = 'worker_api_pb2'
+  # @@protoc_insertion_point(class_scope:ModelName)
+  ))
+_sym_db.RegisterMessage(ModelName)
+
+ModelArchitecture = _reflection.GeneratedProtocolMessageType('ModelArchitecture', (_message.Message,), dict(
+  DESCRIPTOR = _MODELARCHITECTURE,
+  __module__ = 'worker_api_pb2'
+  # @@protoc_insertion_point(class_scope:ModelArchitecture)
+  ))
+_sym_db.RegisterMessage(ModelArchitecture)
+
+ModelInfo = _reflection.GeneratedProtocolMessageType('ModelInfo', (_message.Message,), dict(
+  DESCRIPTOR = _MODELINFO,
+  __module__ = 'worker_api_pb2'
+  # @@protoc_insertion_point(class_scope:ModelInfo)
+  ))
+_sym_db.RegisterMessage(ModelInfo)
 
 ModelDescription = _reflection.GeneratedProtocolMessageType('ModelDescription', (_message.Message,), dict(
   DESCRIPTOR = _MODELDESCRIPTION,
@@ -1347,8 +1508,8 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1383,
-  serialized_end=2835,
+  serialized_start=1630,
+  serialized_end=3234,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateProject',
@@ -1387,9 +1548,18 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='GetModelByName',
+    full_name='GeneralAPI.GetModelByName',
+    index=4,
+    containing_service=None,
+    input_type=_MODELNAME,
+    output_type=_MODELINFO,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='GetProjectMeta',
     full_name='GeneralAPI.GetProjectMeta',
-    index=4,
+    index=5,
     containing_service=None,
     input_type=_ID,
     output_type=_PROJECT,
@@ -1398,7 +1568,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetProjectDatasets',
     full_name='GeneralAPI.GetProjectDatasets',
-    index=5,
+    index=6,
     containing_service=None,
     input_type=_ID,
     output_type=_DATASETARRAY,
@@ -1407,7 +1577,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetDatasetImages',
     full_name='GeneralAPI.GetDatasetImages',
-    index=6,
+    index=7,
     containing_service=None,
     input_type=_ID,
     output_type=_IMAGEARRAY,
@@ -1416,7 +1586,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetImagesInfo',
     full_name='GeneralAPI.GetImagesInfo',
-    index=7,
+    index=8,
     containing_service=None,
     input_type=_IMAGEARRAY,
     output_type=_IMAGESINFO,
@@ -1425,7 +1595,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DownloadImages',
     full_name='GeneralAPI.DownloadImages',
-    index=8,
+    index=9,
     containing_service=None,
     input_type=_IMAGESHASHES,
     output_type=_CHUNKIMAGE,
@@ -1434,7 +1604,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DownloadAnnotations',
     full_name='GeneralAPI.DownloadAnnotations',
-    index=9,
+    index=10,
     containing_service=None,
     input_type=_IMAGEARRAY,
     output_type=_CHUNKIMAGE,
@@ -1443,7 +1613,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='FindImagesExist',
     full_name='GeneralAPI.FindImagesExist',
-    index=10,
+    index=11,
     containing_service=None,
     input_type=_IMAGESHASHES,
     output_type=_IMAGESHASHES,
@@ -1452,7 +1622,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AddExistingImagesToDataset',
     full_name='GeneralAPI.AddExistingImagesToDataset',
-    index=11,
+    index=12,
     containing_service=None,
     input_type=_IMAGESTOADD,
     output_type=_IMAGEARRAY,
@@ -1461,7 +1631,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='UploadAnnotations',
     full_name='GeneralAPI.UploadAnnotations',
-    index=12,
+    index=13,
     containing_service=None,
     input_type=_CHUNKIMAGE,
     output_type=_IMAGEARRAY,
@@ -1470,7 +1640,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='UploadArchive',
     full_name='GeneralAPI.UploadArchive',
-    index=13,
+    index=14,
     containing_service=None,
     input_type=_CHUNK,
     output_type=_EMPTY,
@@ -1479,7 +1649,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetProjectStats',
     full_name='GeneralAPI.GetProjectStats',
-    index=14,
+    index=15,
     containing_service=None,
     input_type=_ID,
     output_type=_PROJECTSTATS,
@@ -1488,7 +1658,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='SetProjectFinished',
     full_name='GeneralAPI.SetProjectFinished',
-    index=15,
+    index=16,
     containing_service=None,
     input_type=_ID,
     output_type=_EMPTY,
@@ -1497,7 +1667,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='Log',
     full_name='GeneralAPI.Log',
-    index=16,
+    index=17,
     containing_service=None,
     input_type=_LOGLINES,
     output_type=_EMPTY,
@@ -1506,7 +1676,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetImportStructure',
     full_name='GeneralAPI.GetImportStructure',
-    index=17,
+    index=18,
     containing_service=None,
     input_type=_ID,
     output_type=_LISTFILES,
@@ -1515,7 +1685,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetImportFiles',
     full_name='GeneralAPI.GetImportFiles',
-    index=18,
+    index=19,
     containing_service=None,
     input_type=_IMPORTREQUEST,
     output_type=_CHUNKFILE,
@@ -1524,7 +1694,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetNewTask',
     full_name='GeneralAPI.GetNewTask',
-    index=19,
+    index=20,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_TASK,
@@ -1533,7 +1703,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetStopTask',
     full_name='GeneralAPI.GetStopTask',
-    index=20,
+    index=21,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_ID,
@@ -1542,16 +1712,25 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AgentConnected',
     full_name='GeneralAPI.AgentConnected',
-    index=21,
+    index=22,
     containing_service=None,
     input_type=_AGENTINFO,
     output_type=_SERVERINFO,
     options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='AgentPing',
+    full_name='GeneralAPI.AgentPing',
+    index=23,
+    containing_service=None,
+    input_type=_EMPTY,
+    output_type=_EMPTY,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='UploadModel',
     full_name='GeneralAPI.UploadModel',
-    index=22,
+    index=24,
     containing_service=None,
     input_type=_CHUNKMODEL,
     output_type=_EMPTY,
@@ -1560,7 +1739,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DownloadModel',
     full_name='GeneralAPI.DownloadModel',
-    index=23,
+    index=25,
     containing_service=None,
     input_type=_MODELDESCRIPTION,
     output_type=_CHUNK,
@@ -1569,16 +1748,25 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GenerateNewModelId',
     full_name='GeneralAPI.GenerateNewModelId',
-    index=24,
+    index=26,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_MODELDESCRIPTION,
     options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='GetTelemetryTask',
+    full_name='GeneralAPI.GetTelemetryTask',
+    index=27,
+    containing_service=None,
+    input_type=_EMPTY,
+    output_type=_TASK,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='UpdateTelemetry',
     full_name='GeneralAPI.UpdateTelemetry',
-    index=25,
+    index=28,
     containing_service=None,
     input_type=_AGENTINFO,
     output_type=_EMPTY,
@@ -1587,7 +1775,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AddImages',
     full_name='GeneralAPI.AddImages',
-    index=26,
+    index=29,
     containing_service=None,
     input_type=_IMAGESINFO,
     output_type=_IMAGEARRAY,
@@ -1596,7 +1784,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='UploadImages',
     full_name='GeneralAPI.UploadImages',
-    index=27,
+    index=30,
     containing_service=None,
     input_type=_CHUNKIMAGE,
     output_type=_EMPTY,
@@ -1605,7 +1793,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetUsedImageList',
     full_name='GeneralAPI.GetUsedImageList',
-    index=28,
+    index=31,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_NODEOBJECTHASH,
@@ -1614,7 +1802,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetUsedModelList',
     full_name='GeneralAPI.GetUsedModelList',
-    index=29,
+    index=32,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_NODEOBJECTHASH,
@@ -1623,7 +1811,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetGeneralEventsStream',
     full_name='GeneralAPI.GetGeneralEventsStream',
-    index=30,
+    index=33,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_GENERALEVENT,
@@ -1632,7 +1820,7 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetGeneralEventData',
     full_name='GeneralAPI.GetGeneralEventData',
-    index=31,
+    index=34,
     containing_service=None,
     input_type=_EMPTY,
     output_type=_CHUNK,
@@ -1641,9 +1829,18 @@ _GENERALAPI = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='SendGeneralEventData',
     full_name='GeneralAPI.SendGeneralEventData',
-    index=32,
+    index=35,
     containing_service=None,
     input_type=_CHUNK,
+    output_type=_EMPTY,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='AddMetaToProject',
+    full_name='GeneralAPI.AddMetaToProject',
+    index=36,
+    containing_service=None,
+    input_type=_PROJECT,
     output_type=_EMPTY,
     options=None,
   ),

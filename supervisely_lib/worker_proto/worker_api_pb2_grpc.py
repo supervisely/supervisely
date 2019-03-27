@@ -35,6 +35,11 @@ class GeneralAPIStub(object):
         request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
         response_deserializer=worker__api__pb2.Dataset.FromString,
         )
+    self.GetModelByName = channel.unary_unary(
+        '/GeneralAPI/GetModelByName',
+        request_serializer=worker__api__pb2.ModelName.SerializeToString,
+        response_deserializer=worker__api__pb2.ModelInfo.FromString,
+        )
     self.GetProjectMeta = channel.unary_unary(
         '/GeneralAPI/GetProjectMeta',
         request_serializer=worker__api__pb2.Id.SerializeToString,
@@ -125,6 +130,11 @@ class GeneralAPIStub(object):
         request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
         response_deserializer=worker__api__pb2.ServerInfo.FromString,
         )
+    self.AgentPing = channel.unary_unary(
+        '/GeneralAPI/AgentPing',
+        request_serializer=worker__api__pb2.Empty.SerializeToString,
+        response_deserializer=worker__api__pb2.Empty.FromString,
+        )
     self.UploadModel = channel.stream_unary(
         '/GeneralAPI/UploadModel',
         request_serializer=worker__api__pb2.ChunkModel.SerializeToString,
@@ -140,7 +150,12 @@ class GeneralAPIStub(object):
         request_serializer=worker__api__pb2.Empty.SerializeToString,
         response_deserializer=worker__api__pb2.ModelDescription.FromString,
         )
-    self.UpdateTelemetry = channel.stream_unary(
+    self.GetTelemetryTask = channel.unary_stream(
+        '/GeneralAPI/GetTelemetryTask',
+        request_serializer=worker__api__pb2.Empty.SerializeToString,
+        response_deserializer=worker__api__pb2.Task.FromString,
+        )
+    self.UpdateTelemetry = channel.unary_unary(
         '/GeneralAPI/UpdateTelemetry',
         request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
         response_deserializer=worker__api__pb2.Empty.FromString,
@@ -180,6 +195,11 @@ class GeneralAPIStub(object):
         request_serializer=worker__api__pb2.Chunk.SerializeToString,
         response_deserializer=worker__api__pb2.Empty.FromString,
         )
+    self.AddMetaToProject = channel.unary_unary(
+        '/GeneralAPI/AddMetaToProject',
+        request_serializer=worker__api__pb2.Project.SerializeToString,
+        response_deserializer=worker__api__pb2.Empty.FromString,
+        )
 
 
 class GeneralAPIServicer(object):
@@ -209,6 +229,13 @@ class GeneralAPIServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def GetDatasetByName(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def GetModelByName(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -341,6 +368,13 @@ class GeneralAPIServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def AgentPing(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def UploadModel(self, request_iterator, context):
     # missing associated documentation comment in .proto file
     pass
@@ -362,7 +396,14 @@ class GeneralAPIServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def UpdateTelemetry(self, request_iterator, context):
+  def GetTelemetryTask(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def UpdateTelemetry(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -418,6 +459,13 @@ class GeneralAPIServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def AddMetaToProject(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_GeneralAPIServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -440,6 +488,11 @@ def add_GeneralAPIServicer_to_server(servicer, server):
           servicer.GetDatasetByName,
           request_deserializer=worker__api__pb2.ProjectDataset.FromString,
           response_serializer=worker__api__pb2.Dataset.SerializeToString,
+      ),
+      'GetModelByName': grpc.unary_unary_rpc_method_handler(
+          servicer.GetModelByName,
+          request_deserializer=worker__api__pb2.ModelName.FromString,
+          response_serializer=worker__api__pb2.ModelInfo.SerializeToString,
       ),
       'GetProjectMeta': grpc.unary_unary_rpc_method_handler(
           servicer.GetProjectMeta,
@@ -531,6 +584,11 @@ def add_GeneralAPIServicer_to_server(servicer, server):
           request_deserializer=worker__api__pb2.AgentInfo.FromString,
           response_serializer=worker__api__pb2.ServerInfo.SerializeToString,
       ),
+      'AgentPing': grpc.unary_unary_rpc_method_handler(
+          servicer.AgentPing,
+          request_deserializer=worker__api__pb2.Empty.FromString,
+          response_serializer=worker__api__pb2.Empty.SerializeToString,
+      ),
       'UploadModel': grpc.stream_unary_rpc_method_handler(
           servicer.UploadModel,
           request_deserializer=worker__api__pb2.ChunkModel.FromString,
@@ -546,7 +604,12 @@ def add_GeneralAPIServicer_to_server(servicer, server):
           request_deserializer=worker__api__pb2.Empty.FromString,
           response_serializer=worker__api__pb2.ModelDescription.SerializeToString,
       ),
-      'UpdateTelemetry': grpc.stream_unary_rpc_method_handler(
+      'GetTelemetryTask': grpc.unary_stream_rpc_method_handler(
+          servicer.GetTelemetryTask,
+          request_deserializer=worker__api__pb2.Empty.FromString,
+          response_serializer=worker__api__pb2.Task.SerializeToString,
+      ),
+      'UpdateTelemetry': grpc.unary_unary_rpc_method_handler(
           servicer.UpdateTelemetry,
           request_deserializer=worker__api__pb2.AgentInfo.FromString,
           response_serializer=worker__api__pb2.Empty.SerializeToString,
@@ -584,6 +647,11 @@ def add_GeneralAPIServicer_to_server(servicer, server):
       'SendGeneralEventData': grpc.stream_unary_rpc_method_handler(
           servicer.SendGeneralEventData,
           request_deserializer=worker__api__pb2.Chunk.FromString,
+          response_serializer=worker__api__pb2.Empty.SerializeToString,
+      ),
+      'AddMetaToProject': grpc.unary_unary_rpc_method_handler(
+          servicer.AddMetaToProject,
+          request_deserializer=worker__api__pb2.Project.FromString,
           response_serializer=worker__api__pb2.Empty.SerializeToString,
       ),
   }

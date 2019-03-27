@@ -5,18 +5,18 @@ import os.path as osp
 
 import supervisely_lib as sly
 
-from . import constants
-from .fs_storages import ImageStorage, NNStorage, EmptyStorage
+from worker import constants
+from worker.fs_storages import ImageStorage, NNStorage, EmptyStorage
 
 
 # may be created by different processes (no sync on agent side)
 class AgentStorage:
     def __init__(self):
-        self._common_dir = constants.AGENT_STORAGE_DIR
+        self._common_dir = constants.AGENT_STORAGE_DIR()
 
         def create_st(stor_type, **kwargs):
-            if constants.WITH_LOCAL_STORAGE:
-                sly.mkdir(kwargs['storage_root'])
+            if constants.WITH_LOCAL_STORAGE():
+                sly.fs.mkdir(kwargs['storage_root'])
                 return stor_type(**kwargs)
             else:
                 return EmptyStorage(**kwargs)

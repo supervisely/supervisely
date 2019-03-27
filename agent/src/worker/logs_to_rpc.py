@@ -2,7 +2,7 @@
 
 import logging
 
-from supervisely_lib.sly_logger import add_logger_handler
+import supervisely_lib as sly
 
 
 class TaskHandler(logging.Handler):
@@ -17,4 +17,4 @@ class TaskHandler(logging.Handler):
 
 def add_task_handler(the_logger, task_log_queue):
     task_handler = TaskHandler(task_log_queue)
-    add_logger_handler(the_logger, task_handler)
+    sly.add_logger_handler(the_logger, task_handler)

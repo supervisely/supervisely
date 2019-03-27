@@ -2,8 +2,9 @@
 
 import os
 import os.path as osp
-
 import hashlib
+import shutil
+
 import supervisely_lib as sly
 
 
@@ -16,7 +17,7 @@ class FSStorage:
     @classmethod
     def _copy_file_concurr(cls, src_path, dst_path):
         try:
-            sly.copy_file(src_path, dst_path)
+            sly.fs.copy_file(src_path, dst_path)
         except OSError as e:
             # may be written by parallel process, skip in that case
             if not osp.isfile(dst_path):
@@ -24,12 +25,10 @@ class FSStorage:
 
     @classmethod
     def _copy_dir_recursively(cls, src_path, dst_path):
-        files = sly.list_dir(src_path)
-        for file_subpath in files:
-            src_fpath = osp.join(src_path, file_subpath)
-            storage_fpath = osp.join(dst_path, file_subpath)
-            sly.ensure_base_path(storage_fpath)
-            cls._copy_file_concurr(src_fpath, storage_fpath)
+        if sly.fs.dir_exists(dst_path):
+            sly.fs.remove_dir(dst_path)
+        #sly.fs.ensure_base_path(dst_path)
+        shutil.copytree(src_path, dst_path)
 
     @ classmethod
     def _get_obj_suffix(cls, st_path):
@@ -89,10 +88,11 @@ class FSStorage:
         if not self._storage_obj_exists(st_path, suffix):
             self._write_obj_impl(src_path, st_path)
 
-    def write_objects(self, src_paths_hashes, progress_ctr):
-        for src_path, data_hash in src_paths_hashes:
+    def write_objects(self, src_paths, datas_hashes, progress_cb=None):
+        for src_path, data_hash in zip(src_paths, datas_hashes):
             self.write_object(src_path, data_hash)
-            progress_ctr.iter_done_report()
+            if progress_cb is not None:
+                progress_cb()
 
     def read_object(self, data_hash, dst_path):
         suffix = self._get_suffix(dst_path)
@@ -102,6 +102,7 @@ class FSStorage:
         self._read_obj_impl(st_path, dst_path)
         return dst_path
 
+    # @TODO: to remove??? used only in data_manager->download project
     def read_objects(self, dst_paths_hashes, progress_ctr):
         written_paths = []
         for dst_path, data_hash in dst_paths_hashes:
@@ -125,15 +126,15 @@ class ImageStorage(FSStorage):
         return osp.isfile(st_path)
 
     def _get_suffix(self, path):
-        return sly.get_file_ext(path)
+        return sly.fs.get_file_ext(path)
 
     def _write_obj_impl(self, src_path, st_path):
-        sly.ensure_base_path(st_path)
+        sly.fs.ensure_base_path(st_path)
         self._copy_file_concurr(src_path, st_path)
 
     def _read_obj_impl(self, st_path, dst_path):
-        sly.ensure_base_path(dst_path)
-        sly.copy_file(st_path, dst_path)
+        sly.fs.ensure_base_path(dst_path)
+        sly.fs.copy_file(st_path, dst_path)
 
     def _rm_obj_impl(self, st_path):
         os.remove(st_path)
@@ -155,7 +156,7 @@ class NNStorage(FSStorage):
         self._copy_dir_recursively(st_path, dst_path)
 
     def _rm_obj_impl(self, st_path):
-        sly.remove_dir(st_path)
+        sly.fs.remove_dir(st_path)
 
 
 class EmptyStorage(FSStorage):
@@ -166,16 +167,16 @@ class EmptyStorage(FSStorage):
         return ''
 
     def _write_obj_impl(self, src_path, st_path):
-        pass
+        raise NotImplementedError()
 
     def _read_obj_impl(self, st_path, dst_path):
-        pass
+        raise NotImplementedError()
 
     def _rm_obj_impl(self, st_path):
-        pass
+        raise NotImplementedError()
 
-    def write_objects(self, src_paths_hashes, progress_ctr):
-        pass  # overridden to speed up
+    def write_objects(self, src_paths, datas_hashes, progress_cb=None):
+        raise NotImplementedError()
 
     def read_objects(self, dst_paths_hashes, progress_ctr):
         return []  # overridden to speed up

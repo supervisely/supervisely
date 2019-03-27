@@ -2,12 +2,12 @@
 
 import cv2
 import supervisely_lib as sly
-import supervisely_lib.worker_proto as api_proto
+import supervisely_lib.worker_proto.worker_api_pb2 as api_proto
 
-from .task_sly import TaskSly
-from .agent_utils import create_img_meta_str
+from worker.task_sly import TaskSly
+from worker.agent_utils import create_img_meta_str
 
-
+#@TODO: legacy functionality - remove in future
 class TaskUploadImages(TaskSly):
     def task_main_func(self):
         if self.info.get('images', None) is None:
@@ -22,13 +22,13 @@ class TaskUploadImages(TaskSly):
             ext = img_info['ext']
             st_path = self.data_mgr.storage.images.check_storage_object(hash_, ext)
             if st_path is None:
-                self.logger.warning('IMAGE_NOT_FOUND')
+                self.logger.warning('Image not found in local storage.', extra={'hash': hash_, 'ext': ext})
                 cnt_skipped_images += 1
                 continue
 
             img = cv2.imread(st_path)
             height, width = img.shape[:2]
-            img_sizeb = sly.get_file_size(st_path)
+            img_sizeb = sly.fs.get_file_size(st_path)
 
             img_meta_str = create_img_meta_str(img_sizeb, width=width, height=height)
             proto_img_info = api_proto.Image(hash=hash_, ext=ext, meta=img_meta_str)

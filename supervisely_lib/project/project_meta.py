@@ -1,109 +1,130 @@
 # coding: utf-8
 
-import os.path as osp
-from enum import Enum
+from typing import List
 
-from ..figure.fig_classes import FigClasses
-from ..utils.os_utils import ensure_base_path
-from ..utils.json_utils import *
-
-
-class ProjectMetaFmt(Enum):
-    V1_CLASSES = 1  # old format, list of classes
-    V2_META = 2  # curr format, classes, plain tags (for imgs & objs)
+from supervisely_lib.io.json import JsonSerializable
+from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
+from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
+from supervisely_lib.annotation.obj_class import ObjClass
+from supervisely_lib.annotation.tag_meta import TagMeta
 
 
-_DEFAULT_OUT_FMT = ProjectMetaFmt.V2_META
+class ProjectMetaJsonFields:
+    OBJ_CLASSES = 'classes'
+    IMG_TAGS = 'tags_images'
+    OBJ_TAGS = 'tags_objects'
 
 
-class ProjectMeta(object):
-    fmt_to_fname = {
-        ProjectMetaFmt.V1_CLASSES: 'classes.json',
-        ProjectMetaFmt.V2_META: 'meta.json',
-    }
-
-    # py_container is native Python container like appropriate dict or list
-    def __init__(self, py_container=None):
-        self.classes = FigClasses()
-        self.img_tags = set()
-        self.obj_tags = set()
-
-        if type(py_container) is list:
-            self._in_fmt = ProjectMetaFmt.V1_CLASSES
-            self.classes = FigClasses(classes_lst=py_container)
-
-        elif type(py_container) is dict:
-            self._in_fmt = ProjectMetaFmt.V2_META
-            self.classes = FigClasses(classes_lst=py_container['classes'])
-            self.img_tags = set(py_container['tags_images'])
-            self.obj_tags = set(py_container['tags_objects'])
-
-        elif py_container is None:
-            self._in_fmt = None  # empty meta
-
-        else:
-            raise RuntimeError('Wrong meta object type.')
+#@TODO: add validation
+class ProjectMeta(JsonSerializable):
+    def __init__(self, obj_classes=None, img_tag_metas=None, obj_tag_metas=None):
+        self._obj_classes = ObjClassCollection() if obj_classes is None else obj_classes
+        # TODO do we actualy need two sets of tags?
+        self._img_tag_metas = TagMetaCollection() if img_tag_metas is None else img_tag_metas
+        self._obj_tag_metas = TagMetaCollection() if obj_tag_metas is None else obj_tag_metas
 
     @property
-    def input_format(self):
-        return self._in_fmt
+    def obj_classes(self):
+        return self._obj_classes
 
-    def update(self, rhs):
-        self.classes.update(rhs.classes)
-        self.img_tags.update(rhs.img_tags)
-        self.obj_tags.update(rhs.obj_tags)
+    @property
+    def img_tag_metas(self):
+        return self._img_tag_metas
 
-    def to_py_container(self, out_fmt=_DEFAULT_OUT_FMT):
-        if out_fmt == ProjectMetaFmt.V1_CLASSES:
-            res = self.classes.py_container
-        elif out_fmt == ProjectMetaFmt.V2_META:
-            res = {
-                'classes': self.classes.py_container,
-                'tags_images': list(self.img_tags),
-                'tags_objects': list(self.obj_tags),
-            }
-        else:
-            raise NotImplementedError()
-        return res
+    @property
+    def obj_tag_metas(self):
+        return self._obj_tag_metas
 
-    def to_json_file(self, fpath, out_fmt=_DEFAULT_OUT_FMT):
-        ensure_base_path(fpath)
-        json_dump(self.to_py_container(out_fmt), fpath)
-
-    def to_json_str(self, out_fmt=_DEFAULT_OUT_FMT):
-        res = json_dumps(self.to_py_container(out_fmt))
-        return res
-
-    def to_dir(self, dir_path, out_fmt=_DEFAULT_OUT_FMT):
-        fpath = self.dir_path_to_fpath(dir_path, out_fmt)
-        self.to_json_file(fpath, out_fmt)
+    def to_json(self):
+        return {
+            ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
+            ProjectMetaJsonFields.IMG_TAGS: self._img_tag_metas.to_json(),
+            ProjectMetaJsonFields.OBJ_TAGS: self._obj_tag_metas.to_json()
+        }
 
     @classmethod
-    def dir_path_to_fpath(cls, dir_path, fmt=_DEFAULT_OUT_FMT):
-        fname = cls.fmt_to_fname[fmt]
-        return osp.join(dir_path, fname)
+    def from_json(cls, data):
+        return cls(ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
+                   TagMetaCollection.from_json(data[ProjectMetaJsonFields.IMG_TAGS]),
+                   TagMetaCollection.from_json(data[ProjectMetaJsonFields.OBJ_TAGS]))
 
-    @classmethod
-    def from_json_file(cls, fpath):
-        py_container = json_load(fpath)
-        return cls(py_container)
+    def merge(self, other):
+        return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
+                          img_tag_metas=self._img_tag_metas.merge(other.img_tag_metas),
+                          obj_tag_metas=self._obj_tag_metas.merge(other.obj_tag_metas))
 
-    @classmethod
-    def from_json_str(cls, s):
-        py_container = json_loads(s)
-        return cls(py_container)
+    def clone(self, obj_classes: ObjClassCollection = None, img_tag_metas: TagMetaCollection = None, obj_tag_metas: TagMetaCollection = None):
+        return ProjectMeta(obj_classes=obj_classes or self.obj_classes,
+                           img_tag_metas=img_tag_metas or self.img_tag_metas,
+                           obj_tag_metas=obj_tag_metas or self.obj_tag_metas)
 
-    @classmethod
-    def find_in_dir(cls, dir_path):
-        for fmt in ProjectMetaFmt:
-            fpath = cls.dir_path_to_fpath(dir_path, fmt=fmt)
-            if osp.isfile(fpath):
-                return fpath
-        return None
+    def add_obj_class(self, new_obj_class):
+        return self.add_obj_classes([new_obj_class])
 
-    @classmethod
-    def from_dir(cls, dir_path):
-        fpath = cls.find_in_dir(dir_path)
-        if not fpath:
-            raise RuntimeError('File with meta not found in dir: {}'.format(dir_path))
-        return cls.from_json_file(fpath)
+    def add_obj_classes(self, new_obj_classes):
+        return self.clone(obj_classes=self.obj_classes.add_items(new_obj_classes))
+
+    def add_img_tag_meta(self, new_tag_meta):
+        return self.add_img_tag_metas([new_tag_meta])
+
+    def add_img_tag_metas(self, new_tag_metas):
+        return self.clone(img_tag_metas=self.img_tag_metas.add_items(new_tag_metas))
+
+    def add_obj_tag_meta(self, new_tag_meta):
+        return self.add_obj_tag_metas([new_tag_meta])
+
+    def add_obj_tag_metas(self, new_tag_metas):
+        return self.clone(obj_tag_metas=self.obj_tag_metas.add_items(new_tag_metas))
+
+    @staticmethod
+    def _delete_items(collection, item_names):
+        names_to_delete = set(item_names)
+        res_items = []
+        for item in collection:
+            if item.key() not in names_to_delete:
+                res_items.append(item)
+        return res_items
+
+    def delete_obj_class(self, obj_class_name):
+        return self.delete_obj_classes([obj_class_name])
+
+    def delete_obj_classes(self, obj_class_names):
+        res_items = self._delete_items(self._obj_classes, obj_class_names)
+        return self.clone(obj_classes=ObjClassCollection(res_items))
+
+    def delete_img_tag_meta(self, tag_name):
+        self.delete_img_tag_metas([tag_name])
+
+    def delete_img_tag_metas(self, tag_names):
+        res_items = self._delete_items(self._img_tag_metas, tag_names)
+        return self.clone(img_tag_metas=TagMetaCollection(res_items))
+
+    def delete_obj_tag_meta(self, tag_name):
+        self.delete_obj_tag_metas([tag_name])
+
+    def delete_obj_tag_metas(self, tag_names):
+        res_items = self._delete_items(self._obj_tag_metas, tag_names)
+        return self.clone(obj_tag_metas=TagMetaCollection(res_items))
+
+    def get_obj_class(self, obj_class_name):
+        return self._obj_classes.get(obj_class_name)
+
+    def get_img_tag_meta(self, tag_name):
+        return self._img_tag_metas.get(tag_name)
+
+    def get_obj_tag_meta(self, tag_name):
+        return self._obj_tag_metas.get(tag_name)
+
+    @staticmethod
+    def merge_list(metas):
+        res_meta = ProjectMeta()
+        for meta in metas:
+            res_meta = res_meta.merge(meta)
+        return res_meta
+
+    def __str__(self):
+        result = 'ProjectMeta:\n'
+        result += 'Object Classes\n{}\n'.format(str(self._obj_classes))
+        result += 'Image Tags\n{}\n'.format(str(self._img_tag_metas))
+        result += 'Object Tags\n{}\n'.format(str(self._obj_tag_metas))
+        return result

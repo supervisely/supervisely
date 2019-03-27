@@ -1,12 +1,13 @@
 # coding: utf-8
 
-import os.path as osp
-
+import os
+import json
+import shutil
 import supervisely_lib as sly
-from supervisely_lib import EventType
-import supervisely_lib.worker_proto as api_proto
+from supervisely_lib.task.paths import TaskPaths
 
-from .task_dockerized import TaskDockerized, TaskStep
+from worker.task_dockerized import TaskDockerized, TaskStep
+from worker import agent_utils
 
 
 class TaskInference(TaskDockerized):
@@ -14,52 +15,49 @@ class TaskInference(TaskDockerized):
         super().__init__(*args, **kwargs)
 
         self.action_map = {
-            str(EventType.MODEL_APPLIED): self.upload_anns
+            str(sly.EventType.MODEL_APPLIED): self.upload_anns
         }
         self.docker_runtime = 'nvidia'
+        self.entrypoint = "/workdir/src/inference.py"
 
-        self.dir_data = osp.join(self.dir_task, 'data')
-        self.dir_results = osp.join(self.dir_task, 'results')
-        self.dir_model = osp.join(self.dir_task, 'model')
-        self.config_path = osp.join(self.dir_task, 'task_settings.json')
+        self.dir_data = os.path.join(self.dir_task, os.path.basename(TaskPaths.DATA_DIR))
+        self.dir_results = os.path.join(self.dir_task, os.path.basename(TaskPaths.RESULTS_DIR))
+        self.dir_model = os.path.join(self.dir_task, os.path.basename(TaskPaths.MODEL_DIR))
+        self.config_path1 = os.path.join(self.dir_task, os.path.basename(TaskPaths.SETTINGS_PATH))
+        self.config_path2 = os.path.join(self.dir_task, os.path.basename(TaskPaths.TASK_CONFIG_PATH))
 
     def init_additional(self):
         super().init_additional()
-        sly.mkdir(self.dir_data)
-        sly.mkdir(self.dir_results)
+        sly.fs.mkdir(self.dir_data)
+        sly.fs.mkdir(self.dir_model)
+        sly.fs.mkdir(self.dir_results)
 
     def download_step(self):
-        if self.info.get('nn_model', None) is None:
-            self.logger.critical('TASK_NN_EMPTY')
-            raise ValueError('TASK_NN_EMPTY')
-
-        nn_id = self.info['nn_model']['id']
-        nn_hash = self.info['nn_model']['hash']
-        self.logger.info('DOWNLOAD_NN', extra={'nn_id': nn_id, 'nn_hash': nn_hash})
-        self.data_mgr.download_nn(nn_id, nn_hash, self.dir_model)
-
         self.logger.info("DOWNLOAD_DATA")
-        sly.json_dump(self.info['config'], self.config_path)
+        json.dump(self.info['config'], open(self.config_path1, 'w'))
+        json.dump(self.info['config'], open(self.config_path2, 'w'))
 
-        pr_info = self.info['project']
-        project = api_proto.Project(id=pr_info['id'], title=pr_info['title'])
-        datasets = [api_proto.Dataset(id=ds['id'], title=ds['title']) for ds in pr_info['datasets']]
-        self.data_mgr.download_project(self.dir_data, project, datasets)
+        model = agent_utils.get_single_item_or_die(self.info, 'models', 'config')
+        self.data_mgr.download_nn(model['title'], self.dir_model)
+
+        project_name = agent_utils.get_single_item_or_die(self.info, 'projects', 'config')['title']
+        self.data_mgr.download_project(self.dir_data, project_name)
+
+        #@TODO: only for compatibility with old models
+        shutil.move(self.dir_model, self.dir_model + '_delme')
+        shutil.move(os.path.join(self.dir_model + '_delme', model['title']), self.dir_model)
+        sly.fs.remove_dir(self.dir_model + '_delme')
 
         self.report_step_done(TaskStep.DOWNLOAD)
 
     def before_main_step(self):
-        sly.clean_dir(self.dir_results)
+        sly.fs.clean_dir(self.dir_results)
 
     def upload_step(self):
         self.upload_anns({})
 
     def upload_anns(self, _):
         self.report_step_done(TaskStep.MAIN)
-        res_project_path = osp.join(self.dir_results, self.info['project']['title'])
-
-        pr_id = self.data_mgr.upload_project(res_project_path, self.info['new_title'], no_image_files=True)
-        self.logger.info('PROJECT_CREATED', extra={'event_type': EventType.PROJECT_CREATED, 'project_id': pr_id})
-
+        self.data_mgr.upload_project(self.dir_results, self.info['projects'][0]['title'], self.info['new_title'])
         self.report_step_done(TaskStep.UPLOAD)
         return {}

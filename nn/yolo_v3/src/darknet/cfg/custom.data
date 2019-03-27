@@ -1,5 +1,0 @@
-classes= 1
-train  = /src/plates_train.txt
-valid  = /src/plates_train.txt
-names = data/custom.names
-backup = plates_backup_crop

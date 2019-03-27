@@ -1,6 +1,0 @@
-classes= 20
-train  = /src/scripts/2007_train.txt
-valid  = /src/scripts/2007_val.txt
-names = data/voc.names
-backup = backup
-

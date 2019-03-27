@@ -5,5 +5,8 @@
 .ipynb_checkpoints/
 **/__pycache__
 
+tasks_data/*
+!tasks_data/.gitkeep
+
 **/params.local.sh
-*.DS_Store
+*/_account_private_registry.sh

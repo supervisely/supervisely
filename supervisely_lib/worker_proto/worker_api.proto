@@ -9,6 +9,7 @@ service GeneralAPI {
 
     rpc GetProjectByName(Project) returns (Project) {}
     rpc GetDatasetByName(ProjectDataset) returns (Dataset) {}
+    rpc GetModelByName(ModelName) returns (ModelInfo) {}
 
     rpc GetProjectMeta(Id) returns (Project) {}
     rpc GetProjectDatasets(Id) returns (DatasetArray) {}
@@ -36,11 +37,14 @@ service GeneralAPI {
     rpc GetStopTask(Empty) returns (stream  Id) {}
 
     rpc AgentConnected(AgentInfo) returns (ServerInfo) {}
+    rpc AgentPing(Empty) returns (Empty) {}
+
     rpc UploadModel(stream ChunkModel) returns (Empty) {}
     rpc DownloadModel(ModelDescription) returns (stream Chunk) {}
     rpc GenerateNewModelId(Empty) returns (ModelDescription) {}
 
-    rpc UpdateTelemetry(stream AgentInfo) returns (Empty) {}
+    rpc GetTelemetryTask(Empty) returns (stream Task) {}
+    rpc UpdateTelemetry(AgentInfo) returns (Empty) {}
 
     rpc AddImages(ImagesInfo) returns (ImageArray) {}
 
@@ -53,6 +57,25 @@ service GeneralAPI {
     rpc GetGeneralEventsStream(Empty) returns (stream GeneralEvent) {}
     rpc GetGeneralEventData(Empty) returns (stream Chunk) {}
     rpc SendGeneralEventData(stream Chunk) returns (Empty) {}
+
+    rpc AddMetaToProject(Project) returns (Empty) {}
+}
+
+message ModelName {
+    string name = 1;
+}
+
+message ModelArchitecture {
+    string name = 1;
+    string train_docker = 2;
+    string inf_docker = 3;
+    string deploy_docker = 4;
+    string deploysm_docker = 5;
+}
+
+message ModelInfo {
+    ModelDescription desc = 1;
+    ModelArchitecture arch = 2;
 }
 
 message ModelDescription {
@@ -142,6 +165,7 @@ message ImagesHashes {
 message Chunk {
     bytes buffer = 1;
     uint64 total_size = 2;
+    string error = 3;
 }
 
 message ChunkImage {

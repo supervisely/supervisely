@@ -5,7 +5,6 @@ import numpy as np
 
 from .chunking import load_to_memory_chunked_image, load_to_memory_chunked
 from ..worker_proto import worker_api_pb2 as api_proto
-from ..utils.general_utils import batched
 
 
 class SimpleCache:
@@ -40,6 +39,11 @@ def download_data_from_remote(agent_api, req_id, logger):
     b_data = load_to_memory_chunked(resp)
     logger.trace('Data downloaded', extra={'request_id': req_id, 'len': len(b_data)})
     return b_data
+
+
+def batched(seq, batch_size):
+    for i in range(0, len(seq), batch_size):
+        yield seq[i:i + batch_size]
 
 
 def send_from_memory_generator(out_bytes, chunk_size):

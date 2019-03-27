@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from .task_sly import TaskSly
+from worker.task_sly import TaskSly
 
 
 class TaskUploadNN(TaskSly):

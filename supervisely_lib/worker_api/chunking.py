@@ -1,7 +1,25 @@
 # coding: utf-8
 
-from ..utils.os_utils import ensure_base_path, silent_remove, get_file_size
-from ..utils.general_utils import ChunkSplitter
+import math
+import supervisely_lib as sly
+
+
+class ChunkSplitter:
+    def __init__(self, tot_size, chunk_size):
+        self.tot_size = tot_size
+        self.chunk_size = chunk_size
+
+    def __next__(self):
+        for curr_pos in range(0, self.tot_size, self.chunk_size):
+            curr_chunk_size = min(self.tot_size - curr_pos, self.chunk_size)
+            yield (curr_pos, curr_chunk_size)
+
+    def __iter__(self):
+        return next(self)
+
+    @property
+    def chunk_cnt(self):
+        return math.ceil(self.tot_size / self.chunk_size)
 
 
 class ChunkedFileWriter:
@@ -21,7 +39,7 @@ class ChunkedFileWriter:
         if chunk.total_size != 0:
             self.total_size = chunk.total_size
         if self.written_bytes == 0:
-            ensure_base_path(self.path)
+            sly.fs.ensure_base_path(self.path)
             self.handler = open(self.path, 'wb')
 
         self.handler.write(chunk.buffer)
@@ -32,7 +50,7 @@ class ChunkedFileWriter:
         if (self.handler is not None) and (not self.handler.closed):
             self.handler.close()
         if (self.total_size != 0) and (self.written_bytes != self.total_size):
-            silent_remove(self.path)
+            sly.fs.silent_remove(self.path)
             return False
         return True
 
@@ -40,7 +58,7 @@ class ChunkedFileWriter:
 class ChunkedFileReader:
     def __init__(self, fpath, chunk_size):
         self.fpath = fpath
-        self.file_size = get_file_size(fpath)  # bytes
+        self.file_size = sly.fs.get_file_size(fpath)  # bytes
         self.splitter = ChunkSplitter(self.file_size, chunk_size)
 
     def __next__(self):
@@ -61,8 +79,10 @@ def load_to_memory_chunked(iterable_resp):
         if chunk.total_size != 0:
             total_size = chunk.total_size  # last non-zero value
 
-    if (total_size is not None) and (total_size != len(b_data)):
-        raise RuntimeError('Incomplete input stream (by total_size).')
+    b_data_size = len(b_data)
+    if (total_size is not None) and (total_size != b_data_size):
+        raise RuntimeError('Incomplete input stream (by total_size). Expected: {}, Received: {}.'
+                           .format(total_size, b_data_size))
     return b_data
 
 

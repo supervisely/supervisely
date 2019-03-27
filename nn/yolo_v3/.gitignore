@@ -1,5 +1,0 @@
-*.o
-*.so
-src/darknet/obj/*
-src/darknet/darknet
-src/darknet/libdarknet*

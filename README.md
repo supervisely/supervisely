@@ -6,7 +6,7 @@
   <br>
 </h1>
 
-<h4 align="center">AI for everyone! Neural networks, tools and a library we use in <a href="https://supervise.ly">Supervisely</a>.</h4>
+<h4 align="center">AI for everyone! Neural networks, tools and Python SDK we use with <a href="https://supervise.ly">Supervisely</a>.</h4>
 
 <p align="center">
   <img src="https://img.shields.io/uptimerobot/status/m778791913-8b2f81d0f1c83da85158e2a5.svg">
@@ -19,10 +19,11 @@
 <p align="center">
   <a href="#introduction">Introduction</a> •
   <a href="#agent">Agent</a> •
-  <a href="#dtl">DTL</a> •  
   <a href="#neural-networks">Neural Networks</a> •
-  <a href="#library">Library</a> •
-  <a href="#related">Related</a>
+  <a href="#import-plugins">Import Plugins</a> •
+  <a href="#python-sdk">Python SDK</a> •
+  <a href="#data-transformation-language">Data Transformations</a> •
+  <a href="#resources">Resources</a>
 </p>
 
 ![screenshot](https://i.imgur.com/5dzQrrA.gif)
@@ -31,55 +32,92 @@
 
 Supervisely is a web platform where you can find everything you need to build Deep Learning solutions within a single environment.
 
-We learn a lot from our awesome comunity and want to give something back. Here you can find our python code we use to develop models and tools like DTL and also a source code for agent you deploy on your PC.
+We learn a lot from our awesome community and want to give something back.
+Here you can find the Python SDK we use to implement neural network models,
+import plugins for custom data formats, and tools like the Data Transformation
+Language. You can also find the source code for the agent to turn your PC into a
+worker node to deploy your neural nets.
 
 ## Agent
 
-Supervisely Agent is a simple open-sourced task manager available as a Docker image.
+Supervisely Agent is a simple open-source task manager available as a Docker image.
 
-Agent connects to Supervisely API and so you can run tasks like import, DTL, training and inference on a connected computer — host.
+The Agent runs on a worker node. It connects to the Supervisely WEB instance and
+listens for the tasks (like neural net training request) to run. It handles
+downloading and uploading data to the web instance, sets up proper environments
+for the specific tasks to run, and keeps track of progress, successes and
+failures of individual tasks. By deploying the agent on worker machine you bring
+up a virtual computing claster that your team can run their tasks on from the
+Supervisely web instance.
 
 <p align="center">
 <img src="https://docs.new.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
 </p>
 
-Internally, we use [protobuf](https://developers.google.com/protocol-buffers/) for communication with server. Check out [documentation](https://docs.new.supervise.ly/cluster/overview/) on how to deploy a new agent.
-
-## DTL
-
-Data Transformation Language allows to automate complicated pipelines of data transformation. Different actions determined by *DTL layers* may be applied to images and annotations. In details it is described [here](https://docs.new.supervise.ly/export/).
+Check out [documentation](https://docs.new.supervise.ly/cluster/overview/) on how to deploy a new agent.
 
 ## Neural Networks
 
-A number of different Neural Networks (NNs) is provided in Supervisely. NN architectures are available as separate Docker images.
+We have ported and implemented a number of popular neural network (NN)
+architectures to be available as Supervisely plugins. Each plugin is a separate
+Docker image. We continue to work on porting more NN architectures to
+Supervisely. We also have a detailed guide on how to [make your
+own neural net plugin](./help/tutorials/02_custom_neural_net_plugin/), so you
+do not have to depend on anyone else to be able to use your favorite
+architecture.
 
-* [U-Net](https://github.com/supervisely/supervisely/tree/master/nn/unet_v2)
-* [DeepLab](https://github.com/supervisely/supervisely/tree/master/nn/deeplab_v3plus)
-* [Mask R-CNN](https://github.com/supervisely/supervisely/tree/master/nn/tf_mask)
-* [YOLO](https://github.com/supervisely/supervisely/tree/master/nn/yolo_v3)
-* [SSD MobileNet](https://github.com/supervisely/supervisely/tree/master/nn/tf_ssd)
-* [Faster R-CNN](https://github.com/supervisely/supervisely/tree/master/nn/faster_rcnn)
-* [ICNet](https://github.com/supervisely/supervisely/tree/master/nn/icnet) (based on [this implementation](https://github.com/hellochick/ICNet-tensorflow))
-* [PSPNet](https://github.com/supervisely/supervisely/tree/master/nn/pspnet) (based on [this implementation](https://github.com/hellochick/PSPNet-tensorflow))
+Here are the neural network architectures available out of the box today:
+
+* [CNN-LSTM-CTC](./nn/cnn_lstm_ctc) (OCR)
+* [DeepLab v3 Plus](./plugins/nn/deeplab_v3plus) (segmentation)
+* [EAST](./plugins/nn/east) (text detection)
+* [ICNet](./plugins/nn/icnet) (segmentation)
+* [Mask RCNN](./plugins/nn/mask_rcnn_matterport) (detection and segmentation)
+* [ResNet](./plugins/nn/resnet_classifier) (classification)
+* [Models from TensorFlow Object Detection](./plugins/nn/tf_object_detection) (detection)
+* [U-Net](./plugins/nn/unet_v2) (segmentation)
+* [YOLO v3](./plugins/nn/yolo_v3) (detection)
 
 Read [here](https://docs.new.supervise.ly/neural-networks/overview/overview/) how to run training or inference with this models.
 
-For all source implementations of NNs authors are retaining their original rights.
+For all source implementations of NNs the original authors are retaining all their original rights.
 
-## Library
+## Import plugins
 
-Supervisely Lib contains Python code which is useful to process data in Supervisely format and to integrate new NNs with Supervisely.
+We provide import plugins for over 30 popular dataset formats out of the box.
+You can also leverage our [Python SDK](#python-sdk) to implement a new plugin for
+your custom format.
+
+## Python SDK
+
+We have organized most of the common functionality for processing data in
+[Supervisely format](https://docs.supervise.ly/ann_format/) and for training and
+inference with neural networks into
+the [Python SDK](./supervisely_lib). Our stock plugins rely on the SDK
+extensively, and we believe the SDK will be also valuable to the community.
+
+The  SDK not only wraps all the low-level details of handling the data and
+communicating with the Supervisely web instance, but also provides convenience
+helpers for the common tasks that we found useful in our own work of developing
+Supervisely plugins, such as neural network architectures and custom dataset
+imports.
 
 Key features:
- * Read, modify and write Supervisely projects on your disk;
- * Work with figures (annotations);
- * Modify existing implementations of NNs or to create new ones which are compatible with Supervisely;
+ * Read, modify and write Supervisely projects on disk.
+ * Work with labeling data: geometric objects and tags.
+ * Common functionality for developing Supervisely plugins, so that you only
+   need to focus on the core of your custom logic, and not on low level
+   interactions with the platform.
 
-Reference may be found [here](https://docs.new.supervise.ly/sly-lib/).
+## Data Transformation Language
 
-## Related
+Data Transformation Language allows to automate complicated pipelines of data transformation. Different actions determined by *DTL layers* may be applied to images and annotations. In details it is described [here](https://docs.new.supervise.ly/export/).
+
+## Resources
 
 - [Supervise.ly](https://supervise.ly) - Website
-- [Medium](https://medium.com/@deepsystems) - Recent tutorials on how to use SotA models
-- [Tutorials](https://github.com/DeepSystems/supervisely-tutorials) - Repo with tutorials sources and link to a related blog posts
+- [Medium](https://medium.com/@deepsystems) - Our technical blog.
+  Regular updates on how to use state of the art models and solve practical
+  data science problems with Supervisely.
+- [Tutorials and Cookbooks](./help) in this repository.
 

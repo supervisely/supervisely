@@ -2,15 +2,14 @@
 
 from enum import Enum
 from threading import Lock
-
+import json
 from docker.errors import ImageNotFound as DockerImageNotFound
-import supervisely_lib as sly
-from supervisely_lib import EventType, json_loads
 
-from .agent_utils import TaskDirCleaner
-from . import constants
-from .task_logged import StopTaskException
-from .task_sly import TaskSly
+import supervisely_lib as sly
+
+from worker.agent_utils import TaskDirCleaner
+from worker import constants
+from worker.task_sly import TaskSly
 
 
 class TaskStep(Enum):
@@ -32,6 +31,7 @@ class TaskDockerized(TaskSly):
         super().__init__(*args, **kwargs)
 
         self.docker_runtime = 'runc'  # or 'nvidia'
+        self.entrypoint = "/workdir/src/main.py"
         self.action_map = {}
 
         self.completed_step = TaskStep.NOTHING
@@ -56,11 +56,13 @@ class TaskDockerized(TaskSly):
 
     def report_step_done(self, curr_step):
         if self.completed_step.value < curr_step.value:
-            self.logger.info('STEP_DONE', extra={'step': curr_step.name, 'event_type': EventType.STEP_COMPLETE})
+            self.logger.info('STEP_DONE', extra={'step': curr_step.name, 'event_type': sly.EventType.STEP_COMPLETE})
             self.completed_step = curr_step
 
     def task_main_func(self):
         self.task_dir_cleaner.forbid_dir_cleaning()
+
+        self.docker_pull_if_needed()
 
         last_step_str = self.info.get('last_complete_step')
         self.logger.info('LAST_COMPLETE_STEP', extra={'step': last_step_str})
@@ -89,7 +91,6 @@ class TaskDockerized(TaskSly):
         raise NotImplementedError()
 
     def main_step(self):
-        self.docker_pull_if_needed()
         self.before_main_step()
         self.spawn_container()
         self.process_logs()
@@ -109,11 +110,10 @@ class TaskDockerized(TaskSly):
 
     def _docker_pull(self):
         self.logger.info('Docker image will be pulled', extra={'image_name': self.docker_image_name})
-        progress_dummy = sly.ProgressCounter('Pulling image...', 1, ext_logger=self.logger)
+        progress_dummy = sly.Progress('Pulling image...', 1, ext_logger=self.logger)
         progress_dummy.iter_done_report()
         pulled_img = self._docker_api.images.pull(self.docker_image_name)
-        self.logger.info('Docker image has been pulled',
-                         extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
+        self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
 
     def _docker_image_exists(self):
         try:
@@ -125,7 +125,7 @@ class TaskDockerized(TaskSly):
     def docker_pull_if_needed(self):
         if self.docker_pulled:
             return
-        if constants.PULL_ALWAYS or (not self._docker_image_exists()):
+        if constants.PULL_ALWAYS() or (not self._docker_image_exists()):
             self._docker_pull()
         self.docker_pulled = True
 
@@ -134,17 +134,19 @@ class TaskDockerized(TaskSly):
             add_envs = {}
         self._container_lock.acquire()
         try:
+            #@TODO: DEBUG_COPY_IMAGES only for compatibility with old plugins
             self._container = self._docker_api.containers.run(
                 self.docker_image_name,
                 runtime=self.docker_runtime,
+                entrypoint=["sh", "-c", "python -u {}".format(self.entrypoint)],
                 detach=True,
-                name='sly_task_{}_{}'.format(self.info['task_id'], sly.generate_random_string(5)),
+                name='sly_task_{}_{}'.format(constants.TOKEN(), self.info['task_id']),
                 remove=False,
                 volumes={self.dir_task_host: {'bind': '/sly_task_data',
                                               'mode': 'rw'}},
-                environment={'LOG_LEVEL': 'DEBUG', **add_envs},
+                environment={'LOG_LEVEL': 'DEBUG', 'LANG': 'C.UTF-8', 'DEBUG_COPY_IMAGES': 1, **add_envs},
                 labels={'ecosystem': 'supervisely',
-                        'ecosystem_token': constants.TASKS_DOCKER_LABEL,
+                        'ecosystem_token': constants.TASKS_DOCKER_LABEL(),
                         'task_id': str(self.info['task_id'])},
                 shm_size="1G",
                 stdin_open=False,
@@ -152,8 +154,7 @@ class TaskDockerized(TaskSly):
             )
             self._container.reload()
             self.logger.debug('After spawning. Container status: {}'.format(str(self._container.status)))
-            self.logger.info('Docker container spawned',
-                             extra={'container_id': self._container.id, 'container_name': self._container.name})
+            self.logger.info('Docker container spawned',extra={'container_id': self._container.id, 'container_name': self._container.name})
         finally:
             self._container_lock.release()
 
@@ -185,16 +186,20 @@ class TaskDockerized(TaskSly):
     @classmethod
     def parse_log_line(cls, log_line):
         msg = ''
+        lvl = 'INFO'
         try:
-            jlog = json_loads(log_line)
+            jlog = json.loads(log_line)
             msg = jlog['message']
             del jlog['message']
+            lvl = jlog['level'].upper()
+            del jlog['level']
         except (KeyError, ValueError, TypeError):
-            jlog = {'cont_msg': str(log_line), 'event_type': EventType.LOGJ}
+            jlog = {'cont_msg': str(log_line)}
 
         if 'event_type' not in jlog:
-            jlog['event_type'] = EventType.LOGJ
-        return msg, jlog
+            jlog['event_type'] = sly.EventType.LOGJ
+
+        return msg, jlog, lvl
 
     def call_event_function(self, jlog):
         et = jlog['event_type']
@@ -207,9 +212,16 @@ class TaskDockerized(TaskSly):
         for log_line in self._container.logs(stream=True):
             logs_found = True
             log_line = log_line.decode("utf-8")
-            msg, res_log = self.parse_log_line(log_line)
+            msg, res_log, lvl = self.parse_log_line(log_line)
             output = self.call_event_function(res_log)
-            self.logger.info(msg, extra={**res_log, **output})
+
+            lvl_description = sly.LOGGING_LEVELS.get(lvl, None)
+            if lvl_description is not None:
+                lvl_int = lvl_description.int
+            else:
+                lvl_int = sly.LOGGING_LEVELS['INFO'].int
+
+            self.logger.log(lvl_int, msg, extra={**res_log, **output})
 
         if not logs_found:
             self.logger.warn('No logs obtained from container.')  # check if bug occurred

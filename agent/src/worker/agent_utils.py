@@ -4,15 +4,14 @@ import os
 import os.path as osp
 import shutil
 import queue
+import json
 
-import supervisely_lib as sly
-
-from . import constants
+from worker import constants
 
 
 def create_img_meta_str(img_size_bytes, width, height):
     img_meta = {'size': img_size_bytes, 'width': width, 'height': height}
-    res = sly.json_dumps(img_meta)
+    res = json.dumps(img_meta)
     return res
 
 
@@ -39,12 +38,12 @@ class LogQueue:
         return log_lines
 
     def get_log_batch_nowait(self):
-        res = self._get_batch_nowait(constants.BATCH_SIZE_LOG)
+        res = self._get_batch_nowait(constants.BATCH_SIZE_LOG())
         return res
 
     def get_log_batch_blocking(self):
         first_log_line = self.q.get(block=True)
-        rest_lines = self._get_batch_nowait(constants.BATCH_SIZE_LOG - 1)
+        rest_lines = self._get_batch_nowait(constants.BATCH_SIZE_LOG() - 1)
         log_lines = [first_log_line] + rest_lines
         return log_lines
 
@@ -71,9 +70,24 @@ class TaskDirCleaner:
             os.remove(self.marker_fpath)
 
     def clean(self):
-        if (not constants.DELETE_TASK_DIR_ON_FINISH) or osp.isfile(self.marker_fpath):
+        if constants.DELETE_TASK_DIR_ON_FINISH() is False:
+            return
+        if constants.DELETE_TASK_DIR_ON_FAILURE() is False and osp.isfile(self.marker_fpath):
             return
         self._clean()
 
     def clean_forced(self):
         self._clean()
+
+
+#@TODO: remove this method or refactor it in future (dict_name - WTF??)
+def get_single_item_or_die(src_dict, key, dict_name):
+    results = src_dict.get(key, None)
+    if results is None:
+        raise ValueError(
+            'No values were found for {} in {}. A list with exactly one item is required.'.format(key, dict_name))
+    if len(results) != 1:
+        raise ValueError(
+            'Multiple values ({}) were found for {} in {}. A list with exactly one item is required.'.format(
+                len(results), key, dict_name))
+    return results[0]

@@ -1,0 +1,92 @@
+# coding: utf-8
+import random
+import math
+
+
+def _validate_color(color):
+    if type(color) is not list:
+        raise ValueError('Color has to be list')
+    if len(color) != 3:
+        raise ValueError('Color have to contain exactly 3 values: [R, G, B]')
+    for channel in color:
+        if 0 <= channel <= 255:
+            pass
+        else:
+            raise ValueError('Color channel have to be in range [0; 255]')
+
+
+def random_rgb(pastel_factor: float = 0.5) -> list:
+    """
+    :param pastel_factor: 0 means that pastel effect disabled
+    :return: RGB integer values. Example: [80, 255, 0]
+    """
+    color = [round(255 * (random.uniform(0, 1.0) + pastel_factor) / (1.0 + pastel_factor)) for _ in range(3)]
+    _validate_color(color)
+    return color
+
+
+def _color_distance(first_color: list, second_color: list) -> float:
+    """
+    Calculate Euclidean distance between components of 2 colors
+    :param first_color: first color (RGB tuple of integers)
+    :param second_color: second color (RGB tuple of integers)
+    :return: Euclidean distance between 'first_color' and 'second_color'
+    """
+    s = sum((z - w) ** 2 for z, w in zip(first_color, second_color))
+    return math.sqrt(s)
+
+
+def generate_rgb(exist_colors: list, pastel_factor: float = 0.0) -> list:
+    """
+    Generate new color which oppositely by exist colors
+    :param pastel_factor: 0 means that pastel effect disabled
+    :param exist_colors: list of existing colors in RGB format.
+    :return: RGB integer values. Example: [80, 255, 0]
+    """
+    largest_min_distance = 0
+    best_color = None
+    for _ in range(100):
+        color = random_rgb(pastel_factor)
+        current_min_distance = min(_color_distance(color, c) for c in exist_colors)
+        if current_min_distance > largest_min_distance:
+            largest_min_distance = current_min_distance
+            best_color = color
+    _validate_color(best_color)
+    return best_color
+
+
+def rgb2hex(color: list) -> str:
+    """
+    Convert integer color format to HEX string
+    :param color: RGB integer values. Example: [80, 255, 0]
+    :return: HEX RGB string. Example: "#FF42А4
+    """
+    _validate_color(color)
+    return '#' + ''.join('{:02X}'.format(component) for component in color)
+
+
+def _hex2color(hex_value: str) -> list:
+    assert hex_value.startswith('#')
+    return [int(hex_value[i:(i + 2)], 16) for i in range(1, len(hex_value), 2)]
+
+
+def hex2rgb(hex_value: str) -> list:
+    """
+    Convert HEX RGB string to integer RGB format
+    :param hex_value: HEX RGBA string. Example: "#FF02А4
+    :return: RGB integer values. Example: [80, 255, 0]
+    """
+    assert len(hex_value) == 7, "Supported only HEX RGB string format!"
+    color = _hex2color(hex_value)
+    _validate_color(color)
+    return color
+
+
+def _hex2rgba(hex_value: str) -> list:
+    """
+    Convert HEX RGBA string to integer RGBA format
+    :param hex_value: HEX RGBA string. Example: "#FF02А4CC
+    :return: RGBA integer values. Example: [80, 255, 0, 128]
+    """
+    assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
+    return _hex2color(hex_value)
