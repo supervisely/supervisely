@@ -5,6 +5,7 @@ import supervisely_lib as sly
 from worker.agent_storage import AgentStorage
 from worker.fs_storages import EmptyStorage
 from worker import constants
+from collections import defaultdict
 
 
 class DataManager(object):
@@ -140,15 +141,15 @@ class DataManager(object):
     def upload_dataset(self, dataset, dataset_id):
         progress = None
         items_count = len(dataset)
-        hash_to_img_path = {}
-        hash_to_ann_path = {}
-        hash_to_item_name = {}
+        hash_to_img_paths = defaultdict(list)
+        hash_to_ann_paths = defaultdict(list)
+        hash_to_item_names = defaultdict(list)
         for item_name in dataset:
             item_paths = dataset.get_item_paths(item_name)
             img_hash = sly.fs.get_file_hash(item_paths.img_path)
-            hash_to_img_path[img_hash] = item_paths.img_path
-            hash_to_ann_path[img_hash] = item_paths.ann_path
-            hash_to_item_name[img_hash] = item_name
+            hash_to_img_paths[img_hash].append(item_paths.img_path)
+            hash_to_ann_paths[img_hash].append(item_paths.ann_path)
+            hash_to_item_names[img_hash].append(item_name)
             if self.has_images_storage():
                 if progress is None:
                     progress = sly.Progress('Dataset {!r}: upload cache images'.format(dataset.name), items_count, self.logger)
@@ -159,18 +160,19 @@ class DataManager(object):
         progress_ann = sly.Progress('Dataset {!r}: upload annotations'.format(dataset.name), items_count, self.logger)
 
         def add_images_annotations(hashes, pb_img_cb, pb_ann_cb):
-            names = [hash_to_item_name[hash] for hash in hashes]
-            ann_paths = [hash_to_ann_path[hash] for hash in hashes]
-            remote_ids = self.public_api.image.add_batch(dataset_id, names, hashes, pb_img_cb)
+            names = [name for hash in hashes for name in hash_to_item_names[hash]]
+            unrolled_hashes = [hash for hash in hashes for _ in range(len(hash_to_item_names[hash]))]
+            ann_paths = [path for hash in hashes for path in hash_to_ann_paths[hash]]
+            remote_ids = self.public_api.image.add_batch(dataset_id, names, unrolled_hashes, pb_img_cb)
             self.public_api.annotation.add_batch(remote_ids, ann_paths, pb_ann_cb)
 
         # add already uploaded images + attach annotations
-        remote_hashes = self.public_api.image.check_existing_hashes(list(hash_to_img_path.keys()))
+        remote_hashes = self.public_api.image.check_existing_hashes(list(hash_to_img_paths.keys()))
         add_images_annotations(remote_hashes, progress_img.iter_done_report, progress_ann.iter_done_report)
 
         # upload new images + add annotations
-        new_hashes = list(set(hash_to_img_path.keys()) - set(remote_hashes))
-        img_paths = [hash_to_img_path[hash] for hash in new_hashes]
+        new_hashes = list(set(hash_to_img_paths.keys()) - set(remote_hashes))
+        img_paths = [path for hash in new_hashes for path in hash_to_img_paths[hash]]
         self.public_api.image.upload_batch(img_paths, progress_img.iter_done_report)
         add_images_annotations(new_hashes, None, progress_ann.iter_done_report)
 

@@ -3,13 +3,14 @@ import numpy as np
 
 from supervisely_lib.geometry.constants import DATA, ORIGIN
 from supervisely_lib.geometry.geometry import Geometry
-from supervisely_lib.geometry.point import Point
+from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 
 from supervisely_lib.imaging.image import resize_inter_nearest, restore_proportional_size
 
 
-def resize_origin_and_bitmap(origin: Point, bitmap: np.ndarray, in_size, out_size):
+# TODO: rename to resize_bitmap_and_origin
+def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size, out_size):
     new_size = restore_proportional_size(in_size=in_size, out_size=out_size)
 
     row_scale = new_size[0] / in_size[0]
@@ -21,26 +22,29 @@ def resize_origin_and_bitmap(origin: Point, bitmap: np.ndarray, in_size, out_siz
     scaled_rows = max(round(bitmap.shape[0] * row_scale), 1)
     scaled_cols = max(round(bitmap.shape[1] * col_scale), 1)
 
-    scaled_origin = Point(row=round(origin.row * row_scale), col=round(origin.col * col_scale))
+    scaled_origin = PointLocation(row=round(origin.row * row_scale), col=round(origin.col * col_scale))
     scaled_bitmap = resize_inter_nearest(bitmap, (scaled_rows, scaled_cols))
     return scaled_origin, scaled_bitmap
 
 
 class BitmapBase(Geometry):
-    def __init__(self, origin, data, expected_data_dims=None):
+    def __init__(self, data: np.ndarray, origin: PointLocation=None, expected_data_dims=None):
         """
-        :param origin: Point
+        :param origin: PointLocation
         :param data: np.ndarray
         """
-        if not isinstance(origin, Point):
-            raise TypeError('MultichannelBitmap "origin" argument must be "Point" object!')
+        if origin is None:
+            origin = PointLocation(row=0, col=0)
+
+        if not isinstance(origin, PointLocation):
+            raise TypeError('BitmapBase "origin" argument must be "PointLocation" object!')
 
         if not isinstance(data, np.ndarray):
-            raise TypeError('MultichannelBitmap "data" argument must be numpy array object!')
+            raise TypeError('BitmapBase "data" argument must be numpy array object!')
 
         data_dims = len(data.shape)
         if expected_data_dims is not None and data_dims != expected_data_dims:
-            raise ValueError('MultichannelBitmap "data" argument must be a {}-dimensional numpy array. ' +
+            raise ValueError('BitmapBase "data" argument must be a {}-dimensional numpy array. ' +
                              'Instead got {} dimensions'.format(expected_data_dims, data_dims))
 
         self._origin = origin.clone()
@@ -80,10 +84,10 @@ class BitmapBase(Geometry):
 
         col, row = json_data[json_root_key][ORIGIN]
         data = cls.base64_2_data(json_data[json_root_key][DATA])
-        return cls(Point(row=row, col=col), data=data)
+        return cls(data=data, origin=PointLocation(row=row, col=col))
 
     @property
-    def origin(self) -> Point:
+    def origin(self) -> PointLocation:
         return self._origin.clone()
 
     @property
@@ -92,24 +96,24 @@ class BitmapBase(Geometry):
 
     def translate(self, drow, dcol):
         translated_origin = self.origin.translate(drow, dcol)
-        return self.__class__(translated_origin, self.data)
+        return self.__class__(data=self.data, origin=translated_origin)
 
     def fliplr(self, img_size):
         flipped_mask = np.flip(self.data, axis=1)
-        flipped_origin = Point(row=self.origin.row, col=(img_size[1] - flipped_mask.shape[1] - self.origin.col))
-        return self.__class__(flipped_origin, flipped_mask)
+        flipped_origin = PointLocation(row=self.origin.row, col=(img_size[1] - flipped_mask.shape[1] - self.origin.col))
+        return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def flipud(self, img_size):
         flipped_mask = np.flip(self.data, axis=0)
-        flipped_origin = Point(row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col)
-        return self.__class__(flipped_origin, flipped_mask)
+        flipped_origin = PointLocation(row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col)
+        return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def scale(self, factor):
         new_rows = round(self._data.shape[0] * factor)
         new_cols = round(self._data.shape[1] * factor)
         mask = self._resize_mask(self.data, new_rows, new_cols)
         origin = self.origin.scale(factor)
-        return self.__class__(origin=origin, data=mask)
+        return self.__class__(data=mask, origin=origin)
 
     @staticmethod
     def _resize_mask(mask, out_rows, out_cols):

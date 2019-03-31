@@ -10,7 +10,7 @@ from PIL import Image
 from skimage import morphology as skimage_morphology
 
 from supervisely_lib.geometry.bitmap_base import BitmapBase, resize_origin_and_bitmap
-from supervisely_lib.geometry.point import Point, row_col_list_to_points
+from supervisely_lib.geometry.point_location import PointLocation, row_col_list_to_points
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.constants import BITMAP
@@ -38,7 +38,7 @@ class Bitmap(BitmapBase):
     def geometry_name():
         return 'bitmap'
 
-    def __init__(self, origin, data: np.ndarray):
+    def __init__(self, data: np.ndarray, origin: PointLocation = None):
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 
@@ -62,7 +62,7 @@ class Bitmap(BitmapBase):
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
         new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
-        return Bitmap(origin=Point(row=0, col=0), data=new_mask)
+        return Bitmap(data=new_mask)
 
     def crop(self, rect):
         maybe_cropped_bbox = self.to_bbox().crop(rect)
@@ -74,14 +74,14 @@ class Bitmap(BitmapBase):
             cropped_mask = cropped_bbox_relative.get_cropped_numpy_slice(self._data)
             if not np.any(cropped_mask):
                 return []
-            return [Bitmap(origin=Point(row=cropped_bbox.top, col=cropped_bbox.left), data=cropped_mask)]
+            return [Bitmap(data=cropped_mask, origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left))]
 
     def resize(self, in_size, out_size):
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data.astype(np.uint8), in_size,
                                                               out_size)
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
         #  it in the resulting bitmap.
-        return Bitmap(origin=scaled_origin, data=scaled_data.astype(np.bool))
+        return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
 
     def draw(self, bitmap, color, thickness=1):
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
@@ -132,7 +132,7 @@ class Bitmap(BitmapBase):
 
         mask_u8 = self.data.astype(np.uint8)
         res_mask = method(mask_u8).astype(bool)
-        return Bitmap(origin=self.origin, data=res_mask)
+        return Bitmap(data=res_mask, origin=self.origin)
 
     def to_contours(self):
         origin, mask = self.origin, self.data
@@ -172,4 +172,4 @@ class Bitmap(BitmapBase):
         if new_mask.sum() == 0:
             return []
         new_mask = new_mask[origin.row:origin.row + mask.shape[0], origin.col:origin.col + mask.shape[1]]
-        return Bitmap(origin.clone(), new_mask)
+        return Bitmap(data=new_mask, origin=origin.clone())

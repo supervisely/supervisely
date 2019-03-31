@@ -4,7 +4,6 @@ from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.tag import Tag
 from supervisely_lib.geometry.geometry import Geometry
-from supervisely_lib.geometry.point import Point
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.project.project_meta import ProjectMeta
@@ -75,14 +74,7 @@ class LabelBase:
                               description=description or self.description)
 
     def crop(self, rect):
-        # TODO: remove this hack: separate point class.
-        def contains(rect, geometry):
-            if isinstance(geometry, Point):
-                return rect.contains_point(geometry)
-            else:
-                return rect.contains(geometry.to_bbox())
-
-        return [self] if contains(rect, self.geometry) else [
+        return [self] if rect.contains(self.geometry.to_bbox()) else [
             self.clone(geometry=g) for g in self.geometry.crop(rect)]
 
     def relative_crop(self, rect):

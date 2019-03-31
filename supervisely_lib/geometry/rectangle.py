@@ -5,7 +5,7 @@ import numpy as np
 
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
 from supervisely_lib.geometry.geometry import Geometry
-from supervisely_lib.geometry.point import Point, points_to_row_col_list
+from supervisely_lib.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely_lib.geometry import validation
 
 
@@ -30,7 +30,7 @@ class Rectangle(Geometry):
         if left > right:
             raise ValueError('Rectangle "left" argument must have less or equal value then "right"!')
 
-        self._points = [Point(row=top, col=left), Point(row=bottom, col=right)]
+        self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
 
     """
     Implementation of all methods from Geometry
@@ -70,8 +70,8 @@ class Rectangle(Geometry):
 
     @property
     def corners(self):
-        return [Point(row=self.top, col=self.left), Point(row=self.top, col=self.right),
-                Point(row=self.bottom, col=self.right), Point(row=self.bottom, col=self.left)]
+        return [PointLocation(row=self.top, col=self.left), PointLocation(row=self.top, col=self.right),
+                PointLocation(row=self.bottom, col=self.right), PointLocation(row=self.bottom, col=self.left)]
 
     def rotate(self, rotator):
         return self._transform(lambda p: rotator.transform_point(p))
@@ -144,7 +144,7 @@ class Rectangle(Geometry):
 
     @property
     def center(self):
-        return Point(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
+        return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
     def width(self):
@@ -160,7 +160,7 @@ class Rectangle(Geometry):
                 self.top <= rect.top and
                 self.bottom >= rect.bottom)
 
-    def contains_point(self, pt: Point):
+    def contains_point_location(self, pt: PointLocation):
         return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
 
     def to_size(self):

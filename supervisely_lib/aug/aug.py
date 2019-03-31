@@ -74,10 +74,10 @@ def crop(img: np.ndarray, ann: Annotation, top_pad: int = 0, left_pad: int = 0, 
     return res_img, res_ann
 
 
-def crop_percent(img: np.ndarray, ann: Annotation, top: float = 0, left: float = 0, bottom: float = 0,
-                 right: float = 0) -> (np.ndarray, Annotation):
+def crop_fraction(img: np.ndarray, ann: Annotation, top: float = 0, left: float = 0, bottom: float = 0,
+                  right: float = 0) -> (np.ndarray, Annotation):
     """
-        Crops the given image array and annotation from all sides with the given percent values.
+        Crops the given image array and annotation from all sides with the given fraction values.
 
         Args:
             img: Input image array.
@@ -127,7 +127,7 @@ def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> (n
     return crop(img, ann, top_pad=top_pad, left_pad=left_pad, bottom_pad=bottom_pad, right_pad=right_pad)
 
 
-def random_crop_percent(img: np.ndarray, ann: Annotation, height_portion_range: tuple, width_portion_range: tuple) ->\
+def random_crop_fraction(img: np.ndarray, ann: Annotation, height_fraction_range: tuple, width_fraction_range: tuple) ->\
         (np.ndarray, Annotation):
     """
     Crops given image array and annotation at a random location with random size lying in the set intervals.
@@ -135,16 +135,16 @@ def random_crop_percent(img: np.ndarray, ann: Annotation, height_portion_range: 
     Args:
         img: Input image array.
         ann: Input annotation
-        height_portion_range: Range of relative values [0, 1] to select output height from.
-        width_portion_range: Range of relative values [0, 1] to select output width from.
+        height_fraction_range: Range of relative values [0, 1] to select output height from.
+        width_fraction_range: Range of relative values [0, 1] to select output width from.
     Returns:
          A tuple containing cropped image array and annotation.
     """
     _validate_image_annotation_shape(img, ann)
     img_height, img_width = img.shape[:2]
 
-    height_p = random.uniform(height_portion_range[0], height_portion_range[1])
-    width_p = random.uniform(width_portion_range[0], width_portion_range[1])
+    height_p = random.uniform(height_fraction_range[0], height_fraction_range[1])
+    width_p = random.uniform(width_fraction_range[0], width_fraction_range[1])
     crop_height = round(img_height * height_p)
     crop_width = round(img_width * width_p)
     return random_crop(img, ann, height=crop_height, width=crop_width)
@@ -177,7 +177,8 @@ def _rect_from_bounds(padding_config: dict, img_h: int, img_w: int) -> Rectangle
     return Rectangle(top=top, left=left, bottom=bottom, right=right)
 
 
-def instances_crop(img: np.ndarray, ann: Annotation, class_title: str, padding_dct: dict = None) -> list:  # @TODO: pad_dict ???
+def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other_classes_in_crop: bool = True,
+                  padding_config: dict = None) -> list:
     """
     Crops objects of specified classes from image with configurable padding.
 
@@ -185,24 +186,39 @@ def instances_crop(img: np.ndarray, ann: Annotation, class_title: str, padding_d
         img: Input image array.
         ann: Input annotation.
         class_title: Name of class to crop.
-        padding_dct: Dict with padding
+        save_other_classes_in_crop: save non-target classes in each cropped annotation.
+        padding_config: Dict with padding
     Returns:
-
+        List of cropped [image, annotation] pairs.
     """
-    padding_dct = padding_dct or {}
+    padding_config = padding_config or {}
     _validate_image_annotation_shape(img, ann)
     results = []
     img_rect = Rectangle.from_size(img.shape[:2])
+
+    if save_other_classes_in_crop:
+        non_target_labels = [label for label in ann.labels if label.obj_class.name != class_title]
+    else:
+        non_target_labels = []
+
+    ann_with_non_target_labels = ann.clone(labels=non_target_labels)
+
     for label in ann.labels:
         if label.obj_class.name == class_title:
             src_fig_rect = label.geometry.to_bbox()
-            new_img_rect = _rect_from_bounds(padding_dct, img_w=src_fig_rect.width, img_h=src_fig_rect.height)
+            new_img_rect = _rect_from_bounds(padding_config, img_w=src_fig_rect.width, img_h=src_fig_rect.height)
             rect_to_crop = new_img_rect.translate(src_fig_rect.top, src_fig_rect.left)
             crops = rect_to_crop.crop(img_rect)
             if len(crops) == 0:
                 continue
             rect_to_crop = crops[0]
-            results.append((image.crop(img, rect_to_crop), ann.crop_labels(rect_to_crop)))
+            image_crop = image.crop(img, rect_to_crop)
+
+            cropped_ann = ann_with_non_target_labels.relative_crop(rect_to_crop)
+
+            label_crops = label.relative_crop(rect_to_crop)
+            for label_crop in label_crops:
+                results.append((image_crop, cropped_ann.add_label(label_crop)))
     return results
 
 
@@ -258,7 +274,7 @@ class RotationModes:
     CROP = 'crop'
 
 
-def rotate(img: np.ndarray, ann: Annotation, min_degrees: int, max_degrees: int, mode: str=RotationModes.KEEP) ->\
+def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationModes.KEEP) ->\
         (np.ndarray, Annotation):  # @TODO: add "preserve_size" mode
     """
     Rotates the image by random angle.
@@ -266,16 +282,14 @@ def rotate(img: np.ndarray, ann: Annotation, min_degrees: int, max_degrees: int,
     Args:
         img: Input image array.
         ann: Input annotation.
-        min_degrees: Lower bound of desired rotation angles range.
-        max_degrees: Upper bound of desired rotation angles range.
+        degrees: Rotation angle, counter-clockwise.
         mode: parameter: "keep" - keep original image data, then new regions will be filled with black color;
             "crop" - crop rotated result to exclude black regions;
     Returns:
         A tuple containing rotated image array and annotation.
     """
     _validate_image_annotation_shape(img, ann)
-    rotate_degrees = np.random.uniform(min_degrees, max_degrees)
-    rotator = ImageRotator(img.shape[:2], rotate_degrees)
+    rotator = ImageRotator(img.shape[:2], degrees)
 
     if mode == RotationModes.KEEP:
         rect_to_crop = None
@@ -290,5 +304,5 @@ def rotate(img: np.ndarray, ann: Annotation, min_degrees: int, max_degrees: int,
     res_ann = ann.rotate(rotator)
     if rect_to_crop is not None:
         res_img = image.crop(res_img, rect_to_crop)
-        res_ann = res_ann.crop(rect_to_crop)
+        res_ann = res_ann.relative_crop(rect_to_crop)
     return res_img, res_ann

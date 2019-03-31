@@ -8,11 +8,11 @@ from supervisely_lib.annotation.label import Label, PixelwiseScoresLabel
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
-from supervisely_lib.geometry.point import Point
+from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.annotation.tag import Tag
 
 
-def segmentation_array_to_sly_bitmaps(idx_to_class: dict, pred: np.ndarray, origin: Point=None) -> list:
+def segmentation_array_to_sly_bitmaps(idx_to_class: dict, pred: np.ndarray, origin: PointLocation=None) -> list:
     """
     Converts array with segmentation results to Labels with Bitmap geometry according to idx_to_class mapping.
 
@@ -23,12 +23,11 @@ def segmentation_array_to_sly_bitmaps(idx_to_class: dict, pred: np.ndarray, orig
     return:
         A list containing result labels.
     """
-    origin = origin or Point(0, 0)
     labels = []
     for cls_idx, cls_obj in idx_to_class.items():
         predicted_class_pixels = (pred == cls_idx)
         if np.any(predicted_class_pixels):
-            class_geometry = Bitmap(origin, predicted_class_pixels)
+            class_geometry = Bitmap(data=predicted_class_pixels, origin=origin)
             labels.append(Label(geometry=class_geometry, obj_class=cls_obj))
     return labels
 
@@ -45,7 +44,7 @@ def segmentation_scores_to_per_class_labels(idx_to_class: dict, segmentation_sco
     """
     return [
         PixelwiseScoresLabel(
-            geometry=MultichannelBitmap(origin=Point(0, 0), data=segmentation_scores[:, :, cls_idx, np.newaxis]),
+            geometry=MultichannelBitmap(data=segmentation_scores[:, :, cls_idx, np.newaxis]),
             obj_class=cls_obj)
         for cls_idx, cls_obj in idx_to_class.items()]
 

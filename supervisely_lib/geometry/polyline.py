@@ -5,7 +5,7 @@ import numpy as np
 
 from shapely.geometry import mapping, LineString, Polygon as ShapelyPolygon
 from supervisely_lib.geometry.conversions import shapely_figure_to_coords_list
-from supervisely_lib.geometry.point import Point, row_col_list_to_points
+from supervisely_lib.geometry.point_location import row_col_list_to_points
 from supervisely_lib.geometry.vector_geometry import VectorGeometry
 from supervisely_lib.geometry.constants import EXTERIOR, POINTS
 from supervisely_lib.geometry import validation
@@ -19,11 +19,8 @@ class Polyline(VectorGeometry):
 
     def __init__(self, exterior):
         """
-        :param exterior: [Point]
+        :param exterior: [PointLocation]
         """
-        if not (isinstance(exterior, list) and all(isinstance(p, Point) for p in exterior)):
-            raise TypeError('Polyline exterior must be list of "Point" objects!')
-
         if len(exterior) < 2:
             raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
                              .format(EXTERIOR))

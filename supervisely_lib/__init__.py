@@ -32,6 +32,7 @@ from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
 
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.point import Point
+from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.polyline import Polyline
 from supervisely_lib.geometry.rectangle import Rectangle

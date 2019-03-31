@@ -16,7 +16,7 @@ def shapely_figure_to_coords_list(mp) -> list:
     elif mp_type == 'LineString':
         return [mp['coordinates']]
     elif mp_type == 'Polygon':
-        return _clear_dupe_start_end_multi_polygon([mp['coordinates']])
+        return _clear_dupe_start_end_multi_polygon([mp['coordinates']])[0]
     elif mp_type == 'GeometryCollection':
         return [shapely_figure_to_coords_list(geom_obj) for geom_obj in mp['geometries']]
     elif mp_type == 'MultiPolygon':

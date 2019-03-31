@@ -253,39 +253,39 @@ def _check_contrast_brightness_inputs(min_value, max_value):
         raise ValueError('Maximum value must be greater than or equal to minimum value.')
 
 
-def random_contrast(image: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
+def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
     Randomly changes contrast of the input image.
 
     Args:
         image: Input image array.
-        min_value: Lower bound of contrast range.
-        max_value: Upper bound of contrast range.
+        min_factor: Lower bound of contrast range.
+        max_factor: Upper bound of contrast range.
     Returns:
         Image array with changed contrast.
     """
-    _check_contrast_brightness_inputs(min_value, max_value)
-    contrast_value = np.random.uniform(min_value, max_value)
+    _check_contrast_brightness_inputs(min_factor, max_factor)
+    contrast_value = np.random.uniform(min_factor, max_factor)
     image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    image_mean = int(image_gray.mean() + 0.5)
+    image_mean = round(image_gray.mean())
     image = image.astype(np.float32)
     image = contrast_value * (image - image_mean) + image_mean
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_brightness(image: np.ndarray, min_value: float, max_value: float) -> np.ndarray:
+def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
     Randomly changes brightness of the input image.
 
     Args:
         image: Input image array.
-        min_value: Lower bound of brightness range.
-        max_value: Upper bound of brightness range.
+        min_factor: Lower bound of brightness range.
+        max_factor: Upper bound of brightness range.
     Returns:
         Image array with changed brightness.
     """
-    _check_contrast_brightness_inputs(min_value, max_value)
-    brightness_value = np.random.uniform(min_value, max_value)
+    _check_contrast_brightness_inputs(min_factor, max_factor)
+    brightness_value = np.random.uniform(min_factor, max_factor)
     image = image.astype(np.float32)
     image = image * brightness_value
     return np.clip(image, 0, 255).astype(np.uint8)
@@ -293,7 +293,7 @@ def random_brightness(image: np.ndarray, min_value: float, max_value: float) -> 
 
 def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     """
-    Adds random noise to the input image.
+    Adds random Gaussian noise to the input image.
 
     Args:
         image: Input image array.
@@ -308,20 +308,20 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_color_scale(image: np.ndarray, strength: float = 0.05) -> np.ndarray:
+def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
-    Changes image colors by randomly scaling each of RGB components.
+    Changes image colors by randomly scaling each of RGB components. The scaling factors are sampled uniformly from
+    the given range.
     Args:
         image: Input image array.
-        strength: Scaling magnitude to use. Effective scale will be 1 + strength * (normal uniform value) per channel.
+        min_factor: minimum scale factor
+        max_factor: maximum scale factor
     Returns:
         Image array with shifted colors.
     """
     image_float = image.astype(np.float64)
-    scaler_shape = (1,1,3)
-    scaler = np.ones(shape=scaler_shape) + np.random.standard_normal(size=scaler_shape) * strength
-    scaler = np.maximum(scaler, 0)
-    res_image = image_float * scaler
+    scales = np.random.uniform(low=min_factor, high=max_factor, size=(1,1, image.shape[2]))
+    res_image = image_float * scales
     return np.clip(res_image, 0, 255).astype(np.uint8)
 
 

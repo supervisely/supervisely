@@ -160,10 +160,10 @@ _default_retriers_config = {
         "params": {
             "retry_cnt": 1000000000,
             "wait_sec_first": 2,
-            "wait_sec_max": 600,
+            "wait_sec_max": 20,
             "timeout": [
                 4,
-                15
+                10
             ]
         }
     }

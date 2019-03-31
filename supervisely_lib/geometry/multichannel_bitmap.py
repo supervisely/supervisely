@@ -5,13 +5,13 @@ import io
 import numpy as np
 
 from supervisely_lib.geometry.bitmap_base import BitmapBase, resize_origin_and_bitmap
-from supervisely_lib.geometry.point import Point
+from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.constants import MULTICHANNEL_BITMAP
 
 
 class MultichannelBitmap(BitmapBase):
-    def __init__(self, origin, data):
-        super().__init__(origin, data, expected_data_dims=3)
+    def __init__(self, data, origin: PointLocation = None):
+        super().__init__(data, origin, expected_data_dims=3)
 
     @classmethod
     def _impl_json_class_name(cls):
@@ -26,8 +26,8 @@ class MultichannelBitmap(BitmapBase):
         rotated_full_data = rotator.rotate_img(full_img_data, use_inter_nearest=True)
         # Rotate the bounding box to find out the bounding box of the rotated bitmap within the full image.
         rotated_bbox = self.to_bbox().rotate(rotator)
-        rotated_origin = Point(row=rotated_bbox.top, col=rotated_bbox.left)
-        return MultichannelBitmap(origin=rotated_origin, data=rotated_bbox.get_cropped_numpy_slice(rotated_full_data))
+        rotated_origin = PointLocation(row=rotated_bbox.top, col=rotated_bbox.left)
+        return MultichannelBitmap(data=rotated_bbox.get_cropped_numpy_slice(rotated_full_data), origin=rotated_origin)
 
     def crop(self, rect):
         maybe_cropped_area = self.to_bbox().crop(rect)
@@ -35,14 +35,14 @@ class MultichannelBitmap(BitmapBase):
             return []
         else:
             [cropped_area] = maybe_cropped_area
-            cropped_origin = Point(row=cropped_area.top, col=cropped_area.left)
+            cropped_origin = PointLocation(row=cropped_area.top, col=cropped_area.left)
             cropped_area_in_data = cropped_area.translate(drow=-self._origin.row, dcol=-self.origin.col)
-            return [MultichannelBitmap(origin=cropped_origin,
-                                       data=cropped_area_in_data.get_cropped_numpy_slice(self._data))]
+            return [MultichannelBitmap(data=cropped_area_in_data.get_cropped_numpy_slice(self._data),
+                                       origin=cropped_origin,)]
 
     def resize(self, in_size, out_size):
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data, in_size, out_size)
-        return MultichannelBitmap(origin=scaled_origin, data=scaled_data)
+        return MultichannelBitmap(data=scaled_data, origin=scaled_origin)
 
     def draw(self, bitmap, color, thickness=1):
         self.to_bbox().get_cropped_numpy_slice(bitmap)[...] = color

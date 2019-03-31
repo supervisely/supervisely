@@ -6,19 +6,19 @@ import numpy as np
 
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
 from supervisely_lib.geometry.geometry import Geometry
-from supervisely_lib.geometry.point import Point, points_to_row_col_list
+from supervisely_lib.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely_lib.geometry.rectangle import Rectangle
 
 
 class VectorGeometry(Geometry):
     def __init__(self, exterior, interior):
-        if not (isinstance(exterior, list) and all(isinstance(p, Point) for p in exterior)):
-            raise TypeError('Argument "exterior" must be list of "Point" objects!')
+        if not (isinstance(exterior, list) and all(isinstance(p, PointLocation) for p in exterior)):
+            raise TypeError('Argument "exterior" must be list of "PointLocation" objects!')
 
         if not isinstance(interior, list) or \
             not all(isinstance(c, list) for c in interior) or \
-                not all(isinstance(p, Point) for c in interior for p in c):
-            raise TypeError('Argument "interior" must be list of list of "Point" objects!')
+                not all(isinstance(p, PointLocation) for c in interior for p in c):
+            raise TypeError('Argument "interior" must be list of list of "PointLocation" objects!')
 
         self._exterior = deepcopy(exterior)
         self._interior = deepcopy(interior)

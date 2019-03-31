@@ -2,7 +2,8 @@
 import unittest
 import numpy as np
 
-from supervisely_lib.geometry.point import Point, row_col_list_to_points, points_to_row_col_list
+from supervisely_lib.geometry.point_location import PointLocation, row_col_list_to_points, points_to_row_col_list
+from supervisely_lib.geometry.point import Point
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.geometry.polygon import Polygon
@@ -79,8 +80,10 @@ class PointTest(unittest.TestCase):
         self.assertEqual(area, 0.0)
 
     def test_to_bbox(self):
-        with self.assertRaises(NotImplementedError):
-            self.point.to_bbox()
+        rect = self.point.to_bbox()
+        self.assertPointEquals(self.point, rect.top, rect.left)
+        self.assertPointEquals(self.point, rect.bottom, rect.right)
+
 
     def test_clone(self):
         res_point = self.point.clone()
@@ -149,10 +152,7 @@ class RectangleTest(unittest.TestCase):
 
     def test_resize(self):
         in_size = (100, 100)
-        out_size = {
-            ROWS: 200,
-            COLS: 150
-        }
+        out_size = (200, 150)
         res_rect = self.rect.resize(in_size, out_size)
         self.assertRectEquals(res_rect, 10, 15, 60, 45)
 
@@ -289,10 +289,7 @@ class PolygonTest(unittest.TestCase):
 
     def test_resize(self):
         in_size = (100, 100)
-        out_size = {
-            ROWS: 200,
-            COLS: 150
-        }
+        out_size = (200, 150)
         res_poly = self.poly.resize(in_size, out_size)
         self.assertPolyEquals(res_poly,
                               [[15, 20], [60, 20], [45, 80], [15, 60]],
@@ -434,7 +431,7 @@ class PolygonTest(unittest.TestCase):
 
 class BitmapTest(unittest.TestCase):
     def setUp(self):
-        self.origin = Point(0, 4)
+        self.origin = PointLocation(0, 4)
         self.mask = np.array([[0, 0, 0, 1, 0, 0, 0],
                               [0, 0, 1, 1, 1, 0, 0],
                               [0, 1, 0, 1, 0, 1, 0],
@@ -443,7 +440,7 @@ class BitmapTest(unittest.TestCase):
                               [0, 0, 0, 1, 0, 0, 0],
                               [0, 0, 0, 1, 0, 0, 0]], dtype=np.bool)
         self.mask_no_margins = self.mask[:, 1:-1]
-        self.bitmap = Bitmap(self.origin, self.mask)
+        self.bitmap = Bitmap(data=self.mask, origin=self.origin)
 
     def assertBitmapEquals(self, bitmap, origin_row, origin_col, mask):
         self.assertIsInstance(bitmap, Bitmap),
@@ -513,10 +510,7 @@ class BitmapTest(unittest.TestCase):
 
     def test_resize(self):
         in_size = (20, 20)
-        out_size = {
-            ROWS: 40,
-            COLS: 40
-        }
+        out_size = (40, 40)
         res_bitmap = self.bitmap.resize(in_size, out_size)
         self.assertIsInstance(res_bitmap, Bitmap)
 
@@ -546,10 +540,10 @@ class BitmapTest(unittest.TestCase):
 
 class MultichannelBitmapTest(unittest.TestCase):
     def setUp(self):
-        self.origin = Point(row=0, col=4)
+        self.origin = PointLocation(row=0, col=4)
         self.data = np.array([[[0.0, 0.1], [0.2, 0.3], [0.4, 0.5]],
                               [[0.6, 0.7], [0.8, 0.9], [1.0, 1.1]]], dtype=np.float64)
-        self.bitmap = MultichannelBitmap(origin=self.origin, data=self.data)
+        self.bitmap = MultichannelBitmap(data=self.data, origin=self.origin)
 
     def assertMultichannelBitmapEquals(self, bitmap, origin_row, origin_col, data):
         self.assertIsInstance(bitmap, MultichannelBitmap),
@@ -600,10 +594,7 @@ class MultichannelBitmapTest(unittest.TestCase):
 
     def test_resize(self):
         in_size = (20, 20)
-        out_size = {
-            ROWS: 40,
-            COLS: 40
-        }
+        out_size = (40, 40)
         res_bitmap = self.bitmap.resize(in_size, out_size)
         expected_data = np.array([[[0.0, 0.1], [0.0, 0.1], [0.2, 0.3], [0.2, 0.3], [0.4, 0.5], [0.4, 0.5]],
                                   [[0.0, 0.1], [0.0, 0.1], [0.2, 0.3], [0.2, 0.3], [0.4, 0.5], [0.4, 0.5]],

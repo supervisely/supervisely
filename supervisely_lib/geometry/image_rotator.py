@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from supervisely_lib.geometry.rectangle import Rectangle
-from supervisely_lib.geometry.point import Point
+from supervisely_lib.geometry.point_location import PointLocation
 
 
 # to rotate image & objects wrt source img center
@@ -93,7 +93,7 @@ class ImageRotator:
         point_np_uniform = np.array([point.row, point.col, 1])
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.
-        return Point(row=round(transformed_np[0].item()), col=round(transformed_np[1].item()))
+        return PointLocation(row=round(transformed_np[0].item()), col=round(transformed_np[1].item()))
 
     def rotate_img(self, img, use_inter_nearest):
         if use_inter_nearest:

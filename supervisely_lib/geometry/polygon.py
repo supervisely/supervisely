@@ -6,7 +6,7 @@ import numpy as np
 from shapely.geometry import mapping, Polygon as ShapelyPolygon
 
 from supervisely_lib.geometry.conversions import shapely_figure_to_coords_list
-from supervisely_lib.geometry.point import row_col_list_to_points, points_to_row_col_list
+from supervisely_lib.geometry.point_location import row_col_list_to_points, points_to_row_col_list
 from supervisely_lib.geometry.vector_geometry import VectorGeometry
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
 from supervisely_lib.geometry import validation
