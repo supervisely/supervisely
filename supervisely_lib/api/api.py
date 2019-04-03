@@ -3,7 +3,7 @@
 import os
 import requests
 
-from requests_toolbelt import MultipartEncoderMonitor
+from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
 
 import supervisely_lib.api.team_api as team_api
 import supervisely_lib.api.workspace_api as workspace_api
@@ -48,7 +48,7 @@ class Api:
 
         if type(data) is bytes:
             response = requests.post(url, data=data, headers=self.headers)
-        elif type(data) is MultipartEncoderMonitor:
+        elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
             response = requests.post(url, data=data, headers={**self.headers, 'Content-Type': data.content_type})
         else:
             json_body = data

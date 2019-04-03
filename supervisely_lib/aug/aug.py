@@ -191,7 +191,7 @@ def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other
     Returns:
         List of cropped [image, annotation] pairs.
     """
-    padding_config = padding_config or {}
+    padding_config = take_with_default(padding_config, {})
     _validate_image_annotation_shape(img, ann)
     results = []
     img_rect = Rectangle.from_size(img.shape[:2])

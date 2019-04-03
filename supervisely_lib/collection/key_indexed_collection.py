@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from prettytable import PrettyTable
+from supervisely_lib._utils import take_with_default
 
 
 class DuplicateKeyError(KeyError):
@@ -17,7 +18,7 @@ class KeyIndexedCollection:
 
     def __init__(self, items=None):
         self._collection = {}
-        self._add_items_impl(self._collection, items or [])
+        self._add_items_impl(self._collection, take_with_default(items, []))
 
     def _add_impl(self, dst_collection, item):
         if not isinstance(item, KeyIndexedCollection.item_type):

@@ -1,5 +1,5 @@
 {
 	"title": "Agent",
-	"description": "brief description",
+	"description": "Supervisely Agent - is a small, but powerful task manager that allows to connect any computer (your office PC or cloud server) to the platform and use it for any computational tasks: neural network training/inference/deployment, training data preparation and many more.",
 	"type": "agent"
 }

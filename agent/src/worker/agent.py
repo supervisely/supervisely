@@ -60,14 +60,14 @@ class Agent:
                                             shell=True, executable="/bin/bash", 
                                             stdout=subprocess.PIPE).communicate()[0]
 
-        agent_info = {
+        self.agent_info = {
             'hardware_info': hw_info,
             'agent_image': json.loads(docker_img_info)["Config"]["Image"],
             'agent_image_digest': get_self_docker_image_digest()
         }
 
         self.api.simple_request('AgentConnected', sly.api_proto.ServerInfo,
-                                sly.api_proto.AgentInfo(info=json.dumps(agent_info)))
+                                sly.api_proto.AgentInfo(info=json.dumps(self.agent_info)))
 
     def send_connect_info(self):
         while True:
@@ -77,6 +77,7 @@ class Agent:
     def get_new_task(self):
         for task in self.api.get_endless_stream('GetNewTask', sly.api_proto.Task, sly.api_proto.Empty()):
             task_msg = json.loads(task.data)
+            task_msg['agent_info'] = self.agent_info
             self.logger.debug('GET_NEW_TASK', extra={'task_msg': task_msg})
             self.start_task(task_msg)
 

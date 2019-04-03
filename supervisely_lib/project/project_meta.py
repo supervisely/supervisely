@@ -1,12 +1,9 @@
 # coding: utf-8
 
-from typing import List
-
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
-from supervisely_lib.annotation.obj_class import ObjClass
-from supervisely_lib.annotation.tag_meta import TagMeta
+from supervisely_lib._utils import take_with_default
 
 
 class ProjectMetaJsonFields:
@@ -18,10 +15,10 @@ class ProjectMetaJsonFields:
 #@TODO: add validation
 class ProjectMeta(JsonSerializable):
     def __init__(self, obj_classes=None, img_tag_metas=None, obj_tag_metas=None):
-        self._obj_classes = ObjClassCollection() if obj_classes is None else obj_classes
+        self._obj_classes = take_with_default(obj_classes, ObjClassCollection())
         # TODO do we actualy need two sets of tags?
-        self._img_tag_metas = TagMetaCollection() if img_tag_metas is None else img_tag_metas
-        self._obj_tag_metas = TagMetaCollection() if obj_tag_metas is None else obj_tag_metas
+        self._img_tag_metas = take_with_default(img_tag_metas, TagMetaCollection())
+        self._obj_tag_metas = take_with_default(obj_tag_metas, TagMetaCollection())
 
     @property
     def obj_classes(self):
@@ -54,9 +51,9 @@ class ProjectMeta(JsonSerializable):
                           obj_tag_metas=self._obj_tag_metas.merge(other.obj_tag_metas))
 
     def clone(self, obj_classes: ObjClassCollection = None, img_tag_metas: TagMetaCollection = None, obj_tag_metas: TagMetaCollection = None):
-        return ProjectMeta(obj_classes=obj_classes or self.obj_classes,
-                           img_tag_metas=img_tag_metas or self.img_tag_metas,
-                           obj_tag_metas=obj_tag_metas or self.obj_tag_metas)
+        return ProjectMeta(obj_classes=take_with_default(obj_classes, self.obj_classes),
+                           img_tag_metas=take_with_default(img_tag_metas, self.img_tag_metas),
+                           obj_tag_metas=take_with_default(obj_tag_metas, self.obj_tag_metas))
 
     def add_obj_class(self, new_obj_class):
         return self.add_obj_classes([new_obj_class])

@@ -21,6 +21,7 @@ class TaskSly(TaskLogged):
 
     def report_start(self):
         self.logger.info('TASK_START', extra={'event_type': sly.EventType.TASK_STARTED})
+        self.logger.info('TASK_MSG', extra=self.info)
 
     def task_main_func(self):
         raise NotImplementedError()

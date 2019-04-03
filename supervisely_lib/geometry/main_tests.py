@@ -262,6 +262,20 @@ class PolygonTest(unittest.TestCase):
                               [[10, 25], [20, 25], [20, 30], [30, 30], [30, 25], [35, 25], [30, 40], [10, 30]],
                               [])
 
+    def test_complex_crop(self):
+        # Crop generate GeometryCollection here
+        exterior = [[0, 0], [0, 3], [5, 8], [5, 9], [5, 10], [0, 15], [10, 20], [0, 25], [20, 25], [20, 0]]
+        interiors = [[[2, 2], [4, 4], [4, 2]]]
+
+        poly = Polygon(exterior=row_col_list_to_points(exterior, flip_row_col_order=True),
+                       interior=[row_col_list_to_points(interior, flip_row_col_order=True) for interior in interiors])
+
+        crop_rect = Rectangle(0, 0, 30, 5)
+        res_geoms = poly.crop(crop_rect)
+        self.assertEqual(len(res_geoms), 3)
+        self.assertPolyEquals(res_geoms[0],
+                              [[0, 0], [5, 0], [5, 8], [0, 3]], interiors)
+
     def test_crop_by_border(self):
         exterior = [[10, 10], [40, 10], [40, 40], [10, 40]]
         interiors = [[[11, 11], [11, 20], [20, 11]], [[20, 20], [21, 20], [20, 21]]]

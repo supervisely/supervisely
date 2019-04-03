@@ -58,7 +58,6 @@ class DataManager(object):
 
     def download_project(self, parent_dir, name, datasets_whitelist=None):
         self.logger.info("DOWNLOAD_PROJECT", extra={'title': name})
-        #@TODO: reimplement and use path without splitting
         project_fs = sly.Project(os.path.join(parent_dir, name), sly.OpenMode.CREATE)
         project_id = self.public_api.project.get_info_by_name(self.workspace_id, name).id
         meta = sly.ProjectMeta.from_json(self.public_api.project.get_meta(project_id))
@@ -75,42 +74,50 @@ class DataManager(object):
 
     def download_dataset(self, dataset, dataset_id):
         images = self.public_api.image.get_list(dataset_id)
-        progress = sly.Progress('Download dataset {!r}: images'.format(dataset.name), len(images), self.logger)
+        progress_imgs = sly.Progress('Dataset {!r}: download images'.format(dataset.name), len(images), self.logger)
+        progress_anns = sly.Progress('Dataset {!r}: download annotations'.format(dataset.name), len(images), self.logger)
 
         images_to_download = images
+
+        # copy images from cache to task folder and download corresponding annotations
         if self.has_images_storage():
             images_to_download, images_in_cache, images_cache_paths = self._split_images_by_cache(images)
-            # copy images from cache to task folder
-            for img_info, img_cache_path in zip(images_in_cache, images_cache_paths):
-                dataset.add_item_file(img_info.name, img_cache_path)
-                progress.iter_done_report()
+            self.logger.info('Dataset {!r}'.format(dataset.name), extra={'total_images': len(images),
+                                                                         'images_in_cache': len(images_in_cache),
+                                                                         'images_to_download': len(images_to_download)})
+            if len(images_to_download) + len(images_in_cache) != len(images):
+                raise RuntimeError("Error with images cache during download. Please contact support.")
+            for batch_cache in sly.batched(list(zip(images_in_cache, images_cache_paths)), constants.BATCH_SIZE_GET_IMAGES_INFO()):
+                img_cache_ids = [img_info.id for img_info, _ in batch_cache]
+                ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_cache_ids, progress_anns.iters_done_report)
+                img_name_to_ann = {ann.image_name: ann.annotation for ann in ann_info_list}
+                for img_info, img_cache_path in batch_cache:
+                    dataset.add_item_file(img_info.name, img_cache_path, img_name_to_ann[img_info.name])
+                    progress_imgs.iter_done_report()
 
         # download images from server
-        img_ids = []
-        img_paths = []
-        for img_info in images_to_download:
-            img_ids.append(img_info.id)
-            # TODO download to a temp file and use dataset api to add the image to the dataset.
-            img_paths.append(dataset.deprecated_make_img_path(img_info.name, img_info.ext))
+        for batch_download in sly.batched(images_to_download, constants.BATCH_SIZE_GET_IMAGES_INFO()):
+            #prepare lists for api methods
+            img_ids = []
+            img_paths = []
+            for img_info in batch_download:
+                img_ids.append(img_info.id)
+                # TODO download to a temp file and use dataset api to add the image to the dataset.
+                img_paths.append(dataset.deprecated_make_img_path(img_info.name, img_info.ext))
 
-        self.public_api.image.download_batch(img_ids, img_paths, progress.iter_done_report)
-        for img_info, img_path in zip(images_to_download, img_paths):
-            dataset.add_item_file(img_info.name, img_path)
+            # download annotations
+            ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_ids, progress_anns.iters_done_report)
+            img_name_to_ann = {ann.image_name: ann.annotation for ann in ann_info_list}
+            self.public_api.image.download_batch(dataset_id, img_ids, img_paths, progress_imgs.iters_done_report)
+            for img_info, img_path in zip(batch_download, img_paths):
+                dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.name])
 
-        if self.has_images_storage():
-            progress = sly.Progress('Download dataset {!r}: cache images'.format(dataset.name), len(img_paths), self.logger)
-            img_hashes = [img_info.hash for img_info in images_to_download]
-            self.storage.images.write_objects(img_paths, img_hashes, progress.iter_done_report)
+            if self.has_images_storage():
+                progress_cache = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), len(img_paths), self.logger)
+                img_hashes = [img_info.hash for img_info in batch_download]
+                self.storage.images.write_objects(img_paths, img_hashes, progress_cache.iter_done_report)
 
-        # download annotations from server
-        img_id_to_name = {image.id: image.name for image in images}
-        progress_ann = sly.Progress('Download dataset {!r}: annotations'.format(dataset.name), len(images), self.logger)
-        anns = self.public_api.annotation.get_list(dataset_id, progress_cb=progress_ann.iters_done_report)
-        for ann in anns:
-            img_name = img_id_to_name[ann.image_id]
-            dataset.set_ann_dict(img_name, ann.annotation)
-
-    #@TODO: remove legacy stuff
+    # @TODO: remove legacy stuff
     # @TODO: reimplement and use path without splitting
     def upload_project(self, parent_dir, project_name, new_title, legacy=False, add_to_existing=False):
         # @TODO: reimplement and use path without splitting
@@ -152,7 +159,7 @@ class DataManager(object):
             hash_to_item_names[img_hash].append(item_name)
             if self.has_images_storage():
                 if progress is None:
-                    progress = sly.Progress('Dataset {!r}: upload cache images'.format(dataset.name), items_count, self.logger)
+                    progress = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), items_count, self.logger)
                 self.storage.images.write_object(item_paths.img_path, img_hash)
                 progress.iter_done_report()
 
@@ -163,18 +170,20 @@ class DataManager(object):
             names = [name for hash in hashes for name in hash_to_item_names[hash]]
             unrolled_hashes = [hash for hash in hashes for _ in range(len(hash_to_item_names[hash]))]
             ann_paths = [path for hash in hashes for path in hash_to_ann_paths[hash]]
-            remote_ids = self.public_api.image.add_batch(dataset_id, names, unrolled_hashes, pb_img_cb)
-            self.public_api.annotation.add_batch(remote_ids, ann_paths, pb_ann_cb)
+            remote_infos = self.public_api.image.add_batch(dataset_id, names, unrolled_hashes, pb_img_cb)
+            self.public_api.annotation.upload_batch_paths(dataset_id, [info.id for info in remote_infos], ann_paths, pb_ann_cb)
 
         # add already uploaded images + attach annotations
         remote_hashes = self.public_api.image.check_existing_hashes(list(hash_to_img_paths.keys()))
-        add_images_annotations(remote_hashes, progress_img.iter_done_report, progress_ann.iter_done_report)
+        if len(remote_hashes) > 0:
+            add_images_annotations(remote_hashes, progress_img.iters_done_report, progress_ann.iters_done_report)
 
         # upload new images + add annotations
         new_hashes = list(set(hash_to_img_paths.keys()) - set(remote_hashes))
         img_paths = [path for hash in new_hashes for path in hash_to_img_paths[hash]]
-        self.public_api.image.upload_batch(img_paths, progress_img.iter_done_report)
-        add_images_annotations(new_hashes, None, progress_ann.iter_done_report)
+        self.public_api.image.upload_batch_paths(img_paths, progress_img.iters_done_report)
+        if len(new_hashes) > 0:
+            add_images_annotations(new_hashes, None, progress_ann.iters_done_report)
 
     def upload_archive(self, task_id, dir_to_archive, archive_name):
         self.logger.info("PACK_TO_ARCHIVE ...")

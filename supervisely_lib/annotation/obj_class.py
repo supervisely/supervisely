@@ -74,7 +74,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Returns:
             [R, G, B]
         """
-        return self._color.copy()
+        return deepcopy(self._color)
 
     def to_json(self) -> dict:
         """

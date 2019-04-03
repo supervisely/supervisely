@@ -72,6 +72,8 @@ class FSStorage:
         return obj_pathes_suffixes
 
     def get_storage_path(self, data_hash, suffix=''):
+        if suffix:
+            suffix = ".{}".format(suffix).replace("..", ".")
         st_hash = hashlib.sha256(data_hash.encode('utf-8')).hexdigest()
         st_path = osp.join(self._storage_root, st_hash[0:2], st_hash[2:5], st_hash + suffix)
         return st_path

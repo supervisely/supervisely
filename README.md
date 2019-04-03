@@ -120,5 +120,3 @@ Data Transformation Language allows to automate complicated pipelines of data tr
   Regular updates on how to use state of the art models and solve practical
   data science problems with Supervisely.
 - [Tutorials and Cookbooks](./help) in this repository.
-
-

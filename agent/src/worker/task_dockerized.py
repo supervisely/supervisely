@@ -3,7 +3,7 @@
 from enum import Enum
 from threading import Lock
 import json
-from docker.errors import ImageNotFound as DockerImageNotFound
+from docker.errors import DockerException, ImageNotFound as DockerImageNotFound
 
 import supervisely_lib as sly
 
@@ -112,7 +112,11 @@ class TaskDockerized(TaskSly):
         self.logger.info('Docker image will be pulled', extra={'image_name': self.docker_image_name})
         progress_dummy = sly.Progress('Pulling image...', 1, ext_logger=self.logger)
         progress_dummy.iter_done_report()
-        pulled_img = self._docker_api.images.pull(self.docker_image_name)
+        try:
+            pulled_img = self._docker_api.images.pull(self.docker_image_name)
+        except DockerException:
+            raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
+                                  ' Please, run the task again or email support.')
         self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
 
     def _docker_image_exists(self):

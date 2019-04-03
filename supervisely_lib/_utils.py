@@ -25,3 +25,8 @@ def camel_to_snake(name):
 
 def take_with_default(v, default):
     return v if v is not None else default
+
+
+def batched(seq, batch_size):
+    for i in range(0, len(seq), batch_size):
+        yield seq[i:i + batch_size]

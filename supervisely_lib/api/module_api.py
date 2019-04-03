@@ -58,6 +58,9 @@ class ApiField:
     SORT =              'sort'
     SORT_ORDER =        'sort_order'
     LINK =              'link'
+    IMAGES =            'images'
+    IMAGE_IDS =         'imageIds'
+    ANNOTATIONS =       'annotations'
 
 
 def _get_single_item(items):

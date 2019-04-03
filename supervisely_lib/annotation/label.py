@@ -20,7 +20,7 @@ class LabelBase:
     def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: TagCollection = None, description: str = ""):
         self._geometry = geometry
         self._obj_class = obj_class
-        self._tags = TagCollection() if tags is None else tags
+        self._tags = take_with_default(tags, TagCollection())
         self._description = description
         self._validate_geometry_type()
 
@@ -67,11 +67,11 @@ class LabelBase:
         return self.clone(tags=self._tags.add_items(tags))
 
     def clone(self, geometry: Geometry = None, obj_class: ObjClass = None, tags: TagCollection = None,
-              description: str = ""):
+              description: str = None):
         return self.__class__(geometry=take_with_default(geometry, self.geometry),
                               obj_class=take_with_default(obj_class, self.obj_class),
                               tags=take_with_default(tags, self.tags),
-                              description=description or self.description)
+                              description=take_with_default(description, self.description))
 
     def crop(self, rect):
         return [self] if rect.contains(self.geometry.to_bbox()) else [

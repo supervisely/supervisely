@@ -8,7 +8,6 @@ import supervisely_lib as sly
 from worker.task_sly import TaskSly
 from worker.agent_utils import TaskDirCleaner
 from worker import constants
-from worker.utils import batched
 
 
 class TaskCleanNode(TaskSly):
@@ -40,7 +39,7 @@ class TaskCleanNode(TaskSly):
         image_array = self.api.simple_request('GetDatasetImages', sly.api_proto.ImageArray, sly.api_proto.Id(id=dataset_id))
         img_hashes = []
 
-        for batch_img_ids in batched(list(image_array.images), constants.BATCH_SIZE_GET_IMAGES_INFO()):
+        for batch_img_ids in sly.batched(list(image_array.images), constants.BATCH_SIZE_GET_IMAGES_INFO()):
             images_info_proto = self.api.simple_request('GetImagesInfo', sly.api_proto.ImagesInfo,
                                                         sly.api_proto.ImageArray(images=batch_img_ids))
             img_hashes.extend([(info.hash, info.ext) for info in images_info_proto.infos])

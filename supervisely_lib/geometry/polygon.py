@@ -47,18 +47,13 @@ class Polygon(VectorGeometry):
         # Check for bad cropping cases (e.g. empty points list)
         out_polygons = []
         for intersection in intersections:
-            if isinstance(intersection, list) and len(intersection) > 0:
-                for contour_index, contour in enumerate(intersection):
-                    exterior = None
-                    interiors = []
-                    if isinstance(contour, tuple) and len(contour) > 2:
-                        if contour_index == 0:
-                            exterior = row_col_list_to_points(contour, do_round=True)
-                        else:
-                            interiors.append(row_col_list_to_points(contour, do_round=True))
-
-                    if exterior is not None:
-                        out_polygons.append(Polygon(exterior, interiors))
+            if isinstance(intersection, list) and len(intersection) > 0 and len(intersection[0]) >= 3:
+                exterior = row_col_list_to_points(intersection[0], do_round=True)
+                interiors = []
+                for interior_contour in intersection[1:]:
+                    if len(interior_contour) > 2:
+                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
+                out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
 

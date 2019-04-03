@@ -4,8 +4,8 @@ import math
 
 
 def _validate_color(color):
-    if type(color) is not list:
-        raise ValueError('Color has to be list')
+    if not isinstance(color, (list, tuple)):
+        raise ValueError('Color has to be list, or tuple')
     if len(color) != 3:
         raise ValueError('Color have to contain exactly 3 values: [R, G, B]')
     for channel in color:

@@ -30,11 +30,11 @@ class Annotation:
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
         self._img_description = img_description
-        self._img_tags = img_tags or TagCollection()
+        self._img_tags = take_with_default(img_tags, TagCollection())
         self._labels = []
-        self._add_labels_impl(self._labels, labels or [])
+        self._add_labels_impl(self._labels, take_with_default(labels, []))
         self._pixelwise_scores_labels = []      # This field is not serialized. @TODO: create another class AnnotationExtended???
-        self._add_labels_impl(self._pixelwise_scores_labels, pixelwise_scores_labels or [])
+        self._add_labels_impl(self._pixelwise_scores_labels, take_with_default(pixelwise_scores_labels, []))
 
     @property
     def img_size(self):
@@ -126,6 +126,22 @@ class Annotation:
 
     def add_tags(self, tags):
         return self.clone(img_tags=self._img_tags.add_items(tags))
+
+    def delete_tags_by_name(self, tag_names):
+        tags_after_filter = []
+        for tag in self._img_tags.items():
+            if tag.meta.name not in tag_names:
+                tags_after_filter.append(tag)
+        return self.clone(img_tags=tags_after_filter)
+
+    def delete_tag_by_name(self, tag_name):
+        return self.delete_tags_by_name([tag_name])
+
+    def delete_tags(self, tags):
+        return self.delete_tags_by_name([tag.meta.name for tag in tags])
+
+    def delete_tag(self, tag):
+        return self.delete_tags_by_name([tag.meta.name])
 
     def transform_labels(self, label_transform_fn, new_size=None):
         def _do_transform_labels(src_labels, label_transform_fn):
