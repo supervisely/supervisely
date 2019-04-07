@@ -39,7 +39,7 @@ class MetricProjectsApplier:
         for ds_gt in self._project_gt.datasets:
             ds_pred = self._project_pred.datasets.get(ds_gt.name)
             for sample_name in ds_gt:
-                if not ds_pred.has_key(sample_name):
+                if not ds_pred.item_exists(sample_name):
                     raise RuntimeError('Projects must contain identically named samples in respective datasets. ' +
                                        'Ground truth project has sample {!r} in dataset {!r}, but prediction project ' +
                                        'does not.'.format(sample_name, ds_gt.name))

@@ -4,8 +4,8 @@ import os
 import shutil
 import errno
 import tarfile
-import base64
-import hashlib
+
+from supervisely_lib._utils import get_bytes_hash
 
 
 def get_file_name(path: str) -> str:
@@ -30,6 +30,18 @@ def get_file_ext(path: str) -> str:
          File extension.
     """
     return os.path.splitext(os.path.basename(path))[1]
+
+
+def get_file_name_with_ext(path: str) -> str:
+    """
+    Extracts file name with ext from a given path.
+
+    Args:
+        path: File path.
+    Returns:
+         File name with ext.
+    """
+    return os.path.basename(path)
 
 
 def list_dir_recursively(dir: str) -> list:
@@ -222,4 +234,4 @@ def archive_directory(dir_: str, tar_path: str):
 
 
 def get_file_hash(path):
-    return base64.b64encode(hashlib.sha256(open(path, 'rb').read()).digest()).decode('utf-8')
+    return get_bytes_hash(open(path, 'rb').read())

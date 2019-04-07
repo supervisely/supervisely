@@ -5,12 +5,14 @@ from PIL import ImageDraw, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
 import skimage.transform
+import base64
+import hashlib
 
 from supervisely_lib.io.fs import ensure_base_path, get_file_ext
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.imaging.font import get_font
-
+from supervisely_lib._utils import get_bytes_hash
 
 #@TODO: refactoring image->img
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
@@ -43,7 +45,7 @@ def get_ext(path):
 def validate_ext(ext):
     if ext.lower() not in SUPPORTED_IMG_EXTS:
         raise ImageExtensionError(
-            'Wrong image format. Only the following formats are supported: {}.'.format(', '.join(SUPPORTED_IMG_EXTS)))
+            'Wrong image format {}. Only the following formats are supported: {}.'.format(ext, ', '.join(SUPPORTED_IMG_EXTS)))
 
 
 def read(path) -> np.ndarray:
@@ -53,7 +55,8 @@ def read(path) -> np.ndarray:
 
 
 def read_bytes(image_bytes) -> np.ndarray:
-    img = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+    image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
+    img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -152,6 +155,10 @@ def write_bytes(img, ext) -> np.ndarray:
     if encode_status is True:
         return img_array.tobytes()
     raise RuntimeError('Can not encode input image')
+
+
+def get_hash(img, ext):
+    return get_bytes_hash(write_bytes(img, ext))
 
 
 def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:

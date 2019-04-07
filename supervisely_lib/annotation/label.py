@@ -23,6 +23,10 @@ class LabelBase:
         self._tags = take_with_default(tags, TagCollection())
         self._description = description
         self._validate_geometry_type()
+        self._validate_geometry()
+
+    def _validate_geometry(self):
+        self._geometry.validate(self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_settings)
 
     def _validate_geometry_type(self):
         raise NotImplementedError()

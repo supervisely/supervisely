@@ -43,18 +43,18 @@ class Api:
     def add_additional_field(self, key, value):
         self.additional_fields[key] = value
 
-    def post(self, method, data):
+    def post(self, method, data, stream=False):
         url = os.path.join(self.server_address, 'public/api/v3', method)
 
         if type(data) is bytes:
-            response = requests.post(url, data=data, headers=self.headers)
+            response = requests.post(url, data=data, headers=self.headers, stream=stream)
         elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-            response = requests.post(url, data=data, headers={**self.headers, 'Content-Type': data.content_type})
+            response = requests.post(url, data=data, headers={**self.headers, 'Content-Type': data.content_type}, stream=stream)
         else:
             json_body = data
             if type(data) is dict:
                 json_body = {**data, **self.additional_fields}
-            response = requests.post(url, json=json_body, headers=self.headers)
+            response = requests.post(url, json=json_body, headers=self.headers, stream=stream)
 
         if response.status_code != requests.codes.ok:
             Api._raise_for_status(response)

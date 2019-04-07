@@ -3,6 +3,7 @@
 import os
 from urllib.parse import urlparse
 import supervisely_lib as sly
+import hashlib
 
 
 def HOST_DIR():
@@ -23,6 +24,10 @@ def TOKEN():
 
 
 def TASKS_DOCKER_LABEL():
+    return 'supervisely_{}'.format(hashlib.sha256(TOKEN().encode('utf-8')).hexdigest())
+
+
+def TASKS_DOCKER_LABEL_LEGACY():
     return 'supervisely_{}'.format(TOKEN())
 
 

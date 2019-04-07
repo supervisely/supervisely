@@ -96,11 +96,11 @@ class ModuleApi:
         pages_count = first_response['pagesCount']
 
         results = first_response['entities']
+        if progress_cb is not None:
+            progress_cb(len(results))
         if pages_count == 1 and len(first_response['entities']) == total:
-            if progress_cb is not None:
-                progress_cb(total)
+            pass
         else:
-            results = first_response['entities']
             for page_idx in range(2, pages_count + 1):
                 temp_resp = self.api.post(method, {**data, 'page': page_idx, 'per_page': per_page})
                 temp_items = temp_resp.json()['entities']

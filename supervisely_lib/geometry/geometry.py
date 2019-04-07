@@ -106,3 +106,7 @@ class Geometry(JsonSerializable):
 
     def clone(self):
         return deepcopy(self)
+
+    def validate(self, name, settings):
+        if self.geometry_name() != name:
+            raise ValueError('Geometry validation error: name is mismatch!') # TODO: Write here good message

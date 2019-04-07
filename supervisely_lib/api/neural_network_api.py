@@ -10,7 +10,7 @@ import json
 from supervisely_lib.api.module_api import ApiField, ModuleApi
 from supervisely_lib._utils import rand_str, camel_to_snake
 from supervisely_lib.io.fs import ensure_base_path, silent_remove
-from supervisely_lib.imaging import image
+from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.project.project_meta import ProjectMeta
 
 
@@ -41,7 +41,7 @@ class NeuralNetworkApi(ModuleApi):
         return self._get_info_by_id(id, 'models.info')
 
     def download(self, id):
-        response = self.api.post('models.download', {ApiField.ID: id})
+        response = self.api.post('models.download', {ApiField.ID: id}, stream=True)
         return response
 
     def download_to_tar(self, workspace_id, name, tar_path, progress_cb=None):
@@ -52,7 +52,8 @@ class NeuralNetworkApi(ModuleApi):
             for chunk in response.iter_content(chunk_size=1024*1024):
                 fd.write(chunk)
                 if progress_cb is not None:
-                    progress_cb()
+                    read_mb = len(chunk) / 1024.0 / 1024.0
+                    progress_cb(read_mb)
 
     def download_to_dir(self, workspace_id, name, directory, progress_cb=None):
         model_tar = os.path.join(directory, rand_str(10) + '.tar')
@@ -85,7 +86,7 @@ class NeuralNetworkApi(ModuleApi):
             "mode": mode or {},
             "image_hash": image_hash
         }
-        fake_img_data = image.write_bytes(np.zeros([5, 5, 3]), '.jpg')
+        fake_img_data = sly_image.write_bytes(np.zeros([5, 5, 3]), '.jpg')
         encoder = MultipartEncoder({'id': str(id).encode('utf-8'),
                                     'data': json.dumps(data),
                                     'image': ("img", fake_img_data, "")})
@@ -99,7 +100,7 @@ class NeuralNetworkApi(ModuleApi):
             "annotation": ann or None,
             "mode": mode or {},
         }
-        img_data = image.write_bytes(img, ext or '.jpg')
+        img_data = sly_image.write_bytes(img, ext or '.jpg')
         encoder = MultipartEncoder({'id': str(id).encode('utf-8'),
                                     'data': json.dumps(data),
                                     'image': ("img", img_data, "")})

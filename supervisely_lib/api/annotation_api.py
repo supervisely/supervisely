@@ -6,6 +6,7 @@ import json
 from supervisely_lib.api.module_api import ApiField, ModuleApi
 from supervisely_lib._utils import camel_to_snake
 from supervisely_lib._utils import batched
+from supervisely_lib.annotation.annotation import Annotation
 
 
 class AnnotationApi(ModuleApi):
@@ -25,26 +26,51 @@ class AnnotationApi(ModuleApi):
 
     def download_batch(self, dataset_id, image_ids, progress_cb=None):
         filters = [{"field": ApiField.IMAGE_ID, "operator": "in", "value": image_ids}]
-        return self.get_list_all_pages('annotations.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters}, progress_cb)
+        results = self.get_list_all_pages('annotations.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters}, progress_cb)
+        id_to_ann = {ann_info.image_id: ann_info for ann_info in results}
+        ordered_results = [id_to_ann[image_id] for image_id in image_ids]
+        #debug_ids = [ann_info.image_id for ann_info in results]
+        #if debug_ids != image_ids:
+        #    raise RuntimeError("annotations.download_batch: imageIds order is broken")
+        return ordered_results
 
-    # @TODO: no errors from api if annotation is not valid
-    def upload(self, image_id: int, ann: dict):
-        self.api.post('annotations.add', data={ApiField.IMAGE_ID: image_id, ApiField.ANNOTATION: ann})
+    def upload_path(self, img_id, ann_path):
+        self.upload_paths([img_id], [ann_path])
 
-    def upload_batch_paths(self, dataset_id, img_ids, ann_paths, progress_cb=None):
-        MAX_BATCH_SIZE = 50
-        for batch in batched(list(zip(img_ids, ann_paths)), MAX_BATCH_SIZE):
-            data = []
-            for img_id, ann_path in batch:
-                with open(ann_path) as json_file:
-                    ann_json = json.load(json_file)
-                data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
+    def upload_paths(self, img_ids, ann_paths, progress_cb=None):
+        # img_ids from the same dataset
+        def read_json(ann_path):
+            with open(ann_path) as json_file:
+                return json.load(json_file)
+        self._upload_batch(read_json, img_ids, ann_paths, progress_cb)
+
+    def upload_json(self, img_id, ann_json):
+        self.upload_jsons([img_id], [ann_json])
+
+    def upload_jsons(self, img_ids, ann_jsons, progress_cb=None):
+        # img_ids from the same dataset
+        self._upload_batch(lambda x : x, img_ids, ann_jsons, progress_cb)
+
+    def upload_ann(self, img_id, ann):
+        self.upload_anns([img_id], [ann])
+
+    def upload_anns(self, img_ids, anns, progress_cb=None):
+        # img_ids from the same dataset
+        self._upload_batch(Annotation.to_json, img_ids, anns, progress_cb)
+
+    def _upload_batch(self, func_ann_to_json, img_ids, anns, progress_cb=None):
+        # img_ids from the same dataset
+        if len(img_ids) == 0:
+            return
+        if len(img_ids) != len(anns):
+            raise RuntimeError("Can not match \"img_ids\" and \"anns\" lists, len(img_ids) != len(anns)")
+
+        dataset_id = self.api.image.get_info_by_id(img_ids[0]).dataset_id
+        for batch in batched(list(zip(img_ids, anns))):
+            data = [{ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)} for img_id, ann in batch]
             self.api.post('annotations.bulk.add', data={ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATIONS: data})
             if progress_cb is not None:
                 progress_cb(len(batch))
-
-    def upload_batch(self, img_ids, anns, progress_cb=None):
-        raise NotImplementedError()
 
     def get_info_by_id(self, id):
         raise RuntimeError('Method is not supported')

@@ -5,7 +5,6 @@ import cv2
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.rectangle import Rectangle
-from supervisely_lib.imaging import image
 
 
 class Point(Geometry):

@@ -2,8 +2,7 @@
 import random
 import numpy as np
 
-from supervisely_lib.imaging import image
-
+from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.annotation.annotation import Annotation
 from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -28,7 +27,7 @@ def fliplr(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
         A tuple containing flipped image and annotation.
     """
     _validate_image_annotation_shape(img, ann)
-    res_img = image.fliplr(img)
+    res_img = sly_image.fliplr(img)
     res_ann = ann.fliplr()
     return res_img, res_ann
 
@@ -44,7 +43,7 @@ def flipud(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
         A tuple containing flipped image and annotation.
     """
     _validate_image_annotation_shape(img, ann)
-    res_img = image.flipud(img)
+    res_img = sly_image.flipud(img)
     res_ann = ann.flipud()
     return res_img, res_ann
 
@@ -69,7 +68,7 @@ def crop(img: np.ndarray, ann: Annotation, top_pad: int = 0, left_pad: int = 0, 
     height, width = img.shape[:2]
     crop_rect = Rectangle(top_pad, left_pad, height - bottom_pad - 1, width - right_pad - 1)
 
-    res_img = image.crop(img, crop_rect)
+    res_img = sly_image.crop(img, crop_rect)
     res_ann = ann.relative_crop(crop_rect)
     return res_img, res_ann
 
@@ -212,7 +211,7 @@ def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other
             if len(crops) == 0:
                 continue
             rect_to_crop = crops[0]
-            image_crop = image.crop(img, rect_to_crop)
+            image_crop = sly_image.crop(img, rect_to_crop)
 
             cropped_ann = ann_with_non_target_labels.relative_crop(rect_to_crop)
 
@@ -240,8 +239,8 @@ def resize(img: np.ndarray, ann: Annotation, size: tuple) -> (np.ndarray, Annota
     width = take_with_default(size[1], -1)
     size = (height, width)
 
-    new_size = image.restore_proportional_size(in_size=ann.img_size, out_size=size)
-    res_img = image.resize(img, new_size)
+    new_size = sly_image.restore_proportional_size(in_size=ann.img_size, out_size=size)
+    res_img = sly_image.resize(img, new_size)
     res_ann = ann.resize(new_size)
     return res_img, res_ann
 
@@ -262,8 +261,8 @@ def scale(img: np.ndarray, ann: Annotation, frow: float = None, fcol: float = No
         A tuple containing resized image array and annotation.
     """
     _validate_image_annotation_shape(img, ann)
-    new_size = image.restore_proportional_size(in_size=ann.img_size, frow=frow, fcol=fcol, f=f)
-    res_img = image.resize(img, new_size)
+    new_size = sly_image.restore_proportional_size(in_size=ann.img_size, frow=frow, fcol=fcol, f=f)
+    res_img = sly_image.resize(img, new_size)
     res_ann = ann.resize(new_size)
     return res_img, res_ann
 
@@ -303,6 +302,6 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationM
     res_img = rotator.rotate_img(img, use_inter_nearest=False)
     res_ann = ann.rotate(rotator)
     if rect_to_crop is not None:
-        res_img = image.crop(res_img, rect_to_crop)
+        res_img = sly_image.crop(res_img, rect_to_crop)
         res_ann = res_ann.relative_crop(rect_to_crop)
     return res_img, res_ann

@@ -5,7 +5,16 @@ import supervisely_lib as sly
 from worker.agent_storage import AgentStorage
 from worker.fs_storages import EmptyStorage
 from worker import constants
-from collections import defaultdict
+
+
+def _maybe_append_image_extension(name, ext):
+    name_split = os.path.splitext(name)
+    if name_split[1] == '':
+        normalized_ext = ('.' + ext).replace('..', '.')
+        sly.image.validate_ext(normalized_ext)
+        return name + normalized_ext
+    else:
+        return name
 
 
 class DataManager(object):
@@ -34,10 +43,10 @@ class DataManager(object):
             self.logger.info('NN has been copied from local storage.')
             return
 
-        model_in_mb = int(float(model_info.size) / 1024 / 1024)
-        progress = sly.Progress('Download NN: {!r}'.format(name), model_in_mb)
+        model_in_mb = int(float(model_info.size) / 1024 / 1024 + 1)
+        progress = sly.Progress('Download NN: {!r}'.format(name), model_in_mb, self.logger)
 
-        self.public_api.model.download_to_dir(self.workspace_id, name, parent_dir, progress.iter_done_report)
+        self.public_api.model.download_to_dir(self.workspace_id, name, parent_dir, progress.iters_done_report)
         self.logger.info('NN has been downloaded from server.')
 
         if self.has_nn_storage():
@@ -87,34 +96,37 @@ class DataManager(object):
                                                                          'images_to_download': len(images_to_download)})
             if len(images_to_download) + len(images_in_cache) != len(images):
                 raise RuntimeError("Error with images cache during download. Please contact support.")
-            for batch_cache in sly.batched(list(zip(images_in_cache, images_cache_paths)), constants.BATCH_SIZE_GET_IMAGES_INFO()):
-                img_cache_ids = [img_info.id for img_info, _ in batch_cache]
+
+            if len(images_in_cache) > 0:
+                img_cache_ids = [img_info.id for img_info in images_in_cache]
                 ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_cache_ids, progress_anns.iters_done_report)
-                img_name_to_ann = {ann.image_name: ann.annotation for ann in ann_info_list}
-                for img_info, img_cache_path in batch_cache:
-                    dataset.add_item_file(img_info.name, img_cache_path, img_name_to_ann[img_info.name])
+                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+                for img_info, img_cache_path in zip(images_in_cache, images_cache_paths):
+                    item_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id])
                     progress_imgs.iter_done_report()
 
         # download images from server
-        for batch_download in sly.batched(images_to_download, constants.BATCH_SIZE_GET_IMAGES_INFO()):
+        if len(images_to_download) > 0:
             #prepare lists for api methods
             img_ids = []
             img_paths = []
-            for img_info in batch_download:
+            for img_info in images_to_download:
                 img_ids.append(img_info.id)
                 # TODO download to a temp file and use dataset api to add the image to the dataset.
-                img_paths.append(dataset.deprecated_make_img_path(img_info.name, img_info.ext))
+                img_paths.append(
+                    os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
 
             # download annotations
             ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_ids, progress_anns.iters_done_report)
-            img_name_to_ann = {ann.image_name: ann.annotation for ann in ann_info_list}
-            self.public_api.image.download_batch(dataset_id, img_ids, img_paths, progress_imgs.iters_done_report)
-            for img_info, img_path in zip(batch_download, img_paths):
-                dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.name])
+            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            self.public_api.image.download_paths(dataset_id, img_ids, img_paths, progress_imgs.iters_done_report)
+            for img_info, img_path in zip(images_to_download, img_paths):
+                dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id])
 
             if self.has_images_storage():
                 progress_cache = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), len(img_paths), self.logger)
-                img_hashes = [img_info.hash for img_info in batch_download]
+                img_hashes = [img_info.hash for img_info in images_to_download]
                 self.storage.images.write_objects(img_paths, img_hashes, progress_cache.iter_done_report)
 
     # @TODO: remove legacy stuff
@@ -146,44 +158,31 @@ class DataManager(object):
         self.logger.info('PROJECT_CREATED',extra={'event_type': sly.EventType.PROJECT_CREATED, 'project_id': project_id})
 
     def upload_dataset(self, dataset, dataset_id):
-        progress = None
+        progress_cache = None
         items_count = len(dataset)
-        hash_to_img_paths = defaultdict(list)
-        hash_to_ann_paths = defaultdict(list)
-        hash_to_item_names = defaultdict(list)
+
+        item_names = []
+        img_paths = []
+        ann_paths = []
         for item_name in dataset:
+            item_names.append(item_name)
             item_paths = dataset.get_item_paths(item_name)
-            img_hash = sly.fs.get_file_hash(item_paths.img_path)
-            hash_to_img_paths[img_hash].append(item_paths.img_path)
-            hash_to_ann_paths[img_hash].append(item_paths.ann_path)
-            hash_to_item_names[img_hash].append(item_name)
+            img_paths.append(item_paths.img_path)
+            ann_paths.append(item_paths.ann_path)
+
             if self.has_images_storage():
-                if progress is None:
-                    progress = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), items_count, self.logger)
+                if progress_cache is None:
+                    progress_cache = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), items_count, self.logger)
+
+                img_hash = sly.fs.get_file_hash(item_paths.img_path)
                 self.storage.images.write_object(item_paths.img_path, img_hash)
-                progress.iter_done_report()
+                progress_cache.iter_done_report()
 
-        progress_img = sly.Progress('Dataset {!r}: upload images'.format(dataset.name), items_count, self.logger)
-        progress_ann = sly.Progress('Dataset {!r}: upload annotations'.format(dataset.name), items_count, self.logger)
+        progress = sly.Progress('Dataset {!r}: upload images'.format(dataset.name), items_count, self.logger)
+        image_infos = self.public_api.image.upload_paths(dataset_id, item_names, img_paths, progress.iters_done_report)
 
-        def add_images_annotations(hashes, pb_img_cb, pb_ann_cb):
-            names = [name for hash in hashes for name in hash_to_item_names[hash]]
-            unrolled_hashes = [hash for hash in hashes for _ in range(len(hash_to_item_names[hash]))]
-            ann_paths = [path for hash in hashes for path in hash_to_ann_paths[hash]]
-            remote_infos = self.public_api.image.add_batch(dataset_id, names, unrolled_hashes, pb_img_cb)
-            self.public_api.annotation.upload_batch_paths(dataset_id, [info.id for info in remote_infos], ann_paths, pb_ann_cb)
-
-        # add already uploaded images + attach annotations
-        remote_hashes = self.public_api.image.check_existing_hashes(list(hash_to_img_paths.keys()))
-        if len(remote_hashes) > 0:
-            add_images_annotations(remote_hashes, progress_img.iters_done_report, progress_ann.iters_done_report)
-
-        # upload new images + add annotations
-        new_hashes = list(set(hash_to_img_paths.keys()) - set(remote_hashes))
-        img_paths = [path for hash in new_hashes for path in hash_to_img_paths[hash]]
-        self.public_api.image.upload_batch_paths(img_paths, progress_img.iters_done_report)
-        if len(new_hashes) > 0:
-            add_images_annotations(new_hashes, None, progress_ann.iters_done_report)
+        progress = sly.Progress('Dataset {!r}: upload annotations'.format(dataset.name), items_count, self.logger)
+        self.public_api.annotation.upload_paths([info.id for info in image_infos], ann_paths, progress.iters_done_report)
 
     def upload_archive(self, task_id, dir_to_archive, archive_name):
         self.logger.info("PACK_TO_ARCHIVE ...")

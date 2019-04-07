@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 from supervisely_lib.io.json import JsonSerializable
-from supervisely_lib.imaging import image
+from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.geometry import validation
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
 
@@ -54,7 +54,7 @@ class PointLocation(JsonSerializable):
         return rotator.transform_point(self)
 
     def resize(self, in_size, out_size):
-        new_size = image.restore_proportional_size(in_size=in_size, out_size=out_size)
+        new_size = sly_image.restore_proportional_size(in_size=in_size, out_size=out_size)
         frow = new_size[0] / in_size[0]
         fcol = new_size[1] / in_size[1]
         return self.scale_frow_fcol(frow=frow, fcol=fcol)

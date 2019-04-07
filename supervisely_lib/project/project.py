@@ -8,8 +8,8 @@ from enum import Enum
 from supervisely_lib.annotation.annotation import Annotation, ANN_EXT
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
-from supervisely_lib.imaging import image
-from supervisely_lib.io.fs import list_files, get_file_name, get_file_ext, mkdir, copy_file, get_subdirs, dir_exists
+from supervisely_lib.imaging import image as sly_image
+from supervisely_lib.io.fs import list_files, mkdir, copy_file, get_subdirs, dir_exists
 from supervisely_lib.io.json import dump_json_file, load_json_file
 
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
@@ -20,13 +20,22 @@ class OpenMode(Enum):
     CREATE = 2
 
 
+def _get_effective_ann_name(img_name, ann_names):
+    new_format_name = img_name + ANN_EXT
+    if new_format_name in ann_names:
+        return new_format_name
+    else:
+        old_format_name = os.path.splitext(img_name)[0] + ANN_EXT
+        return old_format_name if (old_format_name in ann_names) else None
+
+
 class Dataset(KeyObject):
     def __init__(self, directory: str, mode: OpenMode):
         if type(mode) is not OpenMode:
             raise TypeError("Argument \'mode\' has type {!r}. Correct type is OpenMode".format(type(mode)))
 
         self._directory = directory
-        self._items_exts = {}  # item_name -> image extension
+        self._item_to_ann = {} # image file name -> annotation file name
 
         project_dir, ds_name = os.path.split(directory.rstrip('/'))
         self._project_dir = project_dir
@@ -62,58 +71,57 @@ class Dataset(KeyObject):
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError('Annotation directory not found: {!r}'.format(self.ann_dir))
 
-        ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.img_dir, image.SUPPORTED_IMG_EXTS)
+        raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
+        img_paths = list_files(self.img_dir, sly_image.SUPPORTED_IMG_EXTS)
 
-        ann_names = set(get_file_name(path) for path in ann_paths)
-        img_names = {get_file_name(path): get_file_ext(path) for path in img_paths}
+        raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
+        img_names = [os.path.basename(path) for path in img_paths]
 
-        if len(img_names) == 0 or len(ann_names) == 0:
+        if len(img_names) == 0 or len(raw_ann_names) == 0:
             raise RuntimeError('Dataset {!r} is empty'.format(self.name))
-        if ann_names != set(img_names.keys()):
-            raise RuntimeError('File names in dataset {!r} are inconsistent'.format(self.name))
 
-        self._items_exts = img_names
+        # Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
+        effective_ann_names = set()
+        for img_name in img_names:
+            ann_name = _get_effective_ann_name(img_name, raw_ann_names)
+            if ann_name is None:
+                raise RuntimeError('Image {!r} in dataset {!r} does not have a corresponding annotation file.'.format(
+                    img_name, self.name))
+            if ann_name in effective_ann_names:
+                raise RuntimeError('Annotation file {!r} in dataset {!r} matches two different image files.'.format(
+                    ann_name, self.name))
+            effective_ann_names.add(ann_name)
+            self._item_to_ann[img_name] = ann_name
 
     def _create(self):
         mkdir(self.ann_dir)
         mkdir(self.img_dir)
 
-    def _item_ext_or_die(self, item_name):
-        item_ext = self._items_exts.get(item_name)
-        if item_ext is None:
-            raise RuntimeError('Item {} not found in the project.'.format(item_name))
-        return item_ext
-
     def item_exists(self, item_name):
-        return self._items_exts.get(item_name) is not None
+        return item_name in self._item_to_ann
 
     def get_img_path(self, item_name):
-        item_ext = self._item_ext_or_die(item_name)
-        return os.path.join(self.img_dir, item_name + item_ext)
-
-    # TODO clean up public usages of this
-    def deprecated_make_img_path(self, item_name, img_ext):
-        img_ext = ('.' + img_ext).replace('..', '.')
-        image.validate_ext(img_ext)
-        return os.path.join(self.img_dir, item_name + img_ext)
+        if not self.item_exists(item_name):
+            raise RuntimeError('Item {} not found in the project.'.format(item_name))
+        return os.path.join(self.img_dir, item_name)
 
     def get_ann_path(self, item_name):
-        _ = self._item_ext_or_die(item_name)  # Check that the item actually exists in the dataset.
-        return os.path.join(self.ann_dir, item_name + ANN_EXT)
+        ann_path = self._item_to_ann.get(item_name, None)
+        if ann_path is None:
+            raise RuntimeError('Item {} not found in the project.'.format(item_name))
+        return os.path.join(self.ann_dir, ann_path)
 
     def add_item_file(self, item_name, img_path, ann=None):
         self._add_img_file(item_name, img_path)
         self._set_ann_by_type(item_name, ann)
 
-    def add_item_np(self, item_name, img, img_ext, ann=None):
-        self._add_img_np(item_name, img, img_ext)
+    def add_item_np(self, item_name, img, ann=None):
+        self._add_img_np(item_name, img)
         self._set_ann_by_type(item_name, ann)
 
     def _set_ann_by_type(self, item_name, ann):
         if ann is None:
-            img_path = self.deprecated_make_img_path(item_name, self._items_exts[item_name])
-            img_size = image.read(img_path).shape[:2]
+            img_size = sly_image.read(self.get_img_path(item_name)).shape[:2]
             self.set_ann(item_name, Annotation(img_size))
         elif type(ann) is Annotation:
             self.set_ann(item_name, ann)
@@ -124,17 +132,27 @@ class Dataset(KeyObject):
         else:
             raise TypeError("Unsupported type {!r} for ann argument".format(type(ann)))
 
-    def _add_img_np(self, item_name, img, img_ext):
-        dst_img_path = self.deprecated_make_img_path(item_name, img_ext)
-        image.write(dst_img_path, img)
-        self._items_exts[item_name] = img_ext
+    def _check_add_item_name(self, item_name):
+        if item_name in self._item_to_ann:
+            raise RuntimeError('Image {!r} already exists in dataset {!r}.'.format(item_name, self.name))
+        item_name_split = os.path.splitext(item_name)
+        if item_name_split[1] == '' or item_name_split[1] not in sly_image.SUPPORTED_IMG_EXTS:
+            raise RuntimeError('Image name {!r} has unsupported extension.'.format(item_name))
+
+    def _add_img_np(self, item_name, img):
+        self._check_add_item_name(item_name)
+        dst_img_path = os.path.join(self.img_dir, item_name)
+        sly_image.write(dst_img_path, img)
+        # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
+        # an annotation either.
+        self._item_to_ann[item_name] = item_name + ANN_EXT
 
     def _add_img_file(self, item_name, img_path):
-        img_ext = get_file_ext(img_path)
-        dst_img_path = self.deprecated_make_img_path(item_name, img_ext)
+        self._check_add_item_name(item_name)
+        dst_img_path = os.path.join(self.img_dir, item_name)
         if img_path != dst_img_path:  # used only for agent + api during download project
             copy_file(img_path, dst_img_path)
-        self._items_exts[item_name] = img_ext
+        self._item_to_ann[item_name] = item_name + ANN_EXT
 
     def set_ann(self, item_name: str, ann: Annotation):
         if type(ann) is not Annotation:
@@ -158,10 +176,10 @@ class Dataset(KeyObject):
         return ItemPaths(img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
 
     def __len__(self):
-        return len(self._items_exts)
+        return len(self._item_to_ann)
 
     def __next__(self):
-        for item_name in self._items_exts.keys():
+        for item_name in self._item_to_ann.keys():
             yield item_name
 
     def __iter__(self):
@@ -228,8 +246,12 @@ class Project:
 
     def _create(self):
         if dir_exists(self.directory):
-            raise RuntimeError("Can not create new project {!r}. Directory {!r} already exists".format(self.name, self.directory))
-        mkdir(self.directory)
+            if len(list_files(self.directory)) > 0:
+                raise RuntimeError(
+                    "Cannot create new project {!r}. Directory {!r} already exists and is not empty".format(
+                        self.name, self.directory))
+        else:
+            mkdir(self.directory)
         self.set_meta(ProjectMeta())
 
     def validate(self):

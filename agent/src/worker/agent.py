@@ -6,7 +6,7 @@ import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait
 import subprocess
-
+import os
 import supervisely_lib as sly
 
 from worker import constants
@@ -36,8 +36,13 @@ class Agent:
         self.thread_list = []
         self.daemons_list = []
 
+        self._remove_old_agent()
+        self._validate_duplicated_agents()
+
         sly.fs.clean_dir(constants.AGENT_TMP_DIR())
-        self._stop_missed_containers()
+        self._stop_missed_containers(constants.TASKS_DOCKER_LABEL())
+        # for compatibility with old plugins
+        self._stop_missed_containers(constants.TASKS_DOCKER_LABEL_LEGACY())
 
         self.docker_api = docker.from_env(version='auto')
         self._docker_login()
@@ -47,6 +52,33 @@ class Agent:
                                 constants.TIMEOUT_CONFIG_PATH())
         self.agent_connect_initially()
         self.logger.info('Agent connected to server.')
+
+    def _remove_old_agent(self):
+        container_id = os.getenv('REMOVE_OLD_AGENT', None)
+        if container_id is None:
+            return
+
+        dc = docker.from_env()
+        olg_agent = dc.containers.get(container_id)
+        olg_agent.remove(force=True)
+
+        agent_same_token = []
+        for cont in dc.containers.list():
+            if constants.TOKEN() in cont.name:
+                agent_same_token.append(cont)
+
+        if len(agent_same_token) > 1:
+            raise RuntimeError("Several agents with the same token are running. Please, kill them or contact support.")
+        agent_same_token[0].rename('supervisely-agent-{}'.format(constants.TOKEN()))
+
+    def _validate_duplicated_agents(self):
+        dc = docker.from_env()
+        agent_same_token = []
+        for cont in dc.containers.list():
+            if constants.TOKEN() in cont.name:
+                agent_same_token.append(cont)
+        if len(agent_same_token) > 1:
+            raise RuntimeError("Agent with the same token already exists.")
 
     def agent_connect_initially(self):
         try:
@@ -63,6 +95,7 @@ class Agent:
         self.agent_info = {
             'hardware_info': hw_info,
             'agent_image': json.loads(docker_img_info)["Config"]["Image"],
+            'agent_version': json.loads(docker_img_info)["Config"]["Labels"]["VERSION"],
             'agent_image_digest': get_self_docker_image_digest()
         }
 
@@ -121,6 +154,7 @@ class Agent:
                 self.logger.warning('TASK_ID_ALREADY_STARTED', extra={'task_id': task['task_id']})
             else:
                 task_id = task['task_id']
+                task["agent_version"] = self.agent_info["agent_version"]
                 self.task_pool[task_id] = create_task(task, self.docker_api)
                 self.task_pool[task_id].start()
         finally:
@@ -161,9 +195,9 @@ class Agent:
             cont.remove(force=True)
         return stop_list
 
-    def _stop_missed_containers(self):
+    def _stop_missed_containers(self, ecosystem_token):
         self.logger.info('Searching for missed containers...')
-        label_filter = {'label': 'ecosystem_token={}'.format(constants.TASKS_DOCKER_LABEL())}
+        label_filter = {'label': 'ecosystem_token={}'.format(ecosystem_token)}
 
         stopped_list = Agent._remove_containers(label_filter=label_filter)
 

@@ -4,6 +4,7 @@ from enum import Enum
 from threading import Lock
 import json
 from docker.errors import DockerException, ImageNotFound as DockerImageNotFound
+from packaging import version
 
 import supervisely_lib as sly
 
@@ -41,8 +42,8 @@ class TaskDockerized(TaskSly):
 
         self._container = None
         self._container_lock = Lock()  # to drop container from different threads
-        self.docker_image_name = self.info['docker_image']
-        if ':' not in self.docker_image_name:
+        self.docker_image_name = self.info.get('docker_image', None)
+        if self.docker_image_name is not None and ':' not in self.docker_image_name:
             self.docker_image_name += ':latest'
         self.docker_pulled = False  # in task
 
@@ -118,6 +119,34 @@ class TaskDockerized(TaskSly):
             raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
                                   ' Please, run the task again or email support.')
         self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
+        self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
+
+    def _validate_version(self, agent_image, plugin_image):
+        self.logger.info('Check if agent and plugin versions are compatible')
+
+        def get_version(docker_image):
+            if docker_image is None:
+                return None
+            image_parts = docker_image.split(":")
+            if len(image_parts) != 2:
+                return None
+            return image_parts[1]
+
+        agent_version = get_version(agent_image.strip())
+        plugin_version = get_version(plugin_image.strip())
+
+        if agent_version is None or plugin_version is None:
+            self.logger.info('Unknown version')
+
+        av = version.parse(agent_version)
+        pv = version.parse(plugin_version)
+
+        if type(av) is version.LegacyVersion or type(pv) is version.LegacyVersion:
+            self.logger.info('Invalid semantic version, can not compare')
+            return
+
+        if av.release[0] < pv.release[0]:
+            self.logger.critical('Agent version is lower than plugin version. Please, update agent.')
 
     def _docker_image_exists(self):
         try:
@@ -138,17 +167,16 @@ class TaskDockerized(TaskSly):
             add_envs = {}
         self._container_lock.acquire()
         try:
-            #@TODO: DEBUG_COPY_IMAGES only for compatibility with old plugins
             self._container = self._docker_api.containers.run(
                 self.docker_image_name,
                 runtime=self.docker_runtime,
                 entrypoint=["sh", "-c", "python -u {}".format(self.entrypoint)],
                 detach=True,
-                name='sly_task_{}_{}'.format(constants.TOKEN(), self.info['task_id']),
+                name='sly_task_{}_{}'.format(self.info['task_id'], constants.TASKS_DOCKER_LABEL()),
                 remove=False,
                 volumes={self.dir_task_host: {'bind': '/sly_task_data',
                                               'mode': 'rw'}},
-                environment={'LOG_LEVEL': 'DEBUG', 'LANG': 'C.UTF-8', 'DEBUG_COPY_IMAGES': 1, **add_envs},
+                environment={'LOG_LEVEL': 'DEBUG', 'LANG': 'C.UTF-8', **add_envs},
                 labels={'ecosystem': 'supervisely',
                         'ecosystem_token': constants.TASKS_DOCKER_LABEL(),
                         'task_id': str(self.info['task_id'])},
@@ -158,7 +186,7 @@ class TaskDockerized(TaskSly):
             )
             self._container.reload()
             self.logger.debug('After spawning. Container status: {}'.format(str(self._container.status)))
-            self.logger.info('Docker container spawned',extra={'container_id': self._container.id, 'container_name': self._container.name})
+            self.logger.info('Docker container is spawned',extra={'container_id': self._container.id, 'container_name': self._container.name})
         finally:
             self._container_lock.release()
 

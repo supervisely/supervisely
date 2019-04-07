@@ -44,7 +44,7 @@ class BitmapBase(Geometry):
 
         data_dims = len(data.shape)
         if expected_data_dims is not None and data_dims != expected_data_dims:
-            raise ValueError('BitmapBase "data" argument must be a {}-dimensional numpy array. ' +
+            raise ValueError('BitmapBase "data" argument must be a {}-dimensional numpy array. '
                              'Instead got {} dimensions'.format(expected_data_dims, data_dims))
 
         self._origin = origin.clone()

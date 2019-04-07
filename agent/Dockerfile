@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir \
         py3exiv2==0.4.0 
 
 RUN pip install requests-toolbelt
+RUN pip install packaging
+
 
 ############### copy code ###############
 ARG MODULE_PATH

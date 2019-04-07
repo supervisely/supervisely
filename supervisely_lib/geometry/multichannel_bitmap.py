@@ -65,3 +65,6 @@ class MultichannelBitmap(BitmapBase):
         bytes_io = io.BytesIO()
         np.save(bytes_io, data, allow_pickle=False)
         return base64.b64encode(zlib.compress(bytes_io.getvalue())).decode('utf-8')
+
+    def validate(self, name, settings):
+        pass  # No need name validation - inner geometry type.
