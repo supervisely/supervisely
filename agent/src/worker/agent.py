@@ -59,7 +59,11 @@ class Agent:
             return
 
         dc = docker.from_env()
-        olg_agent = dc.containers.get(container_id)
+        try:
+            olg_agent = dc.containers.get(container_id)
+        except docker.errors.NotFound:
+            return
+
         olg_agent.remove(force=True)
 
         agent_same_token = []

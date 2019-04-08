@@ -72,7 +72,7 @@ class Dataset(KeyObject):
             raise FileNotFoundError('Annotation directory not found: {!r}'.format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.img_dir, sly_image.SUPPORTED_IMG_EXTS)
+        img_paths = list_files(self.img_dir, filter_fn=sly_image.has_valid_ext)
 
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
         img_names = [os.path.basename(path) for path in img_paths]
@@ -135,8 +135,7 @@ class Dataset(KeyObject):
     def _check_add_item_name(self, item_name):
         if item_name in self._item_to_ann:
             raise RuntimeError('Image {!r} already exists in dataset {!r}.'.format(item_name, self.name))
-        item_name_split = os.path.splitext(item_name)
-        if item_name_split[1] == '' or item_name_split[1] not in sly_image.SUPPORTED_IMG_EXTS:
+        if not sly_image.has_valid_ext(item_name):
             raise RuntimeError('Image name {!r} has unsupported extension.'.format(item_name))
 
     def _add_img_np(self, item_name, img):

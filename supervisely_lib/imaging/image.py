@@ -1,12 +1,12 @@
 # coding: utf-8
 
+import os.path
+
 import cv2
 from PIL import ImageDraw, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
 import skimage.transform
-import base64
-import hashlib
 
 from supervisely_lib.io.fs import ensure_base_path, get_file_ext
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -16,6 +16,8 @@ from supervisely_lib._utils import get_bytes_hash
 
 #@TODO: refactoring image->img
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
+
+# Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.bmp', '.png']
 DEFAULT_IMG_EXT = '.png'
 
@@ -42,10 +44,19 @@ def get_ext(path):
     return '.{}'.format(img_ext)
 
 
+def is_valid_ext(ext: str) -> bool:
+    return ext.lower() in SUPPORTED_IMG_EXTS
+
+
+def has_valid_ext(path: str) -> bool:
+    return is_valid_ext(os.path.splitext(path)[1])
+
+
 def validate_ext(ext):
-    if ext.lower() not in SUPPORTED_IMG_EXTS:
+    if not is_valid_ext(ext):
         raise ImageExtensionError(
-            'Wrong image format {}. Only the following formats are supported: {}.'.format(ext, ', '.join(SUPPORTED_IMG_EXTS)))
+            'Unsupported image extension: {}. Only the following extensions are supported: {}.'.format(
+                ext, ', '.join(SUPPORTED_IMG_EXTS)))
 
 
 def read(path) -> np.ndarray:

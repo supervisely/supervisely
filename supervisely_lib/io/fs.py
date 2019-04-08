@@ -62,21 +62,20 @@ def list_dir_recursively(dir: str) -> list:
     return all_files
 
 
-def list_files(dir: str, valid_extensions: list=None) -> list:
+def list_files(dir: str, valid_extensions: list=None, filter_fn=None) -> list:
     """
     Recursively walks through directory and returns list with all file paths.
 
     Args:
         dir: Target dir path.
         valid_extensions:
+        filter_fn: function with a single argument that determines whether to keep a given file path.
     Returns:
          A list containing file paths.
     """
-    paths = [f.path for f in os.scandir(dir) if f.is_file()]
-    if valid_extensions is None:
-        return paths
-    paths = [path for path in paths if get_file_ext(path) in valid_extensions]
-    return paths
+    return [f.path for f in os.scandir(dir) if
+            (valid_extensions is None or get_file_ext(f.path) in valid_extensions) and
+            (filter_fn is None or filter_fn(f.path))]
 
 
 def mkdir(dir: str):
