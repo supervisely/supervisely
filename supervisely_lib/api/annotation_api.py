@@ -25,13 +25,15 @@ class AnnotationApi(ModuleApi):
         return self._convert_json_info(response.json())
 
     def download_batch(self, dataset_id, image_ids, progress_cb=None):
-        filters = [{"field": ApiField.IMAGE_ID, "operator": "in", "value": image_ids}]
-        results = self.get_list_all_pages('annotations.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters}, progress_cb)
-        id_to_ann = {ann_info.image_id: ann_info for ann_info in results}
+        id_to_ann = {}
+        for batch in batched(image_ids):
+            results = self.api.post('annotations.bulk.info', data={ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch}).json()
+            for ann_dict in results:
+                ann_info = self._convert_json_info(ann_dict)
+                id_to_ann[ann_info.image_id] = ann_info
+            if progress_cb is not None:
+                progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
-        #debug_ids = [ann_info.image_id for ann_info in results]
-        #if debug_ids != image_ids:
-        #    raise RuntimeError("annotations.download_batch: imageIds order is broken")
         return ordered_results
 
     def upload_path(self, img_id, ann_path):

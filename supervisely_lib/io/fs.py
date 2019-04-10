@@ -92,7 +92,8 @@ def mkdir(dir: str):
 # create base path recursively; pay attention to slash-terminating paths
 def ensure_base_path(path):
     dst_dir = os.path.split(path)[0]
-    mkdir(dst_dir)
+    if dst_dir:
+        mkdir(dst_dir)
 
 
 def copy_file(src: str, dst: str):
