@@ -38,7 +38,9 @@ class TaskUpdate(TaskSly):
 
         new_volumes = {}
         for vol in cur_volumes:
-            src, dst = vol.split(":")
+            parts = vol.split(":")
+            src = parts[0]
+            dst = parts[1]
             new_volumes[src] = {'bind': dst, 'mode': 'rw'}
 
         cur_envs.append("REMOVE_OLD_AGENT={}".format(cur_container_id))
