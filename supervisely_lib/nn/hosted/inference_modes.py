@@ -402,13 +402,21 @@ class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
 
     @classmethod
     def _single_class_nms(cls, labels, iou_thresh, confidence_tag_name):
-        sorted_labels = sorted(labels, key=lambda x: -x.tags.get(confidence_tag_name).value)
-        result_labels = []
-        while len(sorted_labels) > 0:
-            result_labels.append(sorted_labels.pop(0))
-            sorted_labels = [label for label in sorted_labels
-                             if cls._iou(label.geometry.to_bbox(), result_labels[-1].geometry.to_bbox()) <= iou_thresh]
-        return result_labels
+        # We have to sort in the order of increasing score and check *all* the labels with a higher confidence than our
+        # given label to make sure to filter out low-confidence labels transitively.
+        #
+        # I.e., if we have A > B > C (by confidence) and (A intersects B), (B intersects C), but (A not intersects C),
+        # and we iteratively filter from the highest confidence first, then on step 1 we will only filter out B (because
+        # A does not intersect C, so C remains), and on step 2 we will not filter out C because B is already gone, so
+        # the end result will be [A, C]
+        #
+        # If we start from the bottom though, then we will first filter out C (by looking at B) and then filter out B
+        # (by looking at A), so the end result will be only [A], which is what we want.
+        sorted_labels = sorted(labels, key=lambda x: x.tags.get(confidence_tag_name).value)
+        return [
+            label for label_idx, label in sorted_labels
+            if all(cls._iou(label.geometry.to_bbox(), other.geometry.to_bbox()) <= iou_thresh
+                   for other in sorted_labels[(label_idx + 1):])]
 
     # @TODO: move out
     @classmethod

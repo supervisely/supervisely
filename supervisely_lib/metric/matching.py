@@ -16,10 +16,10 @@ def filter_labels_by_name(labels, names_whitelist):
 
 
 def get_labels_iou(label_1: Label, label_2: Label, img_size):
-    mask_1 = np.full(img_size, False)
-    label_1.geometry.draw(mask_1, color=True)
-    mask_2 = np.full(img_size, False)
-    label_2.geometry.draw(mask_2, color=True)
+    mask_1 = np.full(img_size, 0, dtype=np.uint8)
+    label_1.geometry.draw(mask_1, color=1)
+    mask_2 = np.full(img_size, 0, dtype=np.uint8)
+    label_2.geometry.draw(mask_2, color=1)
     return safe_ratio((mask_1 & mask_2).sum(), (mask_1 | mask_2).sum())
 
 

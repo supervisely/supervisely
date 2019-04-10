@@ -73,7 +73,7 @@ def list_files(dir: str, valid_extensions: list=None, filter_fn=None) -> list:
     Returns:
          A list containing file paths.
     """
-    return [f.path for f in os.scandir(dir) if
+    return [f.path for f in os.scandir(dir) if f.is_file() and
             (valid_extensions is None or get_file_ext(f.path) in valid_extensions) and
             (filter_fn is None or filter_fn(f.path))]
 

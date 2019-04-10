@@ -119,7 +119,7 @@ class TaskDockerized(TaskSly):
             raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
                                   ' Please, run the task again or email support.')
         self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
-        self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
+        #self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
 
     def _validate_version(self, agent_image, plugin_image):
         self.logger.info('Check if agent and plugin versions are compatible')
