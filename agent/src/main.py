@@ -24,6 +24,7 @@ def parse_envs():
         ('DEFAULT_TIMEOUTS', 'true'),
         ('DELETE_TASK_DIR_ON_FINISH', 'true'),
         ('DELETE_TASK_DIR_ON_FAILURE', 'false'),
+        ('CHECK_VERSION_COMPATIBILITY', 'false')
     ]}
     args = {**args_opt, **args_req}
     return args

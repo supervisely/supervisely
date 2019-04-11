@@ -17,7 +17,7 @@ class PrecisionRecallMetric(MetricsBase):
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()
-        self._pred_to_gt_class_mapping = {v: k for k, v in class_mapping}
+        self._pred_to_gt_class_mapping = {v: k for k, v in class_mapping.items()}
         self._iou_threshold = iou_threshold
         self._counters = {gt_cls: {counter: 0 for counter in RAW_COUNTERS}
                           for gt_cls in self._gt_to_pred_class_mapping.keys()}

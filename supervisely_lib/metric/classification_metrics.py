@@ -54,7 +54,7 @@ class ClassificationMetrics(MetricsBase):
 
     def get_metrics(self):
         result = deepcopy(self._counters)
-        for pair_counters in self._counters.values():
+        for pair_counters in result.values():
             self._calculate_complex_metrics(pair_counters)
         return result
 

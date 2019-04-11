@@ -119,7 +119,9 @@ class TaskDockerized(TaskSly):
             raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
                                   ' Please, run the task again or email support.')
         self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
-        #self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
+
+        if constants.CHECK_VERSION_COMPATIBILITY():
+            self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
 
     def _validate_version(self, agent_image, plugin_image):
         self.logger.info('Check if agent and plugin versions are compatible')
@@ -127,16 +129,21 @@ class TaskDockerized(TaskSly):
         def get_version(docker_image):
             if docker_image is None:
                 return None
-            image_parts = docker_image.split(":")
+            image_parts = docker_image.strip().split(":")
             if len(image_parts) != 2:
                 return None
             return image_parts[1]
 
-        agent_version = get_version(agent_image.strip())
-        plugin_version = get_version(plugin_image.strip())
+        agent_version = get_version(agent_image)
+        plugin_version = get_version(plugin_image)
 
-        if agent_version is None or plugin_version is None:
-            self.logger.info('Unknown version')
+        if agent_version is None:
+            self.logger.info('Unknown agent version')
+            return
+
+        if plugin_version is None:
+            self.logger.info('Unknown plugin version')
+            return
 
         av = version.parse(agent_version)
         pv = version.parse(plugin_version)

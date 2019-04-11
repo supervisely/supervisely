@@ -31,18 +31,11 @@ def check_class_mapping(first_project: Project, second_project: Project, classes
             raise RuntimeError('Class {} does not exist in input project "{}".'.format(v, second_project.name))
 
 
-def _get_no_value_tags(tag_metas: TagMetaCollection) -> list:
-    return [tag_meta.name for tag_meta in tag_metas if tag_meta.value_type == TagValueType.NONE]
-
-
 def check_tag_mapping(first_project: Project, second_project: Project, tags_mapping: dict) -> None:
-    project_first_tags = _get_no_value_tags(first_project.meta.img_tag_metas)
-    project_second_tags = _get_no_value_tags(second_project.meta.img_tag_metas)
-
     for k, v in tags_mapping.items():
-        if k not in project_first_tags:
+        if not first_project.meta.img_tag_metas.has_key(k):
             raise RuntimeError('Tag {} does not exist in input project "{}".'.format(k, first_project.name))
-        if v not in project_second_tags:
+        if not second_project.meta.img_tag_metas.has_key(v):
             raise RuntimeError('Tag {} does not exist in input project "{}".'.format(v, second_project.name))
 
 

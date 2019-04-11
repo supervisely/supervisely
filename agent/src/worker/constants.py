@@ -91,6 +91,10 @@ def PULL_ALWAYS():
     return sly.env.flag_from_env(os.getenv('PULL_ALWAYS', 'true'))
 
 
+def CHECK_VERSION_COMPATIBILITY():
+    return sly.env.flag_from_env(os.getenv('CHECK_VERSION_COMPATIBILITY', 'false'))
+
+
 def TIMEOUT_CONFIG_PATH():
     use_default_timeouts = sly.env.flag_from_env(os.getenv('DEFAULT_TIMEOUTS', 'true'))
     return None if use_default_timeouts else '/workdir/src/configs/timeouts_for_stateless.json'

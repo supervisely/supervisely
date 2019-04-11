@@ -22,7 +22,7 @@ class MetricProjectsApplier:
         # If a separate project with predictions is not set, use the ground truth project as a source of predictions
         # (with potentially different classes/tags defined by the class mapping).
         self._project_pred = (
-            self._get_project_or_die(PROJECT_GT) if (PROJECT_PRED in self._confg) else self._project_gt)
+            self._get_project_or_die(PROJECT_PRED) if (PROJECT_PRED in self._confg) else self._project_gt)
         self._check_projects_compatible_structure()
 
     def _get_project_or_die(self, project_field_name):

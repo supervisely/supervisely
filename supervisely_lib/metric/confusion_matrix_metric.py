@@ -51,7 +51,7 @@ class ConfusionMatrixMetric(MetricsBase):
 
         sorted_gt_names = sorted(self._class_mapping.keys())
         pred_names = [self._class_mapping[gt_name] for gt_name in sorted_gt_names]
-        logger.info(''.join(exp_arg(pred_names + ['False Negatives'])))
+        logger.info(''.join(exp_arg([''] + pred_names + ['False Negatives'])))
         for gt_name in sorted_gt_names:
             logger.info(''.join([exp_one(gt_name)] +
                                 exp_arg([self._confusion_matrix[gt_name, pred_name] for pred_name in pred_names]) +

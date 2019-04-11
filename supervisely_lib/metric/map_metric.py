@@ -28,7 +28,8 @@ class MAPMetric(MetricsBase):
 
     @staticmethod
     def _get_confidence_value(label):
-        return label.tags['confidence'].value if 'confidence' in label.tags else None
+        confidence_tag = label.tags.get('confidence', None)
+        return confidence_tag.value if confidence_tag is not None else None
 
     def add_pair(self, ann_gt, ann_pred):
         labels_gt = filter_labels_by_name(ann_gt.labels, self._gt_to_pred_class_mapping)
@@ -46,10 +47,10 @@ class MAPMetric(MetricsBase):
             self._counters[label_1.obj_class.name][TOTAL_GROUND_TRUTH] += 1
 
     @staticmethod
-    def _calculate_average_precision(pair_name, pair_counters):
-        if len(pair_counters[MATCHES] == 0):
-            logger.warning('No samples for pair {!r} have been detected. '
-                           'MAP value for this pair will be set to 0.'.format(pair_name))
+    def _calculate_average_precision(gt_class, pred_class, pair_counters):
+        if len(pair_counters[MATCHES]) == 0:
+            logger.warning('No matching samples for pair {!r} <-> {!r} have been detected. '
+                           'MAP value for this pair will be set to 0.'.format(gt_class, pred_class))
             return 0
 
         sorted_matches = sorted(pair_counters[MATCHES], key=lambda match: match.confidence)
@@ -60,19 +61,21 @@ class MAPMetric(MetricsBase):
         anchor_precisions = []
         for anchor_recall in np.linspace(0, 1, 11):
             points_above_recall = (recalls >= anchor_recall)
-            anchor_precisions.append(np.max(precisions[points_above_recall]) if len(points_above_recall) > 0 else 0)
+            anchor_precisions.append(np.max(precisions[points_above_recall]) if np.any(points_above_recall) else 0)
         return np.mean(anchor_precisions)
 
     def get_metrics(self):  # Macro-evaluation
         logger.info('Start evaluation of macro metrics.')
-        result = {pair_name: {AP: self._calculate_average_precision(pair_name, pair_counters)}
-                  for pair_name, pair_counters in self._counters.items()}
+        result = {gt_class:
+                      {AP: self._calculate_average_precision(gt_class, self._gt_to_pred_class_mapping[gt_class],
+                                                             pair_counters)}
+                  for gt_class, pair_counters in self._counters.items()}
         logger.info('Finish macro evaluation')
         return result
 
     @staticmethod
     def average_per_class_avg_precision(per_class_metrics):
-        return np.mean(class_metrics[AP] for class_metrics in per_class_metrics.values())
+        return np.mean([class_metrics[AP] for class_metrics in per_class_metrics.values()])
 
     def get_total_metrics(self):
         return self.average_per_class_avg_precision(self.get_metrics())
