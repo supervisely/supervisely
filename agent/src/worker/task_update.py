@@ -34,6 +34,10 @@ class TaskUpdate(TaskSly):
         cur_volumes = docker_img_info["HostConfig"]["Binds"]
         cur_envs = docker_img_info["Config"]["Env"]
 
+        if docker_img_info["Config"]["Labels"].get("com.docker.compose.project", None) == "supervisely":
+            raise RuntimeError('Docker container was started from docker-compose. Please, use docker-compose to upgrade.')
+            return
+
         self._docker_pull(self.info['docker_image'])
 
         new_volumes = {}
