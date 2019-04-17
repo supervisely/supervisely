@@ -51,10 +51,10 @@ up a virtual computing claster that your team can run their tasks on from the
 Supervisely web instance.
 
 <p align="center">
-<img src="https://docs.new.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
+<img src="https://docs.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
 </p>
 
-Check out [documentation](https://docs.new.supervise.ly/cluster/overview/) on how to deploy a new agent.
+Check out [documentation](https://docs.supervise.ly/cluster/overview/) on how to deploy a new agent.
 
 ## Neural Networks
 
@@ -78,7 +78,7 @@ Here are the neural network architectures available out of the box today:
 * [U-Net](./plugins/nn/unet_v2) (segmentation)
 * [YOLO v3](./plugins/nn/yolo_v3) (detection)
 
-Read [here](https://docs.new.supervise.ly/neural-networks/overview/overview/) how to run training or inference with this models.
+Read [here](https://docs.supervise.ly/neural-networks/overview/overview/) how to run training or inference with this models.
 
 For all source implementations of NNs the original authors are retaining all their original rights.
 
@@ -111,7 +111,7 @@ Key features:
 
 ## Data Transformation Language
 
-Data Transformation Language allows to automate complicated pipelines of data transformation. Different actions determined by *DTL layers* may be applied to images and annotations. In details it is described [here](https://docs.new.supervise.ly/export/).
+Data Transformation Language allows to automate complicated pipelines of data transformation. Different actions determined by *DTL layers* may be applied to images and annotations. In details it is described [here](https://docs.supervise.ly/export/).
 
 ## Resources
 
