@@ -1,38 +1,42 @@
 # coding: utf-8
 
 import os
-from collections import namedtuple
 import tarfile
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import numpy as np
 import json
 
-from supervisely_lib.api.module_api import ApiField, ModuleApi
-from supervisely_lib._utils import rand_str, camel_to_snake
+from supervisely_lib.api.module_api import ApiField, CloneableModuleApi
+from supervisely_lib._utils import rand_str
 from supervisely_lib.io.fs import ensure_base_path, silent_remove
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.project.project_meta import ProjectMeta
 
 
-class NeuralNetworkApi(ModuleApi):
-    _info_sequence = [ApiField.ID,
-                      ApiField.NAME,
-                      ApiField.DESCRIPTION,
-                      ApiField.CONFIG,
-                      ApiField.HASH,
-                      ApiField.ONLY_TRAIN,
-                      ApiField.PLUGIN_ID,
-                      ApiField.PLUGIN_VERSION,
-                      ApiField.SIZE,
-                      ApiField.WEIGHTS_LOCATION,
-                      ApiField.README,
-                      ApiField.TASK_ID,
-                      ApiField.USER_ID,
-                      ApiField.TEAM_ID,
-                      ApiField.WORKSPACE_ID,
-                      ApiField.CREATED_AT,
-                      ApiField.UPDATED_AT]
-    Info = namedtuple('ModelInfo', [camel_to_snake(name) for name in _info_sequence])
+class NeuralNetworkApi(CloneableModuleApi):
+    @staticmethod
+    def info_sequence():
+        return [ApiField.ID,
+                ApiField.NAME,
+                ApiField.DESCRIPTION,
+                ApiField.CONFIG,
+                ApiField.HASH,
+                ApiField.ONLY_TRAIN,
+                ApiField.PLUGIN_ID,
+                ApiField.PLUGIN_VERSION,
+                ApiField.SIZE,
+                ApiField.WEIGHTS_LOCATION,
+                ApiField.README,
+                ApiField.TASK_ID,
+                ApiField.USER_ID,
+                ApiField.TEAM_ID,
+                ApiField.WORKSPACE_ID,
+                ApiField.CREATED_AT,
+                ApiField.UPDATED_AT]
+
+    @staticmethod
+    def info_tuple_name():
+        return 'ModelInfo'
 
     def get_list(self, workspace_id, filters=None):
         return self.get_list_all_pages('models.list',  {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
@@ -41,7 +45,7 @@ class NeuralNetworkApi(ModuleApi):
         return self._get_info_by_id(id, 'models.info')
 
     def download(self, id):
-        response = self.api.post('models.download', {ApiField.ID: id}, stream=True)
+        response = self._api.post('models.download', {ApiField.ID: id}, stream=True)
         return response
 
     def download_to_tar(self, workspace_id, name, tar_path, progress_cb=None):
@@ -65,20 +69,21 @@ class NeuralNetworkApi(ModuleApi):
         return model_dir
 
     def generate_hash(self, task_id):
-        response = self.api.post('models.hash.create', {ApiField.TASK_ID: task_id})
+        response = self._api.post('models.hash.create', {ApiField.TASK_ID: task_id})
         return response.json()
 
     def upload(self, hash, archive_path, progress_cb=None):
         encoder = MultipartEncoder({'hash': hash,
-                                    'weights': (os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar') })
-        def callback(monitor):
-            read_mb = monitor.bytes_read / 1024.0 / 1024.0
+                                    'weights': (os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar')})
+
+        def callback(monitor_instance):
+            read_mb = monitor_instance.bytes_read / 1024.0 / 1024.0
             if progress_cb is not None:
                 progress_cb(read_mb)
         monitor = MultipartEncoderMonitor(encoder, callback)
-        self.api.post('models.upload', monitor)
+        self._api.post('models.upload', monitor)
 
-    def inference_remote_image(self, id, image_hash, ann=None, meta=None, mode=None, ext=None):
+    def inference_remote_image(self, id, image_hash, ann=None, meta=None, mode=None):
         data = {
             "request_type": "inference",
             "meta": meta or ProjectMeta().to_json(),
@@ -90,7 +95,7 @@ class NeuralNetworkApi(ModuleApi):
         encoder = MultipartEncoder({'id': str(id).encode('utf-8'),
                                     'data': json.dumps(data),
                                     'image': ("img", fake_img_data, "")})
-        response = self.api.post('models.infer', MultipartEncoderMonitor(encoder))
+        response = self._api.post('models.infer', MultipartEncoderMonitor(encoder))
         return response.json()
 
     def inference(self, id, img, ann=None, meta=None, mode=None, ext=None):
@@ -105,7 +110,7 @@ class NeuralNetworkApi(ModuleApi):
                                     'data': json.dumps(data),
                                     'image': ("img", img_data, "")})
 
-        response = self.api.post('models.infer', MultipartEncoderMonitor(encoder))
+        response = self._api.post('models.infer', MultipartEncoderMonitor(encoder))
         return response.json()
 
     def get_output_meta(self, id, input_meta=None, inference_mode=None):
@@ -116,14 +121,14 @@ class NeuralNetworkApi(ModuleApi):
         }
         encoder = MultipartEncoder({'id': str(id).encode('utf-8'),
                                     'data': json.dumps(data)})
-        response = self.api.post('models.infer', MultipartEncoderMonitor(encoder))
+        response = self._api.post('models.infer', MultipartEncoderMonitor(encoder))
         response_json = response.json()
         if 'out_meta' in response_json:
             return response_json['out_meta']
         return response.json()
 
     def get_deploy_tasks(self, model_id):
-        response = self.api.post('models.info.deployed', {'id': model_id})
+        response = self._api.post('models.info.deployed', {'id': model_id})
         return [task[ApiField.ID] for task in response.json()]
 
     def _clone_api_method_name(self):

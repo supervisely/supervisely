@@ -11,10 +11,11 @@ def _maybe_append_image_extension(name, ext):
     name_split = os.path.splitext(name)
     if name_split[1] == '':
         normalized_ext = ('.' + ext).replace('..', '.')
-        sly.image.validate_ext(normalized_ext)
-        return name + normalized_ext
+        result = name + normalized_ext
+        sly.image.validate_ext(result)
     else:
-        return name
+        result = name
+    return result
 
 
 class DataManager(object):
@@ -57,7 +58,11 @@ class DataManager(object):
         images_in_cache = []
         images_cache_paths = []
         for image in images:
-            cache_path = self.storage.images.check_storage_object(image.hash, image.ext)
+            _, effective_ext = os.path.splitext(image.name)
+            if len(effective_ext) == 0:
+                # Fallback for the old format where we were cutting off extensions from image names.
+                effective_ext = image.ext
+            cache_path = self.storage.images.check_storage_object(image.hash, effective_ext)
             if cache_path is None:
                 images_to_download.append(image)
             else:
@@ -186,7 +191,8 @@ class DataManager(object):
 
     def upload_archive(self, task_id, dir_to_archive, archive_name):
         self.logger.info("PACK_TO_ARCHIVE ...")
-        local_tar_path = os.path.join(constants.AGENT_TMP_DIR(), sly.rand_str(30) + '.tar')
+        archive_name = archive_name if len(archive_name) > 0 else sly.rand_str(30)
+        local_tar_path = os.path.join(constants.AGENT_TMP_DIR(), archive_name + '.tar')
         sly.fs.archive_directory(dir_to_archive, local_tar_path)
 
         size_mb = sly.fs.get_file_size(local_tar_path) / 1024.0 / 1024

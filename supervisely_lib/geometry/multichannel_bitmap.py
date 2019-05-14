@@ -10,6 +10,10 @@ from supervisely_lib.geometry.constants import MULTICHANNEL_BITMAP
 
 
 class MultichannelBitmap(BitmapBase):
+    @staticmethod
+    def geometry_name():
+        return 'multichannel_bitmap'
+
     def __init__(self, data, origin: PointLocation = None):
         super().__init__(data, origin, expected_data_dims=3)
 
@@ -44,11 +48,13 @@ class MultichannelBitmap(BitmapBase):
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data, in_size, out_size)
         return MultichannelBitmap(data=scaled_data, origin=scaled_origin)
 
-    def draw(self, bitmap, color, thickness=1):
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
         self.to_bbox().get_cropped_numpy_slice(bitmap)[...] = color
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         bbox = self.to_bbox()
+        # Not forwarding the config here directly since a Rectangle cannot know
+        # about our config format.
         bbox.draw_contour(bitmap, color, thickness)
 
     @property

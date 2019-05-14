@@ -26,7 +26,7 @@ class LabelBase:
         self._validate_geometry()
 
     def _validate_geometry(self):
-        self._geometry.validate(self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_settings)
+        self._geometry.validate(self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_config)
 
     def _validate_geometry_type(self):
         raise NotImplementedError()
@@ -61,7 +61,7 @@ class LabelBase:
         obj_class = project_meta.get_obj_class(obj_class_name)
         return cls(geometry=obj_class.geometry_type.from_json(data),
                    obj_class=obj_class,
-                   tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.obj_tag_metas),
+                   tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
                    description=data.get(LabelJsonFields.DESCRIPTION, ""))
 
     def add_tag(self, tag: Tag):

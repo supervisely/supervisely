@@ -1,7 +1,11 @@
 # coding: utf-8
 
+import collections
 import operator
 import numpy as np
+
+from skimage import measure
+from scipy import ndimage
 
 from typing import List, Callable
 
@@ -12,6 +16,7 @@ from supervisely_lib.geometry.bitmap import Bitmap, SkeletonizeMethod
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.polyline import Polyline
 from supervisely_lib.geometry.rectangle import Rectangle
+from supervisely_lib.geometry.point_location import PointLocation
 
 
 def skeletonize_bitmap(ann: Annotation, classes: List[str], method_id: SkeletonizeMethod) -> Annotation:
@@ -93,7 +98,8 @@ def drop_object_by_class(ann: Annotation, classes: List[str]) -> Annotation:
     return ann.transform_labels(_filter)
 
 
-def filter_objects_by_area(ann: Annotation, classes: List[str], comparator=operator.lt, thresh_percent: float=None) -> Annotation:  # @ TODO: add size mode
+def filter_objects_by_area(ann: Annotation, classes: List[str], comparator=operator.lt,
+                           thresh_percent: float = None) -> Annotation:  # @ TODO: add size mode
     """
     Deletes labels less (or greater) than specified percentage of image area.
 
@@ -120,7 +126,7 @@ def filter_objects_by_area(ann: Annotation, classes: List[str], comparator=opera
 
 
 def bitwise_mask(ann: Annotation, class_mask: str, classes_to_correct: List[str],
-                 bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray]=np.logical_and) -> Annotation:
+                 bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray] = np.logical_and) -> Annotation:
     """
     Performs bitwise operation between two masks. Uses one target mask to correct all others.
 
@@ -186,3 +192,33 @@ def find_contours(ann: Annotation, classes_mapping: dict) -> Annotation:  # @TOD
         return [Label(geometry=geom, obj_class=new_obj_cls) for geom in label.geometry.to_contours()]
 
     return ann.transform_labels(to_contours)
+
+
+def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: collections.Mapping) -> list:
+    """
+    Extract multiclass instances from grayscale mask and save it to labels list.
+    Args:
+        mask: multiclass grayscale mask
+        color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: ObjClass('cat), ...})
+    Returns:
+        list of labels with bitmap geometry
+    """
+    zero_offset = 1 if 0 in color_id_to_obj_class else 0
+    if zero_offset > 0:
+        mask = mask + zero_offset
+
+    labeled, labels_count = measure.label(mask, connectivity=1, return_num=True)
+    objects_slices = ndimage.find_objects(labeled)
+    labels = []
+
+    for object_index, slices in enumerate(objects_slices, start=1):
+        crop = mask[slices]
+        sub_mask = crop * (labeled[slices] == object_index).astype(np.int)
+
+        class_index = np.max(sub_mask) - zero_offset
+
+        if class_index in color_id_to_obj_class:
+            bitmap = Bitmap(data=sub_mask.astype(np.bool), origin=PointLocation(slices[0].start, slices[1].start))
+            label = Label(geometry=bitmap, obj_class=color_id_to_obj_class.get(class_index))
+            labels.append(label)
+    return labels

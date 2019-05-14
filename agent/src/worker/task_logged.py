@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from copy import deepcopy
 import os
 import os.path as osp
 import threading
@@ -31,7 +32,10 @@ class TaskLogged(multiprocessing.Process):
     def __init__(self, task_info):
         super().__init__()
         self.daemon = True
-        self.info = task_info
+        self.info = deepcopy(task_info)
+        # Move API key out of the task info message so that it does not get into
+        # logs.
+        self._user_api_key = self.info.pop('user_api_key', None)
 
         self.dir_task = osp.join(constants.AGENT_TASKS_DIR(), str(self.info['task_id']))
         self.dir_logs = osp.join(self.dir_task, 'logs')
@@ -67,8 +71,8 @@ class TaskLogged(multiprocessing.Process):
     def init_api(self):
         self.api = sly.AgentAPI(constants.TOKEN(), constants.SERVER_ADDRESS(), self.logger, constants.TIMEOUT_CONFIG_PATH())
 
-        if 'user_api_key' in self.info:
-            self.public_api = sly.Api(constants.SERVER_ADDRESS(), self.info['user_api_key'])
+        if self._user_api_key is not None:
+            self.public_api = sly.Api(constants.SERVER_ADDRESS(), self._user_api_key)
             self.public_api.add_additional_field('taskId', self.info['task_id'])
             self.public_api_context = self.public_api.task.get_context(self.info['task_id'])
         # else -> TelemetryReporter

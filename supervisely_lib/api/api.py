@@ -15,6 +15,20 @@ import supervisely_lib.api.image_api as image_api
 import supervisely_lib.api.annotation_api as annotation_api
 import supervisely_lib.api.plugin_api as plugin_api
 import supervisely_lib.api.agent_api as agent_api
+from supervisely_lib.sly_logger import logger
+
+
+RETRY_STATUS_CODES = {
+    408,  # Request Timeout
+    429,  # Too Many Requests
+    500,  # Internal Server Error
+    502,  # Bad Gateway
+    503,  # Service Unavailable
+    504,  # Gateway Timeout
+    509,  # Bandwidth Limit Exceeded (Apache)
+    598,  # Network read timeout error
+    599   # Network connect timeout error
+}
 
 
 class Api:
@@ -43,22 +57,36 @@ class Api:
     def add_additional_field(self, key, value):
         self.additional_fields[key] = value
 
-    def post(self, method, data, stream=False):
-        url = os.path.join(self.server_address, 'public/api/v3', method)
+    def post(self, method, data, retries=3, stream=False):
+        for retry_idx in range(retries):
+            try:
+                url = os.path.join(self.server_address, 'public/api/v3', method)
 
-        if type(data) is bytes:
-            response = requests.post(url, data=data, headers=self.headers, stream=stream)
-        elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-            response = requests.post(url, data=data, headers={**self.headers, 'Content-Type': data.content_type}, stream=stream)
-        else:
-            json_body = data
-            if type(data) is dict:
-                json_body = {**data, **self.additional_fields}
-            response = requests.post(url, json=json_body, headers=self.headers, stream=stream)
+                if type(data) is bytes:
+                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+                    response = requests.post(url, data=data,
+                                             headers={**self.headers, 'Content-Type': data.content_type}, stream=stream)
+                else:
+                    json_body = data
+                    if type(data) is dict:
+                        json_body = {**data, **self.additional_fields}
+                    response = requests.post(url, json=json_body, headers=self.headers, stream=stream)
 
-        if response.status_code != requests.codes.ok:
-            Api._raise_for_status(response)
-        return response
+                if response.status_code != requests.codes.ok:
+                    Api._raise_for_status(response)
+                return response
+            except requests.RequestException as exc:
+                if (isinstance(exc, requests.exceptions.HTTPError) and hasattr(exc, 'response')
+                        and exc.response.status_code in RETRY_STATUS_CODES
+                        and retry_idx < retries - 1):
+                    # (retry_idx + 2): one for change the counting base from 0 to 1,
+                    # and 1 for indexing the next iteration.
+                    log_string = 'A request to the server has failed. Retrying ({}/{}).'.format(retry_idx + 2, retries)
+                    logger.warn(log_string)
+                    continue
+                break
+        raise RuntimeError('Request has failed. This may be due to connection problems or invalid requests.')
 
     @staticmethod
     def _raise_for_status(response):

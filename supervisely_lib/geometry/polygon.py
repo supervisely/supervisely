@@ -56,18 +56,16 @@ class Polygon(VectorGeometry):
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
-
-    def draw(self, bitmap, color, thickness=1):
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
-
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         cv2.fillPoly(bmp_to_draw, pts=[exterior], color=1)
         cv2.fillPoly(bmp_to_draw, pts=interior, color=0)
         bool_mask = bmp_to_draw.astype(bool)
         bitmap[bool_mask] = color
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
 

@@ -39,6 +39,8 @@ from supervisely_lib.geometry.rectangle import Rectangle
 
 from supervisely_lib.geometry.helpers import geometry_to_bitmap
 
+from supervisely_lib.export.pascal_voc import save_project_as_pascal_voc_detection
+
 from supervisely_lib.metric.metric_base import MetricsBase
 from supervisely_lib.metric.projects_applier import MetricProjectsApplier
 
@@ -54,7 +56,7 @@ import supervisely_lib.worker_proto.worker_api_pb2 as api_proto
 
 from supervisely_lib.api.api import Api
 from supervisely_lib.api import api
-from supervisely_lib.api.module_api import WaitingTimeExceeded
+from supervisely_lib.api.task_api import WaitingTimeExceeded
 
 from supervisely_lib._utils import rand_str, batched, get_bytes_hash, generate_names
 

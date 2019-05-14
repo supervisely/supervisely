@@ -50,7 +50,7 @@ class Tag(KeyObject):
             value = None
         else:
             tag_name = data[TagJsonFields.TAG_NAME]
-            value = data[TagJsonFields.VALUE]
+            value = data.get(TagJsonFields.VALUE, None)
         meta = tag_meta_collection.get(tag_name)
         return cls(meta=meta, value=value)
 

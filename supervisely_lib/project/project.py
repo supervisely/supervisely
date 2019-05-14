@@ -151,6 +151,12 @@ class Dataset(KeyObject):
         dst_img_path = os.path.join(self.img_dir, item_name)
         if img_path != dst_img_path:  # used only for agent + api during download project
             copy_file(img_path, dst_img_path)
+            # Make sure we actually received a valid image file, clean it up and bail if not so.
+            try:
+                sly_image.validate_format(dst_img_path)
+            except sly_image.UnsupportedImageFormat:
+                os.remove(dst_img_path)
+                raise
         self._item_to_ann[item_name] = item_name + ANN_EXT
 
     def set_ann(self, item_name: str, ann: Annotation):

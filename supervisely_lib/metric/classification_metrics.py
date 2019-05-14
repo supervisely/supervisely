@@ -3,6 +3,7 @@
 from copy import deepcopy
 
 from supervisely_lib.sly_logger import logger
+from supervisely_lib.annotation.tag_meta import TagValueType
 from supervisely_lib.metric.metric_base import MetricsBase
 from supervisely_lib.metric.common import log_line, safe_ratio, sum_counters, TRUE_POSITIVE, TRUE_NEGATIVE, \
     FALSE_POSITIVE, FALSE_NEGATIVE, ACCURACY, PRECISION, RECALL, F1_MEASURE
@@ -12,19 +13,32 @@ RAW_COUNTERS = [TRUE_POSITIVE, TRUE_NEGATIVE, FALSE_POSITIVE, FALSE_NEGATIVE]
 
 
 class ClassificationMetrics(MetricsBase):
-
-    def __init__(self, tags_mapping):
+    def __init__(self, tags_mapping, confidence_threshold=0):
         if len(tags_mapping) < 1:
             raise RuntimeError('At least one tags pair should be defined!')
         self._tags_mapping = tags_mapping.copy()
+        self._confidence_threshold = confidence_threshold
         self._counters = {tag_name_gt: {counter: 0 for counter in RAW_COUNTERS} for tag_name_gt in
                           self._tags_mapping.keys()}
 
     def _classification_metrics(self, ann_1, ann_2):
+
+        def is_passes_confidence_threshold(tag):
+            if tag.meta.value_type == TagValueType.NONE:
+                return True
+            elif tag.meta.value_type == TagValueType.ANY_NUMBER:
+                return tag.value >= self._confidence_threshold
+            elif tag.meta.value_type == TagValueType.ANY_STRING or tag.meta.value_type == TagValueType.ONEOF_STRING:
+                logger.warning("Classification tag '{}'".format(tag.name))
+                return True
+
         current_metric_res = {}
         for tag_name_gt, tag_name_pred in self._tags_mapping.items():
-            c1 = ann_1.img_tags.has_key(tag_name_gt)
-            c2 = ann_2.img_tags.has_key(tag_name_pred)
+            tag1 = ann_1.img_tags.get(tag_name_gt)
+            tag2 = ann_2.img_tags.get(tag_name_pred)
+
+            c1 = is_passes_confidence_threshold(tag1) if tag1 is not None else False
+            c2 = is_passes_confidence_threshold(tag2) if tag2 is not None else False
 
             current_metric_res[tag_name_gt] = {
                 TRUE_POSITIVE: int(c1 and c2),

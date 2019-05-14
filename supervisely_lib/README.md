@@ -40,7 +40,7 @@ outline of the available modules and areas they cover:
   * `hosted` - All the neural network logic that is specific to interacting with
     Supervisely platform. Base classes for neural network training and inference
     with common functionality already implemented (see our [guide on adding your
-    own neural network plugin](../help/tutorials/02_custom_neural_net_plugin/)),
+    own neural network plugin](../help/tutorials/03_custom_neural_net_plugin/custom_nn_plugin.md)),
     parsing, interpreting and consistency checking of configs, class indexing
     (between integer IDs of the tensors and Supervisely classes) helpers.
   * `pytorch` - Convenience wrappers for PyTorch - model weights IO, metrics

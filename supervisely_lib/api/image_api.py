@@ -1,12 +1,9 @@
 # coding: utf-8
 
-from collections import namedtuple
-import numpy as np
 import io
 from collections import defaultdict
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi
-from supervisely_lib._utils import camel_to_snake
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext
 from supervisely_lib._utils import batched
@@ -15,21 +12,25 @@ import re
 
 
 class ImageApi(ModuleApi):
-    _info_sequence = [ApiField.ID,
-                      ApiField.NAME,
-                      ApiField.LINK,
-                      ApiField.HASH,
-                      ApiField.MIME,
-                      ApiField.EXT,
-                      ApiField.SIZE,
-                      ApiField.WIDTH,
-                      ApiField.HEIGHT,
-                      ApiField.LABELS_COUNT,
-                      ApiField.DATASET_ID,
-                      ApiField.CREATED_AT,
-                      ApiField.UPDATED_AT]
+    @staticmethod
+    def info_sequence():
+        return [ApiField.ID,
+                ApiField.NAME,
+                ApiField.LINK,
+                ApiField.HASH,
+                ApiField.MIME,
+                ApiField.EXT,
+                ApiField.SIZE,
+                ApiField.WIDTH,
+                ApiField.HEIGHT,
+                ApiField.LABELS_COUNT,
+                ApiField.DATASET_ID,
+                ApiField.CREATED_AT,
+                ApiField.UPDATED_AT]
 
-    Info = namedtuple('ImageInfo', [camel_to_snake(name) for name in _info_sequence])
+    @staticmethod
+    def info_tuple_name():
+        return 'ImageInfo'
 
     def get_list(self, dataset_id, filters=None):
         return self.get_list_all_pages('images.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
@@ -50,7 +51,7 @@ class ImageApi(ModuleApi):
         return results
 
     def _download(self, id):
-        response = self.api.post('images.download', {ApiField.ID: id})
+        response = self._api.post('images.download', {ApiField.ID: id})
         return response
 
     def download_np(self, id):
@@ -67,10 +68,10 @@ class ImageApi(ModuleApi):
 
     def _download_batch(self, dataset_id, ids):
         for batch_ids in batched(ids):
-            response = self.api.post('images.bulk.download',
-                                     {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids})
+            response = self._api.post(
+                'images.bulk.download', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids})
             decoder = MultipartDecoder.from_response(response)
-            for idx, part in enumerate(decoder.parts):
+            for part in decoder.parts:
                 img_id = int(re.findall('name="(.*)"', part.headers[b'Content-Disposition'].decode('utf-8'))[0])
                 yield img_id, part
 
@@ -110,12 +111,12 @@ class ImageApi(ModuleApi):
         if len(hashes) == 0:
             return results
         for hashes_batch in batched(hashes, batch_size=900):
-            response = self.api.post('images.internal.hashes.list', hashes_batch)
+            response = self._api.post('images.internal.hashes.list', hashes_batch)
             results.extend(response.json())
         return results
 
     def check_image_uploaded(self, hash):
-        response = self.api.post('images.internal.hashes.list', [hash])
+        response = self._api.post('images.internal.hashes.list', [hash])
         results = response.json()
         if len(results) == 0:
             return False
@@ -151,7 +152,7 @@ class ImageApi(ModuleApi):
             for idx, item in enumerate(batch):
                 content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'image/*')
             encoder = MultipartEncoder(fields=content_dict)
-            self.api.post('images.bulk.upload', encoder)
+            self._api.post('images.bulk.upload', encoder)
             if progress_cb is not None:
                 progress_cb(len(batch))
 
@@ -219,7 +220,7 @@ class ImageApi(ModuleApi):
                 item_tuple = func_item_to_kv(item)
                 #@TODO: 'title' -> ApiField.NAME
                 images.append({'title': name, item_tuple[0]: item_tuple[1]})
-            response = self.api.post('images.bulk.add', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGES: images})
+            response = self._api.post('images.bulk.add', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGES: images})
             if progress_cb is not None:
                 progress_cb(len(images))
             results.extend([self._convert_json_info(info_json) for info_json in response.json()])
@@ -235,14 +236,14 @@ class ImageApi(ModuleApi):
             return None
         temp_ext = None
         field_values = []
-        for field_name in self.__class__._info_sequence:
+        for field_name in self.info_sequence():
             if field_name == ApiField.EXT:
                 continue
             field_values.append(info[field_name])
             if field_name == ApiField.MIME:
                 temp_ext = info[field_name].split('/')[1]
                 field_values.append(temp_ext)
-        for idx, field_name in enumerate(self.__class__._info_sequence):
+        for idx, field_name in enumerate(self.info_sequence()):
             if field_name == ApiField.NAME:
                 cur_ext = get_file_ext(field_values[idx])
                 if not cur_ext:
@@ -256,5 +257,5 @@ class ImageApi(ModuleApi):
                 if temp_ext not in field_values[idx]:
                     field_values[idx] = "{}.{}".format(field_values[idx], temp_ext)
                 break
-        return self.__class__.Info._make(field_values)
+        return self.InfoType(*field_values)
 

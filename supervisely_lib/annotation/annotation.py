@@ -76,7 +76,7 @@ class Annotation:
         labels = [Label.from_json(label_json, project_meta) for label_json in data[AnnotationJsonFields.LABELS]]
         return cls(img_size=img_size,
                    labels=labels,
-                   img_tags=TagCollection.from_json(data[AnnotationJsonFields.IMG_TAGS], project_meta.img_tag_metas),
+                   img_tags=TagCollection.from_json(data[AnnotationJsonFields.IMG_TAGS], project_meta.tag_metas),
                    img_description=data.get(AnnotationJsonFields.IMG_DESCRIPTION, ""))
 
     @classmethod

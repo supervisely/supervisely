@@ -56,5 +56,8 @@ def decode_image(img_data_packed):
     img_np = cv2.imdecode(img_data_packed, cv2.IMREAD_UNCHANGED).astype(np.uint8)
     if not img_np.size:
         raise RuntimeError('Unable to decode input image.')
-    img_data = img_np[:, :, ::-1]  # BGR 2 RGB
+    if len(img_np.shape) == 2:
+        img_data = np.stack([img_np, img_np, img_np], axis=2)  # TODO: mb raise error instead
+    else:
+        img_data = img_np[:, :, ::-1]  # BGR 2 RGB
     return img_data

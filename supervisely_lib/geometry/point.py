@@ -56,11 +56,11 @@ class Point(Geometry):
     def translate(self, drow, dcol):
         return self.from_point_location(self.point_location.translate(drow, dcol))
 
-    def draw(self, bitmap, color, thickness=1):
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
         r = round(thickness / 2)  # @TODO: relation between thickness and point radius - ???
         cv2.circle(bitmap, (self.col, self.row), radius=r, color=color, thickness=cv2.FILLED)
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         # @TODO: mb dummy operation for Point
         r = round((thickness + 1) / 2)
         cv2.circle(bitmap, (self.col, self.row), radius=r, color=color, thickness=cv2.FILLED)

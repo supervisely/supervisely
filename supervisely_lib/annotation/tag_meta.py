@@ -118,6 +118,7 @@ class TagMeta(KeyObject, JsonSerializable):
             raise ValueError('Unsupported TagValueType detected ({})!'.format(self.value_type))
 
     def __eq__(self, other):
+        # TODO compare colors also here (need to check the usages and replace with is_compatible() where appropriate).
         return (isinstance(other, TagMeta) and
                 self.name == other.name and
                 self.value_type == other.value_type and
@@ -125,6 +126,12 @@ class TagMeta(KeyObject, JsonSerializable):
 
     def __ne__(self, other):
         return not self == other
+
+    def is_compatible(self, other):
+        return (isinstance(other, TagMeta) and
+                self.name == other.name and
+                self.value_type == other.value_type and
+                self.possible_values == other.possible_values)
 
     def clone(self, name=None, value_type=None, possible_values=None, color=None):
         return TagMeta(name=take_with_default(name, self.name),

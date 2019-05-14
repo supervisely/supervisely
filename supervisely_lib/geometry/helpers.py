@@ -24,12 +24,12 @@ def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None
                               left=bbox.left - radius,
                               bottom=bbox.bottom + radius,
                               right=bbox.right + radius)
-    bitmap_data = np.zeros(shape=(extended_bbox.height, extended_bbox.width), dtype=np.uint8)  # uint8 for opencv draw
+    bitmap_data = np.full(shape=(extended_bbox.height, extended_bbox.width), fill_value=False)
     geometry = geometry.translate(-extended_bbox.top, -extended_bbox.left)
-    geometry.draw(bitmap_data, 1, thickness=thickness)
+    geometry.draw(bitmap_data, color=True, thickness=thickness)
 
     origin = PointLocation(extended_bbox.top, extended_bbox.left)
-    bitmap_geometry = Bitmap(data=bitmap_data.astype(np.bool), origin=origin)
+    bitmap_geometry = Bitmap(data=bitmap_data, origin=origin)
     if crop_image_shape is not None:
         crop_rect = Rectangle.from_size(*crop_image_shape)
         return bitmap_geometry.crop(crop_rect)

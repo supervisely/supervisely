@@ -8,6 +8,7 @@ from supervisely_lib.sly_logger import logger
 
 CLASSES_MAPPING = 'classes_mapping'
 TAGS_MAPPING = 'tags_mapping'
+CONFIDENCE_THRESHOLD = 'confidence_threshold'
 
 TRUE_POSITIVE = 'true-positive'
 TRUE_NEGATIVE = 'true-negative'
@@ -33,9 +34,9 @@ def check_class_mapping(first_project: Project, second_project: Project, classes
 
 def check_tag_mapping(first_project: Project, second_project: Project, tags_mapping: dict) -> None:
     for k, v in tags_mapping.items():
-        if not first_project.meta.img_tag_metas.has_key(k):
+        if not first_project.meta.tag_metas.has_key(k):
             raise RuntimeError('Tag {} does not exist in input project "{}".'.format(k, first_project.name))
-        if not second_project.meta.img_tag_metas.has_key(v):
+        if not second_project.meta.tag_metas.has_key(v):
             raise RuntimeError('Tag {} does not exist in input project "{}".'.format(v, second_project.name))
 
 

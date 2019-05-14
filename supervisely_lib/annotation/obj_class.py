@@ -10,7 +10,7 @@ from supervisely_lib.geometry.point import Point
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.polyline import Polyline
 from supervisely_lib.geometry.rectangle import Rectangle
-from supervisely_lib.geometry.keypoints import Keypoints
+from supervisely_lib.geometry.graph import GraphNodes
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib._utils import take_with_default
 
@@ -19,15 +19,15 @@ class ObjClassJsonFields:
     NAME = 'title'
     GEOMETRY_TYPE = 'shape'
     COLOR = 'color'
-    GEOMETRY_SETTINGS = 'geometry_settings'
+    GEOMETRY_CONFIG = 'geometry_config'
 
 
-INPUT_GEOMETRIES = [Bitmap, Point, Polygon, Polyline, Rectangle, Keypoints]
+INPUT_GEOMETRIES = [Bitmap, Point, Polygon, Polyline, Rectangle, GraphNodes]
 JSON_SHAPE_TO_GEOMETRY_TYPE = {geometry.geometry_name(): geometry for geometry in INPUT_GEOMETRIES}
 
 
 class ObjClass(KeyObject, JsonSerializable):
-    def __init__(self, name: str, geometry_type: type, color: List[int]=None, geometry_settings: dict=None):
+    def __init__(self, name: str, geometry_type: type, color: List[int]=None, geometry_config: dict=None):
         """
         Class of objects (person, car, etc) with necessary properties: name, type of geometry (Polygon, Rectangle, ...)
         and RGB color. Only one class can be associated with Label.
@@ -38,14 +38,14 @@ class ObjClass(KeyObject, JsonSerializable):
             geometry_type: type of the geometry. Geometry defines the shape for all Labels of this ObjClass:
                 Polygon, Rectangle, Bitmap, Polyline, Point
             color: [R, G, B]
-            geometry_settings: additional settings of the geometry that is associated with ObjClass
+            geometry_config: additional settings of the geometry that is associated with ObjClass
         Returns:
             ObjClass instance
         """
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
-        self._geometry_settings = deepcopy(take_with_default(geometry_settings, {}))
+        self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
         _validate_color(self._color)
 
     @property
@@ -73,12 +73,12 @@ class ObjClass(KeyObject, JsonSerializable):
         return self._geometry_type
 
     @property
-    def geometry_settings(self):
+    def geometry_config(self):
         """
         Returns:
             additional settings of the geometry that is associated with ObjClass
         """
-        return deepcopy(self._geometry_settings)
+        return deepcopy(self._geometry_config)
 
     @property
     def color(self):
@@ -100,7 +100,7 @@ class ObjClass(KeyObject, JsonSerializable):
             ObjClassJsonFields.NAME: self.name,
             ObjClassJsonFields.GEOMETRY_TYPE: self.geometry_type.geometry_name(),
             ObjClassJsonFields.COLOR: rgb2hex(self.color),
-            ObjClassJsonFields.GEOMETRY_SETTINGS: self._geometry_settings
+            ObjClassJsonFields.GEOMETRY_CONFIG: self.geometry_type.config_to_json(self._geometry_config)
         }
 
     @classmethod
@@ -115,21 +115,22 @@ class ObjClass(KeyObject, JsonSerializable):
         name = data[ObjClassJsonFields.NAME]
         geometry_type = JSON_SHAPE_TO_GEOMETRY_TYPE[data[ObjClassJsonFields.GEOMETRY_TYPE]]
         color = hex2rgb(data[ObjClassJsonFields.COLOR])
-        geometry_settings = data.get(ObjClassJsonFields.GEOMETRY_SETTINGS)
-        return cls(name=name, geometry_type=geometry_type, color=color, geometry_settings=geometry_settings)
+        geometry_config = geometry_type.config_from_json(data.get(ObjClassJsonFields.GEOMETRY_CONFIG))
+        return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config)
 
     def __eq__(self, other: 'ObjClass'):
         return isinstance(other, ObjClass) and self.name == other.name and self.geometry_type == other.geometry_type \
-               and self.geometry_settings == other.geometry_settings
+               and self.geometry_config == other.geometry_config
 
     def __ne__(self, other: 'ObjClass'):
         return not self == other
 
     def __str__(self):  # Is need show geometry settings here?
-        return '{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<10}{:<16s}{:<16}'.format('Name:', self.name,
-                                                                          'Shape:', self.geometry_type.__name__,
-                                                                          'Color:', str(self.color),
-                                                                          'Geom. settings:', self.geometry_settings)
+        return '{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<15}{:<16s}{:<16}'.format(
+            'Name:', self.name,
+            'Shape:', self.geometry_type.__name__,
+            'Color:', str(self.color),
+            'Geom. settings:', str(self.geometry_config))
 
     @classmethod
     def get_header_ptable(cls):
@@ -139,7 +140,7 @@ class ObjClass(KeyObject, JsonSerializable):
         return [self.name, self.geometry_type.__name__, self.color]
 
     def clone(self, name: str = None, geometry_type: Geometry = None, color: List[int] = None,
-              geometry_settings: dict = None) -> 'ObjClass':
+              geometry_config: dict = None) -> 'ObjClass':
         """
         Creates object duplicate. Defined arguments replace corresponding original values.
 
@@ -151,4 +152,4 @@ class ObjClass(KeyObject, JsonSerializable):
         return ObjClass(name=take_with_default(name, self.name),
                         geometry_type=take_with_default(geometry_type, self.geometry_type),
                         color=take_with_default(color, self.color),
-                        geometry_settings=take_with_default(geometry_settings, self.geometry_settings))
+                        geometry_config=take_with_default(geometry_config, self.geometry_config))

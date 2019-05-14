@@ -27,7 +27,7 @@ def get_iou(mask_1, mask_2):
 def _render_labels_for_class_name(labels, class_name, canvas):
     for label in labels:
         if label.obj_class.name == class_name:
-            label.geometry.draw(canvas, 1)
+            label.geometry.draw(canvas, True)
 
 
 def _iou_log_line(iou, intersection, union):
@@ -46,7 +46,7 @@ class IoUMetric(MetricsBase):
     def add_pair(self, ann_gt, ann_pred):
         img_size = ann_gt.img_size
         for cls_gt, cls_pred in self._class_mapping.items():
-            mask_gt, mask_pred = np.full(img_size, 0, dtype=np.uint8), np.full(img_size, 0, dtype=np.uint8)
+            mask_gt, mask_pred = np.full(img_size, False), np.full(img_size, False)
             _render_labels_for_class_name(ann_gt.labels, cls_gt, mask_gt)
             _render_labels_for_class_name(ann_pred.labels, cls_pred, mask_pred)
             class_pair_counters = self._counters[cls_gt]
@@ -67,6 +67,7 @@ class IoUMetric(MetricsBase):
 
     def log_total_metrics(self):
         logger.info('**************** Result IoU metric values ****************')
+        logger.info('NOTE! Values for "intersection" and "union" are in pixels.')
         for i, (cls_gt, values) in enumerate(self.get_metrics().items(), start=1):
             iou_line = _iou_log_line(values[IOU], values[INTERSECTION], values[UNION])
             logger.info('{}. Classes {} <-> {}:   {}'.format(i, cls_gt, self._class_mapping[cls_gt], iou_line))

@@ -1,6 +1,7 @@
 # coding: utf-8
 import itertools
 
+
 def _clear_dupe_start_end_boundary(coords_list):
     return coords_list if len(coords_list) < 2 or coords_list[0] != coords_list[-1] else coords_list[:-1]
 

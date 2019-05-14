@@ -1,6 +1,6 @@
 # coding: utf-8
 import random
-import math
+import colorsys
 
 
 def _validate_color(color):
@@ -15,42 +15,53 @@ def _validate_color(color):
             raise ValueError('Color channel have to be in range [0; 255]')
 
 
-def random_rgb(pastel_factor: float = 0.5) -> list:
+def random_rgb() -> list:
     """
-    :param pastel_factor: 0 means that pastel effect disabled
-    :return: RGB integer values. Example: [80, 255, 0]
+    Generate RGB color with fixed saturation and lightness
+    :return: RGB integer values.
     """
-    color = [round(255 * (random.uniform(0, 1.0) + pastel_factor) / (1.0 + pastel_factor)) for _ in range(3)]
-    _validate_color(color)
-    return color
+    hsl_color = (random.random(), 0.3, 0.8)
+    rgb_color = colorsys.hls_to_rgb(*hsl_color)
+    return [round(c * 255) for c in rgb_color]
+
+
+def _normalize_color(color):
+    """
+    Divide all RGB values by 255.
+    :param color: color (RGB tuple of integers)
+    """
+    return [c / 255. for c in color]
 
 
 def _color_distance(first_color: list, second_color: list) -> float:
     """
-    Calculate Euclidean distance between components of 2 colors
+    Calculate distance in HLS color space between Hue components of 2 colors
     :param first_color: first color (RGB tuple of integers)
     :param second_color: second color (RGB tuple of integers)
     :return: Euclidean distance between 'first_color' and 'second_color'
     """
-    s = sum((z - w) ** 2 for z, w in zip(first_color, second_color))
-    return math.sqrt(s)
+    first_color_hls = colorsys.rgb_to_hls(*_normalize_color(first_color))
+    second_color_hls = colorsys.rgb_to_hls(*_normalize_color(second_color))
+    hue_distance = min(abs(first_color_hls[0] - second_color_hls[0]),
+                       1 - abs(first_color_hls[0] - second_color_hls[0]))
+    return hue_distance
 
 
-def generate_rgb(exist_colors: list, pastel_factor: float = 0.0) -> list:
+def generate_rgb(exist_colors: list) -> list:
     """
     Generate new color which oppositely by exist colors
-    :param pastel_factor: 0 means that pastel effect disabled
     :param exist_colors: list of existing colors in RGB format.
     :return: RGB integer values. Example: [80, 255, 0]
     """
     largest_min_distance = 0
-    best_color = None
-    for _ in range(100):
-        color = random_rgb(pastel_factor)
-        current_min_distance = min(_color_distance(color, c) for c in exist_colors)
-        if current_min_distance > largest_min_distance:
-            largest_min_distance = current_min_distance
-            best_color = color
+    best_color = random_rgb()
+    if len(exist_colors) > 0:
+        for _ in range(100):
+            color = random_rgb()
+            current_min_distance = min(_color_distance(color, c) for c in exist_colors)
+            if current_min_distance > largest_min_distance:
+                largest_min_distance = current_min_distance
+                best_color = color
     _validate_color(best_color)
     return best_color
 

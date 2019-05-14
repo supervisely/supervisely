@@ -28,7 +28,7 @@ def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size,
 
 
 class BitmapBase(Geometry):
-    def __init__(self, data: np.ndarray, origin: PointLocation=None, expected_data_dims=None):
+    def __init__(self, data: np.ndarray, origin: PointLocation = None, expected_data_dims=None):
         """
         :param origin: PointLocation
         :param data: np.ndarray

@@ -106,7 +106,11 @@ RUN pip install py3exiv2==0.4.0
 RUN pip install simplejson==3.16.0
 RUN pip install requests-toolbelt
 RUN pip install PTable
+RUN pip install flask-restful
 RUN apt-get install -y fonts-noto=20160116-1
+
+RUN pip install pascal-voc-writer
+
 
 ##############################################################################
 # Encoding for python SDK

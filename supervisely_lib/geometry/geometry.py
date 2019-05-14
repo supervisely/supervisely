@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 
+import numpy as np
 from supervisely_lib.io.json import JsonSerializable
 
 
@@ -75,7 +76,26 @@ class Geometry(JsonSerializable):
         """
         raise NotImplementedError()
 
-    def draw(self, bitmap, color, thickness=1):
+    def _draw_bool_compatible(self, draw_fn, bitmap, color, thickness, config=None):
+        if bitmap.dtype == np.bool:
+            # Cannot draw on the canvas directly, create a temporary with different type.
+            temp_bitmap = np.zeros(bitmap.shape[:2], dtype=np.uint8)
+            draw_fn(temp_bitmap, 1, thickness=thickness, config=config)
+            bitmap[temp_bitmap == 1] = color
+        else:
+            # Pass through the canvas without temp bitmap for efficiency.
+            draw_fn(bitmap, color, thickness=thickness, config=config)
+
+    def draw(self, bitmap, color, thickness=1, config=None):
+        """
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: used only in Polyline and Point
+        :param config: drawing config specific to a concrete subclass, e.g. per edge colors
+        """
+        self._draw_bool_compatible(self._draw_impl, bitmap, color, thickness, config)
+
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """
         :param bitmap: np.ndarray
         :param color: [R, G, B]
@@ -83,7 +103,16 @@ class Geometry(JsonSerializable):
         """
         raise NotImplementedError()
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def draw_contour(self, bitmap, color, thickness=1, config=None):
+        """ Draws the figure contour on a given bitmap canvas
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: (int)
+        :param config: drawing config specific to a concrete subclass, e.g. per edge colors
+        """
+        self._draw_bool_compatible(self._draw_contour_impl, bitmap, color, thickness, config)
+
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ Draws the figure contour on a given bitmap canvas
         :param bitmap: np.ndarray
         :param color: [R, G, B]
@@ -109,4 +138,12 @@ class Geometry(JsonSerializable):
 
     def validate(self, name, settings):
         if self.geometry_name() != name:
-            raise ValueError('Geometry validation error: name is mismatch!') # TODO: Write here good message
+            raise ValueError('Geometry validation error: name is mismatch!')  # TODO: Write here good message
+
+    @staticmethod
+    def config_from_json(config):
+        return config
+
+    @staticmethod
+    def config_to_json(config):
+        return config

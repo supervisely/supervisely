@@ -10,7 +10,7 @@ from supervisely_lib.io import fs as sly_fs
 from supervisely_lib.nn.config import update_recursively
 from supervisely_lib.nn.dataset import samples_by_tags
 from supervisely_lib.nn.hosted import class_indexing
-from supervisely_lib.nn.hosted.constants import SETTINGS
+from supervisely_lib.nn.hosted.constants import SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
 from supervisely_lib.task.progress import report_checkpoint_saved
 from supervisely_lib.project.project import read_single_project
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -114,6 +114,8 @@ class SuperviselyModelTrainer:
 
         self._validate_train_cfg(config)
         self.config = config
+        input_size_dict = self.config[INPUT_SIZE]
+        self._input_size = (input_size_dict[HEIGHT], input_size_dict[WIDTH])
 
     def _determine_model_classes_segmentation(self, bkg_input_idx):
         self.out_classes, self.class_title_to_idx = class_indexing.create_segmentation_classes(

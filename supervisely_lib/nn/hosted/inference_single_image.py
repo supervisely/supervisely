@@ -1,4 +1,5 @@
 # coding: utf-8
+from copy import deepcopy
 import json
 
 from supervisely_lib import logger
@@ -19,9 +20,9 @@ GPU_DEVICE = 'gpu_device'
 
 
 class SingleImageInferenceBase(SingleImageInferenceInterface):
-    def __init__(self):
+    def __init__(self, task_model_config=None):
         logger.info('Starting base single image inference applier init.')
-        task_model_config = self._load_task_model_config()
+        task_model_config = self._load_task_model_config() if task_model_config is None else deepcopy(task_model_config)
         self._config = update_recursively(self.get_default_config(), task_model_config)
         # Only validate after merging task config with the defaults.
         self._validate_model_config(self._config)
@@ -59,10 +60,7 @@ class SingleImageInferenceBase(SingleImageInferenceInterface):
     def get_out_meta(self):
         return self._model_out_meta
 
-    def _model_out_img_tags(self):
-        return TagMetaCollection()  # Empty by default
-
-    def _model_out_obj_tags(self):
+    def _model_out_tags(self):
         return TagMetaCollection()  # Empty by default
 
     def _load_raw_model_config_json(self):
@@ -88,9 +86,7 @@ class SingleImageInferenceBase(SingleImageInferenceInterface):
         logger.info('Read model out classes', extra={'classes': train_classes.to_json()})
 
         # TODO: Factor out meta constructing from _load_train_config method.
-        self._model_out_meta = ProjectMeta(obj_classes=train_classes,
-                                           img_tag_metas=self._model_out_img_tags(),
-                                           obj_tag_metas=self._model_out_obj_tags())
+        self._model_out_meta = ProjectMeta(obj_classes=train_classes, tag_metas=self._model_out_tags())
         # Make a separate [index] --> [class] map that excludes the 'special' classes that should not be in the`
         # final output.
         self.out_class_mapping = {idx: train_classes.get(title) for title, idx in self.class_title_to_idx.items() if

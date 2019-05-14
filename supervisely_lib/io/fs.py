@@ -62,7 +62,7 @@ def list_dir_recursively(dir: str) -> list:
     return all_files
 
 
-def list_files(dir: str, valid_extensions: list=None, filter_fn=None) -> list:
+def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
     """
     Recursively walks through directory and returns list with all file paths.
 
@@ -73,9 +73,15 @@ def list_files(dir: str, valid_extensions: list=None, filter_fn=None) -> list:
     Returns:
          A list containing file paths.
     """
-    return [f.path for f in os.scandir(dir) if f.is_file() and
-            (valid_extensions is None or get_file_ext(f.path) in valid_extensions) and
-            (filter_fn is None or filter_fn(f.path))]
+
+    def file_path_generator():
+        for dir_name, _, file_names in os.walk(dir):
+            for filename in file_names:
+                yield os.path.join(dir_name, filename)
+
+    return [file_path for file_path in file_path_generator() if
+            (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
+            (filter_fn is None or filter_fn(file_path))]
 
 
 def mkdir(dir: str):

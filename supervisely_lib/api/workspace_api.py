@@ -1,18 +1,25 @@
 # coding: utf-8
 
-from collections import namedtuple
-from supervisely_lib.api.module_api import ApiField, ModuleApi
-from supervisely_lib._utils import camel_to_snake
+from supervisely_lib.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
-class WorkspaceApi(ModuleApi):
-    _info_sequence = [ApiField.ID,
-                      ApiField.NAME,
-                      ApiField.DESCRIPTION,
-                      ApiField.TEAM_ID,
-                      ApiField.CREATED_AT,
-                      ApiField.UPDATED_AT]
-    Info = namedtuple('WorkspaceInfo', [camel_to_snake(name) for name in _info_sequence])
+class WorkspaceApi(ModuleApi, UpdateableModule):
+    @staticmethod
+    def info_sequence():
+        return [ApiField.ID,
+                ApiField.NAME,
+                ApiField.DESCRIPTION,
+                ApiField.TEAM_ID,
+                ApiField.CREATED_AT,
+                ApiField.UPDATED_AT]
+
+    @staticmethod
+    def info_tuple_name():
+        return 'WorkspaceInfo'
+
+    def __init__(self, api):
+        ModuleApi.__init__(self, api)
+        UpdateableModule.__init__(self, api)
 
     def get_list(self, team_id, filters=None):
         return self.get_list_all_pages('workspaces.list',  {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
@@ -20,10 +27,12 @@ class WorkspaceApi(ModuleApi):
     def get_info_by_id(self, id):
         return self._get_info_by_id(id, 'workspaces.info')
 
-    def create(self, team_id, name, description=""):
-        response = self.api.post('workspaces.add', {ApiField.TEAM_ID: team_id,
-                                                    ApiField.NAME: name,
-                                                    ApiField.DESCRIPTION: description})
+    def create(self, team_id, name, description="", change_name_if_conflict=False):
+        effective_name = self._get_effective_new_name(
+            parent_id=team_id, name=name, change_name_if_conflict=change_name_if_conflict)
+        response = self._api.post('workspaces.add', {ApiField.TEAM_ID: team_id,
+                                                     ApiField.NAME: effective_name,
+                                                     ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):

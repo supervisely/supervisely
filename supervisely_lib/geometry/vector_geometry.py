@@ -78,12 +78,21 @@ class VectorGeometry(Geometry):
         return Rectangle(top=round(min(rows).item()), left=round(min(cols).item()), bottom=round(max(rows).item()),
                          right=round(max(cols).item()))
 
-    def draw(self, bitmap: np.ndarray, color, thickness=1):
-        self.draw_contour(bitmap, color, thickness=thickness)  # due to cv2
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: used only in Polyline and Point
+        """
+        self._draw_contour_impl(bitmap, color, thickness, config=config)
 
-    def draw_contour(self, bitmap: np.ndarray, color, thickness=1):
-        # TODO move most of implementation here
-        raise NotImplementedError('aaaaa')
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """ Draws the figure contour on a given bitmap canvas
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: (int)
+        """
+        raise NotImplementedError()
 
     @staticmethod
     def _approx_ring_dp(ring, epsilon, closed):

@@ -94,12 +94,12 @@ class Rectangle(Geometry):
         return Rectangle(top=(img_height - self.bottom), left=self.left, bottom=(img_height - self.top),
                          right=self.right)
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
+        self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
+
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         cv2.rectangle(bitmap, pt1=(self.left, self.top), pt2=(self.right, self.bottom), color=color,
                       thickness=thickness)
-
-    def draw(self, bitmap: np.ndarray, color, thickness=1):
-        self.draw_contour(bitmap, color, thickness=cv2.FILLED)  # due to cv2
 
     def to_bbox(self):
         return self.clone()

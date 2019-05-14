@@ -83,10 +83,10 @@ class Bitmap(BitmapBase):
         #  it in the resulting bitmap.
         return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
 
-    def draw(self, bitmap, color, thickness=1):
+    def _draw_impl(self, bitmap, color, thickness=1, config=None):
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
 
-    def draw_contour(self, bitmap, color, thickness=1):
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         _, contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if contours is not None:
             for cont in contours:

@@ -10,8 +10,7 @@ from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.imaging.image import KEEP_ASPECT_RATIO
-from supervisely_lib.geometry.constants import ROWS, COLS, POINTS, EXTERIOR, INTERIOR, BITMAP, \
-    DATA, ORIGIN
+from supervisely_lib.geometry.constants import POINTS, EXTERIOR, INTERIOR, BITMAP, DATA, ORIGIN
 
 
 class PointTest(unittest.TestCase):
@@ -83,7 +82,6 @@ class PointTest(unittest.TestCase):
         rect = self.point.to_bbox()
         self.assertPointEquals(self.point, rect.top, rect.left)
         self.assertPointEquals(self.point, rect.bottom, rect.right)
-
 
     def test_clone(self):
         res_point = self.point.clone()

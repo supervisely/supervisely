@@ -18,7 +18,7 @@ from supervisely_lib._utils import get_bytes_hash
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.bmp', '.png']
+SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png']
 DEFAULT_IMG_EXT = '.png'
 
 
@@ -39,9 +39,8 @@ class ImageExtensionError(Exception):
     pass
 
 
-def get_ext(path):
-    img_ext = PILImage.open(path).format
-    return '.{}'.format(img_ext)
+class UnsupportedImageFormat(Exception):
+    pass
 
 
 def is_valid_ext(ext: str) -> bool:
@@ -52,15 +51,25 @@ def has_valid_ext(path: str) -> bool:
     return is_valid_ext(os.path.splitext(path)[1])
 
 
-def validate_ext(ext):
+def validate_ext(path):
+    _, ext = os.path.splitext(path)
     if not is_valid_ext(ext):
         raise ImageExtensionError(
-            'Unsupported image extension: {}. Only the following extensions are supported: {}.'.format(
-                ext, ', '.join(SUPPORTED_IMG_EXTS)))
+            'Unsupported image extension: {!r} for file {!r}. Only the following extensions are supported: {}.'.format(
+                ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
+
+
+def validate_format(path):
+    img_format = PILImage.open(path).format
+    img_ext = '.' + img_format
+    if not is_valid_ext('.' + img_format):
+        raise UnsupportedImageFormat(
+            'Unsupported image format {!r} for file {!r}. Only the following forrmats are supported: {}'.format(
+                img_ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
 
 
 def read(path) -> np.ndarray:
-    validate_ext(get_ext(path))
+    validate_format(path)
     img = cv2.imread(path, cv2.IMREAD_COLOR)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -73,7 +82,7 @@ def read_bytes(image_bytes) -> np.ndarray:
 
 def write(path, img):
     ensure_base_path(path)
-    validate_ext(get_file_ext(path))
+    validate_ext(path)
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
     return cv2.imwrite(path, img)
 
@@ -160,7 +169,10 @@ def draw_text(bitmap: np.ndarray,
 
 def write_bytes(img, ext) -> np.ndarray:
     ext = ('.' + ext).replace('..', '.')
-    validate_ext(ext)
+    if not is_valid_ext(ext):
+        raise UnsupportedImageFormat(
+            'Unsupported image format {!r}. Only the following forrmats are supported: {}'.format(
+                ext, ', '.join(SUPPORTED_IMG_EXTS)))
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
     encode_status, img_array = cv2.imencode(ext, img)
     if encode_status is True:

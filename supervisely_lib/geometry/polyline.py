@@ -59,7 +59,10 @@ class Polyline(VectorGeometry):
 
         return [Polyline(row_col_list_to_points(line)) for line in lines_combined]
 
-    def draw_contour(self, bitmap: np.ndarray, color, thickness=1):
+    def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
+        self._draw_contour_impl(bitmap, color, thickness, config=config)
+
+    def _draw_contour_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
         exterior = self.exterior_np[:, ::-1]
         cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)
 

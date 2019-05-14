@@ -143,11 +143,12 @@ def get_directory_size_bytes(dir_path, timeout=10):
 
 
 def _get_self_container_idx():
-    rows = _proc_run(['cat', '/proc/self/cgroup'])
-    s = rows[0]
-    slash_pos = s.rfind('/')
-    container_idx = s[slash_pos+1:]
-    return container_idx
+    with open('/proc/self/cgroup') as fin:
+        for line in fin:
+            docker_split = line.strip().split(':/docker/')
+            if len(docker_split) == 2:
+                return docker_split[1]
+    return ''
 
 
 def _get_self_docker_image_digest():
