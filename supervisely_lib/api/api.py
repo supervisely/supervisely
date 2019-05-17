@@ -77,16 +77,18 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                exc_str = str(exc)
+                logger.warn('A request to the server has failed.', exc_info=True, extra={'exc_str': exc_str})
                 if (isinstance(exc, requests.exceptions.HTTPError) and hasattr(exc, 'response')
                         and exc.response.status_code in RETRY_STATUS_CODES
                         and retry_idx < retries - 1):
                     # (retry_idx + 2): one for change the counting base from 0 to 1,
                     # and 1 for indexing the next iteration.
-                    log_string = 'A request to the server has failed. Retrying ({}/{}).'.format(retry_idx + 2, retries)
-                    logger.warn(log_string)
-                    continue
-                break
-        raise RuntimeError('Request has failed. This may be due to connection problems or invalid requests.')
+                    logger.warn('Retrying failed request ({}/{}).'.format(retry_idx + 2, retries))
+                else:
+                    raise RuntimeError(
+                        'Request has failed. This may be due to connection problems or invalid requests. '
+                        'Last failure: {!r}'.format(exc_str))
 
     @staticmethod
     def _raise_for_status(response):
