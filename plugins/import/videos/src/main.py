@@ -5,17 +5,34 @@ import os.path
 import skvideo.io
 import supervisely_lib as sly
 
+from PIL import Image as pil_image
+
+import dhash
+
 DEFAULT_STEP = 25
+STEP = 'step'
+START_FRAME = 'start_frame'
+END_FRAME = 'end_frame'
+SKIP_FRAMES = 'skip_frames'
+DHASH_MIN_HAMMING_DISTANCE = 'dhash_min_hamming_distance'
 
 
 def convert_video():
     task_settings = json.load(open(sly.TaskPaths.TASK_CONFIG_PATH, 'r'))
 
-    step = DEFAULT_STEP
-    if 'step' in task_settings['options']:
-        step = int(task_settings['options']['step'])
+    convert_options = task_settings['options']
+
+    step = convert_options.get(STEP)
+    if step is not None:
+        step = int(step)
     else:
         sly.logger.warning('step parameter not found. set to default: {}'.format(DEFAULT_STEP))
+        step = DEFAULT_STEP
+
+    start_frame = convert_options.get(START_FRAME, 0)
+    end_frame = convert_options.get(END_FRAME, float('Inf'))
+    skip_frames = set(convert_options.get(SKIP_FRAMES, []))
+    dhash_min_hamming_distance = convert_options.get(DHASH_MIN_HAMMING_DISTANCE, 0)
 
     paths = sly.fs.list_files(sly.TaskPaths.DATA_DIR)
     video_paths = []
@@ -42,8 +59,27 @@ def convert_video():
             vlength = vreader.getShape()[0]
             progress = sly.Progress('Import video: {}'.format(ds_name), vlength)
 
+            prev_dhash = None
+
             for frame_id, image in enumerate(vreader.nextFrame()):
-                if frame_id % step == 0:
+                if ((start_frame <= frame_id) and (frame_id <= end_frame or end_frame < 0)
+                        and ((frame_id - start_frame) % step == 0)
+                        and frame_id not in skip_frames):
+
+                    # Only keep track of dhash values if the filtering is actually enabled.
+                    if dhash_min_hamming_distance > 0:
+                        curr_dhash = dhash.dhash_int(pil_image.fromarray(image))
+                        dhash_distance = None
+                        if prev_dhash is not None:
+                            dhash_distance = dhash.get_num_bits_different(curr_dhash, prev_dhash)
+                            sly.logger.info('Frame {}. dHash Hamming distance to previously imported frame: {}'.format(
+                                frame_id, dhash_distance))
+
+                        if dhash_distance is not None and dhash_distance < dhash_min_hamming_distance:
+                            continue
+                        # Only update the prev_dhash value if we are going to actually import this frame.
+                        prev_dhash = curr_dhash
+
                     img_name = "frame_{:05d}".format(frame_id)
                     ds.add_item_np(img_name + '.png', image)
                 progress.iter_done_report()

@@ -443,7 +443,7 @@ class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
         # (by looking at A), so the end result will be only [A], which is what we want.
         sorted_labels = sorted(labels, key=lambda x: x.tags.get(confidence_tag_name).value)
         return [
-            label for label_idx, label in sorted_labels
+            label for label_idx, label in enumerate(sorted_labels)
             if all(cls._iou(label.geometry.to_bbox(), other.geometry.to_bbox()) <= iou_thresh
                    for other in sorted_labels[(label_idx + 1):])]
 

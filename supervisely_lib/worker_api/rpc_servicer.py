@@ -29,6 +29,10 @@ MODEL_RESULT_SUFFIX = '_model'
 DATA = 'data'
 
 
+class ConnectionClosedByServerException(Exception):
+    pass
+
+
 class AgentRPCServicerBase:
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
@@ -165,6 +169,8 @@ class AgentRPCServicerBase:
                 self.logger.warning('Inference exception: ', extra={"error_message": str(error)})
                 res_msg = {'success': False, 'error': json.dumps(str(error))}
                 self.thread_pool.submit(function_wrapper_nofail, self._send_data, res_msg, request_id)
+
+        raise ConnectionClosedByServerException('Requests stream to a deployed model closed by the server.')
 
 
 class AgentRPCServicer(AgentRPCServicerBase):

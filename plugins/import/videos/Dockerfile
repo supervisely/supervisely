@@ -6,7 +6,8 @@ FROM ${REGISTRY}/base-py:${TAG}
 ##############################################################################
 
 RUN pip install --no-cache-dir \
-        scikit-video==1.1.11
+        scikit-video==1.1.11 \
+        dhash==1.3
 
 ############### copy code ###############
 ARG MODULE_PATH

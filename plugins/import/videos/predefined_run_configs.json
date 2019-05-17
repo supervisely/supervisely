@@ -1,9 +1,13 @@
 [
-	{
-		"title": "settings",
-		"type": "import", 
-		"config": {
-			"step": 15
-		}
-	}
+    {
+        "title": "settings",
+        "type": "import",
+        "config": {
+            "step": 25,
+            "start_frame": 0,
+            "end_frame": -1,
+            "skip_frames": [],
+            "dhash_min_hamming_distance": 0
+    }
+  }
 ]

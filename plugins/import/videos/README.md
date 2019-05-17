@@ -14,15 +14,26 @@ File structure which you can drag and drop should look like this:
 
 ```json
 {
-  "skip_frame": 25
+    "step": 25,
+    "start_frame": 0,
+    "end_frame": -1,
+    "skip_frames": [],
+    "dhash_min_hamming_distance": 0
 }
 ```
 
-Configuration config of this plugin contains only one field `skip_frame` that is responsible for step between two uploaded frames.
-
-![](https://i.imgur.com/4Ysp5u8.png)
-
-Default `skip_frame` value set to 25, which means that only every 25th frame will be uploaded.
+Configuration options:
+* `step`: how many frames to skip before considering a frame for import.
+    Setting `step` to 1 will import every frame. Setting `step` to 25 (the
+    default setting) will import every 25-th frame.
+* `start_frame`: skip all the frames until this frame number is reached in the
+    video. Frame indexing is zero based, so the first frame of the video has index 0.
+* `end_frame`: skip all the frames that come after this frame index in the video.
+* `skip_frames`: skip the frame indices from this list.
+* `dhash_min_hamming_distance`: minimum [dHash](https://pypi.org/project/dhash)
+    Hamming distance from the previously imported frame. This setting allows one
+    to skip frames that are too similar to the previously imported frames.
+    Higher values enforce larger difference.
 
 
 ### Example
