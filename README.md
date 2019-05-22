@@ -96,6 +96,12 @@ inference with neural networks into
 the [Python SDK](./supervisely_lib). Our stock plugins rely on the SDK
 extensively, and we believe the SDK will be also valuable to the community.
 
+Installation:
+```
+git clone https://github.com/supervisely/supervisely.git && \
+pip install -e ./supervisely
+```
+
 The  SDK not only wraps all the low-level details of handling the data and
 communicating with the Supervisely web instance, but also provides convenience
 helpers for the common tasks that we found useful in our own work of developing
