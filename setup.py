@@ -1,3 +1,6 @@
+# Thanks to Muammar ibn Faisal (https://github.com/Jihadik) for contributing
+# this setup script.
+
 import os
 
 from setuptools import find_packages, setup
