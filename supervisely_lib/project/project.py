@@ -6,11 +6,13 @@ import json
 from enum import Enum
 
 from supervisely_lib.annotation.annotation import Annotation, ANN_EXT
-from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
 from supervisely_lib.imaging import image as sly_image
-from supervisely_lib.io.fs import list_files, mkdir, copy_file, get_subdirs, dir_exists
+from supervisely_lib.io.fs import list_files, list_files_recursively, mkdir, copy_file, get_subdirs, dir_exists
 from supervisely_lib.io.json import dump_json_file, load_json_file
+from supervisely_lib.project.project_meta import ProjectMeta
+from supervisely_lib.task.progress import Progress
+from supervisely_lib._utils import batched
 
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
 
@@ -113,13 +115,20 @@ class Dataset(KeyObject):
 
     def add_item_file(self, item_name, img_path, ann=None):
         self._add_img_file(item_name, img_path)
-        self._set_ann_by_type(item_name, ann)
+        self._add_ann_by_type(item_name, ann)
 
     def add_item_np(self, item_name, img, ann=None):
         self._add_img_np(item_name, img)
-        self._set_ann_by_type(item_name, ann)
+        self._add_ann_by_type(item_name, ann)
 
-    def _set_ann_by_type(self, item_name, ann):
+    def add_item_raw_bytes(self, item_name, img_raw_bytes, ann=None):
+        self._add_img_raw_bytes(item_name, img_raw_bytes)
+        self._add_ann_by_type(item_name, ann)
+
+    def _add_ann_by_type(self, item_name, ann):
+        # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
+        # an annotation either.
+        self._item_to_ann[item_name] = item_name + ANN_EXT
         if ann is None:
             img_size = sly_image.read(self.get_img_path(item_name)).shape[:2]
             self.set_ann(item_name, Annotation(img_size))
@@ -138,26 +147,33 @@ class Dataset(KeyObject):
         if not sly_image.has_valid_ext(item_name):
             raise RuntimeError('Image name {!r} has unsupported extension.'.format(item_name))
 
+    def _add_img_raw_bytes(self, item_name, img_raw_bytes):
+        self._check_add_item_name(item_name)
+        dst_img_path = os.path.join(self.img_dir, item_name)
+        with open(dst_img_path, 'wb') as fout:
+            fout.write(img_raw_bytes)
+        self._validate_added_image_or_die(dst_img_path)
+
     def _add_img_np(self, item_name, img):
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.img_dir, item_name)
         sly_image.write(dst_img_path, img)
-        # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
-        # an annotation either.
-        self._item_to_ann[item_name] = item_name + ANN_EXT
 
     def _add_img_file(self, item_name, img_path):
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.img_dir, item_name)
         if img_path != dst_img_path:  # used only for agent + api during download project
             copy_file(img_path, dst_img_path)
-            # Make sure we actually received a valid image file, clean it up and bail if not so.
-            try:
-                sly_image.validate_format(dst_img_path)
-            except sly_image.UnsupportedImageFormat:
-                os.remove(dst_img_path)
-                raise
-        self._item_to_ann[item_name] = item_name + ANN_EXT
+            self._validate_added_image_or_die(dst_img_path)
+
+    @staticmethod
+    def _validate_added_image_or_die(img_path):
+        # Make sure we actually received a valid image file, clean it up and bail if not so.
+        try:
+            sly_image.validate_format(img_path)
+        except (sly_image.UnsupportedImageFormat, sly_image.ImageReadException):
+            os.remove(img_path)
+            raise
 
     def set_ann(self, item_name: str, ann: Annotation):
         if type(ann) is not Annotation:
@@ -251,7 +267,7 @@ class Project:
 
     def _create(self):
         if dir_exists(self.directory):
-            if len(list_files(self.directory)) > 0:
+            if len(list_files_recursively(self.directory)) > 0:
                 raise RuntimeError(
                     "Cannot create new project {!r}. Directory {!r} already exists and is not empty".format(
                         self.name, self.directory))
@@ -309,3 +325,35 @@ def read_single_project(dir):
         raise RuntimeError('Found {} dirs instead of 1'.format(len(projects_in_dir)))
     return Project(os.path.join(dir, projects_in_dir[0]), OpenMode.READ)
 
+
+def download_project(api, project_id, dest_dir, log_progress=False):
+    project_fs = Project(dest_dir, OpenMode.CREATE)
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    project_fs.set_meta(meta)
+
+    for dataset_info in api.dataset.get_list(project_id):
+        dataset_fs = project_fs.create_dataset(dataset_info.name)
+        dataset_id = dataset_info.id
+        images = api.image.get_list(dataset_id)
+
+        ds_progress = None
+        if log_progress:
+            ds_progress = Progress(
+                'Downloading dataset: {!r}'.format(dataset_info.name), total_cnt=len(images))
+
+        for batch in batched(images):
+            image_ids = [image_info.id for image_info in batch]
+            image_names = [image_info.name for image_info in batch]
+
+            # download images in numpy format
+            batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
+
+            # download annotations in json format
+            ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+            ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+
+            for name, img_bytes, ann in zip(image_names, batch_imgs_bytes, ann_jsons):
+                dataset_fs.add_item_raw_bytes(name, img_bytes, ann)
+
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))

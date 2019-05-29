@@ -43,6 +43,10 @@ class UnsupportedImageFormat(Exception):
     pass
 
 
+class ImageReadException(Exception):
+    pass
+
+
 def is_valid_ext(ext: str) -> bool:
     return ext.lower() in SUPPORTED_IMG_EXTS
 
@@ -60,11 +64,19 @@ def validate_ext(path):
 
 
 def validate_format(path):
-    img_format = PILImage.open(path).format
+    pil_img = PILImage.open(path)
+
+    try:
+        pil_img.load()  # Validate image data. Because 'open' is lazy method.
+    except OSError as e:
+        raise ImageReadException(
+            'Error has occured trying to read image {!r}. Original exception message: {!r}'.format(path, str(e)))
+
+    img_format = pil_img.format
     img_ext = '.' + img_format
     if not is_valid_ext('.' + img_format):
         raise UnsupportedImageFormat(
-            'Unsupported image format {!r} for file {!r}. Only the following forrmats are supported: {}'.format(
+            'Unsupported image format {!r} for file {!r}. Only the following formats are supported: {}'.format(
                 img_ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
 
 

@@ -14,7 +14,7 @@ from worker.task_upload_images import TaskUploadImages
 from worker.task_import_local import TaskImportLocal
 from worker.task_custom import TaskCustom
 from worker.task_update import TaskUpdate
-
+from worker.task_python import TaskPython
 
 _task_class_mapping = {
     'export':               TaskDTL,
@@ -28,7 +28,8 @@ _task_class_mapping = {
     'upload_images':        TaskUploadImages,
     'import_agent':         TaskImportLocal,
     'custom': 				TaskCustom,
-    'update_agent':         TaskUpdate
+    'update_agent':         TaskUpdate,
+    'python':               TaskPython
 }
 
 

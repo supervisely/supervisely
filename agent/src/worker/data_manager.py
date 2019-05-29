@@ -189,16 +189,19 @@ class DataManager(object):
         progress = sly.Progress('Dataset {!r}: upload annotations'.format(dataset.name), items_count, self.logger)
         self.public_api.annotation.upload_paths([info.id for info in image_infos], ann_paths, progress.iters_done_report)
 
+    def upload_tar_file(self, task_id, file_path):
+        size_mb = sly.fs.get_file_size(file_path) / 1024.0 / 1024
+        progress = sly.Progress("Uploading file", size_mb, ext_logger=self.logger)
+        self.public_api.task.upload_dtl_archive(task_id, file_path, progress.set_current_value)
+
     def upload_archive(self, task_id, dir_to_archive, archive_name):
         self.logger.info("PACK_TO_ARCHIVE ...")
         archive_name = archive_name if len(archive_name) > 0 else sly.rand_str(30)
         local_tar_path = os.path.join(constants.AGENT_TMP_DIR(), archive_name + '.tar')
         sly.fs.archive_directory(dir_to_archive, local_tar_path)
 
-        size_mb = sly.fs.get_file_size(local_tar_path) / 1024.0 / 1024
-        progress = sly.Progress("Upload archive", size_mb, ext_logger=self.logger)
         try:
-            self.public_api.task.upload_dtl_archive(task_id, local_tar_path, progress.set_current_value)
+            self.upload_tar_file(task_id, local_tar_path)
         finally:
             sly.fs.silent_remove(local_tar_path)
 

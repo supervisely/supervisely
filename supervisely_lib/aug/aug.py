@@ -126,7 +126,8 @@ def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> (n
     return crop(img, ann, top_pad=top_pad, left_pad=left_pad, bottom_pad=bottom_pad, right_pad=right_pad)
 
 
-def random_crop_fraction(img: np.ndarray, ann: Annotation, height_fraction_range: tuple, width_fraction_range: tuple) ->\
+def random_crop_fraction(
+        img: np.ndarray, ann: Annotation, height_fraction_range: tuple, width_fraction_range: tuple) -> \
         (np.ndarray, Annotation):
     """
     Crops given image array and annotation at a random location with random size lying in the set intervals.
@@ -147,6 +148,19 @@ def random_crop_fraction(img: np.ndarray, ann: Annotation, height_fraction_range
     crop_height = round(img_height * height_p)
     crop_width = round(img_width * width_p)
     return random_crop(img, ann, height=crop_height, width=crop_width)
+
+
+def batch_random_crops_fraction(
+        img_ann_pairs: list, crops_per_image: int, height_fraction_range: tuple, width_fraction_range: tuple) -> list:
+    return [random_crop_fraction(img, ann, height_fraction_range, width_fraction_range)
+            for img, ann in img_ann_pairs for _ in range(crops_per_image)]
+
+
+def flip_add_random_crops(
+        img: np.ndarray, ann: Annotation, crops_per_image: int, height_fraction_range: tuple, width_fraction_range: tuple) -> list:
+    full_size_items = [(img, ann), fliplr(img, ann)]
+    crops = batch_random_crops_fraction(full_size_items, crops_per_image, height_fraction_range, width_fraction_range)
+    return full_size_items + crops
 
 
 # TODO factor out / simplify.

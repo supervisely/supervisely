@@ -131,3 +131,23 @@ class SlyDataset:
                 return res
             index = random.randrange(len(self._samples))  # must be ok for large ds
         raise RuntimeError('Unable to load some correct sample.')
+
+
+def partition_train_val(num_samples, val_fraction):
+    """Returns a bool array indicating whether a given sample falls into a train fold (otherwise samples fall to val).
+    """
+
+    if num_samples <= 1:
+        raise ValueError('Need at least 2 samples to prepare a training/validation split (at least 1 each for training '
+                         'and validation).')
+
+    val_boundary = round(num_samples * val_fraction)
+    # Make sure there is at least one sample in both training and validation fold,
+    # adjust boundary if necessary.
+    if val_boundary <= 0:
+        val_boundary = 1
+    elif val_boundary >= num_samples:
+        val_boundary = num_samples - 1
+    is_train_sample = ([False] * val_boundary) + ([True] * (num_samples - val_boundary))
+    random.shuffle(is_train_sample)
+    return is_train_sample

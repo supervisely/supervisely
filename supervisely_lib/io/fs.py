@@ -62,7 +62,7 @@ def list_dir_recursively(dir: str) -> list:
     return all_files
 
 
-def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
+def list_files_recursively(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
     """
     Recursively walks through directory and returns list with all file paths.
 
@@ -82,6 +82,24 @@ def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
     return [file_path for file_path in file_path_generator() if
             (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
             (filter_fn is None or filter_fn(file_path))]
+
+
+def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
+    """
+    Returns list with file paths presented in given directory.
+
+    Args:
+        dir: Target dir path.
+        valid_extensions:
+        filter_fn: function with a single argument that determines whether to keep a given file path.
+    Returns:
+         A list containing file paths.
+    """
+    res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
+    return [file_path for file_path in res if
+      (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
+      (filter_fn is None or filter_fn(file_path))]
+
 
 
 def mkdir(dir: str):
@@ -139,7 +157,7 @@ def dir_empty(dir: str) -> bool:
     Returns:
         True if directory is empty, False otherwise.
     """
-    if dir_exists(dir) and len(list_files(dir)) > 0:
+    if dir_exists(dir) and len(list_files_recursively(dir)) > 0:
         return False
     return True
 

@@ -1,15 +1,24 @@
 # coding: utf-8
+import os.path
+
+CONFIG_JSON = 'config.json'
+DATA = 'data'
+GRAPH_JSON = 'graph.json'
+MODEL = 'model'
+TASK_CONFIG_JSON = 'task_config.json'
+TASK_SETTINGS_JSON = 'task_settings.json'
+RESULTS = 'results'
+TMP = 'tmp'
 
 
 class TaskPaths:
     TASK_DIR = '/sly_task_data'
-    SETTINGS_PATH = '/sly_task_data/task_settings.json'  # Deprecated - use TASK_CONFIG_PATH instead
-    TASK_CONFIG_PATH = '/sly_task_data/task_config.json'
-    DATA_DIR = '/sly_task_data/data'
-    RESULTS_DIR = '/sly_task_data/results'
-    DEBUG_DIR = '/sly_task_data/tmp'
-    GRAPH_PATH = '/sly_task_data/graph.json'
-    MODEL_DIR = '/sly_task_data/model'
-    MODEL_CONFIG_PATH = '/sly_task_data/model/config.json'
-    MODEL_CONFIG_NAME = 'config.json'
-
+    SETTINGS_PATH = os.path.join(TASK_DIR, TASK_SETTINGS_JSON)  # Deprecated - use TASK_CONFIG_PATH instead
+    TASK_CONFIG_PATH = os.path.join(TASK_DIR, TASK_CONFIG_JSON)
+    DATA_DIR = os.path.join(TASK_DIR, DATA)
+    RESULTS_DIR = os.path.join(TASK_DIR, RESULTS)
+    DEBUG_DIR = os.path.join(TASK_DIR, TMP)
+    GRAPH_PATH = os.path.join(TASK_DIR, GRAPH_JSON)
+    MODEL_DIR = os.path.join(TASK_DIR, MODEL)
+    MODEL_CONFIG_PATH = os.path.join(MODEL_DIR, CONFIG_JSON)
+    MODEL_CONFIG_NAME = CONFIG_JSON

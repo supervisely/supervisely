@@ -92,19 +92,21 @@ class ImageApi(ModuleApi):
         #if ids != debug_ids:
         #    raise RuntimeError("images.bulk.download: imageIds order is broken")
 
-    def download_nps(self, dataset_id, ids, progress_cb=None):
-        images = []
+    def download_bytes(self, dataset_id, ids, progress_cb=None):
         if len(ids) == 0:
-            return images
+            return []
 
         id_to_img = {}
         for img_id, resp_part in self._download_batch(dataset_id, ids):
-            id_to_img[img_id] = sly_image.read_bytes(resp_part.content)
+            id_to_img[img_id] = resp_part.content
             if progress_cb is not None:
                 progress_cb(1)
 
-        images = [id_to_img[id] for id in ids]
-        return images
+        return [id_to_img[id] for id in ids]
+
+    def download_nps(self, dataset_id, ids, progress_cb=None):
+        return [sly_image.read_bytes(img_bytes)
+                for img_bytes in self.download_bytes(dataset_id=dataset_id, ids=ids, progress_cb=progress_cb)]
 
     def check_existing_hashes(self, hashes):
         results = []
@@ -223,7 +225,11 @@ class ImageApi(ModuleApi):
             response = self._api.post('images.bulk.add', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGES: images})
             if progress_cb is not None:
                 progress_cb(len(images))
-            results.extend([self._convert_json_info(info_json) for info_json in response.json()])
+
+            for info_json in response.json():
+                info_json_copy = info_json.copy()
+                info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split('/')[1]
+                results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
 
         name_to_res = {img_info.name: img_info for img_info in results}
         ordered_results = [name_to_res[name] for name in names]
@@ -245,16 +251,13 @@ class ImageApi(ModuleApi):
                 field_values.append(temp_ext)
         for idx, field_name in enumerate(self.info_sequence()):
             if field_name == ApiField.NAME:
-                cur_ext = get_file_ext(field_values[idx])
+                cur_ext = get_file_ext(field_values[idx]).replace(".", "").lower()
                 if not cur_ext:
                     field_values[idx] = "{}.{}".format(field_values[idx], temp_ext)
                     break
-
-                cur_ext = cur_ext.replace(".", "").lower()
-                if temp_ext == 'jpeg' and cur_ext in ['jpg', 'jpeg']:
+                if temp_ext == 'jpeg' and cur_ext in ['jpg', 'jpeg', 'mpo']:
                     break
-
-                if temp_ext not in field_values[idx]:
+                if temp_ext != cur_ext:
                     field_values[idx] = "{}.{}".format(field_values[idx], temp_ext)
                 break
         return self.InfoType(*field_values)
