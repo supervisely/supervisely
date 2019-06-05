@@ -1,24 +1,28 @@
-src_project_name = 'CHANGE_TO_YOUR_INPUT_PROJECT_NAME'
-dst_project_name = 'CHANGE_TO_YOUR_DESTINATION_PROJECT_NAME'
+import os
+import supervisely_lib as sly
+from supervisely_lib.nn import dataset as sly_dataset
+
+WORKSPACE_ID = %%WORKSPACE_ID%%
+src_project_name = '%%IN_PROJECT_NAME%%'
+dst_project_name = '%%OUT_PROJECT_NAME%%'
+
+api = sly.Api(server_address=os.environ['SERVER_ADDRESS'], token=os.environ['API_TOKEN'])
 
 # Which fraction of images to tag as a validation set (remaining are tagged as training set).
-validation_fraction = 0.1
+validation_fraction = %%validation_fraction:0.1%%
 # How many random crops per image to save.
-crops_per_image = 5
+crops_per_image = %%crops_per_image:5%%
 
-min_crop_side_fraction = 0.6
-max_crop_side_fraction = 0.9
+min_crop_side_fraction = %%min_crop_side_fraction:0.6%%
+max_crop_side_fraction = %%max_crop_side_fraction:0.9%%
 
-train_tag_name = 'train'    # Reasonable default, change is necessary
-val_tag_name = 'val'        # Reasonable default, change is necessary
+train_tag_name = '%%train_tag_name:train%%'
+val_tag_name = '%%val_tag_name:val%%'
 
-# Reasonable default, change is necessary.
 # Set to empty string to disable adding a background object.
-background_class_name = 'bg'
+background_class_name = '%%background_class_name:bg%%'
 
-
-import os.path
-from supervisely_lib.nn import dataset as sly_dataset
+#### End settings. ####
 
 # Download remote project
 src_project_info = api.project.get_info_by_name(WORKSPACE_ID, src_project_name)
@@ -30,7 +34,7 @@ sly.logger.info('Project {!r} has been successfully downloaded. Starting to proc
 
 src_project = sly.Project(directory=src_project_dir, mode=sly.OpenMode.READ)
 
-dst_project_dir = os.path.join(RESULT_DATASETS_DIR, dst_project_name)
+dst_project_dir = os.path.join(sly.TaskPaths.OUT_PROJECTS_DIR, dst_project_name)
 dst_project = sly.Project(directory=dst_project_dir, mode=sly.OpenMode.CREATE)
 
 tag_meta_train = sly.TagMeta(train_tag_name, sly.TagValueType.NONE)

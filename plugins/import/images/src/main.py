@@ -1,45 +1,35 @@
 # coding: utf-8
 
 import os
+
+from collections import defaultdict
 import supervisely_lib as sly
+from supervisely_lib import fs
+from supervisely_lib import TaskPaths
 from supervisely_lib.io.json import load_json_file
 
 
+DEFAULT_DS_NAME = 'ds'
+
+
 def find_input_datasets():
-    def flat_images_found(dir_path):
-        img_fnames = sly.fs.list_files(dir_path, filter_fn=sly.image.has_valid_ext)
-        res = len(img_fnames) > 0
-        return res
+    root_files_paths = set(fs.list_files(TaskPaths.DATA_DIR, filter_fn=sly.image.has_valid_ext))
+    files_paths = set(fs.list_files_recursively(TaskPaths.DATA_DIR, filter_fn=sly.image.has_valid_ext))
+    files_paths = files_paths - root_files_paths
 
-    def collect_ds_names(pr_path):
-        subdirs = sly.fs.get_subdirs(pr_path)
-        subd_with_paths = [(x, os.path.join(pr_path, x)) for x in subdirs]
-        res = list(filter(lambda x: flat_images_found(x[1]), subd_with_paths))
-        return res
+    if len(root_files_paths) + len(files_paths) == 0:
+        raise RuntimeError(f'Input directory is empty! Supported formats list: {sly.image.SUPPORTED_IMG_EXTS}.')
 
-    if flat_images_found(sly.TaskPaths.DATA_DIR):
-        sly.logger.info('Input structure: flat set of images.')
-        return [('ds', sly.TaskPaths.DATA_DIR), ]
+    datasets = defaultdict(list)
+    for path in files_paths:
+        ds_name = os.path.relpath(os.path.dirname(path), TaskPaths.DATA_DIR).replace(os.sep, '__')
+        datasets[ds_name].append(path)
 
-    in_datasets = collect_ds_names(sly.TaskPaths.DATA_DIR)
-    if len(in_datasets) > 0:
-        sly.logger.info('Input structure: set of dirs (datasets) with images.', extra={'ds_cnt': len(in_datasets)})
-        return in_datasets
-    else:
-        top_subdirs = sly.fs.get_subdirs(sly.TaskPaths.DATA_DIR)
-        if len(top_subdirs) == 1:
-            new_in_dir = os.path.join(sly.TaskPaths.DATA_DIR, top_subdirs[0])
-            in_datasets = collect_ds_names(new_in_dir)
-            if len(in_datasets) > 0:
-                sly.logger.info('Input structure: dir with set of dirs (datasets) with images.',
-                            extra={'ds_cnt': len(in_datasets)})
-                return in_datasets
-            else:
-                raise RuntimeError('Input directory is empty')
-        elif len(top_subdirs) == 0:
-            raise RuntimeError('Input directory is empty')
-        else:
-            raise RuntimeError('Too many subfolders in the input directory')
+    default_ds_name = (DEFAULT_DS_NAME + '_' + sly.rand_str(8)) if DEFAULT_DS_NAME in datasets else DEFAULT_DS_NAME
+    for path in root_files_paths:
+        datasets[default_ds_name].append(path)
+
+    return datasets
 
 
 def convert():
@@ -48,18 +38,16 @@ def convert():
 
     pr = sly.Project(os.path.join(sly.TaskPaths.RESULTS_DIR, task_settings['res_names']['project']),
                      sly.OpenMode.CREATE)
-    for ds_name, ds_path in in_datasets:
-        img_paths = sly.fs.list_files(ds_path, filter_fn=sly.image.has_valid_ext)
+
+    for ds_name, img_paths in in_datasets.items():
         sly.logger.info(
             'Found {} files with supported image extensions in Dataset {!r}.'.format(len(img_paths), ds_name))
+
         ds = pr.create_dataset(ds_name)
         progress = sly.Progress('Dataset: {!r}'.format(ds_name), len(img_paths))
         for img_path in img_paths:
             try:
                 item_name = os.path.basename(img_path)
-                if ds.item_exists(item_name):
-                    item_name_noext, item_ext = os.path.splitext(item_name)
-                    item_name = item_name_noext + '_' + sly.rand_str(5) + item_ext
                 ds.add_item_file(item_name, img_path)
             except Exception as e:
                 exc_str = str(e)
@@ -69,6 +57,9 @@ def convert():
                     'image_name': img_path,
                 })
             progress.iter_done_report()
+
+    if pr.total_items == 0:
+        raise RuntimeError('Result project is empty! All input images have unsupported format!')
 
 
 def main():

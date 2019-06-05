@@ -195,15 +195,16 @@ class Annotation:
         sly_image.draw_text_sequence(bitmap, texts, (0, 0), sly_image.CornerAnchorMode.TOP_LEFT,
                                      font=self._get_font())
 
-    def draw(self, bitmap, thickness=1, draw_tags=False):
+    def draw(self, bitmap, color=None, thickness=1, draw_tags=False):
         for label in self._labels:
-            label.draw(bitmap, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
+            label.draw(bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
         if draw_tags:
             self._draw_tags(bitmap)
 
-    def draw_contour(self, bitmap, thickness=1, draw_tags=False):
+    def draw_contour(self, bitmap, color=None, thickness=1, draw_tags=False):
         for label in self._labels:
-            label.draw_contour(bitmap, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
+            label.draw_contour(
+                bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
         if draw_tags:
             self._draw_tags(bitmap)
 

@@ -40,8 +40,13 @@ class Net:
             elif layer_cls.type == 'processing':
                 layer = layer_cls(layer_config)
             elif layer_cls.type == 'save':
+                if graph_has_savel:
+                    raise ValueError(
+                        'Graph has to contain only one save layer. You added at least 2 layers: {!r} and {!r}.'
+                        .format(self.save_layer.config, layer_config))
                 graph_has_savel = True
                 layer = layer_cls(layer_config, output_folder, self)
+                self.save_layer = layer
             else:
                 raise NotImplementedError()
             self.layers.append(layer)
@@ -54,13 +59,6 @@ class Net:
             raise RuntimeError("Graph error: less than two layers.")
 
         self.check_connections()
-
-        # allow only one save layer now
-        save_layers = [layer for layer in self.layers if layer.type == 'save']
-        if len(save_layers) != 1:
-            raise ValueError("Graph has to contain only one save layer. You added {} layers".format(len(save_layers)))
-        self.save_layer = save_layers[0]
-
         self.flat_out_names = False  # @TODO: move out
         self.annot_archive = None
         self.reset_existing_names()

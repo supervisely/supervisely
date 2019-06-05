@@ -1,14 +1,20 @@
-project_name = 'CHANGE_TO_YOUR_INPUT_PROJECT_NAME'
-
-import os.path
+import os
 import numpy as np
+import supervisely_lib as sly
 from supervisely_lib.io.json import dump_json_file
 
-sly.logger.info('DOWNLOAD_PROJECT', extra={'title': project_name})
-project_info = api.project.get_info_by_name(WORKSPACE_ID, project_name)
-dest_dir = os.path.join(RESULT_ARTIFACTS_DIR, project_name)
+WORKSPACE_ID = %%WORKSPACE_ID%%
+src_project_name = '%%IN_PROJECT_NAME%%'
+
+api = sly.Api(server_address=os.environ['SERVER_ADDRESS'], token=os.environ['API_TOKEN'])
+
+#### End settings. ####
+
+sly.logger.info('DOWNLOAD_PROJECT', extra={'title': src_project_name})
+project_info = api.project.get_info_by_name(WORKSPACE_ID, src_project_name)
+dest_dir = os.path.join(sly.TaskPaths.OUT_ARTIFACTS_DIR, src_project_name)
 sly.download_project(api, project_info.id, dest_dir, log_progress=True)
-sly.logger.info('Project {!r} has been successfully downloaded. Starting to render masks.'.format(project_name))
+sly.logger.info('Project {!r} has been successfully downloaded. Starting to render masks.'.format(src_project_name))
 
 project = sly.Project(directory=dest_dir, mode=sly.OpenMode.READ)
 machine_colors = {obj_class.name: [idx, idx, idx] for idx, obj_class in enumerate(project.meta.obj_classes, start=1)}
@@ -37,4 +43,4 @@ for dataset in project:
             label.geometry.draw(machine_mask, color=machine_colors[label.obj_class.name])
         sly.image.write(os.path.join(machine_masks_dir, mask_img_name), machine_mask)
 
-sly.logger.info('Finished masks rendering.'.format(project_name))
+sly.logger.info('Finished masks rendering.'.format(src_project_name))

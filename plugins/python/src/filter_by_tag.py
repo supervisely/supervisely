@@ -1,15 +1,21 @@
+import os
+import supervisely_lib as sly
+
+WORKSPACE_ID = %%WORKSPACE_ID%%
+src_project_name = '%%IN_PROJECT_NAME%%'
+dst_project_name = '%%OUT_PROJECT_NAME%%'
+
+api = sly.Api(server_address=os.environ['SERVER_ADDRESS'], token=os.environ['API_TOKEN'])
+
 # Constants to select filtering mode.
 FILTER_OBJECTS = 'objects'
 FILTER_IMAGES = 'images'
 KNOWN_FILTER_MODES = [FILTER_OBJECTS, FILTER_IMAGES]
 
-# CHANGE TO YOUR FILTERING MODE
-filter_mode = FILTER_IMAGES
+filter_mode = '%%filter_mode:images%%'
+filtered_tag_name = '%%filtered_tag_name%%'
 
-src_project_name = 'CHANGE_TO_YOUR_INPUT_PROJECT_NAME'
-dst_project_name = 'CHANGE_TO_YOUR_DESTINATION_PROJECT_NAME'
-filtered_tag_name = 'CHANGE_TO_YOUR_TAG_NAME'
-
+#### End settings. ####
 
 def _die_unsupported_filter_mode(mode):
     raise ValueError(

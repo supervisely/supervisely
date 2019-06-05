@@ -103,6 +103,9 @@ class Layer:
         self.define_classes_mapping()
         self.output_meta = None
 
+    @property
+    def config(self):
+        return deepcopy(self._config)
 
     def define_classes_mapping(self):
         self.cls_mapping[ClassConstants.OTHER] = ClassConstants.DEFAULT

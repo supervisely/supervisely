@@ -50,10 +50,15 @@ class DataLayer(Layer):
 
     @classmethod
     def _split_data_src(cls, src):
-        res = src.split('/')
-        if len(res) < 2:
-            res.append('*')  # all datasets
-        return res
+        src_components = src.strip('/').split('/')
+        if src_components == [''] or len(src_components) > 2:
+            # Empty name or too many components.
+            raise ValueError('Wrong "data" layer source path "{}", use "project_name/dataset_name" or "project_name/*" '
+                             'format of the path:'.format(src))
+        if len(src_components) == 1:
+            # Only the project is specified, append '*' for the datasets.
+            src_components.append('*')
+        return src_components
 
     def _define_layer_project(self):
         all_projects = {}

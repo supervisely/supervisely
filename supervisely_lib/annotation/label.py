@@ -111,13 +111,15 @@ class LabelBase:
                                      corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
                                      font=font)
 
-    def draw(self, bitmap, thickness=1, draw_tags=False, tags_font=None):
-        self.geometry.draw(bitmap, self.obj_class.color, thickness)
+    def draw(self, bitmap, color=None, thickness=1, draw_tags=False, tags_font=None):
+        effective_color = take_with_default(color, self.obj_class.color)
+        self.geometry.draw(bitmap, effective_color, thickness)
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 
-    def draw_contour(self, bitmap, thickness=1, draw_tags=False, tags_font=None):
-        self.geometry.draw_contour(bitmap, self.obj_class.color, thickness)
+    def draw_contour(self, bitmap, color=None, thickness=1, draw_tags=False, tags_font=None):
+        effective_color = take_with_default(color, self.obj_class.color)
+        self.geometry.draw_contour(bitmap, effective_color, thickness)
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 
