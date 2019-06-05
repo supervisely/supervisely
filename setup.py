@@ -33,7 +33,10 @@ setup(
         "PTable>=0.9.2",
         "pillow>=5.1.0,<6.0.0",
         "protobuf>=3.7.1",
-        "python-json-logger>=0.1.8",
+        # Higher python-json-logger versions are incompatible with
+        # simplejson somehow, so for now prevent higher versions from
+        # being installed.
+        "python-json-logger==0.1.8",
         "requests>=2.18.4",
         "requests-toolbelt>=0.9.1",
         "scikit-image>=0.13.0",
