@@ -183,7 +183,7 @@ def write_bytes(img, ext) -> np.ndarray:
     ext = ('.' + ext).replace('..', '.')
     if not is_valid_ext(ext):
         raise UnsupportedImageFormat(
-            'Unsupported image format {!r}. Only the following forrmats are supported: {}'.format(
+            'Unsupported image format {!r}. Only the following formats are supported: {}'.format(
                 ext, ', '.join(SUPPORTED_IMG_EXTS)))
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
     encode_status, img_array = cv2.imencode(ext, img)

@@ -91,9 +91,12 @@ class TaskDockerized(TaskSly):
     def before_main_step(self):
         raise NotImplementedError()
 
+    def main_step_envs(self):
+        return {}
+
     def main_step(self):
         self.before_main_step()
-        self.spawn_container()
+        self.spawn_container(add_envs=self.main_step_envs())
         self.process_logs()
         self.drop_container_and_check_status()
         self.report_step_done(TaskStep.MAIN)

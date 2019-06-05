@@ -35,9 +35,9 @@ class Api:
     def __init__(self, server_address, token):
         if token is None:
             raise ValueError("Token is None")
-        self.server_address = server_address
+        self.server_address = server_address.strip('/')
         if ('http://' not in self.server_address) and ('https://' not in self.server_address):
-            self.server_address = os.path.join('http://', self.server_address)
+            self.server_address = 'http://' + self.server_address
 
         self.headers = {'x-api-key': token}
         self.context = {}
@@ -60,7 +60,7 @@ class Api:
     def post(self, method, data, retries=3, stream=False):
         for retry_idx in range(retries):
             try:
-                url = os.path.join(self.server_address, 'public/api/v3', method)
+                url = self.server_address + '/public/api/v3/' + method
 
                 if type(data) is bytes:
                     response = requests.post(url, data=data, headers=self.headers, stream=stream)
