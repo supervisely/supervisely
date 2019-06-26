@@ -73,8 +73,10 @@ class TaskLogged(multiprocessing.Process):
 
         if self._user_api_key is not None:
             self.public_api = sly.Api(constants.SERVER_ADDRESS(), self._user_api_key)
-            self.public_api.add_additional_field('taskId', self.info['task_id'])
-            self.public_api_context = self.public_api.task.get_context(self.info['task_id'])
+            task_id = self.info['task_id']
+            self.public_api.add_additional_field('taskId', task_id)
+            self.public_api.add_header('x-task-id', str(task_id))
+            self.public_api_context = self.public_api.task.get_context(task_id)
         # else -> TelemetryReporter
 
     def init_additional(self):

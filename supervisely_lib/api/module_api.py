@@ -151,15 +151,18 @@ class ModuleApiBase(_JsonConvertibleModule):
         else:
             return self.InfoType(*[info[field_name] for field_name in self.info_sequence()])
 
-    def _get_info_by_id(self, id, method):
+    def _get_response_by_id(self, id, method, id_field):
         try:
-            response = self._api.post(method, {ApiField.ID: id})
+            return self._api.post(method, {id_field: id})
         except requests.exceptions.HTTPError as error:
             if error.response.status_code == 404:
                 return None
             else:
                 raise error
-        return self._convert_json_info(response.json())
+
+    def _get_info_by_id(self, id, method):
+        response = self._get_response_by_id(id, method, id_field=ApiField.ID)
+        return self._convert_json_info(response.json()) if (response is not None) else None
 
 
 # Base class for entities that have a parent object in the system.

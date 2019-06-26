@@ -135,6 +135,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                      result_name=result_project_name,
                                      config={} if inference_config is None else inference_config)
 
+    def get_training_metrics(self, task_id):
+        response = self._get_response_by_id(id=task_id, method='tasks.train-metrics', id_field=ApiField.TASK_ID)
+        return response.json() if (response is not None) else None
+
     def deploy_model(self, agent_id, model_id):
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:

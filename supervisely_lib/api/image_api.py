@@ -72,7 +72,10 @@ class ImageApi(ModuleApi):
                 'images.bulk.download', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids})
             decoder = MultipartDecoder.from_response(response)
             for part in decoder.parts:
-                img_id = int(re.findall('name="(.*)"', part.headers[b'Content-Disposition'].decode('utf-8'))[0])
+                content_utf8 = part.headers[b'Content-Disposition'].decode('utf-8')
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield img_id, part
 
     def download_paths(self, dataset_id, ids, paths, progress_cb=None):

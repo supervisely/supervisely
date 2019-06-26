@@ -54,3 +54,5 @@ This principal scheme illustrates how agent processes the task.
 - `DELETE_TASK_DIR_ON_FINISH`: whether to remove task directory after the task finishes successfully. _(default: true)_
 
 - `DELETE_TASK_DIR_ON_FAILURE`: whether to remove task directory after the task finishes with a failure. _(default: false)_
+
+- `DOCKER_API_CALL_TIMEOUT`: timeout for Docker API calls, in seconds. _(default: 60)_

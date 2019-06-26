@@ -326,14 +326,18 @@ def read_single_project(dir):
     return Project(os.path.join(dir, projects_in_dir[0]), OpenMode.READ)
 
 
-def download_project(api, project_id, dest_dir, log_progress=False):
+def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False):
+    dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
     for dataset_info in api.dataset.get_list(project_id):
-        dataset_fs = project_fs.create_dataset(dataset_info.name)
         dataset_id = dataset_info.id
+        if dataset_ids is not None and dataset_id not in dataset_ids:
+            continue
+
+        dataset_fs = project_fs.create_dataset(dataset_info.name)
         images = api.image.get_list(dataset_id)
 
         ds_progress = None

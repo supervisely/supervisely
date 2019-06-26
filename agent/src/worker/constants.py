@@ -5,13 +5,61 @@ from urllib.parse import urlparse
 import supervisely_lib as sly
 import hashlib
 
+_AGENT_HOST_DIR = 'AGENT_HOST_DIR'
+_SERVER_ADDRESS = 'SERVER_ADDRESS'
+_ACCESS_TOKEN = 'ACCESS_TOKEN'
+_DOCKER_LOGIN = 'DOCKER_LOGIN'
+_DOCKER_PASSWORD = 'DOCKER_PASSWORD'
+_DOCKER_REGISTRY = 'DOCKER_REGISTRY'
+
+_WITH_LOCAL_STORAGE = 'WITH_LOCAL_STORAGE'
+_UPLOAD_RESULT_IMAGES = 'UPLOAD_RESULT_IMAGES'
+_PULL_ALWAYS = 'PULL_ALWAYS'
+_DEFAULT_TIMEOUTS = 'DEFAULT_TIMEOUTS'
+_DELETE_TASK_DIR_ON_FINISH = 'DELETE_TASK_DIR_ON_FINISH'
+_DELETE_TASK_DIR_ON_FAILURE = 'DELETE_TASK_DIR_ON_FAILURE'
+_CHECK_VERSION_COMPATIBILITY = 'CHECK_VERSION_COMPATIBILITY'
+_DOCKER_API_CALL_TIMEOUT = 'DOCKER_API_CALL_TIMEOUT'
+
+_REQUIRED_SETTINGS = [
+    _AGENT_HOST_DIR,
+    _SERVER_ADDRESS,
+    _ACCESS_TOKEN,
+    _DOCKER_LOGIN,
+    _DOCKER_PASSWORD,
+    _DOCKER_REGISTRY
+]
+
+_OPTIONAL_DEFAULTS = {
+    _WITH_LOCAL_STORAGE: 'true',
+    _UPLOAD_RESULT_IMAGES: 'true',
+    _PULL_ALWAYS: 'true',
+    _DEFAULT_TIMEOUTS: 'true',
+    _DELETE_TASK_DIR_ON_FINISH: 'true',
+    _DELETE_TASK_DIR_ON_FAILURE: 'false',
+    _CHECK_VERSION_COMPATIBILITY: 'false',
+    _DOCKER_API_CALL_TIMEOUT: '60'
+}
+
+
+def get_required_settings():
+    return _REQUIRED_SETTINGS.copy()
+
+
+def get_optional_defaults():
+    return _OPTIONAL_DEFAULTS.copy()
+
+
+def read_optional_setting(name):
+    return os.getenv(name, _OPTIONAL_DEFAULTS[name])
+
 
 def HOST_DIR():
-    return os.environ['AGENT_HOST_DIR']
+    return os.environ[_AGENT_HOST_DIR]
 
 
 def SERVER_ADDRESS():
-    str_url = os.environ['SERVER_ADDRESS']
+    str_url = os.environ[_SERVER_ADDRESS]
     if ('http://' not in str_url) and ('https://' not in str_url):
         str_url = os.path.join('http://', str_url) #@TODO: raise with error
     parsed_uri = urlparse(str_url)
@@ -20,7 +68,7 @@ def SERVER_ADDRESS():
 
 
 def TOKEN():
-    return os.environ['ACCESS_TOKEN']
+    return os.environ[_ACCESS_TOKEN]
 
 
 def TASKS_DOCKER_LABEL():
@@ -32,15 +80,15 @@ def TASKS_DOCKER_LABEL_LEGACY():
 
 
 def DOCKER_LOGIN():
-    return os.environ['DOCKER_LOGIN']
+    return os.environ[_DOCKER_LOGIN]
 
 
 def DOCKER_PASSWORD():
-    return os.environ['DOCKER_PASSWORD']
+    return os.environ[_DOCKER_PASSWORD]
 
 
 def DOCKER_REGISTRY():
-    return os.environ['DOCKER_REGISTRY']
+    return os.environ[_DOCKER_REGISTRY]
 
 
 def AGENT_TASKS_DIR_HOST():
@@ -48,11 +96,15 @@ def AGENT_TASKS_DIR_HOST():
 
 
 def DELETE_TASK_DIR_ON_FINISH():
-    return sly.env.flag_from_env(os.getenv('DELETE_TASK_DIR_ON_FINISH', 'true'))
+    return sly.env.flag_from_env(read_optional_setting(_DELETE_TASK_DIR_ON_FINISH))
 
 
 def DELETE_TASK_DIR_ON_FAILURE():
-    return sly.env.flag_from_env(os.getenv('DELETE_TASK_DIR_ON_FAILURE', 'false'))
+    return sly.env.flag_from_env(read_optional_setting(_DELETE_TASK_DIR_ON_FAILURE))
+
+
+def DOCKER_API_CALL_TIMEOUT():
+    return int(read_optional_setting(_DOCKER_API_CALL_TIMEOUT))
 
 
 def AGENT_ROOT_DIR():
@@ -80,23 +132,23 @@ def AGENT_STORAGE_DIR():
 
 
 def WITH_LOCAL_STORAGE():
-    return sly.env.flag_from_env(os.getenv('WITH_LOCAL_STORAGE', 'true'))
+    return sly.env.flag_from_env(read_optional_setting(_WITH_LOCAL_STORAGE))
 
 
 def UPLOAD_RESULT_IMAGES():
-    return sly.env.flag_from_env(os.getenv('UPLOAD_RESULT_IMAGES', 'true'))
+    return sly.env.flag_from_env(read_optional_setting(_UPLOAD_RESULT_IMAGES))
 
 
 def PULL_ALWAYS():
-    return sly.env.flag_from_env(os.getenv('PULL_ALWAYS', 'true'))
+    return sly.env.flag_from_env(read_optional_setting(_PULL_ALWAYS))
 
 
 def CHECK_VERSION_COMPATIBILITY():
-    return sly.env.flag_from_env(os.getenv('CHECK_VERSION_COMPATIBILITY', 'false'))
+    return sly.env.flag_from_env(read_optional_setting(_CHECK_VERSION_COMPATIBILITY))
 
 
 def TIMEOUT_CONFIG_PATH():
-    use_default_timeouts = sly.env.flag_from_env(os.getenv('DEFAULT_TIMEOUTS', 'true'))
+    use_default_timeouts = sly.env.flag_from_env(read_optional_setting(_DEFAULT_TIMEOUTS))
     return None if use_default_timeouts else '/workdir/src/configs/timeouts_for_stateless.json'
 
 

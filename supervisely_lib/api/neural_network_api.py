@@ -131,5 +131,9 @@ class NeuralNetworkApi(CloneableModuleApi):
         response = self._api.post('models.info.deployed', {'id': model_id})
         return [task[ApiField.ID] for task in response.json()]
 
+    def get_training_metrics(self, model_id):
+        response = self._get_response_by_id(id=model_id, method='tasks.train-metrics', id_field=ApiField.MODEL_ID)
+        return response.json() if (response is not None) else None
+
     def _clone_api_method_name(self):
         return 'models.clone'

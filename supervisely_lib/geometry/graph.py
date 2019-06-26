@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import cv2
 from copy import deepcopy
 
 from supervisely_lib.imaging.color import rgb2hex, hex2rgb
@@ -132,16 +133,16 @@ class GraphNodes(Geometry):
             if (src is not None) and (not src.disabled) and (dst is not None) and (not dst.disabled):
                 edge_color = edge.get(COLOR, color)
                 cv2.line(bitmap,
-                         [src.location.col, src.location.row],
-                         [dst.location.col, dst.location.row],
-                         edge_color,
+                         (src.location.col, src.location.row),
+                         (dst.location.col, dst.location.row),
+                         tuple(edge_color),
                          thickness)
 
         nodes_config = self._get_nested_or_default(config, [NODES])
         for node_id, node in self._nodes.items():
             if not node.disabled:
                 effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
-                Point.from_json(node.location).draw(
+                Point.from_point_location(node.location).draw(
                     bitmap=bitmap, color=effective_color, thickness=thickness, config=None)
 
     @property

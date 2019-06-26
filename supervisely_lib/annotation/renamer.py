@@ -11,18 +11,23 @@ def is_name_included(name, enabled_names):
 
 class Renamer:
     ADD_SUFFIX = 'add_suffix'
-    SAVE_CLASSES = 'save_classes'
+    SAVE_CLASSES = 'save_classes'  # Deprecated. Use SAVE_NAMES in new code.
+    SAVE_NAMES = 'save_names'      # New field with more generic name.
 
-    def __init__(self, add_suffix='', enabled_classes=None):
+    def __init__(self, add_suffix='', save_names=None):
         self._add_suffix = add_suffix
-        self._enabled_classes = copy(enabled_classes) or MATCH_ALL
+        self._save_names = copy(save_names) if save_names is not None else MATCH_ALL
 
     def rename(self, name):
-        return (name + self._add_suffix) if is_name_included(name, self._enabled_classes) else None
+        return (name + self._add_suffix) if is_name_included(name, self._save_names) else None
 
     def to_json(self):
-        return {Renamer.ADD_SUFFIX: self._add_suffix, Renamer.SAVE_CLASSES: self._enabled_classes}
+        return {Renamer.ADD_SUFFIX: self._add_suffix, Renamer.SAVE_CLASSES: self._save_names}
 
     @staticmethod
     def from_json(renamer_json):
-        return Renamer(add_suffix=renamer_json[Renamer.ADD_SUFFIX], enabled_classes=renamer_json[Renamer.SAVE_CLASSES])
+        enabled_names = renamer_json.get(Renamer.SAVE_NAMES)
+        if enabled_names is None:
+            enabled_names = renamer_json.get(Renamer.SAVE_CLASSES)
+        add_suffix = renamer_json.get(Renamer.ADD_SUFFIX, '')
+        return Renamer(add_suffix=add_suffix, save_names=enabled_names)

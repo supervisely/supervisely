@@ -7,6 +7,8 @@ import base64
 import hashlib
 from supervisely_lib.io import fs as sly_fs
 
+import numpy as np
+
 
 def rand_str(length):
     chars = string.ascii_letters + string.digits  # [A-z][0-9]
@@ -50,3 +52,7 @@ def batched(seq, batch_size=50):
 
 def get_bytes_hash(bytes):
     return base64.b64encode(hashlib.sha256(bytes).digest()).decode('utf-8')
+
+
+def unwrap_if_numpy(x):
+    return x.item() if isinstance(x, np.number) else x

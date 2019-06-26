@@ -53,6 +53,21 @@
         }
       }
     },
+    "renamer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "save_classes": {
+          "$ref": "#/definitions/str_list_or_all"
+        },
+        "save_names": {
+          "$ref": "#/definitions/str_list_or_all"
+        },
+        "add_suffix": {
+          "type": "string"
+        }
+      }
+    },
     "str_list_or_all": {
       "oneOf": [
         {
@@ -102,35 +117,21 @@
     "type": "object",
     "additionalProperties": false,
     "required": [
-      "name",
-      "model_classes"
+      "name"
     ],
     "properties": {
-
       "name": {
         "type": "string",
         "enum": [
           "full_image"
         ]
       },
-
       "model_classes": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "save_classes",
-          "add_suffix"
-        ],
-        "properties": {
-          "save_classes": {
-            "$ref": "#/definitions/str_list_or_all"
-          },
-          "add_suffix": {
-            "type": "string"
-          }
-        }
+        "$ref": "#/definitions/renamer"
+      },
+      "model_tags": {
+        "$ref": "#/definitions/renamer"
       }
-
     }
   }
 }

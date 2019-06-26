@@ -13,8 +13,7 @@ from supervisely_lib.annotation.label import Label
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.obj_class_collection import make_renamed_classes, ObjClassCollection
 from supervisely_lib.annotation.obj_class_mapper import ObjClassMapper, RenamingObjClassMapper
-from supervisely_lib.annotation.tag import Tag
-from supervisely_lib.annotation.tag_meta_collection import make_renamed_tag_metas, TagMetaCollection
+from supervisely_lib.annotation.tag_meta_collection import make_renamed_tag_metas
 from supervisely_lib.annotation.tag_meta import TagValueType
 from supervisely_lib.annotation.tag_meta_mapper import RenamingTagMetaMapper, TagMetaMapper, make_renamed_tags
 from supervisely_lib.annotation.renamer import Renamer, is_name_included
@@ -31,6 +30,7 @@ INFERENCE_MODE_CONFIG = 'inference_mode_config'
 CLASS_NAME = 'class_name'
 FROM_CLASSES = 'from_classes'
 MODEL_CLASSES = 'model_classes'
+MODEL_TAGS = 'model_tags'
 MODE = 'mode'
 NAME = 'name'
 SAVE = 'save'
@@ -64,18 +64,13 @@ CONFIDENCE = 'confidence'
 CONFIDENCE_TAG_NAME = 'confidence_tag_name'
 
 
-def _replace_labels_classes(
-        labels, obj_class_mapper: ObjClassMapper, tags_meta_mapper: TagMetaMapper, skip_missing=False) -> list:
+def _replace_or_drop_labels_classes(labels, obj_class_mapper: ObjClassMapper, tag_meta_mapper: TagMetaMapper) -> list:
     result = []
     for label in labels:
         dest_obj_class = obj_class_mapper.map(label.obj_class)
         if dest_obj_class is not None:
-            mapped_tags = TagMetaCollection(
-                items=[Tag(meta=tags_meta_mapper.map(tag.meta), value=tag.value) for tag in label.tags])
-            result.append(label.clone(obj_class=dest_obj_class, tags=mapped_tags))
-        elif not skip_missing:
-            raise KeyError(
-                'Object class {} could not be mapped to a destination object class.'.format(label.obj_class.name))
+            renamed_tags = make_renamed_tags(tags=label.tags, tag_meta_mapper=tag_meta_mapper, skip_missing=True)
+            result.append(label.clone(obj_class=dest_obj_class, tags=renamed_tags))
     return result
 
 
@@ -151,7 +146,8 @@ class InferenceModeBase:
     @classmethod
     def make_default_config(cls, model_result_suffix):
         return {
-            MODEL_CLASSES: Renamer(add_suffix=model_result_suffix, enabled_classes=MATCH_ALL).to_json(),
+            MODEL_CLASSES: Renamer(add_suffix=model_result_suffix, save_names=MATCH_ALL).to_json(),
+            MODEL_TAGS: Renamer(add_suffix=model_result_suffix, save_names=MATCH_ALL).to_json(),
             NAME: cls.mode_name()
         }
 
@@ -165,7 +161,7 @@ class InferenceModeBase:
         model_out_meta = self._model.model_out_meta
 
         # Renamer for model classes.
-        renamer_model = Renamer.from_json(config[MODEL_CLASSES])
+        renamer_model = Renamer.from_json(config.get(MODEL_CLASSES, {}))
         # Add all the applicable (passing the renamer filter) renamed model classes to the output meta.
         self._out_meta = self.out_meta.add_obj_classes(
             make_renamed_classes(model_out_meta.obj_classes, renamer_model, skip_missing=True))
@@ -175,8 +171,8 @@ class InferenceModeBase:
         self._model_class_mapper = RenamingObjClassMapper(dest_obj_classes=self._out_meta.obj_classes,
                                                           renamer=renamer_model)
 
-        # Apply the same renaming settings as for the object classes to the output tags of the model.
-        self._model_tags_renamer = Renamer(add_suffix=config[MODEL_CLASSES][Renamer.ADD_SUFFIX])
+        # Renamer for model tags.
+        self._model_tags_renamer = Renamer.from_json(config.get(MODEL_TAGS, {}))
         # Rename the model output tags, set up a mapper and add them to the output meta.
         self._renamed_model_tags = make_renamed_tag_metas(
             model_out_meta.tag_metas, self._model_tags_renamer, skip_missing=True)
@@ -207,8 +203,8 @@ class InfModeFullImage(InferenceModeBase):
         result_ann = ann.clone()
         inference_result_ann = self._model.inference(img, ann)
         result_ann = result_ann.add_labels(
-            _replace_labels_classes(
-                inference_result_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper, skip_missing=True))
+            _replace_or_drop_labels_classes(
+                inference_result_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
         renamed_tags = make_renamed_tags(inference_result_ann.img_tags,
                                          self._model_tag_meta_mapper,
                                          skip_missing=True)
@@ -248,8 +244,7 @@ class InfModeRoi(InferenceModeBase):
         roi = _make_cropped_rectangle(ann.img_size, self._config[BOUNDS])
         roi_ann = _get_annotation_for_bbox(img, roi, self._model)
         result_ann = result_ann.add_labels(
-            _replace_labels_classes(
-                roi_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper, skip_missing=True))
+            _replace_or_drop_labels_classes(roi_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
         img_level_tags = make_renamed_tags(roi_ann.img_tags, self._model_tag_meta_mapper, skip_missing=True)
         result_ann = result_ann.add_labels(
             _maybe_make_bbox_label(roi, self._intermediate_bbox_class, tags=img_level_tags))
@@ -287,7 +282,7 @@ class InfModeBboxes(InferenceModeBase):
         self._renamer_intermediate = None
         if self._config[SAVE]:
             renamer_intermediate = Renamer(add_suffix=self._config[Renamer.ADD_SUFFIX],
-                                           enabled_classes=self._config[FROM_CLASSES])
+                                           save_names=self._config[FROM_CLASSES])
             # First simply rename the matching source classes.
             intermediate_renamed_classes = make_renamed_classes(in_meta.obj_classes, renamer_intermediate,
                                                                 skip_missing=True)
@@ -306,8 +301,8 @@ class InfModeBboxes(InferenceModeBase):
                 result_labels.append(src_label)
             else:
                 roi_ann = _get_annotation_for_bbox(img, roi, self._model)
-                result_labels.extend(_replace_labels_classes(
-                    roi_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper, skip_missing=True))
+                result_labels.extend(_replace_or_drop_labels_classes(
+                    roi_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
                 model_img_level_tags = make_renamed_tags(roi_ann.img_tags, self._model_tag_meta_mapper,
                                                          skip_missing=True)
                 if self._config[SAVE]:
@@ -398,8 +393,8 @@ class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
         aggregated_model_labels = raw_to_labels.segmentation_array_to_sly_bitmaps(id_to_class_obj,
                                                                                   np.argmax(summed_scores, axis=2))
         result_ann = result_ann.add_labels(
-            _replace_labels_classes(
-                aggregated_model_labels, self._model_class_mapper, self._model_tag_meta_mapper, skip_missing=True))
+            _replace_or_drop_labels_classes(
+                aggregated_model_labels, self._model_class_mapper, self._model_tag_meta_mapper))
         return result_ann
 
 
@@ -469,23 +464,31 @@ class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
     def _do_infer_annotate(self, img: np.ndarray, ann: Annotation) -> Annotation:
         result_ann = ann.clone()
         model_labels = []
+        roi_bbox_labels = []
         for roi in self._sliding_windows.get(ann.img_size):
             raw_roi_ann = _get_annotation_for_bbox(img, roi, self._model)
-            all_rectangle_labels = [label for label in raw_roi_ann.labels if isinstance(label.geometry, Rectangle)]
-            model_labels.extend(
-                _replace_labels_classes(
-                    all_rectangle_labels, self._model_class_mapper, self._model_tag_meta_mapper, skip_missing=True))
-            model_img_level_tags = make_renamed_tags(raw_roi_ann.img_tags, self._model_tag_meta_mapper,
-                                                     skip_missing=True)
-            result_ann = result_ann.add_labels(
+            # Accumulate all the labels across the sliding windows to potentially run non-max suppression over them.
+            # Only retain the classes that will be eventually saved to avoid running NMS on objects we will
+            # throw away anyway.
+            model_labels.extend([
+                label for label in raw_roi_ann.labels
+                if isinstance(label.geometry, Rectangle) and self._model_class_mapper.map(label.obj_class) is not None])
+
+            model_img_level_tags = make_renamed_tags(
+                raw_roi_ann.img_tags, self._model_tag_meta_mapper, skip_missing=True)
+            roi_bbox_labels.extend(
                 _maybe_make_bbox_label(roi, self._intermediate_bbox_class, tags=model_img_level_tags))
 
         nms_conf = self._config.get(NMS_AFTER, {ENABLE: False})
         if nms_conf[ENABLE]:
-            result_ann = result_ann.add_labels(self._general_nms(labels=model_labels, iou_thresh=nms_conf[IOU_THRESHOLD],
-                                                    confidence_tag_name=nms_conf.get(CONFIDENCE_TAG_NAME, CONFIDENCE)))
-        else:
-            result_ann = result_ann.add_labels(model_labels)
+            confidence_tag_name = nms_conf.get(CONFIDENCE_TAG_NAME, CONFIDENCE)
+            model_labels = self._general_nms(
+                labels=model_labels, iou_thresh=nms_conf[IOU_THRESHOLD], confidence_tag_name=confidence_tag_name)
+
+        model_labels_renamed = _replace_or_drop_labels_classes(
+            model_labels, self._model_class_mapper, self._model_tag_meta_mapper)
+
+        result_ann = result_ann.add_labels(roi_bbox_labels + model_labels_renamed)
         return result_ann
 
 

@@ -22,7 +22,8 @@ def maybe_convert_from_v1_inference_task_config(raw_config):
         config = {MODE: deepcopy(raw_config.get(MODE, {}))}
         if SOURCE in config[MODE]:
             config[MODE][NAME] = config[MODE].pop(SOURCE)
-        config[MODE][MODEL_CLASSES] = deepcopy(raw_config.get(MODEL_CLASSES, {}))
+        if MODEL_CLASSES not in config[MODE]:
+            config[MODE][MODEL_CLASSES] = deepcopy(raw_config.get(MODEL_CLASSES, {}))
         config[MODEL] = {}
         for k, v in raw_config.items():
             if k not in (MODE, MODEL_CLASSES):

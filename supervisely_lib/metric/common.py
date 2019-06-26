@@ -23,6 +23,10 @@ TOTAL = 'total'
 TOTAL_GROUND_TRUTH = 'total-ground-truth'
 TOTAL_PREDICTIONS = 'total-predictions'
 
+CONFUSION_MATRIX = 'confusion-matrix'
+UNMATCHED_GT = 'unmatched-gt'
+UNMATCHED_PREDICTIONS = 'unmatched-predictions'
+
 
 def check_class_mapping(first_project: Project, second_project: Project, classes_mapping: dict) -> None:
     for k, v in classes_mapping.items():

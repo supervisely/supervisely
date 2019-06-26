@@ -2,7 +2,7 @@
 
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.annotation.annotation import Annotation
-from supervisely_lib.metric.common import log_head, log_line
+from supervisely_lib.metric.common import log_head, log_line, CONFUSION_MATRIX, UNMATCHED_GT, UNMATCHED_PREDICTIONS
 from supervisely_lib.metric.matching import filter_labels_by_name, match_labels_by_iou
 from supervisely_lib.metric.metric_base import MetricsBase
 
@@ -33,7 +33,9 @@ class ConfusionMatrixMetric(MetricsBase):
             self._unmatched_pred[unmatched_pred_label.obj_class.name] += 1
 
     def get_metrics(self):
-        return self._confusion_matrix.copy(), self._unmatched_gt.copy(), self._unmatched_pred.copy()
+        return {CONFUSION_MATRIX: self._confusion_matrix.copy(),
+                UNMATCHED_GT: self._unmatched_gt.copy(),
+                UNMATCHED_PREDICTIONS: self._unmatched_pred.copy()}
 
     def get_total_metrics(self):
         return self.get_metrics()

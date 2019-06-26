@@ -6,6 +6,7 @@ from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.geometry import validation
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
+from supervisely_lib._utils import unwrap_if_numpy
 
 
 class PointLocation(JsonSerializable):
@@ -13,8 +14,8 @@ class PointLocation(JsonSerializable):
         """
         Create simple point in (row, col) position. Float-type coordinates will be deprecated soon.
         """
-        self._row = round(row)
-        self._col = round(col)
+        self._row = round(unwrap_if_numpy(row))
+        self._col = round(unwrap_if_numpy(col))
 
     @property
     def row(self):

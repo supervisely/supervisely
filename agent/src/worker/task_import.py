@@ -15,16 +15,6 @@ class TaskImport(TaskDockerized):
             str(sly.EventType.IMPORT_APPLIED): self.upload_result_project
         }
 
-        self.human_config = {
-            'res_names': {'project': self.info['project_name']},
-            'preset': self.info['preset'],
-            'options': self.info['options'],
-            'append_to_existing_project': self.info['append_to_existing_project'],
-            'task_id': self.info['task_id'],
-            'server_address': self.info['server_address'],
-            'api_token': self.info['api_token']
-        }
-
         self.dir_data = os.path.join(self.dir_task, os.path.basename(TaskPaths.DATA_DIR))
         self.dir_results = os.path.join(self.dir_task, os.path.basename(TaskPaths.RESULTS_DIR))
         self.config_path1 = os.path.join(self.dir_task, os.path.basename(TaskPaths.SETTINGS_PATH))
@@ -35,10 +25,23 @@ class TaskImport(TaskDockerized):
         sly.fs.mkdir(self.dir_data)
         sly.fs.mkdir(self.dir_results)
 
+    def make_human_config(self):
+        return {
+            'res_names': {'project': self.info['project_name']},
+            'preset': self.info['preset'],
+            'options': self.info['options'],
+            'append_to_existing_project': self.info['append_to_existing_project'],
+            'task_id': self.info['task_id'],
+            'server_address': self.info['server_address'],
+            'api_token': self.info['api_token'],
+            'workspace_id': self.public_api_context['workspace']['id']
+        }
+
     def download_step(self):
         self.logger.info("DOWNLOAD_DATA")
-        json.dump(self.human_config, open(self.config_path1, 'w'))
-        json.dump(self.human_config, open(self.config_path2, 'w'))
+        human_config = self.make_human_config()
+        json.dump(human_config, open(self.config_path1, 'w'))
+        json.dump(human_config, open(self.config_path2, 'w'))
         self.data_mgr.download_import_files(self.info['task_id'], self.dir_data)
         self.report_step_done(TaskStep.DOWNLOAD)
 

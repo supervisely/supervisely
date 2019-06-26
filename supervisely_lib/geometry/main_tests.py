@@ -1,6 +1,7 @@
 # coding: utf-8
 import unittest
 import numpy as np
+import json
 
 from supervisely_lib.geometry.point_location import PointLocation, row_col_list_to_points, points_to_row_col_list
 from supervisely_lib.geometry.point import Point
@@ -508,6 +509,33 @@ class BitmapTest(unittest.TestCase):
         self.assertEqual(res_rect.left, 5)
         self.assertEqual(res_rect.right, 9)
         self.assertEqual(res_rect.bottom, 6)
+
+    def test_to_contours(self):
+        bitmap = Bitmap(data=np.array([[1, 1, 0, 1, 1, 1],
+                                       [1, 1, 0, 1, 0, 1],
+                                       [0, 0, 0, 1, 1, 1],
+                                       [1, 0, 0, 1, 0, 1],
+                                       [1, 0, 0, 1, 1, 1],
+                                       [1, 0, 0, 0, 0, 0],
+                                       [1, 0, 0, 1, 1, 1]], dtype=np.bool),
+                        origin=PointLocation(10, 110))
+        polygons = bitmap.to_contours()
+
+        exteriors_points = [np.array([[10, 113], [14, 113], [14, 115], [10, 115]]),
+                            np.array([[10, 110], [11, 110], [11, 111], [10, 111]])]
+
+        interiors_points = [[],
+                            [np.array([[13, 113], [12, 114], [13, 115], [14, 114]]),
+                             np.array([[11, 113], [10, 114], [11, 115], [12, 114]])],
+                           []]
+
+        self.assertEqual(len(polygons), 2)
+        for polygon, target_exterior, target_interiors in zip(polygons, exteriors_points, interiors_points):
+            self.assertTrue(np.equal(polygon.exterior_np, target_exterior).all())
+            self.assertTrue(all(np.equal(p_inter, t_inter)
+                                for p_inter, t_inter in zip(polygon.interior_np, target_interiors)))
+            json.dumps(polygon.to_json())
+            self.assertIsInstance(polygon, Polygon)
 
     def test_from_json(self):
         packed_obj = {

@@ -69,6 +69,21 @@
         }
       ]
     },
+    "renamer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "save_classes": {
+          "$ref": "#/definitions/str_list_or_all"
+        },
+        "save_names": {
+          "$ref": "#/definitions/str_list_or_all"
+        },
+        "add_suffix": {
+          "type": "string"
+        }
+      }
+    },
     "int_percent_or_px": {
       "type": "string",
       "pattern": "^-?[0-9]+(%|px)$"
@@ -107,8 +122,7 @@
       "min_overlap",
       "save",
       "class_name",
-      "nms_after",
-      "model_classes"
+      "nms_after"
     ],
     "properties": {
       "name": {
@@ -150,20 +164,10 @@
         }
       },
       "model_classes": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "save_classes",
-          "add_suffix"
-        ],
-        "properties": {
-          "save_classes": {
-            "$ref": "#/definitions/str_list_or_all"
-          },
-          "add_suffix": {
-            "type": "string"
-          }
-        }
+        "$ref": "#/definitions/renamer"
+      },
+      "model_tags": {
+        "$ref": "#/definitions/renamer"
       }
     }
   }

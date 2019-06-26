@@ -153,11 +153,11 @@ class Bitmap(BitmapBase):
                 while child_idx >= 0:
                     internals.append(contours[child_idx][:, 0])
                     child_idx = hier[0][child_idx][0]
-                new_poly = Polygon(exterior=row_col_list_to_points(external, flip_row_col_order=True),
-                                   interior=[row_col_list_to_points(x, flip_row_col_order=True) for x in internals])
-                res.append(new_poly)
+                if len(external) > 2:
+                    new_poly = Polygon(exterior=row_col_list_to_points(external, flip_row_col_order=True),
+                                       interior=[row_col_list_to_points(x, flip_row_col_order=True) for x in internals])
+                    res.append(new_poly)
 
-        # offset = (origin.row + .5, origin.col + .5)  @TODO: now only int coord supported, check
         offset_row, offset_col = origin.row, origin.col
         res = [x.translate(offset_row, offset_col) for x in res]
         return res

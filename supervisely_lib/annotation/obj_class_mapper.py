@@ -1,9 +1,6 @@
 # coding: utf-8
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
-from supervisely_lib.annotation.tag import Tag
-from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
-from supervisely_lib.annotation.tag_meta_mapper import TagMetaMapper
 from supervisely_lib.annotation.renamer import Renamer
 
 

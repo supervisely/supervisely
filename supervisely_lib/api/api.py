@@ -54,6 +54,12 @@ class Api:
         self.plugin = plugin_api.PluginApi(self)
         self.agent = agent_api.AgentApi(self)
 
+    def add_header(self, key, value):
+        if key in self.headers:
+            raise RuntimeError(f'Header {key!r} is already set for the API object. '
+                               f'Current value: {self.headers[key]!r}. Tried to set value: {value!r}')
+        self.headers[key] = value
+
     def add_additional_field(self, key, value):
         self.additional_fields[key] = value
 

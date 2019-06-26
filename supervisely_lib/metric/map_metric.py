@@ -17,24 +17,31 @@ MatchWithConfidence = namedtuple('MatchWithConfidence', ['is_correct', 'confiden
 
 class MAPMetric(MetricsBase):
 
-    def __init__(self, class_mapping, iou_threshold):
+    def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence'):
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()
         self._predicted_class_names = set(class_mapping.values())
         self._iou_threshold = iou_threshold
+        self._confidence_tag_name = confidence_tag_name
         self._counters = {
             gt_cls: {MATCHES: [], TOTAL_GROUND_TRUTH: 0} for gt_cls in self._gt_to_pred_class_mapping.keys()}
 
-    @staticmethod
-    def _get_confidence_value(label):
-        confidence_tag = label.tags.get('confidence', None)
+    def _get_confidence_value(self, label):
+        confidence_tag = label.tags.get(self._confidence_tag_name, None)
         return confidence_tag.value if confidence_tag is not None else None
 
     def add_pair(self, ann_gt, ann_pred):
         labels_gt = filter_labels_by_name(ann_gt.labels, self._gt_to_pred_class_mapping)
-        labels_pred = [label for label in filter_labels_by_name(ann_pred.labels, self._predicted_class_names)
-                       if self._get_confidence_value(label) is not None]
+        all_labels_pred = [label for label in filter_labels_by_name(ann_pred.labels, self._predicted_class_names)]
+        labels_pred = []
+        for label in all_labels_pred:
+            label_confidence = self._get_confidence_value(label)
+            if label_confidence is None:
+                logger.warn(f'Found a label with class {label.obj_class.name!r} that does not have a '
+                            f'{self._confidence_tag_name!r} tag attached. Skipping this object for metric computation.')
+            else:
+                labels_pred.append(label)
         match_result = match_labels_by_iou(labels_1=labels_gt, labels_2=labels_pred, img_size=ann_gt.img_size,
                                            iou_threshold=self._iou_threshold)
         for match in match_result.matches:
@@ -65,12 +72,10 @@ class MAPMetric(MetricsBase):
         return np.mean(anchor_precisions)
 
     def get_metrics(self):  # Macro-evaluation
-        logger.info('Start evaluation of macro metrics.')
         result = {gt_class:
                       {AP: self._calculate_average_precision(gt_class, self._gt_to_pred_class_mapping[gt_class],
                                                              pair_counters)}
                   for gt_class, pair_counters in self._counters.items()}
-        logger.info('Finish macro evaluation')
         return result
 
     @staticmethod
@@ -78,7 +83,7 @@ class MAPMetric(MetricsBase):
         return np.mean([class_metrics[AP] for class_metrics in per_class_metrics.values()])
 
     def get_total_metrics(self):
-        return self.average_per_class_avg_precision(self.get_metrics())
+        return {AP: self.average_per_class_avg_precision(self.get_metrics())}
 
     def log_total_metrics(self):
         log_line()
@@ -94,5 +99,5 @@ class MAPMetric(MetricsBase):
 
         log_line()
         log_head(' Mean metrics values ')
-        logger.info('Mean Average Precision (mAP): {}'.format(self.average_per_class_avg_precision(classes_values)))
+        logger.info('Mean Average Precision (mAP): {}'.format(self.get_total_metrics()[AP]))
         log_line()

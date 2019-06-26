@@ -44,7 +44,7 @@ class Agent:
         # for compatibility with old plugins
         self._stop_missed_containers(constants.TASKS_DOCKER_LABEL_LEGACY())
 
-        self.docker_api = docker.from_env(version='auto')
+        self.docker_api = docker.from_env(version='auto', timeout=constants.DOCKER_API_CALL_TIMEOUT())
         self._docker_login()
 
         self.logger.info('Agent is ready to get tasks.')

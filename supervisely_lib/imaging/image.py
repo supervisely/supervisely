@@ -64,9 +64,8 @@ def validate_ext(path):
 
 
 def validate_format(path):
-    pil_img = PILImage.open(path)
-
     try:
+        pil_img = PILImage.open(path)
         pil_img.load()  # Validate image data. Because 'open' is lazy method.
     except OSError as e:
         raise ImageReadException(

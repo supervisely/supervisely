@@ -5,6 +5,7 @@ import cv2
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.rectangle import Rectangle
+from supervisely_lib._utils import unwrap_if_numpy
 
 
 class Point(Geometry):
@@ -12,8 +13,8 @@ class Point(Geometry):
         """
         Create geopmetry point in (row, col) position. Float-type coordinates will be deprecated soon.
         """
-        self._row = round(row)
-        self._col = round(col)
+        self._row = round(unwrap_if_numpy(row))
+        self._col = round(unwrap_if_numpy(col))
 
     @property
     def row(self):
