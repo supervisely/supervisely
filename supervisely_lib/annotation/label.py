@@ -113,13 +113,13 @@ class LabelBase:
 
     def draw(self, bitmap, color=None, thickness=1, draw_tags=False, tags_font=None):
         effective_color = take_with_default(color, self.obj_class.color)
-        self.geometry.draw(bitmap, effective_color, thickness)
+        self.geometry.draw(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 
     def draw_contour(self, bitmap, color=None, thickness=1, draw_tags=False, tags_font=None):
         effective_color = take_with_default(color, self.obj_class.color)
-        self.geometry.draw_contour(bitmap, effective_color, thickness)
+        self.geometry.draw_contour(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 

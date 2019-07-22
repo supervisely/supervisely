@@ -1,9 +1,10 @@
 # coding: utf-8
 
-from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, UpdateableModule
+from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
+from supervisely_lib.project.project_meta import ProjectMeta
 
 
-class ProjectApi(CloneableModuleApi, UpdateableModule):
+class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_sequence():
         return [ApiField.ID,
@@ -57,4 +58,20 @@ class ProjectApi(CloneableModuleApi, UpdateableModule):
     def get_images_count(self, id):
         datasets = self._api.dataset.get_list(id)
         return sum([dataset.images_count for dataset in datasets])
+
+    def _remove_api_method_name(self):
+        return 'projects.remove'
+
+    def merge_metas(self, src_project_id, dst_project_id):
+        if src_project_id == dst_project_id:
+            return self.get_meta(src_project_id)
+
+        src_meta = ProjectMeta.from_json(self.get_meta(src_project_id))
+        dst_meta = ProjectMeta.from_json(self.get_meta(dst_project_id))
+
+        new_dst_meta = src_meta.merge(dst_meta)
+        new_dst_meta_json = new_dst_meta.to_json()
+        self.update_meta(dst_project_id, new_dst_meta.to_json())
+
+        return new_dst_meta_json
 

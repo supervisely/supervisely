@@ -15,6 +15,9 @@ import supervisely_lib.api.image_api as image_api
 import supervisely_lib.api.annotation_api as annotation_api
 import supervisely_lib.api.plugin_api as plugin_api
 import supervisely_lib.api.agent_api as agent_api
+import supervisely_lib.api.role_api as role_api
+import supervisely_lib.api.user_api as user_api
+import supervisely_lib.api.labeling_job_api as labeling_job_api
 from supervisely_lib.sly_logger import logger
 
 
@@ -53,6 +56,9 @@ class Api:
         self.annotation = annotation_api.AnnotationApi(self)
         self.plugin = plugin_api.PluginApi(self)
         self.agent = agent_api.AgentApi(self)
+        self.role = role_api.RoleApi(self)
+        self.user = user_api.UserApi(self)
+        self.labeling_job = labeling_job_api.LabelingJobApi(self)
 
     def add_header(self, key, value):
         if key in self.headers:

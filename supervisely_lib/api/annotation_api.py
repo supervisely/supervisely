@@ -92,3 +92,23 @@ class AnnotationApi(ModuleApi):
 
     def _add_sort_param(self, data):
         return data
+
+    def copy_batch(self, src_image_ids, dst_image_ids, progress_cb=None):
+        if len(src_image_ids) != len(dst_image_ids):
+            raise RuntimeError('Can not match "src_image_ids" and "dst_image_ids" lists, '
+                               'len(src_image_ids) != len(dst_image_ids)')
+        if len(src_image_ids) == 0:
+            return
+
+        src_dataset_id = self._api.image.get_info_by_id(src_image_ids[0]).dataset_id
+        for cur_batch in batched(list(zip(src_image_ids, dst_image_ids))):
+            src_ids_batch, dst_ids_batch = zip(*cur_batch)
+            ann_infos = self.download_batch(src_dataset_id, src_ids_batch)
+            ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+            self.upload_jsons(dst_ids_batch, ann_jsons)
+            if progress_cb is not None:
+                progress_cb(len(src_ids_batch))
+
+    def copy(self, src_image_id, dst_image_id):
+        self.copy_batch([src_image_id], [dst_image_id])
+

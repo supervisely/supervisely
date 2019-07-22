@@ -3,15 +3,15 @@
 import io
 from collections import defaultdict
 
-from supervisely_lib.api.module_api import ApiField, ModuleApi
+from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext
-from supervisely_lib._utils import batched
+from supervisely_lib._utils import batched, generate_free_name
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 import re
 
 
-class ImageApi(ModuleApi):
+class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         return [ApiField.ID,
@@ -265,3 +265,48 @@ class ImageApi(ModuleApi):
                 break
         return self.InfoType(*field_values)
 
+    def _remove_batch_api_method_name(self):
+        return 'images.bulk.remove'
+
+    def _remove_batch_field_name(self):
+        return ApiField.IMAGE_IDS
+
+    def copy_batch(self, dst_dataset_id, ids, change_name_if_conflict=False, with_annotations=False):
+        if len(ids) == 0:
+            return
+
+        existing_images = self.get_list(dst_dataset_id)
+        existing_names = {image.name for image in existing_images}
+
+        ids_info = self.get_info_by_id_batch(ids)
+        if change_name_if_conflict:
+            new_names = [generate_free_name(existing_names, info.name) for info in ids_info]
+        else:
+            new_names = [info.name for info in ids_info]
+            names_intersection = existing_names.intersection(set(new_names))
+            if len(names_intersection) != 0:
+                raise RuntimeError('Images with the same names already exist in destination dataset. '
+                                   'Please, use argument \"change_name_if_conflict=True\" to automatically resolve '
+                                   'names intersection')
+
+        new_images = self.upload_ids(dst_dataset_id, new_names, ids)
+        new_ids = [new_image.id for new_image in new_images]
+
+        if with_annotations:
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
+            dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
+            self._api.project.merge_metas(src_project_id, dst_project_id)
+            self._api.annotation.copy_batch(ids, new_ids)
+
+        return new_images
+
+    def move_batch(self, dst_dataset_id, ids, change_name_if_conflict=False, with_annotations=False):
+        new_images = self.copy_batch(dst_dataset_id, ids, change_name_if_conflict, with_annotations)
+        self.remove_batch(ids)
+        return new_images
+
+    def copy(self, dst_dataset_id, id, change_name_if_conflict=False, with_annotations=False):
+        return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
+
+    def move(self, dst_dataset_id, id, change_name_if_conflict=False, with_annotations=False):
+        return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]

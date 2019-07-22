@@ -3,6 +3,7 @@
 import requests
 from collections import namedtuple
 from copy import deepcopy
+from supervisely_lib._utils import batched
 
 from supervisely_lib._utils import camel_to_snake
 
@@ -62,6 +63,35 @@ class ApiField:
     IMAGES =            'images'
     IMAGE_IDS =         'imageIds'
     ANNOTATIONS =       'annotations'
+    EMAIL =             'email'
+    LOGIN =             'login'
+    LOGINS =            'logins'
+    DISABLED =          'disabled'
+    LAST_LOGIN =        'lastLogin'
+    PASSWORD =          'password'
+    ROLE_ID =           'roleId'
+    IS_RESTRICTED =     'isRestricted'
+    DISABLE =           'disable'
+    TEAMS =             'teams'
+    USER_IDS =          'userIds'
+    PROJECT_NAME =      (['projectTitle'], 'project_name')
+    DATASET_NAME =      (['datasetTitle'], 'dataset_name')
+    WORKSPACE_NAME =    (['workspaceTitle'], 'workspace_name')
+    CREATED_BY_ID =     (['createdBy'], 'created_by_id')
+    CREATED_BY_LOGIN =  (['managerLogin'], 'created_by_login')
+    ASSIGNED_TO_ID =    (['userId'], 'assigned_to_id')
+    ASSIGNED_TO_LOGIN = (['labelerLogin'], 'assigned_to_login')
+    FINISHED_IMAGES_COUNT = 'finishedImagesCount'
+    CLASSES_TO_LABEL =  (['meta', 'classes'], 'classes_to_label')
+    TAGS_TO_LABEL =     (['meta', 'projectTags'], 'tags_to_label')
+    IMAGES_RANGE =      (['meta', 'range'], 'images_range')
+    REJECTED_IMAGES_COUNT = 'rejectedImagesCount'
+    ACCEPTED_IMAGES_COUNT = 'acceptedImagesCount'
+    OBJECTS_LIMIT_PER_IMAGE = (['meta', 'imageFiguresLimit'], 'objects_limit_per_image')
+    TAGS_LIMIT_PER_IMAGE = (['meta', 'imageTagsLimit'], 'tags_limit_per_image')
+    FILTER_IMAGES_BY_TAGS = (['meta', 'imageTags'], 'filter_images_by_tags')
+    INCLUDE_IMAGES_WITH_TAGS = ([], 'include_images_with_tags')
+    EXCLUDE_IMAGES_WITH_TAGS = ([], 'exclude_images_with_tags')
 
 
 def _get_single_item(items):
@@ -91,7 +121,15 @@ class ModuleApiBase(_JsonConvertibleModule):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         try:
-            cls.InfoType = namedtuple(cls.info_tuple_name(), [camel_to_snake(name) for name in cls.info_sequence()])
+            field_names = []
+            for name in cls.info_sequence():
+                if type(name) is str:
+                    field_names.append(camel_to_snake(name))
+                elif type(name) is tuple and type(name[1]) is str:
+                    field_names.append(name[1])
+                else:
+                    raise RuntimeError('Can not parse field {!r}'.format(name))
+            cls.InfoType = namedtuple(cls.info_tuple_name(), field_names)
         except NotImplementedError:
             pass
 
@@ -104,7 +142,12 @@ class ModuleApiBase(_JsonConvertibleModule):
         results[ApiField.SORT_ORDER] = 'asc'  # @TODO: move to enum
         return results
 
-    def get_list_all_pages(self, method, data, progress_cb=None):
+    def get_list_all_pages(self, method, data, progress_cb=None, convert_json_info_cb=None):
+        if convert_json_info_cb is None:
+            convert_func = self._convert_json_info
+        else:
+            convert_func = convert_json_info_cb
+
         data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response['total']
@@ -126,7 +169,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             if len(results) != total:
                 raise RuntimeError('Method {!r}: error during pagination, some items are missed'.format(method))
 
-        return [self._convert_json_info(item) for item in results]
+        return [convert_func(item) for item in results]
 
     @staticmethod
     def _get_info_by_name(get_info_by_filters_fn, name):
@@ -149,7 +192,21 @@ class ModuleApiBase(_JsonConvertibleModule):
         if info is None:
             return None
         else:
-            return self.InfoType(*[info[field_name] for field_name in self.info_sequence()])
+            field_values = []
+            for field_name in self.info_sequence():
+                if type(field_name) is str:
+                    field_values.append(info[field_name])
+                elif type(field_name) is tuple:
+                    value = None
+                    for sub_name in field_name[0]:
+                        if value is None:
+                            value = info[sub_name]
+                        else:
+                            value = value[sub_name]
+                    field_values.append(value)
+                else:
+                    raise RuntimeError('Can not parse field {!r}'.format(field_name))
+            return self.InfoType(*field_values)
 
     def _get_response_by_id(self, id, method, id_field):
         try:
@@ -267,3 +324,34 @@ class UpdateableModule(_JsonConvertibleModule):
 
         response = self._api.post(self._get_update_method(), body)
         return self._convert_json_info(response.json())
+
+
+class RemoveableModuleApi(ModuleApi):
+    def _remove_api_method_name(self):
+        raise NotImplementedError()
+
+    def remove(self, id):
+        self._api.post(self._remove_api_method_name(), {ApiField.ID: id})
+
+    def remove_batch(self, ids, progress_cb=None):
+        for id in ids:
+            self.remove(id)
+            if progress_cb is not None:
+                progress_cb(1)
+
+
+class RemoveableBulkModuleApi(ModuleApi):
+    def _remove_batch_api_method_name(self):
+        raise NotImplementedError()
+
+    def _remove_batch_field_name(self):
+        raise NotImplementedError()
+
+    def remove_batch(self, ids, progress_cb=None):
+        for ids_batch in batched(ids):
+            self._api.post(self._remove_batch_api_method_name(), {self._remove_batch_field_name(): ids_batch})
+            if progress_cb is not None:
+                progress_cb(len(ids_batch))
+
+    def remove(self, id):
+        self.remove_batch([id])

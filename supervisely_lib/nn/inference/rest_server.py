@@ -23,7 +23,7 @@ class RestInferenceServer:
                          resource_class_kwargs={'model': model})
 
     def run(self):
-        self._app.run(debug=False, port=self._port)
+        self._app.run(debug=False, port=self._port, host='0.0.0.0')
 
     class GetOutputMeta(Resource):
         def __init__(self, out_meta_json):
