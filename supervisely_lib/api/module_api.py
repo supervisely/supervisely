@@ -305,6 +305,10 @@ class ModuleWithStatus:
         raise NotImplementedError()
 
 
+class WaitingTimeExceeded(Exception):
+    pass
+
+
 class UpdateableModule(_JsonConvertibleModule):
     def __init__(self, api):
         self._api = api

@@ -4,13 +4,9 @@ from enum import Enum
 import os
 import time
 
-from supervisely_lib.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus
+from supervisely_lib.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus, WaitingTimeExceeded
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from supervisely_lib.io.fs import get_file_name
-
-
-class WaitingTimeExceeded(Exception):
-    pass
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):

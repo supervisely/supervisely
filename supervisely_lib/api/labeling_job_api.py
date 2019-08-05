@@ -1,9 +1,18 @@
 # coding: utf-8
+import time
+from enum import Enum
+from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
+                                           WaitingTimeExceeded
 
-from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableModuleApi
 
+class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
+    class Status(Enum):
+        PENDING = 'pending'
+        IN_PROGRESS = "in_progress"
+        ON_REVIEW = "on_review"
+        COMPLETED = "completed"
+        STOPPED = 'stopped'
 
-class LabelingJobApi(RemoveableModuleApi):
     @staticmethod
     def info_sequence():
         return [ApiField.ID,
@@ -182,3 +191,21 @@ class LabelingJobApi(RemoveableModuleApi):
 
     def archive(self, id):
         self._api.post('jobs.archive', {ApiField.ID: id})
+
+    def get_status(self, id):
+        status_str = self.get_info_by_id(id).status
+        return self.Status(status_str)
+
+    def raise_for_status(self, status):
+        #there is no ERROR status for labeling job
+        pass
+
+    def wait(self, id, target_status, wait_attempts=None):
+        wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
+        for attempt in range(wait_attempts):
+            status = self.get_status(id)
+            self.raise_for_status(status)
+            if status is target_status:
+                return
+            time.sleep(1)
+        raise WaitingTimeExceeded('Waiting time exceeded')
