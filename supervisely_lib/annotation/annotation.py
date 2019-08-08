@@ -128,17 +128,14 @@ class Annotation:
         return self.clone(img_tags=self._img_tags.add_items(tags))
 
     def delete_tags_by_name(self, tag_names):
-        tags_after_filter = []
-        for tag in self._img_tags.items():
-            if tag.meta.name not in tag_names:
-                tags_after_filter.append(tag)
-        return self.clone(img_tags=tags_after_filter)
+        retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
+        return self.clone(img_tags=TagCollection(items=retained_tags))
 
     def delete_tag_by_name(self, tag_name):
         return self.delete_tags_by_name([tag_name])
 
     def delete_tags(self, tags):
-        return self.delete_tags_by_name([tag.meta.name for tag in tags])
+        return self.delete_tags_by_name({tag.meta.name for tag in tags})
 
     def delete_tag(self, tag):
         return self.delete_tags_by_name([tag.meta.name])

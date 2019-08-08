@@ -50,14 +50,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if status is self.Status.ERROR:
             raise RuntimeError('Task status: ERROR')
 
-    def wait(self, id, target_status, wait_attempts=None):
+    def wait(self, id, target_status, wait_attempts=None, wait_attempt_timeout_sec=None):
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
+        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
             if status is target_status:
                 return
-            time.sleep(1)
+            time.sleep(effective_wait_timeout)
         raise WaitingTimeExceeded('Waiting time exceeded')
 
     def upload_dtl_archive(self, task_id, archive_path, progress_cb=None):

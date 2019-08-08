@@ -109,6 +109,7 @@ class _JsonConvertibleModule:
 
 class ModuleApiBase(_JsonConvertibleModule):
     MAX_WAIT_ATTEMPTS = 999
+    WAIT_ATTEMPT_TIMEOUT_SEC = 1
 
     @staticmethod
     def info_sequence():
