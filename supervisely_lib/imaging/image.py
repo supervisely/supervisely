@@ -3,7 +3,7 @@
 import os.path
 
 import cv2
-from PIL import ImageDraw, ImageFont, Image as PILImage
+from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
 import skimage.transform
@@ -13,6 +13,8 @@ from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.imaging.font import get_font
 from supervisely_lib._utils import get_bytes_hash
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 #@TODO: refactoring image->img
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
