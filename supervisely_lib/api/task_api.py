@@ -144,3 +144,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             task_id = task_ids[0]
         self.wait(task_id, self.Status.DEPLOYED)
         return task_id
+
+    def stop(self, id):
+        response = self._api.post('tasks.stop', {ApiField.ID: id})
+        return self.Status(response.json()[ApiField.STATUS])
