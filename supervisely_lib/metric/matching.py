@@ -2,6 +2,8 @@
 from collections import namedtuple
 
 from supervisely_lib.annotation.label import Label
+from supervisely_lib.geometry.rectangle import Rectangle
+from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.metric.common import safe_ratio
 
 import numpy as np
@@ -15,12 +17,30 @@ def filter_labels_by_name(labels, names_whitelist):
     return [label for label in labels if label.obj_class.name in names_whitelist]
 
 
+def get_iou_rect(rect: Rectangle, other: Geometry):
+    maybe_other_cropped = other.crop(rect)
+    if len(maybe_other_cropped) == 0:
+        return 0.0
+    else:
+        [other_cropped] = maybe_other_cropped
+        intersection_area = other_cropped.area
+        if intersection_area == 0:
+            return 0.0
+        union_area = rect.area + other.area - intersection_area
+        return intersection_area / union_area
+
+
 def get_labels_iou(label_1: Label, label_2: Label, img_size):
-    mask_1 = np.full(img_size, False)
-    label_1.geometry.draw(mask_1, color=True)
-    mask_2 = np.full(img_size, False)
-    label_2.geometry.draw(mask_2, color=True)
-    return safe_ratio((mask_1 & mask_2).sum(), (mask_1 | mask_2).sum())
+    if isinstance(label_1.geometry, Rectangle):
+        return get_iou_rect(label_1.geometry, label_2.geometry)
+    elif isinstance(label_2.geometry, Rectangle):
+        return get_iou_rect(label_2.geometry, label_1.geometry)
+    else:
+        mask_1 = np.full(img_size, False)
+        label_1.geometry.draw(mask_1, color=True)
+        mask_2 = np.full(img_size, False)
+        label_2.geometry.draw(mask_2, color=True)
+        return safe_ratio((mask_1 & mask_2).sum(), (mask_1 | mask_2).sum())
 
 
 def match_labels_by_iou(labels_1, labels_2, img_size, iou_threshold):
