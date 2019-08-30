@@ -17,6 +17,16 @@ from supervisely_lib.nn.hosted.legacy.inference_config import maybe_convert_from
 from supervisely_lib.task.progress import Progress
 
 
+def determine_task_inference_mode_config(default_inference_mode_config):
+    raw_task_config = load_json_file(TaskPaths.TASK_CONFIG_PATH)
+    task_config = maybe_convert_from_v1_inference_task_config(raw_task_config)
+    logger.info('Input task config', extra={'config': task_config})
+    result_config = get_effective_inference_mode_config(
+        task_config.get(MODE, {}), default_inference_mode_config)
+    logger.info('Full inference mode config', extra={'config': result_config})
+    return result_config
+
+
 class BatchInferenceApplier:
     """Runs a given single image inference model over all images in a project; saves results to a new project."""
 
@@ -25,7 +35,7 @@ class BatchInferenceApplier:
         self._single_image_inference = single_image_inference
         self._config_validator = config_validator or AlwaysPassingConfigValidator()
 
-        self._inference_mode_config = self._determine_inference_mode_config(deepcopy(default_inference_mode_config))
+        self._inference_mode_config = determine_task_inference_mode_config(deepcopy(default_inference_mode_config))
         self._determine_input_data()
         logger.info('Dataset inference preparation done.')
 
@@ -33,15 +43,6 @@ class BatchInferenceApplier:
         # TODO support multiple input projects.
         self._in_project = read_single_project(TaskPaths.DATA_DIR)
         logger.info('Project structure has been read. Samples: {}.'.format(self._in_project.total_items))
-
-    def _determine_inference_mode_config(self, default_inference_mode_config):
-        raw_task_config = load_json_file(TaskPaths.TASK_CONFIG_PATH)
-        task_config = maybe_convert_from_v1_inference_task_config(raw_task_config)
-        logger.info('Input task config', extra={'config': task_config})
-        result_config = get_effective_inference_mode_config(
-            task_config.get(MODE, {}), default_inference_mode_config)
-        logger.info('Full inference mode config', extra={'config': result_config})
-        return result_config
 
     def run_inference(self):
         inference_mode = InferenceModeFactory.create(

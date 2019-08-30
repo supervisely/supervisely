@@ -20,7 +20,7 @@ GPU_DEVICE = 'gpu_device'
 
 
 class SingleImageInferenceBase(SingleImageInferenceInterface):
-    def __init__(self, task_model_config=None):
+    def __init__(self, task_model_config=None, _load_model_weights=True):
         logger.info('Starting base single image inference applier init.')
         task_model_config = self._load_task_model_config() if task_model_config is None else deepcopy(task_model_config)
         self._config = update_recursively(self.get_default_config(), task_model_config)
@@ -28,7 +28,8 @@ class SingleImageInferenceBase(SingleImageInferenceInterface):
         self._validate_model_config(self._config)
 
         self._load_train_config()
-        self._construct_and_fill_model()
+        if _load_model_weights:
+            self._construct_and_fill_model()
         logger.info('Base single image inference applier init done.')
 
     def _construct_and_fill_model(self):

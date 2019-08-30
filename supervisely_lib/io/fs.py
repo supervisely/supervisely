@@ -101,7 +101,6 @@ def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
       (filter_fn is None or filter_fn(file_path))]
 
 
-
 def mkdir(dir: str):
     """
     Creates a leaf directory and all intermediate ones.
@@ -122,8 +121,6 @@ def ensure_base_path(path):
 
 def copy_file(src: str, dst: str):
     """
-    Copy file without chunks, loads full file into memory.
-
     Args:
         src: Source file path.
         dst: Destination file path.
@@ -132,8 +129,24 @@ def copy_file(src: str, dst: str):
     ensure_base_path(dst)
     with open(dst, 'wb') as out_f:
         with open(src, 'rb') as in_f:
-            buff = in_f.read()
-            out_f.write(buff)
+            shutil.copyfileobj(in_f, out_f, length=1024 * 1024)
+
+
+def hardlink_or_copy_file(src: str, dst: str):
+    try:
+        os.link(src, dst)
+    except OSError:
+        copy_file(src, dst)
+
+
+def hardlink_or_copy_tree(src: str, dst: str):
+    mkdir(dst)
+    for dir_name, _, file_names in os.walk(src):
+        relative_dir = os.path.relpath(dir_name, src)
+        dst_sub_dir = os.path.join(dst, relative_dir)
+        mkdir(dst_sub_dir)
+        for file_name in file_names:
+            hardlink_or_copy_file(os.path.join(dir_name, file_name), os.path.join(dst_sub_dir, file_name))
 
 
 def dir_exists(dir: str) -> bool:

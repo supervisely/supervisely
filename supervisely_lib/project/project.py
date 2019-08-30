@@ -113,8 +113,8 @@ class Dataset(KeyObject):
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.ann_dir, ann_path)
 
-    def add_item_file(self, item_name, img_path, ann=None):
-        self._add_img_file(item_name, img_path)
+    def add_item_file(self, item_name, img_path, ann=None, _validate_img=True, _use_hardlink=False):
+        self._add_img_file(item_name, img_path, _validate_img=_validate_img, _use_hardlink=_use_hardlink)
         self._add_ann_by_type(item_name, ann)
 
     def add_item_np(self, item_name, img, ann=None):
@@ -159,12 +159,21 @@ class Dataset(KeyObject):
         dst_img_path = os.path.join(self.img_dir, item_name)
         sly_image.write(dst_img_path, img)
 
-    def _add_img_file(self, item_name, img_path):
+    def _add_img_file(self, item_name, img_path, _validate_img=True, _use_hardlink=False):
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.img_dir, item_name)
         if img_path != dst_img_path:  # used only for agent + api during download project
-            copy_file(img_path, dst_img_path)
-            self._validate_added_image_or_die(dst_img_path)
+            hardlink_done = False
+            if _use_hardlink:
+                try:
+                    os.link(img_path, dst_img_path)
+                    hardlink_done = True
+                except OSError:
+                    pass
+            if not hardlink_done:
+                copy_file(img_path, dst_img_path)
+            if _validate_img:
+                self._validate_added_image_or_die(img_path)
 
     @staticmethod
     def _validate_added_image_or_die(img_path):
@@ -295,7 +304,7 @@ class Project:
         self._datasets = self._datasets.add(ds)
         return ds
 
-    def copy_data(self, dst_directory, dst_name=None):
+    def copy_data(self, dst_directory, dst_name=None, _validate_img=True, _use_hardlink=False):
         dst_name = dst_name if dst_name is not None else self.name
         new_project = Project(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
         new_project.set_meta(self.meta)
@@ -304,7 +313,8 @@ class Project:
             new_ds = new_project.create_dataset(ds.name)
             for item_name in ds:
                 item_paths = ds.get_item_paths(item_name)
-                new_ds.add_item_file(item_name, item_paths.img_path, ann=item_paths.ann_path)
+                new_ds.add_item_file(item_name, item_paths.img_path, ann=item_paths.ann_path,
+                                     _validate_img=_validate_img, _use_hardlink=_use_hardlink)
         return new_project
 
     @staticmethod

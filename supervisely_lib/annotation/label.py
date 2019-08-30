@@ -59,6 +59,9 @@ class LabelBase:
     def from_json(cls, data, project_meta: ProjectMeta):
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
+        if obj_class is None:
+            raise RuntimeError(f'Failed to deserialize a Label object from JSON: label class name {obj_class_name!r} '
+                               f'was not found in the given project meta.')
         return cls(geometry=obj_class.geometry_type.from_json(data),
                    obj_class=obj_class,
                    tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),

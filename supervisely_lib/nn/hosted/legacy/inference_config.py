@@ -35,3 +35,4 @@ def maybe_convert_from_deploy_task_config(raw_config):
     if 'connection' in raw_config and MODEL_SETTINGS in raw_config:
         raw_config[MODEL] = raw_config[MODEL_SETTINGS]
     return raw_config
+

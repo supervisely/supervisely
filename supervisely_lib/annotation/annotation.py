@@ -5,6 +5,7 @@ import itertools
 
 from copy import deepcopy
 
+from supervisely_lib import logger
 from supervisely_lib.annotation.label import Label
 from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -73,7 +74,12 @@ class Annotation:
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
         img_size = (img_height, img_width)
-        labels = [Label.from_json(label_json, project_meta) for label_json in data[AnnotationJsonFields.LABELS]]
+        try:
+            labels = [Label.from_json(label_json, project_meta) for label_json in data[AnnotationJsonFields.LABELS]]
+        except Exception:
+            logger.fatal('Failed to deserialize annotation from JSON format. One of the Label objects could not be '
+                         'deserialized')
+            raise
         return cls(img_size=img_size,
                    labels=labels,
                    img_tags=TagCollection.from_json(data[AnnotationJsonFields.IMG_TAGS], project_meta.tag_metas),

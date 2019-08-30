@@ -88,7 +88,6 @@ class DataManager(object):
 
     def download_dataset(self, dataset, dataset_id):
         images = self.public_api.image.get_list(dataset_id)
-        progress_imgs = sly.Progress('Dataset {!r}: download images'.format(dataset.name), len(images), self.logger)
         progress_anns = sly.Progress('Dataset {!r}: download annotations'.format(dataset.name), len(images), self.logger)
 
         images_to_download = images
@@ -103,16 +102,22 @@ class DataManager(object):
                 raise RuntimeError("Error with images cache during download. Please contact support.")
 
             if len(images_in_cache) > 0:
+                progress_imgs_cache = sly.Progress(
+                    'Dataset {!r}: restoring images from cache'.format(dataset.name), len(images_in_cache), self.logger)
                 img_cache_ids = [img_info.id for img_info in images_in_cache]
-                ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_cache_ids, progress_anns.iters_done_report)
+                ann_info_list = self.public_api.annotation.download_batch(
+                    dataset_id, img_cache_ids, progress_anns.iters_done_report)
                 img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
                 for img_info, img_cache_path in zip(images_in_cache, images_cache_paths):
                     item_name = _maybe_append_image_extension(img_info.name, img_info.ext)
-                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id])
-                    progress_imgs.iter_done_report()
+                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_img=False,
+                                          _use_hardlink=True)
+                    progress_imgs_cache.iter_done_report()
 
         # download images from server
         if len(images_to_download) > 0:
+            progress_imgs_download = sly.Progress(
+                'Dataset {!r}: download images'.format(dataset.name), len(images_to_download), self.logger)
             #prepare lists for api methods
             img_ids = []
             img_paths = []
@@ -123,14 +128,17 @@ class DataManager(object):
                     os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
 
             # download annotations
-            ann_info_list = self.public_api.annotation.download_batch(dataset_id, img_ids, progress_anns.iters_done_report)
+            ann_info_list = self.public_api.annotation.download_batch(
+                dataset_id, img_ids, progress_anns.iters_done_report)
             img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
-            self.public_api.image.download_paths(dataset_id, img_ids, img_paths, progress_imgs.iters_done_report)
+            self.public_api.image.download_paths(
+                dataset_id, img_ids, img_paths, progress_imgs_download.iters_done_report)
             for img_info, img_path in zip(images_to_download, img_paths):
                 dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id])
 
             if self.has_images_storage():
-                progress_cache = sly.Progress('Dataset {!r}: cache images'.format(dataset.name), len(img_paths), self.logger)
+                progress_cache = sly.Progress(
+                    'Dataset {!r}: cache images'.format(dataset.name), len(img_paths), self.logger)
                 img_hashes = [img_info.hash for img_info in images_to_download]
                 self.storage.images.write_objects(img_paths, img_hashes, progress_cache.iter_done_report)
 

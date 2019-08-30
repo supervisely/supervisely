@@ -21,7 +21,13 @@ class MAPMetric(MetricsBase):
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()
-        self._predicted_class_names = set(class_mapping.values())
+        self._pred_to_gt_class_mapping = {
+            pred_name: gt_name for gt_name, pred_name in self._gt_to_pred_class_mapping.items()}
+        if len(self._pred_to_gt_class_mapping) != len(self._gt_to_pred_class_mapping):
+            raise ValueError('Mapping from ground truth to prediction class name is not 1-to-1: multiple ground truth '
+                             'classes are mapped to the same prediction class. This is not supported for mAP '
+                             'calculations.')
+
         self._iou_threshold = iou_threshold
         self._confidence_tag_name = confidence_tag_name
         self._counters = {
@@ -33,7 +39,7 @@ class MAPMetric(MetricsBase):
 
     def add_pair(self, ann_gt, ann_pred):
         labels_gt = filter_labels_by_name(ann_gt.labels, self._gt_to_pred_class_mapping)
-        all_labels_pred = [label for label in filter_labels_by_name(ann_pred.labels, self._predicted_class_names)]
+        all_labels_pred = [label for label in filter_labels_by_name(ann_pred.labels, self._pred_to_gt_class_mapping)]
         labels_pred = []
         for label in all_labels_pred:
             label_confidence = self._get_confidence_value(label)
@@ -50,17 +56,23 @@ class MAPMetric(MetricsBase):
             self._counters[gt_class][MATCHES].append(
                 MatchWithConfidence(is_correct=(label_pred.obj_class.name == self._gt_to_pred_class_mapping[gt_class]),
                                     confidence=self._get_confidence_value(label_pred)))
+        # Add unmatched predictions to the list as false positive matches.
+        for umatched_pred in match_result.unmatched_labels_2:
+            gt_class = self._pred_to_gt_class_mapping[umatched_pred.obj_class.name]
+            self._counters[gt_class][MATCHES].append(
+                MatchWithConfidence(is_correct=False, confidence=self._get_confidence_value(umatched_pred)))
+
         for label_1 in labels_gt:
             self._counters[label_1.obj_class.name][TOTAL_GROUND_TRUTH] += 1
 
     @staticmethod
     def _calculate_average_precision(gt_class, pred_class, pair_counters):
-        if len(pair_counters[MATCHES]) == 0:
+        if len(pair_counters[MATCHES]) == 0 or all(match.is_correct == False for match in pair_counters[MATCHES]):
             logger.warning('No matching samples for pair {!r} <-> {!r} have been detected. '
                            'MAP value for this pair will be set to 0.'.format(gt_class, pred_class))
             return 0
 
-        sorted_matches = sorted(pair_counters[MATCHES], key=lambda match: match.confidence)
+        sorted_matches = sorted(pair_counters[MATCHES], key=lambda match: match.confidence, reverse=True)
         correct_indicators = [int(match.is_correct) for match in sorted_matches]
         total_correct = np.cumsum(correct_indicators)
         recalls = total_correct / pair_counters[TOTAL_GROUND_TRUTH]
