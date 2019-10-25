@@ -29,6 +29,11 @@ RUN pip install --no-cache-dir \
 RUN pip install requests-toolbelt
 RUN pip install packaging
 
+RUN apt-get update \
+    && apt-get install -y tree \
+    && apt-get -qq -y autoremove \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 ############### copy code ###############
 ARG MODULE_PATH

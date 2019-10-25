@@ -85,20 +85,8 @@ _default_retriers_config = {
     "__endless_stream_in": {
         "class": "RetrierAlwaysYield",
         "params": {
-            "retry_cnt": 10,
-            "wait_sec_first": 4,
-            "wait_sec_max": 4,
-            "timeout": [
-                4,
-                15
-            ]
-        }
-    },
-    "__endless_stream_out": {
-        "class": "RetrierAlways",
-        "params": {
-            "retry_cnt": 10,
-            "wait_sec_first": 4,
+            "retry_cnt": 1000,
+            "wait_sec_first": 2,
             "wait_sec_max": 4,
             "timeout": [
                 4,
@@ -109,8 +97,8 @@ _default_retriers_config = {
     "__data_stream_in": {
         "class": "RetrierConnTOYield",
         "params": {
-            "retry_cnt": 5,
-            "wait_sec_first": 1,
+            "retry_cnt": 100,
+            "wait_sec_first": 2,
             "wait_sec_max": 4,
             "timeout": [
                 4,
@@ -121,8 +109,8 @@ _default_retriers_config = {
     "__data_stream_out": {
         "class": "RetrierConnTO",
         "params": {
-            "retry_cnt": 5,
-            "wait_sec_first": 1,
+            "retry_cnt": 100,
+            "wait_sec_first": 2,
             "wait_sec_max": 4,
             "timeout": [
                 4,
@@ -133,7 +121,7 @@ _default_retriers_config = {
     "__simple_request": {
         "class": "RetrierConnTO",
         "params": {
-            "retry_cnt": 5,
+            "retry_cnt": 1000,
             "wait_sec_first": 1,
             "wait_sec_max": 4,
             "timeout": [
@@ -145,9 +133,9 @@ _default_retriers_config = {
     "Log": {
         "class": "RetrierAlways",
         "params": {
-            "retry_cnt": 1,
-            "wait_sec_first": 0,
-            "wait_sec_max": 0,
+            "retry_cnt": 1000,
+            "wait_sec_first": 1,
+            "wait_sec_max": 1,
             "timeout": [
                 4,
                 4
@@ -166,7 +154,20 @@ _default_retriers_config = {
                 10
             ]
         }
+    },
+    "AgentPing": {
+        "class": "RetrierAlways",
+        "params": {
+            "retry_cnt": 1000,
+            "wait_sec_first": 1,
+            "wait_sec_max": 4,
+            "timeout": [
+                4,
+                10
+            ]
+        }
     }
+
 }
 
 

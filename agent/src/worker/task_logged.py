@@ -72,7 +72,7 @@ class TaskLogged(multiprocessing.Process):
         self.api = sly.AgentAPI(constants.TOKEN(), constants.SERVER_ADDRESS(), self.logger, constants.TIMEOUT_CONFIG_PATH())
 
         if self._user_api_key is not None:
-            self.public_api = sly.Api(constants.SERVER_ADDRESS(), self._user_api_key)
+            self.public_api = sly.Api(constants.SERVER_ADDRESS(), self._user_api_key, external_logger=self.logger)
             task_id = self.info['task_id']
             self.public_api.add_additional_field('taskId', task_id)
             self.public_api.add_header('x-task-id', str(task_id))

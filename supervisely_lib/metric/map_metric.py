@@ -17,7 +17,7 @@ MatchWithConfidence = namedtuple('MatchWithConfidence', ['is_correct', 'confiden
 
 class MAPMetric(MetricsBase):
 
-    def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence'):
+    def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence', confidence_threshold=0.0):
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()
@@ -30,6 +30,7 @@ class MAPMetric(MetricsBase):
 
         self._iou_threshold = iou_threshold
         self._confidence_tag_name = confidence_tag_name
+        self._confidence_threshold = confidence_threshold
         self._counters = {
             gt_cls: {MATCHES: [], TOTAL_GROUND_TRUTH: 0} for gt_cls in self._gt_to_pred_class_mapping.keys()}
 
@@ -46,7 +47,7 @@ class MAPMetric(MetricsBase):
             if label_confidence is None:
                 logger.warn(f'Found a label with class {label.obj_class.name!r} that does not have a '
                             f'{self._confidence_tag_name!r} tag attached. Skipping this object for metric computation.')
-            else:
+            elif label_confidence >= self._confidence_threshold:
                 labels_pred.append(label)
         match_result = match_labels_by_iou(labels_1=labels_gt, labels_2=labels_pred, img_size=ann_gt.img_size,
                                            iou_threshold=self._iou_threshold)

@@ -4,6 +4,7 @@ import os
 import shutil
 import errno
 import tarfile
+import subprocess
 
 from supervisely_lib._utils import get_bytes_hash
 
@@ -272,3 +273,16 @@ def archive_directory(dir_: str, tar_path: str):
 
 def get_file_hash(path):
     return get_bytes_hash(open(path, 'rb').read())
+
+
+def tree(dir_path):
+    out = subprocess.Popen(['tree', '--filelimit', '500', '-h', '-n', dir_path],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+    stdout, stderr = out.communicate()
+    return stdout.decode("utf-8")
+
+
+def log_tree(dir_path, logger):
+    out = tree(dir_path)
+    logger.info("DIRECTORY_TREE", extra={'tree': out})

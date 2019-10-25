@@ -5,6 +5,7 @@ import json
 from supervisely_lib import logger
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
+from supervisely_lib.imaging.image import read as sly_image_read
 from supervisely_lib.io.json import load_json_file
 from supervisely_lib.nn.hosted.constants import MODEL, SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
 from supervisely_lib.nn.hosted.legacy.inference_config import maybe_convert_from_v1_inference_task_config, \
@@ -41,6 +42,10 @@ class SingleImageInferenceBase(SingleImageInferenceInterface):
 
     def inference(self, image, ann):
         raise NotImplementedError()
+
+    def inference_image_file(self, image_file, ann):
+        image = sly_image_read(image_file)
+        return self.inference(image, ann)
 
     @staticmethod
     def get_default_config():

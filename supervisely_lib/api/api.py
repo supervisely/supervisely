@@ -21,21 +21,13 @@ import supervisely_lib.api.labeling_job_api as labeling_job_api
 from supervisely_lib.sly_logger import logger
 
 
-RETRY_STATUS_CODES = {
-    408,  # Request Timeout
-    429,  # Too Many Requests
-    500,  # Internal Server Error
-    502,  # Bad Gateway
-    503,  # Service Unavailable
-    504,  # Gateway Timeout
-    509,  # Bandwidth Limit Exceeded (Apache)
-    598,  # Network read timeout error
-    599   # Network connect timeout error
-}
+from supervisely_lib.io.network_exceptions import process_requests_exception, process_unhandled_request
+
+SUPERVISELY_TASK_ID = 'SUPERVISELY_TASK_ID'
 
 
 class Api:
-    def __init__(self, server_address, token):
+    def __init__(self, server_address, token, retry_count=7000, retry_sleep_sec=1, external_logger=None):
         if token is None:
             raise ValueError("Token is None")
         self.server_address = server_address.strip('/')
@@ -43,6 +35,9 @@ class Api:
             self.server_address = 'http://' + self.server_address
 
         self.headers = {'x-api-key': token}
+        task_id = os.getenv(SUPERVISELY_TASK_ID)
+        if task_id is not None:
+            self.headers['x-task-id'] = task_id
         self.context = {}
         self.additional_fields = {}
 
@@ -60,6 +55,11 @@ class Api:
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
 
+        self.retry_count = retry_count
+        self.retry_sleep_sec = retry_sleep_sec
+
+        self.logger = external_logger or logger
+
     def add_header(self, key, value):
         if key in self.headers:
             raise RuntimeError(f'Header {key!r} is already set for the API object. '
@@ -69,11 +69,14 @@ class Api:
     def add_additional_field(self, key, value):
         self.additional_fields[key] = value
 
-    def post(self, method, data, retries=3, stream=False):
-        for retry_idx in range(retries):
-            try:
-                url = self.server_address + '/public/api/v3/' + method
+    def post(self, method, data, retries=None, stream=False):
+        if retries is None:
+            retries = self.retry_count
 
+        for retry_idx in range(retries):
+            url = self.server_address + '/public/api/v3/' + method
+            response = None
+            try:
                 if type(data) is bytes:
                     response = requests.post(url, data=data, headers=self.headers, stream=stream)
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
@@ -89,18 +92,13 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
-                exc_str = str(exc)
-                logger.warn('A request to the server has failed.', exc_info=True, extra={'exc_str': exc_str})
-                if (isinstance(exc, requests.exceptions.HTTPError) and hasattr(exc, 'response')
-                        and exc.response.status_code in RETRY_STATUS_CODES
-                        and retry_idx < retries - 1):
-                    # (retry_idx + 2): one for change the counting base from 0 to 1,
-                    # and 1 for indexing the next iteration.
-                    logger.warn('Retrying failed request ({}/{}).'.format(retry_idx + 2, retries))
-                else:
-                    raise RuntimeError(
-                        'Request has failed. This may be due to connection problems or invalid requests. '
-                        'Last failure: {!r}'.format(exc_str))
+                process_requests_exception(self.logger, exc, method, url,
+                                           verbose=True, swallow_exc=True, sleep_sec=self.retry_sleep_sec,
+                                           response=response,
+                                           retry_info={"retry_idx": retry_idx + 2,
+                                                       "retry_limit": retries})
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
 
     @staticmethod
     def _raise_for_status(response):

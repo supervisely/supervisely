@@ -27,6 +27,10 @@ class Agent:
         add_task_handler(self.logger, self.log_queue)
         sly.add_default_logging_into_file(self.logger, constants.AGENT_LOG_DIR())
 
+        self._stop_log_event = threading.Event()
+        self.executor_log = ThreadPoolExecutor(max_workers=1)
+        self.future_log = None
+
         self.logger.info('Agent comes back...')
 
         self.task_pool_lock = threading.Lock()
@@ -115,7 +119,7 @@ class Agent:
         for task in self.api.get_endless_stream('GetNewTask', sly.api_proto.Task, sly.api_proto.Empty()):
             task_msg = json.loads(task.data)
             task_msg['agent_info'] = self.agent_info
-            self.logger.debug('GET_NEW_TASK', extra={'task_msg': task_msg})
+            self.logger.info('GET_NEW_TASK', extra={'received_task_id': task_msg['task_id']})
             self.start_task(task_msg)
 
     def get_stop_task(self):
@@ -226,8 +230,14 @@ class Agent:
 
     def submit_log(self):
         while True:
-            log_lines = self.log_queue.get_log_batch_blocking()
-            self.api.simple_request('Log', sly.api_proto.Empty, sly.api_proto.LogLines(data=log_lines))
+            log_lines = self.log_queue.get_log_batch_nowait()
+            if len(log_lines) > 0:
+                self.api.simple_request('Log', sly.api_proto.Empty, sly.api_proto.LogLines(data=log_lines))
+            else:
+                if self._stop_log_event.isSet():
+                    return True
+                else:
+                    time.sleep(1)
 
     def follow_daemon(self, process_cls, name, sleep_sec=5):
         proc = process_cls()
@@ -247,22 +257,20 @@ class Agent:
             raise e
 
     def inf_loop(self):
-        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper, self.tasks_health_check))
-        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper, self.submit_log))
-        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper, self.get_new_task))
-        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper, self.get_stop_task))
-        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper, self.send_connect_info))
+        self.future_log = self.executor_log.submit(sly.function_wrapper_external_logger, self.submit_log, self.logger)
+        self.thread_list.append(self.future_log)
+        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper_external_logger, self.tasks_health_check, self.logger))
+        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper_external_logger, self.get_new_task, self.logger))
+        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper_external_logger, self.get_stop_task, self.logger))
+        self.thread_list.append(self.thread_pool.submit(sly.function_wrapper_external_logger, self.send_connect_info, self.logger))
         self.thread_list.append(
-            self.thread_pool.submit(sly.function_wrapper, self.follow_daemon, TelemetryReporter, 'TELEMETRY_REPORTER'))
-        self.thread_list.append(
-            self.thread_pool.submit(sly.function_wrapper, self.follow_daemon, ImageStreamer, 'IMAGE_STREAMER'))
+            self.thread_pool.submit(sly.function_wrapper_external_logger, self.follow_daemon, self.logger, TelemetryReporter, 'TELEMETRY_REPORTER'))
 
     def wait_all(self):
         def terminate_all_deamons():
             for process in self.daemons_list:
                 process.terminate()
                 process.join(timeout=2)
-                return
 
         futures_statuses = wait(self.thread_list, return_when='FIRST_EXCEPTION')
         for future in self.thread_list:
@@ -273,14 +281,11 @@ class Agent:
                     terminate_all_deamons()
                     break
 
-        futures_statuses = wait(self.thread_list, return_when='FIRST_EXCEPTION')
-        for future in self.thread_list:
-            if future.done():
-                try:
-                    future.result()
-                except Exception:
-                    terminate_all_deamons()
-                    break
+        if not self.future_log.done():
+            self.logger.info("WAIT_FOR_TASK_LOG: Agent is almost dead")
+            time.sleep(1)  # Additional sleep to give other threads the final chance to get their logs in.
+            self._stop_log_event.set()
+            self.executor_log.shutdown(wait=True)
 
         if len(futures_statuses.not_done) != 0:
             raise RuntimeError("AGENT: EXCEPTION IN BASE FUTURE !!!")

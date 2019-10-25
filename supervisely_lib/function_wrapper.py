@@ -48,3 +48,11 @@ def function_wrapper_nofail(f, *args, **kwargs):
         return f(*args, **kwargs)
     except Exception as e:
         logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(e)})
+
+
+def function_wrapper_external_logger(f, ext_logger, *args, **kwargs):
+    try:
+        return f(*args, **kwargs)
+    except Exception as e:
+        ext_logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(e)})
+        raise e

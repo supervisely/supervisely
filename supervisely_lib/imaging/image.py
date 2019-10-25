@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os.path
+from pkg_resources import parse_version
 
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
@@ -20,7 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png']
+SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp']
 DEFAULT_IMG_EXT = '.png'
 
 
@@ -240,8 +241,10 @@ def resize(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=
 
 def resize_inter_nearest(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=None) -> np.ndarray:
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
-    return skimage.transform.resize(
-        img, target_shape, order=0, preserve_range=True, mode='constant').astype(img.dtype)
+    resize_kv_args = dict(order=0, preserve_range=True, mode='constant')
+    if parse_version(skimage.__version__) >= parse_version('0.14.0'):
+        resize_kv_args['anti_aliasing'] = False
+    return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(img.dtype)
 
 
 def scale(img: np.ndarray, factor: float) -> np.ndarray:

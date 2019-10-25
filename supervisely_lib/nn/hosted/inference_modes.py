@@ -21,6 +21,7 @@ from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.sliding_windows import SlidingWindows
+from supervisely_lib.imaging.image import read as sly_image_read
 from supervisely_lib.nn import raw_to_labels
 from supervisely_lib.nn.config import update_recursively, update_strict, MultiTypeValidator
 from supervisely_lib.nn.hosted.inference_single_image import SingleImageInferenceBase
@@ -184,14 +185,25 @@ class InferenceModeBase:
     def out_meta(self) -> ProjectMeta:
         return self._out_meta
 
-    def infer_annotate(self, img: np.ndarray, ann: Annotation):
-        result_ann = self._do_infer_annotate(img, ann)
+    def _make_final_ann(self, result_ann):
         frontend_compatible_labels = _remove_backend_only_labels(result_ann.labels)
         return Annotation(img_size=result_ann.img_size, labels=frontend_compatible_labels, img_tags=result_ann.img_tags,
                           img_description=result_ann.img_description)
 
+    def infer_annotate(self, img: np.ndarray, ann: Annotation):
+        result_ann = self._do_infer_annotate(img, ann)
+        return self._make_final_ann(result_ann)
+    
+    def infer_annotate_image_file(self, image_file: str, ann: Annotation):
+        result_ann = self._do_infer_annotate_image_file(image_file, ann)
+        return self._make_final_ann(result_ann)
+
     def _do_infer_annotate(self, img, ann: Annotation) -> Annotation:
         raise NotImplementedError()
+    
+    def _do_infer_annotate_image_file(self, image_file: str, ann: Annotation) -> Annotation:
+        img = sly_image_read(image_file)
+        return self._do_infer_annotate(img, ann)
 
 
 class InfModeFullImage(InferenceModeBase):
@@ -199,9 +211,9 @@ class InfModeFullImage(InferenceModeBase):
     def mode_name():
         return 'full_image'
 
-    def _do_infer_annotate(self, img: np.ndarray, ann: Annotation) -> Annotation:
+    def _do_infer_annotate_generic(self, inference_fn, img, ann: Annotation):
         result_ann = ann.clone()
-        inference_result_ann = self._model.inference(img, ann)
+        inference_result_ann = inference_fn(img, ann)
         result_ann = result_ann.add_labels(
             _replace_or_drop_labels_classes(
                 inference_result_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
@@ -210,6 +222,12 @@ class InfModeFullImage(InferenceModeBase):
                                          skip_missing=True)
         result_ann = result_ann.add_tags(renamed_tags)
         return result_ann
+
+    def _do_infer_annotate(self, img: np.ndarray, ann: Annotation) -> Annotation:
+        return self._do_infer_annotate_generic(self._model.inference, img, ann)
+    
+    def _do_infer_annotate_image_file(self, image_file: str, ann: Annotation) -> Annotation:
+        return self._do_infer_annotate_generic(self._model.inference_image_file, image_file, ann)
 
 
 class InfModeRoi(InferenceModeBase):

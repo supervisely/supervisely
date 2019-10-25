@@ -96,6 +96,7 @@ class TaskDockerized(TaskSly):
 
     def main_step(self):
         self.before_main_step()
+        sly.fs.log_tree(self.dir_task, self.logger)
         self.spawn_container(add_envs=self.main_step_envs())
         self.process_logs()
         self.drop_container_and_check_status()

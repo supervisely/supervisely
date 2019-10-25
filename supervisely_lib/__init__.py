@@ -3,10 +3,12 @@
 from supervisely_lib.sly_logger import logger, ServiceType, EventType, add_logger_handler, \
     add_default_logging_into_file, get_task_logger, change_formatters_default_values, LOGGING_LEVELS
 
-from supervisely_lib.function_wrapper import main_wrapper, function_wrapper, catch_silently, function_wrapper_nofail
+from supervisely_lib.function_wrapper import main_wrapper, function_wrapper, catch_silently, function_wrapper_nofail, \
+    function_wrapper_external_logger
 
 from supervisely_lib.io import fs
 from supervisely_lib.io import env
+from supervisely_lib.io import network_exceptions
 
 from supervisely_lib.imaging import image
 from supervisely_lib.imaging import video

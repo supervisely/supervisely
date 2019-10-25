@@ -2,6 +2,7 @@
 
 import os
 import supervisely_lib as sly
+from supervisely_lib._utils import batched
 from worker.agent_storage import AgentStorage
 from worker.fs_storages import EmptyStorage
 from worker import constants
@@ -220,29 +221,38 @@ class DataManager(object):
                                                 sly.api_proto.Id(id=task_id))
         progress = sly.Progress('Downloading', len(import_struct.files), self.logger)
 
-        def close_fh(fh):
-            fpath = fh.file_path
-            if fh.close_and_check():
-                progress.iter_done_report()
-            else:
-                self.logger.warning('file was skipped while downloading', extra={'file_path': fpath})
+        def maybe_close_fh(fh, pbar, downloaded_paths: set):
+            if fh is not None:
+                if fh.close_and_check():
+                    pbar.iter_done_report()
+                    downloaded_paths.add(fh.file_path)
+                else:
+                    self.logger.warning('file was skipped while downloading', extra={'file_path': fh.file_path})
 
-        file_handler = None
-        for chunk in self.api.get_stream_with_data('GetImportFiles',
-                                                   sly.api_proto.ChunkFile,
-                                                   sly.api_proto.ImportRequest(task_id=task_id,
-                                                                               files=import_struct.files)):
-            new_fpath = chunk.file.path
-            if new_fpath:  # non-empty
+        files_to_download = list(import_struct.files)
+        for batch in batched(files_to_download):
+            # Store the file names that have been already downloaded from this batch
+            # to avoid rewriting them on transmission retries if connection issues arise.
+            downloaded_from_batch = set()
+            file_handler = None
+            for chunk in self.api.get_stream_with_data('GetImportFiles',
+                                                       sly.api_proto.ChunkFile,
+                                                       sly.api_proto.ImportRequest(task_id=task_id,
+                                                                                   files=batch)):
+                new_fpath = chunk.file.path
+                if new_fpath:  # non-empty
+                    maybe_close_fh(file_handler, progress, downloaded_from_batch)
+                    real_fpath = os.path.join(data_dir, new_fpath.lstrip('/'))
+                    if real_fpath in downloaded_from_batch:
+                        file_handler = None
+                    else:
+                        self.logger.trace('download import file', extra={'file_path': real_fpath})
+                        file_handler = sly.ChunkedFileWriter(file_path=real_fpath)
+
                 if file_handler is not None:
-                    close_fh(file_handler)
-                real_fpath = os.path.join(data_dir, new_fpath.lstrip('/'))
-                self.logger.trace('download import file', extra={'file_path': real_fpath})
-                file_handler = sly.ChunkedFileWriter(file_path=real_fpath)
+                    file_handler.write(chunk.chunk)
 
-            file_handler.write(chunk.chunk)
-
-        close_fh(file_handler)
+            maybe_close_fh(file_handler, progress, downloaded_from_batch)
 
     def upload_nn(self, nn_id, nn_hash):
         local_service_log = {'nn_id': nn_id, 'nn_hash': nn_hash}

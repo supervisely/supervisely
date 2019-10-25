@@ -11,18 +11,6 @@
       ]
     }
   },
-  "__endless_stream_out": {
-    "class": "RetrierAlways",
-    "params": {
-      "retry_cnt": 30,
-      "wait_sec_first": 2,
-      "wait_sec_max": 2,
-      "timeout": [
-        4,
-        15
-      ]
-    }
-  },
   "__data_stream_in": {
     "class": "RetrierConnTOYield",
     "params": {

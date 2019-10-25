@@ -3,8 +3,11 @@
 import os
 import struct
 import requests
+import traceback
+import time
 
-from .retriers import retriers_from_cfg
+from supervisely_lib.worker_api.retriers import retriers_from_cfg
+from supervisely_lib.io.network_exceptions import process_requests_exception, process_unhandled_request
 
 
 class AgentAPI:
@@ -40,24 +43,16 @@ class AgentAPI:
             addit_headers = {}
         cur_header = {**self.headers, **addit_headers}
         not_log_request = api_method_name != 'Log'
-
+        server_reply = None
         try:
-            # @TODO: spam logs?
-            # if not_log_request:
-            #   self.logger.debug('WILL_SEND_REQ', extra={'method': api_method_name})
             server_reply = requests.post(url, headers=cur_header, data=request_data, stream=in_stream, timeout=timeout)
-        except Exception as e:
-            if not_log_request:
-                self.logger.debug('REQ_FINISHED_WITH_EXCEPTION', extra={'method': api_method_name, 'exc_str': str(e)})
-            raise
-
-        if server_reply.status_code != requests.codes.ok:
-            if not_log_request:
-                self.logger.info('REQ STATUS_CODE_NOT_OK',
-                                  extra={'reason': server_reply.content.decode('utf-8'),
-                                         'status_code': server_reply.status_code,
-                                         'url': server_reply.url})
             server_reply.raise_for_status()
+        except requests.RequestException as exc:
+            process_requests_exception(self.logger, exc, api_method_name, url,
+                                       verbose=not_log_request, swallow_exc=False, response=server_reply)
+        except Exception as exc:
+            process_unhandled_request(self.logger, exc)
+
         return server_reply
 
     # magic value 4 means four bytes for message length
@@ -104,9 +99,13 @@ class AgentAPI:
                             msg_buf = b""
                 if msg_len is not None:
                     raise RuntimeError('MISSED_STREAM_CHUNKS')
-
         except requests.exceptions.ChunkedEncodingError:
             raise RuntimeError('Unknown error during stream. Please contact support.')
+        except requests.RequestException:
+            raise
+        except Exception as e:
+            self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(e)})
+            raise e
 
     def _put_out_stream(self, api_method_name, res_proto_fn, chunk_generator, timeout, addit_headers):
         def bindata_generator():
@@ -138,24 +137,22 @@ class AgentAPI:
         yield from retrier.request(self._get_input_stream,
                                    api_method_name, res_proto_fn, data_to_send, addit_headers=addit_headers)
 
-    def get_endless_stream(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
+    def get_endless_stream(self, api_method_name, res_proto_fn, proto_request, addit_headers=None,
+                           server_fail_limit=10, wait_server_sec=10):
         data_to_send = proto_request.SerializeToString()
-        retrier = self._get_retrier(api_method_name, '__endless_stream_in')
-        yield from retrier.request(self._get_input_stream,
-                                   api_method_name, res_proto_fn, data_to_send, addit_headers=addit_headers)
-        self.logger.warn('Endless input stream end', extra={'method': api_method_name})
+        for attempt in range(server_fail_limit):
+            retrier = self._get_retrier(api_method_name, '__endless_stream_in')
+            yield from retrier.request(self._get_input_stream,
+                                       api_method_name, res_proto_fn, data_to_send, addit_headers=addit_headers)
+            self.logger.warn('Endless input stream end', extra={'method': api_method_name})
+            if attempt != server_fail_limit - 1:
+                time.sleep(wait_server_sec)
 
     def put_stream_with_data(self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None):
         retrier = self._get_retrier(api_method_name, '__data_stream_out')
         res = retrier.request(self._put_out_stream,
                               api_method_name, res_proto_fn, chunk_generator, addit_headers=addit_headers)
         return res
-
-    def put_endless_stream(self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None):
-        retrier = self._get_retrier(api_method_name, '__endless_stream_out')
-        retrier.request(self._put_out_stream,
-                        api_method_name, res_proto_fn, chunk_generator, addit_headers=addit_headers)
-        self.logger.warn('Endless output stream end', extra={'method': api_method_name})
 
     @classmethod
     def catch_http_err(cls, code_list, fn, *args, **kwargs):

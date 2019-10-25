@@ -6,6 +6,7 @@ import tarfile
 
 import supervisely_lib as sly
 from supervisely_lib.task import paths as sly_paths
+from supervisely_lib.api.api import SUPERVISELY_TASK_ID
 
 from worker.task_dockerized import TaskDockerized, TaskStep
 from worker import constants as worker_constants
@@ -45,7 +46,8 @@ class TaskPython(TaskDockerized):
         pass
 
     def main_step_envs(self):
-        return {'SERVER_ADDRESS': worker_constants.SERVER_ADDRESS(), 'API_TOKEN': self._user_api_key}
+        return {'SERVER_ADDRESS': worker_constants.SERVER_ADDRESS(), 'API_TOKEN': self._user_api_key,
+                SUPERVISELY_TASK_ID: str(self.info['task_id'])}
 
     def upload_step(self):
         self.report_step_done(TaskStep.MAIN)
