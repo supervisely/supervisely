@@ -31,7 +31,6 @@ def save_project_as_pascal_voc_detection(save_path, project: Project):
     # Create root pascal 'datasets' folders
     for dataset in project.datasets:
         pascal_dataset_path = os.path.join(save_path, dataset.name)
-        pascal_dataset_relative_path = os.path.relpath(pascal_dataset_path, save_path)
 
         images_dir = os.path.join(pascal_dataset_path, 'JPEGImages')
         anns_dir = os.path.join(pascal_dataset_path, 'Annotations')
@@ -65,7 +64,7 @@ def save_project_as_pascal_voc_detection(save_path, project: Project):
             for tag in ann.img_tags:
                 samples_by_tags[tag.name].append((no_ext_name ,len(ann.labels)))
 
-            writer = pascal_voc_writer.Writer(path=pascal_dataset_relative_path,
+            writer = pascal_voc_writer.Writer(path=pascal_img_path,
                                               width=ann.img_size[1],
                                               height=ann.img_size[0])
 
