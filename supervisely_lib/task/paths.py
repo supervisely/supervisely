@@ -12,6 +12,7 @@ TASK_CONFIG_JSON = 'task_config.json'
 TASK_SETTINGS_JSON = 'task_settings.json'
 RESULTS = 'results'
 TMP = 'tmp'
+TASK_SHARED = 'sly_task_shared'
 
 
 class TaskPaths:
@@ -29,3 +30,4 @@ class TaskPaths:
     # For Python tasks only.
     OUT_ARTIFACTS_DIR = os.path.join(RESULTS_DIR, ARTIFACTS)
     OUT_PROJECTS_DIR = os.path.join(RESULTS_DIR, PROJECTS)
+    TASK_SHARED_DIR = '/' + TASK_SHARED

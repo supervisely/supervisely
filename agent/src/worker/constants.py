@@ -58,6 +58,14 @@ def HOST_DIR():
     return os.environ[_AGENT_HOST_DIR]
 
 
+def AGENT_ROOT_DIR():
+    return '/sly_agent'
+
+
+def _agent_to_host_path(local_path):
+    return os.path.join(HOST_DIR(), os.path.relpath(local_path, start=AGENT_ROOT_DIR()))
+
+
 def SERVER_ADDRESS():
     str_url = os.environ[_SERVER_ADDRESS]
     if ('http://' not in str_url) and ('https://' not in str_url):
@@ -95,6 +103,10 @@ def AGENT_TASKS_DIR_HOST():
     return os.path.join(HOST_DIR(), 'tasks')
 
 
+def AGENT_TASK_SHARED_DIR_HOST():
+    return _agent_to_host_path(AGENT_TASK_SHARED_DIR())
+
+
 def DELETE_TASK_DIR_ON_FINISH():
     return sly.env.flag_from_env(read_optional_setting(_DELETE_TASK_DIR_ON_FINISH))
 
@@ -107,10 +119,6 @@ def DOCKER_API_CALL_TIMEOUT():
     return int(read_optional_setting(_DOCKER_API_CALL_TIMEOUT))
 
 
-def AGENT_ROOT_DIR():
-    return '/sly_agent'
-
-
 def AGENT_LOG_DIR():
     return os.path.join(AGENT_ROOT_DIR(), 'logs')
 
@@ -118,6 +126,9 @@ def AGENT_LOG_DIR():
 def AGENT_TASKS_DIR():
     return os.path.join(AGENT_ROOT_DIR(), 'tasks')
 
+
+def AGENT_TASK_SHARED_DIR():
+    return os.path.join(AGENT_TASKS_DIR(), sly.task.paths.TASK_SHARED)
 
 def AGENT_TMP_DIR():
     return os.path.join(AGENT_ROOT_DIR(), 'tmp')
@@ -187,6 +198,8 @@ def BATCH_SIZE_LOG():
 def init_constants():
     sly.fs.mkdir(AGENT_LOG_DIR())
     sly.fs.mkdir(AGENT_TASKS_DIR())
+    sly.fs.mkdir(AGENT_TASK_SHARED_DIR())
+    os.chmod(AGENT_TASK_SHARED_DIR(), 0o777)  # octal
     sly.fs.mkdir(AGENT_STORAGE_DIR())
     sly.fs.mkdir(AGENT_TMP_DIR())
     sly.fs.mkdir(AGENT_IMPORT_DIR())

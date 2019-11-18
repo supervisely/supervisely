@@ -173,10 +173,14 @@ class TaskDockerized(TaskSly):
             self._docker_pull()
         self.docker_pulled = True
 
+    def _get_task_volumes(self):
+        return {self.dir_task_host: {'bind': '/sly_task_data', 'mode': 'rw'}}
+
     def spawn_container(self, add_envs=None):
         if add_envs is None:
             add_envs = {}
         self._container_lock.acquire()
+        volumes = self._get_task_volumes()
         try:
             self._container = self._docker_api.containers.run(
                 self.docker_image_name,
@@ -185,8 +189,7 @@ class TaskDockerized(TaskSly):
                 detach=True,
                 name='sly_task_{}_{}'.format(self.info['task_id'], constants.TASKS_DOCKER_LABEL()),
                 remove=False,
-                volumes={self.dir_task_host: {'bind': '/sly_task_data',
-                                              'mode': 'rw'}},
+                volumes=volumes,
                 environment={'LOG_LEVEL': 'DEBUG', 'LANG': 'C.UTF-8', **add_envs},
                 labels={'ecosystem': 'supervisely',
                         'ecosystem_token': constants.TASKS_DOCKER_LABEL(),

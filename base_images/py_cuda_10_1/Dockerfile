@@ -73,8 +73,8 @@ RUN pip install --no-cache-dir \
 
 RUN apt-get update && \
     apt-get -y install \
-        libexiv2-14=0.25-2.1ubuntu16.04.4 \
-        libexiv2-dev=0.25-2.1ubuntu16.04.4 \
+        libexiv2-14 \
+        libexiv2-dev \
         libboost-all-dev=1.58.0.1ubuntu1 \
         fonts-noto=20160116-1
 

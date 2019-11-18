@@ -49,6 +49,12 @@ class TaskPython(TaskDockerized):
         return {'SERVER_ADDRESS': worker_constants.SERVER_ADDRESS(), 'API_TOKEN': self._user_api_key,
                 SUPERVISELY_TASK_ID: str(self.info['task_id'])}
 
+    def _get_task_volumes(self):
+        volumes = super()._get_task_volumes()
+        volumes[worker_constants.AGENT_TASK_SHARED_DIR_HOST()] = {
+            'bind': sly_paths.TaskPaths.TASK_SHARED_DIR, 'mode': 'rw'}
+        return volumes
+
     def upload_step(self):
         self.report_step_done(TaskStep.MAIN)
 
