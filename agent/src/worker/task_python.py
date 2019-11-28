@@ -46,8 +46,12 @@ class TaskPython(TaskDockerized):
         pass
 
     def main_step_envs(self):
-        return {'SERVER_ADDRESS': worker_constants.SERVER_ADDRESS(), 'API_TOKEN': self._user_api_key,
-                SUPERVISELY_TASK_ID: str(self.info['task_id'])}
+        envs = super().main_step_envs()
+        envs.update({
+            'SERVER_ADDRESS': worker_constants.SERVER_ADDRESS(), 
+            'API_TOKEN': self._user_api_key,
+            SUPERVISELY_TASK_ID: str(self.info['task_id'])})
+        return envs
 
     def _get_task_volumes(self):
         volumes = super()._get_task_volumes()

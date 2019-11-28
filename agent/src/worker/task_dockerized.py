@@ -3,6 +3,7 @@
 from enum import Enum
 from threading import Lock
 import json
+import os
 from docker.errors import DockerException, ImageNotFound as DockerImageNotFound
 from packaging import version
 
@@ -92,7 +93,13 @@ class TaskDockerized(TaskSly):
         raise NotImplementedError()
 
     def main_step_envs(self):
-        return {}
+        envs = {}
+        for env_key in (sly.api.SUPERVISELY_PUBLIC_API_RETRIES,
+                        sly.api.SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC):
+            env_val = os.getenv(env_key)
+            if env_val is not None:
+                envs[env_key] = env_val
+        return envs
 
     def main_step(self):
         self.before_main_step()

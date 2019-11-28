@@ -24,15 +24,22 @@ from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.network_exceptions import process_requests_exception, process_unhandled_request
 
 SUPERVISELY_TASK_ID = 'SUPERVISELY_TASK_ID'
+SUPERVISELY_PUBLIC_API_RETRIES = 'SUPERVISELY_PUBLIC_API_RETRIES'
+SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = 'SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC'
 
 
 class Api:
-    def __init__(self, server_address, token, retry_count=7000, retry_sleep_sec=1, external_logger=None):
+    def __init__(self, server_address, token, retry_count=None, retry_sleep_sec=None, external_logger=None):
         if token is None:
             raise ValueError("Token is None")
         self.server_address = server_address.strip('/')
         if ('http://' not in self.server_address) and ('https://' not in self.server_address):
             self.server_address = 'http://' + self.server_address
+
+        if retry_count is None:
+            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, '7000'))
+        if retry_sleep_sec is None:
+            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, '1'))
 
         self.headers = {'x-api-key': token}
         task_id = os.getenv(SUPERVISELY_TASK_ID)
