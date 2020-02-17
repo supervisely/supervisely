@@ -51,10 +51,10 @@ up a virtual computing claster that your team can run their tasks on from the
 Supervisely web instance.
 
 <p align="center">
-<img src="https://docs.new.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
+<img src="https://docs.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
 </p>
 
-Check out [documentation](https://docs.new.supervise.ly/cluster/overview/) on how to deploy a new agent.
+Check out [explanation](https://github.com/supervisely/supervisely/tree/master/agent) on how agent works and [documentation](https://docs.supervise.ly/cluster/overview/) on how to deploy a new agent.
 
 ## Neural Networks
 

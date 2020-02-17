@@ -7,7 +7,7 @@
       "wait_sec_max": 2,
       "timeout": [
         4,
-        15
+        30
       ]
     }
   },
@@ -55,7 +55,7 @@
       "wait_sec_max": 0,
       "timeout": [
         4,
-        4
+        30
       ],
       "swallow_exc": true
     }

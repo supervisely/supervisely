@@ -176,8 +176,8 @@ class Annotation:
 
     def scale(self, factor):
         def _scale_label(label):
-            return [label.scale(self.img_size, factor)]
-        result_size = (round(self.img_size * factor), round(self.img_size * factor))
+            return [label.scale(factor)]
+        result_size = (round(self.img_size[0] * factor), round(self.img_size[1] * factor))
         return self.transform_labels(_scale_label, result_size)
 
     def fliplr(self):

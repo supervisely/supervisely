@@ -13,3 +13,5 @@ tasks_data/*
 **/params.local.sh
 */_account_private_registry.sh
 run_plugin_max.sh
+
+

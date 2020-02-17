@@ -44,6 +44,16 @@ def check_tag_mapping(first_project: Project, second_project: Project, tags_mapp
             raise RuntimeError('Tag {} does not exist in input project "{}".'.format(v, second_project.name))
 
 
+def render_labels_for_classes(labels, class_colors, canvas, missing_classes_color):
+    for label in labels:
+        color = class_colors.get(label.obj_class.name, missing_classes_color)
+        label.geometry.draw(canvas, color)
+
+
+def render_labels_for_class_name(labels, class_name, canvas):
+    return render_labels_for_classes(labels, {class_name: True}, canvas, missing_classes_color=False)
+
+
 def safe_ratio(num, denom):
     return (num / denom) if denom != 0 else 0
 

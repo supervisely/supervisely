@@ -34,3 +34,24 @@ def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None
         crop_rect = Rectangle.from_size(*crop_image_shape)
         return bitmap_geometry.crop(crop_rect)
     return [bitmap_geometry]
+
+
+def get_effective_nonoverlapping_masks(geometries, img_size=None):
+    if img_size is None:
+        if len(geometries) > 0:
+            common_bbox = Rectangle.from_geometries_list(geometries)
+            img_size = (common_bbox.bottom + 1, common_bbox.right + 1)
+        else:
+            img_size = (0,0)
+    canvas = np.full(shape=img_size, fill_value=len(geometries), dtype=np.int32)
+
+    for idx, geometry in enumerate(geometries):
+        geometry.draw(canvas, color=idx)
+    result_masks = []
+    for idx, geometry in enumerate(geometries):
+        effective_indicator = (canvas == idx)
+        if np.any(effective_indicator):
+            result_masks.append(Bitmap(effective_indicator))
+        else:
+            result_masks.append(None)
+    return result_masks, canvas

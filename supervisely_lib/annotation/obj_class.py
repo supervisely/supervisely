@@ -6,6 +6,7 @@ from supervisely_lib.imaging.color import random_rgb, rgb2hex, hex2rgb, _validat
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.collection.key_indexed_collection import KeyObject
 from supervisely_lib.geometry.bitmap import Bitmap
+from supervisely_lib.geometry.cuboid import Cuboid
 from supervisely_lib.geometry.point import Point
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.polyline import Polyline
@@ -22,7 +23,7 @@ class ObjClassJsonFields:
     GEOMETRY_CONFIG = 'geometry_config'
 
 
-INPUT_GEOMETRIES = [Bitmap, Point, Polygon, Polyline, Rectangle, GraphNodes]
+INPUT_GEOMETRIES = [Bitmap, Cuboid, Point, Polygon, Polyline, Rectangle, GraphNodes]
 JSON_SHAPE_TO_GEOMETRY_TYPE = {geometry.geometry_name(): geometry for geometry in INPUT_GEOMETRIES}
 
 

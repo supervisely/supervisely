@@ -90,7 +90,7 @@ _default_retriers_config = {
             "wait_sec_max": 4,
             "timeout": [
                 4,
-                15
+                30
             ]
         }
     },
@@ -138,7 +138,7 @@ _default_retriers_config = {
             "wait_sec_max": 1,
             "timeout": [
                 4,
-                4
+                30
             ],
             "swallow_exc": True
         }

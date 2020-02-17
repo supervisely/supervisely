@@ -4,7 +4,7 @@ import numpy as np
 
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.metric.metric_base import MetricsBase
-from supervisely_lib.metric.common import safe_ratio, sum_counters, TOTAL_GROUND_TRUTH
+from supervisely_lib.metric.common import render_labels_for_class_name, safe_ratio, sum_counters, TOTAL_GROUND_TRUTH
 
 
 INTERSECTION = 'intersection'
@@ -24,12 +24,6 @@ def get_iou(mask_1, mask_2):
     return safe_ratio(get_intersection(mask_1, mask_2), get_union(mask_1, mask_2))
 
 
-def _render_labels_for_class_name(labels, class_name, canvas):
-    for label in labels:
-        if label.obj_class.name == class_name:
-            label.geometry.draw(canvas, True)
-
-
 def _iou_log_line(iou, intersection, union):
     return 'IoU = {:.6f},  mean intersection = {:.6f}, mean union = {:.6f}'.format(iou, intersection, union)
 
@@ -47,8 +41,8 @@ class IoUMetric(MetricsBase):
         img_size = ann_gt.img_size
         for cls_gt, cls_pred in self._class_mapping.items():
             mask_gt, mask_pred = np.full(img_size, False), np.full(img_size, False)
-            _render_labels_for_class_name(ann_gt.labels, cls_gt, mask_gt)
-            _render_labels_for_class_name(ann_pred.labels, cls_pred, mask_pred)
+            render_labels_for_class_name(ann_gt.labels, cls_gt, mask_gt)
+            render_labels_for_class_name(ann_pred.labels, cls_pred, mask_pred)
             class_pair_counters = self._counters[cls_gt]
             class_pair_counters[INTERSECTION] += get_intersection(mask_gt, mask_pred)
             class_pair_counters[UNION] += get_union(mask_gt, mask_pred)
