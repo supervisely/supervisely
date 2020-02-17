@@ -1,0 +1,26 @@
+{
+    "name": "sliding_window_det",
+    "window": {
+      "width": 1000,
+      "height": 1000
+    },
+    "min_overlap": {
+      "x": 200,
+      "y": 200
+    },
+    "save": false,
+    "class_name": "sliding_window_bbox",
+    "nms_after": {
+      "enable": true,
+      "iou_threshold": 0.2,
+      "confidence_tag_name": "confidence"
+    },
+    "model_classes": {
+      "add_suffix": "_model",
+      "save_classes": ["tie"]
+    },
+    "model_tags": {
+      "add_suffix": "_model",
+      "save_names": "__all__"
+    }
+}

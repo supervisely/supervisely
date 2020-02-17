@@ -4,16 +4,16 @@
 #        [model docker image name]
 #        python -- /workdir/src/rest_inference.py
 
+from inference import ICNetSingleImageApplier
 import os
 
-from inference import ICNetSingleImageApplier
-
-from supervisely_lib.nn.inference import rest_server
+from supervisely_lib.worker_api.rpc_servicer import InactiveRPCServicer
+from supervisely_lib.nn.inference.rest_server import ModelRest, RestInferenceServer
 from supervisely_lib.nn.inference.rest_constants import REST_INFERENCE_PORT
 
 
 if __name__ == '__main__':
     port = os.getenv(REST_INFERENCE_PORT, '')
-    model = ICNetSingleImageApplier(task_model_config={})
-    server = rest_server.RestInferenceServer(model=model, name=__name__, port=port)
+    model_deploy = ModelRest(model_applier_cls=ICNetSingleImageApplier, rpc_servicer_cls=InactiveRPCServicer)
+    server = RestInferenceServer(model=model_deploy.serv_instance, name=__name__, port=port)
     server.run()
