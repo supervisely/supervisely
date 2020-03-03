@@ -39,6 +39,15 @@ assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
 ############################################################
 
 
+def maybe_inner_model(model):
+    # In multi-GPU training, we wrap the model. Get
+    # the inner model for any operations with weights.
+    if hasattr(model, "inner_model"):
+        return model.inner_model
+    else:
+        return model
+
+
 class SuperViselyCallback(Callback):
     def __init__(self, epochs, batches, out_config, checkpoints_saver):
         super(SuperViselyCallback, self).__init__()
@@ -83,7 +92,7 @@ class SuperViselyCallback(Callback):
         sly.fs.mkdir(weights_dir)
         model_fpath = os.path.join(weights_dir, 'model.h5')
         dump_json_file(self.out_config, os.path.join(out_dir, 'config.json'), indent=4)
-        self.model.save_weights(model_fpath, overwrite=True)
+        maybe_inner_model(self.model).save_weights(model_fpath, overwrite=True)
         sizeb = sly.fs.get_directory_size(out_dir)
         self.checkpoints_saver.saved(is_best=model_is_best, sizeb=sizeb, optional_data=val_loss_dict)
 
@@ -1996,7 +2005,11 @@ class MaskRCNN():
                        mrcnn_class_logits, mrcnn_class, mrcnn_bbox, mrcnn_mask,
                        rpn_rois, output_rois,
                        rpn_class_loss, rpn_bbox_loss, class_loss, bbox_loss, mask_loss]
-            model = KM.Model(inputs=inputs, outputs=outputs, name='mask_rcnn')
+            if config.GPU_COUNT > 1:
+                with tf.device('/cpu:0'):
+                    model = KM.Model(inputs=inputs, outputs=outputs, name='mask_rcnn')
+            else:
+                model = KM.Model(inputs=inputs, outputs=outputs, name='mask_rcnn')
         else:
             # Network Heads
             # Proposal classifier and BBox regressor heads
@@ -2029,7 +2042,9 @@ class MaskRCNN():
 
         # Add multi-GPU support.
         if config.GPU_COUNT > 1:
-            model = keras.utils.multi_gpu_model(model, gpus=config.GPU_COUNT)
+            single_gpu_model = model
+            model = keras.utils.multi_gpu_model(single_gpu_model, gpus=config.GPU_COUNT)
+            model.inner_model = single_gpu_model
 
         return model
 
@@ -2078,9 +2093,7 @@ class MaskRCNN():
 
         # In multi-GPU training, we wrap the model. Get layers
         # of the inner model because they have the weights.
-        keras_model = self.keras_model
-        layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
-            else keras_model.layers
+        layers = maybe_inner_model(self.keras_model).layers
 
         # Exclude some layers
         if exclude:
@@ -2162,8 +2175,7 @@ class MaskRCNN():
 
         # In multi-GPU training, we wrap the model. Get layers
         # of the inner model because they have the weights.
-        layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
-            else keras_model.layers
+        layers = maybe_inner_model(keras_model).layers
 
         for layer in layers:
             # Is the layer a model?
