@@ -3,7 +3,7 @@
 import os
 
 # Do NOT use directly for video extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-ALLOWED_VIDEO_EXTENSIONS = ['.avi', '.mp4']
+ALLOWED_VIDEO_EXTENSIONS = ['.avi', '.mkv', '.mp4']
 
 
 class VideoExtensionError(Exception):

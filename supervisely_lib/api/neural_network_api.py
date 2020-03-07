@@ -125,6 +125,8 @@ class NeuralNetworkApi(CloneableModuleApi):
         response_json = response.json()
         if 'out_meta' in response_json:
             return response_json['out_meta']
+        if 'output_meta' in response_json:
+            return response_json['output_meta']
         return response.json()
 
     def get_deploy_tasks(self, model_id):

@@ -29,6 +29,7 @@ class ModelDeploy:
         self.model_applier_cls = model_applier_cls
         self.rpc_servicer_cls = rpc_servicer_cls
         self.load_config()
+        self._create_serv_instance()
 
     def load_config(self):
         self.config = deepcopy(ModelDeploy.config)
@@ -37,11 +38,17 @@ class ModelDeploy:
         update_recursively(self.config, new_config)
         logger.info('Full config', extra={CONFIG: self.config})
 
-    def run(self):
+    def _create_applier(self):
         model_applier = function_wrapper(self.model_applier_cls)
+        return model_applier
+
+    def _create_serv_instance(self):
+        model_applier = self._create_applier()
         image_cache = SimpleCache(self.config['cache_limit'])
-        serv_instance = self.rpc_servicer_cls(logger=logger,
-                                              model_applier=model_applier,
-                                              conn_config=self.config['connection'],
-                                              cache=image_cache)
-        serv_instance.run_inf_loop()
+        self.serv_instance = self.rpc_servicer_cls(logger=logger,
+                                                   model_applier=model_applier,
+                                                   conn_config=self.config['connection'],
+                                                   cache=image_cache)
+
+    def run(self):
+        self.serv_instance.run_inf_loop()

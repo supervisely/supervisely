@@ -3,6 +3,10 @@
 The documentation is still under active development.
 For now we have the following resources available:
 
+### How it works
+
+* [Exam report explanation](./tutorials/06_exam_report_explanation/06_exam_report_explanation.md)
+
 ### Integration guides
 
 * [Create a new Supervisely plugin](./tutorials/01_create_new_plugin/how_to_create_plugin.md)
@@ -13,6 +17,7 @@ For now we have the following resources available:
 
 ### Python SDK tutorials and cookbooks
 
+
 #### Tutorials
 
 * [Working with Supervisely projects and labeling data](./jupyterlab_scripts/src/tutorials/01_project_structure/project.ipynb)
@@ -20,6 +25,14 @@ For now we have the following resources available:
 * [Data augmentation for neural network training](./jupyterlab_scripts/src/tutorials/03_augmentations/augmentations.ipynb)
 * [Neral network inference and online deployment using Supervisely API](./jupyterlab_scripts/src/tutorials/04_neural_network_inference/neural_network_inference.ipynb)
 * [Automating comple workflows using Supervisely API](./jupyterlab_scripts/src/tutorials/05_neural_network_workflow/neural_network_workflow.ipynb)
+* [Explanation of different inference modes for NN: full image, sliding window, roi](./jupyterlab_scripts/src/tutorials/06_inference_modes/inference_modes.ipynb)
+* [How to copy, move and delete data using py-SDK and REST-API](./jupyterlab_scripts/src/tutorials/07_copy_move_delete_example/copy_move_delete.ipynb)
+* [How to manage users and labeling jobs](./jupyterlab_scripts/src/tutorials/08_users_labeling_jobs_example/users_labeling_jobs_example.ipynb)
+* [Custom inference pipeline: image -> detection -> segmentation -> postprocessing](./jupyterlab_scripts/src/tutorials/09_detection_segmentation_pipeline/detection_segmentation_pipeline.ipynb)
+* [Custom upload procedure: check if image exists and how to upload only new images to Supervisely instance](./jupyterlab_scripts/src/tutorials/10_upload_only_new_images/upload_only_new_images.ipynb)
+* [Custom data pipeline: upload -> auto labeling jobs -> move labeled data to "secret" project](./jupyterlab_scripts/src/tutorials/11_custom_data_pipeline/custom_data_pipeline.ipynb)
+* [Filter images in different projects and combine results into a new project](./jupyterlab_scripts/src/tutorials/12_filter_and_combine_images/filter_combine_images.ipynb)
+* [How to apply NN (UNet/YOLO/Mask-RCNN) to the image from sources](./jupyterlab_scripts/src/tutorials/13_nn_inference_from_sources/README.md)
 
 #### Cookbooks
 
@@ -39,6 +52,3 @@ For now we have the following resources available:
 * [Add augmentations and prepare data for training a segmentation model](./jupyterlab_scripts/src/cookbook/training_data_for_segmentation/training_data_for_segmentation.ipynb)
 * [Upload a project using  using Supervisely API](./jupyterlab_scripts/src/cookbook/upload_project/upload_project.ipynb)
 
-### How it works
-
-* [Exam report explanation](./tutorials/06_exam_report_explanation/06_exam_report_explanation.md)

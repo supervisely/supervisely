@@ -48,7 +48,9 @@ class ImageApi(RemoveableBulkModuleApi):
             filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
             results.extend(self.get_list_all_pages('images.list', {ApiField.DATASET_ID: dataset_id,
                                                                    ApiField.FILTER: filters}))
-        return results
+        temp_map = {info.id: info for info in results}
+        ordered_results = [temp_map[id] for id in ids]
+        return ordered_results
 
     def _download(self, id):
         response = self._api.post('images.download', {ApiField.ID: id})
@@ -272,6 +274,9 @@ class ImageApi(RemoveableBulkModuleApi):
         return ApiField.IMAGE_IDS
 
     def copy_batch(self, dst_dataset_id, ids, change_name_if_conflict=False, with_annotations=False):
+        if type(ids) is not list:
+            raise RuntimeError("ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list))
+
         if len(ids) == 0:
             return
 
@@ -279,8 +284,12 @@ class ImageApi(RemoveableBulkModuleApi):
         existing_names = {image.name for image in existing_images}
 
         ids_info = self.get_info_by_id_batch(ids)
+        temp_ds_ids = {info.dataset_id for info in ids_info}
+        if len(temp_ds_ids) > 1:
+            raise RuntimeError("Images ids have to be from the same dataset")
+
         if change_name_if_conflict:
-            new_names = [generate_free_name(existing_names, info.name) for info in ids_info]
+            new_names = [generate_free_name(existing_names, info.name, with_ext=True) for info in ids_info]
         else:
             new_names = [info.name for info in ids_info]
             names_intersection = existing_names.intersection(set(new_names))
