@@ -213,3 +213,14 @@ class SmarttoolRPCServicer(AgentRPCServicerBase):
 
     def _get_out_meta(self, in_msg):
         return self.model_applier.get_out_meta()
+
+
+class InactiveRPCServicer(AgentRPCServicer):
+    def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        self.logger = logger
+        self.model_applier = model_applier
+        self._default_inference_mode_config = InfModeFullImage.make_default_config(model_result_suffix=MODEL_RESULT_SUFFIX)
+        self.logger.info('Created InactiveRPCServicer for internal usage', extra=conn_config)
+
+    def run_inf_loop(self):
+        raise RuntimeError("Method is not accessible")

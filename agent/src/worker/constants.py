@@ -22,6 +22,13 @@ _CHECK_VERSION_COMPATIBILITY = 'CHECK_VERSION_COMPATIBILITY'
 _DOCKER_API_CALL_TIMEOUT = 'DOCKER_API_CALL_TIMEOUT'
 _HTTP_PROXY = 'HTTP_PROXY'
 _HTTPS_PROXY = 'HTTPS_PROXY'
+_PUBLIC_API_RETRY_LIMIT = 'PUBLIC_API_RETRY_LIMIT'
+
+# container limits
+_CPU_PERIOD = 'CPU_PERIOD'
+_CPU_QUOTA = 'CPU_QUOTA'
+_MEM_LIMIT = 'MEM_LIMIT'
+
 
 
 _REQUIRED_SETTINGS = [
@@ -43,7 +50,11 @@ _OPTIONAL_DEFAULTS = {
     _CHECK_VERSION_COMPATIBILITY: 'false',
     _DOCKER_API_CALL_TIMEOUT: '60',
     _HTTP_PROXY: "",
-    _HTTPS_PROXY: ""
+    _HTTPS_PROXY: "",
+    _PUBLIC_API_RETRY_LIMIT: 10,
+    _CPU_PERIOD: None,
+    _CPU_QUOTA: None,
+    _MEM_LIMIT: None
 }
 
 
@@ -199,11 +210,42 @@ def BATCH_SIZE_ADD_IMAGES():
 def BATCH_SIZE_LOG():
     return 100
 
+
 def HTTP_PROXY():
     return read_optional_setting(_HTTP_PROXY)
 
+
 def HTTPS_PROXY():
     return read_optional_setting(_HTTPS_PROXY)
+
+
+def PUBLIC_API_RETRY_LIMIT():
+    return int(read_optional_setting(_PUBLIC_API_RETRY_LIMIT))
+
+
+def CPU_PERIOD():
+    val = read_optional_setting(_CPU_PERIOD)
+    if val is None:
+        return val
+    else:
+        return int(val)
+
+
+def CPU_QUOTA():
+    val = read_optional_setting(_CPU_QUOTA)
+    if val is None:
+        return val
+    else:
+        return int(val)
+
+
+def MEM_LIMIT():
+    val = read_optional_setting(_MEM_LIMIT)
+    if val is None:
+        return val
+    else:
+        return int(val)
+
 
 def init_constants():
     sly.fs.mkdir(AGENT_LOG_DIR())

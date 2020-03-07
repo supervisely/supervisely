@@ -16,11 +16,14 @@ def rand_str(length):
 
 
 #@TODO: use in API? or remove
-def generate_free_name(used_names, possible_name):
+def generate_free_name(used_names, possible_name, with_ext=False):
     res_name = possible_name
     new_suffix = 1
     while res_name in set(used_names):
-        res_name = '{}_{:02d}'.format(possible_name, new_suffix)
+        if with_ext is True:
+            res_name = '{}_{:02d}{}'.format(sly_fs.get_file_name(possible_name), new_suffix, sly_fs.get_file_ext(possible_name))
+        else:
+            res_name = '{}_{:02d}'.format(possible_name, new_suffix)
         new_suffix += 1
     return res_name
 

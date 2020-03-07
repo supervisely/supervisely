@@ -207,7 +207,11 @@ class TaskDockerized(TaskSly):
                         'task_id': str(self.info['task_id'])},
                 shm_size="1G",
                 stdin_open=False,
-                tty=False
+                tty=False,
+                cpu_period=constants.CPU_PERIOD(),
+                cpu_quota=constants.CPU_QUOTA(),
+                mem_limit=constants.MEM_LIMIT(),
+                memswap_limit=constants.MEM_LIMIT()
             )
             self._container.reload()
             self.logger.debug('After spawning. Container status: {}'.format(str(self._container.status)))
