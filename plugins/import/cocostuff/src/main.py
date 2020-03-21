@@ -82,7 +82,7 @@ def get_ann(img_path, inst_path, number_class, pixel_color):
             imgray = np.where(instance_img == pixel, instance_img, 0)
             imgray = cv2.cvtColor(imgray, cv2.COLOR_BGR2GRAY)
             ret, thresh = cv2.threshold(imgray, 1, 255, 0)
-            im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for i in range(len(contours)):
                 arr = np.array(contours[i], dtype=int)
                 mask_temp = np.zeros(instance_img.shape, dtype=np.uint8)

@@ -43,7 +43,7 @@ def get_ann(img_path, inst_path, default_classes_colors):
         classes_dict = classes_dict.add(obj_class)
     ann = ann.add_label(sly.Label(bitmap, classes_dict.get(class_name)))
 
-    im2, contours, hierarchy = cv2.findContours(mask_foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(mask_foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     class_name = 'skin'
     new_color = default_classes_colors[class_name]
     for i in range(len(contours)):

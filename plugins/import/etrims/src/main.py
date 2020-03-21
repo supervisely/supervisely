@@ -37,7 +37,7 @@ def get_ann(img_path, inst_path, color_to_class):
         mask = np.all(colored_img == color, axis=2)
         mask = mask.astype(np.uint8) * 128
         ret, thresh = cv2.threshold(mask, 1, 255, 0)
-        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for i in range(len(contours)):
             arr = np.array(contours[i], dtype=int)
             mask_temp = np.zeros(instance_img.shape, dtype=np.uint8)

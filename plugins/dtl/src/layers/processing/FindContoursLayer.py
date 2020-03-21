@@ -61,7 +61,7 @@ class FindContoursLayer(Layer):
                 raise RuntimeError('Input class must be a Bitmap in find_contours layer.')
 
             origin, mask = f.get_origin_mask()
-            _, contours, hier = cv2.findContours(
+            contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
                 mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
                 method=cv2.CHAIN_APPROX_SIMPLE

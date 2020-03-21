@@ -28,7 +28,7 @@ setup(
         "jsonschema>=2.6.0,<3.0.0",
         "matplotlib>=2.2.2,<3.0.0",
         "numpy>=1.14.3",
-        "opencv-python>=3.4.1,<4.0.0",
+        "opencv-python>=4.2.0,<5.0",
         "pascal-voc-writer>=0.1.4",
         "PTable>=0.9.2",
         "pillow>=5.1.0,<6.0.0",

@@ -130,7 +130,7 @@ class FigureBitmap(AbstractFigure):
     # m/b not fast
     def draw_contour(self, bitmap, color, thickness):
         origin, mask = self.get_origin_mask()
-        _, contours, hier = cv2.findContours(mask.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hier = cv2.findContours(mask.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if contours is not None:
             origin_t = tuple(origin)
             for cont in contours:

@@ -195,7 +195,7 @@ def ExtractCrackNets4(image_size_wh,
 
 
     for mask_image in masks:
-        _, contours, hierarchy = cv2.findContours(mask_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(mask_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         clusters = []
         for contour in contours:
             contour = np.squeeze(contour, axis=1)
