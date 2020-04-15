@@ -37,6 +37,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                                                    ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())
 
+    def get_or_create(self, project_id, name, description=""):
+        dataset_info = self.get_info_by_name(project_id, name)
+        if dataset_info is None:
+            dataset_info = self.create(project_id, name, description=description)
+        return dataset_info
+
     def _get_update_method(self):
         return 'datasets.editInfo'
 

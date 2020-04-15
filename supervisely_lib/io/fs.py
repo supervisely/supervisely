@@ -286,3 +286,9 @@ def tree(dir_path):
 def log_tree(dir_path, logger):
     out = tree(dir_path)
     logger.info("DIRECTORY_TREE", extra={'tree': out})
+
+
+def touch(path):
+    ensure_base_path(path)
+    with open(path, 'a'):
+        os.utime(path, None)

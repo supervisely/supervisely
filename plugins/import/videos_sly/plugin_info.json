@@ -1,0 +1,6 @@
+{
+	"title": "Video with annotations (Supervisely format)",
+	"description": "Add video files with annotations in Supervisely format. Video files are stored as they are without convertation. Video project is created. Use video annotation tool to view and label videos.",
+	"type": "import",
+	"run_mode": "general_plugin"
+}

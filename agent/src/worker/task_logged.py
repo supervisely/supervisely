@@ -11,6 +11,7 @@ import sys
 import json
 
 import supervisely_lib as sly
+from supervisely_lib.io.json import dump_json_file
 
 from worker.data_manager import DataManager
 from worker.logs_to_rpc import add_task_handler
@@ -118,7 +119,7 @@ class TaskLogged(multiprocessing.Process):
         except Exception as e:
             # unable to do something another if crashed
             print(e)
-            json.dump(e, open(os.path.join(constants.AGENT_ROOT_DIR(), 'logger_fail.json'), 'w'))
+            dump_json_file(e, os.path.join(constants.AGENT_ROOT_DIR(), 'logger_fail.json'))
             os._exit(1)  # ok, documented
 
         try:

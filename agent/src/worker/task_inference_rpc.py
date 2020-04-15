@@ -6,6 +6,7 @@ import shutil
 
 import supervisely_lib as sly
 from supervisely_lib.task.paths import TaskPaths
+from supervisely_lib.io.json import dump_json_file
 
 from worker.task_dockerized import TaskDockerized, TaskStep
 from worker import constants
@@ -52,8 +53,8 @@ class TaskInferenceRPC(TaskDockerized):
             'model_settings': self.info['task_settings']
         }
 
-        json.dump(out_cfg, open(self.config_path1, 'w'))  # Deprecated 'task_settings.json'
-        json.dump(out_cfg, open(self.config_path2, 'w'))  # New style task_config.json
+        dump_json_file(out_cfg, self.config_path1)  # Deprecated 'task_settings.json'
+        dump_json_file(out_cfg, self.config_path2)  # New style task_config.json
         self.report_step_done(TaskStep.DOWNLOAD)
 
     def before_main_step(self):

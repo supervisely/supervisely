@@ -1,0 +1,4 @@
+{
+    "title": "Download as .json + videos",
+    "description": "Download video project in Supervisely format which includes videos, annotations, meta.json and key_id_map.json"
+}

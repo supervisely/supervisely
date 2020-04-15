@@ -18,8 +18,7 @@ dest_dir = os.path.join(sly.TaskPaths.OUT_ARTIFACTS_DIR, src_project_name)
 sly.fs.mkdir(dest_dir)
 
 meta_json = api.project.get_meta(project.id)
-with open(os.path.join(dest_dir, 'meta.json'), 'w') as fout:
-    json.dump(meta_json, fout, indent=2)
+sly.io.json.dump_json_file(meta_json, os.path.join(dest_dir, 'meta.json'))
 
 total_images = 0
 src_dataset_infos = (
@@ -43,8 +42,7 @@ for dataset in src_dataset_infos:
         ann_jsons = [ann_info.annotation for ann_info in ann_infos]
 
         for image_name, ann_info in zip(image_names, ann_infos):
-            with open(os.path.join(ann_dir, image_name + '.json'), 'w') as fout:
-                json.dump(ann_info.annotation, fout, indent=2)
+            sly.io.json.dump_json_file(ann_info.annotation, os.path.join(ann_dir, image_name + '.json'))
         ds_progress.iters_done_report(len(batch))
         total_images += len(batch)
 

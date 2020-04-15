@@ -61,7 +61,9 @@ Check out [explanation](https://github.com/supervisely/supervisely/tree/master/a
 We have ported and implemented a number of popular neural network (NN)
 architectures to be available as Supervisely plugins. Each plugin is a separate
 Docker image. We continue to work on porting more NN architectures to
-Supervisely. We also have a detailed guide on how to [make your
+Supervisely. 
+
+We also have a detailed guide on how to [make your
 own neural net plugin](./help/tutorials/03_custom_neural_net_plugin/custom_nn_plugin.md), so you
 do not have to depend on anyone else to be able to use your favorite
 architecture.

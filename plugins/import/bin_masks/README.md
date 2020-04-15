@@ -27,7 +27,7 @@ In this configuration example all pixels in the mask which value **equal to 170*
 ```json
 {
   "classes_mapping": {
-    "Fruits": [85, 2],
+    "Fruits": [85, 170],
     "Car": 3
   }
 }

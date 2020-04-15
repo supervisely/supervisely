@@ -65,27 +65,54 @@ RUN pip install --no-cache-dir \
 
 
 ##############################################################################
+# Java to run Pycharm
+##############################################################################
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        default-jre=2:1.8-56ubuntu2 \
+        default-jdk=2:1.8-56ubuntu2 \
+    && apt-get -qq -y autoremove \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log \
+    && ln -s /usr/lib/jvm/java-7-openjdk-amd64 /jre
+
+ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+
+
+##############################################################################
 # Additional project libraries
 ##############################################################################
 RUN pip install --no-cache-dir \
+    pandas==0.22.0 \
     grpcio==1.12.1 \
     grpcio-tools==1.12.1
 
+RUN pip install --upgrade pip
 RUN apt-get update && \
     apt-get -y install \
         libexiv2-14 \
         libexiv2-dev \
-        libboost-all-dev=1.58.0.1ubuntu1 \
-        fonts-noto=20160116-1
+        libboost-all-dev
 
-RUN pip install --no-cache-dir \
-        py3exiv2==0.4.0 \
-        simplejson==3.16.0 \
-        requests-toolbelt \
-        PTable \
-        flask-restful \
-        pascal-voc-writer
+RUN pip install py3exiv2==0.4.0 
+RUN pip install simplejson==3.16.0
+RUN pip install requests-toolbelt
+RUN pip install PTable
+RUN pip install flask-restful
+RUN apt-get install -y fonts-noto=20160116-1
 
+RUN pip install pascal-voc-writer
+
+RUN pip install bidict
+RUN pip install --no-cache-dir scikit-video==1.1.11
+
+RUN apt-get update && apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+
+RUN pip install plotly==4.5.4
+
+
+RUN ln -sf /usr/local/bin/python3.6 /usr/bin/python
 
 ##############################################################################
 # Encoding for python SDK

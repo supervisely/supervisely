@@ -38,6 +38,7 @@ class EventType(Enum):
     TASK_DEPLOYED = 17
     AGENT_READY_FOR_TASKS = 18
     MISSED_TASK_FOUND = 19
+    REPORT_CREATED = 20
 
 
 ###############################################################################

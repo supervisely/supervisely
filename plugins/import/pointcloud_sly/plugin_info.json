@@ -1,0 +1,6 @@
+{
+	"title": "PCD w/ Labels",
+	"description": "Add pointclouds PCD with annotations in Supervisely format. Pointcloud project is created. Use pointcloud annotation tool to view and label 3d data.",
+	"type": "import",
+	"run_mode": "general_plugin"
+}

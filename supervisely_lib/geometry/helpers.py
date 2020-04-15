@@ -5,6 +5,7 @@ import numpy as np
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.bitmap import Bitmap
+from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 
 
 def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None) -> list:
@@ -55,3 +56,9 @@ def get_effective_nonoverlapping_masks(geometries, img_size=None):
         else:
             result_masks.append(None)
     return result_masks, canvas
+
+
+def deserialize_geometry(geometry_type_str, geometry_json):
+    geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
+    geometry = geometry_type.from_json(geometry_json)
+    return geometry

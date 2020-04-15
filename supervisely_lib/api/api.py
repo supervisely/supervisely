@@ -2,6 +2,7 @@
 
 import os
 import requests
+import json
 
 from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
 
@@ -18,6 +19,11 @@ import supervisely_lib.api.agent_api as agent_api
 import supervisely_lib.api.role_api as role_api
 import supervisely_lib.api.user_api as user_api
 import supervisely_lib.api.labeling_job_api as labeling_job_api
+import supervisely_lib.api.video.video_api as video_api
+import supervisely_lib.api.pointcloud.pointcloud_api as pointcloud_api
+import supervisely_lib.api.object_class_api as object_class_api
+import supervisely_lib.api.report_api as report_api
+
 from supervisely_lib.sly_logger import logger
 
 
@@ -26,6 +32,8 @@ from supervisely_lib.io.network_exceptions import process_requests_exception, pr
 SUPERVISELY_TASK_ID = 'SUPERVISELY_TASK_ID'
 SUPERVISELY_PUBLIC_API_RETRIES = 'SUPERVISELY_PUBLIC_API_RETRIES'
 SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = 'SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC'
+SERVER_ADDRESS = 'SERVER_ADDRESS'
+API_TOKEN = 'API_TOKEN'
 
 
 class Api:
@@ -37,7 +45,7 @@ class Api:
             self.server_address = 'http://' + self.server_address
 
         if retry_count is None:
-            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, '7000'))
+            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, '20'))
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, '1'))
 
@@ -61,11 +69,20 @@ class Api:
         self.role = role_api.RoleApi(self)
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
+        self.video = video_api.VideoApi(self)
+        # self.project_class = project_class_api.ProjectClassApi(self)
+        self.object_class = object_class_api.ObjectClassApi(self)
+        self.report = report_api.ReportApi(self)
+        self.pointcloud = pointcloud_api.PointcloudApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
         self.logger = external_logger or logger
+
+    @classmethod
+    def from_env(cls):
+        return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN])
 
     def add_header(self, key, value):
         if key in self.headers:
@@ -106,6 +123,34 @@ class Api:
                                                        "retry_limit": retries})
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
+        Api._raise_for_status(response)
+
+    def get(self, method, params, retries=None, stream=False, use_public_api=True):
+        if retries is None:
+            retries = self.retry_count
+
+        for retry_idx in range(retries):
+            url = self.server_address + '/public/api/v3/' + method
+            if use_public_api is False:
+                url = os.path.join(self.server_address, method)
+            response = None
+            try:
+                json_body = params
+                if type(params) is dict:
+                    json_body = {**params, **self.additional_fields}
+                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+
+                if response.status_code != requests.codes.ok:
+                    Api._raise_for_status(response)
+                return response
+            except requests.RequestException as exc:
+                process_requests_exception(self.logger, exc, method, url,
+                                           verbose=True, swallow_exc=True, sleep_sec=self.retry_sleep_sec,
+                                           response=response,
+                                           retry_info={"retry_idx": retry_idx + 2,
+                                                       "retry_limit": retries})
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
 
     @staticmethod
     def _raise_for_status(response):
@@ -127,3 +172,23 @@ class Api:
 
         if http_error_msg:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
+
+    @staticmethod
+    def parse_error(response, default_error="Error", default_message="please, contact administrator"):
+        ERROR_FIELD = "error"
+        MESSAGE_FIELD = "message"
+        DETAILS_FIELD = "details"
+
+        try:
+            data_str = response.content.decode('utf-8')
+            data = json.loads(data_str)
+            error = data.get(ERROR_FIELD, default_error)
+            details = data.get(DETAILS_FIELD, {})
+            if type(details) is dict:
+                message = details.get(MESSAGE_FIELD, default_message)
+            else:
+                message = details[0].get(MESSAGE_FIELD, default_message)
+
+            return error, message
+        except Exception as e:
+            return "", ""

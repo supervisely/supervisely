@@ -1,13 +1,19 @@
 # coding: utf-8
 
 import string
-import random
 import re
 import base64
 import hashlib
-from supervisely_lib.io import fs as sly_fs
-
+import json
 import numpy as np
+import random
+from datetime import datetime
+
+from supervisely_lib.io import fs as sly_fs
+from supervisely_lib.sly_logger import logger
+
+
+random.seed(datetime.now())
 
 
 def rand_str(length):
@@ -59,3 +65,11 @@ def get_bytes_hash(bytes):
 
 def unwrap_if_numpy(x):
     return x.item() if isinstance(x, np.number) else x
+
+
+def _dprint(json_data):
+    print(json.dumps(json_data))
+
+
+COMMUNITY = "community"
+ENTERPRISE = "enterprise"

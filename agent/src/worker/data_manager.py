@@ -111,7 +111,7 @@ class DataManager(object):
                 img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
                 for img_info, img_cache_path in zip(images_in_cache, images_cache_paths):
                     item_name = _maybe_append_image_extension(img_info.name, img_info.ext)
-                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_img=False,
+                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_item=False,
                                           _use_hardlink=True)
                     progress_imgs_cache.iter_done_report()
 

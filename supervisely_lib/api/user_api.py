@@ -1,5 +1,6 @@
 # coding: utf-8
 from collections import namedtuple
+import pandas as pd
 
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
@@ -107,3 +108,8 @@ class UserApi(ModuleApiBase):
             if member.id == team_id:
                 return member
         return None
+
+    def get_member_activity(self, team_id, user_id):
+        response = self._api.post('members.activity', {ApiField.USER_ID: user_id, ApiField.TEAM_ID: team_id})
+        df = pd.DataFrame(response.json())
+        return df

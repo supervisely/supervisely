@@ -23,17 +23,18 @@ class PrecisionRecallMetric(MetricsBase):
                           for gt_cls in self._gt_to_pred_class_mapping.keys()}
 
     def add_pair(self, ann_gt, ann_pred):
-        labels_gt = filter_labels_by_name(ann_gt.labels, self._gt_to_pred_class_mapping)
-        labels_pred = filter_labels_by_name(ann_pred.labels, self._pred_to_gt_class_mapping)
-        match_result = match_labels_by_iou(labels_1=labels_gt, labels_2=labels_pred, img_size=ann_gt.img_size,
-                                           iou_threshold=self._iou_threshold)
-        # TODO unify with confusion matrix ?
-        for match in match_result.matches:
-            self._counters[match.label_1.obj_class.name][TRUE_POSITIVE] += 1
-        for label_gt in labels_gt:
-            self._counters[label_gt.obj_class.name][TOTAL_GROUND_TRUTH] += 1
-        for label_pred in labels_pred:
-            self._counters[self._pred_to_gt_class_mapping[label_pred.obj_class.name]][TOTAL_PREDICTIONS] += 1
+        for key in self._gt_to_pred_class_mapping.keys():
+            labels_gt = filter_labels_by_name(ann_gt.labels, [key])
+            labels_pred = filter_labels_by_name(ann_pred.labels, [self._gt_to_pred_class_mapping[key]])
+            match_result = match_labels_by_iou(labels_1=labels_gt, labels_2=labels_pred, img_size=ann_gt.img_size,
+                                               iou_threshold=self._iou_threshold)
+            # TODO unify with confusion matrix ?
+            for match in match_result.matches:
+                self._counters[match.label_1.obj_class.name][TRUE_POSITIVE] += 1
+            for label_gt in labels_gt:
+                self._counters[label_gt.obj_class.name][TOTAL_GROUND_TRUTH] += 1
+            for label_pred in labels_pred:
+                self._counters[self._pred_to_gt_class_mapping[label_pred.obj_class.name]][TOTAL_PREDICTIONS] += 1
 
     @staticmethod
     def _compute_composite_metrics(metrics_dict):

@@ -1,0 +1,4 @@
+{
+    "title": "Train val tagging",
+    "description": "Creates a new project by randomly tagging images with specified tags"
+}

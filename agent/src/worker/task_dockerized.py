@@ -120,19 +120,19 @@ class TaskDockerized(TaskSly):
     def clean_task_dir(self):
         self.task_dir_cleaner.clean()
 
-    def _docker_pull(self):
+    def _docker_pull(self, raise_exception=True):
         self.logger.info('Docker image will be pulled', extra={'image_name': self.docker_image_name})
         progress_dummy = sly.Progress('Pulling image...', 1, ext_logger=self.logger)
         progress_dummy.iter_done_report()
         try:
             pulled_img = self._docker_api.images.pull(self.docker_image_name)
-        except DockerException:
-            raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
-                                  ' Please, run the task again or email support.')
-        self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
-
-        if constants.CHECK_VERSION_COMPATIBILITY():
-            self._validate_version(self.info["agent_version"], pulled_img.labels.get("VERSION", None))
+            self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
+        except DockerException as e:
+            if raise_exception is True:
+                raise DockerException('Unable to pull image: see actual error above. '
+                                      'Please, run the task again or contact support team.')
+            else:
+                self.logger.warn("Pulling step is skipped. Unable to pull image: {!r}.".format(str(e)))
 
     def _validate_version(self, agent_image, plugin_image):
         self.logger.info('Check if agent and plugin versions are compatible')
@@ -164,20 +164,34 @@ class TaskDockerized(TaskSly):
             return
 
         if av.release[0] < pv.release[0]:
-            self.logger.critical('Agent version is lower than plugin version. Please, update agent.')
+            self.logger.critical('Agent version is lower than plugin version. Please, upgrade agent.')
 
     def _docker_image_exists(self):
         try:
-            _ = self._docker_api.images.get(self.docker_image_name)
+            docker_img = self._docker_api.images.get(self.docker_image_name)
         except DockerImageNotFound:
             return False
+        if constants.CHECK_VERSION_COMPATIBILITY():
+            self._validate_version(self.info["agent_version"], docker_img.labels.get("VERSION", None))
         return True
 
     def docker_pull_if_needed(self):
         if self.docker_pulled:
             return
-        if constants.PULL_ALWAYS() or (not self._docker_image_exists()):
+        policy = constants.PULL_POLICY()
+        if policy == constants.PullPolicy.ALWAYS:
             self._docker_pull()
+        elif policy == constants.PullPolicy.NEVER:
+            pass
+        elif policy == constants.PullPolicy.IF_NOT_PRESENT:
+            if not self._docker_image_exists():
+                self._docker_pull()
+        elif policy == constants.PullPolicy.IF_AVAILABLE:
+            self._docker_pull(raise_exception=False)
+
+        if not self._docker_image_exists():
+            raise RuntimeError("Docker image not found. Agent's PULL_POLICY is {!r}".format(str(policy)))
+
         self.docker_pulled = True
 
     def _get_task_volumes(self):
