@@ -52,8 +52,8 @@ class ImageApi(RemoveableBulkModuleApi):
         ordered_results = [temp_map[id] for id in ids]
         return ordered_results
 
-    def _download(self, id):
-        response = self._api.post('images.download', {ApiField.ID: id})
+    def _download(self, id, is_stream=False):
+        response = self._api.post('images.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_np(self, id):
@@ -62,7 +62,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return img
 
     def download_path(self, id, path):
-        response = self._download(id)
+        response = self._download(id, is_stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:
             for chunk in response.iter_content(chunk_size=1024*1024):
@@ -242,7 +242,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return ordered_results
 
     #@TODO: reimplement
-    def _convert_json_info(self, info: dict):
+    def _convert_json_info(self, info: dict, skip_missing=False):
         if info is None:
             return None
         temp_ext = None

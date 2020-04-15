@@ -1,27 +1,31 @@
 # coding: utf-8
 
-from enum import Enum
 import os
 import time
+from collections import defaultdict, OrderedDict
+import json
+
 
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus, WaitingTimeExceeded
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-from supervisely_lib.io.fs import get_file_name
+from supervisely_lib.io.fs import get_file_name, ensure_base_path, get_file_hash
+from supervisely_lib.collection.str_enum import StrEnum
+from supervisely_lib._utils import batched
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
-    class RestartPolicy(Enum):
+    class RestartPolicy(StrEnum):
         NEVER = 'never'
         ON_ERROR = 'on_error'
 
-    class PluginTaskType(Enum):
+    class PluginTaskType(StrEnum):
         TRAIN = 'train'
         INFERENCE = 'inference'
         INFERENCE_RPC = 'inference_rpc'
         SMART_TOOL = 'smarttool'
         CUSTOM = 'custom'
 
-    class Status(Enum):
+    class Status(StrEnum):
         QUEUED = 'queued'
         CONSUMED = 'consumed'
         STARTED = 'started'
@@ -148,3 +152,70 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def stop(self, id):
         response = self._api.post('tasks.stop', {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
+
+    def get_import_files_list(self, id):
+        response = self._api.post('tasks.import.files_list', {ApiField.ID: id})
+        return response.json() if (response is not None) else None
+
+    def download_import_file(self, id, file_path, save_path):
+        response = self._api.post('tasks.import.download_file', {ApiField.ID: id, ApiField.FILENAME: file_path}, stream=True)
+
+        ensure_base_path(save_path)
+        with open(save_path, 'wb') as fd:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                fd.write(chunk)
+
+    def create_task_detached(self, workspace_id, task_type: str=None):
+        response = self._api.post('tasks.run.python', {ApiField.WORKSPACE_ID: workspace_id,
+                                                       ApiField.SCRIPT: "xxx",
+                                                       ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True}})
+        return response.json()[ApiField.TASK_ID]
+
+    def submit_logs(self, logs):
+        response = self._api.post('tasks.logs.add', {ApiField.LOGS: logs})
+        #return response.json()[ApiField.TASK_ID]
+
+    def upload_files(self, task_id, abs_paths, names, progress_cb=None):
+        if len(abs_paths) != len(names):
+            raise RuntimeError("Inconsistency: len(abs_paths) != len(names)")
+
+        hashes = []
+        if len(abs_paths) == 0:
+            return
+
+        hash_to_items = defaultdict(list)
+        hash_to_name = defaultdict(list)
+        for idx, item in enumerate(zip(abs_paths, names)):
+            path, name = item
+            item_hash = get_file_hash(path)
+            hashes.append(item_hash)
+            hash_to_items[item_hash].append(path)
+            hash_to_name[item_hash].append(name)
+
+        unique_hashes = set(hashes)
+        remote_hashes = self._api.image.check_existing_hashes(list(unique_hashes))
+        new_hashes = unique_hashes - set(remote_hashes)
+
+        # @TODO: upload remote hashes
+        if len(remote_hashes) != 0:
+            files = []
+            for hash in remote_hashes:
+                for name in hash_to_name[hash]:
+                    files.append({ApiField.NAME: name, ApiField.HASH: hash})
+            resp = self._api.post('tasks.files.bulk.add-by-hash', {ApiField.TASK_ID: task_id, ApiField.FILES: files})
+        if progress_cb is not None:
+            progress_cb(len(remote_hashes))
+
+        for batch in batched(list(zip(abs_paths, names, hashes))):
+            content_dict = OrderedDict()
+            for idx, item in enumerate(batch):
+                path, name, hash = item
+                if hash in remote_hashes:
+                    continue
+                content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
+                content_dict["{}-file".format(idx)] = (name, open(path, 'rb'), '')
+
+            encoder = MultipartEncoder(fields=content_dict)
+            resp = self._api.post('tasks.files.bulk.upload', encoder)
+            if progress_cb is not None:
+                progress_cb(len(content_dict))

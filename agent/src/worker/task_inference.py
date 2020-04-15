@@ -3,8 +3,10 @@
 import os
 import json
 import shutil
+
 import supervisely_lib as sly
 from supervisely_lib.task.paths import TaskPaths
+from supervisely_lib.io.json import dump_json_file
 
 from worker.task_dockerized import TaskDockerized, TaskStep
 from worker import agent_utils
@@ -34,8 +36,8 @@ class TaskInference(TaskDockerized):
 
     def download_step(self):
         self.logger.info("DOWNLOAD_DATA")
-        json.dump(self.info['config'], open(self.config_path1, 'w'))
-        json.dump(self.info['config'], open(self.config_path2, 'w'))
+        dump_json_file(self.info['config'], self.config_path1)
+        dump_json_file(self.info['config'], self.config_path2)
 
         model = agent_utils.get_single_item_or_die(self.info, 'models', 'config')
         self.data_mgr.download_nn(model['title'], self.dir_model)

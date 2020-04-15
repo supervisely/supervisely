@@ -35,7 +35,7 @@ class Tag(KeyObject):
         return self._meta.key()
 
     def to_json(self):
-        if self.meta.value_type is TagValueType.NONE:
+        if self.meta.value_type == TagValueType.NONE:
             return self.meta.name
         else:
             return {

@@ -4,6 +4,8 @@ import os
 from urllib.parse import urlparse
 import supervisely_lib as sly
 import hashlib
+from enum import Enum
+
 
 _AGENT_HOST_DIR = 'AGENT_HOST_DIR'
 _SERVER_ADDRESS = 'SERVER_ADDRESS'
@@ -29,6 +31,7 @@ _CPU_PERIOD = 'CPU_PERIOD'
 _CPU_QUOTA = 'CPU_QUOTA'
 _MEM_LIMIT = 'MEM_LIMIT'
 
+_PULL_POLICY = 'PULL_POLICY'
 
 
 _REQUIRED_SETTINGS = [
@@ -40,10 +43,28 @@ _REQUIRED_SETTINGS = [
     _DOCKER_REGISTRY
 ]
 
+
+class PullPolicy(Enum):
+    def __str__(self):
+        return str(self.value)
+
+    ALWAYS = 'Always'.lower()
+    IF_AVAILABLE = 'IfAvailable'.lower()
+    IF_NOT_PRESENT = 'IfNotPresent'.lower()
+    NEVER = 'Never'.lower()
+
+
+_PULL_POLICY_DICT = {
+    str(PullPolicy.ALWAYS): PullPolicy.ALWAYS,
+    str(PullPolicy.IF_AVAILABLE): PullPolicy.IF_AVAILABLE,
+    str(PullPolicy.IF_NOT_PRESENT): PullPolicy.IF_NOT_PRESENT,
+    str(PullPolicy.NEVER): PullPolicy.NEVER
+}
+
 _OPTIONAL_DEFAULTS = {
     _WITH_LOCAL_STORAGE: 'true',
     _UPLOAD_RESULT_IMAGES: 'true',
-    _PULL_ALWAYS: 'true',
+    _PULL_ALWAYS: None,
     _DEFAULT_TIMEOUTS: 'true',
     _DELETE_TASK_DIR_ON_FINISH: 'true',
     _DELETE_TASK_DIR_ON_FAILURE: 'false',
@@ -51,10 +72,11 @@ _OPTIONAL_DEFAULTS = {
     _DOCKER_API_CALL_TIMEOUT: '60',
     _HTTP_PROXY: "",
     _HTTPS_PROXY: "",
-    _PUBLIC_API_RETRY_LIMIT: 10,
+    _PUBLIC_API_RETRY_LIMIT: 100,
     _CPU_PERIOD: None,
     _CPU_QUOTA: None,
-    _MEM_LIMIT: None
+    _MEM_LIMIT: None,
+    _PULL_POLICY: str(PullPolicy.IF_AVAILABLE)
 }
 
 
@@ -167,7 +189,11 @@ def UPLOAD_RESULT_IMAGES():
 
 
 def PULL_ALWAYS():
-    return sly.env.flag_from_env(read_optional_setting(_PULL_ALWAYS))
+    val = read_optional_setting(_PULL_ALWAYS)
+    if val is not None:
+        sly.logger.warn("ENV variable PULL_ALWAYS is deprecated and will be ignored."
+                        " Use PULL_POLICY instead with one of the following values: {}".format(list(_PULL_POLICY_DICT.keys())))
+    return True
 
 
 def CHECK_VERSION_COMPATIBILITY():
@@ -247,6 +273,14 @@ def MEM_LIMIT():
         return int(val)
 
 
+def PULL_POLICY():
+    val = read_optional_setting(_PULL_POLICY).lower()
+    if val not in _PULL_POLICY_DICT:
+        raise RuntimeError("Unknown pull policy {!r}. Supported values: {}".format(val, list[_PULL_POLICY_DICT.keys()]))
+    else:
+        return _PULL_POLICY_DICT[val]
+
+
 def init_constants():
     sly.fs.mkdir(AGENT_LOG_DIR())
     sly.fs.mkdir(AGENT_TASKS_DIR())
@@ -256,3 +290,4 @@ def init_constants():
     sly.fs.mkdir(AGENT_TMP_DIR())
     sly.fs.mkdir(AGENT_IMPORT_DIR())
     os.chmod(AGENT_IMPORT_DIR(), 0o777)  # octal
+    PULL_ALWAYS()

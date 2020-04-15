@@ -12,6 +12,9 @@ ORIGIN = 'origin'
 POINTS = 'points'
 ROWS = 'rows'
 TYPE = 'type'
+GEOMETRY_SHAPE = 'shape'
+GEOMETRY_TYPE = 'geometryType'
+ANY_SHAPE = 'any'
 
 NODES = 'nodes'
 EDGES = 'edges'
@@ -20,3 +23,10 @@ LABEL = 'label'
 COLOR = 'color'
 TEMPLATE = 'template'
 LOCATION = 'location'
+
+X = "x"
+Y = "y"
+Z = "z"
+POSITION = "position"
+ROTATION = "rotation"
+DIMENTIONS = "dimensions"

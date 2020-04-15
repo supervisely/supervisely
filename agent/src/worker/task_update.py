@@ -73,8 +73,8 @@ class TaskUpdate(TaskSly):
         try:
             pulled_img = self._docker_api.images.pull(docker_image)
         except DockerException:
-            raise DockerException('Unable to pull image: not enough free disk space or something wrong with DockerHub.'
-                                  ' Please, run the task again or email support.')
+            raise DockerException('Unable to pull image: see actual error above. '
+                                  'Please, run the task again or contact support team.')
         self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
 
 

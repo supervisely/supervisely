@@ -12,9 +12,8 @@ class TagCollection(KeyIndexedCollection):
 
     @classmethod
     def from_json(cls, data, tag_meta_collection):
-        tags = [Tag.from_json(tag_json, tag_meta_collection) for tag_json in data]
+        tags = [cls.item_type.from_json(tag_json, tag_meta_collection) for tag_json in data]
         return cls(tags)
 
     def __str__(self):
         return 'Tags:\n' + super(TagCollection, self).__str__()
-

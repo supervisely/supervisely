@@ -2,6 +2,7 @@
 
 from prettytable import PrettyTable
 from supervisely_lib._utils import take_with_default
+from typing import List
 
 
 class DuplicateKeyError(KeyError):
@@ -98,3 +99,11 @@ class KeyIndexedCollection:
         for item in self:
             res_table.add_row(item.get_row_ptable())
         return res_table.get_string()
+
+    def to_json(self) -> List[dict]:
+        """
+        Converts collection to json serializable list.
+        Returns:
+            json serializable dictionary
+        """
+        return [item.to_json() for item in self]

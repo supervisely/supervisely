@@ -61,7 +61,7 @@ class BatchInferenceApplier:
                 logger.trace('Will process image', extra={'dataset_name': in_dataset.name, 'image_name': in_item_name})
                 inference_annotation = inference_mode.infer_annotate_image_file(in_item_paths.img_path, in_ann)
                 out_dataset.add_item_file(in_item_name, in_item_paths.img_path, ann=inference_annotation,
-                                          _validate_img=False, _use_hardlink=True)
+                                          _validate_item=False, _use_hardlink=True)
 
                 progress_bar.iter_done_report()
 

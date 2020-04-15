@@ -18,12 +18,12 @@ class JsonSerializable:
         """
         raise NotImplementedError()
 
-#@TODO: max to AC -> do we need it?
+
 def load_json_file(filename):
     with open(filename, encoding='utf-8') as fin:
         return json.load(fin)
 
-#@TODO: max to AC -> do we need it?
-def dump_json_file(data, filename, indent=None):
+
+def dump_json_file(data, filename, indent=4):
     with open(filename, 'w') as fout:
         json.dump(data, fout, indent=indent)

@@ -98,9 +98,9 @@ RUN pip install --no-cache-dir \
 RUN pip install --upgrade pip
 RUN apt-get update && \
     apt-get -y install \
-        libexiv2-14=0.25-2.1ubuntu16.04.3 \
-        libexiv2-dev=0.25-2.1ubuntu16.04.3 \
-        libboost-all-dev=1.58.0.1ubuntu1
+        libexiv2-14 \
+        libexiv2-dev \
+        libboost-all-dev
 
 RUN pip install py3exiv2==0.4.0 
 RUN pip install simplejson==3.16.0
@@ -111,6 +111,13 @@ RUN apt-get install -y fonts-noto=20160116-1
 
 RUN pip install pascal-voc-writer
 
+RUN pip install bidict
+RUN pip install --no-cache-dir scikit-video==1.1.11
+
+RUN apt-get update && apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+
+RUN pip install plotly==4.5.4
 
 ##############################################################################
 # Encoding for python SDK

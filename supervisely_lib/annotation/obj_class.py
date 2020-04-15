@@ -5,15 +5,10 @@ from typing import List
 from supervisely_lib.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.collection.key_indexed_collection import KeyObject
-from supervisely_lib.geometry.bitmap import Bitmap
-from supervisely_lib.geometry.cuboid import Cuboid
-from supervisely_lib.geometry.point import Point
-from supervisely_lib.geometry.polygon import Polygon
-from supervisely_lib.geometry.polyline import Polyline
-from supervisely_lib.geometry.rectangle import Rectangle
-from supervisely_lib.geometry.graph import GraphNodes
 from supervisely_lib.geometry.geometry import Geometry
+from supervisely_lib.geometry.any_geometry import AnyGeometry
 from supervisely_lib._utils import take_with_default
+from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 
 
 class ObjClassJsonFields:
@@ -21,10 +16,6 @@ class ObjClassJsonFields:
     GEOMETRY_TYPE = 'shape'
     COLOR = 'color'
     GEOMETRY_CONFIG = 'geometry_config'
-
-
-INPUT_GEOMETRIES = [Bitmap, Cuboid, Point, Polygon, Polyline, Rectangle, GraphNodes]
-JSON_SHAPE_TO_GEOMETRY_TYPE = {geometry.geometry_name(): geometry for geometry in INPUT_GEOMETRIES}
 
 
 class ObjClass(KeyObject, JsonSerializable):
@@ -114,14 +105,16 @@ class ObjClass(KeyObject, JsonSerializable):
             ObjClass
         """
         name = data[ObjClassJsonFields.NAME]
-        geometry_type = JSON_SHAPE_TO_GEOMETRY_TYPE[data[ObjClassJsonFields.GEOMETRY_TYPE]]
+        geometry_type = GET_GEOMETRY_FROM_STR(data[ObjClassJsonFields.GEOMETRY_TYPE])
         color = hex2rgb(data[ObjClassJsonFields.COLOR])
         geometry_config = geometry_type.config_from_json(data.get(ObjClassJsonFields.GEOMETRY_CONFIG))
         return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config)
 
     def __eq__(self, other: 'ObjClass'):
-        return isinstance(other, ObjClass) and self.name == other.name and self.geometry_type == other.geometry_type \
-               and self.geometry_config == other.geometry_config
+        return isinstance(other, ObjClass) and \
+               self.name == other.name and \
+               (self.geometry_type == other.geometry_type or AnyGeometry in [self.geometry_type, other.geometry_type]) and \
+               self.geometry_config == other.geometry_config
 
     def __ne__(self, other: 'ObjClass'):
         return not self == other

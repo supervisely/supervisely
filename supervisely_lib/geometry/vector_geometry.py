@@ -4,7 +4,7 @@ from copy import deepcopy
 import cv2
 import numpy as np
 
-from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
+from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, GEOMETRY_SHAPE
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -28,7 +28,8 @@ class VectorGeometry(Geometry):
             POINTS: {
                 EXTERIOR: points_to_row_col_list(self._exterior, flip_row_col_order=True),
                 INTERIOR: [points_to_row_col_list(i, flip_row_col_order=True) for i in self._interior]
-            }
+            },
+            GEOMETRY_SHAPE: self.geometry_name()
         }
         return packed_obj
 

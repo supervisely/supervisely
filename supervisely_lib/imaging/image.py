@@ -88,10 +88,13 @@ def read(path) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def read_bytes(image_bytes) -> np.ndarray:
+def read_bytes(image_bytes, input_is_bgr=True) -> np.ndarray:
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
     img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)
-    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if input_is_bgr is True:
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    else:
+        return img
 
 
 def write(path, img):
