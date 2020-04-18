@@ -32,7 +32,7 @@ setup(
         "pascal-voc-writer>=0.1.4",
         "PTable>=0.9.2",
         "pillow>=7.0.0,<8.0",
-        "pandas==0.22.0",
+        "pandas>=1.0.0,<2.0",
         "protobuf>=3.7.1",
         # Higher python-json-logger versions are incompatible with
         # simplejson somehow, so for now prevent higher versions from
