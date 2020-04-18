@@ -47,6 +47,6 @@ setup(
         "Werkzeug>=0.15.1",
         "bidict",
         "sk-video",
-        "plotly==4.5.4"
+        "plotly==4.6.0"
     ],
 )
