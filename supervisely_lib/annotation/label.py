@@ -2,12 +2,15 @@
 
 from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.annotation.obj_class import ObjClass
+from supervisely_lib.geometry.any_geometry import AnyGeometry
 from supervisely_lib.annotation.tag import Tag
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib._utils import take_with_default
+from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
+from supervisely_lib.geometry.constants import GEOMETRY_TYPE, GEOMETRY_SHAPE
 
 
 class LabelJsonFields:
@@ -52,7 +55,8 @@ class LabelBase:
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
-            ** self.geometry.to_json()
+            ** self.geometry.to_json(),
+            GEOMETRY_SHAPE: self.geometry.geometry_name()
         }
 
     @classmethod
@@ -62,7 +66,14 @@ class LabelBase:
         if obj_class is None:
             raise RuntimeError(f'Failed to deserialize a Label object from JSON: label class name {obj_class_name!r} '
                                f'was not found in the given project meta.')
-        return cls(geometry=obj_class.geometry_type.from_json(data),
+
+        if obj_class.geometry_type is AnyGeometry:
+            geometry_type_actual = GET_GEOMETRY_FROM_STR(data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE])
+            geometry = geometry_type_actual.from_json(data)
+        else:
+            geometry = obj_class.geometry_type.from_json(data)
+
+        return cls(geometry=geometry,
                    obj_class=obj_class,
                    tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
                    description=data.get(LabelJsonFields.DESCRIPTION, ""))
@@ -133,9 +144,10 @@ class LabelBase:
 
 class Label(LabelBase):
     def _validate_geometry_type(self):
-        if type(self._geometry) is not self._obj_class.geometry_type:
-            raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
-                               .format(type(self._geometry), self._obj_class.geometry_type))
+        if self._obj_class.geometry_type != AnyGeometry:
+            if type(self._geometry) is not self._obj_class.geometry_type:
+                raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
+                                   .format(type(self._geometry), self._obj_class.geometry_type))
 
 
 class PixelwiseScoresLabel(LabelBase):

@@ -44,8 +44,8 @@ class TaskTrain(TaskDockerized):
     def download_step(self):
         self.logger.info("DOWNLOAD_DATA")
 
-        json.dump(self.info['config'], open(self.config_path1, 'w'))  # Deprecated 'task_settings.json'
-        json.dump(self.info['config'], open(self.config_path2, 'w'))  # New style task_config.json
+        sly.io.json.dump_json_file(self.info['config'], self.config_path1)  # Deprecated 'task_settings.json'
+        sly.io.json.dump_json_file(self.info['config'], self.config_path2)  # New style task_config.json
 
         if len(self.info['projects']) != 1:
             raise ValueError("Config contains {} projects. Training works only with single project.".format(len(self.info['projects'])))

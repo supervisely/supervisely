@@ -5,6 +5,7 @@ import json
 import supervisely_lib as sly
 from supervisely_lib.task.paths import TaskPaths
 from .task_dockerized import TaskDockerized, TaskStep
+from supervisely_lib.io.json import dump_json_file
 
 
 class TaskImport(TaskDockerized):
@@ -40,8 +41,8 @@ class TaskImport(TaskDockerized):
     def download_step(self):
         self.logger.info("DOWNLOAD_DATA")
         human_config = self.make_human_config()
-        json.dump(human_config, open(self.config_path1, 'w'))
-        json.dump(human_config, open(self.config_path2, 'w'))
+        dump_json_file(human_config, self.config_path1)
+        dump_json_file(human_config, self.config_path2)
         self.data_mgr.download_import_files(self.info['task_id'], self.dir_data)
         self.report_step_done(TaskStep.DOWNLOAD)
 

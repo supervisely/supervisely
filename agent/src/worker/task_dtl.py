@@ -8,6 +8,7 @@ import supervisely_lib as sly
 
 from worker.task_dockerized import TaskDockerized, TaskStep
 from worker.agent_utils import ann_special_fields
+from supervisely_lib.io.json import dump_json_file
 
 
 class TaskDTL(TaskDockerized):
@@ -37,7 +38,7 @@ class TaskDTL(TaskDockerized):
         super().init_additional()
         sly.fs.mkdir(self.dir_data)
         sly.fs.mkdir(self.dir_results)
-        json.dump(self.info['graph'], open(self.graph_path, 'w'))
+        dump_json_file(self.info['graph'], self.graph_path)
 
     def download_data_sources(self, only_meta=False):
         data_sources = _get_data_sources(self.info['graph'])
@@ -72,7 +73,7 @@ class TaskDTL(TaskDockerized):
 
     def on_verify(self, jlog):
         is_archive = jlog['output']['is_archive']
-        json.dump({'is_archive': is_archive}, open(self.verif_status_path, 'w'))
+        dump_json_file({'is_archive': is_archive}, self.verif_status_path)
         return {}
 
     def before_main_step(self):

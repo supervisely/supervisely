@@ -1,12 +1,12 @@
 # coding: utf-8
 import time
-from enum import Enum
+from supervisely_lib.collection.str_enum import StrEnum
 from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
                                            WaitingTimeExceeded
 
 
 class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
-    class Status(Enum):
+    class Status(StrEnum):
         PENDING = 'pending'
         IN_PROGRESS = "in_progress"
         ON_REVIEW = "on_review"
@@ -42,6 +42,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                 ApiField.FINISHED_IMAGES_COUNT,
                 ApiField.REJECTED_IMAGES_COUNT,
                 ApiField.ACCEPTED_IMAGES_COUNT,
+                ApiField.PROGRESS_IMAGES_COUNT,
 
                 ApiField.CLASSES_TO_LABEL,
                 ApiField.TAGS_TO_LABEL,
@@ -62,7 +63,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         ModuleApi.__init__(self, api)
 
     # @TODO: reimplement
-    def _convert_json_info(self, info: dict):
+    def _convert_json_info(self, info: dict, skip_missing=False):
         if info is None:
             return None
         else:
@@ -210,3 +211,13 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                 return
             time.sleep(effective_wait_timeout)
         raise WaitingTimeExceeded('Waiting time exceeded')
+
+    def get_stats(self, id):
+        response = self._api.post('jobs.stats', {ApiField.ID: id})
+        return response.json()
+
+    def get_activity(self, id):
+        job_info = self.get_info_by_id(id)
+        df = self._api.project.get_activity(job_info.project_id)
+        df = df[df.jobId == id]
+        return df

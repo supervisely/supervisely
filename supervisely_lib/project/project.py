@@ -13,7 +13,9 @@ from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
+from supervisely_lib.io.fs import file_exists
 
+# @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
 
 
@@ -32,12 +34,15 @@ def _get_effective_ann_name(img_name, ann_names):
 
 
 class Dataset(KeyObject):
+    item_dir_name = 'img'
+    annotation_class = Annotation
+
     def __init__(self, directory: str, mode: OpenMode):
         if type(mode) is not OpenMode:
             raise TypeError("Argument \'mode\' has type {!r}. Correct type is OpenMode".format(type(mode)))
 
         self._directory = directory
-        self._item_to_ann = {} # image file name -> annotation file name
+        self._item_to_ann = {} # item file name -> annotation file name
 
         project_dir, ds_name = os.path.split(directory.rstrip('/'))
         self._project_dir = project_dir
@@ -60,21 +65,30 @@ class Dataset(KeyObject):
         return self._directory
 
     @property
+    def item_dir(self):
+        return self.img_dir
+
+    @property
     def img_dir(self):
-        return os.path.join(self.directory, 'img')
+        # @TODO: deprecated method, should be private and be renamed in future
+        return os.path.join(self.directory, self.item_dir_name)
 
     @property
     def ann_dir(self):
         return os.path.join(self.directory, 'ann')
 
+    @staticmethod
+    def _has_valid_ext(path: str) -> bool:
+        return sly_image.has_valid_ext(path)
+
     def _read(self):
-        if not dir_exists(self.img_dir):
-            raise FileNotFoundError('Image directory not found: {!r}'.format(self.img_dir))
+        if not dir_exists(self.item_dir):
+            raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError('Annotation directory not found: {!r}'.format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.img_dir, filter_fn=sly_image.has_valid_ext)
+        img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
 
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
         img_names = [os.path.basename(path) for path in img_paths]
@@ -87,7 +101,7 @@ class Dataset(KeyObject):
         for img_name in img_names:
             ann_name = _get_effective_ann_name(img_name, raw_ann_names)
             if ann_name is None:
-                raise RuntimeError('Image {!r} in dataset {!r} does not have a corresponding annotation file.'.format(
+                raise RuntimeError('Item {!r} in dataset {!r} does not have a corresponding annotation file.'.format(
                     img_name, self.name))
             if ann_name in effective_ann_names:
                 raise RuntimeError('Annotation file {!r} in dataset {!r} matches two different image files.'.format(
@@ -97,15 +111,19 @@ class Dataset(KeyObject):
 
     def _create(self):
         mkdir(self.ann_dir)
-        mkdir(self.img_dir)
+        mkdir(self.item_dir)
 
     def item_exists(self, item_name):
         return item_name in self._item_to_ann
 
+    def get_item_path(self, item_name):
+        return self.get_img_path(item_name)
+
     def get_img_path(self, item_name):
+        # @TODO: deprecated method, should be private and be renamed in future
         if not self.item_exists(item_name):
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
-        return os.path.join(self.img_dir, item_name)
+        return os.path.join(self.item_dir, item_name)
 
     def get_ann_path(self, item_name):
         ann_path = self._item_to_ann.get(item_name, None)
@@ -113,26 +131,29 @@ class Dataset(KeyObject):
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.ann_dir, ann_path)
 
-    def add_item_file(self, item_name, img_path, ann=None, _validate_img=True, _use_hardlink=False):
-        self._add_img_file(item_name, img_path, _validate_img=_validate_img, _use_hardlink=_use_hardlink)
+    def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False):
+        self._add_item_file(item_name, item_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
         self._add_ann_by_type(item_name, ann)
 
     def add_item_np(self, item_name, img, ann=None):
         self._add_img_np(item_name, img)
         self._add_ann_by_type(item_name, ann)
 
-    def add_item_raw_bytes(self, item_name, img_raw_bytes, ann=None):
-        self._add_img_raw_bytes(item_name, img_raw_bytes)
+    def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None):
+        self._add_item_raw_bytes(item_name, item_raw_bytes)
         self._add_ann_by_type(item_name, ann)
+
+    def _get_empty_annotaion(self, item_name):
+        img_size = sly_image.read(self.get_img_path(item_name)).shape[:2]
+        return self.annotation_class(img_size)
 
     def _add_ann_by_type(self, item_name, ann):
         # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
         # an annotation either.
         self._item_to_ann[item_name] = item_name + ANN_EXT
         if ann is None:
-            img_size = sly_image.read(self.get_img_path(item_name)).shape[:2]
-            self.set_ann(item_name, Annotation(img_size))
-        elif type(ann) is Annotation:
+            self.set_ann(item_name, self._get_empty_annotaion(item_name))
+        elif type(ann) is self.annotation_class:
             self.set_ann(item_name, ann)
         elif type(ann) is str:
             self.set_ann_file(item_name, ann)
@@ -143,26 +164,33 @@ class Dataset(KeyObject):
 
     def _check_add_item_name(self, item_name):
         if item_name in self._item_to_ann:
-            raise RuntimeError('Image {!r} already exists in dataset {!r}.'.format(item_name, self.name))
-        if not sly_image.has_valid_ext(item_name):
-            raise RuntimeError('Image name {!r} has unsupported extension.'.format(item_name))
+            raise RuntimeError('Item {!r} already exists in dataset {!r}.'.format(item_name, self.name))
+        if not self._has_valid_ext(item_name):
+            raise RuntimeError('Item name {!r} has unsupported extension.'.format(item_name))
 
-    def _add_img_raw_bytes(self, item_name, img_raw_bytes):
+    def _add_item_raw_bytes(self, item_name, item_raw_bytes):
         self._check_add_item_name(item_name)
-        dst_img_path = os.path.join(self.img_dir, item_name)
+        dst_img_path = os.path.join(self.item_dir, item_name)
         with open(dst_img_path, 'wb') as fout:
-            fout.write(img_raw_bytes)
-        self._validate_added_image_or_die(dst_img_path)
+            fout.write(item_raw_bytes)
+        self._validate_added_item_or_die(dst_img_path)
+
+    def generate_item_path(self, item_name):
+        return os.path.join(self.item_dir, item_name)
 
     def _add_img_np(self, item_name, img):
         self._check_add_item_name(item_name)
-        dst_img_path = os.path.join(self.img_dir, item_name)
+        dst_img_path = os.path.join(self.item_dir, item_name)
         sly_image.write(dst_img_path, img)
 
+    def _add_item_file(self, item_name, item_path, _validate_item=True, _use_hardlink=False):
+        self._add_img_file(item_name, item_path, _validate_item, _use_hardlink)
+
     def _add_img_file(self, item_name, img_path, _validate_img=True, _use_hardlink=False):
+        # @TODO: deprecated method, should be private and be (refactored, renamed) in future
         self._check_add_item_name(item_name)
-        dst_img_path = os.path.join(self.img_dir, item_name)
-        if img_path != dst_img_path:  # used only for agent + api during download project
+        dst_img_path = os.path.join(self.item_dir, item_name)
+        if img_path != dst_img_path and img_path is not None:  # used only for agent + api during download project + None to optimize internal usage
             hardlink_done = False
             if _use_hardlink:
                 try:
@@ -173,22 +201,22 @@ class Dataset(KeyObject):
             if not hardlink_done:
                 copy_file(img_path, dst_img_path)
             if _validate_img:
-                self._validate_added_image_or_die(img_path)
+                self._validate_added_item_or_die(img_path)
 
     @staticmethod
-    def _validate_added_image_or_die(img_path):
-        # Make sure we actually received a valid image file, clean it up and bail if not so.
+    def _validate_added_item_or_die(item_path):
+        # Make sure we actually received a valid image file, clean it up and fail if not so.
         try:
-            sly_image.validate_format(img_path)
+            sly_image.validate_format(item_path)
         except (sly_image.UnsupportedImageFormat, sly_image.ImageReadException):
-            os.remove(img_path)
+            os.remove(item_path)
             raise
 
-    def set_ann(self, item_name: str, ann: Annotation):
-        if type(ann) is not Annotation:
+    def set_ann(self, item_name: str, ann):
+        if type(ann) is not self.annotation_class:
             raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
-        dump_json_file(ann.to_json(), dst_ann_path)
+        dump_json_file(ann.to_json(), dst_ann_path, indent=4)
 
     def set_ann_file(self, item_name: str, ann_path: str):
         if type(ann_path) is not str:
@@ -200,7 +228,7 @@ class Dataset(KeyObject):
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
-        dump_json_file(ann, dst_ann_path)
+        dump_json_file(ann, dst_ann_path, indent=4)
 
     def get_item_paths(self, item_name) -> ItemPaths:
         return ItemPaths(img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
@@ -217,6 +245,7 @@ class Dataset(KeyObject):
 
 
 class Project:
+    dataset_class = Dataset
     class DatasetDict(KeyIndexedCollection):
         item_type = Dataset
 
@@ -268,7 +297,7 @@ class Project:
 
         possible_datasets = get_subdirs(self.directory)
         for ds_name in possible_datasets:
-            current_dataset = Dataset(os.path.join(self.directory, ds_name), OpenMode.READ)
+            current_dataset = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.READ)
             self._datasets = self._datasets.add(current_dataset)
 
         if self.total_items == 0:
@@ -290,7 +319,7 @@ class Project:
 
     def set_meta(self, new_meta):
         self._meta = new_meta
-        json.dump(self.meta.to_json(), open(self._get_project_meta_path(), 'w'))
+        dump_json_file(self.meta.to_json(), self._get_project_meta_path(), indent=4)
 
     def __iter__(self):
         return next(self)
@@ -300,11 +329,15 @@ class Project:
             yield dataset
 
     def create_dataset(self, ds_name):
-        ds = Dataset(os.path.join(self.directory, ds_name), OpenMode.CREATE)
+        ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
 
-    def copy_data(self, dst_directory, dst_name=None, _validate_img=True, _use_hardlink=False):
+    def _add_item_file_to_dataset(self, ds, item_name, item_paths, _validate_item, _use_hardlink):
+        ds.add_item_file(item_name, item_paths.img_path,
+                         ann=item_paths.ann_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
+
+    def copy_data(self, dst_directory, dst_name=None, _validate_item=True, _use_hardlink=False):
         dst_name = dst_name if dst_name is not None else self.name
         new_project = Project(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
         new_project.set_meta(self.meta)
@@ -313,8 +346,7 @@ class Project:
             new_ds = new_project.create_dataset(ds.name)
             for item_name in ds:
                 item_paths = ds.get_item_paths(item_name)
-                new_ds.add_item_file(item_name, item_paths.img_path, ann=item_paths.ann_path,
-                                     _validate_img=_validate_img, _use_hardlink=_use_hardlink)
+                self._add_item_file_to_dataset(new_ds, item_name, item_paths, _validate_item, _use_hardlink)
         return new_project
 
     @staticmethod
@@ -329,11 +361,22 @@ class Project:
         return parent_dir, pr_name
 
 
-def read_single_project(dir):
+def read_single_project(dir, project_class=Project):
     projects_in_dir = get_subdirs(dir)
     if len(projects_in_dir) != 1:
         raise RuntimeError('Found {} dirs instead of 1'.format(len(projects_in_dir)))
-    return Project(os.path.join(dir, projects_in_dir[0]), OpenMode.READ)
+
+    project_dir = os.path.join(dir, projects_in_dir[0])
+    try:
+        project_fs = project_class(project_dir, OpenMode.READ)
+    except Exception as e:
+        projects_in_dir = get_subdirs(project_dir)
+        if len(projects_in_dir) != 1:
+            raise e
+        project_dir = os.path.join(project_dir, projects_in_dir[0])
+        project_fs = project_class(project_dir, OpenMode.READ)
+
+    return project_fs
 
 
 def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False):

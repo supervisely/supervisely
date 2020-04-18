@@ -100,14 +100,14 @@ Guide #04: neural network inference](https://supervise.ly/explore/notebooks/guid
 
 ### Get classes and tags that model produces 
 
-If you want to obtain model classes and tags, there is a special method ```/model/get_output_meta```. Here is the template:
+If you want to obtain model classes and tags, there is a special method ```/model/get_out_meta```. Here is the template:
 
 
 ```sh
 curl -H "Content-Type: multipart/form-data" -X POST \
      -F 'meta=<project meta sting in json format (optional field)>' \
      -F 'mode=<inference mode string in json format (optional field)>' \
-     <ip-address of host machine>:<port of host machine, default 5000>/model/get_output_meta
+     <ip-address of host machine>:<port of host machine, default 5000>/model/get_out_meta
 ```
 
 The intuition behind optional fields ```meta``` and ```mode``` is [here](https://github.com/supervisely/supervisely/blob/master/help/jupyterlab_scripts/src/tutorials/09_detection_segmentation_pipeline/detection_segmentation_pipeline.ipynb). Examples are presented in next section.   
@@ -273,9 +273,35 @@ if __name__ == '__main__':
     content_dict = {}
     content_dict['image'] = ("big_image.png", open("/workdir/src/big_image.jpg", 'rb'), 'image/*')
     content_dict['mode'] = ("mode", open('/workdir/src/sliding_window_mode_example.json', 'rb'))
-
+    
     encoder = MultipartEncoder(fields=content_dict)
     response = requests.post("http://0.0.0.0:5000/model/inference", data=encoder, headers={'Content-Type': encoder.content_type})
+    print(response.json())
+```
+
+Here is the python script to get classes model predicts
+ 
+```py
+import json
+import requests
+
+if __name__ == '__main__':
+    content_dict = {}
+
+    # dummy config is used to slightly rename model output class
+    dummy_detection_config = {
+        "model_tags": {
+            "add_suffix": "_det",
+            "save_names": "__all__"
+        },
+        "model_classes": {
+            "add_suffix": "_det",
+            "save_classes": "__all__"
+        }
+    }
+    content_dict['mode'] = json.dumps(dummy_detection_config)
+
+    response = requests.post("http://0.0.0.0:5000/model/get_out_meta", json=content_dict)
     print(response.json())
 ```
 

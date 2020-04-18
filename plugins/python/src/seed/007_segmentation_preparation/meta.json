@@ -1,0 +1,4 @@
+{
+    "title": "Segmentation preparation",
+    "description": "Creates a new project from annotated project by preparing it for training of segmentation models and adding augmentations"
+}

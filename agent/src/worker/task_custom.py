@@ -5,6 +5,7 @@ import supervisely_lib as sly
 import os
 
 from supervisely_lib.task.paths import TaskPaths
+from supervisely_lib.io.json import dump_json_file
 
 from worker.task_dockerized import TaskDockerized, TaskStep
 
@@ -32,8 +33,8 @@ class TaskCustom(TaskDockerized):
             self.data_mgr.download_nn(model_info['title'], self.dir_model)
 
         self.logger.info("DOWNLOAD_DATA")
-        json.dump(self.info['config'], open(self.config_path1, 'w'))  # Deprecated 'task_settings.json'
-        json.dump(self.info['config'], open(self.config_path2, 'w'))  # New style task_config.json
+        dump_json_file(self.info['config'], self.config_path1)  # Deprecated 'task_settings.json'
+        dump_json_file(self.info['config'], self.config_path2)  # New style task_config.json
 
         for pr_info in self.info['projects']:
             self.data_mgr.download_project(self.dir_data, pr_info['title'])

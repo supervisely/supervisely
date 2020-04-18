@@ -1,0 +1,148 @@
+{
+  "pointCloudId": 867,
+  "name": "kitti_0000000001.pcd",
+  "createdAt": "2020-03-21T19:01:40.995Z",
+  "updatedAt": "2020-03-27T08:07:35.231Z",
+  "description": "",
+  "tags": [],
+  "objects": [
+    {
+      "id": 222,
+      "classId": 1208,
+      "labelerLogin": "admin",
+      "tags": [],
+      "entityId": null,
+      "classTitle": "Car"
+    },
+    {
+      "id": 223,
+      "classId": 1208,
+      "labelerLogin": "admin",
+      "tags": [],
+      "entityId": null,
+      "classTitle": "Car"
+    },
+    {
+      "id": 268,
+      "classId": 1377,
+      "labelerLogin": "admin",
+      "tags": [],
+      "entityId": null,
+      "classTitle": "person"
+    },
+    {
+      "id": 269,
+      "classId": 1377,
+      "labelerLogin": "admin",
+      "tags": [],
+      "entityId": null,
+      "classTitle": "person"
+    },
+    {
+      "id": 270,
+      "classId": 1208,
+      "labelerLogin": "admin",
+      "tags": [],
+      "entityId": null,
+      "classTitle": "Car"
+    }
+  ],
+  "figures": [
+    {
+      "id": 10130,
+      "objectId": 222,
+      "description": "",
+      "labelerLogin": "admin",
+      "geometryType": "cuboid_3d",
+      "geometry": {
+        "position": {
+          "x": 25.37988722638057,
+          "y": 8.569568065201569,
+          "z": -0.7128001299763951
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 1.498553845919301
+        },
+        "dimensions": {
+          "x": 1.884612632248412,
+          "y": 4.755195165361563,
+          "z": 2.0226812355548485
+        }
+      }
+    },
+    {
+      "id": 10131,
+      "objectId": 222,
+      "description": "",
+      "labelerLogin": "admin",
+      "geometryType": "cuboid_3d",
+      "geometry": {
+        "position": {
+          "x": 33.69468366074511,
+          "y": 7.886599247553994,
+          "z": -0.6273013688144111
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 1.2902595350565749
+        },
+        "dimensions": {
+          "x": 2.3230976514221493,
+          "y": 4.680205269391759,
+          "z": 2.2414248021124097
+        }
+      }
+    },
+    {
+      "id": 10133,
+      "objectId": 223,
+      "description": "",
+      "labelerLogin": "admin",
+      "geometryType": "cuboid_3d",
+      "geometry": {
+        "position": {
+          "x": -1.6903227618060712,
+          "y": 9.307821223290887,
+          "z": -1.3047837392126669
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "dimensions": {
+          "x": 3.6323969697426506,
+          "y": 2.0038958880910642,
+          "z": 1.5968001702442836
+        }
+      }
+    },
+    {
+      "id": 10662,
+      "objectId": 270,
+      "description": "",
+      "labelerLogin": "admin",
+      "geometryType": "cuboid_3d",
+      "geometry": {
+        "position": {
+          "x": -7.944586004353581,
+          "y": 9.130105607514682,
+          "z": -1.311094697318575
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 1.6266973274908045
+        },
+        "dimensions": {
+          "x": 1.7906415330404306,
+          "y": 3.513591073855412,
+          "z": 1.5233082873539259
+        }
+      }
+    }
+  ]
+}

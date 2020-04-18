@@ -1,0 +1,6 @@
+{
+	"title": "PCD w/o labels",
+	"description": "Add pointclouds PCD and create pointcloud project. Use pointcloud annotation tool to view and label 3d data.",
+	"type": "import",
+	"run_mode": "general_plugin"
+}

@@ -21,6 +21,8 @@ import werkzeug
 class RestInferenceServer:
     def __init__(self, model: SingleImageInferenceInterface, name, port=None):
         self._app = Flask(name)
+        if port == '':
+            port = None
         self._port = port
 
         api = Api(self._app)
@@ -66,9 +68,9 @@ class RestInferenceServer:
             self._model = model
             self._parser = reqparse.RequestParser()
             self._parser.add_argument(IMAGE, type=werkzeug.FileStorage, location='files', help="input image", required=True)
-            self._parser.add_argument(ANNOTATION)
-            self._parser.add_argument(META)
-            self._parser.add_argument(MODE)
+            self._parser.add_argument(ANNOTATION, location='files', type=werkzeug.FileStorage)
+            self._parser.add_argument(META, location='files', type=werkzeug.FileStorage)
+            self._parser.add_argument(MODE, location='files', type=werkzeug.FileStorage)
 
         def post(self):
             args = self._parser.parse_args()
@@ -81,9 +83,9 @@ class RestInferenceServer:
 
             data = {
                 "request_type": INFERENCE,
-                "meta": json.loads(meta) if meta is not None else ProjectMeta().to_json(),
-                "annotation": json.loads(ann) if ann is not None else None,
-                "mode": json.loads(mode) if mode is not None else {},
+                "meta": json.loads(meta.stream.read().decode("utf-8")) if meta is not None else ProjectMeta().to_json(),
+                "annotation": json.loads(ann.stream.read().decode("utf-8")) if ann is not None else None,
+                "mode": json.loads(mode.stream.read().decode("utf-8")) if mode is not None else {},
                 'image_arr': img
             }
             return self._model._final_processing(data)

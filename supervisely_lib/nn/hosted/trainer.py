@@ -15,6 +15,8 @@ from supervisely_lib.task.progress import report_checkpoint_saved
 from supervisely_lib.project.project import read_single_project
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.task.paths import TaskPaths
+from supervisely_lib.io.json import dump_json_file
+
 
 BATCH_SIZE = 'batch_size'
 LR = 'lr'
@@ -174,8 +176,7 @@ class SuperviselyModelTrainer:
 
     def _save_model_snapshot(self, is_best, opt_data):
         out_dir = self.checkpoints_saver.get_dir_to_write()
-        with open(os.path.join(out_dir, TaskPaths.MODEL_CONFIG_NAME), 'w') as fout:
-            json.dump(self.out_config, fout)
+        dump_json_file(self.out_config, os.path.join(out_dir, TaskPaths.MODEL_CONFIG_NAME))
         self._dump_model_weights(out_dir)
         size_bytes = sly_fs.get_directory_size(out_dir)
         self.checkpoints_saver.saved(is_best, size_bytes, opt_data)

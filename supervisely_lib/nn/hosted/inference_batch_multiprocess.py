@@ -53,7 +53,7 @@ def single_inference_process_fn(inference_initializer, inference_mode_config, in
             ann = inference_mode.infer_annotate_image_file(req.item_paths.img_path, in_ann)
             out_dataset = project.datasets.get(req.ds_name)
             out_dataset.add_item_file(
-                req.item_name, req.item_paths.img_path, ann=ann, _validate_img=False, _use_hardlink=True)
+                req.item_name, req.item_paths.img_path, ann=ann, _validate_item=False, _use_hardlink=True)
             progress_queue.put(1)
 
 

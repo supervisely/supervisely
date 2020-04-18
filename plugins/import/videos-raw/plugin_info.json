@@ -1,0 +1,6 @@
+{
+	"title": "Video (original)",
+	"description": "Add videos without any convertations (for video annotator)",
+	"type": "import",
+	"run_mode": "general_plugin"
+}

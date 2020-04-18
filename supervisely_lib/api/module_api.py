@@ -82,6 +82,7 @@ class ApiField:
     ASSIGNED_TO_ID =    (['userId'], 'assigned_to_id')
     ASSIGNED_TO_LOGIN = (['labelerLogin'], 'assigned_to_login')
     FINISHED_IMAGES_COUNT = 'finishedImagesCount'
+    PROGRESS_IMAGES_COUNT = 'progressImagesCount'
     CLASSES_TO_LABEL =  (['meta', 'classes'], 'classes_to_label')
     TAGS_TO_LABEL =     (['meta', 'projectTags'], 'tags_to_label')
     IMAGES_RANGE =      (['meta', 'range'], 'images_range')
@@ -92,6 +93,57 @@ class ApiField:
     FILTER_IMAGES_BY_TAGS = (['meta', 'imageTags'], 'filter_images_by_tags')
     INCLUDE_IMAGES_WITH_TAGS = ([], 'include_images_with_tags')
     EXCLUDE_IMAGES_WITH_TAGS = ([], 'exclude_images_with_tags')
+    SIZEB =             (['size'], 'sizeb')
+    FRAMES_COUNT =      (['fileMeta', 'framesCount'], 'frames_count')
+    PATH_ORIGINAL =     'pathOriginal'
+    OBJECTS_COUNT =     'objectsCount'
+    FRAMES_TO_TIMECODES = (['fileMeta', 'framesToTimecodes'], 'frames_to_timecodes')
+    TAGS =              'tags'
+    VIDEO_ID =          'videoId'
+    FRAME_INDEX =       (['meta', 'frame'], 'frame_index')
+    LABELING_TOOL =     'tool'
+    GEOMETRY_TYPE =     'geometryType'
+    GEOMETRY =          'geometry'
+    OBJECT_ID =         'objectId'
+    FRAME =             'frame'
+    #FIGURES_COUNT =     (['labelsCount'], 'figures_count')
+    STREAMS =           'streams'
+    VIDEO_IDS =         'videoIds'
+    FRAME_WIDTH =       (['fileMeta', 'width'], 'frame_width')
+    FRAME_HEIGHT =      (['fileMeta', 'height'], 'frame_height')
+    VIDEO_NAME =        'videoName'
+    FRAME_RANGE =       'frameRange'
+    TRACK_ID =          'trackId'
+    PROGRESS =          'progress'
+    CURRENT =           'current'
+    TOTAL =             'total'
+    STOPPED =           'stopped'
+    VIDEOS =            'videos'
+    FILENAME =          'filename'
+    SHAPE =             'shape'
+    COLOR =             'color'
+    CLASS_ID =          'classId'
+    ENTITY_ID =         'entityId'
+    ANNOTATION_OBJECTS = 'annotationObjects'
+    TAG_ID =            'tagId'
+    ERROR =             'error'
+    MESSAGE =           'message'
+    CONTENT =           'content'
+    FIGURES =           'figures'
+    LAYOUT =            'layout'
+    WIDGETS =           'widgets'
+    CLOUD_MIME =        (['fileMeta', 'mime'], 'cloud_mime')
+    PREVIEW =           'preview'
+    FIGURES_COUNT =     'figuresCount'
+    ANN_OBJECTS_COUNT =     (['annotationObjectsCount'], 'objects_count')
+    POINTCLOUD_ID =     'pointCloudId'
+    POINTCLOUD_IDS =    'pointCloudIds'
+    POINTCLOUDS =       'pointClouds'
+    ADVANCED =          'advanced'
+    IGNORE_AGENT =      'ignoreAgent'
+    SCRIPT =            'script'
+    LOGS =              'logs'
+    FILES =             'files'
 
 
 def _get_single_item(items):
@@ -103,7 +155,7 @@ def _get_single_item(items):
 
 
 class _JsonConvertibleModule:
-    def _convert_json_info(self, info: dict):
+    def _convert_json_info(self, info: dict, skip_missing=False):
         raise NotImplementedError()
 
 
@@ -189,21 +241,27 @@ class ModuleApiBase(_JsonConvertibleModule):
             suffix += 1
         return res_title
 
-    def _convert_json_info(self, info: dict):
+    def _convert_json_info(self, info: dict, skip_missing=False):
+        def _get_value(dict, field_name, skip_missing):
+            if skip_missing is True:
+                return dict.get(field_name, None)
+            else:
+                return dict[field_name]
+
         if info is None:
             return None
         else:
             field_values = []
             for field_name in self.info_sequence():
                 if type(field_name) is str:
-                    field_values.append(info[field_name])
+                    field_values.append(_get_value(info, field_name, skip_missing))
                 elif type(field_name) is tuple:
                     value = None
                     for sub_name in field_name[0]:
                         if value is None:
-                            value = info[sub_name]
+                            value = _get_value(info, sub_name, skip_missing)
                         else:
-                            value = value[sub_name]
+                            value = _get_value(value, sub_name, skip_missing)
                     field_values.append(value)
                 else:
                     raise RuntimeError('Can not parse field {!r}'.format(field_name))

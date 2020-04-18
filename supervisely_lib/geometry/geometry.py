@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 from supervisely_lib.io.json import JsonSerializable
+from supervisely_lib.geometry.constants import ANY_SHAPE
 
 
 # @TODO: use properties instead of field if it makes sense
@@ -136,9 +137,10 @@ class Geometry(JsonSerializable):
     def clone(self):
         return deepcopy(self)
 
-    def validate(self, name, settings):
-        if self.geometry_name() != name:
-            raise ValueError('Geometry validation error: name is mismatch!')  # TODO: Write here good message
+    def validate(self, obj_class_shape, settings):
+        if obj_class_shape != ANY_SHAPE:
+            if self.geometry_name() != obj_class_shape:
+                raise ValueError('Geometry validation error: shape names are mismatched!')
 
     @staticmethod
     def config_from_json(config):

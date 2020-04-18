@@ -8,7 +8,7 @@ FROM ${REGISTRY}/base-py:${TAG}
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        lshw=02.17-1.1ubuntu3.5 \
+        lshw=02.17-1.1ubuntu3 \
         aha=0.4.8-1 \
         html2text=1.3.2a-18 \
         htop=2.0.1-1ubuntu1 \

@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import os
 import concurrent.futures
 import json
 import traceback
@@ -19,6 +20,8 @@ from supervisely_lib.worker_api.agent_rpc import decode_image, download_image_fr
 from supervisely_lib.worker_api.interfaces import SingleImageInferenceInterface
 from supervisely_lib.worker_proto import worker_api_pb2 as api_proto
 from supervisely_lib.task.progress import report_agent_rpc_ready
+from supervisely_lib.api.api import Api
+
 
 REQUEST_TYPE = 'request_type'
 GET_OUT_META = 'get_out_meta'
@@ -26,7 +29,14 @@ INFERENCE = 'inference'
 SUPPORTED_REQUEST_TYPES = [GET_OUT_META, INFERENCE]
 
 MODEL_RESULT_SUFFIX = '_model'
+
 DATA = 'data'
+REQUEST_ID = 'request_id'
+IMAGE_HASH = 'image_hash'
+
+VIDEO = 'video'
+VIDEO_ID = 'video_id'
+FRAME_INDEX = 'frame_index'
 
 
 class ConnectionClosedByServerException(Exception):
@@ -39,8 +49,9 @@ class AgentRPCServicerBase:
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
         self.logger = logger
+        self.server_address = conn_config['server_address']
         self.api = AgentAPI(token=conn_config['token'],
-                            server_address=conn_config['server_address'],
+                            server_address=self.server_address,
                             ext_logger=self.logger)
         self.api.add_to_metadata('x-task-id', conn_config['task_id'])
 
@@ -55,7 +66,7 @@ class AgentRPCServicerBase:
 
     def _load_image_from_sly(self, req_id, image_hash, src_node_token):
         self.logger.trace('Will look for image.', extra={
-            'request_id': req_id, 'image_hash': image_hash, 'src_node_token': src_node_token
+            REQUEST_ID: req_id, IMAGE_HASH: image_hash, 'src_node_token': src_node_token
         })
         img_data = self.image_cache.get(image_hash)
         if img_data is None:
@@ -66,26 +77,44 @@ class AgentRPCServicerBase:
         return img_data
 
     def _load_arbitrary_image(self, req_id):
-        self.logger.trace('Will load arbitrary image.', extra={'request_id': req_id})
+        self.logger.trace('Will load arbitrary image.', extra={REQUEST_ID: req_id})
         img_data_packed = download_data_from_remote(self.api, req_id, self.logger)
         img_data = decode_image(img_data_packed)
         return img_data
 
     def _load_data_if_required(self, event_obj):
         try:
-            req_id = event_obj['request_id']
+            req_id = event_obj[REQUEST_ID]
             event_data = event_obj[DATA]
             request_type = event_data.get(REQUEST_TYPE, INFERENCE)
             if request_type == INFERENCE:
-                # For inference we need to download an image and add it to the event data.
-                image_hash = event_data.get('image_hash')
-                if image_hash is None:
-                    img_data = self._load_arbitrary_image(req_id)
+                frame_info = event_data.get(VIDEO, None)
+                if frame_info is None:
+                    # For inference we need to download an image and add it to the event data.
+                    image_hash = event_data.get(IMAGE_HASH)
+                    if image_hash is None:
+                        img_data = self._load_arbitrary_image(req_id)
+                    else:
+                        src_node_token = event_obj[DATA].get('src_node_token', '')
+                        img_data = self._load_image_from_sly(req_id, image_hash, src_node_token)
+                    event_data['image_arr'] = img_data
+                    self.logger.trace('Input image is obtained.', extra={REQUEST_ID: req_id})
                 else:
-                    src_node_token = event_obj['data'].get('src_node_token', '')
-                    img_data = self._load_image_from_sly(req_id, image_hash, src_node_token)
-                event_data['image_arr'] = img_data
-                self.logger.trace('Input image obtained.', extra={'request_id': req_id})
+                    # download frame
+                    video_id = frame_info[VIDEO_ID]
+                    frame_index = frame_info[FRAME_INDEX]
+
+                    image_uniq_key = "video_{}_frame_{}.png".format(video_id, frame_index)
+                    img_data = self.image_cache.get(image_uniq_key)
+                    if img_data is None:
+                        api_token = event_data['api_token']
+                        public_api = Api(self.server_address, api_token, retry_count=20, external_logger=self.logger)
+                        img_data = public_api.video.frame.download_np(video_id, frame_index)
+                        self.image_cache.add(image_uniq_key, img_data)
+
+                    event_data['image_arr'] = img_data
+                    self.logger.trace('Frame is obtained.', extra={REQUEST_ID: req_id})
+
             self.final_processing_queue.put(item=(event_data, req_id))
         except Exception as e:
             res_msg = {}
@@ -94,14 +123,14 @@ class AgentRPCServicerBase:
             self.thread_pool.submit(function_wrapper_nofail, self._send_data, res_msg, req_id)  # skip errors
 
     def _send_data(self, out_msg, req_id):
-        self.logger.trace('Will send output data.', extra={'request_id': req_id})
+        self.logger.trace('Will send output data.', extra={REQUEST_ID: req_id})
         out_bytes = json.dumps(out_msg).encode('utf-8')
 
         self.api.put_stream_with_data('SendGeneralEventData',
                                       api_proto.Empty,
                                       send_from_memory_generator(out_bytes, self.NETW_CHUNK_SIZE),
                                       addit_headers={'x-request-id': req_id})
-        self.logger.trace('Output data is sent.', extra={'request_id': req_id})
+        self.logger.trace('Output data is sent.', extra={REQUEST_ID: req_id})
 
     def _final_processing(self, in_msg):
         request_type = in_msg.get(REQUEST_TYPE, INFERENCE)
@@ -162,7 +191,7 @@ class AgentRPCServicerBase:
                 if gen_event.data is not None and gen_event.data != b'':
                     data = json.loads(gen_event.data.decode('utf-8'))
 
-                event_obj = {'request_id': request_id, 'data': data}
+                event_obj = {REQUEST_ID: request_id, DATA: data}
                 self.logger.debug('GET_INFERENCE_CALL', extra=event_obj)
                 self.download_queue.put(event_obj, block=True)
             except Exception as error:

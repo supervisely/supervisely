@@ -250,8 +250,7 @@ class YOLOTrainer(SuperviselyModelTrainer):
             checkpoint_dir = os.path.join(sly.TaskPaths.RESULTS_DIR, '{:08}'.format(epoch))
             sly.fs.mkdir(checkpoint_dir)
             sly.fs.copy_file(self._effective_model_cfg_path, os.path.join(checkpoint_dir, MODEL_CFG))
-            with open(os.path.join(checkpoint_dir, sly.TaskPaths.MODEL_CONFIG_NAME), 'w') as fout:
-                json.dump(self.out_config, fout)
+            sly.io.json.dump_json_file(self.out_config, os.path.join(checkpoint_dir, sly.TaskPaths.MODEL_CONFIG_NAME))
 
     def train(self):
         device_ids = self.config['gpu_devices']

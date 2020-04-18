@@ -1,0 +1,4 @@
+{
+    "title": "Download as .json + pointclouds",
+    "description": "Download pointcloud project in Supervisely format which includes pointclouds, annotations, meta.json and key_id_map.json"
+}
