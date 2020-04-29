@@ -101,3 +101,4 @@ def _hex2rgba(hex_value: str) -> list:
     """
     assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
     return _hex2color(hex_value)
+

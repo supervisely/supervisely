@@ -40,10 +40,9 @@ class ObjectApi(RemoveableBulkModuleApi):
 
         items = []
         for obj in objects:
-            new_obj = {
-                ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name],
-                ApiField.ENTITY_ID: entity_id
-            }
+            new_obj = {ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name]}
+            if entity_id is not None:
+                new_obj[ApiField.ENTITY_ID] = entity_id
             items.append(new_obj)
 
         response = self._api.post('annotation-objects.bulk.add', {ApiField.DATASET_ID: dataset_id,

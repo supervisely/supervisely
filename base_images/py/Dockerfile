@@ -118,6 +118,9 @@ RUN apt-get update && apt-get install -y openssh-server
 RUN mkdir /var/run/sshd
 
 RUN pip install plotly==4.5.4
+RUN pip install --upgrade pandas
+RUN pip install "pillow<7"
+RUN ln -sf /usr/local/bin/python3.6 /usr/bin/python
 
 ##############################################################################
 # Encoding for python SDK

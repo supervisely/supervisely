@@ -36,7 +36,7 @@ We learn a lot from our awesome community and want to give something back.
 Here you can find the Python SDK we use to implement neural network models,
 import plugins for custom data formats, and tools like the Data Transformation
 Language. You can also find the source code for the agent to turn your PC into a
-worker node to deploy your neural nets.
+worker node to deploy your neural nets. 
 
 ## Agent
 

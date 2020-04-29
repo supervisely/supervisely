@@ -13,4 +13,6 @@ RUN conda install -y -c soumith \
         cuda90=1.0 \
     && conda clean --all --yes
 
+RUN pip install "pillow<7"
+
 

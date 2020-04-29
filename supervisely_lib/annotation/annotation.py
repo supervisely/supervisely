@@ -1,7 +1,9 @@
 # coding: utf-8
 
+
 import json
 import itertools
+import numpy as np
 
 from copy import deepcopy
 
@@ -216,3 +218,69 @@ class Annotation:
         img = sly_image.read(img_path)
         img_size = img.shape[:2]
         return cls(img_size)
+
+    @classmethod
+    def stat_area(cls, render, names, colors):
+        #@TODO: check similar colors
+
+        if len(names) != len(colors):
+            raise RuntimeError("len(names) != len(colors) [{} != {}]".format(len(names), len(colors)))
+
+        result = {}
+
+        height, width = render.shape[:2]
+        total_pixels = height * width
+
+        channels = None
+        if len(render.shape) == 2:
+            channels = 1
+        elif len(render.shape) == 3:
+            channels = render.shape[2]
+
+        covered_pixels = 0
+        for name, color in zip(names, colors):
+            col_name = name #"{} [area]".format(name)
+            class_mask = np.all(render == color, axis=-1).astype('uint8')
+            cnt_pixels = class_mask.sum()
+            covered_pixels += cnt_pixels
+
+            result[col_name] = cnt_pixels
+
+        if covered_pixels > total_pixels:
+            raise RuntimeError("Class colors mistake: covered_pixels > total_pixels")
+
+        result['unlabeled area'] = total_pixels - covered_pixels
+        result['total area'] = total_pixels
+        result['height'] = height
+        result['width'] = width
+        result['channels'] = channels
+        return result
+
+    def stat_class_count(self, class_names):
+        def _name_to_key(name):
+            return name#"{} [count]".format(name)
+        total = 0
+        stat = {_name_to_key(name): 0 for name in class_names}
+        for label in self._labels:
+            cur_name = label.obj_class.name
+            if _name_to_key(cur_name) not in stat:
+                raise KeyError("Class {!r} not found in {}".format(cur_name, class_names))
+            stat[_name_to_key(cur_name)] += 1
+            total += 1
+        stat['total count'] = total
+        return stat
+
+    def stat_img_tags(self, tag_names):
+        stat = {name: 0 for name in tag_names}
+        for tag in self._img_tags:
+            cur_name = tag.meta.name
+            if cur_name not in stat:
+                raise KeyError("Tag {!r} not found in {}".format(cur_name, tag_names))
+            stat[cur_name] += 1
+        return stat
+
+    def draw_class_idx_rgb(self, render, name_to_index):
+        for label in self._labels:
+            class_idx = name_to_index[label.obj_class.name]
+            color = [class_idx, class_idx, class_idx]
+            label.draw(render, color=color, thickness=1, draw_tags=False, tags_font=self._get_font())

@@ -2,6 +2,7 @@
 
 import io
 from collections import defaultdict
+import urllib.parse
 
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.imaging import image as sly_image
@@ -26,11 +27,15 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.LABELS_COUNT,
                 ApiField.DATASET_ID,
                 ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+                ApiField.UPDATED_AT,
+                ApiField.META]
 
     @staticmethod
     def info_tuple_name():
         return 'ImageInfo'
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        return super()._convert_json_info(info, skip_missing=skip_missing)
 
     def get_list(self, dataset_id, filters=None):
         return self.get_list_all_pages('images.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
@@ -165,20 +170,21 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return hashes
 
-    def upload_path(self, dataset_id, name, path):
-        return self.upload_paths(dataset_id, [name], [path])[0]
+    def upload_path(self, dataset_id, name, path, meta=None):
+        metas = None if meta is None else [meta]
+        return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
-    def upload_paths(self, dataset_id, names, paths, progress_cb=None):
+    def upload_paths(self, dataset_id, names, paths, progress_cb=None, metas=None):
         def path_to_bytes_stream(path):
             return open(path, 'rb')
-
         hashes = self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
-        return self.upload_hashes(dataset_id, names, hashes)
+        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
-    def upload_np(self, dataset_id, name, img):
-        return self.upload_nps(dataset_id, [name], [img])[0]
+    def upload_np(self, dataset_id, name, img, meta=None):
+        metas = None if meta is None else [meta]
+        return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
 
-    def upload_nps(self, dataset_id, names, imgs, progress_cb=None):
+    def upload_nps(self, dataset_id, names, imgs, progress_cb=None, metas=None):
         def img_to_bytes_stream(item):
             img, name = item[0], item[1]
             img_bytes = sly_image.write_bytes(img, get_file_ext(name))
@@ -190,30 +196,33 @@ class ImageApi(RemoveableBulkModuleApi):
 
         img_name_list = list(zip(imgs, names))
         hashes = self._upload_data_bulk(img_to_bytes_stream, img_to_hash, img_name_list, progress_cb)
-        return self.upload_hashes(dataset_id, names, hashes)
+        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
-    def upload_link(self, dataset_id, name, link):
-        return self.upload_links(dataset_id, [name], [link])[0]
+    def upload_link(self, dataset_id, name, link, meta=None):
+        metas = None if meta is None else [meta]
+        return self.upload_links(dataset_id, [name], [link], metas=metas)[0]
 
-    def upload_links(self, dataset_id, names, links, progress_cb=None):
-        return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, progress_cb)
+    def upload_links(self, dataset_id, names, links, progress_cb=None,  metas=None):
+        return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, progress_cb, metas=metas)
 
-    def upload_hash(self, dataset_id, name, hash):
-        return self.upload_hashes(dataset_id, [name], [hash])[0]
+    def upload_hash(self, dataset_id, name, hash, meta=None):
+        metas = None if meta is None else [meta]
+        return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
 
-    def upload_hashes(self, dataset_id, names, hashes, progress_cb=None):
-        return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, progress_cb)
+    def upload_hashes(self, dataset_id, names, hashes, progress_cb=None,  metas=None):
+        return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, progress_cb, metas=metas)
 
-    def upload_id(self, dataset_id, name, id):
-        return self.upload_ids(dataset_id, [name], [id])[0]
+    def upload_id(self, dataset_id, name, id, meta=None):
+        metas = None if meta is None else [meta]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
-    def upload_ids(self, dataset_id, names, ids, progress_cb=None):
+    def upload_ids(self, dataset_id, names, ids, progress_cb=None, metas=None):
         # all ids have to be from single dataset
         infos = self.get_info_by_id_batch(ids)
         hashes = [info.hash for info in infos]
-        return self.upload_hashes(dataset_id, names, hashes, progress_cb)
+        return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
 
-    def _upload_bulk_add(self, func_item_to_kv, dataset_id, names, items, progress_cb=None):
+    def _upload_bulk_add(self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None):
         results = []
 
         if len(names) == 0:
@@ -221,12 +230,22 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(names) != len(items):
             raise RuntimeError("Can not match \"names\" and \"items\" lists, len(names) != len(items)")
 
-        for batch in batched(list(zip(names, items))):
+        if metas is None:
+            metas = [{}] * len(names)
+        else:
+            if len(names) != len(metas):
+                raise RuntimeError("Can not match \"names\" and \"metas\" len(names) != len(metas)")
+
+        for batch in batched(list(zip(names, items, metas))):
             images = []
-            for name, item in batch:
+            for name, item, meta in batch:
                 item_tuple = func_item_to_kv(item)
                 #@TODO: 'title' -> ApiField.NAME
-                images.append({'title': name, item_tuple[0]: item_tuple[1]})
+                image_data = {'title': name, item_tuple[0]: item_tuple[1]}
+                if len(meta) != 0 and type(meta) == dict:
+                    image_data[ApiField.META] = meta
+                images.append(image_data)
+
             response = self._api.post('images.bulk.add', {ApiField.DATASET_ID: dataset_id, ApiField.IMAGES: images})
             if progress_cb is not None:
                 progress_cb(len(images))
@@ -319,3 +338,14 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def move(self, dst_dataset_id, id, change_name_if_conflict=False, with_annotations=False):
         return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
+
+    def url(self, team_id, workspace_id, project_id, dataset_id, image_id):
+        result = urllib.parse.urljoin(self._api.server_address,
+                                      'app/images/{}/{}/{}/{}#image-{}'.format(team_id,
+                                                                               workspace_id,
+                                                                               project_id,
+                                                                               dataset_id,
+                                                                               image_id)
+                                      )
+
+        return result
