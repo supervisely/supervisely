@@ -34,9 +34,6 @@ class ImageApi(RemoveableBulkModuleApi):
     def info_tuple_name():
         return 'ImageInfo'
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
-        return super()._convert_json_info(info, skip_missing=skip_missing)
-
     def get_list(self, dataset_id, filters=None):
         return self.get_list_all_pages('images.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
@@ -253,7 +250,8 @@ class ImageApi(RemoveableBulkModuleApi):
             for info_json in response.json():
                 info_json_copy = info_json.copy()
                 info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split('/')[1]
-                results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
+                #results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
+                results.append(self._convert_json_info(info_json_copy))
 
         name_to_res = {img_info.name: img_info for img_info in results}
         ordered_results = [name_to_res[name] for name in names]
@@ -261,7 +259,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return ordered_results
 
     #@TODO: reimplement
-    def _convert_json_info(self, info: dict, skip_missing=False):
+    def _convert_json_info(self, info: dict, skip_missing=True):
         if info is None:
             return None
         temp_ext = None
@@ -269,9 +267,13 @@ class ImageApi(RemoveableBulkModuleApi):
         for field_name in self.info_sequence():
             if field_name == ApiField.EXT:
                 continue
-            field_values.append(info[field_name])
+            if skip_missing is True:
+                val = info.get(field_name, None)
+            else:
+                val = info[field_name]
+            field_values.append(val)
             if field_name == ApiField.MIME:
-                temp_ext = info[field_name].split('/')[1]
+                temp_ext = val.split('/')[1]
                 field_values.append(temp_ext)
         for idx, field_name in enumerate(self.info_sequence()):
             if field_name == ApiField.NAME:
