@@ -27,16 +27,20 @@ class FigureApi(RemoveableBulkModuleApi):
         return self._get_info_by_id(id, 'figures.info')
 
     def create(self, entity_id, object_id, meta, geometry_json, geometry_type, track_id=None):
-        body = {ApiField.ENTITY_ID: entity_id,
-                ApiField.META: meta,
-                ApiField.OBJECT_ID: object_id,
-                ApiField.GEOMETRY_TYPE: geometry_type,
-                ApiField.GEOMETRY: geometry_json}
+        input_figure = {
+                    ApiField.META: meta,
+                    ApiField.OBJECT_ID: object_id,
+                    ApiField.GEOMETRY_TYPE: geometry_type,
+                    ApiField.GEOMETRY: geometry_json};
 
         if track_id is not None:
-            body[ApiField.TRACK_ID] = track_id
-        response = self._api.post('figures.add', body)
-        return response.json()[ApiField.ID]
+            input_figure[ApiField.TRACK_ID] = track_id
+
+        body = {ApiField.ENTITY_ID: entity_id,
+                ApiField.FIGURES: [input_figure]}
+
+        response = self._api.post('figures.bulk.add', body)
+        return response.json()[0][ApiField.ID]
 
     def get_by_ids(self, dataset_id, ids):
         filters = [{"field": "id", "operator": "in", "value": ids}]

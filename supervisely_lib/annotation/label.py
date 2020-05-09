@@ -56,7 +56,8 @@ class LabelBase:
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
             ** self.geometry.to_json(),
-            GEOMETRY_SHAPE: self.geometry.geometry_name()
+            GEOMETRY_TYPE: self.geometry.geometry_name(),
+            GEOMETRY_SHAPE: self.geometry.geometry_name(),
         }
 
     @classmethod

@@ -1,7 +1,7 @@
 # coding: utf-8
 import numpy as np
 
-from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE
+from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -68,7 +68,8 @@ class BitmapBase(Geometry):
                 ORIGIN: [self.origin.col, self.origin.row],
                 DATA: self.data_2_base64(self.data)
             },
-            GEOMETRY_SHAPE: self.geometry_name()
+            GEOMETRY_SHAPE: self.geometry_name(),
+            GEOMETRY_TYPE: self.geometry_name(),
         }
 
     @classmethod

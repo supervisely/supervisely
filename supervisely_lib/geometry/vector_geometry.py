@@ -29,7 +29,8 @@ class VectorGeometry(Geometry):
                 EXTERIOR: points_to_row_col_list(self._exterior, flip_row_col_order=True),
                 INTERIOR: [points_to_row_col_list(i, flip_row_col_order=True) for i in self._interior]
             },
-            GEOMETRY_SHAPE: self.geometry_name()
+            GEOMETRY_SHAPE: self.geometry_name(),
+            GEOMETRY_TYPE: self.geometry_name(),
         }
         return packed_obj
 
