@@ -4,11 +4,10 @@ from copy import deepcopy
 import cv2
 import numpy as np
 
-from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, GEOMETRY_SHAPE
+from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely_lib.geometry.rectangle import Rectangle
-
 
 class VectorGeometry(Geometry):
     def __init__(self, exterior, interior):
