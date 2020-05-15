@@ -26,6 +26,7 @@ setup(
         "matplotlib>=2.2.2,<3.0.0",
         "numpy>=1.14.3",
         "opencv-python>=3.4.1,<4.0.0",
+        "pandas>=1.0.3",
         "pascal-voc-writer>=0.1.4",
         "PTable>=0.9.2",
         "pillow>=5.1.0,<6.0.0",
