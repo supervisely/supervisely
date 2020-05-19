@@ -14,7 +14,7 @@ from supervisely_lib.function_wrapper import function_wrapper
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
 
-import werkzeug
+from werkzeug.datastructures import FileStorage
 
 
 
@@ -67,10 +67,10 @@ class RestInferenceServer:
         def __init__(self, model):
             self._model = model
             self._parser = reqparse.RequestParser()
-            self._parser.add_argument(IMAGE, type=werkzeug.FileStorage, location='files', help="input image", required=True)
-            self._parser.add_argument(ANNOTATION, location='files', type=werkzeug.FileStorage)
-            self._parser.add_argument(META, location='files', type=werkzeug.FileStorage)
-            self._parser.add_argument(MODE, location='files', type=werkzeug.FileStorage)
+            self._parser.add_argument(IMAGE, type=FileStorage, location='files', help="input image", required=True)
+            self._parser.add_argument(ANNOTATION, location='files', type=FileStorage)
+            self._parser.add_argument(META, location='files', type=FileStorage)
+            self._parser.add_argument(MODE, location='files', type=FileStorage)
 
         def post(self):
             args = self._parser.parse_args()
