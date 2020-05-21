@@ -20,7 +20,7 @@ class Polygon(VectorGeometry):
 
     def __init__(self, exterior, interior,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(exterior, interior, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
         if len(exterior) < 3:
             raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
