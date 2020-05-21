@@ -8,7 +8,7 @@ from shapely.geometry import mapping, Polygon as ShapelyPolygon
 from supervisely_lib.geometry.conversions import shapely_figure_to_coords_list
 from supervisely_lib.geometry.point_location import row_col_list_to_points, points_to_row_col_list
 from supervisely_lib.geometry.vector_geometry import VectorGeometry
-from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
+from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry import validation
 from supervisely_lib.sly_logger import logger
 
@@ -18,7 +18,10 @@ class Polygon(VectorGeometry):
     def geometry_name():
         return 'polygon'
 
-    def __init__(self, exterior, interior):
+    def __init__(self, exterior, interior,
+                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+
         if len(exterior) < 3:
             raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
         if any(len(element) < 3 for element in interior):
@@ -29,8 +32,14 @@ class Polygon(VectorGeometry):
     @classmethod
     def from_json(cls, data):
         validation.validate_geometry_points_fields(data)
+        labeler_login = data.get(LABELER_LOGIN, None)
+        updated_at = data.get(UPDATED_AT, None)
+        created_at = data.get(CREATED_AT, None)
+        sly_id = data.get(ID, None)
+        class_id = data.get(CLASS_ID, None)
         return cls(exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
-                   interior=[row_col_list_to_points(i, flip_row_col_order=True) for i in data[POINTS][INTERIOR]])
+                   interior=[row_col_list_to_points(i, flip_row_col_order=True) for i in data[POINTS][INTERIOR]],
+                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def crop(self, rect):
         try:

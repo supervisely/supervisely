@@ -30,3 +30,10 @@ Z = "z"
 POSITION = "position"
 ROTATION = "rotation"
 DIMENTIONS = "dimensions"
+
+
+LABELER_LOGIN = 'labelerLogin'
+UPDATED_AT = 'updatedAt'
+CREATED_AT = 'createdAt'
+ID = 'id'
+CLASS_ID = 'classId'

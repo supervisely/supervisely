@@ -2,7 +2,8 @@
 
 from copy import deepcopy
 
-from supervisely_lib.geometry.constants import X, Y, Z, POSITION, ROTATION, DIMENTIONS
+from supervisely_lib.geometry.constants import X, Y, Z, \
+    POSITION, ROTATION, DIMENTIONS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
 
 
@@ -43,7 +44,10 @@ class Cuboid3d(Geometry):
     def geometry_name():
         return 'cuboid_3d'
 
-    def __init__(self, position: Vector3d, rotation: Vector3d, dimensions: Vector3d):
+    def __init__(self, position: Vector3d, rotation: Vector3d, dimensions: Vector3d,
+                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+
         if type(position) is not Vector3d:
             raise TypeError("\"position\" param has to be of type {!r}".format(type(Vector3d)))
         if type(rotation) is not Vector3d:
@@ -68,13 +72,22 @@ class Cuboid3d(Geometry):
         return self._dimensions.clone()
 
     def to_json(self):
-        return {POSITION: self.position.to_json(),
+        res = {POSITION: self.position.to_json(),
                 ROTATION: self.rotation.to_json(),
                 DIMENTIONS: self.dimensions.to_json()}
+
+        self._add_creation_info(res)
+        return res
 
     @classmethod
     def from_json(cls, data):
         position = Vector3d.from_json(data[POSITION])
         rotation = Vector3d.from_json(data[ROTATION])
         dimentions = Vector3d.from_json(data[DIMENTIONS])
-        return cls(position, rotation, dimentions)
+
+        labeler_login = data.get(LABELER_LOGIN, None)
+        updated_at = data.get(UPDATED_AT, None)
+        created_at = data.get(CREATED_AT, None)
+        sly_id = data.get(ID, None)
+        class_id = data.get(CLASS_ID, None)
+        return cls(position, rotation, dimentions, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)

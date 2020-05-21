@@ -1,7 +1,8 @@
 # coding: utf-8
 import numpy as np
 
-from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE
+from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \
+                                               LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -27,7 +28,9 @@ def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size,
 
 
 class BitmapBase(Geometry):
-    def __init__(self, data: np.ndarray, origin: PointLocation = None, expected_data_dims=None):
+    def __init__(self, data: np.ndarray, origin: PointLocation = None, expected_data_dims=None,
+                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         """
         :param origin: PointLocation
         :param data: np.ndarray
@@ -63,7 +66,7 @@ class BitmapBase(Geometry):
         raise NotImplementedError()
 
     def to_json(self):
-        return {
+        res = {
             self._impl_json_class_name(): {
                 ORIGIN: [self.origin.col, self.origin.row],
                 DATA: self.data_2_base64(self.data)
@@ -71,6 +74,8 @@ class BitmapBase(Geometry):
             GEOMETRY_SHAPE: self.geometry_name(),
             GEOMETRY_TYPE: self.geometry_name(),
         }
+        self._add_creation_info(res)
+        return res
 
     @classmethod
     def from_json(cls, json_data):
@@ -85,7 +90,14 @@ class BitmapBase(Geometry):
 
         col, row = json_data[json_root_key][ORIGIN]
         data = cls.base64_2_data(json_data[json_root_key][DATA])
-        return cls(data=data, origin=PointLocation(row=row, col=col))
+
+        labeler_login = json_data.get(LABELER_LOGIN, None)
+        updated_at = json_data.get(UPDATED_AT, None)
+        created_at = json_data.get(CREATED_AT, None)
+        sly_id = json_data.get(ID, None)
+        class_id = json_data.get(CLASS_ID, None)
+        return cls(data=data, origin=PointLocation(row=row, col=col),
+                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     @property
     def origin(self) -> PointLocation:

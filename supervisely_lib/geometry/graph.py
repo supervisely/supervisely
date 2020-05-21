@@ -10,6 +10,7 @@ from supervisely_lib.geometry.point import Point
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.geometry import Geometry
+from supervisely_lib.geometry.constants import LABELER_LOGIN, CREATED_AT, UPDATED_AT, ID, CLASS_ID
 
 
 EDGES = 'edges'
@@ -63,7 +64,9 @@ class GraphNodes(Geometry):
     def geometry_name():
         return 'graph'
 
-    def __init__(self, nodes: dict):
+    def __init__(self, nodes: dict,
+                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._nodes = nodes
 
     @property
@@ -73,10 +76,18 @@ class GraphNodes(Geometry):
     @classmethod
     def from_json(cls, data):
         nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data['nodes'].items()}
-        return GraphNodes(nodes=nodes)
+        labeler_login = data.get(LABELER_LOGIN, None)
+        updated_at = data.get(UPDATED_AT, None)
+        created_at = data.get(CREATED_AT, None)
+        sly_id = data.get(ID, None)
+        class_id = data.get(CLASS_ID, Node)
+        return GraphNodes(nodes=nodes, sly_id=sly_id, class_id=class_id,
+                          labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def to_json(self):
-        return {NODES: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {NODES: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        self._add_creation_info(res)
+        return res
 
     def crop(self, rect: Rectangle):
         is_all_nodes_inside = all(rect.contains_point_location(node.location) for node in self._nodes.values())

@@ -4,11 +4,29 @@ from copy import deepcopy
 
 import numpy as np
 from supervisely_lib.io.json import JsonSerializable
-from supervisely_lib.geometry.constants import ANY_SHAPE
+from supervisely_lib.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID
 
 
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
+    def __init__(self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        self.sly_id = sly_id
+        self.labeler_login = labeler_login
+        self.updated_at = updated_at
+        self.created_at = created_at
+        self.class_id = class_id
+
+    def _add_creation_info(self, d):
+        if self.labeler_login is not None:
+            d[LABELER_LOGIN] = self.labeler_login
+        if self.updated_at is not None:
+            d[UPDATED_AT] = self.updated_at
+        if self.created_at is not None:
+            d[CREATED_AT] = self.created_at
+        #@TODO: will be ignored (for compatibility) and will be used in public api
+        # if self.sly_id is not None:
+        #     d[ID] = self.sly_id
+
     @staticmethod
     def geometry_name():
         """

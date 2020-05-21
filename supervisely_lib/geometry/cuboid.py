@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 
-from supervisely_lib.geometry.constants import FACES, POINTS
+from supervisely_lib.geometry.constants import FACES, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import points_to_row_col_list, row_col_list_to_points
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -50,12 +50,14 @@ class Cuboid(Geometry):
     def geometry_name():
         return 'cuboid'
 
-    def __init__(self, points, faces):
+    def __init__(self, points, faces, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         """
         Args:
             points: iterable of PointLocation objects.
             faces: iterable of CuboidFace objects.
         """
+
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
         points = list(points)
         faces = list(faces)
@@ -89,6 +91,7 @@ class Cuboid(Geometry):
             POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
             FACES: [face.to_json() for face in self._faces]
         }
+        self._add_creation_info(packed_obj)
         return packed_obj
 
     @classmethod
@@ -99,7 +102,14 @@ class Cuboid(Geometry):
 
         points = row_col_list_to_points(data[POINTS], flip_row_col_order=True)
         faces = [CuboidFace.from_json(face_json) for face_json in data[FACES]]
-        return cls(points=points, faces=faces)
+
+        labeler_login = data.get(LABELER_LOGIN, None)
+        updated_at = data.get(UPDATED_AT, None)
+        created_at = data.get(CREATED_AT, None)
+        sly_id = data.get(ID, None)
+        class_id = data.get(CLASS_ID, None)
+        return cls(points=points, faces=faces,
+                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def crop(self, rect):
         is_all_nodes_inside = all(

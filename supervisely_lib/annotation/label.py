@@ -51,7 +51,7 @@ class LabelBase:
         return self._tags.clone()
 
     def to_json(self):
-        return {
+        res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
@@ -59,6 +59,7 @@ class LabelBase:
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
         }
+        return res
 
     @classmethod
     def from_json(cls, data, project_meta: ProjectMeta):
