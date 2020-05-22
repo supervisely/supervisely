@@ -40,7 +40,7 @@ class Bitmap(BitmapBase):
 
     def __init__(self, data: np.ndarray, origin: PointLocation = None,
                  sly_id=None, labeler_login=None, updated_at=None, created_at=None):
-        super().__init__(sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(data=data, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 
