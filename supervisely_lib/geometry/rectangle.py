@@ -26,13 +26,14 @@ class Rectangle(Geometry):
             right: maximal horizontal value
         """
 
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-
         if top > bottom:
             raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
 
         if left > right:
             raise ValueError('Rectangle "left" argument must have less or equal value then "right"!')
+
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
+                         created_at=created_at)
 
         self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
 

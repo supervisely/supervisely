@@ -39,13 +39,13 @@ class Bitmap(BitmapBase):
         return 'bitmap'
 
     def __init__(self, data: np.ndarray, origin: PointLocation = None,
-                 sly_id=None, labeler_login=None, updated_at=None, created_at=None):
-        super().__init__(data=data, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 
         # Call base constructor first to do the basic dimensionality checks.
-        super().__init__(origin=origin, data=data, expected_data_dims=2)
+        super().__init__(data=data, origin=origin, expected_data_dims=2, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
+                         created_at=created_at)
 
         # Crop the empty margins of the boolean mask right away.
         if not np.any(data):

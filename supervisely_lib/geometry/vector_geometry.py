@@ -13,8 +13,6 @@ from supervisely_lib.geometry.rectangle import Rectangle
 class VectorGeometry(Geometry):
     def __init__(self, exterior, interior,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-
         if not (isinstance(exterior, list) and all(isinstance(p, PointLocation) for p in exterior)):
             raise TypeError('Argument "exterior" must be list of "PointLocation" objects!')
 
@@ -25,6 +23,8 @@ class VectorGeometry(Geometry):
 
         self._exterior = deepcopy(exterior)
         self._interior = deepcopy(interior)
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
+                         created_at=created_at)
 
     def to_json(self):
         packed_obj = {

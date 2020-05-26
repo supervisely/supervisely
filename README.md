@@ -30,6 +30,7 @@
 
 ## Introduction
 
+
 Supervisely is a web platform where you can find everything you need to build Deep Learning solutions within a single environment.
 
 We learn a lot from our awesome community and want to give something back.

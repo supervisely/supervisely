@@ -253,10 +253,10 @@ class ImageApi(RemoveableBulkModuleApi):
                 #results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                 results.append(self._convert_json_info(info_json_copy))
 
-        name_to_res = {img_info.name: img_info for img_info in results}
-        ordered_results = [name_to_res[name] for name in names]
+        #name_to_res = {img_info.name: img_info for img_info in results}
+        #ordered_results = [name_to_res[name] for name in names]
 
-        return ordered_results
+        return results #ordered_results
 
     #@TODO: reimplement
     def _convert_json_info(self, info: dict, skip_missing=True):

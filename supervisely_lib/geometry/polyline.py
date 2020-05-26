@@ -22,13 +22,12 @@ class Polyline(VectorGeometry):
         """
         :param exterior: [PointLocation]
         """
-
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         if len(exterior) < 2:
             raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
                              .format(EXTERIOR))
 
-        super().__init__(exterior=exterior, interior=[])
+        super().__init__(exterior=exterior, interior=[], sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
+                         created_at=created_at)
 
     @classmethod
     def from_json(cls, data):
