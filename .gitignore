@@ -13,5 +13,15 @@ tasks_data/*
 **/params.local.sh
 */_account_private_registry.sh
 run_plugin_max.sh
-
-
+Dockerfile_remote
+remote.sh
+._.DS_Store
+*._*
+*.DS_Store
+*._remote.sh
+*._Dockerfile
+*delme.json
+/plugins.txt
+*.pth
+docs/_build
+*log_*.txt
