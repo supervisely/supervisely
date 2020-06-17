@@ -2,8 +2,6 @@
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
-from supervisely_lib.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
 
 
 class ObjectApi(RemoveableBulkModuleApi):
@@ -32,7 +30,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         return self.get_list_all_pages('annotation-objects.list',  {ApiField.DATASET_ID: dataset_id,
                                                                     ApiField.FILTER: filters or []})
 
-    def _append_bulk(self, tag_api, entity_id, project_id, dataset_id, objects, key_id_map: KeyIdMap = None):
+    def _append_bulk(self, tag_api, entity_id, project_id, dataset_id, objects, key_id_map: KeyIdMap = None, is_pointcloud=False):
         if len(objects) == 0:
             return []
 
@@ -41,7 +39,9 @@ class ObjectApi(RemoveableBulkModuleApi):
         items = []
         for obj in objects:
             new_obj = {ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name]}
-            if entity_id is not None:
+
+            if not is_pointcloud:
+            #if entity_id is not None:
                 new_obj[ApiField.ENTITY_ID] = entity_id
             items.append(new_obj)
 

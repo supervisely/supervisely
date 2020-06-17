@@ -14,17 +14,31 @@ from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
+from supervisely_lib.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, CLASS_ID
+
 
 class OutOfImageBoundsExtension(Exception):
     pass
 
 
 class VideoFigure:
-    def __init__(self, video_object, geometry, frame_index, key=None):
+    def __init__(self, video_object, geometry, frame_index, key=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
         self._frame_index = frame_index
         self._key = take_with_default(key, uuid.uuid4())
+        self.class_id = class_id
+        self.labeler_login = labeler_login
+        self.updated_at = updated_at
+        self.created_at = created_at
+
+    def _add_creation_info(self, d):
+        if self.labeler_login is not None:
+            d[LABELER_LOGIN] = self.labeler_login
+        if self.updated_at is not None:
+            d[UPDATED_AT] = self.updated_at
+        if self.created_at is not None:
+            d[CREATED_AT] = self.created_at
 
     def _set_geometry_inplace(self, geometry):
         self._geometry = geometry
@@ -78,6 +92,8 @@ class VideoFigure:
                 data_json[OBJECT_ID] = object_id
         if save_meta is True:
             data_json[ApiField.META] = {ApiField.FRAME: self.frame_index}
+
+        self._add_creation_info(data_json)
         return data_json
 
     @classmethod
@@ -111,13 +127,26 @@ class VideoFigure:
 
         if key_id_map is not None:
             key_id_map.add_figure(key, data.get(ID, None))
-        return cls(object, geometry, frame_index, key)
 
-    def clone(self, video_object=None, geometry=None, frame_index=None, key=None):
+        class_id = data.get(CLASS_ID, None)
+        labeler_login = data.get(LABELER_LOGIN, None)
+        updated_at = data.get(UPDATED_AT, None)
+        created_at = data.get(CREATED_AT, None)
+
+        return cls(object, geometry, frame_index, key,
+                   class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+
+    def clone(self, video_object=None, geometry=None, frame_index=None, key=None,
+              class_id=None, labeler_login=None, updated_at=None, created_at=None):
         return self.__class__(video_object=take_with_default(video_object, self.parent_object),
                               geometry=take_with_default(geometry, self.geometry),
                               frame_index=take_with_default(frame_index, self.frame_index),
-                              key=take_with_default(key, self._key))
+                              key=take_with_default(key, self._key),
+                              class_id=take_with_default(class_id, self.class_id),
+                              labeler_login=take_with_default(labeler_login, self.labeler_login),
+                              updated_at=take_with_default(updated_at, self.updated_at),
+                              created_at=take_with_default(created_at, self.created_at)
+                              )
 
     def validate_bounds(self, img_size, _auto_correct=False):
         canvas_rect = Rectangle.from_size(img_size)

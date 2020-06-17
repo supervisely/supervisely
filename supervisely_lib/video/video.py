@@ -59,7 +59,7 @@ def validate_format(path):
         raise VideoReadException(
             'Error has occured trying to read video {!r}. Original exception message: {!r}'.format(path, str(e)))
 
-    validate_ext(path)
+    validate_ext(os.path.splitext(path)[1])
 
 
 def _check_video_requires_processing(video_info, stream_info):

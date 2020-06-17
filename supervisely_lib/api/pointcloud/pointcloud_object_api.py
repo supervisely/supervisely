@@ -8,4 +8,4 @@ from supervisely_lib.api.entity_annotation.object_api import ObjectApi
 class PointcloudObjectApi(ObjectApi):
     def append_bulk(self, pointcloud_id, objects: PointcloudObjectCollection, key_id_map: KeyIdMap = None):
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
-        return self._append_bulk(self._api.pointcloud.tag, None, info.project_id, info.dataset_id, objects, key_id_map)
+        return self._append_bulk(self._api.pointcloud.tag, pointcloud_id, info.project_id, info.dataset_id, objects, key_id_map, is_pointcloud=True)

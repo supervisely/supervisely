@@ -7,9 +7,11 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import P
 
 
 class PointcloudFigure(VideoFigure):
-    def __init__(self, parent_object, geometry, frame_index=None, key=None):
-        super().__init__(parent_object, geometry, frame_index, key)
-        #@TODO: validate geometry - allowed: only cuboid_3d
+    def __init__(self, parent_object, geometry, frame_index=None, key=None,
+                 class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super().__init__(parent_object, geometry, frame_index, key,
+                         class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        #@TODO: validate geometry - allowed: only cuboid_3d + point_cloud
 
     def validate_bounds(self, img_size, _auto_correct=False):
         raise NotImplementedError()

@@ -8,9 +8,11 @@ from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.graph import GraphNodes
 from supervisely_lib.geometry.any_geometry import AnyGeometry
 from supervisely_lib.geometry.cuboid_3d import Cuboid3d
+from supervisely_lib.geometry.pointcloud import Pointcloud
+from supervisely_lib.geometry.point_3d import Point3d
 
 
-_INPUT_GEOMETRIES = [Bitmap, Cuboid, Point, Polygon, Polyline, Rectangle, GraphNodes, AnyGeometry, Cuboid3d]
+_INPUT_GEOMETRIES = [Bitmap, Cuboid, Point, Polygon, Polyline, Rectangle, GraphNodes, AnyGeometry, Cuboid3d, Pointcloud, Point3d]
 _JSON_SHAPE_TO_GEOMETRY_TYPE = {geometry.geometry_name(): geometry for geometry in _INPUT_GEOMETRIES}
 
 

@@ -45,8 +45,10 @@ class Tag(KeyObject):
     def to_json(self):
         res = {
             TagJsonFields.TAG_NAME: self.meta.name,
-            TagJsonFields.VALUE: self.value
+            #TagJsonFields.VALUE: self.value
         }
+        if self.meta.value_type != TagValueType.NONE:
+            res[TagJsonFields.VALUE] = self.value
         if self.labeler_login is not None:
             res[TagJsonFields.LABELER_LOGIN] = self.labeler_login
         if self.updated_at is not None:

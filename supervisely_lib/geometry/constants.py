@@ -37,3 +37,5 @@ UPDATED_AT = 'updatedAt'
 CREATED_AT = 'createdAt'
 ID = 'id'
 CLASS_ID = 'classId'
+
+INDICES = 'indices'

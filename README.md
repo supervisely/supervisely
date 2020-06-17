@@ -52,10 +52,10 @@ up a virtual computing claster that your team can run their tasks on from the
 Supervisely web instance.
 
 <p align="center">
-<img src="https://docs.supervise.ly/images/cluster/agent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
+<img src="https://gblobscdn.gitbook.com/assets%2F-M4BHwRbuyIoH-xoF3Gv%2F-M5JQKcQ0OcHshO-q9Kz%2F-M5JQLtrAGKs7RWLDVdA%2Fagent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
 </p>
 
-Check out [explanation](https://github.com/supervisely/supervisely/tree/master/agent) on how agent works and [documentation](https://docs.supervise.ly/cluster/overview/) on how to deploy a new agent.
+Check out [explanation](https://github.com/supervisely/supervisely/tree/master/agent) on how agent works and [documentation](https://docs.supervise.ly/customization/agents) on how to deploy a new agent.
 
 ## Neural Networks
 
@@ -99,12 +99,6 @@ inference with neural networks into
 the [Python SDK](./supervisely_lib). Our stock plugins rely on the SDK
 extensively, and we believe the SDK will be also valuable to the community.
 
-Installation:
-```
-git clone https://github.com/supervisely/supervisely.git && \
-pip install -e ./supervisely
-```
-
 The  SDK not only wraps all the low-level details of handling the data and
 communicating with the Supervisely web instance, but also provides convenience
 helpers for the common tasks that we found useful in our own work of developing
@@ -112,11 +106,28 @@ Supervisely plugins, such as neural network architectures and custom dataset
 imports.
 
 Key features:
+
  * Read, modify and write Supervisely projects on disk.
  * Work with labeling data: geometric objects and tags.
  * Common functionality for developing Supervisely plugins, so that you only
    need to focus on the core of your custom logic, and not on low level
    interactions with the platform.
+
+#### Installation:
+
+```
+git clone https://github.com/supervisely/supervisely.git && \
+pip install -e ./supervisely
+```
+
+The only prerequisites are `Python` >= 3.6 and `pip`.
+
+Tip: `opencv-python` may require `apt-get install libgtk2.0-dev` Or use pre-built Docker image which can be found on Docker Hub:
+
+```docker pull supervisely/base-py```
+
+The corresponding `Dockerfile` can be found in `base_images` directory. 
+
 
 ## Data Transformation Language
 

@@ -8,8 +8,8 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 
 class VideoTag(Tag):
-    def __init__(self, meta, value=None, frame_range=None, key=None):
-        super(VideoTag, self).__init__(meta, value)
+    def __init__(self, meta, value=None, frame_range=None, key=None, sly_id=None, labeler_login=None, updated_at=None, created_at=None):
+        super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
         self._frame_range = None
         if frame_range is not None:
@@ -52,7 +52,8 @@ class VideoTag(Tag):
         if key_id_map is not None:
             key_id_map.add_tag(key, data.get(ID, None))
 
-        return cls(meta=temp.meta, value=temp.value, frame_range=frame_range, key=key)
+        return cls(meta=temp.meta, value=temp.value, frame_range=frame_range, key=key,
+                   sly_id=temp.sly_id, labeler_login=temp.labeler_login, updated_at=temp.updated_at, created_at=temp.created_at)
 
     def get_compact_str(self):
         res = super(VideoTag, self).get_compact_str()
@@ -66,11 +67,16 @@ class VideoTag(Tag):
                self.value == other.value and \
                self.frame_range == other.frame_range
 
-    def clone(self, meta=None, value=None, frame_range=None, key=None):
+    def clone(self, meta=None, value=None, frame_range=None, key=None,
+                    sly_id=None, labeler_login=None, updated_at=None, created_at=None):
         return VideoTag(meta=take_with_default(meta, self.meta),
                         value=take_with_default(value, self.value),
                         frame_range=take_with_default(frame_range, self.frame_range),
-                        key=take_with_default(key, self.key))
+                        key=take_with_default(key, self.key),
+                        sly_id=take_with_default(sly_id, self.sly_id),
+                        labeler_login=take_with_default(labeler_login, self.labeler_login),
+                        updated_at=take_with_default(updated_at, self.updated_at),
+                        created_at=take_with_default(created_at, self.created_at))
 
     def __str__(self):
         return '{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10} {:<12}'.format('Name:', self._meta.name,

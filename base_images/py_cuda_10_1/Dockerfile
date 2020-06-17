@@ -83,7 +83,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
 # Additional project libraries
 ##############################################################################
 RUN pip install --no-cache-dir \
-    pandas==0.22.0 \
+    pandas==1.0.3 \
     grpcio==1.12.1 \
     grpcio-tools==1.12.1
 

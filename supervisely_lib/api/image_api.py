@@ -6,7 +6,7 @@ import urllib.parse
 
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.imaging import image as sly_image
-from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext
+from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext, get_file_name
 from supervisely_lib._utils import batched, generate_free_name
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 import re
@@ -351,3 +351,16 @@ class ImageApi(RemoveableBulkModuleApi):
                                       )
 
         return result
+
+    @staticmethod
+    def _get_free_name(exist_check_fn, name):
+        res_title = name
+        suffix = 1
+
+        name_without_ext = get_file_name(name)
+        ext = get_file_ext(name)
+
+        while exist_check_fn(res_title):
+            res_title = '{}_{:03d}{}'.format(name_without_ext, suffix, ext)
+            suffix += 1
+        return res_title

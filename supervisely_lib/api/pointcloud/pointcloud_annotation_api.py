@@ -14,7 +14,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
 
     def download(self, pointcloud_id):
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
-        return self._download(info.dataset_id, [pointcloud_id])[0]
+        return self._download(info.dataset_id, pointcloud_id)
 
     def append(self, pointcloud_id, ann: PointcloudAnnotation, key_id_map: KeyIdMap = None):
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
