@@ -12,6 +12,7 @@ class TagJsonFields:
     UPDATED_AT = 'updatedAt'
     CREATED_AT = 'createdAt'
     ID = 'id'
+    #TAG_META_ID = 'tagId'
 
 
 class Tag(KeyObject):

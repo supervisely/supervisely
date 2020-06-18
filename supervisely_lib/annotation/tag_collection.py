@@ -1,10 +1,10 @@
 # coding: utf-8
 
-from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely_lib.collection.key_indexed_collection import MultiKeyIndexedCollection
 from supervisely_lib.annotation.tag import Tag
 
 
-class TagCollection(KeyIndexedCollection):
+class TagCollection(MultiKeyIndexedCollection):
     item_type = Tag
 
     def to_json(self):
