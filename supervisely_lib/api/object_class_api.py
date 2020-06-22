@@ -23,9 +23,18 @@ class ObjectClassApi(ModuleApi):
         return 'ObjectClassInfo'
 
     def get_list(self, project_id, filters=None):
+        '''
+        :param project_id: int
+        :param filters: list
+        :return: List the object classes from the given project
+        '''
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
     def get_name_to_id_map(self, project_id):
+        '''
+        :param project_id: int
+        :return: dictionary object class name -> object class id
+        '''
         objects_infos = self.get_list(project_id)
         return {object_info.name: object_info.id for object_info in objects_infos}
 

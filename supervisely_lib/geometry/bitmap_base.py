@@ -11,6 +11,10 @@ from supervisely_lib.imaging.image import resize_inter_nearest, restore_proporti
 
 # TODO: rename to resize_bitmap_and_origin
 def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size, out_size):
+    '''
+    Change PointLocation and resize numpy array to match a certain size
+    :return: new PointLocation class object and numpy array
+    '''
     new_size = restore_proportional_size(in_size=in_size, out_size=out_size)
 
     row_scale = new_size[0] / in_size[0]
@@ -32,7 +36,7 @@ class BitmapBase(Geometry):
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         """
-        :param origin: PointLocation
+        :param origin: PointLocation class object
         :param data: np.ndarray
         """
         if origin is None:
@@ -66,6 +70,10 @@ class BitmapBase(Geometry):
         raise NotImplementedError()
 
     def to_json(self):
+        '''
+        The function to_json convert bitmap to json format
+        :return: Bitmap in json format(dict)
+        '''
         res = {
             self._impl_json_class_name(): {
                 ORIGIN: [self.origin.col, self.origin.row],
@@ -79,6 +87,11 @@ class BitmapBase(Geometry):
 
     @classmethod
     def from_json(cls, json_data):
+        '''
+        The function from_json convert bitmap from json format to Bitmap class object.
+        :param json_data: input bitmap in json format
+        :return: Bitmap class object
+        '''
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
             raise ValueError(
@@ -101,27 +114,58 @@ class BitmapBase(Geometry):
 
     @property
     def origin(self) -> PointLocation:
+        '''
+        The function origin return copy of Bitmap class object PointLocation
+        :return: PointLocation class object
+        '''
         return self._origin.clone()
 
     @property
     def data(self) -> np.ndarray:
+        '''
+        The function data return copy of Bitmap class object data(numpy array)
+        :return: numpy array
+        '''
         return self._data.copy()
 
     def translate(self, drow, dcol):
+        '''
+        The function translate shifts the object by a certain number of pixels and return the copy of the current Bitmap object
+        :param drow: horizontal shift
+        :param dcol: vertical shift
+        :return: Bitmap class object with new PointLocation
+        '''
         translated_origin = self.origin.translate(drow, dcol)
         return self.__class__(data=self.data, origin=translated_origin)
 
     def fliplr(self, img_size):
+        '''
+        The function fliplr flip the current Bitmap object in horizontal and return the copy of the
+        current Bitmap object
+        :param img_size: size of the image
+        :return: Bitmap class object with new data(numpy array) and PointLocation
+        '''
         flipped_mask = np.flip(self.data, axis=1)
         flipped_origin = PointLocation(row=self.origin.row, col=(img_size[1] - flipped_mask.shape[1] - self.origin.col))
         return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def flipud(self, img_size):
+        '''
+        The function fliplr flip the current Bitmap object in vertical and return the copy of the
+        current Bitmap object
+        :param img_size: size of the image
+        :return: Bitmap class object with new data(numpy array) and PointLocation
+        '''
         flipped_mask = np.flip(self.data, axis=0)
         flipped_origin = PointLocation(row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col)
         return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def scale(self, factor):
+        '''
+        The function scale change scale of the current Bitmap object with a given factor
+        :param factor: float scale parameter
+        :return: Bitmap class object with new data(numpy array) and PointLocation
+        '''
         new_rows = round(self._data.shape[0] * factor)
         new_cols = round(self._data.shape[1] * factor)
         mask = self._resize_mask(self.data, new_rows, new_cols)
@@ -133,4 +177,8 @@ class BitmapBase(Geometry):
         return resize_inter_nearest(mask.astype(np.uint8), (out_rows, out_cols)).astype(np.bool)
 
     def to_bbox(self):
+        '''
+        The function to_bbox create Rectangle class object from current Bitmap class object
+        :return: Rectangle class object
+        '''
         return Rectangle.from_array(self._data).translate(drow=self._origin.row, dcol=self._origin.col)

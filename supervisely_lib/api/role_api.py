@@ -22,4 +22,9 @@ class RoleApi(ModuleApiBase):
         return 'RoleInfo'
 
     def get_list(self, filters=None):
+        '''
+        Print all roles that are available on private Supervisely instance
+        :param filters: list
+        :return: list
+        '''
         return self.get_list_all_pages('roles.list', {ApiField.FILTER: filters or []})

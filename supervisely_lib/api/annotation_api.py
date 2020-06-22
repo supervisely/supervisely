@@ -21,17 +21,38 @@ class AnnotationApi(ModuleApi):
         return 'AnnotationInfo'
 
     def get_list(self, dataset_id, filters=None, progress_cb=None):
+        '''
+        :param dataset_id: int
+        :param filters: list
+        :param progress_cb:
+        :return: list all the annotations for a given dataset
+        '''
         return self.get_list_all_pages('annotations.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}, progress_cb)
 
-    def download(self, image_id):
-        response = self._api.post('annotations.info', {ApiField.IMAGE_ID: image_id})
+    def download(self, image_id, with_custom_data=False):
+        '''
+        :param image_id: int
+        :return: serialized JSON annotation for the image id
+        '''
+        response = self._api.post('annotations.info',
+                                  {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data})
         return self._convert_json_info(response.json())
 
-    def download_batch(self, dataset_id, image_ids, progress_cb=None):
+    def download_batch(self, dataset_id, image_ids, progress_cb=None, with_custom_data=False):
+        '''
+        :param dataset_id: int
+        :param image_ids: list of integers
+        :param progress_cb:
+        :return: list of serialized JSON annotations for the given dataset id and image id's
+        '''
         id_to_ann = {}
         for batch in batched(image_ids):
-            results = self._api.post(
-                'annotations.bulk.info', data={ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch}).json()
+            post_data = {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.IMAGE_IDS: batch,
+                ApiField.WITH_CUSTOM_DATA: with_custom_data
+            }
+            results = self._api.post('annotations.bulk.info', data=post_data).json()
             for ann_dict in results:
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info

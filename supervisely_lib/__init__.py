@@ -41,6 +41,8 @@ from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.geometry.polyline import Polyline
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.any_geometry import AnyGeometry
+from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
+
 from supervisely_lib.geometry.helpers import geometry_to_bitmap
 from supervisely_lib.geometry.helpers import deserialize_geometry
 

@@ -12,10 +12,20 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
     _entity_ids_str = ApiField.VIDEO_IDS
 
     def download(self, video_id):
+        '''
+        :param video_id: int
+        :return: video annotation to given id in json format
+        '''
         video_info = self._api.video.get_info_by_id(video_id)
         return self._download(video_info.dataset_id, [video_id])[0]
 
     def append(self, video_id, ann: VideoAnnotation, key_id_map: KeyIdMap = None):
+        '''
+        ???
+        :param video_id: int
+        :param ann: VideoAnnotation class object
+        :param key_id_map: KeyIdMap class object
+        '''
         info = self._api.video.get_info_by_id(video_id)
         self._append(self._api.video.tag, self._api.video.object, self._api.video.figure,
                      info.project_id, info.dataset_id, video_id,

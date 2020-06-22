@@ -13,6 +13,9 @@ from supervisely_lib._utils import batched
 
 class VideoApi(RemoveableBulkModuleApi):
     def __init__(self, api):
+        '''
+        :param api: Api class object
+        '''
         super().__init__(api)
         self.annotation = VideoAnnotationAPI(api)
         self.object = VideoObjectApi(api)
@@ -45,12 +48,25 @@ class VideoApi(RemoveableBulkModuleApi):
         return super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
     def get_list(self, dataset_id, filters=None):
+        '''
+        :param dataset_id: int
+        :param filters: list
+        :return: List of the videos from the dataset with given id
+        '''
         return self.get_list_all_pages('videos.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: VideoApi metadata by numeric id
+        '''
         return self._get_info_by_id(id, 'videos.info')
 
     def get_destination_ids(self, id):
+        '''
+        :param id: int
+        :return: id of project and id of dataset from given id
+        '''
         dataset_id = self._api.video.get_info_by_id(id).dataset_id
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id, dataset_id
@@ -92,10 +108,20 @@ class VideoApi(RemoveableBulkModuleApi):
             return ordered_results
 
     def _download(self, id, is_stream=False):
+        '''
+        :param id: int
+        :param is_stream: bool
+        :return: Response object containing video with given id
+        '''
         response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_path(self, id, path):
+        '''
+        Download video with given id on the given path
+        :param id: int
+        :param path: str
+        '''
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:
@@ -103,10 +129,24 @@ class VideoApi(RemoveableBulkModuleApi):
                 fd.write(chunk)
 
     def download_range_by_id(self, id, frame_start, frame_end, is_stream=True):
+        '''
+        :param id: int
+        :param frame_start: int
+        :param frame_end: int
+        :param is_stream: bool
+        :return: Response object containing video with given id between given start and end frames
+        '''
         path_original = self.get_info_by_id(id).path_original
         return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
 
     def downalod_range_by_path(self, path_original, frame_start, frame_end, is_stream=False):
+        '''
+        :param path_original: str
+        :param frame_start: int
+        :param frame_end: int
+        :param is_stream: bool
+        :return: Response object containing video on given path between given start and end frames
+        '''
         response = self._api.get(method = 'image-converter/transcode' + path_original,
                                  params={'startFrame': frame_start, 'endFrame': frame_end, "transmux": True},
                                  stream=is_stream,
@@ -114,6 +154,14 @@ class VideoApi(RemoveableBulkModuleApi):
         return response
 
     def download_save_range(self, video_id, frame_start, frame_end, save_path):
+        '''
+        Download video with given id between given start and end frames on the given path
+        :param video_id: int
+        :param frame_start: int
+        :param frame_end: int
+        :param save_path:
+        :return: str
+        '''
         response = self.download_range_by_id(video_id, frame_start, frame_end)
         with open(save_path, 'wb') as fd:
             for chunk in response.iter_content(chunk_size=128):
@@ -121,6 +169,15 @@ class VideoApi(RemoveableBulkModuleApi):
         return save_path
 
     def notify_progress(self, track_id, video_id, frame_start, frame_end, current, total):
+        '''
+        :param track_id: int
+        :param video_id: int
+        :param frame_start: int
+        :param frame_end: int
+        :param current: int
+        :param total: int
+        :return: str
+        '''
         response = self._api.post('videos.notify-annotation-tool', {"type": "videos:fetch-figures-in-range",
                                                                     "data": {
                                                                         ApiField.TRACK_ID: track_id,
@@ -135,6 +192,12 @@ class VideoApi(RemoveableBulkModuleApi):
         return response.json()[ApiField.STOPPED]
 
     def notify_tracking_error(self, track_id, error, message):
+        '''
+        :param track_id: int
+        :param error: str
+        :param message: str
+        :return: #TODO nothing to return
+        '''
         response = self._api.post('videos.notify-annotation-tool', {"type": "videos:tracking-error",
                                                                     "data": {
                                                                         ApiField.TRACK_ID: track_id,

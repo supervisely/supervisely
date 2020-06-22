@@ -13,6 +13,9 @@ from supervisely_lib import logger
 
 
 class Polyline(VectorGeometry):
+    '''
+    This is a class for creating and using Polyline objects for Labels
+    '''
     @staticmethod
     def geometry_name():
         return 'line'
@@ -20,7 +23,7 @@ class Polyline(VectorGeometry):
     def __init__(self, exterior,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         """
-        :param exterior: [PointLocation]
+        :param exterior: list of PointLocation objects
         """
         if len(exterior) < 2:
             raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
@@ -31,6 +34,11 @@ class Polyline(VectorGeometry):
 
     @classmethod
     def from_json(cls, data):
+        '''
+        The function from_json convert Polyline from json format to Poligon class object. If json format is not correct it generate exception error.
+        :param data: input Polyline in json format
+        :return: Polyline class object
+        '''
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -41,6 +49,11 @@ class Polyline(VectorGeometry):
                    sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def crop(self, rect):
+        '''
+        Crop the current Polyline with a given rectangle, if polyline cat't be cropped it generate exception error
+        :param rect: Rectangle class object
+        :return: list of Polyline class objects
+        '''
         try:
             clipping_window = [[rect.left, rect.top], [rect.right, rect.top],
                                [rect.right, rect.bottom], [rect.left, rect.bottom]]
@@ -79,6 +92,11 @@ class Polyline(VectorGeometry):
         return 0.0
 
     def approx_dp(self, epsilon):
+        '''
+        The function approx_dp approximates a polygonal curve with the specified precision
+        :param epsilon: Parameter specifying the approximation accuracy. This is the maximum distance between the original curve and its approximation
+        :return: Polyline class object
+        '''
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         return Polyline(exterior)

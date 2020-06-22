@@ -8,9 +8,21 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 
 class VideoTag(Tag):
+    '''
+    This is a class for creating and using VideoTag objects for videos
+    '''
     def __init__(self, meta, value=None, frame_range=None, key=None, sly_id=None, labeler_login=None, updated_at=None, created_at=None):
+        '''
+        :param meta: Tag metadata: it include tag name, value type, and possible values for tags with enum values.
+        When creating a new tag, the value is automatically cross-checked against the metadata to make sure the value
+        is valid.
+        :param value: There are 3 possible value types of value: ANY_NUMBER for numeric values,
+        ANY_STRING for arbitrary string values, ONEOF_STRING for string values restricted to a given whitelist
+        :param frame_range: tuple or list of integers
+        :param key: uuid class object
+        '''
         super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-
+		
         self._frame_range = None
         if frame_range is not None:
             if not isinstance(frame_range, (tuple, list)):
@@ -28,6 +40,11 @@ class VideoTag(Tag):
         return self._key
 
     def to_json(self, key_id_map: KeyIdMap = None):
+        '''
+        The function to_json convert VideoTag class object to json format
+        :param key_id_map: KeyIdMap class object
+        :return: VideoTag in json format
+        '''
         data_json = super(VideoTag, self).to_json()
         if type(data_json) is str:
             # @TODO: case when tag has no value, super.to_json() returns tag name
@@ -45,6 +62,13 @@ class VideoTag(Tag):
 
     @classmethod
     def from_json(cls, data, tag_meta_collection, key_id_map: KeyIdMap = None):
+        '''
+        The function from_json convert VideoTag from json format to VideoTag class object.
+        :param data: input VideoTag in json format
+        :param tag_meta_collection: VideoTagCollection
+        :param key_id_map: KeyIdMap class object
+        :return: VideoTag class object
+        '''
         temp = super(VideoTag, cls).from_json(data, tag_meta_collection)
         frame_range = data.get(FRAME_RANGE, None)
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
@@ -56,6 +80,9 @@ class VideoTag(Tag):
                    sly_id=temp.sly_id, labeler_login=temp.labeler_login, updated_at=temp.updated_at, created_at=temp.created_at)
 
     def get_compact_str(self):
+        '''
+        :return: string with information about tag(name, value) and range of frames
+        '''
         res = super(VideoTag, self).get_compact_str()
         if self.frame_range is not None:
             res = "{}[{} - {}]".format(res, self.frame_range[0], self.frame_range[1])
@@ -69,6 +96,14 @@ class VideoTag(Tag):
 
     def clone(self, meta=None, value=None, frame_range=None, key=None,
                     sly_id=None, labeler_login=None, updated_at=None, created_at=None):
+        '''
+        :param meta: Tag metadata
+        :param value: There are 3 possible value types of value: ANY_NUMBER for numeric values,
+        ANY_STRING for arbitrary string values, ONEOF_STRING for string values restricted to a given whitelist
+        :param frame_range: tuple or list of integers
+        :param key: uuid class object
+        :return: VideoTag class object
+        '''
         return VideoTag(meta=take_with_default(meta, self.meta),
                         value=take_with_default(value, self.value),
                         frame_range=take_with_default(frame_range, self.frame_range),

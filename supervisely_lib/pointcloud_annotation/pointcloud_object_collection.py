@@ -5,4 +5,7 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object import PointcloudOb
 
 
 class PointcloudObjectCollection(VideoObjectCollection):
+    '''
+    Collection that stores PointcloudObject instances.
+    '''
     item_type = PointcloudObject

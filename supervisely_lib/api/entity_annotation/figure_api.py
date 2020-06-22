@@ -24,6 +24,10 @@ class FigureApi(RemoveableBulkModuleApi):
         return 'FigureInfo'
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: figure metadata by numeric id
+        '''
         return self._get_info_by_id(id, 'figures.info')
 
     def create(self, entity_id, object_id, meta, geometry_json, geometry_type, track_id=None):
@@ -43,6 +47,11 @@ class FigureApi(RemoveableBulkModuleApi):
         return response.json()[0][ApiField.ID]
 
     def get_by_ids(self, dataset_id, ids):
+        '''
+        :param dataset_id: int
+        :param ids: list of integers
+        :return: list of figures with given ids from dataset with given id
+        '''
         filters = [{"field": "id", "operator": "in", "value": ids}]
         figures_infos = self.get_list_all_pages('figures.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters})
 

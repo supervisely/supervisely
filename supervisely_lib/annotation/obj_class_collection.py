@@ -8,7 +8,8 @@ from supervisely_lib.annotation.obj_class import ObjClass
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection that stores ObjClass instances with unique names. It raises error if the name of added item already exists
+    Collection that stores ObjClass instances with unique names.
+    It raises error if the name of added item already exists.
     """
 
     item_type = ObjClass
@@ -37,6 +38,10 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
 
 def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer, skip_missing=False) -> ObjClassCollection:
+    '''
+    The function make_renamed_classes rename classes names in given collection and return new collection
+    :return: ObjClassCollection
+    '''
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)

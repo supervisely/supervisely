@@ -14,6 +14,9 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 class PointcloudApi(RemoveableBulkModuleApi):
     def __init__(self, api):
+        '''
+        :param api: Api class object
+        '''
         super().__init__(api)
         self.annotation = PointcloudAnnotationAPI(api)
         self.object = PointcloudObjectApi(api)
@@ -48,16 +51,35 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return super(PointcloudApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
     def get_list(self, dataset_id, filters=None):
+        '''
+        :param dataset_id: int
+        :param filters: list
+        :return: list of the pointclouds objects from the dataset with given id
+        '''
         return self.get_list_all_pages('point-clouds.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: PointcloudApi metadata by numeric id
+        '''
         return self._get_info_by_id(id, 'point-clouds.info')
 
     def _download(self, id, is_stream=False):
+        '''
+        :param id: int
+        :param is_stream: bool
+        :return: Response object containing pointcloud object with given id
+        '''
         response = self._api.post('point-clouds.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_path(self, id, path):
+        '''
+        Download pointcloud with given id on the given path
+        :param id: int
+        :param path: str
+        '''
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:

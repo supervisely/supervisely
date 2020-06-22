@@ -34,18 +34,29 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 
 class Bitmap(BitmapBase):
+    '''
+    This is a class for creating and using Bitmaps for Labels.
+    '''
     @staticmethod
     def geometry_name():
         return 'bitmap'
 
     def __init__(self, data: np.ndarray, origin: PointLocation = None,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+        '''
+        The constructor for Bitmap class.
+        :param data: bool numpy array
+        :param origin: points (x and y coordinates) of the top left corner of a bitmap, i.e. the position of the
+        bitmap within the image
+        '''
+
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 
         # Call base constructor first to do the basic dimensionality checks.
-        super().__init__(data=data, origin=origin, expected_data_dims=2, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
-                         created_at=created_at)
+        super().__init__(data=data, origin=origin, expected_data_dims=2,
+                         sly_id=sly_id, class_id=class_id,
+                         labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
         # Crop the empty margins of the boolean mask right away.
         if not np.any(data):
@@ -59,6 +70,12 @@ class Bitmap(BitmapBase):
         return BITMAP
 
     def rotate(self, rotator):
+        '''
+        The function rotate Bitmap mask with a given rotator
+        (ImageRotator class object contain size of image and angle to rotate)
+        :param rotator: ImageRotator class object
+        :return: Bitmap class object
+        '''
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
         self.draw(full_img_mask, 1)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
@@ -67,6 +84,11 @@ class Bitmap(BitmapBase):
         return Bitmap(data=new_mask)
 
     def crop(self, rect):
+        '''
+        Crop the current Bitmap object with a given rectangle
+        :param rect: Rectangle class object
+        :return: Bitmap class object
+        '''
         maybe_cropped_bbox = self.to_bbox().crop(rect)
         if len(maybe_cropped_bbox) == 0:
             return []
@@ -79,6 +101,12 @@ class Bitmap(BitmapBase):
             return [Bitmap(data=cropped_mask, origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left))]
 
     def resize(self, in_size, out_size):
+        '''
+        Resize the current Bitmap to match a certain size
+        :param in_size: input image size
+        :param out_size: output image size
+        :return: Bitmap class object
+        '''
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data.astype(np.uint8), in_size,
                                                               out_size)
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
@@ -97,10 +125,18 @@ class Bitmap(BitmapBase):
 
     @property
     def area(self):
+        '''
+        :return: area of current Bitmap
+        '''
         return float(self._data.sum())
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
+        '''
+        The function base64_2_data convert base64 encoded string to numpy
+        :param s: string
+        :return: numpy array
+        '''
         z = zlib.decompress(base64.b64decode(s))
         n = np.frombuffer(z, np.uint8)
 
@@ -115,6 +151,11 @@ class Bitmap(BitmapBase):
 
     @staticmethod
     def data_2_base64(mask: np.ndarray) -> str:
+        '''
+        The function data_2_base64 convert numpy array to base64 encoded string
+        :param mask: numpy array
+        :return: string
+        '''
         img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
         img_pil.putpalette([0, 0, 0, 255, 255, 255])
         bytes_io = io.BytesIO()
@@ -123,6 +164,11 @@ class Bitmap(BitmapBase):
         return base64.b64encode(zlib.compress(bytes_enc)).decode('utf-8')
 
     def skeletonize(self, method_id: SkeletonizeMethod):
+        '''
+        The function compute the skeleton, medial axis transform or morphological thinning of Bitmap
+        :param method_id: method to convert binary image(numpy array)
+        :return: Bitmap class object
+        '''
         if method_id == SkeletonizeMethod.SKELETONIZE:
             method = skimage_morphology.skeletonize
         elif method_id == SkeletonizeMethod.MEDIAL_AXIS:
@@ -137,6 +183,10 @@ class Bitmap(BitmapBase):
         return Bitmap(data=res_mask, origin=self.origin)
 
     def to_contours(self):
+        '''
+        The function to_contours get list of contours(in Polygon class objects) of all objects in Bitmap
+        :return: list of contours
+        '''
         origin, mask = self.origin, self.data
         _, contours, hier = cv2.findContours(
             mask.astype(np.uint8),
@@ -165,6 +215,12 @@ class Bitmap(BitmapBase):
         return res
 
     def bitwise_mask(self, full_target_mask: np.ndarray, bit_op):
+        '''
+        The function bitwise_mask performs bitwise operations between a given numpy array and Bitmap object data
+        :param full_target_mask: numpy array
+        :param bit_op: type of bitwise operation(or, and, xor)
+        :return: Bitmap class object or empty list
+        '''
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
         full_size_mask = np.full(full_size, False, bool)

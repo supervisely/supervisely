@@ -4,6 +4,10 @@ import colorsys
 
 
 def _validate_color(color):
+    """
+    Checks input color for compliance with the required format
+    :param: color: color (RGB tuple of integers)
+    """
     if not isinstance(color, (list, tuple)):
         raise ValueError('Color has to be list, or tuple')
     if len(color) != 3:
@@ -77,6 +81,11 @@ def rgb2hex(color: list) -> str:
 
 
 def _hex2color(hex_value: str) -> list:
+    """
+        Convert HEX RGB string to integer RGB format
+        :param hex_value: HEX RGBA string. Example: "#FF02А4
+        :return: RGB integer values. Example: [80, 255, 0]
+    """
     assert hex_value.startswith('#')
     return [int(hex_value[i:(i + 2)], 16) for i in range(1, len(hex_value), 2)]
 

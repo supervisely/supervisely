@@ -14,7 +14,20 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 
 class VideoAnnotation:
+    '''
+    This is a class for creating and using annotations for videos
+    '''
     def __init__(self, img_size, frames_count, objects=None, frames=None, tags=None, description="", key=None):
+        '''
+        The constructor for VideoAnnotation class.
+        :param img_size: size of the image(tuple or list of integers)
+        :param frames_count: int
+        :param objects: VideoObjectCollection
+        :param frames: FrameCollection
+        :param tags: VideoTagCollection
+        :param description: str
+        :param key: uuid class object
+        '''
         if not isinstance(img_size, (tuple, list)):
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
@@ -46,6 +59,9 @@ class VideoAnnotation:
 
     @property
     def figures(self):
+        '''
+        :return: list of figures from all frames in collection
+        '''
         return self.frames.figures
 
     @property
@@ -60,10 +76,18 @@ class VideoAnnotation:
         return self._description
 
     def validate_figures_bounds(self):
+        '''
+        The function validate_figures_bounds checks if image contains figures from all frames in collection. Raise error if figure is out of image bounds
+        '''
         for frame in self.frames:
             frame.validate_figures_bounds(self.img_size)
 
     def to_json(self, key_id_map: KeyIdMap=None):
+        '''
+        The function to_json convert videoannotation to json format
+        :param key_id_map: KeyIdMap class object
+        :return: videoannotation in json format
+        '''
         res_json = {
                         IMG_SIZE: {
                                     IMG_SIZE_HEIGHT: int(self.img_size[0]),
@@ -86,6 +110,13 @@ class VideoAnnotation:
 
     @classmethod
     def from_json(cls, data, project_meta, key_id_map: KeyIdMap=None):
+        '''
+        The function from_json convert videoannotation from json format to VideoAnnotation class object.
+        :param data: input videoannotation in json format
+        :param project_meta: ProjectMeta class object
+        :param key_id_map: KeyIdMap class object
+        :return: VideoAnnotation class object
+        '''
         #video_name = data[VIDEO_NAME]
         video_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
@@ -113,6 +144,15 @@ class VideoAnnotation:
                    key=video_key)
 
     def clone(self, img_size=None, frames_count=None, objects=None, frames=None, tags=None, description=None):
+        '''
+        :param img_size: size of the image(tuple or list of integers)
+        :param frames_count: int
+        :param objects: VideoObjectCollection
+        :param frames: FrameCollection
+        :param tags: VideoTagCollection
+        :param description: str
+        :return: VideoAnnotation class object
+        '''
         return VideoAnnotation(img_size=take_with_default(img_size, self.img_size),
                                frames_count=take_with_default(frames_count, self.frames_count),
                                objects=take_with_default(objects, self.objects),

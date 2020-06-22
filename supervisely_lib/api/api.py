@@ -38,6 +38,13 @@ API_TOKEN = 'API_TOKEN'
 
 class Api:
     def __init__(self, server_address, token, retry_count=None, retry_sleep_sec=None, external_logger=None):
+        '''
+        :param server_address: str (example: http://192.168.1.69:5555)
+        :param token: str
+        :param retry_count: int
+        :param retry_sleep_sec: int
+        :param external_logger: logger class object
+        '''
         if token is None:
             raise ValueError("Token is None")
         self.server_address = server_address.strip('/')
@@ -82,18 +89,39 @@ class Api:
 
     @classmethod
     def from_env(cls):
+        '''
+        :return: Api class object with server adress and token obtained from environment variables
+        '''
         return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN])
 
     def add_header(self, key, value):
+        '''
+        Add given key and value to headers dictionary. Raise error if key is already set.
+        :param key: str
+        :param value: str
+        '''
         if key in self.headers:
             raise RuntimeError(f'Header {key!r} is already set for the API object. '
                                f'Current value: {self.headers[key]!r}. Tried to set value: {value!r}')
         self.headers[key] = value
 
     def add_additional_field(self, key, value):
+        '''
+        Add given key and value to additional_fields dictionary.
+        :param key: str
+        :param value: str
+        '''
         self.additional_fields[key] = value
 
     def post(self, method, data, retries=None, stream=False):
+        '''
+        Performs POST request to server with given parameters. Raise error if can not connect to server.
+        :param method: str
+        :param data: dict
+        :param retries: int (number of attempts to access the server)
+        :param stream: bool
+        :return: Request class object
+        '''
         if retries is None:
             retries = self.retry_count
 
@@ -126,6 +154,15 @@ class Api:
         Api._raise_for_status(response)
 
     def get(self, method, params, retries=None, stream=False, use_public_api=True):
+        '''
+        Performs GET request to server with given parameters. Raise error if can not connect to server.
+        :param method: str
+        :param params: dict
+        :param retries: int (number of attempts to access the server)
+        :param stream: bool
+        :param use_public_api: bool
+        :return: Request class object
+        '''
         if retries is None:
             retries = self.retry_count
 
@@ -154,6 +191,10 @@ class Api:
 
     @staticmethod
     def _raise_for_status(response):
+        '''
+        Raise error and show message with code of mistake if given response can not connect to server.
+        :param response: Request class object
+        '''
         """Raises stored :class:`HTTPError`, if one occurred."""
         http_error_msg = ''
         if isinstance(response.reason, bytes):
@@ -175,6 +216,13 @@ class Api:
 
     @staticmethod
     def parse_error(response, default_error="Error", default_message="please, contact administrator"):
+        '''
+
+        :param response: Request class object
+        :param default_error: str
+        :param default_message: str
+        :return: number of error and message about curren connection mistake
+        '''
         ERROR_FIELD = "error"
         MESSAGE_FIELD = "message"
         DETAILS_FIELD = "details"

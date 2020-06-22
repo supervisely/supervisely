@@ -40,21 +40,46 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         ModuleWithStatus.__init__(self)
 
     def get_list(self, workspace_id, filters=None):
+        '''
+        :param workspace_id: int
+        :param filters: list
+        :return: list of all tasks in given workspace
+        '''
         return self.get_list_all_pages('tasks.list',
                                        {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: tast metadata by numeric id
+        '''
         return self._get_info_by_id(id, 'tasks.info')
 
     def get_status(self, task_id):
+        '''
+        :param task_id: int
+        :return: Status class object (status of task with given id)
+        '''
         status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status):
+        '''
+        Raise error if status is ERROR
+        :param status: Status class object
+        '''
         if status is self.Status.ERROR:
             raise RuntimeError('Task status: ERROR')
 
     def wait(self, id, target_status, wait_attempts=None, wait_attempt_timeout_sec=None):
+        '''
+        Awaiting achievement by given task of a given status
+        :param id: int
+        :param target_status: Status class object (status of task we expect to destinate)
+        :param wait_attempts: int
+        :param wait_attempt_timeout_sec: int (raise error if waiting time exceeded)
+        :return: bool
+        '''
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):

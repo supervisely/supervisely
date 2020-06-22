@@ -64,6 +64,8 @@ PX = 'px'
 CONFIDENCE = 'confidence'
 CONFIDENCE_TAG_NAME = 'confidence_tag_name'
 
+SAVE_PROBABILITIES = 'save_probabilities'
+
 
 def _replace_or_drop_labels_classes(labels, obj_class_mapper: ObjClassMapper, tag_meta_mapper: TagMetaMapper) -> list:
     result = []
@@ -149,7 +151,8 @@ class InferenceModeBase:
         return {
             MODEL_CLASSES: Renamer(add_suffix=model_result_suffix, save_names=MATCH_ALL).to_json(),
             MODEL_TAGS: Renamer(add_suffix=model_result_suffix, save_names=MATCH_ALL).to_json(),
-            NAME: cls.mode_name()
+            NAME: cls.mode_name(),
+            SAVE_PROBABILITIES: False
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
@@ -187,20 +190,23 @@ class InferenceModeBase:
 
     def _make_final_ann(self, result_ann):
         frontend_compatible_labels = _remove_backend_only_labels(result_ann.labels)
-        return Annotation(img_size=result_ann.img_size, labels=frontend_compatible_labels, img_tags=result_ann.img_tags,
-                          img_description=result_ann.img_description)
+        return Annotation(img_size=result_ann.img_size,
+                          labels=frontend_compatible_labels,
+                          img_tags=result_ann.img_tags,
+                          img_description=result_ann.img_description,
+                          pixelwise_scores_labels=result_ann.pixelwise_scores_labels)
 
     def infer_annotate(self, img: np.ndarray, ann: Annotation):
         result_ann = self._do_infer_annotate(img, ann)
         return self._make_final_ann(result_ann)
-    
+
     def infer_annotate_image_file(self, image_file: str, ann: Annotation):
         result_ann = self._do_infer_annotate_image_file(image_file, ann)
         return self._make_final_ann(result_ann)
 
     def _do_infer_annotate(self, img, ann: Annotation) -> Annotation:
         raise NotImplementedError()
-    
+
     def _do_infer_annotate_image_file(self, image_file: str, ann: Annotation) -> Annotation:
         img = sly_image_read(image_file)
         return self._do_infer_annotate(img, ann)
@@ -213,19 +219,25 @@ class InfModeFullImage(InferenceModeBase):
 
     def _do_infer_annotate_generic(self, inference_fn, img, ann: Annotation):
         result_ann = ann.clone()
-        inference_result_ann = inference_fn(img, ann)
-        result_ann = result_ann.add_labels(
-            _replace_or_drop_labels_classes(
-                inference_result_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
-        renamed_tags = make_renamed_tags(inference_result_ann.img_tags,
-                                         self._model_tag_meta_mapper,
-                                         skip_missing=True)
+        inference_ann = inference_fn(img, ann)
+
+        result_labels = _replace_or_drop_labels_classes(
+            inference_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper)
+        result_ann = result_ann.add_labels(result_labels)
+
+        renamed_tags = make_renamed_tags(inference_ann.img_tags, self._model_tag_meta_mapper, skip_missing=True)
         result_ann = result_ann.add_tags(renamed_tags)
+
+        if self._config.get(SAVE_PROBABILITIES, False) is True:
+            result_problabels = _replace_or_drop_labels_classes(
+                inference_ann.pixelwise_scores_labels, self._model_class_mapper, self._model_tag_meta_mapper)
+            result_ann = result_ann.add_pixelwise_score_labels(result_problabels)
+
         return result_ann
 
     def _do_infer_annotate(self, img: np.ndarray, ann: Annotation) -> Annotation:
         return self._do_infer_annotate_generic(self._model.inference, img, ann)
-    
+
     def _do_infer_annotate_image_file(self, image_file: str, ann: Annotation) -> Annotation:
         return self._do_infer_annotate_generic(self._model.inference_image_file, image_file, ann)
 
@@ -267,6 +279,12 @@ class InfModeRoi(InferenceModeBase):
         result_ann = result_ann.add_labels(
             _maybe_make_bbox_label(roi, self._intermediate_bbox_class, tags=img_level_tags))
         result_ann = result_ann.add_tags(img_level_tags)
+
+        if self._config.get(SAVE_PROBABILITIES, False) is True:
+            result_problabels = _replace_or_drop_labels_classes(
+                roi_ann.pixelwise_scores_labels, self._model_class_mapper, self._model_tag_meta_mapper)
+            result_ann = result_ann.add_pixelwise_score_labels(result_problabels)
+
         return result_ann
 
 
@@ -314,6 +332,7 @@ class InfModeBboxes(InferenceModeBase):
 
     def _do_infer_annotate(self, img: np.ndarray, ann: Annotation) -> Annotation:
         result_labels = []
+        result_problabels = []
         for src_label, roi in self._all_filtered_bbox_rois(ann, self._config[FROM_CLASSES], self._config[PADDING]):
             if roi is None:
                 result_labels.append(src_label)
@@ -321,6 +340,12 @@ class InfModeBboxes(InferenceModeBase):
                 roi_ann = _get_annotation_for_bbox(img, roi, self._model)
                 result_labels.extend(_replace_or_drop_labels_classes(
                     roi_ann.labels, self._model_class_mapper, self._model_tag_meta_mapper))
+
+                if self._config.get(SAVE_PROBABILITIES, False) is True:
+                    result_problabels.extend(_replace_or_drop_labels_classes(roi_ann.pixelwise_scores_labels,
+                                                                             self._model_class_mapper,
+                                                                             self._model_tag_meta_mapper))
+
                 model_img_level_tags = make_renamed_tags(roi_ann.img_tags, self._model_tag_meta_mapper,
                                                          skip_missing=True)
                 if self._config[SAVE]:
@@ -332,7 +357,7 @@ class InfModeBboxes(InferenceModeBase):
                 # This is necessary for e.g. classification models to work, so that they put the classification results
                 # onto the original object.
                 result_labels.append(src_label.add_tags(model_img_level_tags))
-        return ann.clone(labels=result_labels)
+        return ann.clone(labels=result_labels, pixelwise_scores_labels=result_problabels)
 
     @staticmethod
     def _all_filtered_bbox_rois(ann: Annotation, included_classes, crop_config: dict):
@@ -401,10 +426,16 @@ class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
         id_to_class_obj = {idx: self._model.model_out_meta.obj_classes.get(name)
                            for name, idx in model_class_name_to_id.items()}
         summed_scores = np.zeros(ann.img_size + tuple([len(model_class_name_to_id)]))
+        summed_divisor = np.zeros_like(summed_scores)
         for label in all_pixelwise_scores_labels:
             class_idx = model_class_name_to_id[label.obj_class.name]
-            label_matching_summer_scores = label.geometry.to_bbox().get_cropped_numpy_slice(summed_scores)
+            geom_bbox = label.geometry.to_bbox()
+            label_matching_summer_scores = geom_bbox.get_cropped_numpy_slice(summed_scores)
             label_matching_summer_scores[:, :, class_idx, np.newaxis] += label.geometry.data
+
+            divisor_slice = geom_bbox.get_cropped_numpy_slice(summed_divisor)
+            divisor_slice[:, :, class_idx, np.newaxis] += 1.
+
         # TODO consider instead filtering pixels by all-zero scores.
         if np.sum(summed_scores, axis=2).min() == 0:
             raise RuntimeError('Wrong sliding window moving, implementation error.')
@@ -413,6 +444,16 @@ class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
         result_ann = result_ann.add_labels(
             _replace_or_drop_labels_classes(
                 aggregated_model_labels, self._model_class_mapper, self._model_tag_meta_mapper))
+
+        if self._config.get(SAVE_PROBABILITIES, False) is True:
+            # copied fom unet's inference.py
+            mean_scores = summed_scores / summed_divisor
+            accumulated_pixelwise_scores_labels = raw_to_labels.segmentation_scores_to_per_class_labels(
+                id_to_class_obj, mean_scores)
+            result_problabels = _replace_or_drop_labels_classes(
+                accumulated_pixelwise_scores_labels, self._model_class_mapper, self._model_tag_meta_mapper)
+            result_ann = result_ann.add_pixelwise_score_labels(result_problabels)
+
         return result_ann
 
 

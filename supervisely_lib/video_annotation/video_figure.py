@@ -41,6 +41,10 @@ class VideoFigure:
             d[CREATED_AT] = self.created_at
 
     def _set_geometry_inplace(self, geometry):
+        '''
+        Checks the given geometry for correctness. Raise error if given geometry type != geometry type of VideoObject class
+        :param geometry: Geometry class object (Point, Rectangle etc)
+        '''
         self._geometry = geometry
         self._validate_geometry_type()
         self._validate_geometry()
@@ -65,16 +69,28 @@ class VideoFigure:
         return self._key
 
     def _validate_geometry(self):
+        '''
+        Checks geometry of VideoFigure class object for correctness
+        '''
         self._geometry.validate(self.parent_object.obj_class.geometry_type.geometry_name(),
                                 self.parent_object.obj_class.geometry_config)
 
     def _validate_geometry_type(self):
+        '''
+        Raise error if given geometry type != geometry type of VideoObject class
+        '''
         if self.parent_object.obj_class.geometry_type != AnyGeometry:
             if type(self._geometry) is not self.parent_object.obj_class.geometry_type:
                 raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
                                    .format(type(self._geometry), self.parent_object.obj_class.geometry_type))
 
     def to_json(self, key_id_map=None, save_meta=False):
+        '''
+        The function to_json convert VideoFigure to json format
+        :param key_id_map: KeyIdMap class object
+        :param save_meta: bool
+        :return: VideoFigure in json format
+        '''
         data_json = {
             KEY: self.key().hex,
             OBJECT_KEY: self.parent_object.key().hex,
@@ -98,6 +114,14 @@ class VideoFigure:
 
     @classmethod
     def from_json(cls, data, objects: VideoObjectCollection, frame_index, key_id_map: KeyIdMap = None):
+        '''
+        The function from_json convert VideoFigure from json format to VideoFigure class object.
+        :param data: input VideoFigure in json format
+        :param objects: VideoObjectCollection
+        :param frame_index: int
+        :param key_id_map: KeyIdMap class object
+        :return: VideoFigure class object
+        '''
         object_id = data.get(OBJECT_ID, None)
         object_key = None
         if OBJECT_KEY in data:
@@ -149,6 +173,11 @@ class VideoFigure:
                               )
 
     def validate_bounds(self, img_size, _auto_correct=False):
+        '''
+        The function validate_bounds checks if given image contains a figure. Raise error if figure is out of image bounds
+        :param img_size: tuple or list of integers
+        :param _auto_correct: bool
+        '''
         canvas_rect = Rectangle.from_size(img_size)
         if canvas_rect.contains(self.geometry.to_bbox()) is False:
             raise OutOfImageBoundsExtension("Figure is out of image bounds")

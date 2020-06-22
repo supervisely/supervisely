@@ -22,4 +22,9 @@ class ProjectClassApi(ModuleApi):
         return 'ProjectClassInfo'
 
     def get_list(self, project_id, filters=None):
+        '''
+        :param project_id: int
+        :param filters: list
+        :return: list all the classes for a given project
+        '''
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})

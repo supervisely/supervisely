@@ -144,6 +144,7 @@ class ApiField:
     SCRIPT =            'script'
     LOGS =              'logs'
     FILES =             'files'
+    WITH_CUSTOM_DATA =  'withCustomBigData'
 
 
 def _get_single_item(items):

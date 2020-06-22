@@ -26,6 +26,10 @@ SUPPORTED_TAG_VALUE_TYPES = [TagValueType.NONE, TagValueType.ANY_NUMBER, TagValu
 
 
 class TagMeta(KeyObject, JsonSerializable):
+    '''
+    This is a class for creating and using TagMeta objects. It include tag name, value type, and possible values for
+    tags with enum values.
+    '''
     def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None):
         """
         :param name: str
@@ -72,6 +76,10 @@ class TagMeta(KeyObject, JsonSerializable):
         return self._color.copy()
 
     def to_json(self):
+        '''
+        The function to_json convert TagMeta object to json format
+        :return: tagmeta in json format
+        '''
         jdict = {
             TagMetaJsonFields.NAME: self.name,
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
@@ -83,6 +91,11 @@ class TagMeta(KeyObject, JsonSerializable):
 
     @classmethod
     def from_json(cls, data):
+        '''
+        The function from_json convert tagmeta from json format to TagMeta class object.
+        :param data: input tagmeta in json format
+        :return: TagMeta class object
+        '''
         if isinstance(data, str):
             return cls(name=data, value_type=TagValueType.NONE)
         elif isinstance(data, dict):
@@ -97,6 +110,12 @@ class TagMeta(KeyObject, JsonSerializable):
             raise ValueError('Tags must be dict or str types.')
 
     def add_possible_value(self, value):
+        '''
+        The function add_possible_value add new value to the list of possible_values. If value_type is not 'oneof_string'
+        it generate ValueError error.
+        :param value: value added
+        :return: TagMeta class object
+        '''
         if self.value_type is TagValueType.ONEOF_STRING:
             if value in self._possible_values:
                 raise ValueError('Value {} already exists for tag {}'.format(value, self.name))
@@ -106,6 +125,11 @@ class TagMeta(KeyObject, JsonSerializable):
             raise ValueError("Tag {!r} has type {!r}. Possible value can be added only to oneof_string".format(self.name, self.value_type))
 
     def is_valid_value(self, value):
+        '''
+        The function is_valid_value cross-checked value against the value_type to make sure the value is valid.
+        If value is unsupported it generate ValueError error.
+        :return: True if value is supported, False in other way.
+        '''
         if self.value_type == TagValueType.NONE:
             return value is None
         elif self.value_type == TagValueType.ANY_NUMBER:
@@ -128,12 +152,20 @@ class TagMeta(KeyObject, JsonSerializable):
         return not self == other
 
     def is_compatible(self, other):
+        '''
+        The function is_compatible checks the input data against the given TagMeta object
+        :param other: some Object
+        '''
         return (isinstance(other, TagMeta) and
                 self.name == other.name and
                 self.value_type == other.value_type and
                 self.possible_values == other.possible_values)
 
     def clone(self, name=None, value_type=None, possible_values=None, color=None):
+        '''
+        The function clone make copy of the TagMeta class object
+        :return: TagMeta class object
+        '''
         return TagMeta(name=take_with_default(name, self.name),
                        value_type=take_with_default(value_type, self.value_type),
                        possible_values=take_with_default(possible_values, self.possible_values),
@@ -149,4 +181,7 @@ class TagMeta(KeyObject, JsonSerializable):
         return ['Name', 'Value type', 'Possible values']
 
     def get_row_ptable(self):
+        '''
+        :return: information about TagMeta class object(name of meta, type value, and list of possible values)
+        '''
         return [self.name, self.value_type, self.possible_values]

@@ -79,6 +79,11 @@ class ImageRotator:
         return affine_matrix, new_canvas_size
 
     def __init__(self, imsize, angle_degrees_ccw):
+        '''
+        This is a class for rotating images & objects wrt source img center
+        :param imsize: image to rotate
+        :param angle_degrees_ccw: angle in degrees to rotate image
+        '''
         self.src_imsize = tuple(imsize)
         self.angle_degrees_ccw = angle_degrees_ccw
         # Transform matrix for the RHS (col, row) coordinate system.
@@ -90,12 +95,23 @@ class ImageRotator:
         self._calc_inner_crop()
 
     def transform_point(self, point):
+        '''
+        The function transform_point calculates new parameters of point after rotating
+        :param point: PointLocation class object
+        :return: PointLocation class object
+        '''
         point_np_uniform = np.array([point.row, point.col, 1])
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.
         return PointLocation(row=round(transformed_np[0].item()), col=round(transformed_np[1].item()))
 
     def rotate_img(self, img, use_inter_nearest):
+        '''
+        The function rotate_img rotate image with given parameter
+        :param img: image to rotate
+        :param use_inter_nearest: parameter of rotation
+        :return: rotated image
+        '''
         if use_inter_nearest:
             interp = cv2.INTER_NEAREST  # @TODO: cv2 INTER_NEAREST may shift coords, what to do?
         else:

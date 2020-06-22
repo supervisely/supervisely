@@ -124,7 +124,22 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                include_images_with_tags=None,
                exclude_images_with_tags=None,
                images_range=None):
-
+        '''
+        Create labeling job by given user in given dataset
+        :param name: str
+        :param dataset_id: int
+        :param user_ids: list of integers
+        :param readme: str
+        :param description: str
+        :param classes_to_label: list
+        :param objects_limit_per_image: int
+        :param tags_to_label: list
+        :param tags_limit_per_image: int
+        :param include_images_with_tags: bool
+        :param exclude_images_with_tags: bool
+        :param images_range: list
+        :return: list
+        '''
         if classes_to_label is None:
             classes_to_label = []
         if tags_to_label is None:
@@ -173,6 +188,15 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return created_jobs
 
     def get_list(self, team_id, created_by_id=None, assigned_to_id=None, project_id=None, dataset_id=None):
+        '''
+        Get all labeling that were created by given user and were assigned to given assigned user in given team
+        :param team_id: int
+        :param created_by_id: int
+        :param assigned_to_id:
+        :param project_id:
+        :param dataset_id:
+        :return: list
+        '''
         filters = []
         if created_by_id is not None:
             filters.append({"field": ApiField.CREATED_BY_ID[0][0], "operator": "=", "value": created_by_id})
@@ -185,15 +209,31 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return self.get_list_all_pages('jobs.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters})
 
     def stop(self, id):
+        '''
+        :param id: int
+        :return: stop labeling job  job will be unavailable for labeler with given id
+        '''
         self._api.post('jobs.stop', {ApiField.ID: id})
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: labeling job with given id
+        '''
         return self._get_info_by_id(id, 'jobs.info')
 
     def archive(self, id):
+        '''
+        Archive labeling job with given id
+        :param id: int
+        '''
         self._api.post('jobs.archive', {ApiField.ID: id})
 
     def get_status(self, id):
+        '''
+        :param id: int
+        :return: status of labeling job with given id
+        '''
         status_str = self.get_info_by_id(id).status
         return self.Status(status_str)
 
@@ -202,6 +242,14 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         pass
 
     def wait(self, id, target_status, wait_attempts=None, wait_attempt_timeout_sec=None):
+        '''
+        Awaiting achievement by given labeling job of a given status
+        :param id: int
+        :param target_status: status of labeling job we expect to destinate
+        :param wait_attempts: int
+        :param wait_attempt_timeout_sec: int (raise error if waiting time exceeded)
+        :return: bool
+        '''
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
@@ -213,10 +261,18 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         raise WaitingTimeExceeded('Waiting time exceeded')
 
     def get_stats(self, id):
+        '''
+        :param id: int
+        :return: status of given labeling job
+        '''
         response = self._api.post('jobs.stats', {ApiField.ID: id})
         return response.json()
 
     def get_activity(self, id):
+        '''
+        :param id: int
+        :return: bool (True if labeling job is activity, False in overrise)
+        '''
         job_info = self.get_info_by_id(id)
         df = self._api.project.get_activity(job_info.project_id)
         df = df[df.jobId == id]

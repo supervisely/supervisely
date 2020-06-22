@@ -20,7 +20,17 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import  
 
 
 class PointcloudAnnotation(VideoAnnotation):
+    '''
+    This is a class for creating and using PointcloudAnnotation
+    '''
     def __init__(self, objects=None, figures=None, tags=None, description="", key=None):
+        '''
+        :param objects: VideoObjectCollection
+        :param figures: list of figures(Point, Cuboid, etc)
+        :param tags: VideoTagCollection
+        :param description: str
+        :param key: uuid class object
+        '''
         self._description = description
         self._tags = take_with_default(tags, VideoTagCollection())
         self._objects = take_with_default(objects, VideoObjectCollection())
@@ -43,6 +53,11 @@ class PointcloudAnnotation(VideoAnnotation):
         raise RuntimeError("Not supported for pointcloud")
 
     def to_json(self, key_id_map: KeyIdMap=None):
+        '''
+        The function to_json convert PointcloudAnnotation to json format
+        :param key_id_map: KeyIdMap class object
+        :return: PointcloudAnnotation in json format
+        '''
         res_json = {
             DESCRIPTION: self.description,
             KEY: self.key().hex,
@@ -60,6 +75,12 @@ class PointcloudAnnotation(VideoAnnotation):
 
     @classmethod
     def from_json(cls, data, project_meta, key_id_map: KeyIdMap=None):
+        '''
+        :param data: input PointcloudAnnotation in json format
+        :param project_meta: ProjectMeta class object
+        :param key_id_map: KeyIdMap class object
+        :return: PointcloudAnnotation class object
+        '''
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
         if key_id_map is not None:
             key_id_map.add_video(item_key, data.get(POINTCLOUD_ID, None))
@@ -79,6 +100,13 @@ class PointcloudAnnotation(VideoAnnotation):
                    key=item_key)
 
     def clone(self, objects=None, figures=None, tags=None, description=None):
+        '''
+        :param objects: VideoObjectCollection
+        :param figures: list of figures
+        :param tags: VideoTagCollection
+        :param description: str
+        :return: PointcloudAnnotation class object
+        '''
         return PointcloudAnnotation(objects=take_with_default(objects, self.objects),
                                     figures=take_with_default(figures, self.figures),
                                     tags=take_with_default(tags, self.tags),

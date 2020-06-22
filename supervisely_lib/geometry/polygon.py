@@ -14,13 +14,19 @@ from supervisely_lib.sly_logger import logger
 
 
 class Polygon(VectorGeometry):
+    '''
+    This is a class for creating and using Polygon objects for Labels
+    '''
     @staticmethod
     def geometry_name():
         return 'polygon'
 
     def __init__(self, exterior, interior,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-
+        '''
+        :param exterior: list of PointLocation objects, the object contour is defined with these points
+        :param interior: list of elements that has the same structure like the "exterior" field. This is the list of polygons that define object holes.
+        '''
         if len(exterior) < 3:
             raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
         if any(len(element) < 3 for element in interior):
@@ -31,6 +37,11 @@ class Polygon(VectorGeometry):
 
     @classmethod
     def from_json(cls, data):
+        '''
+        The function from_json convert Poligon from json format to Poligon class object. If json format is not correct it generate exception error.
+        :param data: input Poligon in json format
+        :return: Poligon class object
+        '''
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -42,6 +53,11 @@ class Polygon(VectorGeometry):
                    sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def crop(self, rect):
+        '''
+        Crop the current Polygon with a given rectangle, if polygon cat't be cropped it generate exception error
+        :param rect: Rectangle class object
+        :return: list of Poligon class objects
+        '''
         try:
             clipping_window_shpl = ShapelyPolygon(points_to_row_col_list(rect.corners))
             self_shpl = ShapelyPolygon(self.exterior_np, holes=self.interior_np)
@@ -85,6 +101,9 @@ class Polygon(VectorGeometry):
     # returns area of exterior figure only
     @property
     def area(self):
+        '''
+        :return: area of current Poligon(exterior figure only)
+        '''
         exterior = self.exterior_np
         return self._get_area_by_gauss_formula(exterior[:, 0], exterior[:, 1])
 
@@ -93,6 +112,11 @@ class Polygon(VectorGeometry):
         return 0.5 * np.abs(np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1)))
 
     def approx_dp(self, epsilon):
+        '''
+        The function approx_dp approximates a polygonal curve with the specified precision
+        :param epsilon: Parameter specifying the approximation accuracy. This is the maximum distance between the original curve and its approximation.
+        :return: Poligon class object
+        '''
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         interior_np = [self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np]
         exterior = row_col_list_to_points(exterior_np, do_round=True)

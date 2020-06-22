@@ -23,8 +23,18 @@ class PluginApi(ModuleApi):
         return 'PluginInfo'
 
     def get_list(self, team_id, filters=None):
+        '''
+        :param team_id: int
+        :param filters: list
+        :return: list of plugins from the given team
+        '''
         return self.get_list_all_pages('plugins.list',  {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, team_id, plugin_id):
+        '''
+        :param team_id: int
+        :param plugin_id: int
+        :return: information about plugin from given plugin id in given team
+        '''
         filters = [{"field": ApiField.ID, "operator": "=", "value": plugin_id}]
         return self._get_info_by_filters(team_id, filters)

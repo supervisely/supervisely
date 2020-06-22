@@ -22,12 +22,27 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         UpdateableModule.__init__(self, api)
 
     def get_list(self, filters=None):
+        '''
+        :param filters: list
+        :return: list of all teams
+        '''
         return self.get_list_all_pages('teams.list',  {ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: team metainformation with given id
+        '''
         return self._get_info_by_id(id, 'teams.info')
 
     def create(self, name, description="", change_name_if_conflict=False):
+        '''
+        Create team with given name
+        :param name: str
+        :param description: str
+        :param change_name_if_conflict: bool
+        :return: team metainformation
+        '''
         effective_name = self._get_effective_new_name(name=name, change_name_if_conflict=change_name_if_conflict)
         response = self._api.post('teams.add', {ApiField.NAME: effective_name, ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())

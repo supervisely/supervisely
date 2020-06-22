@@ -49,16 +49,30 @@ class UnsupportedImageFormat(Exception):
 class ImageReadException(Exception):
     pass
 
-
 def is_valid_ext(ext: str) -> bool:
+    '''
+    The function is_valid_ext checks file extension for list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
+    :param ext: file extention
+    :return: True if file extention in list of supported images extensions, False - in otherwise
+    '''
     return ext.lower() in SUPPORTED_IMG_EXTS
 
 
 def has_valid_ext(path: str) -> bool:
+    '''
+    The function has_valid_ext checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
+    :param path: the path to the input file
+    :return: True if a given file has a supported extension, False - in otherwise
+    '''
     return is_valid_ext(os.path.splitext(path)[1])
 
 
 def validate_ext(path):
+    '''
+    The function validate_ext generate exception error if file extention is not in list of supported images
+    extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
+    :param path: the path to the input file
+    '''
     _, ext = os.path.splitext(path)
     if not is_valid_ext(ext):
         raise ImageExtensionError(
@@ -67,6 +81,12 @@ def validate_ext(path):
 
 
 def validate_format(path):
+    '''
+    The function validate_format checks input file format. It generate exception error(ImageReadException) if error
+    has occured trying to read image and generate exception error(UnsupportedImageFormat) if file extention is not in
+    list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
+    :param path: the path to the input file
+    '''
     try:
         pil_img = PILImage.open(path)
         pil_img.load()  # Validate image data. Because 'open' is lazy method.
@@ -83,12 +103,25 @@ def validate_format(path):
 
 
 def read(path) -> np.ndarray:
+    '''
+    The function read loads an image from the specified file and returns it in RGB format. If the image cannot be read
+    it generate exception error(ImageReadException) if error has occured trying to read image and generate exception
+    error(UnsupportedImageFormat) if file extention is not in list of supported images
+    extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
+    :param path: the path to the input file
+    :return: image in RGB format(numpy matrix)
+    '''
     validate_format(path)
     img = cv2.imread(path, cv2.IMREAD_COLOR)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
 def read_bytes(image_bytes, input_is_bgr=True) -> np.ndarray:
+    '''
+    The function read_bytes loads an byte image and returns it in RGB format.
+    :param image_bytes: byte image
+    :return: image in RGB format(numpy matrix)
+    '''
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
     img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)
     if input_is_bgr is True:
@@ -98,10 +131,17 @@ def read_bytes(image_bytes, input_is_bgr=True) -> np.ndarray:
 
 
 def write(path, img):
+    '''
+    The function write saves the image to the specified file. It create directory from path if the directory for this
+    path does not exist. It generate exception error(UnsupportedImageFormat) if file extention is not in list
+    of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp').
+    :param path: the path to the output file
+    :param img: image in RGB format(numpy matrix)
+    '''
     ensure_base_path(path)
     validate_ext(path)
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
-    return cv2.imwrite(path, img)
+    return cv2.imwrite(path, img) # why return there?
 
 
 def draw_text_sequence(bitmap: np.ndarray,
@@ -185,6 +225,15 @@ def draw_text(bitmap: np.ndarray,
 
 
 def write_bytes(img, ext) -> np.ndarray:
+    '''
+    The function compresses the image and stores it in the byte object. It generate exception
+    error(UnsupportedImageFormat) if file extention is not in list of supported images
+    extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp'). Function generate exception error(RuntimeError) if it
+    can't encode input image.
+    :param img: image in RGB format(numpy matrix) to be written
+    :param ext: file extension that defines the output format
+    :return: the byte object
+    '''
     ext = ('.' + ext).replace('..', '.')
     if not is_valid_ext(ext):
         raise UnsupportedImageFormat(
@@ -198,10 +247,23 @@ def write_bytes(img, ext) -> np.ndarray:
 
 
 def get_hash(img, ext):
+    '''
+    The function get_hash hash input image with sha256 algoritm and encode result by using Base64
+    :param img: image in RGB format(numpy matrix)
+    :param ext: file extension that defines the output format
+    :return: the byte object
+    '''
     return get_bytes_hash(write_bytes(img, ext))
 
 
 def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
+    '''
+    The function crop cut out part of the image with rectangle size. If rectangle for crop is out of image area it
+    generate exception error(ValueError).
+    :param img: image(numpy matrix) to be cropped
+    :param rect: class object Rectangle of a certain size
+    :return: cropped image
+    '''
     img_rect = Rectangle.from_array(img)
     if not img_rect.contains(rect):
         raise ValueError('Rectangle for crop out of image area!')
@@ -210,6 +272,16 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
 def restore_proportional_size(in_size: tuple, out_size: tuple = None,
                               frow: float = None, fcol: float = None, f: float = None):
+    '''
+    The function restore_proportional_size calculate new size of the image. If some parameters are not specified, or
+    size dimensions are less than 0 it generate exception error(ValueError).
+    :param in_size: size of input image
+    :param out_size: new image size
+    :param frow: length of output image
+    :param fcol: height of output image
+    :param f: positive non zero scale factor
+    :return: size of output image
+    '''
     if out_size is not None and (frow is not None or fcol is not None) and f is None:
         raise ValueError('Must be specified output size or scale factors not both of them.')
 
@@ -238,11 +310,32 @@ def restore_proportional_size(in_size: tuple, out_size: tuple = None,
 
 
 def resize(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=None) -> np.ndarray:
+    '''
+    The function resize resizes the image img down to or up to the specified size. If some parameters are not specified, or
+    size dimensions are less than 0 it generate exception error(ValueError).
+    :param img: input image
+    :param out_size: new image size
+    :param frow: length of output image
+    :param fcol: height of output image
+    :return: resized image
+    '''
     result_height, result_width = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     return cv2.resize(img, (result_width, result_height), interpolation=cv2.INTER_CUBIC)
 
 
 def resize_inter_nearest(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=None) -> np.ndarray:
+    '''
+    The function resize_inter_nearest resize image to match a certain size. Performs interpolation to up-size or
+    down-size images. For down-sampling N-dimensional images by applying a function or the arithmetic mean, see
+    `skimage.measure.block_reduce` and `skimage.transform.downscale_local_mean`, respectively.
+    If some parameters are not specified, or size dimensions are less than 0 it generate exception
+    error(ValueError).
+    :param img: input image
+    :param out_size: new image size
+    :param frow: length of output image
+    :param fcol: height of output image
+    :return: resized image
+    '''
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     resize_kv_args = dict(order=0, preserve_range=True, mode='constant')
     if parse_version(skimage.__version__) >= parse_version('0.14.0'):
@@ -296,6 +389,9 @@ def rotate(img: np.ndarray, degrees_angle: float, mode=RotateMode.KEEP_BLACK) ->
 
 # Color augmentations
 def _check_contrast_brightness_inputs(min_value, max_value):
+    '''
+    The function _check_contrast_brightness_inputs checks the input brightness or contrast for correctness.
+    '''
     if min_value < 0:
         raise ValueError('Minimum value must be greater than or equal to 0.')
     if min_value > max_value:

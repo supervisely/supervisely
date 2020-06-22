@@ -38,6 +38,12 @@ def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None
 
 
 def get_effective_nonoverlapping_masks(geometries, img_size=None):
+    '''
+    Find nonoverlapping objects from given list of geometries
+    :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
+    :param img_size: tuple or list of integers
+    :return: list of bitmaps, numpy array
+    '''
     if img_size is None:
         if len(geometries) > 0:
             common_bbox = Rectangle.from_geometries_list(geometries)
@@ -59,6 +65,12 @@ def get_effective_nonoverlapping_masks(geometries, img_size=None):
 
 
 def deserialize_geometry(geometry_type_str, geometry_json):
+    '''
+    Get geometry from json format
+    :param geometry_type_str: str
+    :param geometry_json: geometry in json format
+    :return: geometry type object(Point, Polygon, PolyLine, Bitmap etc.)
+    '''
     geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     geometry = geometry_type.from_json(geometry_json)
     return geometry
