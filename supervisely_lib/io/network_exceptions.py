@@ -26,7 +26,8 @@ def process_requests_exception(external_logger, exc, api_method_name, url,
                                verbose=True, swallow_exc=False, sleep_sec=None, response=None, retry_info=None):
     is_connection_error = isinstance(exc, (requests.exceptions.ConnectionError,
                                            requests.exceptions.Timeout,
-                                           requests.exceptions.TooManyRedirects))
+                                           requests.exceptions.TooManyRedirects,
+                                           requests.exceptions.ChunkedEncodingError))
 
     is_server_retryable_error = isinstance(exc, requests.exceptions.HTTPError) and \
                                 hasattr(exc, 'response') and \
@@ -51,7 +52,7 @@ def process_requests_exception(external_logger, exc, api_method_name, url,
     elif isinstance(exc, requests.exceptions.HTTPError):
         process_invalid_request(external_logger, exc, response, verbose)
     else:
-        process_unhandled_request(exc, external_logger)
+        process_unhandled_request(external_logger, exc)
 
 
 def process_retryable_request(external_logger, exc, api_method_name, url, user_message,
