@@ -74,7 +74,7 @@ class Cuboid3d(Geometry):
         :param dimensions: Vector3d class object
         '''         
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-		
+        
         if type(position) is not Vector3d:
             raise TypeError("\"position\" param has to be of type {!r}".format(type(Vector3d)))
         if type(rotation) is not Vector3d:

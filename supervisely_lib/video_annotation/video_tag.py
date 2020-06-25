@@ -22,7 +22,7 @@ class VideoTag(Tag):
         :param key: uuid class object
         '''
         super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-		
+        
         self._frame_range = None
         if frame_range is not None:
             if not isinstance(frame_range, (tuple, list)):
