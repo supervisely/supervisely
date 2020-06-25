@@ -1,15 +1,17 @@
 # coding: utf-8
 
 import io
-from collections import defaultdict
+import re
 import urllib.parse
+import json
+
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext, get_file_name
+from supervisely_lib.sly_logger import logger
 from supervisely_lib._utils import batched, generate_free_name
-from requests_toolbelt import MultipartDecoder, MultipartEncoder
-import re
 
 
 class ImageApi(RemoveableBulkModuleApi):
@@ -194,40 +196,71 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             return True
 
-    def _upload_data_bulk(self, func_item_to_byte_stream, func_item_hash, items, progress_cb):
-        hashes = []
-        if len(items) == 0:
-            return hashes
+    def _upload_uniq_images_single_req(self, func_item_to_byte_stream, hashes_items_to_upload):
+        """
+        Upload images (binary data) to server with single request.
+        Expects unique images that aren't exist at server.
+        :param func_item_to_byte_stream: converter for "item" to byte stream
+        :param hashes_items_to_upload: list of pairs (hash, item)
+        :return: list of hashes for successfully uploaded items
+        """
+        content_dict = {}
+        for idx, (_, item) in enumerate(hashes_items_to_upload):
+            content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'image/*')
+        encoder = MultipartEncoder(fields=content_dict)
+        resp = self._api.post('images.bulk.upload', encoder)
 
-        hash_to_items = defaultdict(list)
+        resp_list = json.loads(resp.text)
+        remote_hashes = [d['hash'] for d in resp_list if 'hash' in d]
+        if len(remote_hashes) != len(hashes_items_to_upload):
+            problem_items = [(hsh, item, resp['errors'])
+                             for (hsh, item), resp in zip(hashes_items_to_upload, resp_list) if resp.get('errors')]
+            logger.warn('Not all images were uploaded within request.', extra={
+                'total_cnt': len(hashes_items_to_upload), 'ok_cnt': len(remote_hashes), 'items': problem_items})
+        return remote_hashes
 
-        for idx, item in enumerate(items):
-            item_hash = func_item_hash(item)
-            hashes.append(item_hash)
-            hash_to_items[item_hash].append(item)
+    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None):
+        """
+        Upload images (binary data) to server. Works with already existing or duplicating images.
+        :param func_item_to_byte_stream: converter for "item" to byte stream
+        :param items_hashes: iterable of pairs (item, hash) where "item" is a some descriptor (e.g. image file path)
+         for image data, and "hash" is a hash for the image binary data
+        :param retry_cnt: int, number of retries to send the whole set of items
+        :param progress_cb: callback to account progress (in number of items)
+        """
+        hash_to_items = {i_hash: item for item, i_hash in items_hashes}
 
-        unique_hashes = set(hashes)
-        remote_hashes = self.check_existing_hashes(list(unique_hashes))
-        new_hashes = unique_hashes - set(remote_hashes)
-
-        if progress_cb is not None:
+        unique_hashes = set(hash_to_items.keys())
+        remote_hashes = set(self.check_existing_hashes(list(unique_hashes)))  # existing -- from server
+        if progress_cb:
             progress_cb(len(remote_hashes))
+        pending_hashes = unique_hashes - remote_hashes
 
-        # upload only new images to supervisely server
-        items_to_upload = []
-        for hash in new_hashes:
-            items_to_upload.extend(hash_to_items[hash])
+        # @TODO: some correlation with sly.io.network_exceptions. Should we perform retries here?
+        for retry_idx in range(retry_cnt):
+            # single attempt to upload all data which is not uploaded yet
 
-        for batch in batched(items_to_upload):
-            content_dict = {}
-            for idx, item in enumerate(batch):
-                content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'image/*')
-            encoder = MultipartEncoder(fields=content_dict)
-            self._api.post('images.bulk.upload', encoder)
-            if progress_cb is not None:
-                progress_cb(len(batch))
+            for hashes in batched(list(pending_hashes)):
+                pending_hashes_items = [(h, hash_to_items[h]) for h in hashes]
+                hashes_rcv = self._upload_uniq_images_single_req(func_item_to_byte_stream, pending_hashes_items)
+                pending_hashes -= set(hashes_rcv)
+                if set(hashes_rcv) - set(hashes):
+                    logger.warn('Hash inconsistency in images bulk upload.',
+                                extra={'sent': hashes, 'received': hashes_rcv})
+                if progress_cb:
+                    progress_cb(len(hashes_rcv))
 
-        return hashes
+            if not pending_hashes:
+                return
+
+            logger.warn('Unable to upload images (data).', extra={
+                'retry_idx': retry_idx,
+                'items': [(h, hash_to_items[h]) for h in pending_hashes]
+            })
+            # now retry it for the case if it is a shadow server/connection error
+
+        raise RuntimeError("Unable to upload images (data). "
+                           "Please check if images are in supported format and if ones aren't corrupted.")
 
     def upload_path(self, dataset_id, name, path, meta=None):
         '''
@@ -248,12 +281,15 @@ class ImageApi(RemoveableBulkModuleApi):
         :param names: list of str (if lengh of names list != lengh of paths list raise error)
         :param paths: list of str
         :param progress_cb:
-        :param metas: list of str
+        :param metas: list of dicts
         :return: list of images
         '''
         def path_to_bytes_stream(path):
             return open(path, 'rb')
-        hashes = self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
+
+        hashes = [get_file_hash(x) for x in paths]
+
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_np(self, dataset_id, name, img, meta=None):
@@ -288,7 +324,9 @@ class ImageApi(RemoveableBulkModuleApi):
             return sly_image.get_hash(img, get_file_ext(name))
 
         img_name_list = list(zip(imgs, names))
-        hashes = self._upload_data_bulk(img_to_bytes_stream, img_to_hash, img_name_list, progress_cb)
+        hashes = [img_to_hash(x) for x in img_name_list]
+
+        self._upload_data_bulk(img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb)
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_link(self, dataset_id, name, link, meta=None):
@@ -327,7 +365,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
 
-    def upload_hashes(self, dataset_id, names, hashes, progress_cb=None,  metas=None):
+    def upload_hashes(self, dataset_id, names, hashes, progress_cb=None, metas=None):
         '''
         Upload images from given hashes with given names to dataset
         :param dataset_id: int
