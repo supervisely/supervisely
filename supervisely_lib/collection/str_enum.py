@@ -37,3 +37,16 @@ class StrEnum(Enum):
 
     def __str__(self):
         return str(self.value)
+
+    @classmethod
+    def has_value(cls, value):
+        for possible_value in cls:
+            if value == str(possible_value.value):
+                return True
+        return False
+
+    @classmethod
+    def values(cls):
+        return [value.value for value in cls]
+
+

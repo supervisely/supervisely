@@ -22,7 +22,7 @@ class VideoFrameAPI(ModuleApi):
         :return: image in RGB format(numpy matrix) for frame with given index from given video id
         '''
         response = self._download(video_id, frame_index)
-        img = read_bytes(response.content, input_is_bgr=False)
+        img = read_bytes(response.content)
         return img
 
     def download_path(self, video_id, frame_index, path):

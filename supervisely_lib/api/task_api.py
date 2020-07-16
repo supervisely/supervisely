@@ -174,6 +174,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self.wait(task_id, self.Status.DEPLOYED)
         return task_id
 
+    def deploy_model_async(self, agent_id, model_id):
+        task_ids = self._api.model.get_deploy_tasks(model_id)
+        if len(task_ids) == 0:
+            task_id = self._deploy_model(agent_id, model_id)
+        else:
+            task_id = task_ids[0]
+        return task_id
+
     def stop(self, id):
         response = self._api.post('tasks.stop', {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])

@@ -58,8 +58,13 @@ class Polygon(VectorGeometry):
         :param rect: Rectangle class object
         :return: list of Poligon class objects
         '''
+        from supervisely_lib.geometry.point_location import PointLocation
         try:
-            clipping_window_shpl = ShapelyPolygon(points_to_row_col_list(rect.corners))
+            points = [PointLocation(row=rect.top, col=rect.left), PointLocation(row=rect.top, col=rect.right + 1),
+                PointLocation(row=rect.bottom + 1, col=rect.right + 1), PointLocation(row=rect.bottom + 1, col=rect.left)]
+            #points = rect.corners # old implementation with 1 pixel error (right bottom) #@TODO: investigate here (critical issue)
+
+            clipping_window_shpl = ShapelyPolygon(points_to_row_col_list(points))
             self_shpl = ShapelyPolygon(self.exterior_np, holes=self.interior_np)
             intersections_shpl = self_shpl.buffer(0).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_shpl)

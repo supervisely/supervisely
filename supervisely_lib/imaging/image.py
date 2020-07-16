@@ -116,18 +116,15 @@ def read(path) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def read_bytes(image_bytes, input_is_bgr=True) -> np.ndarray:
+def read_bytes(image_bytes) -> np.ndarray:
     '''
     The function read_bytes loads an byte image and returns it in RGB format.
     :param image_bytes: byte image
     :return: image in RGB format(numpy matrix)
     '''
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
-    img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)
-    if input_is_bgr is True:
-        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    else:
-        return img
+    img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
 def write(path, img):
@@ -259,7 +256,7 @@ def get_hash(img, ext):
 def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     '''
     The function crop cut out part of the image with rectangle size. If rectangle for crop is out of image area it
-    generate exception error(ValueError).
+    generates exception error(ValueError).
     :param img: image(numpy matrix) to be cropped
     :param rect: class object Rectangle of a certain size
     :return: cropped image
@@ -268,6 +265,32 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     if not img_rect.contains(rect):
         raise ValueError('Rectangle for crop out of image area!')
     return rect.get_cropped_numpy_slice(img)
+
+
+def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
+    '''
+    The function crop cut out part of the image with rectangle size. If rectangle for crop is out of image area it
+    generates additional padding.
+    :param img: image(numpy matrix) to be cropped
+    :param rect: class object Rectangle of a certain size
+    :return: cropped image
+    '''
+    img_rect = Rectangle.from_array(img)
+    if not img_rect.contains(rect):
+        row, col = img.shape[:2]
+        new_img = cv2.copyMakeBorder(
+            img,
+            top=rect.height,
+            bottom=rect.height,
+            left=rect.width,
+            right=rect.width,
+            borderType=cv2.BORDER_CONSTANT
+        )
+        new_rect = rect.translate(drow=rect.height, dcol=rect.width)
+        return new_rect.get_cropped_numpy_slice(new_img)
+
+    else:
+        return rect.get_cropped_numpy_slice(img)
 
 
 def restore_proportional_size(in_size: tuple, out_size: tuple = None,

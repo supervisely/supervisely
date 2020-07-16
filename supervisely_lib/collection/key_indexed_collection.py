@@ -276,3 +276,6 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
     def merge(self, other):
         new_items = [*self.items(), *other.items()]
         return self.clone(items=new_items)
+
+    def merge_without_duplicates(self, other):
+        return super().merge(other)
