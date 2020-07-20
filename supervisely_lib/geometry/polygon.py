@@ -69,8 +69,11 @@ class Polygon(VectorGeometry):
             intersections_shpl = self_shpl.buffer(0).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_shpl)
         except Exception:
-            logger.warn('Polygon cropping exception, shapely.', exc_info=False)
-            raise
+            logger.warn('Polygon cropping exception, shapely.', exc_info=True)
+            # raise
+            # if polygon is invalid, just print warning and skip it
+            # @TODO: need more investigation here
+            return []
 
         intersections = shapely_figure_to_coords_list(mapping_shpl)
 

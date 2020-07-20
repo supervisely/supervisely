@@ -151,7 +151,7 @@ class Api:
                                                        "retry_limit": retries})
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
-        Api._raise_for_status(response)
+        raise requests.exceptions.RetryError("Retry limit exceeded")
 
     def get(self, method, params, retries=None, stream=False, use_public_api=True):
         '''
