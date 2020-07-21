@@ -168,6 +168,9 @@
       },
       "model_tags": {
         "$ref": "#/definitions/renamer"
+      },
+      "save_probabilities": {
+        "type": "boolean"
       }
     }
   }
