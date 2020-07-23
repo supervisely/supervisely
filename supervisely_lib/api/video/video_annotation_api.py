@@ -17,7 +17,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :return: video annotation to given id in json format
         '''
         video_info = self._api.video.get_info_by_id(video_id)
-        return self._download(video_info.dataset_id, [video_id])[0]
+        return self._download(video_info.dataset_id, video_id)
 
     def append(self, video_id, ann: VideoAnnotation, key_id_map: KeyIdMap = None):
         '''
