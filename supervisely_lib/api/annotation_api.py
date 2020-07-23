@@ -133,3 +133,13 @@ class AnnotationApi(ModuleApi):
     def copy(self, src_image_id, dst_image_id):
         self.copy_batch([src_image_id], [dst_image_id])
 
+    def copy_batch_by_ids(self, src_image_ids, dst_image_ids):
+        if len(src_image_ids) != len(dst_image_ids):
+            raise RuntimeError('Can not match "src_image_ids" and "dst_image_ids" lists, '
+                               'len(src_image_ids) != len(dst_image_ids)')
+        if len(src_image_ids) == 0:
+            return
+
+        self._api.post('annotations.bulk.copy', data={"srcImageIds": src_image_ids,
+                                                      "destImageIds": dst_image_ids,
+                                                      "preserveSourceDate": True})

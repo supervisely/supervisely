@@ -28,3 +28,4 @@ docs/_build
 docs/_build/*
 
 internal/tests/flt_format_insurance/*
+*/internal/*
