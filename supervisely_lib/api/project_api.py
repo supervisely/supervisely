@@ -179,3 +179,5 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         df = pd.DataFrame(response.json())
         return df
 
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        return super(ProjectApi, self)._convert_json_info(info, skip_missing=skip_missing)

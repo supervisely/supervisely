@@ -29,3 +29,6 @@ docs/_build/*
 
 internal/tests/flt_format_insurance/*
 */internal/*
+/help/tutorials/internal/07_nn_integration_options_explaned/07_nn_integration_options_explained.md
+plugins/python/src/internal
+help/tutorials/internal
