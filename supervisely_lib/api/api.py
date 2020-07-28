@@ -147,7 +147,7 @@ class Api:
                 process_requests_exception(self.logger, exc, method, url,
                                            verbose=True, swallow_exc=True, sleep_sec=self.retry_sleep_sec,
                                            response=response,
-                                           retry_info={"retry_idx": retry_idx + 2,
+                                           retry_info={"retry_idx": retry_idx + 1,
                                                        "retry_limit": retries})
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)

@@ -6,14 +6,14 @@ from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import numpy as np
 import json
 
-from supervisely_lib.api.module_api import ApiField, CloneableModuleApi
+from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, RemoveableModuleApi
 from supervisely_lib._utils import rand_str
 from supervisely_lib.io.fs import ensure_base_path, silent_remove
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.project.project_meta import ProjectMeta
 
 
-class NeuralNetworkApi(CloneableModuleApi):
+class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
     @staticmethod
     def info_sequence():
         return [ApiField.ID,
@@ -139,3 +139,6 @@ class NeuralNetworkApi(CloneableModuleApi):
 
     def _clone_api_method_name(self):
         return 'models.clone'
+
+    def _remove_api_method_name(self):
+        return 'models.remove'

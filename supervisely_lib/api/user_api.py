@@ -41,6 +41,18 @@ class UserApi(ModuleApiBase):
         items = self.get_list(filters)
         return _get_single_item(items)
 
+    def get_member_info_by_login(self, team_id, login):
+        filters = [{"field": ApiField.LOGIN, "operator": "=", "value": login}]
+        team_members = self.get_list_all_pages('members.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
+                                               convert_json_info_cb=self._api.user._convert_json_info)
+        return _get_single_item(team_members)
+
+    def get_member_info_by_id(self, team_id, user_id):
+        filters = [{"field": ApiField.ID, "operator": "=", "value": user_id}]
+        team_members = self.get_list_all_pages('members.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
+                                               convert_json_info_cb=self._api.user._convert_json_info)
+        return _get_single_item(team_members)
+
     def get_list(self, filters=None):
         '''
         :param filters: list
