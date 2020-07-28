@@ -55,11 +55,11 @@ class Polyline(VectorGeometry):
         :return: list of Polyline class objects
         '''
         try:
-            clipping_window = [[rect.left, rect.top], [rect.right, rect.top],
-                               [rect.right, rect.bottom], [rect.left, rect.bottom]]
+            clipping_window = [[rect.top, rect.left], [rect.top, rect.right],
+                               [rect.bottom, rect.right], [rect.bottom, rect.left]]
             clipping_window_shpl = ShapelyPolygon(clipping_window)
 
-            exterior = self.exterior_np[:, ::-1]
+            exterior = self.exterior_np
             intersections_polygon = LineString(exterior).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_polygon)
         except Exception:
