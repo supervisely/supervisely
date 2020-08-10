@@ -113,6 +113,8 @@ def read(path) -> np.ndarray:
     '''
     validate_format(path)
     img = cv2.imread(path, cv2.IMREAD_COLOR)
+    if img is None:
+        raise IOError("OpenCV can not open the file {!r}".format(path))
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 

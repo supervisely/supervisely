@@ -252,3 +252,19 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             resp = self._api.post('tasks.files.bulk.upload', encoder)
             if progress_cb is not None:
                 progress_cb(len(content_dict))
+
+    def _validate_checkpoints_support(self, task_id):
+        info = self.get_info_by_id(task_id)
+        if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
+            raise RuntimeError("Task (id={!r}) has type {!r}. "
+                               "Checkpoints are available only for tasks of type {!r}".format())
+
+    def list_checkpoints(self, task_id):
+        self._validate_checkpoints_support(task_id)
+        resp = self._api.post('tasks.checkpoints.list', {ApiField.ID: task_id})
+        return resp.json()
+
+    def delete_unused_checkpoints(self, task_id):
+        self._validate_checkpoints_support(task_id)
+        resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
+        return resp.json()
