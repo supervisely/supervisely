@@ -32,6 +32,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                 ApiField.CREATED_BY_LOGIN,
                 ApiField.ASSIGNED_TO_ID,
                 ApiField.ASSIGNED_TO_LOGIN,
+                ApiField.REVIEWER_ID,
+                ApiField.REVIEWER_LOGIN,
 
                 ApiField.CREATED_AT,
                 ApiField.STARTED_AT,
@@ -62,8 +64,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     def __init__(self, api):
         ModuleApi.__init__(self, api)
 
-    # @TODO: reimplement
-    def _convert_json_info(self, info: dict, skip_missing=False):
+    def _convert_json_info(self, info: dict, skip_missing=True):
         if info is None:
             return None
         else:
