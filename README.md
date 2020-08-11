@@ -135,7 +135,6 @@ The corresponding `Dockerfile` can be found in `base_images` directory.
 
 
 
-
 ## Data Transformation Language
 
 Data Transformation Language allows to automate complicated pipelines of data transformation. Different actions determined by *DTL layers* may be applied to images and annotations. In details it is described [here](https://docs.new.supervise.ly/export/).

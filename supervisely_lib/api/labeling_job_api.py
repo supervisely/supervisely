@@ -123,7 +123,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                tags_limit_per_image=None,
                include_images_with_tags=None,
                exclude_images_with_tags=None,
-               images_range=None):
+               images_range=None,
+               reviewer_id=None):
         '''
         Create labeling job by given user in given dataset
         :param name: str
@@ -163,8 +164,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         data = {ApiField.NAME: name,
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.USER_IDS: user_ids,
-                ApiField.DESCRIPTION: description,
-                ApiField.README: readme,
+                #ApiField.DESCRIPTION: description,
                 ApiField.META: {
                      'classes': classes_to_label,
                      'projectTags': tags_to_label,
@@ -173,11 +173,20 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                      'imageTagsLimit': tags_limit_per_image,}
                 }
 
+        if readme is not None:
+            data[ApiField.README] = str(readme)
+
+        if description is not None:
+            data[ApiField.DESCRIPTION] = str(description)
+
         if images_range is not None:
             if len(images_range) != 2:
                 raise RuntimeError('images_range has to contain 2 elements (start, end)')
             images_range = {'start': images_range[0], 'end': images_range[1]}
             data[ApiField.META]['range'] = images_range
+
+        if reviewer_id is not None:
+            data[ApiField.REVIEWER_ID] = reviewer_id
 
         response = self._api.post('jobs.add', data)
         # created_jobs_json = response.json()

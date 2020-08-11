@@ -145,6 +145,7 @@ class ApiField:
     LOGS =              'logs'
     FILES =             'files'
     WITH_CUSTOM_DATA =  'withCustomBigData'
+    REVIEWER_ID =       'reviewerId'
 
 
 def _get_single_item(items):
