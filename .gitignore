@@ -32,3 +32,12 @@ internal/tests/flt_format_insurance/*
 /help/tutorials/internal/07_nn_integration_options_explaned/07_nn_integration_options_explained.md
 plugins/python/src/internal
 help/tutorials/internal
+
+ecosystem/sys_apps/*
+!ecosystem/sys_apps/init.sh
+ecosystem/reports/*
+!ecosystem/reports/init.sh
+ecosystem/apps/*
+!ecosystem/apps/init.sh
+ecosystem/projects/*
+!ecosystem/projects/init.sh

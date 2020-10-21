@@ -1,6 +1,6 @@
 # coding: utf-8
 import json
-
+import pandas as pd
 
 class JsonSerializable:
     def to_json(self):
@@ -38,3 +38,19 @@ def dump_json_file(data, filename, indent=4):
     '''
     with open(filename, 'w') as fout:
         json.dump(data, fout, indent=indent)
+
+
+def flatten_json(data, sep="."):
+    df = pd.json_normalize(data, sep=sep)
+    return df.to_dict(orient='records')[0]
+
+
+def modify_keys(data, prefix=None, suffix=None):
+    def _modify(k):
+        res = k
+        if prefix is not None:
+            res = prefix + res
+        if suffix is not None:
+            res += suffix
+        return res
+    return {_modify(k): v for k, v in data.items()}

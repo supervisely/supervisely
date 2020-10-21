@@ -23,12 +23,12 @@ RUN apt-get update \
 
 
 ##############################################################################
-# Miniconda & python 3.6
+# Miniconda & python 3.9
 ##############################################################################
-RUN curl -sSL https://repo.continuum.io/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh -o /tmp/miniconda.sh \
+RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-py38_4.8.3-Linux-x86_64.sh -o /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -bfp /usr/local \
     && rm -rf /tmp/miniconda.sh \
-    && conda install -y python=3.6.5 \
+    && conda install -y python=3.8 \
     && conda clean --all --yes
 
 ENV PATH /opt/conda/bin:$PATH
@@ -49,20 +49,19 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 RUN pip install --no-cache-dir \
-        python-json-logger==0.1.8 \
-        pybase64==0.4.0 \
-        shapely==1.5.13 \
-        imgaug==0.2.5 \
-        numpy==1.14.3 \
-        opencv-python==3.4.1.15 \
-        scipy==1.1.0 \
-        scikit-image==0.13.0 \
-        matplotlib==2.2.2 \
-        pillow==5.1.0 \
-        requests==2.18.4 \
-        networkx==2.1 \
+        python-json-logger==0.1.11 \
+        pybase64==1.0.2 \
+        shapely==1.7.1 \
+        imgaug==0.4.0 \
+        numpy==1.19 \
+        opencv-python==3.4.11.43 \
+        scipy==1.5.2 \
+        scikit-image==0.17.1 \
+        matplotlib==3.3.2 \
+        pillow==5.4.1 \
+        requests==2.24.0 \
+        networkx==2.5 \
         jsonschema==2.6.0
-
 
 ##############################################################################
 # Java to run Pycharm
@@ -74,6 +73,7 @@ RUN apt-get update \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log \
+    && rm -rf /jre \
     && ln -s /usr/lib/jvm/java-7-openjdk-amd64 /jre
 
 ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
@@ -83,9 +83,9 @@ ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
 # Additional project libraries
 ##############################################################################
 RUN pip install --no-cache-dir \
-    pandas==1.0.3 \
-    grpcio==1.12.1 \
-    grpcio-tools==1.12.1
+    pandas==1.1.3 \
+    grpcio==1.32.0 \
+    grpcio-tools==1.32.0
 
 RUN pip install --upgrade pip
 RUN apt-get update && \
@@ -94,9 +94,9 @@ RUN apt-get update && \
         libexiv2-dev \
         libboost-all-dev
 
-RUN pip install py3exiv2==0.4.0 
-RUN pip install simplejson==3.16.0
-RUN pip install requests-toolbelt
+#RUN pip install py3exiv2==0.8.0
+#RUN pip install simplejson==3.17.2
+RUN pip install requests-toolbelt==0.9.1
 RUN pip install PTable
 RUN pip install flask-restful
 RUN apt-get install -y fonts-noto=20160116-1
@@ -107,14 +107,18 @@ RUN pip install bidict
 RUN pip install --no-cache-dir scikit-video==1.1.11
 
 RUN apt-get update && apt-get install -y openssh-server
-RUN mkdir /var/run/sshd
+RUN mkdir -p /var/run/sshd
 
-RUN pip install plotly==4.5.4
+RUN pip install plotly==4.11.0
+RUN pip install docker
+RUN pip install fuzzywuzzy
 
-RUN ln -sf /usr/local/bin/python3.6 /usr/bin/python
-
-RUN pip install --upgrade pandas
-RUN pip install "pillow<7"
+# to support pandas.read_excel
+RUN pip install xlrd
+RUN pip install google-cloud-storage
+RUN pip install python-slugify
+RUN pip install psutil==5.4.5
+RUN pip install cython
 
 ##############################################################################
 # Encoding for python SDK

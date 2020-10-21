@@ -1,4 +1,6 @@
 # coding: utf-8
+import json
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.api.video.video_annotation_api import VideoAnnotationAPI
@@ -6,9 +8,12 @@ from supervisely_lib.api.video.video_object_api import VideoObjectApi
 from supervisely_lib.api.video.video_figure_api import VideoFigureApi
 from supervisely_lib.api.video.video_frame_api import VideoFrameAPI
 from supervisely_lib.api.video.video_tag_api import VideoTagApi
+from supervisely_lib.sly_logger import logger
+from supervisely_lib.io.fs import get_file_hash
 
 from supervisely_lib.io.fs import ensure_base_path
 from supervisely_lib._utils import batched
+from supervisely_lib.video.video import get_video_streams, gen_video_stream_name
 
 
 class VideoApi(RemoveableBulkModuleApi):
@@ -206,3 +211,107 @@ class VideoApi(RemoveableBulkModuleApi):
                                                                         }
                                                                     }
                                                                     })
+    # def upload(self):
+    #     #"/videos.bulk.upload"
+    #     pass
+    #
+    # def upload_path(self, dataset_id, name, path, meta=None):
+    #     metas = None if meta is None else [meta]
+    #     return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
+
+    #@TODO: copypaste from image_api
+    def check_existing_hashes(self, hashes):
+        results = []
+        if len(hashes) == 0:
+            return results
+        for hashes_batch in batched(hashes, batch_size=900):
+            response = self._api.post('images.internal.hashes.list', hashes_batch)
+            results.extend(response.json())
+        return results
+
+    def upload_paths(self, dataset_id, names, paths, progress_cb=None, metas=None):
+        def path_to_bytes_stream(path):
+            return open(path, 'rb')
+
+        video_info_results = []
+
+        hashes = [get_file_hash(x) for x in paths]
+
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
+        metas = self._api.import_storage.get_meta_by_hashes(hashes)
+        metas2 = [meta["meta"] for meta in metas]
+
+        for name, hash, meta in zip(names, hashes, metas2):
+            try:
+                all_streams = meta["streams"]
+                video_streams = get_video_streams(all_streams)
+                for stream_info in video_streams:
+                    stream_index = stream_info["index"]
+
+                    #TODO: check is community
+                    # if instance_type == sly.COMMUNITY:
+                    #     if _check_video_requires_processing(file_info, stream_info) is True:
+                    #         warn_video_requires_processing(file_name)
+                    #         continue
+
+                    item_name = name
+                    info = self._api.video.get_info_by_name(dataset_id, item_name)
+                    if info is not None:
+                        item_name = gen_video_stream_name(name, stream_index)
+                    res = self.upload_hash(dataset_id, item_name, hash, stream_index)
+                    video_info_results.append(res)
+            except Exception as e:
+                logger.warning("File skipped {!r}: error occurred during processing {!r}".format(name, str(e)))
+
+        return video_info_results
+
+    #TODO: copypaste from images_api
+    def _upload_uniq_videos_single_req(self, func_item_to_byte_stream, hashes_items_to_upload):
+        content_dict = {}
+        for idx, (_, item) in enumerate(hashes_items_to_upload):
+            content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'video/*')
+        encoder = MultipartEncoder(fields=content_dict)
+        resp = self._api.post('videos.bulk.upload', encoder)
+
+        resp_list = json.loads(resp.text)
+        remote_hashes = [d['hash'] for d in resp_list if 'hash' in d]
+        if len(remote_hashes) != len(hashes_items_to_upload):
+            problem_items = [(hsh, item, resp['errors'])
+                             for (hsh, item), resp in zip(hashes_items_to_upload, resp_list) if resp.get('errors')]
+            logger.warn('Not all images were uploaded within request.', extra={
+                'total_cnt': len(hashes_items_to_upload), 'ok_cnt': len(remote_hashes), 'items': problem_items})
+        return remote_hashes
+
+    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None):
+        hash_to_items = {i_hash: item for item, i_hash in items_hashes}
+
+        unique_hashes = set(hash_to_items.keys())
+        remote_hashes = set(self.check_existing_hashes(list(unique_hashes)))  # existing -- from server
+        if progress_cb:
+            progress_cb(len(remote_hashes))
+        pending_hashes = unique_hashes - remote_hashes
+
+        for retry_idx in range(retry_cnt):
+            # single attempt to upload all data which is not uploaded yet
+
+            for hashes in batched(list(pending_hashes)):
+                pending_hashes_items = [(h, hash_to_items[h]) for h in hashes]
+                hashes_rcv = self._upload_uniq_videos_single_req(func_item_to_byte_stream, pending_hashes_items)
+                pending_hashes -= set(hashes_rcv)
+                if set(hashes_rcv) - set(hashes):
+                    logger.warn('Hash inconsistency in images bulk upload.',
+                                extra={'sent': hashes, 'received': hashes_rcv})
+                if progress_cb:
+                    progress_cb(len(hashes_rcv))
+
+            if not pending_hashes:
+                return
+
+            logger.warn('Unable to upload images (data).', extra={
+                'retry_idx': retry_idx,
+                'items': [(h, hash_to_items[h]) for h in pending_hashes]
+            })
+            # now retry it for the case if it is a shadow server/connection error
+
+        raise RuntimeError("Unable to upload images (data). "
+                           "Please check if images are in supported format and if ones aren't corrupted.")

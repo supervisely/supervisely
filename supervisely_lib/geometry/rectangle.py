@@ -281,3 +281,17 @@ class Rectangle(Geometry):
         :return: numpy array
         '''
         return data[self.top:(self.bottom+1), self.left:(self.right+1), ...]
+
+    def intersects_with(self, rect):
+        if self.left > rect.right or self.right < rect.left:
+            return False
+        if self.top > rect.bottom or self.bottom < rect.top:
+            return False
+        return True
+
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        from supervisely_lib.geometry.bitmap import Bitmap
+        from supervisely_lib.geometry.polygon import Polygon
+        return [AnyGeometry, Bitmap, Polygon]

@@ -3,7 +3,7 @@
 import math
 
 from supervisely_lib.sly_logger import logger, EventType
-
+from supervisely_lib._utils import sizeof_fmt
 
 # float progress of training, since zero
 def epoch_float(epoch, train_it, train_its):
@@ -14,12 +14,13 @@ class Progress:
     '''
     This is a class for conveniently monitoring the operation of modules and displaying statistics on data processing
     '''
-    def __init__(self, message, total_cnt, ext_logger=None):
+    def __init__(self, message, total_cnt, ext_logger=None, is_size=False):
         '''
         :param message: str
         :param total_cnt: int
         :param ext_logger: Logger class object
         '''
+        self.is_size = is_size
         self.message = message
         self.total = total_cnt
         self.current = 0
@@ -46,12 +47,18 @@ class Progress:
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         '''
-        self.logger.info('progress', extra={
+        extra = {
             'event_type': EventType.PROGRESS,
             'subtask': self.message,
             'current': math.ceil(self.current),
-            'total': math.ceil(self.total),
-        })
+            'total': math.ceil(self.total) if self.total > 0 else math.ceil(self.current),
+        }
+
+        if self.is_size:
+            extra['current_label'] = sizeof_fmt(self.current)
+            extra['total_label'] = sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+
+        self.logger.info('progress', extra=extra)
         self.reported_cnt += 1
 
     def report_if_needed(self):

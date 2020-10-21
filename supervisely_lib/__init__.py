@@ -8,6 +8,7 @@ from supervisely_lib.function_wrapper import main_wrapper, function_wrapper, cat
 
 from supervisely_lib.io import fs
 from supervisely_lib.io import env
+from supervisely_lib.io import json
 from supervisely_lib.io import network_exceptions
 
 from supervisely_lib.imaging import image
@@ -21,7 +22,7 @@ from supervisely_lib.task.progress import epoch_float, Progress, report_import_f
     report_dtl_verification_finished, \
     report_metrics_training, report_metrics_validation, report_inference_finished
 
-from supervisely_lib.project.project import Project, OpenMode, download_project, read_single_project
+from supervisely_lib.project.project import Project, OpenMode, download_project, read_single_project, upload_project
 from supervisely_lib.project.project_meta import ProjectMeta
 
 from supervisely_lib.annotation.annotation import ANN_EXT, Annotation
@@ -79,7 +80,7 @@ from supervisely_lib.video_annotation.video_object_collection import VideoObject
 from supervisely_lib.video_annotation.video_figure import VideoFigure
 from supervisely_lib.video_annotation.frame import Frame
 from supervisely_lib.video_annotation.frame_collection import FrameCollection
-from supervisely_lib.project.video_project import VideoDataset, VideoProject, download_video_project
+from supervisely_lib.project.video_project import VideoDataset, VideoProject, download_video_project, upload_video_project
 from supervisely_lib.video import video
 
 import supervisely_lib.labeling_jobs.utils as lj
@@ -90,5 +91,13 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object import PointcloudOb
 from supervisely_lib.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely_lib.project.pointcloud_project import PointcloudDataset, PointcloudProject, download_pointcloud_project
 
-
 from supervisely_lib.pyscripts_utils import utils as ps
+from supervisely_lib.io import docker_utils
+import supervisely_lib.app_widget as app_widget
+import supervisely_lib.app as app
+from supervisely_lib.app.app_service import AppService
+
+from supervisely_lib.decorators.profile import timeit
+import supervisely_lib.script as script
+from supervisely_lib.user.user import UserRoleName
+from supervisely_lib.io import github_utils as git

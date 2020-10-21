@@ -16,6 +16,7 @@ class TagValueType:
 
 
 class TagMetaJsonFields:
+    ID = 'id'
     NAME = 'name'
     VALUE_TYPE = 'value_type'
     VALUES = 'values'
@@ -30,7 +31,7 @@ class TagMeta(KeyObject, JsonSerializable):
     This is a class for creating and using TagMeta objects. It include tag name, value type, and possible values for
     tags with enum values.
     '''
-    def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None):
+    def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None, sly_id=None):
         """
         :param name: str
         :param value_type: str (one of TagValueType fields)
@@ -45,6 +46,7 @@ class TagMeta(KeyObject, JsonSerializable):
         self._value_type = value_type
         self._possible_values = possible_values
         self._color = random_rgb() if color is None else deepcopy(color)
+        self._sly_id = sly_id
 
         if self._value_type == TagValueType.ONEOF_STRING:
             if self._possible_values is None:
@@ -75,6 +77,10 @@ class TagMeta(KeyObject, JsonSerializable):
     def color(self):
         return self._color.copy()
 
+    @property
+    def sly_id(self):
+        return self._sly_id
+
     def to_json(self):
         '''
         The function to_json convert TagMeta object to json format
@@ -87,6 +93,9 @@ class TagMeta(KeyObject, JsonSerializable):
         }
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
+
+        if self.sly_id is not None:
+            jdict[TagMetaJsonFields.ID] = self.sly_id
         return jdict
 
     @classmethod
@@ -105,7 +114,8 @@ class TagMeta(KeyObject, JsonSerializable):
             color = data.get(TagMetaJsonFields.COLOR)
             if color is not None:
                 color = hex2rgb(color)
-            return cls(name=name, value_type=value_type, possible_values=values, color=color)
+            sly_id = data.get(TagMetaJsonFields.ID, None)
+            return cls(name=name, value_type=value_type, possible_values=values, color=color, sly_id=sly_id)
         else:
             raise ValueError('Tags must be dict or str types.')
 
@@ -161,7 +171,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 self.value_type == other.value_type and
                 self.possible_values == other.possible_values)
 
-    def clone(self, name=None, value_type=None, possible_values=None, color=None):
+    def clone(self, name=None, value_type=None, possible_values=None, color=None, sly_id=None):
         '''
         The function clone make copy of the TagMeta class object
         :return: TagMeta class object
@@ -169,7 +179,8 @@ class TagMeta(KeyObject, JsonSerializable):
         return TagMeta(name=take_with_default(name, self.name),
                        value_type=take_with_default(value_type, self.value_type),
                        possible_values=take_with_default(possible_values, self.possible_values),
-                       color=take_with_default(color, self.color))
+                       color=take_with_default(color, self.color),
+                       sly_id=take_with_default(sly_id, self.sly_id))
 
     def __str__(self):
         return '{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10}'.format('Name:', self.name,

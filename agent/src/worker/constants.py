@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlparse
 import supervisely_lib as sly
 import hashlib
-from enum import Enum
+from supervisely_lib.io.docker_utils import PullPolicy
 
 
 _AGENT_HOST_DIR = 'AGENT_HOST_DIR'
@@ -24,6 +24,7 @@ _CHECK_VERSION_COMPATIBILITY = 'CHECK_VERSION_COMPATIBILITY'
 _DOCKER_API_CALL_TIMEOUT = 'DOCKER_API_CALL_TIMEOUT'
 _HTTP_PROXY = 'HTTP_PROXY'
 _HTTPS_PROXY = 'HTTPS_PROXY'
+_NO_PROXY = 'NO_PROXY'
 _PUBLIC_API_RETRY_LIMIT = 'PUBLIC_API_RETRY_LIMIT'
 
 # container limits
@@ -33,6 +34,9 @@ _MEM_LIMIT = 'MEM_LIMIT'
 
 _PULL_POLICY = 'PULL_POLICY'
 
+_GIT_LOGIN = 'GIT_LOGIN'
+_GIT_PASSWORD = 'GIT_PASSWORD'
+_GITHUB_TOKEN = 'GITHUB_TOKEN'
 
 _REQUIRED_SETTINGS = [
     _AGENT_HOST_DIR,
@@ -42,16 +46,6 @@ _REQUIRED_SETTINGS = [
     _DOCKER_PASSWORD,
     _DOCKER_REGISTRY
 ]
-
-
-class PullPolicy(Enum):
-    def __str__(self):
-        return str(self.value)
-
-    ALWAYS = 'Always'.lower()
-    IF_AVAILABLE = 'IfAvailable'.lower()
-    IF_NOT_PRESENT = 'IfNotPresent'.lower()
-    NEVER = 'Never'.lower()
 
 
 _PULL_POLICY_DICT = {
@@ -72,11 +66,15 @@ _OPTIONAL_DEFAULTS = {
     _DOCKER_API_CALL_TIMEOUT: '60',
     _HTTP_PROXY: "",
     _HTTPS_PROXY: "",
+    _NO_PROXY: "",
     _PUBLIC_API_RETRY_LIMIT: 100,
     _CPU_PERIOD: None,
     _CPU_QUOTA: None,
     _MEM_LIMIT: None,
-    _PULL_POLICY: str(PullPolicy.IF_AVAILABLE)
+    _PULL_POLICY: str(PullPolicy.IF_AVAILABLE), #str(PullPolicy.NEVER),
+    _GIT_LOGIN: None,
+    _GIT_PASSWORD: None,
+    _GITHUB_TOKEN: None
 }
 
 
@@ -244,6 +242,9 @@ def HTTP_PROXY():
 def HTTPS_PROXY():
     return read_optional_setting(_HTTPS_PROXY)
 
+def NO_PROXY():
+    return read_optional_setting(_NO_PROXY)
+
 
 def PUBLIC_API_RETRY_LIMIT():
     return int(read_optional_setting(_PUBLIC_API_RETRY_LIMIT))
@@ -281,6 +282,38 @@ def PULL_POLICY():
         return _PULL_POLICY_DICT[val]
 
 
+def GIT_LOGIN():
+    return read_optional_setting(_GIT_LOGIN)
+
+
+def GIT_PASSWORD():
+    return read_optional_setting(_GIT_PASSWORD)
+
+
+# def AGENT_APP_SOURCES_DIR():
+#     return os.path.join(AGENT_ROOT_DIR(), 'app_sources')
+#
+#
+# def AGENT_APP_SOURCES_DIR_HOST():
+#     return os.path.join(HOST_DIR(), 'app_sources')
+
+
+def AGENT_APP_SESSIONS_DIR():
+    return os.path.join(AGENT_ROOT_DIR(), 'app_sessions')
+
+
+def AGENT_APP_SESSIONS_DIR_HOST():
+    return os.path.join(HOST_DIR(), 'app_sessions')
+
+
+def GITHUB_TOKEN():
+    return read_optional_setting(_GITHUB_TOKEN)
+
+
+def APPS_STORAGE_DIR():
+    return os.path.join(AGENT_STORAGE_DIR(), "apps")
+
+
 def init_constants():
     sly.fs.mkdir(AGENT_LOG_DIR())
     sly.fs.mkdir(AGENT_TASKS_DIR())
@@ -291,3 +324,6 @@ def init_constants():
     sly.fs.mkdir(AGENT_IMPORT_DIR())
     os.chmod(AGENT_IMPORT_DIR(), 0o777)  # octal
     PULL_ALWAYS()
+    #sly.fs.mkdir(AGENT_APP_SOURCES_DIR())
+    sly.fs.mkdir(AGENT_APP_SESSIONS_DIR())
+    sly.fs.mkdir(APPS_STORAGE_DIR())

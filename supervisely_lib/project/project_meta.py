@@ -11,6 +11,7 @@ class ProjectMetaJsonFields:
     IMG_TAGS = 'tags_images'
     OBJ_TAGS = 'tags_objects'
     TAGS = 'tags'
+    PROJECT_TYPE = 'projectType'
 
 
 def _merge_img_obj_tag_metas(img_tag_metas: ObjClassCollection,
@@ -28,36 +29,43 @@ def _merge_img_obj_tag_metas(img_tag_metas: ObjClassCollection,
     return img_tag_metas.add_items(obj_tag_metas_to_add)
 
 
-#@TODO: add validation
 class ProjectMeta(JsonSerializable):
     '''
     This is a class for creating and using ProjectMeta objects. This class contain data about meta information of the project
     '''
-    def __init__(self, obj_classes=None, tag_metas=None):
+    def __init__(self, obj_classes=None, tag_metas=None, project_type=None):
         '''
         :param obj_classes: Collection that stores ObjClass instances with unique names.
         :param tag_metas: Collection that stores TagMeta instances with unique names.
         '''
         self._obj_classes = ObjClassCollection() if obj_classes is None else obj_classes
         self._tag_metas = take_with_default(tag_metas, TagMetaCollection())
+        self._project_type = project_type
 
     @property
-    def obj_classes(self):
+    def obj_classes(self) -> ObjClassCollection:
         return self._obj_classes
 
     @property
-    def tag_metas(self):
+    def tag_metas(self) -> TagMetaCollection:
         return self._tag_metas
+
+    @property
+    def project_type(self):
+        return self._project_type
 
     def to_json(self):
         '''
         The function to_json convert ProjectMeta class object to json format
         :return: ProjectMeta in json format(dict)
         '''
-        return {
+        res = {
             ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
-            ProjectMetaJsonFields.TAGS: self._tag_metas.to_json(),
+            ProjectMetaJsonFields.TAGS: self._tag_metas.to_json()
         }
+        if self._project_type is not None:
+            res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
+        return res
 
     @classmethod
     def from_json(cls, data):
@@ -69,6 +77,7 @@ class ProjectMeta(JsonSerializable):
         tag_metas_json = data.get(ProjectMetaJsonFields.TAGS, [])
         img_tag_metas_json = data.get(ProjectMetaJsonFields.IMG_TAGS, [])
         obj_tag_metas_json = data.get(ProjectMetaJsonFields.OBJ_TAGS, [])
+        project_type = data.get(ProjectMetaJsonFields.PROJECT_TYPE, None)
 
         if len(tag_metas_json) > 0:
             # New format - all project tags in a single collection.
@@ -86,7 +95,7 @@ class ProjectMeta(JsonSerializable):
             tag_metas = _merge_img_obj_tag_metas(img_tag_metas, obj_tag_metas)
 
         return cls(obj_classes=ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
-                   tag_metas=tag_metas)
+                   tag_metas=tag_metas, project_type=project_type)
 
     def merge(self, other):
         '''
@@ -97,7 +106,7 @@ class ProjectMeta(JsonSerializable):
         return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
                           tag_metas=self._tag_metas.merge(other._tag_metas))
 
-    def clone(self, obj_classes: ObjClassCollection = None, tag_metas: TagMetaCollection = None):
+    def clone(self, obj_classes: ObjClassCollection = None, tag_metas: TagMetaCollection = None, project_type=None):
         '''
         The function clone create copy of ProjectMeta with given Collections that stores ObjClass and TagMeta
         :param obj_classes: ObjClassCollection class object
@@ -105,7 +114,8 @@ class ProjectMeta(JsonSerializable):
         :return: ProjectMeta class object
         '''
         return ProjectMeta(obj_classes=take_with_default(obj_classes, self.obj_classes),
-                           tag_metas=take_with_default(tag_metas, self.tag_metas))
+                           tag_metas=take_with_default(tag_metas, self.tag_metas),
+                           project_type=take_with_default(project_type, self.project_type))
 
     def add_obj_class(self, new_obj_class):
         '''

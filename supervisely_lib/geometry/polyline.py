@@ -100,3 +100,11 @@ class Polyline(VectorGeometry):
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         return Polyline(exterior)
+
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        from supervisely_lib.geometry.rectangle import Rectangle
+        from supervisely_lib.geometry.bitmap import Bitmap
+        from supervisely_lib.geometry.polygon import Polygon
+        return [AnyGeometry, Rectangle, Bitmap, Polygon]

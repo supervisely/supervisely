@@ -314,3 +314,8 @@ class GraphNodes(Geometry):
         '''
         return GraphNodes._transform_config_colors(config, rgb2hex)
 
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        from supervisely_lib.geometry.rectangle import Rectangle
+        return [AnyGeometry, Rectangle]

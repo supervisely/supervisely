@@ -12,7 +12,8 @@ class UserApi(ModuleApiBase):
     def info_sequence():
         return [ApiField.ID,
                 ApiField.LOGIN,
-                #ApiField.ROLE_ID,
+                ApiField.ROLE,
+                ApiField.ROLE_ID,
                 ApiField.NAME,
                 ApiField.EMAIL,
                 ApiField.LOGINS,
@@ -24,6 +25,9 @@ class UserApi(ModuleApiBase):
     @staticmethod
     def info_tuple_name():
         return 'UserInfo'
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        return super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
     def get_info_by_id(self, id):
         '''

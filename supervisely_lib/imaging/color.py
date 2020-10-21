@@ -13,10 +13,7 @@ def _validate_color(color):
     if len(color) != 3:
         raise ValueError('Color have to contain exactly 3 values: [R, G, B]')
     for channel in color:
-        if 0 <= channel <= 255:
-            pass
-        else:
-            raise ValueError('Color channel have to be in range [0; 255]')
+        validate_channel_value(channel)
 
 
 def random_rgb() -> list:
@@ -111,3 +108,9 @@ def _hex2rgba(hex_value: str) -> list:
     assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
     return _hex2color(hex_value)
 
+
+def validate_channel_value(value):
+    if 0 <= value <= 255:
+        pass
+    else:
+        raise ValueError('Color channel has to be in range [0; 255]')

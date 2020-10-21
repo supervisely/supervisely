@@ -38,25 +38,29 @@ class TaskLogged(multiprocessing.Process):
         # logs.
         self._user_api_key = self.info.pop('user_api_key', None)
 
-        self.dir_task = osp.join(constants.AGENT_TASKS_DIR(), str(self.info['task_id']))
-        self.dir_logs = osp.join(self.dir_task, 'logs')
+        self.init_task_dir()
+        self.dir_logs = os.path.join(self.dir_task, 'logs')
         sly.fs.mkdir(self.dir_task)
         sly.fs.mkdir(self.dir_logs)
-        self.dir_task_host = osp.join(constants.AGENT_TASKS_DIR_HOST(), str(self.info['task_id']))
+
+        self.logger = None
+        self.log_queue = None
+        self.executor_log = None
+        self.future_log = None
+        self.init_logger()
 
         self._stop_log_event = threading.Event()
         self._stop_event = multiprocessing.Event()
 
         # pre-init for static analysis
-        self.logger = None
-        self.log_queue = None
-        self.executor_log = None
-        self.future_log = None
-
         self.api = None
         self.data_mgr = None
         self.public_api = None
         self.public_api_context = None
+
+    def init_task_dir(self):
+        self.dir_task = osp.join(constants.AGENT_TASKS_DIR(), str(self.info['task_id']))
+        self.dir_task_host = osp.join(constants.AGENT_TASKS_DIR_HOST(), str(self.info['task_id']))
 
     def init_logger(self):
         self.logger = sly.get_task_logger(self.info['task_id'])
@@ -113,13 +117,12 @@ class TaskLogged(multiprocessing.Process):
     # in new process
     def run(self):
         try:
-            self.init_logger()
             self.init_api()
             self.future_log = self.executor_log.submit(self.submit_log)  # run log submitting
         except Exception as e:
             # unable to do something another if crashed
             print(e)
-            dump_json_file(e, os.path.join(constants.AGENT_ROOT_DIR(), 'logger_fail.json'))
+            dump_json_file(str(e), os.path.join(constants.AGENT_ROOT_DIR(), 'logger_fail.json'))
             os._exit(1)  # ok, documented
 
         try:

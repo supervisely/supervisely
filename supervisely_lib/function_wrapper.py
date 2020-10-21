@@ -2,6 +2,7 @@
 
 import os
 import traceback
+import logging
 from supervisely_lib.sly_logger import logger, EventType
 
 
@@ -20,7 +21,7 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         })
         logger.debug('Main finished: BAD.', extra={'main_name': main_name})
 
-        if os.environ.get(SLY_DEBUG):
+        if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
             raise
         else:
             os._exit(1)

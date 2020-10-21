@@ -16,8 +16,8 @@ from supervisely_lib.video import video as sly_video
 
 from supervisely_lib.project.project import Dataset, Project, OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
+from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.video_annotation.video_annotation import VideoAnnotation
-
 
 VideoItemPaths = namedtuple('VideoItemPaths', ['video_path', 'ann_path'])
 
@@ -221,4 +221,38 @@ def download_video_project(api, project_id, dest_dir, dataset_ids=None, download
     project_fs.set_key_id_map(key_id_map)
 
 
+def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
+    project_fs = VideoProject.read_single(dir)
+    if project_name is None:
+        project_name = project_fs.name
 
+    if api.project.exists(workspace_id, project_name):
+        project_name = api.project.get_free_name(workspace_id, project_name)
+
+    project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
+    api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    for dataset_fs in project_fs.datasets:
+        dataset = api.dataset.create(project.id, dataset_fs.name)
+
+        names, item_paths, ann_paths = [], [], []
+        for item_name in dataset_fs:
+            img_path, ann_path = dataset_fs.get_item_paths(item_name)
+            names.append(item_name)
+            item_paths.append(img_path)
+            ann_paths.append(ann_path)
+
+        progress_cb = None
+        if log_progress:
+            ds_progress = Progress('Uploading videos to dataset {!r}'.format(dataset.name), total_cnt=len(item_paths))
+            progress_cb = ds_progress.iters_done_report
+
+        item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
+        item_ids = [item_info.id for item_info in item_infos]
+        if log_progress:
+            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(item_paths))
+            progress_cb = ds_progress.iters_done_report
+
+        api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
+
+    return project.id, project.name

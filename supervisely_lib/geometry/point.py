@@ -151,6 +151,7 @@ class Point(Geometry):
                                        sly_id=sly_id, class_id=class_id,
                                        labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-
-
-
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        return [AnyGeometry]

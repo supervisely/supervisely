@@ -611,3 +611,39 @@ def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=F
 
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
+
+
+def upload_project(dir, api, workspace_id, project_name=None, log_progress=True):
+    project_fs = read_single_project(dir)
+    if project_name is None:
+        project_name = project_fs.name
+
+    if api.project.exists(workspace_id, project_name):
+        project_name = api.project.get_free_name(workspace_id, project_name)
+
+    project = api.project.create(workspace_id, project_name, )
+    api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    for dataset_fs in project_fs.datasets:
+        dataset = api.dataset.create(project.id, dataset_fs.name)
+
+        names, img_paths, ann_paths = [], [], []
+        for item_name in dataset_fs:
+            img_path, ann_path = dataset_fs.get_item_paths(item_name)
+            names.append(item_name)
+            img_paths.append(img_path)
+            ann_paths.append(ann_path)
+
+        progress_cb = None
+        if log_progress:
+            ds_progress = Progress('Uploading images to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
+            progress_cb = ds_progress.iters_done_report
+        img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
+        image_ids = [img_info.id for img_info in img_infos]
+
+        if log_progress:
+            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
+            progress_cb = ds_progress.iters_done_report
+        api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
+
+    return project.id, project.name

@@ -5,6 +5,7 @@ from copy import deepcopy
 import numpy as np
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID
+from supervisely_lib import logger
 
 
 # @TODO: use properties instead of field if it makes sense
@@ -26,6 +27,12 @@ class Geometry(JsonSerializable):
         #@TODO: will be ignored (for compatibility) and will be used in public api
         # if self.sly_id is not None:
         #     d[ID] = self.sly_id
+
+    def _copy_creation_info_inplace(self, g):
+        self.labeler_login = g.labeler_login
+        self.updated_at = g.updated_at
+        self.created_at = g.created_at
+        self.sly_id = g.sly_id
 
     @staticmethod
     def geometry_name():
@@ -167,3 +174,34 @@ class Geometry(JsonSerializable):
     @staticmethod
     def config_to_json(config):
         return config
+
+    @classmethod
+    def allowed_transforms(cls):
+        #raise NotImplementedError("{!r}".format(cls.geometry_name()))
+        return []
+
+    def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        if type(self) == new_geometry or new_geometry == AnyGeometry:
+            return [self]
+
+        allowed_transforms = self.allowed_transforms()
+        if new_geometry not in allowed_transforms:
+            raise NotImplementedError("from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name()))
+
+        from supervisely_lib.geometry.bitmap import Bitmap
+        from supervisely_lib.geometry.rectangle import Rectangle
+        from supervisely_lib.geometry.polygon import Polygon
+        from supervisely_lib.geometry.helpers import geometry_to_bitmap, geometry_to_polygon
+
+        res = []
+        if new_geometry == Bitmap:
+            res = geometry_to_bitmap(self, radius=contour_radius)
+        elif new_geometry == Rectangle:
+            res = [self.to_bbox()]
+        elif new_geometry == Polygon:
+            res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+
+        if len(res) == 0:
+            logger.warn('Can not convert geometry {} to {} because geometry to convert is very small'.format(self.geometry_name(), new_geometry.geometry_name()))
+        return res

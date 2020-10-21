@@ -150,8 +150,17 @@ class LabelBase:
         :param rect: Rectangle class object
         :return: Label class object with new geometry
         '''
-        return [self] if rect.contains(self.geometry.to_bbox()) else [
-            self.clone(geometry=g) for g in self.geometry.crop(rect)]
+        if rect.contains(self.geometry.to_bbox()):
+            return [self]
+        else:
+            # for compatibility of old slightly invalid annotations, some of them may be out of image bounds.
+            # will correct it automatically
+            result_geometries = self.geometry.crop(rect)
+            if len(result_geometries) == 1:
+                result_geometries[0]._copy_creation_info_inplace(self.geometry)
+                return [self.clone(geometry=result_geometries[0])]
+            else:
+                return [self.clone(geometry=g) for g in self.geometry.crop(rect)]
 
     def relative_crop(self, rect):
         '''
@@ -255,6 +264,13 @@ class LabelBase:
         :return: area of current geometry in Label object
         '''
         return self.geometry.area
+
+    def convert(self, new_obj_class: ObjClass):
+        labels = []
+        geometries = self.geometry.convert(new_obj_class.geometry_type)
+        for g in geometries:
+            labels.append(self.clone(geometry=g, obj_class=new_obj_class))
+        return labels
 
 
 class Label(LabelBase):

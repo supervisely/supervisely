@@ -231,3 +231,10 @@ class Bitmap(BitmapBase):
             return []
         new_mask = new_mask[origin.row:origin.row + mask.shape[0], origin.col:origin.col + mask.shape[1]]
         return Bitmap(data=new_mask, origin=origin.clone())
+
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        from supervisely_lib.geometry.polygon import Polygon
+        from supervisely_lib.geometry.rectangle import Rectangle
+        return [AnyGeometry, Polygon, Rectangle]

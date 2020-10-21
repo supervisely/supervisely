@@ -4,8 +4,6 @@ from enum import Enum
 from threading import Lock
 import json
 import os
-from docker.errors import DockerException, ImageNotFound as DockerImageNotFound
-from packaging import version
 
 import supervisely_lib as sly
 
@@ -43,10 +41,16 @@ class TaskDockerized(TaskSly):
 
         self._container = None
         self._container_lock = Lock()  # to drop container from different threads
+
+        self.docker_image_name = None
+        self.init_docker_image()
+
+        self.docker_pulled = False  # in task
+
+    def init_docker_image(self):
         self.docker_image_name = self.info.get('docker_image', None)
         if self.docker_image_name is not None and ':' not in self.docker_image_name:
             self.docker_image_name += ':latest'
-        self.docker_pulled = False  # in task
 
     @property
     def docker_api(self):
@@ -63,8 +67,6 @@ class TaskDockerized(TaskSly):
 
     def task_main_func(self):
         self.task_dir_cleaner.forbid_dir_cleaning()
-
-        self.docker_pull_if_needed()
 
         last_step_str = self.info.get('last_complete_step')
         self.logger.info('LAST_COMPLETE_STEP', extra={'step': last_step_str})
@@ -120,105 +122,44 @@ class TaskDockerized(TaskSly):
     def clean_task_dir(self):
         self.task_dir_cleaner.clean()
 
-    def _docker_pull(self, raise_exception=True):
-        self.logger.info('Docker image will be pulled', extra={'image_name': self.docker_image_name})
-        progress_dummy = sly.Progress('Pulling image...', 1, ext_logger=self.logger)
-        progress_dummy.iter_done_report()
-        try:
-            pulled_img = self._docker_api.images.pull(self.docker_image_name)
-            self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
-        except DockerException as e:
-            if raise_exception is True:
-                raise DockerException('Unable to pull image: see actual error above. '
-                                      'Please, run the task again or contact support team.')
-            else:
-                self.logger.warn("Pulling step is skipped. Unable to pull image: {!r}.".format(str(e)))
-
-    def _validate_version(self, agent_image, plugin_image):
-        self.logger.info('Check if agent and plugin versions are compatible')
-
-        def get_version(docker_image):
-            if docker_image is None:
-                return None
-            image_parts = docker_image.strip().split(":")
-            if len(image_parts) != 2:
-                return None
-            return image_parts[1]
-
-        agent_version = get_version(agent_image)
-        plugin_version = get_version(plugin_image)
-
-        if agent_version is None:
-            self.logger.info('Unknown agent version')
-            return
-
-        if plugin_version is None:
-            self.logger.info('Unknown plugin version')
-            return
-
-        av = version.parse(agent_version)
-        pv = version.parse(plugin_version)
-
-        if type(av) is version.LegacyVersion or type(pv) is version.LegacyVersion:
-            self.logger.info('Invalid semantic version, can not compare')
-            return
-
-        if av.release[0] < pv.release[0]:
-            self.logger.critical('Agent version is lower than plugin version. Please, upgrade agent.')
-
-    def _docker_image_exists(self):
-        try:
-            docker_img = self._docker_api.images.get(self.docker_image_name)
-        except DockerImageNotFound:
-            return False
-        if constants.CHECK_VERSION_COMPATIBILITY():
-            self._validate_version(self.info["agent_version"], docker_img.labels.get("VERSION", None))
-        return True
-
-    def docker_pull_if_needed(self):
-        if self.docker_pulled:
-            return
-        policy = constants.PULL_POLICY()
-        if policy == constants.PullPolicy.ALWAYS:
-            self._docker_pull()
-        elif policy == constants.PullPolicy.NEVER:
-            pass
-        elif policy == constants.PullPolicy.IF_NOT_PRESENT:
-            if not self._docker_image_exists():
-                self._docker_pull()
-        elif policy == constants.PullPolicy.IF_AVAILABLE:
-            self._docker_pull(raise_exception=False)
-
-        if not self._docker_image_exists():
-            raise RuntimeError("Docker image not found. Agent's PULL_POLICY is {!r}".format(str(policy)))
-
-        self.docker_pulled = True
-
     def _get_task_volumes(self):
         return {self.dir_task_host: {'bind': '/sly_task_data', 'mode': 'rw'}}
 
-    def spawn_container(self, add_envs=None):
-        if add_envs is None:
-            add_envs = {}
+    def get_spawn_entrypoint(self):
+        return ["sh", "-c", "python -u {}".format(self.entrypoint)]
+
+    def spawn_container(self, add_envs=None, add_labels=None, entrypoint_func=None):
+        add_envs = sly.take_with_default(add_envs, {})
+        add_labels = sly.take_with_default(add_labels, {})
+        if entrypoint_func is None:
+            entrypoint_func = self.get_spawn_entrypoint
+
         self._container_lock.acquire()
         volumes = self._get_task_volumes()
         try:
             self._container = self._docker_api.containers.run(
                 self.docker_image_name,
                 runtime=self.docker_runtime,
-                entrypoint=["sh", "-c", "python -u {}".format(self.entrypoint)],
+                entrypoint=entrypoint_func(),
                 detach=True,
                 name='sly_task_{}_{}'.format(self.info['task_id'], constants.TASKS_DOCKER_LABEL()),
                 remove=False,
                 volumes=volumes,
-                environment={'LOG_LEVEL': 'DEBUG', 
-                             'LANG': 'C.UTF-8', 
+                environment={'LOG_LEVEL': 'DEBUG',
+                             'LANG': 'C.UTF-8',
+                             'PYTHONUNBUFFERED': '1',
                              constants._HTTP_PROXY: constants.HTTP_PROXY(),
                              constants._HTTPS_PROXY: constants.HTTPS_PROXY(),
+                             'HOST_TASK_DIR': self.dir_task_host,
+                             constants._NO_PROXY: constants.NO_PROXY(),
+                             constants._HTTP_PROXY.lower(): constants.HTTP_PROXY(),
+                             constants._HTTPS_PROXY.lower(): constants.HTTPS_PROXY(),
+                             constants._NO_PROXY.lower(): constants.NO_PROXY(),
                              **add_envs},
                 labels={'ecosystem': 'supervisely',
-                        'ecosystem_token': constants.TASKS_DOCKER_LABEL(),
-                        'task_id': str(self.info['task_id'])},
+                       'ecosystem_token': constants.TASKS_DOCKER_LABEL(),
+                       'task_id': str(self.info['task_id']),
+                       **add_labels},
                 shm_size="1G",
                 stdin_open=False,
                 tty=False,
@@ -229,7 +170,7 @@ class TaskDockerized(TaskSly):
             )
             self._container.reload()
             self.logger.debug('After spawning. Container status: {}'.format(str(self._container.status)))
-            self.logger.info('Docker container is spawned',extra={'container_id': self._container.id, 'container_name': self._container.name})
+            self.logger.info('Docker container is spawned', extra={'container_id': self._container.id, 'container_name': self._container.name})
         finally:
             self._container_lock.release()
 
@@ -252,7 +193,7 @@ class TaskDockerized(TaskSly):
 
     def drop_container_and_check_status(self):
         status = self._stop_wait_container()
-        if (len(status) > 0) and (status['StatusCode'] != 0):  # StatusCode must exist
+        if (len(status) > 0) and (status['StatusCode'] not in [0]):  # StatusCode must exist
             raise RuntimeError('Task container finished with non-zero status: {}'.format(str(status)))
         self.logger.debug('Task container finished with status: {}'.format(str(status)))
         self._drop_container()

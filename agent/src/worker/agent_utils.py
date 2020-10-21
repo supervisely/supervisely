@@ -91,3 +91,17 @@ def get_single_item_or_die(src_dict, key, dict_name):
             'Multiple values ({}) were found for {} in {}. A list with exactly one item is required.'.format(
                 len(results), key, dict_name))
     return results[0]
+
+
+def add_creds_to_git_url(git_url):
+    old_str = None
+    if 'https://' in git_url:
+        old_str = 'https://'
+    elif 'http://' in git_url:
+        old_str = 'http://'
+    res = git_url
+    if constants.GIT_LOGIN() is not None and constants.GIT_PASSWORD() is not None:
+        res = git_url.replace(old_str, '{}{}:{}@'.format(old_str, constants.GIT_LOGIN(), constants.GIT_PASSWORD()))
+        return res
+    else:
+        return git_url

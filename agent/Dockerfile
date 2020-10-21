@@ -35,6 +35,8 @@ RUN apt-get update \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
+RUN pip install docker --upgrade
+
 ############### copy code ###############
 ARG MODULE_PATH
 COPY $MODULE_PATH /workdir

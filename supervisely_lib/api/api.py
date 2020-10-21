@@ -23,6 +23,11 @@ import supervisely_lib.api.video.video_api as video_api
 import supervisely_lib.api.pointcloud.pointcloud_api as pointcloud_api
 import supervisely_lib.api.object_class_api as object_class_api
 import supervisely_lib.api.report_api as report_api
+import supervisely_lib.api.app_api as app_api
+import supervisely_lib.api.file_api as file_api
+import supervisely_lib.api.image_annotation_tool_api as image_annotation_tool_api
+import supervisely_lib.api.advanced_api as advanced_api
+import supervisely_lib.api.import_storage_api as import_stoarge_api
 
 from supervisely_lib.sly_logger import logger
 
@@ -37,7 +42,7 @@ API_TOKEN = 'API_TOKEN'
 
 
 class Api:
-    def __init__(self, server_address, token, retry_count=None, retry_sleep_sec=None, external_logger=None):
+    def __init__(self, server_address, token, retry_count=None, retry_sleep_sec=None, external_logger=None, ignore_task_id=False):
         '''
         :param server_address: str (example: http://192.168.1.69:5555)
         :param token: str
@@ -57,9 +62,9 @@ class Api:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, '1'))
 
         self.headers = {'x-api-key': token}
-        task_id = os.getenv(SUPERVISELY_TASK_ID)
-        if task_id is not None:
-            self.headers['x-task-id'] = task_id
+        self.task_id = os.getenv(SUPERVISELY_TASK_ID)
+        if self.task_id is not None and ignore_task_id is False:
+            self.headers['x-task-id'] = self.task_id
         self.context = {}
         self.additional_fields = {}
 
@@ -81,6 +86,11 @@ class Api:
         self.object_class = object_class_api.ObjectClassApi(self)
         self.report = report_api.ReportApi(self)
         self.pointcloud = pointcloud_api.PointcloudApi(self)
+        self.app = app_api.AppApi(self)
+        self.file = file_api.FileApi(self)
+        self.img_ann_tool = image_annotation_tool_api.ImageAnnotationToolApi(self)
+        self.advanced = advanced_api.AdvancedApi(self)
+        self.import_storage = import_stoarge_api.ImportStorageApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -88,11 +98,11 @@ class Api:
         self.logger = external_logger or logger
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, retry_count=5, ignore_task_id=False):
         '''
         :return: Api class object with server adress and token obtained from environment variables
         '''
-        return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN])
+        return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN], retry_count=retry_count, ignore_task_id=ignore_task_id)
 
     def add_header(self, key, value):
         '''
@@ -151,7 +161,7 @@ class Api:
                                                        "retry_limit": retries})
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
-        raise requests.exceptions.RetryError("Retry limit exceeded")
+        raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
     def get(self, method, params, retries=None, stream=False, use_public_api=True):
         '''

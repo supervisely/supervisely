@@ -5,9 +5,7 @@ FROM ${REGISTRY}/base-py-cuda-10-1:${TAG}
 ##############################################################################
 # pytorch
 ##############################################################################
-RUN pip install --no-cache-dir \
-        torch==1.3.0 \
-        torchvision==0.4.1 \
-        -f https://download.pytorch.org/whl/torch_stable.html
+RUN conda install pytorch==1.5.1 torchvision==0.6.1 cudatoolkit=10.1 -c pytorch \
+    && conda clean --all --yes
 
 RUN pip install "pillow<7"

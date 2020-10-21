@@ -4,7 +4,7 @@ import os
 import skvideo.io
 from supervisely_lib import logger as default_logger
 from supervisely_lib.io.fs import get_file_name, get_file_ext
-from supervisely_lib import rand_str
+from supervisely_lib._utils import rand_str
 
 
 # Do NOT use directly for video extension validation. Use is_valid_ext() /  has_valid_ext() below instead.

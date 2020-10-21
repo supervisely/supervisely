@@ -2,10 +2,11 @@
 
 import base64
 import json
-from docker.errors import DockerException, ImageNotFound
+import time
 
 import supervisely_lib as sly
 
+from worker import constants
 from worker.task_dockerized import TaskDockerized
 from worker.task_dtl import TaskDTL
 from worker.task_import import TaskImport
@@ -21,6 +22,8 @@ from worker.task_update import TaskUpdate
 from worker.task_python import TaskPython
 from worker.task_plugin import TaskPlugin
 from worker.task_plugin_import_local import TaskPluginImportLocal
+from worker.task_pull_docker_image import TaskPullDockerImage
+from worker.task_app import TaskApp
 
 
 _task_class_mapping = {
@@ -38,11 +41,13 @@ _task_class_mapping = {
     'update_agent':         TaskUpdate,
     'python':               TaskPython,
     'general_plugin':       TaskPlugin,
-    'general_plugin_import_agent': TaskPluginImportLocal
+    'general_plugin_import_agent': TaskPluginImportLocal,
+    'app':                  TaskApp
 }
 
 
 def create_task(task_msg, docker_api):
+    task_id = task_msg.get('task_id', None)
     task_type = get_run_mode(docker_api, task_msg)
     task_cls = _task_class_mapping.get(task_type, None)
     if task_cls is None:
@@ -58,13 +63,14 @@ def get_run_mode(docker_api, task_msg):
     if "docker_image" not in task_msg:
         return task_msg['task_type']
 
-    try:
-        image_info = docker_api.images.get(task_msg["docker_image"])
-    except ImageNotFound:
-        image_info = {}
-    except DockerException:
-        image_info = docker_api.images.pull(task_msg["docker_image"])
+    temp_msg = {**task_msg, 'pull_policy': constants.PULL_POLICY()}
+    task_pull = TaskPullDockerImage(temp_msg)
+    task_pull.docker_api = docker_api
+    task_pull.start()
+    while task_pull.is_alive():
+        time.sleep(1)
 
+    image_info = docker_api.images.get(task_msg["docker_image"])
     try:
         plugin_info = json.loads(base64.b64decode(image_info.labels["INFO"]).decode("utf-8"))
     except Exception as e:

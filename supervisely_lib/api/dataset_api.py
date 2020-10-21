@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import urllib
 from supervisely_lib.api.module_api import ApiField, ModuleApi, UpdateableModule, RemoveableModuleApi
 
 
@@ -18,7 +19,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 ApiField.PROJECT_ID,
                 ApiField.IMAGES_COUNT,
                 ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+                ApiField.UPDATED_AT,
+                ApiField.REFERENCE_IMAGE_URL]
 
     @staticmethod
     def info_tuple_name():
@@ -147,4 +149,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         new_dataset = self.copy(dst_project_id, id, new_name, change_name_if_conflict, with_annotations)
         self.remove(id)
         return new_dataset
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        if res.reference_image_url is not None:
+            res = res._replace(reference_image_url=urllib.parse.urljoin(self._api.server_address, res.reference_image_url))
+        return res
 

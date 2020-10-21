@@ -56,7 +56,6 @@ class TaskDTL(TaskDockerized):
 
     def verify(self):
         self.download_data_sources(only_meta=True)
-        self.docker_pull_if_needed()
         self.spawn_container(add_envs={'VERIFICATION': '1'})
         self.process_logs()
         self.drop_container_and_check_status()

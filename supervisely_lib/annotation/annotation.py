@@ -4,6 +4,7 @@
 import json
 import itertools
 import numpy as np
+from typing import List
 
 from copy import deepcopy
 
@@ -71,7 +72,7 @@ class Annotation:
         return deepcopy(self._img_size)
 
     @property
-    def labels(self):
+    def labels(self) -> List[Label]:
         return self._labels.copy()
 
     @property
@@ -450,16 +451,6 @@ class Annotation:
 
     @classmethod
     def stat_area(cls, render, names, colors):
-        '''
-        The function stat_area computes class distribution statistics in annotations (in pixels), space free of classes,
-        total area of render, it height, width and number of channels
-        :param render: mask with classes
-        :param names: class names for which statistics will be calculated
-        :param colors: colors of classes on render mask
-        :return: dictionary with statistics of space representation
-        '''
-        #@TODO: check similar colors
-
         if len(names) != len(colors):
             raise RuntimeError("len(names) != len(colors) [{} != {}]".format(len(names), len(colors)))
 
@@ -474,68 +465,62 @@ class Annotation:
         elif len(render.shape) == 3:
             channels = render.shape[2]
 
+        unlabeled_done = False
+
         covered_pixels = 0
         for name, color in zip(names, colors):
-            col_name = name #"{} [area]".format(name)
+            col_name = name
+            if name == "unlabeled":
+                unlabeled_done = True
             class_mask = np.all(render == color, axis=-1).astype('uint8')
             cnt_pixels = class_mask.sum()
             covered_pixels += cnt_pixels
-
-            result[col_name] = cnt_pixels
+            result[col_name] = cnt_pixels / total_pixels * 100.0
 
         if covered_pixels > total_pixels:
             raise RuntimeError("Class colors mistake: covered_pixels > total_pixels")
 
-        result['unlabeled area'] = total_pixels - covered_pixels
-        result['total area'] = total_pixels
+        if unlabeled_done is False:
+            result['unlabeled'] = (total_pixels - covered_pixels) / total_pixels * 100.0
+
         result['height'] = height
         result['width'] = width
         result['channels'] = channels
         return result
 
     def stat_class_count(self, class_names):
-        '''
-        The function stat_class_count counts how many times each class from given list occurs in annotation and total number of classes in annotation
-        :param class_names: list of classes names
-        :return: dictionary with a number of different classes in annotation and it total count
-        '''
-        def _name_to_key(name):
-            return name#"{} [count]".format(name)
         total = 0
-        stat = {_name_to_key(name): 0 for name in class_names}
+        stat = {name: 0 for name in class_names}
         for label in self._labels:
             cur_name = label.obj_class.name
-            if _name_to_key(cur_name) not in stat:
+            if cur_name not in stat:
                 raise KeyError("Class {!r} not found in {}".format(cur_name, class_names))
-            stat[_name_to_key(cur_name)] += 1
+            stat[cur_name] += 1
             total += 1
-        stat['total count'] = total
+        stat['total'] = total
         return stat
 
-    def stat_img_tags(self, tag_names):
-        '''
-        The function stat_img_tags counts how many times each tag from given list occurs in annotation
-        :param tag_names: list of tags names
-        :return: dictionary with a number of different tags in annotation
-        '''
-        stat = {name: 0 for name in tag_names}
-        for tag in self._img_tags:
-            cur_name = tag.meta.name
-            if cur_name not in stat:
-                raise KeyError("Tag {!r} not found in {}".format(cur_name, tag_names))
-            stat[cur_name] += 1
-        return stat
+    # def stat_img_tags(self, tag_names):
+    #     '''
+    #     The function stat_img_tags counts how many times each tag from given list occurs in annotation
+    #     :param tag_names: list of tags names
+    #     :return: dictionary with a number of different tags in annotation
+    #     '''
+    #     stat = {name: 0 for name in tag_names}
+    #     stat['any tag'] = 0
+    #     for tag in self._img_tags:
+    #         cur_name = tag.meta.name
+    #         if cur_name not in stat:
+    #             raise KeyError("Tag {!r} not found in {}".format(cur_name, tag_names))
+    #         stat[cur_name] += 1
+    #         stat['any tag'] += 1
+    #     return stat
 
     def draw_class_idx_rgb(self, render, name_to_index):
-        '''
-        The function draw_class_idx_rgb draws rectangle on render mask corresponding to each label with a specific color corresponding to the class name
-        :param render: mask to draw rectangle, corresponding to each label in annotation
-        :param name_to_index: a dictionary with an index value for each class name
-        '''
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
             color = [class_idx, class_idx, class_idx]
-            label.draw(render, color=color, thickness=1, draw_tags=False, tags_font=self._get_font())
+            label.draw(render, color=color, thickness=1)
 
     @property
     def custom_data(self):

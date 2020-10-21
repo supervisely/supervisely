@@ -2,6 +2,9 @@
 
 import os.path
 from pkg_resources import parse_version
+import base64
+import requests
+import numpy as np
 
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
@@ -102,7 +105,7 @@ def validate_format(path):
                 img_ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
 
 
-def read(path) -> np.ndarray:
+def read(path, remove_alpha_channel=True) -> np.ndarray:
     '''
     The function read loads an image from the specified file and returns it in RGB format. If the image cannot be read
     it generate exception error(ImageReadException) if error has occured trying to read image and generate exception
@@ -112,10 +115,24 @@ def read(path) -> np.ndarray:
     :return: image in RGB format(numpy matrix)
     '''
     validate_format(path)
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    if img is None:
-        raise IOError("OpenCV can not open the file {!r}".format(path))
-    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if remove_alpha_channel is True:
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if img is None:
+        	raise IOError("OpenCV can not open the file {!r}".format(path))
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    else:
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if img is None:
+        	raise IOError("OpenCV can not open the file {!r}".format(path))
+        cnt_channels = img.shape[2]
+        if cnt_channels == 4:
+            return cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
+        elif cnt_channels == 3:
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        elif cnt_channels == 1:
+            return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        else:
+            raise ValueError("image has {} channels. Please, contact support...".format(cnt_channels))
 
 
 def read_bytes(image_bytes) -> np.ndarray:
@@ -129,7 +146,7 @@ def read_bytes(image_bytes) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def write(path, img):
+def write(path, img, remove_alpha_channel=True):
     '''
     The function write saves the image to the specified file. It create directory from path if the directory for this
     path does not exist. It generate exception error(UnsupportedImageFormat) if file extention is not in list
@@ -139,8 +156,20 @@ def write(path, img):
     '''
     ensure_base_path(path)
     validate_ext(path)
-    img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
-    return cv2.imwrite(path, img) # why return there?
+    res_img = img.copy()
+    if len(img.shape) == 2:
+        res_img = np.expand_dims(img, 2)
+    cnt_channels = res_img.shape[2]
+    if cnt_channels == 4:
+        if remove_alpha_channel is True:
+            res_img = cv2.cvtColor(res_img.astype(np.uint8), cv2.COLOR_RGBA2BGR)
+        else:
+            res_img = cv2.cvtColor(res_img.astype(np.uint8), cv2.COLOR_RGBA2BGRA)
+    elif cnt_channels == 3:
+        res_img = cv2.cvtColor(res_img.astype(np.uint8), cv2.COLOR_RGB2BGR)
+    elif cnt_channels == 1:
+        res_img = cv2.cvtColor(res_img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    return cv2.imwrite(path, res_img)
 
 
 def draw_text_sequence(bitmap: np.ndarray,
@@ -223,6 +252,7 @@ def draw_text(bitmap: np.ndarray,
     return (text_height, text_width)
 
 
+#@TODO: not working with alpha channel
 def write_bytes(img, ext) -> np.ndarray:
     '''
     The function compresses the image and stores it in the byte object. It generate exception
@@ -245,6 +275,7 @@ def write_bytes(img, ext) -> np.ndarray:
     raise RuntimeError('Can not encode input image')
 
 
+#@TODO: not working with alpha channel
 def get_hash(img, ext):
     '''
     The function get_hash hash input image with sha256 algoritm and encode result by using Base64
@@ -334,6 +365,7 @@ def restore_proportional_size(in_size: tuple, out_size: tuple = None,
     return result_row, result_col
 
 
+#@TODO: reimplement, to be more convenient
 def resize(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=None) -> np.ndarray:
     '''
     The function resize resizes the image img down to or up to the specified size. If some parameters are not specified, or
@@ -550,3 +582,27 @@ def drop_image_alpha_channel(img: np.ndarray) -> np.ndarray:
         raise ValueError('Only 4-channel RGBA images are supported for alpha channel removal. ' +
                          'Instead got {} channels.'.format(img.shape[2]))
     return cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+
+
+#@TODO: refactor from two separate methods to a single one
+#bgra or bgr
+def np_image_to_data_url(img):
+    encode_status, bgra_result_png = cv2.imencode('.png', img)
+    img_png = bgra_result_png.tobytes()
+    img_base64 = base64.b64encode(img_png)
+    data_url = 'data:image/png;base64,{}'.format(str(img_base64, 'utf-8'))
+    return data_url
+
+
+def data_url_to_numpy(data_url):
+    img_base64 = data_url[len('data:image/png;base64,'):]
+    img_base64 = base64.b64decode(img_base64)
+    image = read_bytes(img_base64)
+    return image
+
+
+#only rgb
+def np_image_to_data_url_backup_rgb(img):
+    img_base64 = base64.b64encode(write_bytes(img, 'png'))
+    data_url = 'data:image/png;base64,{}'.format(str(img_base64, 'utf-8'))
+    return data_url

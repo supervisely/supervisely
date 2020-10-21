@@ -2,6 +2,7 @@
 
 from enum import Enum
 import pandas as pd
+import urllib
 
 from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
 from supervisely_lib.project.project_meta import ProjectMeta
@@ -27,7 +28,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 ApiField.WORKSPACE_ID,
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT,
-                ApiField.TYPE]
+                ApiField.TYPE,
+                ApiField.REFERENCE_IMAGE_URL]
 
     @staticmethod
     def info_tuple_name():
@@ -180,7 +182,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return df
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        return super(ProjectApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        if res.reference_image_url is not None:
+            res = res._replace(reference_image_url=urllib.parse.urljoin(self._api.server_address, res.reference_image_url))
+        return res
 
     def get_stats(self, id):
         response = self._api.post('projects.stats', {ApiField.ID: id})

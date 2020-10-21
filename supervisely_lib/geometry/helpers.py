@@ -6,6 +6,8 @@ from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
+from supervisely_lib.geometry.polyline import Polyline
+from supervisely_lib.geometry.polygon import Polygon
 
 
 def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None) -> list:
@@ -74,3 +76,25 @@ def deserialize_geometry(geometry_type_str, geometry_json):
     geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     geometry = geometry_type.from_json(geometry_json)
     return geometry
+
+
+def geometry_to_polygon(geometry, approx_epsilon=None):
+    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap):
+        raise KeyError('Can not convert {} to {}'.format(geometry.geometry_name(), Polygon.__name__))
+
+    if type(geometry) == Rectangle:
+        return [Polygon(geometry.corners, [])]
+
+    if type(geometry) == Polyline:
+        return [Polygon(geometry.exterior, [])]
+
+    if type(geometry) == Polygon:
+        return [geometry]
+
+    if type(geometry) == Bitmap:
+        new_geometries = geometry.to_contours()
+        if approx_epsilon is None:
+            approx_epsilon = 1
+
+        new_geometries = [g.approx_dp(approx_epsilon) for g in new_geometries]
+        return new_geometries

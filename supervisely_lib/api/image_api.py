@@ -30,7 +30,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.DATASET_ID,
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT,
-                ApiField.META]
+                ApiField.META,
+                ApiField.PATH_ORIGINAL,
+                ApiField.FULL_STORAGE_URL]
 
     @staticmethod
     def info_tuple_name():
@@ -577,6 +579,38 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return result
 
+    def _download_batch_by_hashes(self, hashes):
+        for batch_hashes in batched(hashes):
+            response = self._api.post(
+                'images.bulk.download-by-hash', {ApiField.HASHES: batch_hashes})
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b'Content-Disposition'].decode('utf-8')
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                h = content_utf8.replace("form-data; name=\"", "")[:-1]
+                yield h, part
+
+    def download_paths_by_hashes(self, hashes, paths, progress_cb=None):
+        if len(hashes) == 0:
+            return
+        if len(hashes) != len(paths):
+            raise RuntimeError("Can not match \"hashes\" and \"paths\" lists, len(hashes) != len(paths)")
+
+        h_to_path = {h: path for h, path in zip(hashes, paths)}
+        for h, resp_part in self._download_batch_by_hashes(list(set(hashes))):
+            ensure_base_path(h_to_path[h])
+            with open(h_to_path[h], 'wb') as w:
+                w.write(resp_part.content)
+            if progress_cb is not None:
+                progress_cb(1)
+                
+    def get_project_id(self, image_id):
+        dataset_id = self.get_info_by_id(image_id).dataset_id
+        project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+        return project_id
+
+        
     @staticmethod
     def _get_free_name(exist_check_fn, name):
         res_title = name
@@ -589,3 +623,16 @@ class ImageApi(RemoveableBulkModuleApi):
             res_title = '{}_{:03d}{}'.format(name_without_ext, suffix, ext)
             suffix += 1
         return res_title
+
+    def storage_url(self, path_original):
+        result = urllib.parse.urljoin(self._api.server_address, '{}'.format(path_original))
+        return result
+
+    def preview_url(self, url, width=None, height=None, quality=70):
+        #@TODO: if both width and height are defined, and they are not proportioned to original image resolution,
+        # then images will be croped from center
+        if width is None:
+            width = ""
+        if height is None:
+            height = ""
+        return url.replace("/image-converter", "/previews/{}x{},jpeg,q{}/image-converter".format(width, height, quality))

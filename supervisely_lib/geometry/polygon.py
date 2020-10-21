@@ -130,3 +130,10 @@ class Polygon(VectorGeometry):
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
         return Polygon(exterior, interior)
+
+    @classmethod
+    def allowed_transforms(cls):
+        from supervisely_lib.geometry.any_geometry import AnyGeometry
+        from supervisely_lib.geometry.rectangle import Rectangle
+        from supervisely_lib.geometry.bitmap import Bitmap
+        return [AnyGeometry, Rectangle, Bitmap]

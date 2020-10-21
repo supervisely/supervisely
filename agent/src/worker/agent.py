@@ -8,13 +8,14 @@ from concurrent.futures import ThreadPoolExecutor, wait
 import subprocess
 import os
 import supervisely_lib as sly
+import uuid
 
 from worker import constants
 from worker.task_factory import create_task
 from worker.logs_to_rpc import add_task_handler
 from worker.agent_utils import LogQueue
 from worker.system_info import get_hw_info, get_self_docker_image_digest
-from worker.image_streamer import ImageStreamer
+from worker.app_file_streamer import AppFileStreamer
 from worker.telemetry_reporter import TelemetryReporter
 
 
@@ -99,7 +100,6 @@ class Agent:
         docker_img_info = subprocess.Popen([docker_inspect_cmd], 
                                             shell=True, executable="/bin/bash", 
                                             stdout=subprocess.PIPE).communicate()[0]
-
         self.agent_info = {
             'hardware_info': hw_info,
             'agent_image': json.loads(docker_img_info)["Config"]["Image"],
@@ -120,6 +120,7 @@ class Agent:
             task_msg = json.loads(task.data)
             task_msg['agent_info'] = self.agent_info
             self.logger.info('GET_NEW_TASK', extra={'received_task_id': task_msg['task_id']})
+            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': task_msg})
             self.start_task(task_msg)
 
     def get_stop_task(self):
@@ -159,12 +160,24 @@ class Agent:
         self.task_pool_lock.acquire()
         try:
             if task['task_id'] in self.task_pool:
-                self.logger.warning('TASK_ID_ALREADY_STARTED', extra={'task_id': task['task_id']})
+                #@TODO: remove - ?? only app will receive its messages (skip app button's messages)
+                if task['task_type'] != "app":
+                    self.logger.warning('TASK_ID_ALREADY_STARTED', extra={'task_id': task['task_id']})
+                else:
+                    # request to application is duplicated to agent for debug purposes
+                    pass
             else:
                 task_id = task['task_id']
                 task["agent_version"] = self.agent_info["agent_version"]
-                self.task_pool[task_id] = create_task(task, self.docker_api)
-                self.task_pool[task_id].start()
+                try:
+                    self.task_pool[task_id] = create_task(task, self.docker_api)
+                    self.task_pool[task_id].start()
+                except Exception as e:
+                    self.logger.critical('Unexpected exception in task start.', exc_info=True, extra={
+                        'event_type': sly.EventType.TASK_CRASHED,
+                        'exc_str': str(e),
+                    })
+
         finally:
             self.task_pool_lock.release()
 
@@ -265,6 +278,8 @@ class Agent:
         self.thread_list.append(self.thread_pool.submit(sly.function_wrapper_external_logger, self.send_connect_info, self.logger))
         self.thread_list.append(
             self.thread_pool.submit(sly.function_wrapper_external_logger, self.follow_daemon, self.logger, TelemetryReporter, 'TELEMETRY_REPORTER'))
+        # self.thread_list.append(
+        #     self.thread_pool.submit(sly.function_wrapper_external_logger, self.follow_daemon,  self.logger, AppFileStreamer, 'APP_FILE_STREAMER'))
 
     def wait_all(self):
         def terminate_all_deamons():
