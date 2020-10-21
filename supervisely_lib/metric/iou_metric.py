@@ -27,6 +27,10 @@ def get_iou(mask_1, mask_2):
 def _iou_log_line(iou, intersection, union):
     return 'IoU = {:.6f},  mean intersection = {:.6f}, mean union = {:.6f}'.format(iou, intersection, union)
 
+def render_labels_as_binary_mask(labels, class_title, mask):
+    for label in ann.labels:
+        if label.obj_class.name == class_title:
+                label.geometry.draw(mask, True)
 
 class IoUMetric(MetricsBase):
 
@@ -41,8 +45,8 @@ class IoUMetric(MetricsBase):
         img_size = ann_gt.img_size
         for cls_gt, cls_pred in self._class_mapping.items():
             mask_gt, mask_pred = np.full(img_size, False), np.full(img_size, False)
-            render_labels_for_class_name(ann_gt.labels, cls_gt, mask_gt)
-            render_labels_for_class_name(ann_pred.labels, cls_pred, mask_pred)
+            render_labels_as_binary_mask(ann_gt.labels, cls_gt, mask_gt)
+            render_labels_as_binary_mask(ann_pred.labels, cls_pred, mask_pred)
             class_pair_counters = self._counters[cls_gt]
             class_pair_counters[INTERSECTION] += get_intersection(mask_gt, mask_pred)
             class_pair_counters[UNION] += get_union(mask_gt, mask_pred)
