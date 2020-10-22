@@ -175,6 +175,7 @@ class ApiField:
     OUTPUT =            'output'
     REFERENCE_IMAGE_URL='referenceImageUrl'
     GENERAL =           'general'
+    ENTITIES =          'entities'
 
 
 def _get_single_item(items):

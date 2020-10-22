@@ -55,6 +55,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                 ApiField.FILTER_IMAGES_BY_TAGS,
                 ApiField.INCLUDE_IMAGES_WITH_TAGS,
                 ApiField.EXCLUDE_IMAGES_WITH_TAGS,
+
+                ApiField.ENTITIES,
                 ]
 
     @staticmethod
