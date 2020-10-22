@@ -118,12 +118,12 @@ def read(path, remove_alpha_channel=True) -> np.ndarray:
     if remove_alpha_channel is True:
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         if img is None:
-        	raise IOError("OpenCV can not open the file {!r}".format(path))
+            raise IOError("OpenCV can not open the file {!r}".format(path))
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     else:
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         if img is None:
-        	raise IOError("OpenCV can not open the file {!r}".format(path))
+            raise IOError("OpenCV can not open the file {!r}".format(path))
         cnt_channels = img.shape[2]
         if cnt_channels == 4:
             return cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)

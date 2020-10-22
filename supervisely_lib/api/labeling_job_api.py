@@ -76,11 +76,17 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                     continue
                 value = None
                 if type(field_name) is str:
-                    value = info[field_name]
+                    if skip_missing is True:
+                        value = info.get(field_name, None)
+                    else:
+                        value = info[field_name]
                 elif type(field_name) is tuple:
                     for sub_name in field_name[0]:
                         if value is None:
-                            value = info[sub_name]
+                            if skip_missing is True:
+                                value = info.get(sub_name, None)
+                            else:
+                                value = info[sub_name]
                         else:
                             value = value[sub_name]
                 else:
