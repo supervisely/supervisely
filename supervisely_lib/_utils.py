@@ -100,3 +100,11 @@ def sizeof_fmt(num, suffix='B'):
             return "%3.1f %s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f %s%s" % (num, 'Yi', suffix)
+
+def _remove_sensitive_information(d: dict):
+    new_dict = dict(d)
+    fields = ["api_token", "API_TOKEN"]
+    for field in fields:
+        if field in new_dict:
+            new_dict[field] = "***"
+    return new_dict

@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 from supervisely_lib.io.json import JsonSerializable
-from supervisely_lib.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID
+from supervisely_lib.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib import logger
 
 
@@ -24,9 +24,10 @@ class Geometry(JsonSerializable):
             d[UPDATED_AT] = self.updated_at
         if self.created_at is not None:
             d[CREATED_AT] = self.created_at
-        #@TODO: will be ignored (for compatibility) and will be used in public api
-        # if self.sly_id is not None:
-        #     d[ID] = self.sly_id
+        if self.sly_id is not None:
+            d[ID] = self.sly_id
+        if self.class_id is not None:
+            d[CLASS_ID] = self.class_id
 
     def _copy_creation_info_inplace(self, g):
         self.labeler_login = g.labeler_login

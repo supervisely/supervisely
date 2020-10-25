@@ -17,6 +17,7 @@ from worker.agent_utils import LogQueue
 from worker.system_info import get_hw_info, get_self_docker_image_digest
 from worker.app_file_streamer import AppFileStreamer
 from worker.telemetry_reporter import TelemetryReporter
+from supervisely_lib._utils import _remove_sensitive_information
 
 
 class Agent:
@@ -120,7 +121,8 @@ class Agent:
             task_msg = json.loads(task.data)
             task_msg['agent_info'] = self.agent_info
             self.logger.info('GET_NEW_TASK', extra={'received_task_id': task_msg['task_id']})
-            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': task_msg})
+            to_log = _remove_sensitive_information(task_msg)
+            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': to_log})
             self.start_task(task_msg)
 
     def get_stop_task(self):

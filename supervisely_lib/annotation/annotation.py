@@ -5,6 +5,7 @@ import json
 import itertools
 import numpy as np
 from typing import List
+import operator
 
 from copy import deepcopy
 
@@ -525,3 +526,35 @@ class Annotation:
     @property
     def custom_data(self):
         return self._custom_data.copy()
+
+    # def filter_labels_by_area_percent(self, thresh, operator=operator.lt, classes=None):
+    #     img_area = float(self.img_size[0] * self.img_size[1])
+    #     def filter(label):
+    #         if classes == None or label.obj_class.name in classes:
+    #             cur_percent = label.area * 100.0 / img_area
+    #             if operator(cur_percent, thresh):
+    #                 return []  # action 'delete'
+    #         return [label]
+    #     return self.transform_labels(filter)
+
+    # def objects_filter_size(self, filter_operator, width=None, height=None, filtering_classes=None):
+    #     if width == None and height == None:
+    #         raise ValueError('width and height can not be none at the same time')
+    #
+    #     def filter_delete_size(fig):
+    #         if filtering_classes == None or fig.obj_class.name in filtering_classes:
+    #             fig_rect = fig.geometry.to_bbox()
+    #
+    #             if width == None:
+    #                 if filter_operator(fig_rect.height, height):
+    #                     return []
+    #             elif height == None:
+    #                 if filter_operator(fig_rect.width, width):
+    #                     return []
+    #             else:
+    #                 if filter_operator(fig_rect.width, width) or filter_operator(fig_rect.height, height):
+    #                     return []
+    #
+    #         return [fig]
+    #
+    #     return self.transform_labels(filter_delete_size)

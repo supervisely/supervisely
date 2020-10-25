@@ -18,7 +18,7 @@ from supervisely_lib.sly_logger import EventType
 from supervisely_lib.app.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
 from supervisely_lib.api.api import Api
 from supervisely_lib.io.fs import file_exists
-
+from supervisely_lib._utils import _remove_sensitive_information
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
 class ConnectionClosedByServerException(Exception):
@@ -171,7 +171,8 @@ class AppService:
     def consume_sync(self):
         while True:
             request_msg = self.processing_queue.get()
-            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': request_msg})
+            to_log = _remove_sensitive_information(request_msg)
+            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': to_log})
             #asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
                 self.loop.run_in_executor(self.executor, self.handle_message_sync, request_msg), loop=self.loop
