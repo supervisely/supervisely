@@ -7,9 +7,31 @@ from supervisely_lib.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder
 import mimetypes
 from supervisely_lib.io.fs import get_file_ext, get_file_name
+from supervisely_lib.imaging.image import write_bytes, get_hash
 
 
 class FileApi(ModuleApiBase):
+    @staticmethod
+    def info_sequence():
+        return [
+            ApiField.TEAM_ID,
+            ApiField.ID,
+            ApiField.USER_ID,
+            ApiField.NAME,
+            ApiField.PATH,
+            ApiField.STORAGE_PATH,
+            ApiField.MIME2,
+            ApiField.EXT2,
+            ApiField.SIZEB2,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.FULL_STORAGE_URL,
+        ]
+
+    @staticmethod
+    def info_tuple_name():
+        return 'FileInfo'
+
     def list(self, team_id, path):
         response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
         return response.json()
@@ -87,3 +109,16 @@ class FileApi(ModuleApiBase):
 
     def get_url(self, file_id):
         return urllib.parse.urljoin(self._api.server_address, "files/{}".format(file_id))
+
+    def get_info_by_path(self, team_id, remote_path):
+        path_infos = self.list(team_id, remote_path)
+        for info in path_infos:
+            if info["path"] == remote_path:
+                return self._convert_json_info(info)
+        return None
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        if res.storage_path is not None:
+            res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
+        return res

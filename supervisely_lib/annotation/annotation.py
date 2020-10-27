@@ -316,6 +316,13 @@ class Annotation:
         :return: Annotation class object with new labels and image size
         '''
         def _do_transform_labels(src_labels, label_transform_fn):
+            # long easy to debug
+            # result = []
+            # for label in src_labels:
+            #     result.extend(label_transform_fn(label))
+            # return result
+
+            # short, hard-to-debug alternative
             return list(itertools.chain(*[label_transform_fn(label) for label in src_labels]))
         new_labels = _do_transform_labels(self._labels, label_transform_fn)
         new_pixelwise_scores_labels = _do_transform_labels(self._pixelwise_scores_labels, label_transform_fn)
@@ -526,6 +533,17 @@ class Annotation:
     @property
     def custom_data(self):
         return self._custom_data.copy()
+
+    def filter_labels_by_min_side(self, thresh, filter_operator=operator.lt, classes=None):
+        def filter(label):
+            if classes == None or label.obj_class.name in classes:
+                bbox = label.geometry.to_bbox()
+                height_px = bbox.height
+                width_px = bbox.width
+                if filter_operator(min(height_px, width_px), thresh):
+                    return []  # action 'delete'
+            return [label]
+        return self.transform_labels(filter)
 
     # def filter_labels_by_area_percent(self, thresh, operator=operator.lt, classes=None):
     #     img_area = float(self.img_size[0] * self.img_size[1])

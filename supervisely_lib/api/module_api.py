@@ -176,6 +176,11 @@ class ApiField:
     REFERENCE_IMAGE_URL='referenceImageUrl'
     GENERAL =           'general'
     ENTITIES =          'entities'
+    STORAGE_PATH =      'storagePath'
+    EXT2 =              (['meta', 'ext'], 'ext')
+    MIME2 =             (['meta', 'mime'], 'mime')
+    SIZEB2 =            (['meta', 'size'], 'sizeb')
+
 
 
 def _get_single_item(items):

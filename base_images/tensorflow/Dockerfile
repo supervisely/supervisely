@@ -1,6 +1,6 @@
 ARG REGISTRY
 ARG TAG
-FROM ${REGISTRY}/base-py:${TAG}
+FROM ${REGISTRY}/base-py:6.0.17
 
 ##############################################################################
 # tensorflow
@@ -14,4 +14,4 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 RUN pip install --no-cache-dir \
-        tensorflow_gpu==2.3.1
+        tensorflow_gpu==1.5.0

@@ -19,7 +19,7 @@ RUN apt-get update \
 RUN pip install --no-cache-dir \
         docker==3.3.0 \
         psutil==5.4.5 \
-        requests==2.19.1 \
+        requests==2.24.0 \
         hurry.filesize==0.9 \
         scandir==1.7 \
         grpcio==1.12.1 \
