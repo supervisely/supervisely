@@ -148,7 +148,11 @@ class AppService:
 
             if command == STOP_COMMAND:
                 if self._ignore_stop_for_debug is False:
-                    #self.stop()
+                    self.callbacks[command](api=user_public_api,
+                                            task_id=self.task_id,
+                                            context=context,
+                                            state=state,
+                                            app_logger=self.logger)
                     asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
                     return
                 else:
