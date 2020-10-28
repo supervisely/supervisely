@@ -128,7 +128,8 @@ class ObjClass(KeyObject, JsonSerializable):
         geometry_config = geometry_type.config_from_json(data.get(ObjClassJsonFields.GEOMETRY_CONFIG))
         sly_id = data.get(ObjClassJsonFields.ID, None)
         hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
-        return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config, sly_id=sly_id)
+        return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config, sly_id=sly_id,
+                   hotkey=hotkey)
 
     def __eq__(self, other: 'ObjClass'):
         return isinstance(other, ObjClass) and \
