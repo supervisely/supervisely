@@ -17,10 +17,12 @@ class ObjClassJsonFields:
     GEOMETRY_TYPE = 'shape'
     COLOR = 'color'
     GEOMETRY_CONFIG = 'geometry_config'
+    HOTKEY = 'hotkey'
 
 
 class ObjClass(KeyObject, JsonSerializable):
-    def __init__(self, name: str, geometry_type: type, color: List[int]=None, geometry_config: dict=None, sly_id=None):
+    def __init__(self, name: str, geometry_type: type, color: List[int]=None, geometry_config: dict=None, sly_id=None,
+                 hotkey: str = None):
         """
         Class of objects (person, car, etc) with necessary properties: name, type of geometry (Polygon, Rectangle, ...)
         and RGB color. Only one class can be associated with Label.
@@ -40,6 +42,7 @@ class ObjClass(KeyObject, JsonSerializable):
         self._color = random_rgb() if color is None else deepcopy(color)
         self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
         self._sly_id = sly_id
+        self._hotkey = take_with_default(hotkey, "")
         _validate_color(self._color)
 
     @property
@@ -86,6 +89,10 @@ class ObjClass(KeyObject, JsonSerializable):
     def sly_id(self):
         return self._sly_id
 
+    @property
+    def hotkey(self):
+        return self._hotkey
+
     def to_json(self) -> dict:
         """
         Converts object to json serializable dictionary. See Supervisely Json format explanation here:
@@ -102,6 +109,8 @@ class ObjClass(KeyObject, JsonSerializable):
         }
         if self.sly_id is not None:
             res[ObjClassJsonFields.ID] = self.sly_id
+        if self._hotkey is not None:
+            res[ObjClassJsonFields.HOTKEY] = self.hotkey
         return res
 
     @classmethod
@@ -118,6 +127,7 @@ class ObjClass(KeyObject, JsonSerializable):
         color = hex2rgb(data[ObjClassJsonFields.COLOR])
         geometry_config = geometry_type.config_from_json(data.get(ObjClassJsonFields.GEOMETRY_CONFIG))
         sly_id = data.get(ObjClassJsonFields.ID, None)
+        hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
         return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config, sly_id=sly_id)
 
     def __eq__(self, other: 'ObjClass'):
@@ -130,21 +140,23 @@ class ObjClass(KeyObject, JsonSerializable):
         return not self == other
 
     def __str__(self):  # Is need show geometry settings here?
-        return '{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<15}{:<16s}{:<16}'.format(
+        return '{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<15}{:<16s}{:<16}{:<7s}{:<7}'.format(
             'Name:', self.name,
             'Shape:', self.geometry_type.__name__,
             'Color:', str(self.color),
-            'Geom. settings:', str(self.geometry_config))
+            'Geom. settings:', str(self.geometry_config),
+            'Hotkey', self.hotkey
+        )
 
     @classmethod
     def get_header_ptable(cls):
-        return ['Name', 'Shape', 'Color']  # Is need show geometry settings here?
+        return ['Name', 'Shape', 'Color', 'Hotkey']  # Is need show geometry settings here?
 
     def get_row_ptable(self):
-        return [self.name, self.geometry_type.__name__, self.color]
+        return [self.name, self.geometry_type.__name__, self.color, self.hotkey]
 
     def clone(self, name: str = None, geometry_type: Geometry = None, color: List[int] = None,
-              geometry_config: dict = None, sly_id=None) -> 'ObjClass':
+              geometry_config: dict = None, sly_id=None, hotkey=None) -> 'ObjClass':
         """
         Creates object duplicate. Defined arguments replace corresponding original values.
 
@@ -157,4 +169,5 @@ class ObjClass(KeyObject, JsonSerializable):
                         geometry_type=take_with_default(geometry_type, self.geometry_type),
                         color=take_with_default(color, self.color),
                         geometry_config=take_with_default(geometry_config, self.geometry_config),
-                        sly_id=take_with_default(sly_id, self.sly_id))
+                        sly_id=take_with_default(sly_id, self.sly_id),
+                        hotkey=take_with_default(hotkey, self.hotkey))

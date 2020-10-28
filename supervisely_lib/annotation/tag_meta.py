@@ -21,9 +21,18 @@ class TagMetaJsonFields:
     VALUE_TYPE = 'value_type'
     VALUES = 'values'
     COLOR = 'color'
+    APPLICABLE_TYPE = 'applicable_type'
+    HOTKEY = "hotkey"
+
+
+class TagApplicableTo:
+    ALL = 'all' # both images and objects
+    IMAGES_ONLY = 'imagesOnly'
+    OBJECTS_ONLY = 'objectsOnly'
 
 
 SUPPORTED_TAG_VALUE_TYPES = [TagValueType.NONE, TagValueType.ANY_NUMBER, TagValueType.ANY_STRING, TagValueType.ONEOF_STRING]
+SUPPORTED_APPLICABLE_TO = [TagApplicableTo.ALL, TagApplicableTo.IMAGES_ONLY, TagApplicableTo.OBJECTS_ONLY]
 
 
 class TagMeta(KeyObject, JsonSerializable):
@@ -31,7 +40,8 @@ class TagMeta(KeyObject, JsonSerializable):
     This is a class for creating and using TagMeta objects. It include tag name, value type, and possible values for
     tags with enum values.
     '''
-    def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None, sly_id=None):
+    def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None, sly_id=None,
+                 hotkey: str = None, applicable_to: str = None):
         """
         :param name: str
         :param value_type: str (one of TagValueType fields)
@@ -40,13 +50,19 @@ class TagMeta(KeyObject, JsonSerializable):
         """
 
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
-            raise ValueError("value_type = {!r} is unknown, should be one of {}".format(value_type, SUPPORTED_TAG_VALUE_TYPES))
+            raise ValueError("value_type = {!r} is unknown, should be one of {}"
+                             .format(value_type, SUPPORTED_TAG_VALUE_TYPES))
 
         self._name = name
         self._value_type = value_type
         self._possible_values = possible_values
         self._color = random_rgb() if color is None else deepcopy(color)
         self._sly_id = sly_id
+        self._hotkey = take_with_default(hotkey, "")
+        self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
+        if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
+            raise ValueError("applicable_to = {!r} is unknown, should be one of {}"
+                             .format(self._applicable_to, SUPPORTED_APPLICABLE_TO))
 
         if self._value_type == TagValueType.ONEOF_STRING:
             if self._possible_values is None:
@@ -81,6 +97,14 @@ class TagMeta(KeyObject, JsonSerializable):
     def sly_id(self):
         return self._sly_id
 
+    @property
+    def hotkey(self):
+        return self._hotkey
+
+    @property
+    def applicable_to(self):
+        return self._applicable_to
+
     def to_json(self):
         '''
         The function to_json convert TagMeta object to json format
@@ -96,6 +120,11 @@ class TagMeta(KeyObject, JsonSerializable):
 
         if self.sly_id is not None:
             jdict[TagMetaJsonFields.ID] = self.sly_id
+        if self._hotkey is not None:
+            jdict[TagMetaJsonFields.HOTKEY] = self.hotkey
+        if self._applicable_to is not None:
+            jdict[TagMetaJsonFields.APPLICABLE_TYPE] = self.applicable_to
+
         return jdict
 
     @classmethod
@@ -115,7 +144,12 @@ class TagMeta(KeyObject, JsonSerializable):
             if color is not None:
                 color = hex2rgb(color)
             sly_id = data.get(TagMetaJsonFields.ID, None)
-            return cls(name=name, value_type=value_type, possible_values=values, color=color, sly_id=sly_id)
+
+            hotkey = data.get(TagMetaJsonFields.HOTKEY, "")
+            applicable_to = data.get(TagMetaJsonFields.APPLICABLE_TYPE, TagApplicableTo.ALL)
+
+            return cls(name=name, value_type=value_type, possible_values=values, color=color, sly_id=sly_id,
+                       hotkey=hotkey, applicable_to=applicable_to)
         else:
             raise ValueError('Tags must be dict or str types.')
 
@@ -171,7 +205,8 @@ class TagMeta(KeyObject, JsonSerializable):
                 self.value_type == other.value_type and
                 self.possible_values == other.possible_values)
 
-    def clone(self, name=None, value_type=None, possible_values=None, color=None, sly_id=None):
+    def clone(self, name=None, value_type=None, possible_values=None, color=None, sly_id=None,
+              hotkey=None, applicable_to=None):
         '''
         The function clone make copy of the TagMeta class object
         :return: TagMeta class object
@@ -180,19 +215,21 @@ class TagMeta(KeyObject, JsonSerializable):
                        value_type=take_with_default(value_type, self.value_type),
                        possible_values=take_with_default(possible_values, self.possible_values),
                        color=take_with_default(color, self.color),
-                       sly_id=take_with_default(sly_id, self.sly_id))
+                       sly_id=take_with_default(sly_id, self.sly_id),
+                       hotkey=take_with_default(hotkey, self.hotkey),
+                       applicable_to=take_with_default(applicable_to, self.applicable_to))
 
     def __str__(self):
-        return '{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10}'.format('Name:', self.name,
-                                                                'Value type:', self.value_type,
-                                                                'Possible values:', str(self.possible_values))
+        return "{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10}".format(
+            'Name:', self.name, 'Value type:', self.value_type, 'Possible values:', str(self.possible_values),
+            'Hotkey', self.hotkey, 'Applicable to', self.applicable_to)
 
     @classmethod
     def get_header_ptable(cls):
-        return ['Name', 'Value type', 'Possible values']
+        return ['Name', 'Value type', 'Possible values', 'Hotkey', 'Applicable to']
 
     def get_row_ptable(self):
         '''
         :return: information about TagMeta class object(name of meta, type value, and list of possible values)
         '''
-        return [self.name, self.value_type, self.possible_values]
+        return [self.name, self.value_type, self.possible_values, self.hotkey, self.applicable_to]

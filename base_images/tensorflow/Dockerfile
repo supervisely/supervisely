@@ -15,3 +15,15 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir \
         tensorflow_gpu==1.5.0
+
+# temp solution
+RUN pip install plotly==4.11.0
+RUN pip install docker
+RUN pip install fuzzywuzzy
+
+# to support pandas.read_excel
+RUN pip install xlrd
+RUN pip install google-cloud-storage
+RUN pip install python-slugify
+RUN pip install psutil==5.4.5
+RUN pip install cython
