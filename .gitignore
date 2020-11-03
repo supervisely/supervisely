@@ -42,3 +42,5 @@ ecosystem/apps/*
 !ecosystem/apps/init.sh
 ecosystem/projects/*
 !ecosystem/projects/init.sh
+ecosystem/import/*
+!ecosystem/import/init.sh

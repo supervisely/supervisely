@@ -174,8 +174,56 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_activity(self, id):
         '''
-        :param id: int
-        :return: pandas dataframe (table with activity data of given project)
+        #@TODO - umar will add meta with review status and duration
+        export const ACTIVITY_LOG = {
+          LOGIN: 'login', - unavailable
+          LOGOUT: 'logout', - unavailable
+          CREATE_PROJECT: 'create_project',
+          UPDATE_PROJECT: 'update_project',
+          DISABLE_PROJECT: 'disable_project',
+          RESTORE_PROJECT: 'restore_project',
+          CREATE_DATASET: 'create_dataset',
+          UPDATE_DATASET: 'update_dataset',
+          DISABLE_DATASET: 'disable_dataset',
+          RESTORE_DATASET: 'restore_dataset',
+          CREATE_IMAGE: 'create_image',
+          UPDATE_IMAGE: 'update_image',
+          DISABLE_IMAGE: 'disable_image',
+          RESTORE_IMAGE: 'restore_image',
+          CREATE_FIGURE: 'create_figure',
+          UPDATE_FIGURE: 'update_figure',
+          DISABLE_FIGURE: 'disable_figure',
+          RESTORE_FIGURE: 'restore_figure',
+          CREATE_CLASS: 'create_class',
+          UPDATE_CLASS: 'update_class',
+          DISABLE_CLASS: 'disable_class',
+          RESTORE_CLASS: 'restore_class',
+          CREATE_BACKUP: 'create_backup',
+          EXPORT_PROJECT: 'export_project',
+          MODEL_TRAIN: 'model_train', - unavailable
+          MODEL_INFERENCE: 'model_inference', - unavailable
+          CREATE_PLUGIN: 'create_plugin', - unavailable
+          DISABLE_PLUGIN: 'disable_plugin', - unavailable
+          RESTORE_PLUGIN: 'restore_plugin', - unavailable
+          CREATE_NODE: 'create_node', - unavailable
+          DISABLE_NODE: 'disable_node',- unavailable
+          RESTORE_NODE: 'restore_node',- unavailable
+          CREATE_WORKSPACE: 'create_workspace',- unavailable
+          DISABLE_WORKSPACE: 'disable_workspace',- unavailable
+          RESTORE_WORKSPACE: 'restore_workspace',- unavailable
+          CREATE_MODEL: 'create_model',- unavailable
+          DISABLE_MODEL: 'disable_model',- unavailable
+          RESTORE_MODEL: 'restore_model',- unavailable
+          ADD_MEMBER: 'add_member',- unavailable
+          REMOVE_MEMBER: 'remove_member',- unavailable
+          LOGIN_TO_TEAM: 'login_to_team',
+          ATTACH_TAG: 'attach_tag',
+          UPDATE_TAG_VALUE: 'update_tag_value',
+          DETACH_TAG: 'detach_tag',
+          ANNOTATION_DURATION: 'annotation_duration',
+          IMAGE_REVIEW_STATUS_UPDATED: 'image_review_status_updated',
+        };
+
         '''
         response = self._api.post('projects.activity', {ApiField.ID: id})
         df = pd.DataFrame(response.json())

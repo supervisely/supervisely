@@ -54,7 +54,10 @@ def labeled_items_count_desc():
 
 # cnt images, that labeler marked as done
 def labeled_items_count(job_info):
-    return job_info.finished_images_count
+    if is_on_labeling(job_info):
+        return job_info.finished_images_count
+    else:
+        return total_items_count(job_info)
 
 
 def reviewed_items_count_desc():
