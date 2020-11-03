@@ -40,13 +40,15 @@ class AppService:
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]
 
-    def __init__(self, logger=None, task_id=None, server_address=None, agent_token=None, ignore_errors=False):
+    def __init__(self, logger=None, task_id=None, server_address=None, agent_token=None, ignore_errors=False,
+                 ignore_task_id=False):
+        self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
         self.task_id = take_with_default(task_id, os.environ["TASK_ID"])
         self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
-        self.public_api = Api.from_env()
+        self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
         self._session_dir = "/sessions/{}".format(self.task_id)
 
@@ -125,7 +127,8 @@ class AppService:
             context = request_msg.get(CONTEXT, None)
             command = request_msg["command"]
             user_api_token = request_msg["api_token"]
-            user_public_api = Api(self.server_address, user_api_token, retry_count=5, external_logger=self.logger)
+            user_public_api = Api(self.server_address, user_api_token, retry_count=5, external_logger=self.logger,
+                                  ignore_task_id=self._ignore_task_id)
 
             if command == STOP_COMMAND:
                 self.logger.info("APP receives stop signal from user")
