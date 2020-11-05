@@ -27,6 +27,7 @@ class TaskPullDockerImage(TaskSly):
         self._docker_api = val
 
     def task_main_func(self):
+        self.logger.info('TASK_START', extra={'event_type': sly.EventType.TASK_STARTED})
         sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, self.info['pull_policy'], self.logger)
         docker_img = self._docker_api.images.get(self.docker_image_name)
         if constants.CHECK_VERSION_COMPATIBILITY():
