@@ -227,6 +227,8 @@ class AppService:
                 template_path = config.get('gui_template', None)
                 if template_path is None:
                     self.logger.info("there is no gui_template field in config.json")
+                else:
+                    template_path = os.path.join(self.repo_dir, template_path)
 
             if template_path is None:
                 template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
