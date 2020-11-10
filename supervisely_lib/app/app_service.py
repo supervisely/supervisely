@@ -18,6 +18,7 @@ from supervisely_lib.sly_logger import EventType
 from supervisely_lib.app.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
 from supervisely_lib.api.api import Api
 from supervisely_lib.io.fs import file_exists
+from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
@@ -218,7 +219,14 @@ class AppService:
 
     def run(self, template_path=None, data=None, state=None, initial_events=None):
         if template_path is None:
-            template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+            # read config
+            config_path = os.path.join(self.repo_dir, 'config.json')
+            if file_exists(config_path):
+                #we are not in debug mode
+                config = load_json_file(config_path)
+                template_path = config.get('gui_template', None)
+            else:
+                template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
 
         if not file_exists(template_path):
             self.logger.info("App will be running without GUI", extra={"app_url": self.app_url})
