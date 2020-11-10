@@ -225,7 +225,10 @@ class AppService:
                 #we are not in debug mode
                 config = load_json_file(config_path)
                 template_path = config.get('gui_template', None)
-            else:
+                if template_path is None:
+                    self.logger.info("there is no gui_template field in config.json")
+
+            if template_path is None:
                 template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
 
         if not file_exists(template_path):
