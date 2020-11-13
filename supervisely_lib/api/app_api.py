@@ -86,3 +86,7 @@ class AppApi(TaskApi):
                 if log_progress and log_size > mb1:
                     progress.iters_done_report(log_size)
                     log_size = 0
+
+    def get_info(self, module_id):
+        response = self._api.post('ecosystem.info', {ApiField.ID: module_id})
+        return response.json()

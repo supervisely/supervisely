@@ -340,17 +340,35 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return resp.json()
 
     def set_output_report(self, task_id, file_id, file_name):
+        return self._set_custom_output(task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt")
+
+    def _set_custom_output(self, task_id, file_id, file_name, file_url=None, description="File",
+                           icon="zmdi zmdi-file-text", color="#33c94c", background_color="#d9f7e4",
+                           download=False):
+        if file_url is None:
+            file_url = self._api.file.get_url(file_id)
+
         output = {
             ApiField.GENERAL: {
                 "icon": {
-                    "className": "zmdi zmdi-receipt",
-                    "color": "#33c94c",
-                    "backgroundColor": "#d9f7e4"
+                    "className": icon,
+                    "color": color,
+                    "backgroundColor": background_color
                 },
                 "title": file_name,
-                "titleUrl": self._api.file.get_url(file_id),
-                "description": "Report"
+                "titleUrl": file_url,
+                "download": download,
+                "description": description
             }
         }
         resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
         return resp.json()
+
+    def set_output_archive(self, task_id, file_id, file_name, file_url=None):
+        if file_url is None:
+            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+        return self._set_custom_output(task_id, file_id, file_name,
+                                       file_url=file_url,
+                                       description="Download archive", icon="zmdi zmdi-archive",
+                                       download=True)
+

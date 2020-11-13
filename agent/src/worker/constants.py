@@ -26,6 +26,7 @@ _HTTP_PROXY = 'HTTP_PROXY'
 _HTTPS_PROXY = 'HTTPS_PROXY'
 _NO_PROXY = 'NO_PROXY'
 _PUBLIC_API_RETRY_LIMIT = 'PUBLIC_API_RETRY_LIMIT'
+_APP_DEBUG_DOCKER_IMAGE = 'APP_DEBUG_DOCKER_IMAGE'
 
 # container limits
 _CPU_PERIOD = 'CPU_PERIOD'
@@ -74,7 +75,8 @@ _OPTIONAL_DEFAULTS = {
     _PULL_POLICY: str(PullPolicy.IF_AVAILABLE), #str(PullPolicy.NEVER),
     _GIT_LOGIN: None,
     _GIT_PASSWORD: None,
-    _GITHUB_TOKEN: None
+    _GITHUB_TOKEN: None,
+    _APP_DEBUG_DOCKER_IMAGE: None
 }
 
 
@@ -312,6 +314,10 @@ def GITHUB_TOKEN():
 
 def APPS_STORAGE_DIR():
     return os.path.join(AGENT_STORAGE_DIR(), "apps")
+
+
+def APP_DEBUG_DOCKER_IMAGE():
+    return read_optional_setting(_APP_DEBUG_DOCKER_IMAGE)
 
 
 def init_constants():

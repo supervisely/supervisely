@@ -60,8 +60,8 @@ class FileApi(ModuleApiBase):
         resp = self._api.post("file-storage.upload?teamId={}".format(team_id), encoder)
         return resp.json()
 
-    def upload(self, team_id, src, dst):
-        return self.upload_bulk(team_id, [src], [dst])[0]
+    def upload(self, team_id, src, dst, progress_cb=None):
+        return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
 
     # Example - return value
     # {
@@ -164,3 +164,7 @@ class FileApi(ModuleApiBase):
         #if res.storage_path is not None:
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
         return res
+
+    def get_info_by_id(self, id):
+        resp = self._api.post('file-storage.info', {ApiField.ID: id})
+        return self._convert_json_info(resp.json())

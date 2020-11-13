@@ -170,7 +170,7 @@ class AppService:
         except KeyError as e:
             self.logger.error(e, exc_info=False)
         except Exception as e:
-            self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(e)})
+            self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
             if self._ignore_errors is False:
                 self.logger.info("App will be stopped due to error")
                 #asyncio.create_task(self._shutdown(error=e))
@@ -207,7 +207,7 @@ class AppService:
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.processing_queue.put(event_obj)
             except Exception as error:
-                self.logger.warning('App exception: ', extra={"error_message": str(error)})
+                self.logger.warning('App exception: ', extra={"error_message": repr(error)})
 
         raise ConnectionClosedByServerException('Requests stream to a deployed model closed by the server.')
 
@@ -220,7 +220,7 @@ class AppService:
     def run(self, template_path=None, data=None, state=None, initial_events=None):
         if template_path is None:
             # read config
-            config_path = os.path.join(self.repo_dir, 'config.json')
+            config_path = os.path.join(self.repo_dir, os.environ.get("CONFIG_DIR", ""), 'config.json')
             if file_exists(config_path):
                 #we are not in debug mode
                 config = load_json_file(config_path)

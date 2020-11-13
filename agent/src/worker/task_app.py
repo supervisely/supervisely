@@ -84,7 +84,11 @@ class TaskApp(TaskDockerized):
 
     def init_docker_image(self):
         self.download_or_get_repo()
-        self.app_config = sly.io.json.load_json_file(os.path.join(self.dir_task_src, 'config.json'))
+        api = Api(self.info['server_address'], self.info['api_token'])
+        module_id = self.info["appInfo"]["moduleId"]
+        self.logger.info("APP moduleId == {} in ecosystem".format(module_id))
+        self.app_config = api.app.get_info(module_id)["config"]
+        #self.app_config = sly.io.json.load_json_file(os.path.join(self.dir_task_src, 'config.json'))
         self.read_dockerimage_from_config()
         super().init_docker_image()
 
@@ -92,6 +96,11 @@ class TaskApp(TaskDockerized):
         self.info['app_info'] = self.app_config
         try:
             self.info['docker_image'] = self.app_config['docker_image']
+            if constants.APP_DEBUG_DOCKER_IMAGE() is not None:
+                self.logger.info("APP DEBUG MODE: docker image {!r} is replaced to {!r}"
+                                 .format(self.info['docker_image'], constants.APP_DEBUG_DOCKER_IMAGE()))
+                self.info['docker_image'] = constants.APP_DEBUG_DOCKER_IMAGE()
+
         except KeyError as e:
             self.logger.critical('File \"config.json\" does not contain \"docker_image\" field')
 
@@ -206,6 +215,7 @@ class TaskApp(TaskDockerized):
             "USER_LOGIN": context.get("userLogin"),
             "TEAM_ID": context.get("teamId"),
             "API_TOKEN": context.get("apiToken"),
+            "CONFIG_DIR": self.info["appInfo"].get("configDir", ""),
             **context_envs,
             SUPERVISELY_TASK_ID: str(self.info['task_id']),
         }
