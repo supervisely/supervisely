@@ -181,6 +181,7 @@ class ApiField:
     MIME2 =             (['meta', 'mime'], 'mime')
     SIZEB2 =            (['meta', 'size'], 'sizeb')
     JOB_ID =            'jobId'
+    DATASETS_COUNT =    'datasetsCount'
 
 
 def _get_single_item(items):

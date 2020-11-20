@@ -28,8 +28,7 @@ RUN apt-get update \
 RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-py38_4.8.3-Linux-x86_64.sh -o /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -bfp /usr/local \
     && rm -rf /tmp/miniconda.sh \
-    && conda install -y python=3.8 \
-    && conda clean --all --yes
+    && conda install -y python=3.8
 
 ENV PATH /opt/conda/bin:$PATH
 
@@ -48,7 +47,7 @@ RUN apt-get update \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
-RUN pip install --no-cache-dir \
+RUN pip install \
         python-json-logger==0.1.11 \
         pybase64==1.0.2 \
         shapely==1.7.1 \
@@ -82,7 +81,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
 ##############################################################################
 # Additional project libraries
 ##############################################################################
-RUN pip install --no-cache-dir \
+RUN pip install \
     pandas==1.1.3 \
     grpcio==1.32.0 \
     grpcio-tools==1.32.0
@@ -104,7 +103,7 @@ RUN apt-get install -y fonts-noto=20160116-1
 RUN pip install pascal-voc-writer
 
 RUN pip install bidict
-RUN pip install --no-cache-dir scikit-video==1.1.11
+RUN pip install scikit-video==1.1.11
 
 RUN apt-get update && apt-get install -y openssh-server
 RUN mkdir -p /var/run/sshd

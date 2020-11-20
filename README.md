@@ -95,8 +95,7 @@ your custom format.
 
 We have organized most of the common functionality for processing data in
 [Supervisely format](https://docs.supervise.ly/ann_format/) and for training and
-inference with neural networks into
-the [Python SDK](./supervisely_lib). Our stock plugins rely on the SDK
+inference with neural networks into the [Python SDK](./supervisely_lib). Our stock plugins rely on the SDK
 extensively, and we believe the SDK will be also valuable to the community.
 
 The  SDK not only wraps all the low-level details of handling the data and
@@ -115,6 +114,11 @@ Key features:
 
 #### Installation:
 
+```
+pip install supervisely
+```
+
+or
 ```
 git clone https://github.com/supervisely/supervisely.git && \
 pip install -e ./supervisely

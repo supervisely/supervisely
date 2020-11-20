@@ -316,6 +316,10 @@ def APPS_STORAGE_DIR():
     return os.path.join(AGENT_STORAGE_DIR(), "apps")
 
 
+def APPS_PIP_CACHE_DIR():
+    return os.path.join(AGENT_STORAGE_DIR(), "apps_pip_cache")
+
+
 def APP_DEBUG_DOCKER_IMAGE():
     return read_optional_setting(_APP_DEBUG_DOCKER_IMAGE)
 
@@ -333,3 +337,5 @@ def init_constants():
     #sly.fs.mkdir(AGENT_APP_SOURCES_DIR())
     sly.fs.mkdir(AGENT_APP_SESSIONS_DIR())
     sly.fs.mkdir(APPS_STORAGE_DIR())
+    sly.fs.mkdir(APPS_PIP_CACHE_DIR())
+

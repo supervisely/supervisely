@@ -26,6 +26,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 ApiField.SIZE,
                 ApiField.README,
                 ApiField.WORKSPACE_ID,
+                ApiField.IMAGES_COUNT,
+                ApiField.DATASETS_COUNT,
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT,
                 ApiField.TYPE,

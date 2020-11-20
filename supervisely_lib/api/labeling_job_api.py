@@ -205,7 +205,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             created_jobs.append(self.get_info_by_id(job[ApiField.ID]))
         return created_jobs
 
-    def get_list(self, team_id, created_by_id=None, assigned_to_id=None, project_id=None, dataset_id=None):
+    def get_list(self, team_id, created_by_id=None, assigned_to_id=None, project_id=None, dataset_id=None,
+                 show_disabled=False):
         '''
         Get all labeling that were created by given user and were assigned to given assigned user in given team
         :param team_id: int
@@ -224,7 +225,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
-        return self.get_list_all_pages('jobs.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters})
+        return self.get_list_all_pages('jobs.list', {ApiField.TEAM_ID: team_id,
+                                                     "showDisabled": show_disabled,
+                                                     ApiField.FILTER: filters})
 
     def stop(self, id):
         '''

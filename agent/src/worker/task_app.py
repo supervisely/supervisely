@@ -17,6 +17,7 @@ from supervisely_lib.api.api import Api
 from supervisely_lib.io.fs import ensure_base_path, silent_remove, get_file_name, remove_dir, get_subdirs
 
 _ISOLATE = "isolate"
+_LINUX_DEFAULT_PIP_CACHE_DIR = "/root/.cache/pip"
 
 
 class TaskApp(TaskDockerized):
@@ -27,6 +28,8 @@ class TaskApp(TaskDockerized):
         self.dir_task_src_container = None
         self._exec_id = None
         self.app_info = None
+        self._path_cache_host = None
+        self._need_sync_pip_cache = False
         super().__init__(*args, **kwargs)
 
     def init_task_dir(self):
@@ -107,7 +110,7 @@ class TaskApp(TaskDockerized):
     def is_isolate(self):
         if self.app_config is None:
             raise RuntimeError("App config is not initialized")
-        return self.app_config.get(_ISOLATE, True)
+        return True #self.app_config.get(_ISOLATE, True)
 
     def _get_task_volumes(self):
         res = {}
@@ -116,27 +119,62 @@ class TaskApp(TaskDockerized):
         else:
             res[constants.AGENT_APP_SESSIONS_DIR_HOST()] = {'bind': sly.app.SHARED_DATA, 'mode': 'rw'}
 
-        #@TODO: cache ecoystem item in agent (remove copypaste download-extract logic)
-        # state = self.info.get('state', {})
-        # if "slyEcosystemItemGitUrl" in state and "slyEcosystemItemId" in state and "slyEcosystemItemVersion" in state:
-        #     path_cache = None
-        #     if state["slyEcosystemItemVersion"] != "master":
-        #         path_cache = os.path.join(constants.APPS_STORAGE_DIR(),
-        #                                   *Path(state["slyEcosystemItemGitUrl"].replace(".git", "")).parts[1:],
-        #                                   state["slyEcosystemItemVersion"])
-        #         already_downloaded = sly.fs.dir_exists(path_cache)
-        #         if already_downloaded:
-        #             constants.APPS_STORAGE_DIR
-        #             res["/sly_ecosystem_item"] = {'bind': self.dir_task_container, 'mode': 'rw'}
-        #     pass
+        if self._need_sync_pip_cache is True:
+            res[self._path_cache_host] = {'bind': _LINUX_DEFAULT_PIP_CACHE_DIR, 'mode': 'rw'}
 
         return res
 
     def download_step(self):
         pass
 
+    def sync_pip_cache(self):
+        version = self.app_info.get("version", "master")
+        module_id = self.app_info.get("moduleId")
+        requirements_path = os.path.join(self.dir_task_src, "requirements.txt")
+
+        path_cache = os.path.join(constants.APPS_PIP_CACHE_DIR(), str(module_id), version)  # in agent container
+        self._path_cache_host = constants._agent_to_host_path(os.path.join(path_cache, "pip"))
+
+        if sly.fs.file_exists(requirements_path):
+            self._need_sync_pip_cache = True
+
+            self.logger.info("requirements.txt:")
+            with open(requirements_path, 'r') as f:
+                self.logger.info(f.read())
+
+        if self._need_sync_pip_cache is True and sly.fs.dir_exists(path_cache) is False:
+            sly.fs.mkdir(path_cache)
+            archive_destination = os.path.join(path_cache, "archive.tar")
+            temp_container = self._docker_api.containers.create(self.docker_image_name)
+
+            #@TODO: handle 404 not found
+            bits, stat = temp_container.get_archive(_LINUX_DEFAULT_PIP_CACHE_DIR)
+            self.logger.info("Download initial pip cache from dockerimage",
+                             extra={
+                                 "dockerimage": self.docker_image_name,
+                                 "module_id": module_id,
+                                 "version": version,
+                                 "save_path": path_cache,
+                                 "stats": stat,
+                                 "default_pip_cache": _LINUX_DEFAULT_PIP_CACHE_DIR,
+                                 "archive_destination": archive_destination
+                             })
+
+            with open(archive_destination, 'wb') as archive:
+                for chunk in bits:
+                    archive.write(chunk)
+
+            with tarfile.open(archive_destination) as archive:
+                archive.extractall(path_cache)
+            sly.fs.silent_remove(archive_destination)
+
+            temp_container.remove()
+
     def find_or_run_container(self):
         add_labels = {"sly_app": "1", "app_session_id": str(self.info['task_id'])}
+
+        self.sync_pip_cache()
+
         if self.is_isolate():
             # spawn app session in new container
             add_labels["isolate"] = "1"
@@ -156,11 +194,8 @@ class TaskApp(TaskDockerized):
     def get_spawn_entrypoint(self):
         return ["sh", "-c", "while true; do sleep 30; done;"]
 
-    def exec_command(self, add_envs=None):
+    def _exec_command(self, command, add_envs=None):
         add_envs = sly.take_with_default(add_envs, {})
-        main_script_path = os.path.join(self.dir_task_src_container, self.app_config.get('main_script', 'src/main.py'))
-        command = "python {}".format(main_script_path)
-
         self._exec_id = self._docker_api.api.exec_create(self._container.id,
                                                          cmd=command,
                                                          environment={
@@ -178,6 +213,15 @@ class TaskApp(TaskDockerized):
                                                          })
         self._logs_output = self._docker_api.api.exec_start(self._exec_id, stream=True, demux=False)
 
+    def exec_command(self, add_envs=None, command=None):
+        add_envs = sly.take_with_default(add_envs, {})
+        main_script_path = os.path.join(self.dir_task_src_container, self.app_config.get('main_script', 'src/main.py'))
+
+        if command is None:
+            command = "python {}".format(main_script_path)
+
+        self._exec_command(command, add_envs)
+
         #change pulling progress to app progress
         progress_dummy = sly.Progress('Application is started ...', 1, ext_logger=self.logger)
         progress_dummy.iter_done_report()
@@ -186,7 +230,17 @@ class TaskApp(TaskDockerized):
 
     def main_step(self):
         self.find_or_run_container()
-        self.exec_command(add_envs= self.main_step_envs())
+
+        if self._need_sync_pip_cache is True:
+            self.logger.info("Installing app requirements")
+            progress_dummy = sly.Progress('Installing app requirements...', 1, ext_logger=self.logger)
+            progress_dummy.iter_done_report()
+            command = "pip3 install -r " + os.path.join(self.dir_task_src_container, "requirements.txt")
+            self._exec_command(command, add_envs=self.main_step_envs())
+            self.process_logs()
+            self.logger.info("Requirements are installed")
+
+        self.exec_command(add_envs=self.main_step_envs())
         self.process_logs()
         self.drop_container_and_check_status()
 

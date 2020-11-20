@@ -14,10 +14,11 @@ def read(fname):
 # already have PyTorch installed.
 setup(
     name="supervisely",
-    version="6.1.17",
+    version="6.1.20",
     packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*']),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
+    long_description_content_type='text/markdown',
     url="https://github.com/supervisely/supervisely",
     install_requires=[
         "flask-restful>=0.3.7",
