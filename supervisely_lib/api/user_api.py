@@ -205,3 +205,9 @@ class UserApi(ModuleApiBase):
         response = self._api.post('members.activity', {ApiField.USER_ID: user_id, ApiField.TEAM_ID: team_id})
         df = pd.DataFrame(response.json())
         return df
+
+    def add_to_team_by_login(self, user_login, team_id, role_id):
+        response = self._api.post('members.add', {ApiField.LOGIN: user_login,
+                                                  ApiField.TEAM_ID: team_id,
+                                                  ApiField.ROLE_ID: role_id})
+        return response.json()
