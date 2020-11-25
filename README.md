@@ -129,6 +129,11 @@ or
 python -m pip install git+https://github.com/supervisely/supervisely.git
 ```
 
+We release updates quite often, so use following command if you would like to upgrade you current supervisely package:
+```
+pip install supervisely --upgrade
+```
+
 The only prerequisites are `Python` >= 3.6 and `pip`.
 
 Tip: `opencv-python` may require `apt-get install libgtk2.0-dev` Or use pre-built Docker image which can be found on Docker Hub:
