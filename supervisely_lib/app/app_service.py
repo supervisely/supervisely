@@ -52,6 +52,9 @@ class AppService:
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
         self._session_dir = "/sessions/{}".format(self.task_id)
+        debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
+        if debug_app_dir != "":
+            self._session_dir = debug_app_dir
 
         self.api = AgentAPI(token=self.agent_token, server_address=self.server_address, ext_logger=self.logger)
         self.api.add_to_metadata('x-task-id', str(self.task_id))
