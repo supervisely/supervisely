@@ -119,6 +119,7 @@ RUN pip install python-slugify
 RUN pip install psutil==5.4.5
 RUN pip install cython
 
+RUN apt-get update && apt-get install -y ffmpeg
 ##############################################################################
 # Encoding for python SDK
 ##############################################################################
