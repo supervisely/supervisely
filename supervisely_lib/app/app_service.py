@@ -22,8 +22,14 @@ from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
+
 class ConnectionClosedByServerException(Exception):
     pass
+
+
+class AppCommandNotFound(Exception):
+    pass
+
 
 REQUEST_ID = 'request_id'
 SERVER_ADDRESS = 'SERVER_ADDRESS'
@@ -147,10 +153,10 @@ class AppService:
                 else:
                     self.logger.info("STOP event is ignored ...")
             elif command in AppService.DEFAULT_EVENTS and command not in self.callbacks:
-                raise KeyError("App received default command {!r}. Use decorator \"callback\" to handle it."
+                raise AppCommandNotFound("App received default command {!r}. Use decorator \"callback\" to handle it."
                                .format(command))
             elif command not in self.callbacks:
-                raise KeyError("App received unhandled command {!r}. Use decorator \"callback\" to handle it."
+                raise AppCommandNotFound("App received unhandled command {!r}. Use decorator \"callback\" to handle it."
                                .format(command))
 
             if command == STOP_COMMAND:
@@ -170,8 +176,8 @@ class AppService:
                                         context=context,
                                         state=state,
                                         app_logger=self.logger)
-        except KeyError as e:
-            self.logger.error(e, exc_info=False)
+        except AppCommandNotFound as e:
+            self.logger.error(repr(e), exc_info=False)
         except Exception as e:
             if self._ignore_errors is False:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={
