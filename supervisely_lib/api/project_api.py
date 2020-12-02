@@ -189,3 +189,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def get_stats(self, id):
         response = self._api.post('projects.stats', {ApiField.ID: id})
         return response.json()
+
+    def url(self, id):
+        result = urllib.parse.urljoin(self._api.server_address, 'projects/{}/datasets'.format(id))
+        return result
