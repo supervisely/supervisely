@@ -173,11 +173,17 @@ class AppService:
         except KeyError as e:
             self.logger.error(e, exc_info=False)
         except Exception as e:
-            self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
             if self._ignore_errors is False:
+                self.logger.error(traceback.format_exc(), exc_info=True, extra={
+                    'main_name': command,
+                    'exc_str': repr(e),
+                    'event_type': EventType.TASK_CRASHED
+                })
                 self.logger.info("App will be stopped due to error")
                 #asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+            else:
+                self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
 
     def consume_sync(self):
         while True:
