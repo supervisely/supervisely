@@ -247,10 +247,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
                 content_dict["{}-file".format(idx)] = (name, open(path, 'rb'), '')
 
-            encoder = MultipartEncoder(fields=content_dict)
-            resp = self._api.post('tasks.files.bulk.upload', encoder)
-            if progress_cb is not None:
-                progress_cb(len(content_dict))
+            if len(content_dict) > 0:
+                encoder = MultipartEncoder(fields=content_dict)
+                resp = self._api.post('tasks.files.bulk.upload', encoder)
+                if progress_cb is not None:
+                    progress_cb(len(content_dict))
 
     # {
     #     data: {my_val: 1}
