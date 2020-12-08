@@ -13,7 +13,9 @@ class TaskPluginImportLocal(TaskPlugin):
         super().download_step()
 
         # upload local files to server
+        sly.fs.log_tree(constants.AGENT_IMPORT_DIR(), self.logger)
         absolute_paths = sly.fs.list_files_recursively(constants.AGENT_IMPORT_DIR())
+
         relative_paths = [path.replace(constants.AGENT_IMPORT_DIR().rstrip("/"), "") for path in absolute_paths]
 
         progress = sly.Progress('Upload files', len(absolute_paths), self.logger)

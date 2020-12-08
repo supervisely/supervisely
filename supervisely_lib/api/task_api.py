@@ -234,7 +234,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             for hash in remote_hashes:
                 for name in hash_to_name[hash]:
                     files.append({ApiField.NAME: name, ApiField.HASH: hash})
-            resp = self._api.post('tasks.files.bulk.add-by-hash', {ApiField.TASK_ID: task_id, ApiField.FILES: files})
+            for batch in batched(files):
+                resp = self._api.post('tasks.files.bulk.add-by-hash', {ApiField.TASK_ID: task_id, ApiField.FILES: batch})
         if progress_cb is not None:
             progress_cb(len(remote_hashes))
 
