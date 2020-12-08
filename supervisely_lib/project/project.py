@@ -568,15 +568,7 @@ def read_single_project(dir, project_class=Project):
     return project_fs
 
 
-def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False):
-    '''
-    Download project with given id in destination directory
-    :param api: Api class object
-    :param project_id: int
-    :param dest_dir: str
-    :param dataset_ids: list of integers
-    :param log_progress: bool
-    '''
+def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -595,7 +587,7 @@ def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=F
             ds_progress = Progress(
                 'Downloading dataset: {!r}'.format(dataset_info.name), total_cnt=len(images))
 
-        for batch in batched(images):
+        for batch in batched(images, batch_size):
             image_ids = [image_info.id for image_info in batch]
             image_names = [image_info.name for image_info in batch]
 
