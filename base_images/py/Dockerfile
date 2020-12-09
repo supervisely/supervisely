@@ -53,7 +53,7 @@ RUN pip install \
         shapely==1.7.1 \
         imgaug==0.4.0 \
         numpy==1.19 \
-        opencv-python==3.4.11.43 \
+        opencv-python==3.4.10.35 \
         scipy==1.5.2 \
         scikit-image==0.17.1 \
         matplotlib==3.3.2 \
