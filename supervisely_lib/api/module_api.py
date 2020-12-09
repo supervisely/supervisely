@@ -28,6 +28,7 @@ class ApiField:
     README =            'readme'
     PROJECT_ID =        'projectId'
     IMAGES_COUNT =      'imagesCount'
+    ITEMS_COUNT =       'itemsCount'
     DATASET_ID =        'datasetId'
     LINK =              'link'
     WIDTH =             'width'
