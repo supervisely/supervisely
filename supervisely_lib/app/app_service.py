@@ -17,7 +17,7 @@ from supervisely_lib.sly_logger import logger as default_logger
 from supervisely_lib.sly_logger import EventType
 from supervisely_lib.app.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
 from supervisely_lib.api.api import Api
-from supervisely_lib.io.fs import file_exists
+from supervisely_lib.io.fs import file_exists, mkdir
 from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
@@ -61,6 +61,7 @@ class AppService:
         debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
         if debug_app_dir != "":
             self._session_dir = debug_app_dir
+        mkdir(self.data_dir)
 
         self.api = AgentAPI(token=self.agent_token, server_address=self.server_address, ext_logger=self.logger)
         self.api.add_to_metadata('x-task-id', str(self.task_id))
