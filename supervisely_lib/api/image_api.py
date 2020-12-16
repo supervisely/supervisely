@@ -636,3 +636,10 @@ class ImageApi(RemoveableBulkModuleApi):
         if height is None:
             height = ""
         return url.replace("/image-converter", "/previews/{}x{},jpeg,q{}/image-converter".format(width, height, quality))
+
+    def update_meta(self, id, meta):
+        if type(meta) is not dict:
+            raise TypeError('Meta must be dict, not {}'.format(type(meta)))
+        response = self._api.post('images.editInfo', {ApiField.ID: id, ApiField.META: meta})
+        return response.json()
+

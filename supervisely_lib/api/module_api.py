@@ -183,13 +183,14 @@ class ApiField:
     SIZEB2 =            (['meta', 'size'], 'sizeb')
     JOB_ID =            'jobId'
     DATASETS_COUNT =    'datasetsCount'
+    CUSTOM_DATA =       'customData'
 
 
 def _get_single_item(items):
     if len(items) == 0:
         return None
     if len(items) > 1:
-        raise RuntimeError('There are several items with the same name {!r}')
+        raise RuntimeError('There are several items with the same name')
     return items[0]
 
 

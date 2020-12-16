@@ -196,3 +196,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def url(self, id):
         result = urllib.parse.urljoin(self._api.server_address, 'projects/{}/datasets'.format(id))
         return result
+
+    def update_custom_data(self, id, data):
+        if type(data) is not dict:
+            raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
+        response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
+        return response.json()
