@@ -190,15 +190,23 @@ def change_formatters_default_values(the_logger, field_name, value):
             hfaf.pop(field_name, None)
 
 
+def _get_loglevel_env():
+    loglevel = os.getenv('LOG_LEVEL', None)
+    if loglevel is None:
+        loglevel = os.getenv('LOGLEVEL', 'INFO')
+    return loglevel.upper()
+
+
 def set_global_logger():
-    loglevel = os.getenv('LOG_LEVEL', 'TRACE')  # use the env to set loglevel
+    loglevel = _get_loglevel_env()  # use the env to set loglevel
     the_logger = logging.getLogger('logger')  # optional logger name
     _construct_logger(the_logger, loglevel)
     return the_logger
 
 
-def get_task_logger(task_id):
-    loglevel = os.getenv('LOG_LEVEL', 'TRACE')  # use the env to set loglevel
+def get_task_logger(task_id, loglevel=None):
+    if loglevel is None:
+        loglevel = _get_loglevel_env() # use the env to set loglevel
     logger_name = 'task_{}'.format(task_id)
     the_logger = logging.getLogger(logger_name)  # optional logger name
     _construct_logger(the_logger, loglevel)

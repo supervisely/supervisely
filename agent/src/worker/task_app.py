@@ -32,6 +32,10 @@ class TaskApp(TaskDockerized):
         self._need_sync_pip_cache = False
         super().__init__(*args, **kwargs)
 
+    def init_logger(self, loglevel='TRACE'):
+        super().init_logger(loglevel=loglevel)
+        self.logger.trace("Task LOGLEVEL is set to TRACE on agent, change task loglevel manually before running app")
+
     def init_task_dir(self):
         # agent container paths
         self.dir_task = os.path.join(constants.AGENT_APP_SESSIONS_DIR(), str(self.info['task_id']))
@@ -272,6 +276,9 @@ class TaskApp(TaskDockerized):
             "CONFIG_DIR": self.info["appInfo"].get("configDir", ""),
             **context_envs,
             SUPERVISELY_TASK_ID: str(self.info['task_id']),
+            'LOG_LEVEL': str(self.app_info.get('logLevel', 'INFO')),
+            'LOGLEVEL': str(self.app_info.get('logLevel', 'INFO')),
+            'PYTHONUNBUFFERED': 1
         }
         return envs
 

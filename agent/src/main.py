@@ -1,6 +1,9 @@
 # coding: utf-8
 
 import os
+# os.environ["LOGLEVEL"] = os.environ.get("LOGLEVEL", "TRACE")
+# print(f"LOGLEVEL={os.environ['LOGLEVEL']}")
+
 import supervisely_lib as sly
 
 from worker import constants

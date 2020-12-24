@@ -10,8 +10,8 @@ class TaskSly(TaskLogged):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def init_logger(self):
-        super().init_logger()
+    def init_logger(self, loglevel=None):
+        super().init_logger(loglevel=loglevel)
         sly.change_formatters_default_values(self.logger, 'service_type', sly.ServiceType.TASK)
         sly.change_formatters_default_values(self.logger, 'task_id', self.info['task_id'])
 

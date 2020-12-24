@@ -4,4 +4,4 @@ FROM ${REGISTRY}/base-py:${TAG}
 
 RUN pip install attrs
 
-RUN pip install supervisely==6.1.32
+RUN pip install supervisely==6.1.36
