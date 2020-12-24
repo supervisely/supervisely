@@ -136,6 +136,8 @@ class AppService:
         try:
             state = request_msg.get(STATE, None)
             context = request_msg.get(CONTEXT, None)
+            if context is not None:
+                context["request_id"] = request_msg.get("request_id", "")
             command = request_msg["command"]
             user_api_token = request_msg["api_token"]
             user_public_api = Api(self.server_address, user_api_token, retry_count=5, external_logger=self.logger,

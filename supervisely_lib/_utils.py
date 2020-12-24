@@ -104,7 +104,7 @@ def sizeof_fmt(num, suffix='B'):
 
 def _remove_sensitive_information(d: dict):
     new_dict = dict(d)
-    fields = ["api_token", "API_TOKEN", "AGENT_TOKEN"]
+    fields = ["api_token", "API_TOKEN", "AGENT_TOKEN", "apiToken"]
     for field in fields:
         if field in new_dict:
             new_dict[field] = "***"

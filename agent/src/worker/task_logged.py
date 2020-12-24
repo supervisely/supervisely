@@ -62,15 +62,14 @@ class TaskLogged(multiprocessing.Process):
         self.dir_task = osp.join(constants.AGENT_TASKS_DIR(), str(self.info['task_id']))
         self.dir_task_host = osp.join(constants.AGENT_TASKS_DIR_HOST(), str(self.info['task_id']))
 
-    def init_logger(self):
-        self.logger = sly.get_task_logger(self.info['task_id'])
+    def init_logger(self, loglevel=None):
+        self.logger = sly.get_task_logger(self.info['task_id'], loglevel=loglevel)
         sly.change_formatters_default_values(self.logger, 'service_type', sly.ServiceType.AGENT)
         sly.change_formatters_default_values(self.logger, 'event_type', sly.EventType.LOGJ)
 
         self.log_queue = LogQueue()
         add_task_handler(self.logger, self.log_queue)
         sly.add_default_logging_into_file(self.logger, self.dir_logs)
-
         self.executor_log = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
     def init_api(self):
