@@ -1,4 +1,4 @@
-# Creating a Superviely plugin
+# Creating a Supervisely plugin
 
 This tutorial walks you through creating a new Supervisely plugin. In Supervisely, plugins are Docker images that are launched on worker machines by the *[Supervisely agent](../../../agent/README.md)*.
 
