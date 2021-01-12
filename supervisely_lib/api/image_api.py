@@ -38,13 +38,19 @@ class ImageApi(RemoveableBulkModuleApi):
     def info_tuple_name():
         return 'ImageInfo'
 
-    def get_list(self, dataset_id, filters=None):
+    def get_list(self, dataset_id, filters=None, sort="id", sort_order="asc"):
         '''
         :param dataset_id: int
         :param filters: list
+        :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
         :return: list all the images for a given dataset
         '''
-        return self.get_list_all_pages('images.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages('images.list',  {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order
+        })
 
     def get_info_by_id(self, id):
         '''

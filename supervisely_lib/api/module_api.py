@@ -184,6 +184,8 @@ class ApiField:
     JOB_ID =            'jobId'
     DATASETS_COUNT =    'datasetsCount'
     CUSTOM_DATA =       'customData'
+    CONTEXT =           'context'
+    STATE =             'state'
 
 
 def _get_single_item(items):
@@ -241,7 +243,8 @@ class ModuleApiBase(_JsonConvertibleModule):
         else:
             convert_func = convert_json_info_cb
 
-        data = self._add_sort_param(data)
+        if ApiField.SORT not in data:
+            data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response['total']
         per_page = first_response['perPage']

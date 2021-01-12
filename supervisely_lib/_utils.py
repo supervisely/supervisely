@@ -8,6 +8,7 @@ import json
 import numpy as np
 import random
 from datetime import datetime
+import copy
 
 from supervisely_lib.io import fs as sly_fs
 from supervisely_lib.sly_logger import logger
@@ -103,9 +104,16 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def _remove_sensitive_information(d: dict):
-    new_dict = dict(d)
+    new_dict = copy.deepcopy(d)
     fields = ["api_token", "API_TOKEN", "AGENT_TOKEN", "apiToken"]
     for field in fields:
         if field in new_dict:
             new_dict[field] = "***"
+
+    for parent_key in ["state", "context"]:
+        if parent_key in new_dict:
+            for field in fields:
+                if field in new_dict[parent_key]:
+                    new_dict[parent_key][field] = "***"
+
     return new_dict

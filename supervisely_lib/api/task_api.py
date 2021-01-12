@@ -300,13 +300,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             }
         ]
         return self.set_fields(task_id, fields)
-    #
-    # def get_field(self, task_id, field):
-    #     data = {ApiField.TASK_ID: task_id}
-    #     if field is not None and type(field) == str:
-    #         data[ApiField.FIELD] = field
-    #     resp = self._api.post('tasks.data.get', data)
-    #     return resp.json()["result"]
+
+    def get_fields(self, task_id, fields: list) -> dict:
+        data = {
+            ApiField.TASK_ID: task_id,
+            ApiField.FIELDS: fields
+        }
+        resp = self._api.post('tasks.data.get', data)
+        return resp.json()["result"]
+
+    def get_field(self, task_id, field):
+        result = self.get_fields(task_id, [field])
+        return result[field]
 
     def _validate_checkpoints_support(self, task_id):
         info = self.get_info_by_id(task_id)
@@ -374,3 +379,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                        description="Download archive", icon="zmdi zmdi-archive",
                                        download=True)
 
+    def send_request(self, task_id, method, data, context={}, skip_response=False):
+        if type(data) is not dict:
+            raise TypeError("data argument has to be a dict")
+        resp = self._api.post("tasks.request.direct", {ApiField.TASK_ID: task_id,
+                                                       ApiField.COMMAND: method,
+                                                       ApiField.CONTEXT: context,
+                                                       ApiField.STATE: data,
+                                                       'skipResponse': skip_response})
+        return resp.json()

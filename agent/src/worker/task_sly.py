@@ -2,6 +2,7 @@
 
 import supervisely_lib as sly
 
+from supervisely_lib._utils import _remove_sensitive_information
 from worker.task_logged import TaskLogged
 
 
@@ -21,7 +22,8 @@ class TaskSly(TaskLogged):
 
     def report_start(self):
         self.logger.info('TASK_START', extra={'event_type': sly.EventType.TASK_STARTED})
-        self.logger.info('TASK_MSG', extra=self.info)
+        to_log = _remove_sensitive_information(self.info)
+        self.logger.info('TASK_MSG', extra=to_log)
 
     def task_main_func(self):
         raise NotImplementedError()

@@ -20,6 +20,7 @@ from supervisely_lib.api.api import Api
 from supervisely_lib.io.fs import file_exists, mkdir
 from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
+from supervisely_lib.worker_api.agent_rpc import send_from_memory_generator
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
 
@@ -310,3 +311,10 @@ class AppService:
 
         if error is not None:
             self._error = error
+
+    def send_response(self, request_id, data):
+        out_bytes = json.dumps(data).encode('utf-8')
+        self.api.put_stream_with_data('SendGeneralEventData',
+                                      api_proto.Empty,
+                                      send_from_memory_generator(out_bytes, 1048576),
+                                      addit_headers={'x-request-id': request_id})

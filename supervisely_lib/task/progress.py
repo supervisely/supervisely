@@ -14,7 +14,7 @@ class Progress:
     '''
     This is a class for conveniently monitoring the operation of modules and displaying statistics on data processing
     '''
-    def __init__(self, message, total_cnt, ext_logger=None, is_size=False):
+    def __init__(self, message, total_cnt, ext_logger=None, is_size=False, need_info_log=False):
         '''
         :param message: str
         :param total_cnt: int
@@ -27,6 +27,7 @@ class Progress:
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
         self.report_every = max(1, math.ceil(total_cnt / 100))
+        self.need_info_log = need_info_log
         self.report_progress()
 
     def iter_done(self):
@@ -60,6 +61,9 @@ class Progress:
 
         self.logger.info('progress', extra=extra)
         self.reported_cnt += 1
+
+        if self.need_info_log is True:
+            self.logger.info(f"{self.message} [{extra['current']} / {extra['total']}]")
 
     def report_if_needed(self):
         '''

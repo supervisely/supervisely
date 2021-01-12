@@ -8,15 +8,15 @@ class AdvancedApi(ModuleApiBase):
         data = {ApiField.TAG_ID: tag_meta_id, ApiField.FIGURE_ID: figure_id}
         if value is not None:
             data[ApiField.VALUE] = value
-        resp = self._api.post('/object-tags.add-to-object', data)
+        resp = self._api.post('object-tags.add-to-object', data)
         return resp.json()
 
     def remove_tag_from_object(self, tag_meta_id, figure_id, tag_id):
         data = {ApiField.TAG_ID: tag_meta_id, ApiField.FIGURE_ID: figure_id, ApiField.ID: tag_id}
-        resp = self._api.post('/object-tags.remove-from-figure', data)
+        resp = self._api.post('object-tags.remove-from-figure', data)
         return resp.json()
 
     def get_object_tags(self, figure_id):
         data = {ApiField.ID: figure_id}
-        resp = self._api.post('/figures.tags.list', data)
+        resp = self._api.post('figures.tags.list', data)
         return resp.json()

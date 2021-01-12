@@ -428,8 +428,11 @@ class Annotation:
         :param color: [R, G, B]
         :param thickness: thickness of the drawing rectangle
         '''
+        tags_font = None
+        if draw_tags is True:
+            tags_font = self._get_font()
         for label in self._labels:
-            label.draw(bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
+            label.draw(bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=tags_font)
         if draw_tags:
             self._draw_tags(bitmap)
 
@@ -440,9 +443,11 @@ class Annotation:
         :param color: [R, G, B]
         :param thickness: thickness of the drawing contour
         '''
+        tags_font = None
+        if draw_tags is True:
+            tags_font = self._get_font()
         for label in self._labels:
-            label.draw_contour(
-                bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=self._get_font())
+            label.draw_contour(bitmap, color=color, thickness=thickness, draw_tags=draw_tags, tags_font=tags_font)
         if draw_tags:
             self._draw_tags(bitmap)
 
@@ -544,6 +549,12 @@ class Annotation:
                     return []  # action 'delete'
             return [label]
         return self.transform_labels(filter)
+
+    def get_label_by_id(self, sly_id) -> Label:
+        for label in self._labels:
+            if label.geometry.sly_id == sly_id:
+                return label
+        return None
 
     # def filter_labels_by_area_percent(self, thresh, operator=operator.lt, classes=None):
     #     img_area = float(self.img_size[0] * self.img_size[1])
