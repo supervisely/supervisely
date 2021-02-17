@@ -26,15 +26,17 @@ class TaskApp(TaskDockerized):
         self.dir_task_src = None
         self.dir_task_container = None
         self.dir_task_src_container = None
+        self.dir_apps_cache_host = None
+        self.dir_apps_cache_container = None
         self._exec_id = None
         self.app_info = None
         self._path_cache_host = None
         self._need_sync_pip_cache = False
         super().__init__(*args, **kwargs)
 
-    def init_logger(self, loglevel='TRACE'):
-        super().init_logger(loglevel=loglevel)
-        self.logger.trace("Task LOGLEVEL is set to TRACE on agent, change task loglevel manually before running app")
+    def init_logger(self, loglevel=None):
+        app_loglevel = self.info["appInfo"].get("logLevel")
+        super().init_logger(loglevel=app_loglevel)
 
     def init_task_dir(self):
         # agent container paths
@@ -42,9 +44,18 @@ class TaskApp(TaskDockerized):
         self.dir_task_src = os.path.join(self.dir_task, 'repo')
         # host paths
         self.dir_task_host = os.path.join(constants.AGENT_APP_SESSIONS_DIR_HOST(), str(self.info['task_id']))
+
+
+        team_id = self.info.get("context", {}).get("teamId", "unknown")
+        if team_id == "unknown":
+            self.logger.warn("teamId not found in context")
+        self.dir_apps_cache_host = os.path.join(constants.AGENT_APPS_CACHE_DIR_HOST(), str(team_id))
+        sly.fs.ensure_base_path(self.dir_apps_cache_host)
+
         # task container path
         self.dir_task_container = os.path.join("/sessions", str(self.info['task_id']))
         self.dir_task_src_container = os.path.join(self.dir_task_container, 'repo')
+        self.dir_apps_cache_container = "/apps_cache"
         self.app_info = self.info["appInfo"]
 
     def download_or_get_repo(self):
@@ -95,6 +106,11 @@ class TaskApp(TaskDockerized):
         module_id = self.info["appInfo"]["moduleId"]
         self.logger.info("APP moduleId == {} in ecosystem".format(module_id))
         self.app_config = api.app.get_info(module_id)["config"]
+
+        need_gpu = self.app_config.get('needGPU', False)
+        if need_gpu:
+            self.docker_runtime = 'nvidia'
+
         #self.app_config = sly.io.json.load_json_file(os.path.join(self.dir_task_src, 'config.json'))
         self.read_dockerimage_from_config()
         super().init_docker_image()
@@ -120,6 +136,7 @@ class TaskApp(TaskDockerized):
         res = {}
         if self.is_isolate():
             res[self.dir_task_host] = {'bind': self.dir_task_container, 'mode': 'rw'}
+            res[self.dir_apps_cache_host] = {'bind': self.dir_apps_cache_container, 'mode': 'rw'}
         else:
             res[constants.AGENT_APP_SESSIONS_DIR_HOST()] = {'bind': sly.app.SHARED_DATA, 'mode': 'rw'}
 
@@ -149,7 +166,9 @@ class TaskApp(TaskDockerized):
         if self._need_sync_pip_cache is True and sly.fs.dir_exists(path_cache) is False:
             sly.fs.mkdir(path_cache)
             archive_destination = os.path.join(path_cache, "archive.tar")
-            temp_container = self._docker_api.containers.create(self.docker_image_name)
+            temp_container = self._container  # self._docker_api.containers.create(self.docker_image_name)
+
+            self.install_pip_requirements(container_id=temp_container.id)
 
             #@TODO: handle 404 not found
             bits, stat = temp_container.get_archive(_LINUX_DEFAULT_PIP_CACHE_DIR)
@@ -172,13 +191,11 @@ class TaskApp(TaskDockerized):
                 archive.extractall(path_cache)
             sly.fs.silent_remove(archive_destination)
 
-            temp_container.remove()
+            #temp_container.remove()
 
     def find_or_run_container(self):
         add_labels = {"sly_app": "1", "app_session_id": str(self.info['task_id'])}
-
-        self.sync_pip_cache()
-
+        sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, constants.PULL_POLICY(), self.logger)
         if self.is_isolate():
             # spawn app session in new container
             add_labels["isolate"] = "1"
@@ -194,13 +211,14 @@ class TaskApp(TaskDockerized):
                 self.spawn_container(add_labels=add_labels)
             else:
                 self._container = containers[0]
+        self.sync_pip_cache()
 
     def get_spawn_entrypoint(self):
         return ["sh", "-c", "while true; do sleep 30; done;"]
 
-    def _exec_command(self, command, add_envs=None):
+    def _exec_command(self, command, add_envs=None, container_id=None):
         add_envs = sly.take_with_default(add_envs, {})
-        self._exec_id = self._docker_api.api.exec_create(self._container.id,
+        self._exec_id = self._docker_api.api.exec_create(self._container.id if container_id is None else container_id,
                                                          cmd=command,
                                                          environment={
                                                              'LOG_LEVEL': 'DEBUG',
@@ -232,18 +250,19 @@ class TaskApp(TaskDockerized):
 
         self.logger.info("command is running", extra={"command": command})
 
-    def main_step(self):
-        self.find_or_run_container()
-
+    def install_pip_requirements(self, container_id=None):
         if self._need_sync_pip_cache is True:
             self.logger.info("Installing app requirements")
             progress_dummy = sly.Progress('Installing app requirements...', 1, ext_logger=self.logger)
             progress_dummy.iter_done_report()
             command = "pip3 install -r " + os.path.join(self.dir_task_src_container, "requirements.txt")
-            self._exec_command(command, add_envs=self.main_step_envs())
+            self._exec_command(command, add_envs=self.main_step_envs(), container_id=container_id)
             self.process_logs()
             self.logger.info("Requirements are installed")
 
+    def main_step(self):
+        self.find_or_run_container()
+        self.install_pip_requirements()  # run again to be compatible with old agents (remove it later or check agent version >= 6.1.15)
         self.exec_command(add_envs=self.main_step_envs())
         self.process_logs()
         self.drop_container_and_check_status()

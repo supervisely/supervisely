@@ -388,3 +388,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                                        ApiField.STATE: data,
                                                        'skipResponse': skip_response})
         return resp.json()
+
+    def set_output_directory(self, task_id, file_id, directory_path):
+        return self._set_custom_output(task_id, file_id, directory_path, description="Directory", icon="zmdi zmdi-folder")

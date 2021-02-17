@@ -230,7 +230,7 @@ class TagMeta(KeyObject, JsonSerializable):
                        applicable_classes=take_with_default(applicable_classes, self.applicable_classes))
 
     def __str__(self):
-        return "{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10}".format(
+        return "{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{}".format(
             'Name:', self.name, 'Value type:', self.value_type, 'Possible values:', str(self.possible_values),
             'Hotkey', self.hotkey, 'Applicable to', self.applicable_to, 'Applicable classes', self.applicable_classes)
 

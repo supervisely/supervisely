@@ -64,6 +64,10 @@ def get_bytes_hash(bytes):
     return base64.b64encode(hashlib.sha256(bytes).digest()).decode('utf-8')
 
 
+def get_string_hash(data):
+    return base64.b64encode(hashlib.sha256(str.encode(data)).digest()).decode('utf-8')
+
+
 def unwrap_if_numpy(x):
     return x.item() if isinstance(x, np.number) else x
 
@@ -111,9 +115,8 @@ def _remove_sensitive_information(d: dict):
             new_dict[field] = "***"
 
     for parent_key in ["state", "context"]:
-        if parent_key in new_dict:
+        if parent_key in new_dict and type(new_dict[parent_key]) is dict:
             for field in fields:
                 if field in new_dict[parent_key]:
                     new_dict[parent_key][field] = "***"
-
     return new_dict

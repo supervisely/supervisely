@@ -10,6 +10,7 @@ from supervisely_lib.io import fs
 from supervisely_lib.io import env
 from supervisely_lib.io import json
 from supervisely_lib.io import network_exceptions
+from supervisely_lib.io.fs_cache import FileCache
 
 from supervisely_lib.imaging import image
 # legacy
@@ -29,7 +30,7 @@ from supervisely_lib.annotation.annotation import ANN_EXT, Annotation
 from supervisely_lib.annotation.label import Label
 from supervisely_lib.annotation.obj_class import ObjClass, ObjClassJsonFields
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
-from supervisely_lib.annotation.tag_meta import TagMeta, TagValueType
+from supervisely_lib.annotation.tag_meta import TagMeta, TagValueType, TagApplicableTo
 from supervisely_lib.annotation.tag import Tag
 from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
@@ -69,7 +70,7 @@ from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.api.report_api import NotificationType
 
 from supervisely_lib._utils import rand_str, batched, get_bytes_hash, generate_names, ENTERPRISE, COMMUNITY, _dprint, \
-    take_with_default
+    take_with_default, get_string_hash
 from supervisely_lib.tiny_timer import TinyTimer
 
 from supervisely_lib.aug import aug

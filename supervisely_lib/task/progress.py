@@ -24,17 +24,38 @@ class Progress:
         self.message = message
         self.total = total_cnt
         self.current = 0
+        self.is_total_unknown = total_cnt == 0
+
+        self.total_label = ''
+        self.current_label = ''
+        self._refresh_labels()
+
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
         self.report_every = max(1, math.ceil(total_cnt / 100))
         self.need_info_log = need_info_log
+
+        if self.is_size and self.is_total_unknown:
+            self.report_every = 5 * 1024 * 1024  # 5mb
+
         self.report_progress()
+
+    def _refresh_labels(self):
+        if self.is_size:
+            self.total_label = sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+            self.current_label = sizeof_fmt(self.current)
+        else:
+            self.total_label = str(self.total if self.total > 0 else self.current)
+            self.current_label = str(self.current)
 
     def iter_done(self):
         '''
         Increments the current iteration counter by 1
         '''
         self.current += 1
+        if self.is_total_unknown:
+            self.total = self.current
+        self._refresh_labels()
 
     def iters_done(self, count):
         '''
@@ -42,8 +63,10 @@ class Progress:
         :param count: int
         '''
         self.current += count
+        if self.is_total_unknown:
+            self.total = self.current
+        self._refresh_labels()
 
-    #@TODO: ask web team to rename subtask->message
     def report_progress(self):
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
@@ -56,22 +79,27 @@ class Progress:
         }
 
         if self.is_size:
-            extra['current_label'] = sizeof_fmt(self.current)
-            extra['total_label'] = sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+            extra['current_label'] = self.current_label
+            extra['total_label'] = self.total_label
 
         self.logger.info('progress', extra=extra)
         self.reported_cnt += 1
 
         if self.need_info_log is True:
-            self.logger.info(f"{self.message} [{extra['current']} / {extra['total']}]")
+            self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+
+    def need_report(self):
+        if (self.current == self.total) \
+                or (self.current % self.report_every == 0) \
+                or ((self.reported_cnt - 1) < (self.current // self.report_every)):
+            return True
+        return False
 
     def report_if_needed(self):
         '''
         The function determines whether the message should be logged depending on current number of iterations
         '''
-        if (self.current == self.total) \
-                or (self.current % self.report_every == 0) \
-                or ((self.reported_cnt - 1) < (self.current // self.report_every)):
+        if self.need_report():
             self.report_progress()
 
     def iter_done_report(self):  # finish & report
@@ -97,6 +125,14 @@ class Progress:
         :param value: int
         '''
         self.iters_done_report(value - self.current)
+
+    def set(self, current, total):
+        self.total = total
+        self.current = current
+        self.reported_cnt = 0
+        self.report_every = max(1, math.ceil(total / 100))
+        self._refresh_labels()
+        self.report_if_needed()
 
 
 def report_agent_rpc_ready():

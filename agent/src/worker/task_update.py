@@ -22,15 +22,13 @@ class TaskUpdate(TaskSly):
         if constants.TOKEN() != self.info['config']['access_token']:
             raise RuntimeError('Current token != new token')
 
-        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http:/containers/$(hostname)/json"
+        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http://localhost/containers/$(hostname)/json"
         docker_img_info = subprocess.Popen([docker_inspect_cmd],
                                            shell=True, executable="/bin/bash",
-                                           stdout=subprocess.PIPE).communicate()[0].decode("utf-8")
+                                           stdout=subprocess.PIPE).communicate()[0]
         docker_img_info = json.loads(docker_img_info)
-        #docker_image = docker_img_info["Config"]["Image"]
-        #cur_version = docker_img_info["Config"]["Labels"]["VERSION"]
+
         cur_container_id = docker_img_info["Config"]["Hostname"]
-        #cur_container_name = docker_img_info["Name"].split("/")[1]
         cur_volumes = docker_img_info["HostConfig"]["Binds"]
         cur_envs = docker_img_info["Config"]["Env"]
 
@@ -38,7 +36,7 @@ class TaskUpdate(TaskSly):
             raise RuntimeError('Docker container was started from docker-compose. Please, use docker-compose to upgrade.')
             return
 
-        self._docker_pull(self.info['docker_image'])
+        sly.docker_utils._docker_pull_progress(self._docker_api, self.info['docker_image'], self.logger)
 
         new_volumes = {}
         for vol in cur_volumes:
@@ -64,18 +62,6 @@ class TaskUpdate(TaskSly):
         container.reload()
         self.logger.debug('After spawning. Container status: {}'.format(str(container.status)))
         self.logger.info('Docker container is spawned', extra={'container_id': container.id, 'container_name': container.name})
-
-    #@TODO: copypaste from TaskDockerized
-    def _docker_pull(self, docker_image):
-        self.logger.info('Docker image will be pulled', extra={'image_name': docker_image})
-        progress_dummy = sly.Progress('Pulling image...', 1, ext_logger=self.logger)
-        progress_dummy.iter_done_report()
-        try:
-            pulled_img = self._docker_api.images.pull(docker_image)
-        except DockerException:
-            raise DockerException('Unable to pull image: see actual error above. '
-                                  'Please, run the task again or contact support team.')
-        self.logger.info('Docker image has been pulled', extra={'pulled': {'tags': pulled_img.tags, 'id': pulled_img.id}})
 
 
 def run_shell_command(cmd, print_output=False):

@@ -6,9 +6,11 @@ from supervisely_lib.api.module_api import ModuleApiBase, ApiField
 from supervisely_lib.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
-from supervisely_lib.io.fs import get_file_ext, get_file_name
+from supervisely_lib.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely_lib.imaging.image import write_bytes, get_hash
 from supervisely_lib.task.progress import Progress
+from supervisely_lib.io.fs_cache import FileCache
+from supervisely_lib.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively
 
 
 class FileApi(ModuleApiBase):
@@ -19,6 +21,7 @@ class FileApi(ModuleApiBase):
             ApiField.ID,
             ApiField.USER_ID,
             ApiField.NAME,
+            ApiField.HASH,
             ApiField.PATH,
             ApiField.STORAGE_PATH,
             ApiField.MIME2,
@@ -37,12 +40,36 @@ class FileApi(ModuleApiBase):
         response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
         return response.json()
 
-    def download(self, team_id, remote_path, local_save_path):
+    def _download(self, team_id, remote_path, local_save_path, progress_cb=None):  # TODO: progress bar
         response = self._api.post('file-storage.download', {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path}, stream=True)
+        #print(response.headers)
+        #print(response.headers['Content-Length'])
         ensure_base_path(local_save_path)
         with open(local_save_path, 'wb') as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
+                if progress_cb is not None:
+                    progress_cb(len(chunk))
+
+    def download(self, team_id, remote_path, local_save_path, cache: FileCache = None, progress_cb=None):
+        if cache is None:
+            self._download(team_id, remote_path, local_save_path, progress_cb)
+        else:
+            file_info = self.get_info_by_path(team_id, remote_path)
+            if file_info.hash is None:
+                self._download(team_id, remote_path, local_save_path, progress_cb)
+            else:
+                cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
+                if cache_path is None:
+                    # file not in cache
+                    self._download(team_id, remote_path, local_save_path, progress_cb)
+                    if file_info.hash != get_file_hash(local_save_path):
+                        raise KeyError(f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})")
+                    cache.write_object(local_save_path, file_info.hash)
+                else:
+                    cache.read_object(file_info.hash, local_save_path)
+                    if progress_cb is not None:
+                        progress_cb(get_file_size(local_save_path))
 
     def _upload_legacy(self, team_id, src, dst):
         def path_to_bytes_stream(path):
@@ -62,21 +89,6 @@ class FileApi(ModuleApiBase):
 
     def upload(self, team_id, src, dst, progress_cb=None):
         return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
-
-    # Example - return value
-    # {
-    #     "id": 38292,
-    #     "storagePath": "teams_storage/1/X/S/rB/DrtCQEniZRAnj7oxAyJCrF80ViCC6swBcG6hYlUwkjlc0dE58lmIhRvGW00JSrQKO1s5NRuqaIAUZUUU50vK3vp09E62vCCErUF6owvkauzncYMtHssgXqoi9rGY.txt",
-    #     "path": "/reports/classes_stats/max/2020-09-23-12:26:33_pascal voc 2012_(id_355).lnk",
-    #     "userId": 1,
-    #     "meta": {
-    #         "size": 44,
-    #         "mime": "text/plain",
-    #         "ext": "lnk"
-    #     },
-    #     "name": "2020-09-23-12:26:33_pascal voc 2012_(id_355).lnk",
-    #     "teamId": 1
-    # }
 
     def upload_bulk(self, team_id, src_paths, dst_paths, progress_cb=None):
         def path_to_bytes_stream(path):
@@ -128,6 +140,12 @@ class FileApi(ModuleApiBase):
                 return True
         return False
 
+    def dir_exists(self, team_id, remote_directory):
+        files_infos = self.list(team_id, remote_directory)
+        if len(files_infos) > 0:
+            return True
+        return False
+
     def get_free_name(self, team_id, path):
         directory = Path(path).parent
         name = get_file_name(path)
@@ -168,3 +186,21 @@ class FileApi(ModuleApiBase):
     def get_info_by_id(self, id):
         resp = self._api.post('file-storage.info', {ApiField.ID: id})
         return self._convert_json_info(resp.json())
+
+    # def upload_directory(self, team_id, local_dir, remote_dir, change_name_if_conflict=True):
+    #     local_files = list_files_recursively(local_dir)
+    #     remote_files = [file.replace(local_dir, remote_dir) for file in local_files]
+    #     return self.upload_bulk(team_id, local_files, remote_files)
+
+    # def upload_directory(self, team_id, local_dir, remote_dir, change_name_if_conflict=True, progress_cb=None):
+    #     local_files = list_files_recursively(local_dir)
+    #     for local_path in local_files:
+    #         remote_path = os.path.join(remote_dir, local_path.replace(local_dir, '').lstrip("/"))
+    #         if change_name_if_conflict:
+    #             remote_path = self.get_free_name(team_id, remote_path)
+    #         else:
+    #             if self.exists(team_id, remote_path):
+    #                 continue
+    #         upload_progress.pop(0)
+    #         api.file.upload(team_id, local_path, remote_path, lambda m: _print_progress(m, upload_progress))
+    #     pass

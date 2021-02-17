@@ -14,6 +14,10 @@ from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
 from supervisely_lib.io.fs import file_exists
+from supervisely_lib.api.api import Api
+from supervisely_lib.sly_logger import logger
+from supervisely_lib.io.fs_cache import FileCache
+
 
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
@@ -568,7 +572,7 @@ def read_single_project(dir, project_class=Project):
     return project_fs
 
 
-def download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10):
+def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -639,3 +643,105 @@ def upload_project(dir, api, workspace_id, project_name=None, log_progress=True)
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
 
     return project.id, project.name
+
+
+def download_project(api: Api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10,
+                     cache: FileCache = None, progress_cb=None):
+    if cache is None:
+        _download_project(api, project_id, dest_dir, dataset_ids, log_progress, batch_size)
+    else:
+        _download_project_optimized(api, project_id, dest_dir, dataset_ids, cache, progress_cb)
+
+
+def _download_project_optimized(api: Api, project_id, project_dir, datasets_whitelist=None, cache=None, progress_cb=None):
+    project_info = api.project.get_info_by_id(project_id)
+    project_id = project_info.id
+    logger.info(f"Annotations are not cached (always download latest version from server)")
+    project_fs = Project(project_dir, OpenMode.CREATE)
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    project_fs.set_meta(meta)
+    for dataset_info in api.dataset.get_list(project_id):
+        dataset_name = dataset_info.name
+        dataset_id = dataset_info.id
+        need_download = True
+        if datasets_whitelist is not None and dataset_id not in datasets_whitelist:
+            need_download = False
+        if need_download is True:
+            dataset = project_fs.create_dataset(dataset_name)
+            _download_dataset(api, dataset, dataset_id, cache=cache, progress_cb=progress_cb)
+
+
+def _split_images_by_cache(images, cache):
+    images_to_download = []
+    images_in_cache = []
+    images_cache_paths = []
+    for image in images:
+        _, effective_ext = os.path.splitext(image.name)
+        if len(effective_ext) == 0:
+            # Fallback for the old format where we were cutting off extensions from image names.
+            effective_ext = image.ext
+        cache_path = cache.check_storage_object(image.hash, effective_ext)
+        if cache_path is None:
+            images_to_download.append(image)
+        else:
+            images_in_cache.append(image)
+            images_cache_paths.append(cache_path)
+    return images_to_download, images_in_cache, images_cache_paths
+
+
+def _maybe_append_image_extension(name, ext):
+    name_split = os.path.splitext(name)
+    if name_split[1] == '':
+        normalized_ext = ('.' + ext).replace('..', '.')
+        result = name + normalized_ext
+        sly_image.validate_ext(result)
+    else:
+        result = name
+    return result
+
+
+def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None):
+    images = api.image.get_list(dataset_id)
+
+    images_to_download = images
+
+    # copy images from cache to task folder and download corresponding annotations
+    if cache:
+        images_to_download, images_in_cache, images_cache_paths = _split_images_by_cache(images, cache)
+        if len(images_to_download) + len(images_in_cache) != len(images):
+            raise RuntimeError("Error with images cache during download. Please contact support.")
+        logger.info(f"Download dataset: {dataset.name}", extra={"total": len(images),
+                                                                "in cache": len(images_in_cache),
+                                                                "to download": len(images_to_download)})
+        if len(images_in_cache) > 0:
+            img_cache_ids = [img_info.id for img_info in images_in_cache]
+            ann_info_list = api.annotation.download_batch(dataset_id, img_cache_ids, progress_cb)
+            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            for batch in batched(list(zip(images_in_cache, images_cache_paths)), batch_size=50):
+                for img_info, img_cache_path in batch:
+                    item_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+                    dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_item=False,
+                                          _use_hardlink=True)
+                progress_cb(len(batch))
+
+    # download images from server
+    if len(images_to_download) > 0:
+        # prepare lists for api methods
+        img_ids = []
+        img_paths = []
+        for img_info in images_to_download:
+            img_ids.append(img_info.id)
+            # TODO download to a temp file and use dataset api to add the image to the dataset.
+            img_paths.append(
+                os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
+
+        # download annotations
+        ann_info_list = api.annotation.download_batch(dataset_id, img_ids, progress_cb)
+        img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+        api.image.download_paths(dataset_id, img_ids, img_paths, progress_cb)
+        for img_info, img_path in zip(images_to_download, img_paths):
+            dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id])
+
+        if cache:
+            img_hashes = [img_info.hash for img_info in images_to_download]
+            cache.write_objects(img_paths, img_hashes)

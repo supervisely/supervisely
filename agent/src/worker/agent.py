@@ -97,7 +97,7 @@ class Agent:
             hw_info = {}
             self.logger.debug('Hardware information can not be obtained')
 
-        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http:/containers/$(hostname)/json"
+        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http://localhost/containers/$(hostname)/json"
         docker_img_info = subprocess.Popen([docker_inspect_cmd], 
                                             shell=True, executable="/bin/bash", 
                                             stdout=subprocess.PIPE).communicate()[0]

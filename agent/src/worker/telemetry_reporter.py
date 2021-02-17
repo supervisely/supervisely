@@ -57,8 +57,11 @@ class TelemetryReporter(TaskLogged):
         except OSError:
             pass
 
-        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http:/containers/$(hostname)/json"
-        docker_inspect_out = self._get_subprocess_out_if_possible('curl', [docker_inspect_cmd]).decode("utf-8")
+        docker_inspect_cmd = "curl -s --unix-socket /var/run/docker.sock http://localhost/containers/$(hostname)/json"
+        docker_inspect_out = subprocess.Popen([docker_inspect_cmd],
+                                              shell=True, executable="/bin/bash",
+                                              stdout=subprocess.PIPE).communicate()[0]
+
         docker_image = json.loads(docker_inspect_out)["Config"]["Image"]
 
         img_sizeb = get_directory_size_bytes(self.data_mgr.storage.images.storage_root_path)

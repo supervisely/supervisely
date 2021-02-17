@@ -86,14 +86,14 @@ class ImageApi(RemoveableBulkModuleApi):
         response = self._api.post('images.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_np(self, id):
+    def download_np(self, id, keep_alpha=False):
         '''
         Download image with given id in numpy format
         :param id: int
         :return: image in RGB format(numpy matrix)
         '''
         response = self._download(id)
-        img = sly_image.read_bytes(response.content)
+        img = sly_image.read_bytes(response.content, keep_alpha)
         return img
 
     def download_path(self, id, path):
@@ -168,7 +168,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return [id_to_img[id] for id in ids]
 
-    def download_nps(self, dataset_id, ids, progress_cb=None):
+    def download_nps(self, dataset_id, ids, progress_cb=None, keep_alpha=False):
         '''
         Doenload images with given ids from dataset with given id in numpy format
         :param dataset_id: int
@@ -176,7 +176,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb:
         :return: list of images in RGB format(numpy matrix)
         '''
-        return [sly_image.read_bytes(img_bytes)
+        return [sly_image.read_bytes(img_bytes, keep_alpha)
                 for img_bytes in self.download_bytes(dataset_id=dataset_id, ids=ids, progress_cb=progress_cb)]
 
     def check_existing_hashes(self, hashes):

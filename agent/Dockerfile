@@ -8,10 +8,10 @@ FROM ${REGISTRY}/base-py:${TAG}
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        lshw=02.17-1.1ubuntu3 \
-        aha=0.4.8-1 \
-        html2text=1.3.2a-18 \
-        htop=2.0.1-1ubuntu1 \
+        lshw=02.18.85-0.3ubuntu2 \
+        aha=0.5-1 \
+        html2text=1.3.2a-25 \
+        htop=2.2.0-2build1 \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
@@ -22,9 +22,9 @@ RUN pip install --no-cache-dir \
         requests==2.24.0 \
         hurry.filesize==0.9 \
         scandir==1.7 \
-        grpcio==1.12.1 \
-        grpcio-tools==1.12.1 \
-        py3exiv2==0.4.0 
+        grpcio==1.34.1 \
+        grpcio-tools==1.34.1 \
+        py3exiv2==0.9.3
 
 RUN pip install requests-toolbelt
 RUN pip install packaging

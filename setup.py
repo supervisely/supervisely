@@ -14,7 +14,7 @@ def read(fname):
 # already have PyTorch installed.
 setup(
     name="supervisely",
-    version="6.1.43",
+    version="6.1.53",
     packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*']),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
@@ -24,14 +24,14 @@ setup(
         "flask-restful>=0.3.7",
         "grpcio>=1.32.0",
         "jsonschema>=2.6.0,<3.0.0",
-        "matplotlib>=3.0.0",
-        "numpy>=1.19.1",
-        "opencv-python==3.4.10.35,<4.0.0",
+        "matplotlib>=3.3.2",
+        "numpy>=1.19",
+        "opencv-python>=3.4.10.35,<4.0.0",
         "pandas>=1.1.3",
         "pascal-voc-writer>=0.1.4",
         "PTable>=0.9.2",
-        "pillow>=6.2.1",
-        "protobuf>=3.7.1",
+        "pillow>=5.4.1",
+        "protobuf>=3.14.0",
         # Higher python-json-logger versions are incompatible with
         # simplejson somehow, so for now prevent higher versions from
         # being installed.
@@ -42,11 +42,11 @@ setup(
         "scipy>=1.5.2",
         "Shapely>=1.7.1",
         #"simplejson>=3.17.2",
-        "Werkzeug>=0.15.1",
-        "bidict",
-        "sk-video",
-        "plotly==4.11.0",
-        "docker",
+        "Werkzeug>=1.0.1",
+        "bidict>=0.21.2",
+        "sk-video>=1.1.10",
+        "plotly>=4.11.0",
+        "docker>=4.4.1",
         "psutil>=5.4.5"
     ],
 )

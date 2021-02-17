@@ -21,6 +21,7 @@ from supervisely_lib.io.fs import file_exists, mkdir
 from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 from supervisely_lib.worker_api.agent_rpc import send_from_memory_generator
+from supervisely_lib.io.fs_cache import FileCache
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
 
@@ -64,6 +65,14 @@ class AppService:
             self._session_dir = debug_app_dir
         mkdir(self.data_dir)
 
+        self.cache_dir = os.path.join("/apps_cache")
+        debug_cache_dir = os.environ.get("DEBUG_CACHE_DIR", "")
+        if debug_cache_dir != "":
+            self.cache_dir = debug_cache_dir
+        mkdir(self.cache_dir)
+        self.cache = FileCache(name="FileCache", storage_root=self.cache_dir)
+
+
         self.api = AgentAPI(token=self.agent_token, server_address=self.server_address, ext_logger=self.logger)
         self.api.add_to_metadata('x-task-id', str(self.task_id))
 
@@ -75,6 +84,7 @@ class AppService:
         self._error = None
         self.stop_event = asyncio.Event()
 
+    def _run_executors(self):
         self.executor = concurrent.futures.ThreadPoolExecutor()
         self.loop = asyncio.get_event_loop()
         # May want to catch other signals too
@@ -143,6 +153,7 @@ class AppService:
             user_api_token = request_msg["api_token"]
             user_public_api = Api(self.server_address, user_api_token, retry_count=5, external_logger=self.logger,
                                   ignore_task_id=self._ignore_task_id)
+            self.logger.trace("Event", extra={"request_msg": request_msg})
 
             if command == STOP_COMMAND:
                 self.logger.info("APP receives stop signal from user")
@@ -181,7 +192,7 @@ class AppService:
                                         state=state,
                                         app_logger=self.logger)
         except AppCommandNotFound as e:
-            self.logger.error(repr(e), exc_info=False)
+            self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
             if self._ignore_errors is False:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={
@@ -263,6 +274,7 @@ class AppService:
         self.logger.info("Application session is initialized", extra={"app_url": self.app_url})
 
         try:
+            self._run_executors()
             self.loop.create_task(self.publish(initial_events), name="Publisher")
             self.loop.create_task(self.consume(), name="Consumer")
             self.loop.run_forever()

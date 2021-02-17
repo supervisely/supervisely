@@ -308,6 +308,10 @@ def AGENT_APP_SESSIONS_DIR_HOST():
     return os.path.join(HOST_DIR(), 'app_sessions')
 
 
+def AGENT_APPS_CACHE_DIR_HOST():
+    return os.path.join(HOST_DIR(), 'apps_cache')
+
+
 def GITHUB_TOKEN():
     return read_optional_setting(_GITHUB_TOKEN)
 

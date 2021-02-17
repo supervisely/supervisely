@@ -135,15 +135,28 @@ def read(path, remove_alpha_channel=True) -> np.ndarray:
             raise ValueError("image has {} channels. Please, contact support...".format(cnt_channels))
 
 
-def read_bytes(image_bytes) -> np.ndarray:
+def read_bytes(image_bytes, keep_alpha=False) -> np.ndarray:
     '''
     The function read_bytes loads an byte image and returns it in RGB format.
     :param image_bytes: byte image
     :return: image in RGB format(numpy matrix)
     '''
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
-    img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
-    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if keep_alpha is True:
+        img = cv2.imdecode(image_np_arr, cv2.IMREAD_UNCHANGED)
+        if len(img.shape) == 2:
+            img = np.expand_dims(img, 2)
+        cnt_channels = img.shape[2]
+        if cnt_channels == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
+        elif cnt_channels == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        elif cnt_channels == 1:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        return img
+    else:
+        img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
 def write(path, img, remove_alpha_channel=True):

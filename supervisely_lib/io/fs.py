@@ -5,8 +5,11 @@ import shutil
 import errno
 import tarfile
 import subprocess
+import requests
+from requests.structures import CaseInsensitiveDict
 
-from supervisely_lib._utils import get_bytes_hash
+from supervisely_lib._utils import get_bytes_hash, get_string_hash
+from supervisely_lib.io.fs_cache import FileCache
 
 
 def get_file_name(path: str) -> str:
@@ -292,3 +295,33 @@ def touch(path):
     ensure_base_path(path)
     with open(path, 'a'):
         os.utime(path, None)
+
+
+def download(url, save_path, cache: FileCache = None, progress=None):
+    def _download():
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get('Content-Length', '0'))
+            if progress is not None:
+                progress.set(0, total_size_in_bytes)
+            with open(save_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    if progress is not None:
+                        progress.iters_done_report(len(chunk))
+
+    if cache is None:
+        _download()
+    else:
+        cache_path = cache.check_storage_object(get_string_hash(url), get_file_ext(save_path))
+        if cache_path is None:
+            # file not in cache
+            _download()
+            cache.write_object(save_path, get_string_hash(url))
+        else:
+            cache.read_object(get_string_hash(url), save_path)
+            if progress is not None:
+                progress.set(0, get_file_size(save_path))
+                progress.iters_done_report(get_file_size(save_path))
+
+    return save_path
