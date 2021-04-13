@@ -15,13 +15,13 @@ This principal scheme illustrates how agent processes the task.
 
 # How to run Agent?
 
-[Here](https://docs.supervise.ly/cluster/add_delete_node/add_delete_node/) you will find step-by-step guide about how to run Agent on your machine.
+[Here](https://docs.supervise.ly/customization/agents/add_delete_node) you will find step-by-step guide about how to run Agent on your machine.
 
 ![](https://i.imgur.com/24zHYdz.png)
 
 # How to monitor Agent information?
 
-[Here](https://docs.supervise.ly/cluster/add_delete_node/add_delete_node/) you will find documentaion about how to monitor Agent status.
+[Here](https://docs.supervise.ly/customization/agents/manage) you will find documentaion about how to monitor Agent status.
 
 ![](https://i.imgur.com/rgihpsQ.png)
 
