@@ -10,23 +10,23 @@
 ```text     
 1) For Official Pascal VOC Dataset          2) For Custom Pascal VOC Dataset
 .                                           .    
-├── ImageSets                               ├── ImageSets                                    
-│   └── Segmentation                        │   └── Segmentation                                             
-│       ├── train.txt                       │       ├── train.txt                                               
-│       ├── trainval.txt                    │       ├── trainval.txt                                                                                               
-│       └── val.txt                         │       └── val.txt                                                                                                   
-├── JPEGImages                              ├── JPEGImages                                                                                        
-│   ├── 2007_000032.jpg                     │   ├── 2007_000032.jpg                                                                                                               
-│   ├── 2007_000033.jpg                     │   ├── 2007_000033.jpg                                                                       
-│   ├── ...                                 │   ├── ...                                             
-├── SegmentationClass                       ├── SegmentationClass                              
-│   ├── 2007_000032.png                     │   ├── 2007_000032.png                                                                                
-│   ├── 2007_000033.png                     │   ├── 2007_000033.png                                                                           
-│   ├── ...                                 │   ├── ...                                                                  
-└── SegmentationObject                      |── SegmentationObject                                               
-    ├── 2007_000032.png                     |   ├── 2007_000032.png                                                                  
-    ├── 2007_000033.png                     |   ├── 2007_000033.png                                              
-    ├── ...                                 |   ├── ...   
+├── ImageSets                               ├── ImageSets
+│   └── Segmentation                        │   └── Segmentation
+│       ├── train.txt                       │       ├── train.txt
+│       ├── trainval.txt                    │       ├── trainval.txt
+│       └── val.txt                         │       └── val.txt
+├── JPEGImages                              ├── JPEGImages
+│   ├── 2007_000032.jpg                     │   ├── 2007_000032.jpg
+│   ├── 2007_000033.jpg                     │   ├── 2007_000033.jpg
+│   ├── ...                                 │   ├── ...
+├── SegmentationClass                       ├── SegmentationClass
+│   ├── 2007_000032.png                     │   ├── 2007_000032.png
+│   ├── 2007_000033.png                     │   ├── 2007_000033.png
+│   ├── ...                                 │   ├── ...
+└── SegmentationObject                      |── SegmentationObject
+    ├── 2007_000032.png                     |   ├── 2007_000032.png
+    ├── 2007_000033.png                     |   ├── 2007_000033.png
+    ├── ...                                 |   ├── ...
                                             |
                                             └── colors.txt
 ```         
