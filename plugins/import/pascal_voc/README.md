@@ -42,15 +42,15 @@ lemon 81 198 170
 
 4) Open [Supervisely import](supervise.ly/import) page. Choose `Pascal VOC` import plugin.
 
-5) Select all subdirectories (`ImageSets`, `JPEGImages`, `SegmentationClass`, `SegmentationClass` and `colors.txt` if importing custom dataset) and drag and drop them to browser. Wait a little bit.
+5) Select all subdirectories (`ImageSets`, `JPEGImages`, `SegmentationClass`, `SegmentationClass` and `colors.txt` file, if importing custom dataset) and drag and drop them to browser. Wait a little bit.
 
 6) Define new project name and click on `START IMPORT` button.
 
-7) After import task finish, you can view project and see follow datasets: `train`, `trainval`, `val`.
+7) After import task finish, you can view project and see following datasets: `train`, `trainval`, `val`.
 
     ![](https://imgur.com/37jUZZ1.jpg)
 
-8) Datasets samples contains images and `instance segmentation` annotations. See few examples:
+8) Datasets samples contain images and `instance segmentation` annotations. See few examples:
 
     ![](https://i.imgur.com/hJ93iv3.jpg)
     
