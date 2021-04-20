@@ -1,36 +1,48 @@
 # Pascal VOC Import
 
 #### Usage steps:
-1) Download `Pascal VOC` dataset from [official site](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html). (Or use [direct Link](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar))
+1) Download `Pascal VOC` dataset from [official site](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html) ([direct dl Link](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)) or import your custom dataset.
 
 2) Unpack archive
 
 3) Directory structure have to be the following:
 
-```text
-.
-├── ImageSets
-│   └── Segmentation
-│       ├── train.txt
-│       ├── trainval.txt
-│       └── val.txt
-├── JPEGImages
-│   ├── 2007_000032.jpg
-│   ├── 2007_000033.jpg
-│   ├── ...
-├── SegmentationClass
-│   ├── 2007_000032.png
-│   ├── 2007_000033.png
-│   ├── ...
-└── SegmentationObject
-    ├── 2007_000032.png
-    ├── 2007_000033.png
-    ├── ...
+```text     
+1) For Official Pascal VOC Dataset          2) For Custom Pascal VOC Dataset
+.                                           .    
+├── ImageSets                               ├── ImageSets                                    
+│   └── Segmentation                        │   └── Segmentation                                             
+│       ├── train.txt                       │       ├── train.txt                                               
+│       ├── trainval.txt                    │       ├── trainval.txt                                                                                               
+│       └── val.txt                         │       └── val.txt                                                                                                   
+├── JPEGImages                              ├── JPEGImages                                                                                        
+│   ├── 2007_000032.jpg                     │   ├── 2007_000032.jpg                                                                                                               
+│   ├── 2007_000033.jpg                     │   ├── 2007_000033.jpg                                                                       
+│   ├── ...                                 │   ├── ...                                             
+├── SegmentationClass                       ├── SegmentationClass                              
+│   ├── 2007_000032.png                     │   ├── 2007_000032.png                                                                                
+│   ├── 2007_000033.png                     │   ├── 2007_000033.png                                                                           
+│   ├── ...                                 │   ├── ...                                                                  
+└── SegmentationObject                      |── SegmentationObject                                               
+    ├── 2007_000032.png                     |   ├── 2007_000032.png                                                                  
+    ├── 2007_000033.png                     |   ├── 2007_000033.png                                              
+    ├── ...                                 |   ├── ...   
+                                            |
+                                            └── colors.txt
+```         
+**`colors.txt`** file is used to import custom Pascal VOC Datasets, this file is not provided in the original Pascal VOC Dataset. File contains information about instance mask colors associated with object classes. This file is required, if you are importing custom dataset in Pascal VOC format. If you are importing official Pascal VOC Dataset you don't need this file.
+
+**`colors.txt`** example:
+```text     
+neutral 224 224 192
+kiwi 255 0 0
+lemon 81 198 170
 ```
- 
+        
+
 4) Open [Supervisely import](supervise.ly/import) page. Choose `Pascal VOC` import plugin.
 
-5) Select all subdirectories (`ImageSets`, `JPEGImages`, `SegmentationClass`, `SegmentationClass`) and drag and drop them to browser. Wait a little bit.
+5) Select all subdirectories (`ImageSets`, `JPEGImages`, `SegmentationClass`, `SegmentationClass` and `colors.txt` if importing custom dataset) and drag and drop them to browser. Wait a little bit.
 
 6) Define new project name and click on `START IMPORT` button.
 
