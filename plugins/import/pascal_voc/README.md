@@ -8,7 +8,7 @@
 3) Directory structure have to be the following:
 
 ```text     
-1) For Official Pascal VOC Dataset          2) For Custom Pascal VOC Dataset
+For Official Pascal VOC Dataset:            For Custom Pascal VOC Dataset:
 .                                           .    
 ├── ImageSets                               ├── ImageSets
 │   └── Segmentation                        │   └── Segmentation
