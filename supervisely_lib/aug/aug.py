@@ -1,12 +1,14 @@
 # coding: utf-8
 import random
 import numpy as np
+import imgaug.augmenters as iaa
 
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.annotation.annotation import Annotation
 from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib._utils import take_with_default
+from supervisely_lib.sly_logger import logger
 
 
 def _validate_image_annotation_shape(img: np.ndarray, ann: Annotation) -> None:
@@ -319,3 +321,34 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationM
         res_img = sly_image.crop(res_img, rect_to_crop)
         res_ann = res_ann.relative_crop(rect_to_crop)
     return res_img, res_ann
+
+
+def load_imgaug(json_data):
+    def _get_function(category_name, aug_name):
+        try:
+            submodule = getattr(iaa, category_name)
+            aug_f = getattr(submodule, aug_name)
+            return aug_f
+        except Exception as e:
+            logger.error(repr(e))
+            raise e
+
+    pipeline_json = json_data["pipeline"]
+    random_order = json_data.get("random_order", False)
+
+    pipeline = []
+    for aug_info in pipeline_json:
+        category_name = aug_info["category"]
+        aug_name = aug_info["name"]
+        params = aug_info["params"]
+
+        aug_func = _get_function(category_name, aug_name)
+        aug = aug_func(**params)
+
+        sometimes = aug_info.get("sometimes", None)
+        if sometimes is not None:
+            aug = iaa.meta.Sometimes(sometimes, aug)
+        pipeline.append(aug)
+    augs = iaa.Sequential(pipeline, random_order=random_order)
+    return augs
+

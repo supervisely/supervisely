@@ -45,6 +45,8 @@ class AppApi(TaskApi):
 
     def initialize(self, task_id, template, data=None, state=None):
         d = take_with_default(data, {})
+        if "notifyDialog" not in d:
+            d["notifyDialog"] = None
         s = take_with_default(state, {})
         fields = [{"field": TEMPLATE, "payload": template}, {"field": DATA, "payload": d}, {"field": STATE, "payload": s}]
         resp = self._api.task.set_fields(task_id, fields)

@@ -649,3 +649,17 @@ class ImageApi(RemoveableBulkModuleApi):
         response = self._api.post('images.editInfo', {ApiField.ID: id, ApiField.META: meta})
         return response.json()
 
+    def add_tag(self, image_id, tag_id, value=None):
+        # data = {ApiField.TAG_ID: tag_id, ApiField.IMAGE_ID: image_id}
+        # if value is not None:
+        #     data[ApiField.VALUE] = value
+        # resp = self._api.post('image-tags.add-to-image', data)
+        # return resp.json()
+        self.add_tag_batch([image_id], tag_id, value)
+
+    def add_tag_batch(self, image_ids, tag_id, value=None):
+        data = {ApiField.TAG_ID: tag_id, ApiField.IDS: image_ids}
+        if value is not None:
+            data[ApiField.VALUE] = value
+        resp = self._api.post('image-tags.bulk.add-to-image', data)
+        return resp.json()

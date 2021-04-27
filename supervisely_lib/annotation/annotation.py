@@ -1,12 +1,12 @@
 # coding: utf-8
-
+from __future__ import annotations
 
 import json
 import itertools
 import numpy as np
 from typing import List
 import operator
-
+import cv2
 from copy import deepcopy
 
 from supervisely_lib import logger
@@ -19,7 +19,11 @@ from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.imaging import font as sly_font
 from supervisely_lib._utils import take_with_default
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely_lib.geometry.bitmap import Bitmap
 
+# for imgaug
+from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 ANN_EXT = '.json'
 
@@ -513,22 +517,6 @@ class Annotation:
         stat['total'] = total
         return stat
 
-    # def stat_img_tags(self, tag_names):
-    #     '''
-    #     The function stat_img_tags counts how many times each tag from given list occurs in annotation
-    #     :param tag_names: list of tags names
-    #     :return: dictionary with a number of different tags in annotation
-    #     '''
-    #     stat = {name: 0 for name in tag_names}
-    #     stat['any tag'] = 0
-    #     for tag in self._img_tags:
-    #         cur_name = tag.meta.name
-    #         if cur_name not in stat:
-    #             raise KeyError("Tag {!r} not found in {}".format(cur_name, tag_names))
-    #         stat[cur_name] += 1
-    #         stat['any tag'] += 1
-    #     return stat
-
     def draw_class_idx_rgb(self, render, name_to_index):
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
@@ -556,34 +544,129 @@ class Annotation:
                 return label
         return None
 
-    # def filter_labels_by_area_percent(self, thresh, operator=operator.lt, classes=None):
-    #     img_area = float(self.img_size[0] * self.img_size[1])
-    #     def filter(label):
-    #         if classes == None or label.obj_class.name in classes:
-    #             cur_percent = label.area * 100.0 / img_area
-    #             if operator(cur_percent, thresh):
-    #                 return []  # action 'delete'
-    #         return [label]
-    #     return self.transform_labels(filter)
+    def merge(self, other: Annotation):
+        res = self.clone()
+        res = res.add_labels(other.labels)
+        res = res.add_tags(other.img_tags)
+        return res
 
-    # def objects_filter_size(self, filter_operator, width=None, height=None, filtering_classes=None):
-    #     if width == None and height == None:
-    #         raise ValueError('width and height can not be none at the same time')
-    #
-    #     def filter_delete_size(fig):
-    #         if filtering_classes == None or fig.obj_class.name in filtering_classes:
-    #             fig_rect = fig.geometry.to_bbox()
-    #
-    #             if width == None:
-    #                 if filter_operator(fig_rect.height, height):
-    #                     return []
-    #             elif height == None:
-    #                 if filter_operator(fig_rect.width, width):
-    #                     return []
-    #             else:
-    #                 if filter_operator(fig_rect.width, width) or filter_operator(fig_rect.height, height):
-    #                     return []
-    #
-    #         return [fig]
-    #
-    #     return self.transform_labels(filter_delete_size)
+    def draw_pretty(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1,
+                    opacity: float = 0.5, draw_tags: bool = False, output_path: str = None) -> None:
+        height, width = bitmap.shape[:2]
+        vis_filled = np.zeros((height, width, 3), np.uint8)
+        self.draw(vis_filled, color=color, thickness=thickness, draw_tags=draw_tags)
+        vis = cv2.addWeighted(bitmap, 1, vis_filled, opacity, 0)
+        np.copyto(bitmap, vis)
+        self.draw_contour(bitmap, color=color, thickness=thickness, draw_tags=draw_tags)
+        if output_path:
+            sly_image.write(output_path, bitmap)
+
+    def to_nonoverlapping_masks(self, mapping):
+        common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
+        for idx, lbl in enumerate(self.labels, start=1):
+            if mapping[lbl.obj_class] is not None:
+                lbl.draw(common_img, color=idx)
+        (unique, counts) = np.unique(common_img, return_counts=True)
+        new_labels = []
+        for idx, lbl in enumerate(self.labels, start=1):
+            dest_class = mapping[lbl.obj_class]
+            if dest_class is None:
+                continue  # skip labels
+            mask = common_img == idx
+            if np.any(mask):  # figure may be entirely covered by others
+                g = lbl.geometry
+                new_mask = Bitmap(data=mask)
+                new_lbl = lbl.clone(geometry=new_mask, obj_class=dest_class)
+                new_labels.append(new_lbl)
+        new_ann = self.clone(labels=new_labels)
+        return new_ann
+
+    def to_segmentation_task(self):
+        class_mask = {}
+        for label in self.labels:
+            if label.obj_class not in class_mask:
+                class_mask[label.obj_class] = np.zeros(self.img_size, np.uint8)
+            label.draw(class_mask[label.obj_class], color=255)
+        new_labels = []
+        for obj_class, white_mask in class_mask.items():
+            mask = white_mask == 255
+            bitmap = Bitmap(data=mask)
+            new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
+        return self.clone(labels=new_labels)
+
+    def to_detection_task(self, mapping):
+        new_labels = []
+        for idx, lbl in enumerate(self.labels, start=1):
+            dest_class = mapping[lbl.obj_class]
+            if dest_class is None:
+                continue  # skip labels
+            if dest_class == lbl.obj_class:
+                new_labels.append(lbl)
+            else:
+                bbox = lbl.geometry.to_bbox()
+                new_lbl = lbl.clone(geometry=bbox, obj_class=dest_class)
+                new_labels.append(new_lbl)
+        new_ann = self.clone(labels=new_labels)
+        return new_ann
+
+    def masks_to_imgaug(self, class_to_index) -> SegmentationMapsOnImage:
+        h = self.img_size[0]
+        w = self.img_size[1]
+        mask = np.zeros((h, w, 1), dtype=np.int32)
+
+        for label in self.labels:
+            label: Label
+            if type(label.geometry) == Bitmap:
+                label.draw(mask, class_to_index[label.obj_class.name])
+
+        segmaps = None
+        if np.any(mask):
+            segmaps = SegmentationMapsOnImage(mask, shape=self.img_size)
+        return segmaps
+
+    def bboxes_to_imgaug(self):
+        boxes = []
+        for label in self.labels:
+            if type(label.geometry) == Rectangle:
+                rect: Rectangle = label.geometry
+                boxes.append(
+                    BoundingBox(x1=rect.left, y1=rect.top,
+                                x2=rect.right, y2=rect.bottom,
+                                label=label.obj_class.name)
+                )
+        bbs = None
+        if len(boxes) > 0:
+            bbs = BoundingBoxesOnImage(boxes, shape=self.img_size)
+        return bbs
+
+    @classmethod
+    def from_imgaug(cls, img, ia_boxes=None, ia_masks=None,
+                    index_to_class=None,
+                    meta: ProjectMeta = None):
+        if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
+            raise ValueError("Project meta has to be provided")
+
+        labels = []
+        if ia_boxes is not None:
+            for ia_box in ia_boxes:
+                obj_class = meta.get_obj_class(ia_box.label)
+                if obj_class is None:
+                    raise KeyError("Class {!r} not found in project meta".format(ia_box.label))
+                lbl = Label(Rectangle(top=ia_box.y1, left=ia_box.x1, bottom=ia_box.y2, right=ia_box.x2), obj_class)
+                labels.append(lbl)
+
+        if ia_masks is not None:
+            if index_to_class is None:
+                raise ValueError("mapping from index to class name is needed to transform masks to SLY format")
+            class_mask = ia_masks.get_arr()
+            # mask = white_mask == 255
+            (unique, counts) = np.unique(class_mask, return_counts=True)
+            for index, count in zip(unique, counts):
+                if index == 0:
+                    continue
+                mask = class_mask == index
+                bitmap = Bitmap(data=mask[:, :, 0])
+                restore_class = meta.get_obj_class(index_to_class[index])
+                labels.append(Label(geometry=bitmap, obj_class=restore_class))
+
+        return cls(img_size=img.shape[:2], labels=labels)

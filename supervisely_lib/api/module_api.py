@@ -186,6 +186,7 @@ class ApiField:
     CUSTOM_DATA =       'customData'
     CONTEXT =           'context'
     STATE =             'state'
+    IDS =               'ids'
 
 
 def _get_single_item(items):

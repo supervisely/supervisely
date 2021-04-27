@@ -155,3 +155,73 @@ def gen_video_stream_name(file_name, stream_index):
     :return: str
     '''
     return "{}_stream_{}_{}{}".format(get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name))
+
+
+def get_info(video_path, cpu_count=None):
+    import pathlib
+    import subprocess, os, ast, math
+    from subprocess import PIPE
+
+    def rotate_dimensions(width, height, rotation):
+        cur_angle = rotation * math.pi / 180
+        c = math.cos(cur_angle)
+        s = math.sin(cur_angle)
+        w = round(abs(width * c - height * s))
+        h = round(abs(width * s + height * c))
+        return w, h
+
+    if cpu_count is None:
+        cpu_count = os.cpu_count()
+
+    current_dir = pathlib.Path(__file__).parent.absolute()
+    session = subprocess.Popen(['sh', os.path.join(current_dir, 'get_video_info.sh'), video_path, str(cpu_count)], stdout=PIPE, stderr=PIPE)
+    stdout, stderr = session.communicate()
+    if len(stderr) != 0:
+        raise RuntimeError(stderr.decode("utf-8"))
+    video_meta = ast.literal_eval(stdout.decode('utf-8'))
+
+    frames_to_timecodes = []
+    has_video = False
+    audio_stream_info = None
+
+    for frame in video_meta['frames']:
+        if frame['stream_index'] == 0:
+            frames_to_timecodes.append(float(frame['pkt_pts_time']))
+
+    stream_infos = []
+    for stream in video_meta['streams']:
+        if stream['codec_type'] == 'video':
+            has_video = True
+            stream_info = {'index': stream['index'], 'width': stream['width'], 'height': stream['height'],
+                           'duration': float(stream['duration']), 'rotation': 0, 'codecName': stream['codec_name'],
+                           'codecType': stream['codec_type'], 'startTime': int(float(stream['start_time'])),
+                           'framesCount': len(frames_to_timecodes), 'framesToTimecodes': frames_to_timecodes}
+            side_data_list = stream.get('side_data_list', None)
+            if side_data_list:
+                for data in side_data_list:
+                    rotation = data.get('rotation', None)
+                if rotation:
+                    stream_info['rotation'] = rotation
+                    width, height = rotate_dimensions(stream_info['width'], stream_info['height'], rotation)
+                    stream_info['originalWidth'] = stream_info['width']
+                    stream_info['originalHeight'] = stream_info['height']
+                    stream_info['width'] = width
+                    stream_info['height'] = height
+        elif stream['codec_type'] == 'audio':
+            stream_info = {'index': stream['index'], 'channels': stream['channels'],
+                           'duration': float(stream['duration']), 'codecName': stream['codec_name'],
+                           'codecType': stream['codec_type'], 'startTime': int(float(stream['start_time'])),
+                           'sampleRate': int(stream['sample_rate'])}
+        else:
+            continue
+        stream_infos.append(stream_info)
+
+    if has_video is False:
+        raise ValueError('No video streams found')
+
+    result = {'streams': stream_infos,
+              'formatName': video_meta['format']['format_name'],
+              'duration': float(video_meta['format']['duration']),
+              'size': video_meta['format']['size']}
+
+    return result

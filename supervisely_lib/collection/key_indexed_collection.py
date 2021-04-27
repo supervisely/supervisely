@@ -1,5 +1,5 @@
 # coding: utf-8
-
+from __future__ import annotations
 from prettytable import PrettyTable
 from supervisely_lib._utils import take_with_default
 from typing import List, Iterable
@@ -224,6 +224,18 @@ class KeyIndexedCollection:
             json serializable dictionary
         """
         return [item.to_json() for item in self]
+
+    def __eq__(self, other: KeyIndexedCollection):
+        if len(self) != len(other):
+            return False
+        for cur_item in self:
+            other_item = other.get(cur_item.key())
+            if other_item is None or cur_item != other_item:
+                return False
+        return True
+
+    def __ne__(self, other: KeyIndexedCollection):
+        return not self == other
 
 
 class MultiKeyIndexedCollection(KeyIndexedCollection):

@@ -14,7 +14,7 @@ def read(fname):
 # already have PyTorch installed.
 setup(
     name="supervisely",
-    version="6.1.53",
+    version="6.1.71",
     packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*']),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
@@ -47,6 +47,9 @@ setup(
         "sk-video>=1.1.10",
         "plotly>=4.11.0",
         "docker>=4.4.1",
-        "psutil>=5.4.5"
+        "psutil>=5.4.5",
+        "imgaug==0.4.0",
+        "imagecorruptions==1.1.2"
     ],
+    include_package_data=True
 )

@@ -28,9 +28,16 @@ class Polygon(VectorGeometry):
         :param interior: list of elements that has the same structure like the "exterior" field. This is the list of polygons that define object holes.
         '''
         if len(exterior) < 3:
-            raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
-        if any(len(element) < 3 for element in interior):
-            raise ValueError('"{}" element must contain at least 3 points.'.format(INTERIOR))
+            exterior.extend([exterior[-1]] * (3 - len(exterior)))
+            logger.warn('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
+            #raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
+
+        for element in interior:
+            if len(element) < 3:
+                logger.warn('"{}" interior field must contain at least 3 points to create "Polygon" object.'.format(element))
+                element.extend([element[-1]] * (3 - len(element)))
+        #if any(len(element) < 3 for element in interior):
+        #    raise ValueError('"{}" element must contain at least 3 points.'.format(INTERIOR))
 
         super().__init__(exterior, interior, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login,
                          updated_at=updated_at, created_at=created_at)

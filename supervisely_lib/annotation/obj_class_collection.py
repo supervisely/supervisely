@@ -54,17 +54,10 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
                 if class_colors_notify is None:
                     class_colors_notify = ""
                 class_colors_notify += warn_str + '\n\n'
-        #if class_colors_notify != "":
-        #    pass
-        #    api.report.create_notification("Classes colors", class_colors_notify, sly.NotificationType.WARNING))
         return class_colors_notify
 
 
 def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer, skip_missing=False) -> ObjClassCollection:
-    '''
-    The function make_renamed_classes rename classes names in given collection and return new collection
-    :return: ObjClassCollection
-    '''
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)

@@ -69,6 +69,9 @@ def get_run_mode(docker_api, task_msg):
     task_pull.start()
     while task_pull.is_alive():
         time.sleep(1)
+    #@TODO: check later
+    #task_pull.join(timeout=20)
+    #task_pull.terminate()
 
     image_info = docker_api.images.get(task_msg["docker_image"])
     try:

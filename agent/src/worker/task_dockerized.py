@@ -43,7 +43,6 @@ class TaskDockerized(TaskSly):
         self._container_lock = Lock()  # to drop container from different threads
 
         self.docker_image_name = None
-        self.init_docker_image()
 
         self.docker_pulled = False  # in task
 
@@ -66,6 +65,7 @@ class TaskDockerized(TaskSly):
             self.completed_step = curr_step
 
     def task_main_func(self):
+        self.init_docker_image()
         self.task_dir_cleaner.forbid_dir_cleaning()
 
         last_step_str = self.info.get('last_complete_step')
@@ -123,7 +123,12 @@ class TaskDockerized(TaskSly):
         self.task_dir_cleaner.clean()
 
     def _get_task_volumes(self):
-        return {self.dir_task_host: {'bind': '/sly_task_data', 'mode': 'rw'}}
+        volumes = {
+            self.dir_task_host: {'bind': '/sly_task_data', 'mode': 'rw'},
+        }
+        if constants.HOST_REQUESTS_CA_BUNDLE() is not None:
+            volumes[constants.HOST_REQUESTS_CA_BUNDLE()] = {'bind': constants.REQUESTS_CA_BUNDLE(), 'mode': 'ro'}
+        return volumes
 
     def get_spawn_entrypoint(self):
         return ["sh", "-c", "python -u {}".format(self.entrypoint)]
@@ -155,6 +160,7 @@ class TaskDockerized(TaskSly):
                              constants._HTTP_PROXY.lower(): constants.HTTP_PROXY(),
                              constants._HTTPS_PROXY.lower(): constants.HTTPS_PROXY(),
                              constants._NO_PROXY.lower(): constants.NO_PROXY(),
+                             constants._REQUESTS_CA_BUNDLE: constants.REQUESTS_CA_BUNDLE(),
                              **add_envs},
                 labels={'ecosystem': 'supervisely',
                        'ecosystem_token': constants.TASKS_DOCKER_LABEL(),

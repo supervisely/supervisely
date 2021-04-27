@@ -172,3 +172,6 @@ class ObjClass(KeyObject, JsonSerializable):
                         geometry_config=take_with_default(geometry_config, self.geometry_config),
                         sly_id=take_with_default(sly_id, self.sly_id),
                         hotkey=take_with_default(hotkey, self.hotkey))
+
+    def __hash__(self):
+        return hash((self.name, self.geometry_type.geometry_name()))

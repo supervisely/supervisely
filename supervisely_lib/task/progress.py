@@ -35,8 +35,16 @@ class Progress:
         self.report_every = max(1, math.ceil(total_cnt / 100))
         self.need_info_log = need_info_log
 
+        mb5 = 5 * 1024 * 1024
         if self.is_size and self.is_total_unknown:
-            self.report_every = 5 * 1024 * 1024  # 5mb
+            self.report_every = mb5  # 5mb
+
+        mb1 = 1 * 1024 * 1024
+        if self.is_size and self.is_total_unknown is False and self.report_every < mb1:
+            self.report_every = mb1  # 1mb
+
+        if self.is_size and self.is_total_unknown is False and self.total > 40 * 1024 * 1024 and self.report_every < mb5:
+            self.report_every = mb5
 
         self.report_progress()
 
@@ -118,7 +126,6 @@ class Progress:
         self.iters_done(count)
         self.report_if_needed()
 
-    #@TODO: to upload dtl archive
     def set_current_value(self, value):
         '''
         Increments the current iteration counter by this value minus the current value of the counter and logs a message depending on current number of iterations

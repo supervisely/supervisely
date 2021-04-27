@@ -7,6 +7,7 @@ import tarfile
 import shutil
 import json
 from pathlib import Path
+from packaging import version
 
 import supervisely_lib as sly
 from .task_dockerized import TaskDockerized
@@ -134,14 +135,14 @@ class TaskApp(TaskDockerized):
 
     def _get_task_volumes(self):
         res = {}
-        if self.is_isolate():
-            res[self.dir_task_host] = {'bind': self.dir_task_container, 'mode': 'rw'}
-            res[self.dir_apps_cache_host] = {'bind': self.dir_apps_cache_container, 'mode': 'rw'}
-        else:
-            res[constants.AGENT_APP_SESSIONS_DIR_HOST()] = {'bind': sly.app.SHARED_DATA, 'mode': 'rw'}
+        res[self.dir_task_host] = {'bind': self.dir_task_container, 'mode': 'rw'}
+        res[self.dir_apps_cache_host] = {'bind': self.dir_apps_cache_container, 'mode': 'rw'}
 
         if self._need_sync_pip_cache is True:
             res[self._path_cache_host] = {'bind': _LINUX_DEFAULT_PIP_CACHE_DIR, 'mode': 'rw'}
+
+        if constants.HOST_REQUESTS_CA_BUNDLE() is not None:
+            res[constants.HOST_REQUESTS_CA_BUNDLE()] = {'bind': constants.REQUESTS_CA_BUNDLE(), 'mode': 'ro'}
 
         return res
 
@@ -163,55 +164,44 @@ class TaskApp(TaskDockerized):
             with open(requirements_path, 'r') as f:
                 self.logger.info(f.read())
 
-        if self._need_sync_pip_cache is True and sly.fs.dir_exists(path_cache) is False:
-            sly.fs.mkdir(path_cache)
-            archive_destination = os.path.join(path_cache, "archive.tar")
-            temp_container = self._container  # self._docker_api.containers.create(self.docker_image_name)
+            if sly.fs.dir_exists(path_cache) is False or version == "master":
+                sly.fs.mkdir(path_cache)
+                archive_destination = os.path.join(path_cache, "archive.tar")
+                self.spawn_container(add_labels={"pip_cache": "1", "app_session_id": str(self.info['task_id'])})
+                self.install_pip_requirements(container_id=self._container.id)
 
-            self.install_pip_requirements(container_id=temp_container.id)
+                #@TODO: handle 404 not found
+                bits, stat = self._container.get_archive(_LINUX_DEFAULT_PIP_CACHE_DIR)
+                self.logger.info("Download initial pip cache from dockerimage",
+                                 extra={
+                                     "dockerimage": self.docker_image_name,
+                                     "module_id": module_id,
+                                     "version": version,
+                                     "save_path": path_cache,
+                                     "stats": stat,
+                                     "default_pip_cache": _LINUX_DEFAULT_PIP_CACHE_DIR,
+                                     "archive_destination": archive_destination
+                                 })
 
-            #@TODO: handle 404 not found
-            bits, stat = temp_container.get_archive(_LINUX_DEFAULT_PIP_CACHE_DIR)
-            self.logger.info("Download initial pip cache from dockerimage",
-                             extra={
-                                 "dockerimage": self.docker_image_name,
-                                 "module_id": module_id,
-                                 "version": version,
-                                 "save_path": path_cache,
-                                 "stats": stat,
-                                 "default_pip_cache": _LINUX_DEFAULT_PIP_CACHE_DIR,
-                                 "archive_destination": archive_destination
-                             })
+                with open(archive_destination, 'wb') as archive:
+                    for chunk in bits:
+                        archive.write(chunk)
 
-            with open(archive_destination, 'wb') as archive:
-                for chunk in bits:
-                    archive.write(chunk)
-
-            with tarfile.open(archive_destination) as archive:
-                archive.extractall(path_cache)
-            sly.fs.silent_remove(archive_destination)
-
-            #temp_container.remove()
+                with tarfile.open(archive_destination) as archive:
+                    archive.extractall(path_cache)
+                sly.fs.silent_remove(archive_destination)
+            else:
+                self.logger.info("Use existing pip cache")
 
     def find_or_run_container(self):
         add_labels = {"sly_app": "1", "app_session_id": str(self.info['task_id'])}
         sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, constants.PULL_POLICY(), self.logger)
-        if self.is_isolate():
-            # spawn app session in new container
-            add_labels["isolate"] = "1"
-            sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, constants.PULL_POLICY(), self.logger)
-            self.spawn_container(add_labels=add_labels)
-        else:
-            # spawn app session in existing container
-            add_labels["isolate"] = "0"
-            filter = {"ancestor": self.info['docker_image'], "label": ["sly_app=1", "isolate=0"]}
-            containers = self.docker_api.containers.list(all=True, filters=filter)
-            if len(containers) == 0:
-                sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, constants.PULL_POLICY(), self.logger)
-                self.spawn_container(add_labels=add_labels)
-            else:
-                self._container = containers[0]
         self.sync_pip_cache()
+        if self._container is None:
+            self.spawn_container(add_labels=add_labels)
+            self.logger.info("Double check pip cache for old agents")
+            self.install_pip_requirements(container_id=self._container.id)
+            self.logger.info("pip second install for old agents is finished")
 
     def get_spawn_entrypoint(self):
         return ["sh", "-c", "while true; do sleep 30; done;"]
@@ -231,6 +221,7 @@ class TaskApp(TaskDockerized):
                                                              'SERVER_ADDRESS': self.info['server_address'],
                                                              'API_TOKEN': self.info['api_token'],
                                                              'AGENT_TOKEN': constants.TOKEN(),
+                                                             constants._REQUESTS_CA_BUNDLE: constants.REQUESTS_CA_BUNDLE(),
                                                              **add_envs
                                                          })
         self._logs_output = self._docker_api.api.exec_start(self._exec_id, stream=True, demux=False)
@@ -262,7 +253,6 @@ class TaskApp(TaskDockerized):
 
     def main_step(self):
         self.find_or_run_container()
-        self.install_pip_requirements()  # run again to be compatible with old agents (remove it later or check agent version >= 6.1.15)
         self.exec_command(add_envs=self.main_step_envs())
         self.process_logs()
         self.drop_container_and_check_status()

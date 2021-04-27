@@ -1,6 +1,7 @@
 # coding: utf-8
 import json
-from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from functools import partial
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.api.video.video_annotation_api import VideoAnnotationAPI
@@ -229,15 +230,26 @@ class VideoApi(RemoveableBulkModuleApi):
             results.extend(response.json())
         return results
 
-    def upload_paths(self, dataset_id, names, paths, progress_cb=None, metas=None):
+    def upload_paths(self, dataset_id, names, paths, progress_cb=None, metas=None, infos=None, item_progress=None):
         def path_to_bytes_stream(path):
             return open(path, 'rb')
 
-        video_info_results = []
+        update_headers = False
+        if infos is not None:
+            if len(infos) != len(names):
+                raise ValueError("Infos have to be None or provided for all videos")
+            update_headers = True
 
+        if update_headers:
+            self._api.add_header("x-skip-processing", "true")
+
+        video_info_results = []
         hashes = [get_file_hash(x) for x in paths]
 
-        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb, item_progress=item_progress)
+        if update_headers:
+            self.upsert_infos(hashes, infos)
+            self._api.pop_header("x-skip-processing")
         metas = self._api.import_storage.get_meta_by_hashes(hashes)
         metas2 = [meta["meta"] for meta in metas]
 
@@ -262,16 +274,22 @@ class VideoApi(RemoveableBulkModuleApi):
                     video_info_results.append(res)
             except Exception as e:
                 logger.warning("File skipped {!r}: error occurred during processing {!r}".format(name, str(e)))
-
         return video_info_results
 
-    #TODO: copypaste from images_api
-    def _upload_uniq_videos_single_req(self, func_item_to_byte_stream, hashes_items_to_upload):
+    def _upload_uniq_videos_single_req(self, func_item_to_byte_stream, hashes_items_to_upload, progress_cb=None):
         content_dict = {}
         for idx, (_, item) in enumerate(hashes_items_to_upload):
             content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'video/*')
         encoder = MultipartEncoder(fields=content_dict)
-        resp = self._api.post('videos.bulk.upload', encoder)
+
+        if progress_cb is not None:
+            def _callback(monitor, progress):
+                progress(monitor.bytes_read)
+            callback = partial(_callback, progress=progress_cb)
+            monitor = MultipartEncoderMonitor(encoder, callback)
+            resp = self._api.post('videos.bulk.upload', monitor)
+        else:
+            resp = self._api.post('videos.bulk.upload', encoder)
 
         resp_list = json.loads(resp.text)
         remote_hashes = [d['hash'] for d in resp_list if 'hash' in d]
@@ -282,21 +300,21 @@ class VideoApi(RemoveableBulkModuleApi):
                 'total_cnt': len(hashes_items_to_upload), 'ok_cnt': len(remote_hashes), 'items': problem_items})
         return remote_hashes
 
-    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None):
+    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None, item_progress=None):
         hash_to_items = {i_hash: item for item, i_hash in items_hashes}
 
         unique_hashes = set(hash_to_items.keys())
         remote_hashes = set(self.check_existing_hashes(list(unique_hashes)))  # existing -- from server
         if progress_cb:
             progress_cb(len(remote_hashes))
+        #pending_hashes = unique_hashes #- remote_hashes #@TODO: only fo debug!
         pending_hashes = unique_hashes - remote_hashes
 
         for retry_idx in range(retry_cnt):
             # single attempt to upload all data which is not uploaded yet
-
             for hashes in batched(list(pending_hashes)):
                 pending_hashes_items = [(h, hash_to_items[h]) for h in hashes]
-                hashes_rcv = self._upload_uniq_videos_single_req(func_item_to_byte_stream, pending_hashes_items)
+                hashes_rcv = self._upload_uniq_videos_single_req(func_item_to_byte_stream, pending_hashes_items, item_progress)
                 pending_hashes -= set(hashes_rcv)
                 if set(hashes_rcv) - set(hashes):
                     logger.warn('Hash inconsistency in images bulk upload.',
@@ -307,11 +325,32 @@ class VideoApi(RemoveableBulkModuleApi):
             if not pending_hashes:
                 return
 
-            logger.warn('Unable to upload images (data).', extra={
+            logger.warn('Unable to upload videos (data).', extra={
                 'retry_idx': retry_idx,
                 'items': [(h, hash_to_items[h]) for h in pending_hashes]
             })
             # now retry it for the case if it is a shadow server/connection error
 
-        raise RuntimeError("Unable to upload images (data). "
-                           "Please check if images are in supported format and if ones aren't corrupted.")
+        raise RuntimeError("Unable to upload videos (data). "
+                           "Please check if videos are in supported format and if ones aren't corrupted.")
+
+    # @TODO: add case to documentation with detailed explanation
+    def upsert_info(self, hash, info):
+        return self.upsert_infos([hash], [info])
+
+    def upsert_infos(self, hashes, infos, links=None):
+        payload = []
+        if links is None:
+            links = [None] * len(hashes)
+        for h, l, info in zip(hashes, links, infos):
+            item = {ApiField.HASH: h, ApiField.META: info}
+            if l is not None:
+                item[ApiField.LINK] = l
+            payload.append(item)
+
+        resp = self._api.post('videos.bulk.upsert_file_meta', payload)
+        return resp.json()
+
+    def upload_links(self, dataset_id, names, hashes, links, infos, metas=None):
+        self.upsert_infos(hashes, infos, links)
+        return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, metas)

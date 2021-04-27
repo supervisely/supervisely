@@ -2,6 +2,7 @@
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
+from supervisely_lib._utils import batched
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -70,7 +71,10 @@ class FigureApi(RemoveableBulkModuleApi):
     def _append_bulk(self, entity_id, figures_json, figures_keys, key_id_map: KeyIdMap):
         if len(figures_json) == 0:
             return
-        resp = self._api.post('figures.bulk.add', {ApiField.ENTITY_ID: entity_id, ApiField.FIGURES: figures_json})
-        for key, resp_obj in zip(figures_keys, resp.json()):
-            figure_id = resp_obj[ApiField.ID]
-            key_id_map.add_figure(key, figure_id)
+
+        for (batch_keys, batch_jsons) in zip(batched(figures_keys, batch_size=100),
+                                             batched(figures_json, batch_size=100)):
+            resp = self._api.post('figures.bulk.add', {ApiField.ENTITY_ID: entity_id, ApiField.FIGURES: batch_jsons})
+            for key, resp_obj in zip(batch_keys, resp.json()):
+                figure_id = resp_obj[ApiField.ID]
+                key_id_map.add_figure(key, figure_id)

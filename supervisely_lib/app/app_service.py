@@ -54,7 +54,7 @@ class AppService:
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
-        self.task_id = take_with_default(task_id, os.environ["TASK_ID"])
+        self.task_id = take_with_default(task_id, int(os.environ["TASK_ID"]))
         self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
@@ -72,7 +72,6 @@ class AppService:
         mkdir(self.cache_dir)
         self.cache = FileCache(name="FileCache", storage_root=self.cache_dir)
 
-
         self.api = AgentAPI(token=self.agent_token, server_address=self.server_address, ext_logger=self.logger)
         self.api.add_to_metadata('x-task-id', str(self.task_id))
 
@@ -83,6 +82,7 @@ class AppService:
         self._ignore_stop_for_debug = False
         self._error = None
         self.stop_event = asyncio.Event()
+        self.has_ui = False
 
     def _run_executors(self):
         self.executor = concurrent.futures.ThreadPoolExecutor()
@@ -205,6 +205,9 @@ class AppService:
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
+                if self.has_ui:
+                    self.show_modal_window("Oops! Something went wrong, please try again or contact tech support."
+                                           " Find more info in the app logs.", level="error")
 
     def consume_sync(self):
         while True:
@@ -269,6 +272,7 @@ class AppService:
         else:
             with open(template_path, 'r') as file:
                 template = file.read()
+            self.has_ui = True
 
         self.public_api.app.initialize(self.task_id, template, data, state)
         self.logger.info("Application session is initialized", extra={"app_url": self.app_url})
@@ -330,3 +334,12 @@ class AppService:
                                       api_proto.Empty,
                                       send_from_memory_generator(out_bytes, 1048576),
                                       addit_headers={'x-request-id': request_id})
+
+    def show_modal_window(self, message, level="info"):
+        all_levels = ["warning", "info", "error"]
+        if level not in all_levels:
+            raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
+        self.public_api.app.set_field(self.task_id, "data.notifyDialog", {
+            "type": level,
+            "message": message
+        })

@@ -1,5 +1,4 @@
 # coding: utf-8
-
 from copy import deepcopy
 import os
 import os.path as osp
@@ -47,9 +46,8 @@ class TaskLogged(multiprocessing.Process):
         self.log_queue = None
         self.executor_log = None
         self.future_log = None
-        self.init_logger()
 
-        self._stop_log_event = threading.Event()
+        self._stop_log_event = None
         self._stop_event = multiprocessing.Event()
 
         # pre-init for static analysis
@@ -116,6 +114,8 @@ class TaskLogged(multiprocessing.Process):
     # in new process
     def run(self):
         try:
+            self._stop_log_event = threading.Event()
+            self.init_logger()
             self.init_api()
             self.future_log = self.executor_log.submit(self.submit_log)  # run log submitting
         except Exception as e:
@@ -137,6 +137,7 @@ class TaskLogged(multiprocessing.Process):
 
         self.logger.info("WAIT_FOR_TASK_LOG")
         self.stop_log_thread()
+        self.close_log_handlers()
 
         sys.exit(exit_codes[exit_status])
 
@@ -172,3 +173,9 @@ class TaskLogged(multiprocessing.Process):
 
     def clean_task_dir(self):
         pass
+
+    def close_log_handlers(self):
+        handlers = self.logger.handlers[:]
+        for handler in handlers:
+            handler.close()
+            self.logger.removeHandler(handler)

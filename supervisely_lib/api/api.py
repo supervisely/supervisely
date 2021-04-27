@@ -28,7 +28,7 @@ import supervisely_lib.api.file_api as file_api
 import supervisely_lib.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely_lib.api.advanced_api as advanced_api
 import supervisely_lib.api.import_storage_api as import_stoarge_api
-
+import supervisely_lib.api.remote_storage_api as remote_storage_api
 from supervisely_lib.sly_logger import logger
 
 
@@ -94,6 +94,7 @@ class Api:
         self.img_ann_tool = image_annotation_tool_api.ImageAnnotationToolApi(self)
         self.advanced = advanced_api.AdvancedApi(self)
         self.import_storage = import_stoarge_api.ImportStorageApi(self)
+        self.remote_storage = remote_storage_api.RemoteStorageApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -230,7 +231,6 @@ class Api:
     @staticmethod
     def parse_error(response, default_error="Error", default_message="please, contact administrator"):
         '''
-
         :param response: Request class object
         :param default_error: str
         :param default_message: str
@@ -253,3 +253,8 @@ class Api:
             return error, message
         except Exception as e:
             return "", ""
+
+    def pop_header(self, key):
+        if key not in self.headers:
+            raise KeyError(f'Header {key!r} not found')
+        return self.headers.pop(key)

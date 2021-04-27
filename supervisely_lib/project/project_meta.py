@@ -1,9 +1,15 @@
 # coding: utf-8
+from __future__ import annotations
 
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
 from supervisely_lib._utils import take_with_default
+
+from supervisely_lib.annotation.obj_class import ObjClass
+from supervisely_lib.geometry.polygon import Polygon
+from supervisely_lib.geometry.bitmap import Bitmap
+from supervisely_lib.geometry.rectangle import Rectangle
 
 
 class ProjectMetaJsonFields:
@@ -228,3 +234,50 @@ class ProjectMeta(JsonSerializable):
         result += 'Object Classes\n{}\n'.format(str(self._obj_classes))
         result += 'Tags\n{}\n'.format(str(self._tag_metas))
         return result
+
+    def __eq__(self, other: ProjectMeta):
+        if self.obj_classes == other.obj_classes and self.tag_metas == other.tag_metas:
+            return True
+        return False
+
+    def __ne__(self, other: ProjectMeta):
+        return not self == other
+
+    def to_segmentation_task(self, keep_geometries=[Polygon, Bitmap]) -> (ProjectMeta, dict):
+        mapping = {}
+        res_classes = []
+        for obj_class in self.obj_classes:
+            obj_class: ObjClass
+            if obj_class.geometry_type in keep_geometries:
+                if obj_class.geometry_type == Bitmap:
+                    mapping[obj_class] = obj_class
+                    res_classes.append(obj_class)
+                else:
+                    new_class = obj_class.clone(geometry_type=Bitmap)
+                    mapping[obj_class] = new_class
+                    res_classes.append(new_class)
+            else:
+                mapping[obj_class] = None
+        res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
+        return res_meta, mapping
+
+    def to_detection_task(self, convert_classes=False) -> (ProjectMeta, dict):
+        mapping = {}
+        res_classes = []
+        for obj_class in self.obj_classes:
+            obj_class: ObjClass
+            if obj_class.geometry_type == Rectangle:
+                mapping[obj_class] = obj_class
+                res_classes.append(obj_class)
+            else:
+                if convert_classes is True:
+                    new_class = obj_class.clone(geometry_type=Rectangle)
+                    mapping[obj_class] = new_class
+                    res_classes.append(new_class)
+                else:
+                    # ignore class
+                    mapping[obj_class] = None
+        res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
+        return res_meta, mapping
+
+
