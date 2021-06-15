@@ -168,15 +168,6 @@ class Api:
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
     def get(self, method, params, retries=None, stream=False, use_public_api=True):
-        '''
-        Performs GET request to server with given parameters. Raise error if can not connect to server.
-        :param method: str
-        :param params: dict
-        :param retries: int (number of attempts to access the server)
-        :param stream: bool
-        :param use_public_api: bool
-        :return: Request class object
-        '''
         if retries is None:
             retries = self.retry_count
 

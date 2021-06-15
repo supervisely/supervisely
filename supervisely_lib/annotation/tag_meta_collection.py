@@ -27,6 +27,22 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         tags = [TagMeta.from_json(tag_meta_json) for tag_meta_json in data]
         return cls(tags)
 
+    def get_id_mapping(self, raise_if_no_id=False):
+        res = {}
+        without_id = []
+        for tag_meta in self:
+            if tag_meta.sly_id is not None:
+                if tag_meta.sly_id in res:
+                    raise KeyError(f"TagMeta with id={tag_meta.sly_id} already exists (duplication). "
+                                   f"Please contact tech support")
+                else:
+                    res[tag_meta.sly_id] = tag_meta
+            else:
+                without_id.append(tag_meta)
+        if len(without_id) > 0 and raise_if_no_id is True:
+            raise ValueError("There are TagMetas without id")
+        return res
+
 
 def make_renamed_tag_metas(src_tag_metas: TagMetaCollection, renamer, skip_missing=False) -> TagMetaCollection:
     '''

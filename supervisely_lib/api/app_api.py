@@ -4,7 +4,12 @@ import os
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.api.task_api import TaskApi
 from supervisely_lib._utils import take_with_default
-from supervisely_lib.app.constants import DATA, STATE, CONTEXT, TEMPLATE
+
+#from supervisely_lib.app.constants import DATA, STATE, CONTEXT, TEMPLATE
+STATE = "state"
+DATA = "data"
+TEMPLATE = "template"
+
 from supervisely_lib.io.fs import ensure_base_path
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import sizeof_fmt
@@ -47,6 +52,9 @@ class AppApi(TaskApi):
         d = take_with_default(data, {})
         if "notifyDialog" not in d:
             d["notifyDialog"] = None
+        if "scrollIntoView" not in d:
+            d["scrollIntoView"] = None
+
         s = take_with_default(state, {})
         fields = [{"field": TEMPLATE, "payload": template}, {"field": DATA, "payload": d}, {"field": STATE, "payload": s}]
         resp = self._api.task.set_fields(task_id, fields)
@@ -89,6 +97,9 @@ class AppApi(TaskApi):
                     progress.iters_done_report(log_size)
                     log_size = 0
 
-    def get_info(self, module_id):
-        response = self._api.post('ecosystem.info', {ApiField.ID: module_id})
+    def get_info(self, module_id, version=None):
+        data = {ApiField.ID: module_id}
+        if version is not None:
+            data[ApiField.VERSION] = version
+        response = self._api.post('ecosystem.info', data)
         return response.json()

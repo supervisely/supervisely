@@ -28,3 +28,16 @@ class TagCollection(MultiKeyIndexedCollection):
 
     def __str__(self):
         return 'Tags:\n' + super(TagCollection, self).__str__()
+
+    @classmethod
+    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None):
+        if id_to_tagmeta is None:
+            id_to_tagmeta = tag_meta_collection.get_id_mapping()
+        tags = []
+        for tag_json in data:
+            tag_meta_id = tag_json["tagId"]
+            tag_meta = id_to_tagmeta[tag_meta_id]
+            tag_json['name'] = tag_meta.name
+            tag = cls.item_type.from_json(tag_json, tag_meta_collection)
+            tags.append(tag)
+        return cls(tags)

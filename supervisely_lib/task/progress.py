@@ -14,7 +14,7 @@ class Progress:
     '''
     This is a class for conveniently monitoring the operation of modules and displaying statistics on data processing
     '''
-    def __init__(self, message, total_cnt, ext_logger=None, is_size=False, need_info_log=False):
+    def __init__(self, message, total_cnt, ext_logger=None, is_size=False, need_info_log=False, min_report_percent=1):
         '''
         :param message: str
         :param total_cnt: int
@@ -32,7 +32,7 @@ class Progress:
 
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
-        self.report_every = max(1, math.ceil(total_cnt / 100))
+        self.report_every = max(1, math.ceil(total_cnt / 100 * min_report_percent))
         self.need_info_log = need_info_log
 
         mb5 = 5 * 1024 * 1024
@@ -76,6 +76,10 @@ class Progress:
         self._refresh_labels()
 
     def report_progress(self):
+        self.print_progress()
+        self.reported_cnt += 1
+
+    def print_progress(self):
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         '''
@@ -91,8 +95,6 @@ class Progress:
             extra['total_label'] = self.total_label
 
         self.logger.info('progress', extra=extra)
-        self.reported_cnt += 1
-
         if self.need_info_log is True:
             self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
 
@@ -126,20 +128,26 @@ class Progress:
         self.iters_done(count)
         self.report_if_needed()
 
-    def set_current_value(self, value):
+    def set_current_value(self, value, report=True):
         '''
         Increments the current iteration counter by this value minus the current value of the counter and logs a message depending on current number of iterations
         :param value: int
         '''
-        self.iters_done_report(value - self.current)
+        if report is True:
+            self.iters_done_report(value - self.current)
+        else:
+            self.iters_done(value - self.current)
 
-    def set(self, current, total):
+    def set(self, current, total, report=True):
         self.total = total
+        if self.total != 0:
+            self.is_total_unknown = False
         self.current = current
         self.reported_cnt = 0
         self.report_every = max(1, math.ceil(total / 100))
         self._refresh_labels()
-        self.report_if_needed()
+        if report is True:
+            self.report_if_needed()
 
 
 def report_agent_rpc_ready():

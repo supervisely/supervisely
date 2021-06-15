@@ -36,6 +36,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 RUN pip install docker --upgrade
+RUN pip install version-parser==1.0.1
 
 ############### copy code ###############
 ARG MODULE_PATH

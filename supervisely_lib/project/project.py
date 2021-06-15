@@ -4,23 +4,27 @@ from collections import namedtuple
 import os
 import json
 from enum import Enum
+from typing import List
+import random
 
-from supervisely_lib.annotation.annotation import Annotation, ANN_EXT
+from supervisely_lib.annotation.annotation import Annotation, ANN_EXT, TagCollection
+from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
 from supervisely_lib.imaging import image as sly_image
-from supervisely_lib.io.fs import list_files, list_files_recursively, mkdir, copy_file, get_subdirs, dir_exists
+from supervisely_lib.io.fs import list_files, list_files_recursively, mkdir, copy_file, get_subdirs, dir_exists, \
+    dir_empty, silent_remove
 from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
-from supervisely_lib.io.fs import file_exists
+from supervisely_lib.io.fs import file_exists, ensure_base_path
 from supervisely_lib.api.api import Api
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.fs_cache import FileCache
 
-
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
+ItemInfo = namedtuple('ItemInfo', ['dataset_name', 'name', 'img_path', 'ann_path'])
 
 
 class OpenMode(Enum):
@@ -95,6 +99,10 @@ class Dataset(KeyObject):
         :return: path to the directory with annotations in dataset
         '''
         return os.path.join(self.directory, 'ann')
+
+    @property
+    def img_info_dir(self):
+        return os.path.join(self.directory, 'img_info')
 
     @staticmethod
     def _has_valid_ext(path: str) -> bool:
@@ -171,16 +179,18 @@ class Dataset(KeyObject):
         return os.path.join(self.item_dir, item_name)
 
     def get_ann_path(self, item_name):
-        '''
-        :param item_name: str
-        :return: str (path to given annotation), generate exception error if annotation not found in dataset
-        '''
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.ann_dir, ann_path)
 
-    def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False):
+    def get_img_info_path(self, item_name):
+        ann_path = self._item_to_ann.get(item_name, None)
+        if ann_path is None:
+            raise RuntimeError('Item {} not found in the project.'.format(item_name))
+        return os.path.join(self.img_info_dir, ann_path)
+
+    def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False, img_info=None):
         '''
         Add given item file to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
         empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -192,8 +202,9 @@ class Dataset(KeyObject):
         '''
         self._add_item_file(item_name, item_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
         self._add_ann_by_type(item_name, ann)
+        self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name, img, ann=None):
+    def add_item_np(self, item_name, img, ann=None, img_info=None):
         '''
         Write given image(RGB format(numpy matrix)) to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
         empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -203,8 +214,9 @@ class Dataset(KeyObject):
         '''
         self._add_img_np(item_name, img)
         self._add_ann_by_type(item_name, ann)
+        self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None):
+    def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None, img_info=None):
         '''
         Write given binary object to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
         empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension.
@@ -215,6 +227,7 @@ class Dataset(KeyObject):
         '''
         self._add_item_raw_bytes(item_name, item_raw_bytes)
         self._add_ann_by_type(item_name, ann)
+        self._add_img_info(item_name, img_info)
 
     def _get_empty_annotaion(self, item_name):
         '''
@@ -244,6 +257,17 @@ class Dataset(KeyObject):
             self.set_ann_dict(item_name, ann)
         else:
             raise TypeError("Unsupported type {!r} for ann argument".format(type(ann)))
+
+    def _add_img_info(self, item_name, img_info=None):
+        if img_info is None:
+            return
+        dst_info_path = self.get_img_info_path(item_name)
+        ensure_base_path(dst_info_path)
+        if type(img_info) is dict:
+            dump_json_file(img_info, dst_info_path, indent=4)
+        else:
+            # ImgInfo named tuple
+            dump_json_file(img_info._asdict(), dst_info_path, indent=4)
 
     def _check_add_item_name(self, item_name):
         '''
@@ -378,6 +402,16 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
+    def delete_item(self, item_name):
+        if self.item_exists(item_name):
+            data_path, ann_path = self.get_item_paths(item_name)
+            silent_remove(data_path)
+            silent_remove(ann_path)
+            self._item_to_ann.pop(item_name)
+            return True
+        return False
+
+
 
 class Project:
     '''
@@ -420,7 +454,7 @@ class Project:
         return self._datasets
 
     @property
-    def meta(self):
+    def meta(self) -> ProjectMeta:
         return self._meta
 
     @property
@@ -547,6 +581,187 @@ class Project:
             raise RuntimeError('Unable to determine project name.')
         return parent_dir, pr_name
 
+    @staticmethod
+    def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
+        if dst_project_dir is None and inplace is False:
+            raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
+                             f"argument (inplace=True) directly")
+        if inplace is True and dst_project_dir is not None:
+            raise ValueError("dst_project_dir has to be None if inplace is True")
+
+        if dst_project_dir is not None:
+            if not dir_exists(dst_project_dir):
+                mkdir(dst_project_dir)
+            elif not dir_empty(dst_project_dir):
+                raise ValueError(f"Destination directory {dst_project_dir} is not empty")
+
+        src_project = Project(src_project_dir, OpenMode.READ)
+        det_meta, det_mapping = src_project.meta.to_detection_task(convert_classes=True)
+
+        if inplace is False:
+            dst_project = Project(src_project_dir, OpenMode.CREATE)
+            dst_project.set_meta(det_meta)
+
+        for src_dataset in src_project.datasets:
+            if inplace is False:
+                dst_dataset = dst_project.create_dataset(src_dataset.name)
+            for item_name in src_dataset:
+                img_path, ann_path = src_dataset.get_item_paths(item_name)
+                ann = Annotation.load_json_file(ann_path, src_project.meta)
+                det_ann = ann.to_detection_task(det_mapping)
+
+                if inplace is False:
+                    dst_dataset.add_item_file(item_name, img_path, det_ann)
+                else:
+                    # replace existing annotation
+                    src_dataset.set_ann(item_name, det_ann)
+
+        if inplace is True:
+            src_project.set_meta(det_meta)
+
+    @staticmethod
+    def remove_classes_except(project_dir, classes_to_keep=None, inplace=False):
+        classes_to_remove = []
+        project = Project(project_dir, OpenMode.READ)
+        for obj_class in project.meta.obj_classes:
+            if obj_class.name not in classes_to_keep:
+                classes_to_remove.append(obj_class.name)
+        Project.remove_classes(project_dir, classes_to_remove, inplace)
+
+    @staticmethod
+    def remove_classes(project_dir, classes_to_remove=None, inplace=False):
+        if inplace is False:
+            raise ValueError(f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly")
+        project = Project(project_dir, OpenMode.READ)
+        for dataset in project.datasets:
+            for item_name in dataset:
+                img_path, ann_path = dataset.get_item_paths(item_name)
+                ann = Annotation.load_json_file(ann_path, project.meta)
+                new_labels = []
+                for label in ann.labels:
+                    if label.obj_class.name not in classes_to_remove:
+                        new_labels.append(label)
+                new_ann = ann.clone(labels=new_labels)
+                dataset.set_ann(item_name, new_ann)
+        new_classes = []
+        for obj_class in project.meta.obj_classes:
+            if obj_class.name not in classes_to_remove:
+                new_classes.append(obj_class)
+        new_meta = project.meta.clone(obj_classes=ObjClassCollection(new_classes))
+        project.set_meta(new_meta)
+
+    @staticmethod
+    def _remove_items(project_dir, without_objects=False, without_tags=False, without_objects_and_tags=False, inplace=False):
+        if inplace is False:
+            raise ValueError(f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly")
+        if without_objects is False and without_tags is False and without_objects_and_tags is False:
+            raise ValueError("One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined")
+        project = Project(project_dir, OpenMode.READ)
+        for dataset in project.datasets:
+            items_to_delete = []
+            for item_name in dataset:
+                img_path, ann_path = dataset.get_item_paths(item_name)
+                ann = Annotation.load_json_file(ann_path, project.meta)
+                if (without_objects and len(ann.labels) == 0) or \
+                   (without_tags and len(ann.img_tags) == 0) or \
+                   (without_objects_and_tags and ann.is_empty()):
+                    items_to_delete.append(item_name)
+            for item_name in items_to_delete:
+                dataset.delete_item(item_name)
+
+    @staticmethod
+    def remove_items_without_objects(project_dir, inplace=False):
+        Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
+
+    @staticmethod
+    def remove_items_without_tags(project_dir, inplace=False):
+        Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
+
+    @staticmethod
+    def remove_items_without_both_objects_and_tags(project_dir, inplace=False):
+        Project._remove_items(project_dir=project_dir, without_objects_and_tags=True, inplace=inplace)
+
+    def get_item_paths(self, item_name) -> ItemPaths:
+        raise NotImplementedError("Method available only for dataset")
+
+    @staticmethod
+    def get_train_val_splits_by_count(project_dir, train_count, val_count) -> (List[ItemInfo], List[ItemInfo]):
+        def _list_items_for_splits(project) -> List[ItemInfo]:
+            items = []
+            for dataset in project.datasets:
+                for item_name in dataset:
+                    items.append(ItemInfo(dataset_name=dataset.name,
+                                          name=item_name,
+                                          img_path=dataset.get_img_path(item_name),
+                                          ann_path=dataset.get_ann_path(item_name)))
+            return items
+
+        project = Project(project_dir, OpenMode.READ)
+        if project.total_items != train_count + val_count:
+            raise ValueError("total_count != train_count + val_count")
+        all_items = _list_items_for_splits(project)
+        random.shuffle(all_items)
+        train_items = all_items[:train_count]
+        val_items = all_items[train_count:]
+        return train_items, val_items
+
+    @staticmethod
+    def get_train_val_splits_by_tag(project_dir, train_tag_name, val_tag_name, untagged="ignore"):
+        untagged_actions = ["ignore", "train", "val"]
+        if untagged not in untagged_actions:
+            raise ValueError(f"Unknown untagged action {untagged}. Should be one of {untagged_actions}")
+        project = Project(project_dir, OpenMode.READ)
+        train_items = []
+        val_items = []
+        for dataset in project.datasets:
+            for item_name in dataset:
+                img_path, ann_path = dataset.get_item_paths(item_name)
+                info = ItemInfo(dataset.name, item_name, img_path, ann_path)
+
+                ann = Annotation.load_json_file(ann_path, project.meta)
+                if ann.img_tags.get(train_tag_name) is not None:
+                    train_items.append(info)
+                if ann.img_tags.get(val_tag_name) is not None:
+                    val_items.append(info)
+                if ann.img_tags.get(train_tag_name) is None and ann.img_tags.get(val_tag_name) is None:
+                    # untagged item
+                    if untagged == "ignore":
+                        continue
+                    elif untagged == "train":
+                        train_items.append(info)
+                    elif untagged == "val":
+                        val_items.append(info)
+        return train_items, val_items
+
+    @staticmethod
+    def get_train_val_splits_by_dataset(project_dir, train_datasets, val_datasets):
+        def _add_items_to_list(project, datasets_names, items_list):
+            for dataset_name in datasets_names:
+                dataset = project.datasets.get(dataset_name)
+                if dataset is None:
+                    raise KeyError(f"Dataset '{dataset_name}' not found")
+                for item_name in dataset:
+                    img_path, ann_path = dataset.get_item_paths(item_name)
+                    info = ItemInfo(dataset.name, item_name, img_path, ann_path)
+                    items_list.append(info)
+
+        project = Project(project_dir, OpenMode.READ)
+        train_items = []
+        _add_items_to_list(project, train_datasets, train_items)
+        val_items = []
+        _add_items_to_list(project, val_datasets, val_items)
+        return train_items, val_items
+
+
+    # @staticmethod
+    # def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
+    #     pass
+    #
+    # @staticmethod
+    # def get_train_val_splits_by_portion(project_dir, train_portion, val_portion):
+    #     pass
+    #
+
 
 def read_single_project(dir, project_class=Project):
     '''
@@ -555,6 +770,12 @@ def read_single_project(dir, project_class=Project):
     :param project_class: Project class object type
     :return: Project class object
     '''
+    try:
+        project_fs = project_class(dir, OpenMode.READ)
+        return project_fs
+    except Exception as e:
+        pass
+
     projects_in_dir = get_subdirs(dir)
     if len(projects_in_dir) != 1:
         raise RuntimeError('Found {} dirs instead of 1'.format(len(projects_in_dir)))
@@ -572,11 +793,15 @@ def read_single_project(dir, project_class=Project):
     return project_fs
 
 
-def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10):
+def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10,
+                      only_image_tags=False, save_image_info=False):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
+
+    if only_image_tags is True:
+        id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
     for dataset_info in api.dataset.get_list(project_id):
         dataset_id = dataset_info.id
@@ -599,11 +824,21 @@ def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=
             batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
 
             # download annotations in json format
-            ann_infos = api.annotation.download_batch(dataset_id, image_ids)
-            ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+            if only_image_tags is False:
+                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+                ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+            else:
+                ann_jsons = []
+                for image_info in batch:
+                    tags = TagCollection.from_api_response(image_info.tags, meta.tag_metas, id_to_tagmeta)
+                    tmp_ann = Annotation(img_size=(image_info.height, image_info.width), img_tags=tags)
+                    ann_jsons.append(tmp_ann.to_json())
 
-            for name, img_bytes, ann in zip(image_names, batch_imgs_bytes, ann_jsons):
-                dataset_fs.add_item_raw_bytes(name, img_bytes, ann)
+            for img_info, name, img_bytes, ann in zip(batch, image_names, batch_imgs_bytes, ann_jsons):
+                if save_image_info is False:
+                    dataset_fs.add_item_raw_bytes(name, img_bytes, ann)
+                else:
+                    dataset_fs.add_item_raw_bytes(name, img_bytes, ann, img_info)
 
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
@@ -646,14 +881,18 @@ def upload_project(dir, api, workspace_id, project_name=None, log_progress=True)
 
 
 def download_project(api: Api, project_id, dest_dir, dataset_ids=None, log_progress=False, batch_size=10,
-                     cache: FileCache = None, progress_cb=None):
+                     cache: FileCache = None, progress_cb=None, only_image_tags=False, save_image_info=False):
     if cache is None:
-        _download_project(api, project_id, dest_dir, dataset_ids, log_progress, batch_size)
+        _download_project(api, project_id, dest_dir, dataset_ids, log_progress, batch_size,
+                          only_image_tags=only_image_tags, save_image_info=save_image_info)
     else:
-        _download_project_optimized(api, project_id, dest_dir, dataset_ids, cache, progress_cb)
+        _download_project_optimized(api, project_id, dest_dir, dataset_ids, cache, progress_cb,
+                                    only_image_tags=only_image_tags, save_image_info=save_image_info)
 
 
-def _download_project_optimized(api: Api, project_id, project_dir, datasets_whitelist=None, cache=None, progress_cb=None):
+def _download_project_optimized(api: Api, project_id, project_dir,
+                                datasets_whitelist=None, cache=None, progress_cb=None,
+                                only_image_tags=False, save_image_info=False):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
     logger.info(f"Annotations are not cached (always download latest version from server)")
@@ -668,7 +907,8 @@ def _download_project_optimized(api: Api, project_id, project_dir, datasets_whit
             need_download = False
         if need_download is True:
             dataset = project_fs.create_dataset(dataset_name)
-            _download_dataset(api, dataset, dataset_id, cache=cache, progress_cb=progress_cb)
+            _download_dataset(api, dataset, dataset_id, cache=cache, progress_cb=progress_cb,
+                              project_meta=meta, only_image_tags=only_image_tags, save_image_info=save_image_info)
 
 
 def _split_images_by_cache(images, cache):
@@ -700,10 +940,14 @@ def _maybe_append_image_extension(name, ext):
     return result
 
 
-def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None):
+def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None, project_meta: ProjectMeta=None,
+                      only_image_tags=False, save_image_info=False):
     images = api.image.get_list(dataset_id)
-
     images_to_download = images
+    if only_image_tags is True:
+        if project_meta is None:
+            raise ValueError("Project Meta is not defined")
+        id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
 
     # copy images from cache to task folder and download corresponding annotations
     if cache:
@@ -715,13 +959,27 @@ def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=Non
                                                                 "to download": len(images_to_download)})
         if len(images_in_cache) > 0:
             img_cache_ids = [img_info.id for img_info in images_in_cache]
-            ann_info_list = api.annotation.download_batch(dataset_id, img_cache_ids, progress_cb)
-            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+
+            if only_image_tags is False:
+                ann_info_list = api.annotation.download_batch(dataset_id, img_cache_ids, progress_cb)
+                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            else:
+                img_name_to_ann = {}
+                for image_info in images_in_cache:
+                    tags = TagCollection.from_api_response(image_info.tags, project_meta.tag_metas, id_to_tagmeta)
+                    tmp_ann = Annotation(img_size=(image_info.height, image_info.width), img_tags=tags)
+                    img_name_to_ann[image_info.id] = tmp_ann.to_json()
+                if progress_cb is not None:
+                    progress_cb(len(images_in_cache))
+
             for batch in batched(list(zip(images_in_cache, images_cache_paths)), batch_size=50):
                 for img_info, img_cache_path in batch:
                     item_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+                    img_info_to_add = None
+                    if save_image_info is True:
+                        img_info_to_add = img_info
                     dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_item=False,
-                                          _use_hardlink=True)
+                                          _use_hardlink=True, img_info=img_info_to_add)
                 progress_cb(len(batch))
 
     # download images from server
@@ -736,11 +994,24 @@ def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=Non
                 os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
 
         # download annotations
-        ann_info_list = api.annotation.download_batch(dataset_id, img_ids, progress_cb)
-        img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+        if only_image_tags is False:
+            ann_info_list = api.annotation.download_batch(dataset_id, img_ids, progress_cb)
+            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+        else:
+            img_name_to_ann = {}
+            for image_info in images_to_download:
+                tags = TagCollection.from_api_response(image_info.tags, project_meta.tag_metas, id_to_tagmeta)
+                tmp_ann = Annotation(img_size=(image_info.height, image_info.width), img_tags=tags)
+                img_name_to_ann[image_info.id] = tmp_ann.to_json()
+            if progress_cb is not None:
+                progress_cb(len(images_to_download))
+
         api.image.download_paths(dataset_id, img_ids, img_paths, progress_cb)
         for img_info, img_path in zip(images_to_download, img_paths):
-            dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id])
+            img_info_to_add = None
+            if save_image_info is True:
+                img_info_to_add = img_info
+            dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id], img_info=img_info_to_add)
 
         if cache:
             img_hashes = [img_info.hash for img_info in images_to_download]

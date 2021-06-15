@@ -10,6 +10,8 @@ from requests.structures import CaseInsensitiveDict
 
 from supervisely_lib._utils import get_bytes_hash, get_string_hash
 from supervisely_lib.io.fs_cache import FileCache
+from supervisely_lib.sly_logger import logger
+from supervisely_lib.task.progress import Progress
 
 
 def get_file_name(path: str) -> str:
@@ -105,7 +107,7 @@ def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
       (filter_fn is None or filter_fn(file_path))]
 
 
-def mkdir(dir: str):
+def mkdir(dir: str, remove_content_if_exists=False):
     """
     Creates a leaf directory and all intermediate ones.
 
@@ -113,7 +115,10 @@ def mkdir(dir: str):
         dir: Target directory path.
 
     """
-    os.makedirs(dir, mode=0o777, exist_ok=True)
+    if dir_exists(dir) and remove_content_if_exists is True:
+        clean_dir(dir, ignore_errors=True)
+    else:
+        os.makedirs(dir, mode=0o777, exist_ok=True)
 
 
 # create base path recursively; pay attention to slash-terminating paths
@@ -205,14 +210,27 @@ def get_subdirs(dir_path: str) -> list:
 
 
 # removes directory content recursively
-def clean_dir(dir_: str):
+def clean_dir(dir_: str, ignore_errors=True):
     """
     Recursively delete a directory tree, but save root directory.
     Args:
         dir_: Target directory path.
     """
-    shutil.rmtree(dir_, ignore_errors=True)
-    mkdir(dir_)
+    # old implementation
+    #shutil.rmtree(dir_, ignore_errors=True)
+    #mkdir(dir_)
+
+    for filename in os.listdir(dir_):
+        file_path = os.path.join(dir_, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            logger.warn(f"Failed to delete {file_path}. Reason: {repr(e)}")
+            if ignore_errors is False:
+                raise e
 
 
 def remove_dir(dir_: str):
@@ -302,13 +320,16 @@ def download(url, save_path, cache: FileCache = None, progress=None):
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get('Content-Length', '0'))
-            if progress is not None:
+            if progress is not None and type(progress) is Progress:
                 progress.set(0, total_size_in_bytes)
             with open(save_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
                     if progress is not None:
-                        progress.iters_done_report(len(chunk))
+                        if type(progress) is Progress:
+                            progress.iters_done_report(len(chunk))
+                        else:
+                            progress(len(chunk))
 
     if cache is None:
         _download()
@@ -321,7 +342,12 @@ def download(url, save_path, cache: FileCache = None, progress=None):
         else:
             cache.read_object(get_string_hash(url), save_path)
             if progress is not None:
-                progress.set(0, get_file_size(save_path))
-                progress.iters_done_report(get_file_size(save_path))
+                sizeb = get_file_size(save_path)
+                if type(progress) is Progress:
+                    progress.set(0, sizeb)
+                    progress.iters_done_report(sizeb)
+                else:
+                    progress(sizeb)
 
     return save_path
+

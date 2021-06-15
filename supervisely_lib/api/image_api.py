@@ -17,22 +17,25 @@ from supervisely_lib._utils import batched, generate_free_name
 class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.LINK,
-                ApiField.HASH,
-                ApiField.MIME,
-                ApiField.EXT,
-                ApiField.SIZE,
-                ApiField.WIDTH,
-                ApiField.HEIGHT,
-                ApiField.LABELS_COUNT,
-                ApiField.DATASET_ID,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT,
-                ApiField.META,
-                ApiField.PATH_ORIGINAL,
-                ApiField.FULL_STORAGE_URL]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.LINK,
+            ApiField.HASH,
+            ApiField.MIME,
+            ApiField.EXT,
+            ApiField.SIZE,
+            ApiField.WIDTH,
+            ApiField.HEIGHT,
+            ApiField.LABELS_COUNT,
+            ApiField.DATASET_ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.META,
+            ApiField.PATH_ORIGINAL,
+            ApiField.FULL_STORAGE_URL,
+            ApiField.TAGS,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -398,19 +401,41 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
     def upload_ids(self, dataset_id, names, ids, progress_cb=None, metas=None):
-        '''
-        Upload images from given ids with given names to dataset
-        :param dataset_id: int
-        :param names: list of str (if lengh of names list != lengh of ids list raise error)
-        :param ids: list of integers (all ids have to be from single dataset)
-        :param progress_cb:
-        :param metas:
-        :return: list of images
-        '''
-        # all ids have to be from single dataset
+        if metas is None:
+            metas = [{}] * len(names)
+
         infos = self.get_info_by_id_batch(ids)
-        hashes = [info.hash for info in infos]
-        return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
+
+        # prev implementation
+        #hashes = [info.hash for info in infos]
+        #return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
+
+        links, links_names, links_order, links_metas = [], [], [], []
+        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
+            if info.link is not None:
+                links.append(info.link)
+                links_names.append(name)
+                links_order.append(idx)
+                links_metas.append(meta)
+            else:
+                hashes.append(info.hash)
+                hashes_names.append(name)
+                hashes_order.append(idx)
+                hashes_metas.append(meta)
+
+        result = [None] * len(names)
+        if len(links) > 0:
+            res_infos_links = self.upload_links(dataset_id, links_names, links, progress_cb, metas=links_metas)
+            for info, pos in zip(res_infos_links, links_order):
+                result[pos] = info
+
+        if len(hashes) > 0:
+            res_infos_hashes = self.upload_hashes(dataset_id, hashes_names, hashes, progress_cb, metas=hashes_metas)
+            for info, pos in zip(res_infos_hashes, hashes_order):
+                result[pos] = info
+
+        return result
 
     def _upload_bulk_add(self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None):
         results = []

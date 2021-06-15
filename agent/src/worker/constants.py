@@ -35,6 +35,7 @@ _HOST_REQUESTS_CA_BUNDLE = 'HOST_REQUESTS_CA_BUNDLE'
 _CPU_PERIOD = 'CPU_PERIOD'
 _CPU_QUOTA = 'CPU_QUOTA'
 _MEM_LIMIT = 'MEM_LIMIT'
+_SHM_SIZE = 'SHM_SIZE'
 
 _PULL_POLICY = 'PULL_POLICY'
 
@@ -81,7 +82,8 @@ _OPTIONAL_DEFAULTS = {
     _GITHUB_TOKEN: None,
     _APP_DEBUG_DOCKER_IMAGE: None,
     _REQUESTS_CA_BUNDLE: None,
-    _HOST_REQUESTS_CA_BUNDLE: None
+    _HOST_REQUESTS_CA_BUNDLE: None,
+    _SHM_SIZE: "5G",
 }
 
 
@@ -339,6 +341,10 @@ def REQUESTS_CA_BUNDLE():
 
 def HOST_REQUESTS_CA_BUNDLE():
     return read_optional_setting(_HOST_REQUESTS_CA_BUNDLE)
+
+
+def SHM_SIZE():
+    return read_optional_setting(_SHM_SIZE)
 
 
 def init_constants():

@@ -143,3 +143,8 @@ class AnnotationApi(ModuleApi):
         self._api.post('annotations.bulk.copy', data={"srcImageIds": src_image_ids,
                                                       "destImageIds": dst_image_ids,
                                                       "preserveSourceDate": True})
+
+    # def _convert_json_info(self, info: dict, skip_missing=True):
+    #     res = super()._convert_json_info(info, skip_missing=skip_missing)
+    #     res.annotation["imageId"] = res.image_id
+    #     return res

@@ -8,6 +8,7 @@ import shutil
 import json
 from pathlib import Path
 from packaging import version
+from version_parser import Version
 
 import supervisely_lib as sly
 from .task_dockerized import TaskDockerized
@@ -60,12 +61,19 @@ class TaskApp(TaskDockerized):
         self.app_info = self.info["appInfo"]
 
     def download_or_get_repo(self):
+        def is_fixed_version(name):
+            try:
+                v = Version(name)
+                return True
+            except ValueError as e:
+                return False
+
         git_url = self.app_info["githubUrl"]
         version = self.app_info.get("version", "master")
 
         already_downloaded = False
         path_cache = None
-        if version != "master":
+        if version != "master" and is_fixed_version(version):
             path_cache = os.path.join(constants.APPS_STORAGE_DIR(), *Path(git_url.replace(".git", "")).parts[1:],
                                       version)
             already_downloaded = sly.fs.dir_exists(path_cache)
@@ -105,8 +113,10 @@ class TaskApp(TaskDockerized):
         self.download_or_get_repo()
         api = Api(self.info['server_address'], self.info['api_token'])
         module_id = self.info["appInfo"]["moduleId"]
-        self.logger.info("APP moduleId == {} in ecosystem".format(module_id))
-        self.app_config = api.app.get_info(module_id)["config"]
+        version = self.app_info.get("version", "master")
+        self.logger.info("App moduleId == {} [v={}] in ecosystem".format(module_id, version))
+        self.app_config = api.app.get_info(module_id, version)["config"]
+        self.logger.info("App config", extra={"config": self.app_config})
 
         need_gpu = self.app_config.get('needGPU', False)
         if need_gpu:
@@ -232,6 +242,7 @@ class TaskApp(TaskDockerized):
 
         if command is None:
             command = "python {}".format(main_script_path)
+        self.logger.info("command to run", extra={"command": command})
 
         self._exec_command(command, add_envs)
 

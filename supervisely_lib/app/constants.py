@@ -3,7 +3,6 @@ DATA = "data"
 CONTEXT = "context"
 TEMPLATE = "template"
 
-
 SHARED_DATA = '/sessions'
 
 STOP_COMMAND = "stop"

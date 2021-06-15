@@ -130,6 +130,8 @@ RUN apt-get update && apt-get install -y ffmpeg
 RUN pip install protobuf==3.14.0
 RUN pip install Werkzeug==1.0.1
 RUN pip install sk-video==1.1.10
+
+RUN /usr/bin/python3 -m pip install --upgrade pip
 ##############################################################################
 # Encoding for python SDK
 ##############################################################################

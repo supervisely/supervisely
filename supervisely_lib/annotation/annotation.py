@@ -20,6 +20,7 @@ from supervisely_lib.imaging import font as sly_font
 from supervisely_lib._utils import take_with_default
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.geometry.bitmap import Bitmap
+from supervisely_lib.geometry.polygon import Polygon
 
 # for imgaug
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -38,6 +39,7 @@ class AnnotationJsonFields:
     CUSTOM_DATA = "customBigData"
     PROBABILITY_CLASSES = "probabilityClasses"
     PROBABILITY_LABELS = "probabilityLabels"
+    IMAGE_ID = "imageId"
 
 
 class Annotation:
@@ -52,7 +54,7 @@ class Annotation:
         pixelwise_scores_labels (list)
     '''
     def __init__(self, img_size, labels=None, img_tags=None, img_description="",
-                 pixelwise_scores_labels=None, custom_data=None):
+                 pixelwise_scores_labels=None, custom_data=None, image_id=None):
         '''
         The constructor for Annotation class.
         :param img_size(tuple): size of the image
@@ -71,10 +73,15 @@ class Annotation:
         self._pixelwise_scores_labels = []  # @TODO: store pixelwise scores as usual geometry labels
         self._add_labels_impl(self._pixelwise_scores_labels, take_with_default(pixelwise_scores_labels, []))
         self._custom_data = take_with_default(custom_data, {})
+        self._image_id = image_id
 
     @property
     def img_size(self):
         return deepcopy(self._img_size)
+
+    @property
+    def image_id(self):
+        return self._image_id
 
     @property
     def labels(self) -> List[Label]:
@@ -89,7 +96,7 @@ class Annotation:
         return self._img_description
 
     @property
-    def img_tags(self):
+    def img_tags(self) -> TagCollection:
         return self._img_tags
 
     def to_json(self):
@@ -120,7 +127,8 @@ class Annotation:
                 AnnotationJsonFields.PROBABILITY_CLASSES: ObjClassCollection(list(prob_classes.values())).to_json()
             }
             res[AnnotationJsonFields.CUSTOM_DATA].update(probabilities)
-
+        if self.image_id is not None:
+            res[AnnotationJsonFields.IMAGE_ID] = self.image_id
         return res
 
     @classmethod
@@ -158,12 +166,15 @@ class Annotation:
             custom_data.pop(AnnotationJsonFields.PROBABILITY_CLASSES)
             custom_data.pop(AnnotationJsonFields.PROBABILITY_LABELS)
 
+        image_id = data.get(AnnotationJsonFields.IMAGE_ID, None)
+
         return cls(img_size=img_size,
                    labels=labels,
                    img_tags=TagCollection.from_json(data[AnnotationJsonFields.IMG_TAGS], project_meta.tag_metas),
                    img_description=data.get(AnnotationJsonFields.IMG_DESCRIPTION, ""),
                    pixelwise_scores_labels=prob_labels,
-                   custom_data=custom_data)
+                   custom_data=custom_data,
+                   image_id=image_id)
 
     @classmethod
     def load_json_file(cls, path, project_meta):
@@ -178,7 +189,7 @@ class Annotation:
         return cls.from_json(data, project_meta)
 
     def clone(self, img_size=None, labels=None, img_tags=None, img_description=None,
-              pixelwise_scores_labels=None, custom_data=None):
+              pixelwise_scores_labels=None, custom_data=None, image_id=None):
         '''
         The function clone make copy of the Annotation class object
         :return: Annotation class object
@@ -188,7 +199,8 @@ class Annotation:
                           img_tags=take_with_default(img_tags, self.img_tags),
                           img_description=take_with_default(img_description, self.img_description),
                           pixelwise_scores_labels=take_with_default(pixelwise_scores_labels, self.pixelwise_scores_labels),
-                          custom_data=take_with_default(custom_data, self.custom_data)
+                          custom_data=take_with_default(custom_data, self.custom_data),
+                          image_id = take_with_default(image_id, self.image_id)
                           )
 
     def _add_labels_impl(self, dest, labels):
@@ -564,9 +576,9 @@ class Annotation:
     def to_nonoverlapping_masks(self, mapping):
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
-            if mapping[lbl.obj_class] is not None:
-                lbl.draw(common_img, color=idx)
-        (unique, counts) = np.unique(common_img, return_counts=True)
+            #if mapping[lbl.obj_class] is not None:
+            lbl.draw(common_img, color=idx)
+        #(unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
             dest_class = mapping[lbl.obj_class]
@@ -595,9 +607,32 @@ class Annotation:
         return self.clone(labels=new_labels)
 
     def to_detection_task(self, mapping):
+        aux_mapping = mapping.copy()
+
+        to_render_mapping = {}
+        to_render_labels = []
+        other_labels = []
+        _polygons_to_bitmaps_classes = {}
+        for lbl in self.labels:
+            if type(lbl.geometry) in [Bitmap, Polygon]:
+                to_render_labels.append(lbl)
+                if type(lbl.geometry) is Polygon:
+                    new_class = _polygons_to_bitmaps_classes.get(lbl.obj_class.name, None)
+                    if new_class is None:
+                        new_class = lbl.obj_class.clone(geometry_type=Bitmap)
+                        _polygons_to_bitmaps_classes[lbl.obj_class.name] = new_class
+                        aux_mapping[new_class] = aux_mapping[lbl.obj_class]
+                    to_render_mapping[lbl.obj_class] = new_class
+
+                else:
+                    to_render_mapping[lbl.obj_class] = lbl.obj_class
+            else:
+                other_labels.append(lbl)
+        ann_raster = self.clone(labels=to_render_labels)
+        ann_raster = ann_raster.to_nonoverlapping_masks(to_render_mapping)
         new_labels = []
-        for idx, lbl in enumerate(self.labels, start=1):
-            dest_class = mapping[lbl.obj_class]
+        for lbl in [*ann_raster.labels, *other_labels]:
+            dest_class = aux_mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
             if dest_class == lbl.obj_class:
@@ -670,3 +705,9 @@ class Annotation:
                 labels.append(Label(geometry=bitmap, obj_class=restore_class))
 
         return cls(img_size=img.shape[:2], labels=labels)
+
+    def is_empty(self):
+        if len(self.labels) == 0 and len(self.img_tags) == 0:
+            return True
+        else:
+            return False

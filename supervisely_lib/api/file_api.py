@@ -187,20 +187,27 @@ class FileApi(ModuleApiBase):
         resp = self._api.post('file-storage.info', {ApiField.ID: id})
         return self._convert_json_info(resp.json())
 
-    # def upload_directory(self, team_id, local_dir, remote_dir, change_name_if_conflict=True):
-    #     local_files = list_files_recursively(local_dir)
-    #     remote_files = [file.replace(local_dir, remote_dir) for file in local_files]
-    #     return self.upload_bulk(team_id, local_files, remote_files)
+    def get_free_dir_name(self, team_id, dir_path):
+        res_dir = dir_path.rstrip('/')
+        suffix = 1
+        while self.dir_exists(team_id, res_dir):
+            res_dir = dir_path.rstrip('/') + f"_{suffix:03d}"
+            suffix += 1
+        return res_dir
 
-    # def upload_directory(self, team_id, local_dir, remote_dir, change_name_if_conflict=True, progress_cb=None):
-    #     local_files = list_files_recursively(local_dir)
-    #     for local_path in local_files:
-    #         remote_path = os.path.join(remote_dir, local_path.replace(local_dir, '').lstrip("/"))
-    #         if change_name_if_conflict:
-    #             remote_path = self.get_free_name(team_id, remote_path)
-    #         else:
-    #             if self.exists(team_id, remote_path):
-    #                 continue
-    #         upload_progress.pop(0)
-    #         api.file.upload(team_id, local_path, remote_path, lambda m: _print_progress(m, upload_progress))
-    #     pass
+    def upload_directory(self, team_id, local_dir, remote_dir,
+                         change_name_if_conflict=True, progress_size_cb=None):
+        if self.dir_exists(team_id, remote_dir):
+            if change_name_if_conflict is True:
+                res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
+            else:
+                raise FileExistsError(f"Directory {remote_dir} already exists in your team (id={team_id})")
+        else:
+            res_remote_dir = remote_dir
+
+        local_files = list_files_recursively(local_dir)
+        remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
+
+        upload_results = self.upload_bulk(team_id, local_files, remote_files, progress_size_cb)
+        return res_remote_dir
+

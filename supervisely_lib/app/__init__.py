@@ -1,4 +1,5 @@
 from supervisely_lib.app.constants import *
+import supervisely_lib.app.widgets
 
 #server-address/apps/designer
 # <!--    <sly-notification content="<Текст нотификации в маркдауне>" :options="{ type: 'note|info|warning|error', name: '<заголовок нотификации>'}" />-->

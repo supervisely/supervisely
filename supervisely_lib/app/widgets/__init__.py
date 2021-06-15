@@ -1,0 +1,1 @@
+from .compare_gallery import CompareGallery

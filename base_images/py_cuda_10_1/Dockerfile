@@ -120,6 +120,7 @@ RUN pip install psutil==5.4.5
 RUN pip install cython
 
 RUN apt-get update && apt-get install -y ffmpeg
+RUN /usr/bin/python3 -m pip install --upgrade pip
 ##############################################################################
 # Encoding for python SDK
 ##############################################################################

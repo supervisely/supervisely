@@ -166,7 +166,7 @@ class TaskDockerized(TaskSly):
                        'ecosystem_token': constants.TASKS_DOCKER_LABEL(),
                        'task_id': str(self.info['task_id']),
                        **add_labels},
-                shm_size="1G",
+                shm_size=constants.SHM_SIZE(),
                 stdin_open=False,
                 tty=False,
                 cpu_period=constants.CPU_PERIOD(),

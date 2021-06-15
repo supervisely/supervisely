@@ -159,3 +159,10 @@ class VideoAnnotation:
                                frames=take_with_default(frames, self.frames),
                                tags=take_with_default(tags, self.tags),
                                description=take_with_default(description, self.description))
+
+
+    def is_empty(self):
+        if len(self.objects) == 0 and len(self.tags) == 0:
+            return True
+        else:
+            return False

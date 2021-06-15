@@ -3,10 +3,13 @@
 from enum import Enum
 import pandas as pd
 import urllib
+from collections import defaultdict
 
 from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.project.project_type import ProjectType
+from supervisely_lib.annotation.annotation import TagCollection
+
 
 
 class ProjectNotFound(Exception):
@@ -202,3 +205,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
         response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
         return response.json()
+
+    def download_images_tags(self, id, progress_cb=None):
+        # returns dict: tagname->images infos
+        project_meta = self.get_meta(id)
+        id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
+        tag2images = defaultdict(list)
+        for dataset in self._api.dataset.get_list(id):
+            ds_images = self._api.image.get_list(dataset.id)
+            for img_info in ds_images:
+                tags = TagCollection.from_api_response(img_info.tags, project_meta.tag_metas, id_to_tagmeta)
+                for tag in tags:
+                    tag2images[tag.name].append(img_info)
+                if progress_cb is not None:
+                    progress_cb(1)
+        return tag2images

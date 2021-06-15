@@ -8,6 +8,7 @@ import signal
 import random
 import concurrent.futures
 import queue
+import re
 
 from supervisely_lib.worker_api.agent_api import AgentAPI
 from supervisely_lib.worker_proto import worker_api_pb2 as api_proto
@@ -17,7 +18,7 @@ from supervisely_lib.sly_logger import logger as default_logger
 from supervisely_lib.sly_logger import EventType
 from supervisely_lib.app.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
 from supervisely_lib.api.api import Api
-from supervisely_lib.io.fs import file_exists, mkdir
+from supervisely_lib.io.fs import file_exists, mkdir, list_files, get_file_name_with_ext
 from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 from supervisely_lib.worker_api.agent_rpc import send_from_memory_generator
@@ -60,6 +61,7 @@ class AppService:
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
         self._session_dir = "/sessions/{}".format(self.task_id)
+        self._template_path = None
         debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
         if debug_app_dir != "":
             self._session_dir = debug_app_dir
@@ -252,19 +254,13 @@ class AppService:
 
     def run(self, template_path=None, data=None, state=None, initial_events=None):
         if template_path is None:
-            # read config
-            config_path = os.path.join(self.repo_dir, os.environ.get("CONFIG_DIR", ""), 'config.json')
-            if file_exists(config_path):
-                #we are not in debug mode
-                config = load_json_file(config_path)
-                template_path = config.get('gui_template', None)
-                if template_path is None:
-                    self.logger.info("there is no gui_template field in config.json")
-                else:
-                    template_path = os.path.join(self.repo_dir, template_path)
+            template_path = self.get_template_path()
+            self.logger.info(f"App template path: {template_path}")
+        else:
+            self._template_path = template_path
 
-            if template_path is None:
-                template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+        if template_path is None:
+            template_path = os.path.join(self.repo_dir, "src/gui.html")
 
         if not file_exists(template_path):
             self.logger.info("App will be running without GUI", extra={"app_url": self.app_url})
@@ -343,3 +339,68 @@ class AppService:
             "type": level,
             "message": message
         })
+
+    def get_template_path(self):
+        if self._template_path is not None:
+            return self._template_path
+        config_path = os.path.join(self.repo_dir, os.environ.get("CONFIG_DIR", ""), 'config.json')
+        if file_exists(config_path):
+            config = load_json_file(config_path)
+            self._template_path = config.get('gui_template', None)
+            if self._template_path is None:
+                self.logger.info("there is no gui_template field in config.json")
+            else:
+                self._template_path = os.path.join(self.repo_dir, self._template_path)
+                if not file_exists(self._template_path):
+                    self._template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+        if self._template_path is None:
+            self._template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+        if file_exists(self._template_path):
+            return self._template_path
+        return None
+
+    def compile_template(self, root_source_dir=None):
+        if root_source_dir is None:
+            root_source_dir = self.repo_dir
+
+        def _my_replace_function(match):
+            to_replace = match.group(0)
+            part_path = match.group(1)
+            with open(os.path.join(root_source_dir, part_path), 'r') as file:
+                part = file.read()
+            return part
+
+        template_path = self.get_template_path()
+        if template_path is None:
+            self.logger.warning("HTML Template for compilation not found")
+            return
+        with open(template_path, 'r') as file:
+            template = file.read()
+
+        regex = r"{\%.*include.*'(.*)'.*\%}"
+        result = re.sub(regex, lambda m: _my_replace_function(m), template, 0, re.MULTILINE)
+        res_path = os.path.join(self.data_dir, "gui.html")
+        with open(os.path.join(self.data_dir, "gui.html"), "w") as file:
+            file.write(result)
+        self._template_path = res_path
+        self.logger.info(f"Compiled template is saved to {res_path}")
+        return res_path
+
+    def ignore_errors_and_show_dialog_window(self):
+        def decorator(f):
+            @functools.wraps(f)
+            def wrapper(*args, **kwargs):
+                try:
+                    f(*args, **kwargs)
+                except Exception as e:
+                    self.logger.error(
+                        f"please, contact support: task_id={self.task_id}, {repr(e)}",
+                        exc_info=True,
+                        extra={
+                            'exc_str': str(e),
+                        }
+                    )
+                    self.show_modal_window(f"Oops! Something went wrong, please try again or contact tech support."
+                                           f" Find more info in the app logs. Error: {repr(e)}", level="error")
+            return wrapper
+        return decorator

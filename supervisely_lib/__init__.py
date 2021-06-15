@@ -94,11 +94,13 @@ from supervisely_lib.project.pointcloud_project import PointcloudDataset, Pointc
 
 from supervisely_lib.pyscripts_utils import utils as ps
 from supervisely_lib.io import docker_utils
-import supervisely_lib.app_widget as app_widget
 import supervisely_lib.app as app
 from supervisely_lib.app.app_service import AppService
+import supervisely_lib.app.widgets
 
 from supervisely_lib.decorators.profile import timeit
 import supervisely_lib.script as script
 from supervisely_lib.user.user import UserRoleName
 from supervisely_lib.io import github_utils as git
+
+from supervisely_lib.aug import imgaug_utils
