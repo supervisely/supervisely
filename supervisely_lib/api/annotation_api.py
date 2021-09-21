@@ -148,3 +148,22 @@ class AnnotationApi(ModuleApi):
     #     res = super()._convert_json_info(info, skip_missing=skip_missing)
     #     res.annotation["imageId"] = res.image_id
     #     return res
+
+    def append_labels(self, image_id, labels):
+        if len(labels) == 0:
+            return
+
+        payload = []
+        for label in labels:
+            _label_json = label.to_json()
+            _label_json["geometry"] = label.geometry.to_json()
+            if "classId" not in _label_json:
+                raise KeyError("Update project meta from server to get class id")
+            payload.append(_label_json)
+
+        added_ids = []
+        for batch_jsons in batched(payload, batch_size=100):
+            resp = self._api.post('figures.bulk.add', {ApiField.ENTITY_ID: image_id, ApiField.FIGURES: batch_jsons})
+            for resp_obj in resp.json():
+                figure_id = resp_obj[ApiField.ID]
+                added_ids.append(figure_id)

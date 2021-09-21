@@ -23,7 +23,8 @@ from supervisely_lib.task.progress import epoch_float, Progress, report_import_f
     report_dtl_verification_finished, \
     report_metrics_training, report_metrics_validation, report_inference_finished
 
-from supervisely_lib.project.project import Project, OpenMode, download_project, read_single_project, upload_project
+from supervisely_lib.project.project import Project, OpenMode, download_project, read_single_project, upload_project, \
+    Dataset
 from supervisely_lib.project.project_meta import ProjectMeta
 
 from supervisely_lib.annotation.annotation import ANN_EXT, Annotation

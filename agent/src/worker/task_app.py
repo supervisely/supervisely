@@ -16,7 +16,7 @@ from supervisely_lib.io.json import dump_json_file
 from supervisely_lib.io.json import flatten_json, modify_keys
 from supervisely_lib.api.api import SUPERVISELY_TASK_ID
 from supervisely_lib.api.api import Api
-from supervisely_lib.io.fs import ensure_base_path, silent_remove, get_file_name, remove_dir, get_subdirs
+from supervisely_lib.io.fs import ensure_base_path, silent_remove, get_file_name, remove_dir, get_subdirs, file_exists
 
 _ISOLATE = "isolate"
 _LINUX_DEFAULT_PIP_CACHE_DIR = "/root/.cache/pip"
@@ -34,6 +34,7 @@ class TaskApp(TaskDockerized):
         self.app_info = None
         self._path_cache_host = None
         self._need_sync_pip_cache = False
+        self._requirements_path_relative = None
         super().__init__(*args, **kwargs)
 
     def init_logger(self, loglevel=None):
@@ -46,7 +47,6 @@ class TaskApp(TaskDockerized):
         self.dir_task_src = os.path.join(self.dir_task, 'repo')
         # host paths
         self.dir_task_host = os.path.join(constants.AGENT_APP_SESSIONS_DIR_HOST(), str(self.info['task_id']))
-
 
         team_id = self.info.get("context", {}).get("teamId", "unknown")
         if team_id == "unknown":
@@ -162,12 +162,22 @@ class TaskApp(TaskDockerized):
     def sync_pip_cache(self):
         version = self.app_info.get("version", "master")
         module_id = self.app_info.get("moduleId")
-        requirements_path = os.path.join(self.dir_task_src, "requirements.txt")
+
+        requirements_path = os.path.join(self.dir_task_src, self.app_info.get("configDir"), "requirements.txt")
+        if file_exists(requirements_path) is False:
+            requirements_path = os.path.join(self.dir_task_src, "requirements.txt")
+            if file_exists(requirements_path) is True:
+                self._requirements_path_relative = "requirements.txt"
+        else:
+            self._requirements_path_relative = os.path.join(self.app_info.get("configDir"), "requirements.txt")
+
+        self.logger.info(f"Relative path to requirements: {self._requirements_path_relative}")
 
         path_cache = os.path.join(constants.APPS_PIP_CACHE_DIR(), str(module_id), version)  # in agent container
         self._path_cache_host = constants._agent_to_host_path(os.path.join(path_cache, "pip"))
 
         if sly.fs.file_exists(requirements_path):
+
             self._need_sync_pip_cache = True
 
             self.logger.info("requirements.txt:")
@@ -257,7 +267,7 @@ class TaskApp(TaskDockerized):
             self.logger.info("Installing app requirements")
             progress_dummy = sly.Progress('Installing app requirements...', 1, ext_logger=self.logger)
             progress_dummy.iter_done_report()
-            command = "pip3 install -r " + os.path.join(self.dir_task_src_container, "requirements.txt")
+            command = "pip3 install -r " + os.path.join(self.dir_task_src_container, self._requirements_path_relative)
             self._exec_command(command, add_envs=self.main_step_envs(), container_id=container_id)
             self.process_logs()
             self.logger.info("Requirements are installed")

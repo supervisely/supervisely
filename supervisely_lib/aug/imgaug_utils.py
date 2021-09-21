@@ -107,6 +107,10 @@ def build_pipeline(aug_infos, random_order=False):
         params = aug_info["params"]
 
         aug_func = get_function(category_name, aug_name)
+        # TODO: hotfix:
+        if aug_name == "CropAndPad":
+            params["percent"] = tuple(params["percent"])
+
         aug = aug_func(**params)
 
         sometimes = aug_info.get("sometimes", None)
@@ -170,3 +174,15 @@ def apply(augs, meta: ProjectMeta, img, ann: Annotation):
 def apply_to_image(augs, img):
     res_img, _, _ = _apply(augs, img, None, None)
     return res_img
+
+
+def apply_to_image_and_mask(augs, img, mask):
+    segmaps = SegmentationMapsOnImage(mask, shape=img.shape[:2])
+    res_img, _, res_segmaps = _apply(augs, img, masks=segmaps)
+    res_mask = res_segmaps.get_arr()
+    if res_img.shape[:2] != res_mask.shape[:2]:
+        raise ValueError(f"Image and mask have different shapes "
+                         f"({res_img.shape[:2]} != {res_mask.shape[:2]}) after augmentations. "
+                         f"Please, contact tech support")
+    return res_img, res_mask
+

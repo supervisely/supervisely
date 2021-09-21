@@ -8,6 +8,7 @@ from typing import List
 import random
 
 from supervisely_lib.annotation.annotation import Annotation, ANN_EXT, TagCollection
+from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
 from supervisely_lib.imaging import image as sly_image
@@ -17,10 +18,12 @@ from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
-from supervisely_lib.io.fs import file_exists, ensure_base_path
+from supervisely_lib.io.fs import file_exists, ensure_base_path, get_file_name
 from supervisely_lib.api.api import Api
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.fs_cache import FileCache
+from supervisely_lib.geometry.bitmap import Bitmap
+
 
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
@@ -103,6 +106,10 @@ class Dataset(KeyObject):
     @property
     def img_info_dir(self):
         return os.path.join(self.directory, 'img_info')
+
+    @property
+    def seg_dir(self):
+        return os.path.join(self.directory, 'seg')
 
     @staticmethod
     def _has_valid_ext(path: str) -> bool:
@@ -189,6 +196,20 @@ class Dataset(KeyObject):
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.img_info_dir, ann_path)
+
+    def get_image_info(self, item_name):
+        img_info_path = self.get_img_info_path(item_name)
+        image_info_dict = load_json_file(img_info_path)
+        ImageInfo = namedtuple('ImageInfo', image_info_dict)
+        info = ImageInfo(**image_info_dict)
+        return info
+
+    def get_seg_path(self, item_name):
+        ann_path = self._item_to_ann.get(item_name, None)
+        if ann_path is None:
+            raise RuntimeError('Item {} not found in the project.'.format(item_name))
+        seg_path = os.path.join(self.seg_dir, item_name + ".png")
+        return seg_path
 
     def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False, img_info=None):
         '''
@@ -582,6 +603,88 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
+    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None, progress_cb=None):
+        _bg_class_name = "__bg__"
+        if dst_project_dir is None and inplace is False:
+            raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
+                             f"argument (inplace=True) directly")
+        if inplace is True and dst_project_dir is not None:
+            raise ValueError("dst_project_dir has to be None if inplace is True")
+
+        if dst_project_dir is not None:
+            if not dir_exists(dst_project_dir):
+                mkdir(dst_project_dir)
+            elif not dir_empty(dst_project_dir):
+                raise ValueError(f"Destination directory {dst_project_dir} is not empty")
+
+        src_project = Project(src_project_dir, OpenMode.READ)
+        dst_meta, dst_mapping = src_project.meta.to_segmentation_task()
+
+        if target_classes is not None:
+            # check that all target classes are in destination project meta
+            for class_name in target_classes:
+                if dst_meta.obj_classes.get(class_name) is None:
+                    raise KeyError(f"Class {class_name} not found in destination project meta")
+            for src_class in list(dst_mapping.keys()):
+                if src_class.name not in target_classes:
+                    dst_mapping[src_class] = None
+            dst_meta = dst_meta.clone(obj_classes=ObjClassCollection([
+                dst_meta.obj_classes.get(class_name) for class_name in target_classes
+            ]))
+
+        if dst_meta.obj_classes.get(_bg_class_name) is None:
+            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
+
+        if inplace is False:
+            dst_project = Project(dst_project_dir, OpenMode.CREATE)
+            dst_project.set_meta(dst_meta)
+
+        # # save palette
+        # palette = {
+        #     "names": [],
+        #     "colors": []
+        # }
+        # for obj_class in dst_meta.obj_classes:
+        #     palette["colors"].extend(obj_class.color)
+        #     palette["names"].append(obj_class.name)
+        #
+        # palette_dir = None
+        # if inplace is True:
+        #     palette_dir = src_project.directory
+        # else:
+        #     palette_dir = dst_project.directory
+        # palette_path = os.path.join(palette_dir, "palette.json")
+        # dump_json_file(palette, palette_path)
+
+        for src_dataset in src_project.datasets:
+            if inplace is False:
+                dst_dataset = dst_project.create_dataset(src_dataset.name)
+            for item_name in src_dataset:
+                img_path, ann_path = src_dataset.get_item_paths(item_name)
+                ann = Annotation.load_json_file(ann_path, src_project.meta)
+
+                seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
+                seg_ann = seg_ann.to_segmentation_task()
+
+                seg_path = None
+                if inplace is False:
+                    dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    seg_path = dst_dataset.get_seg_path(item_name)
+                else:
+                    # replace existing annotation
+                    src_dataset.set_ann(item_name, seg_ann)
+                    seg_path = src_dataset.get_seg_path(item_name)
+
+                # save rendered segmentation
+                #seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
+                seg_ann.to_indexed_color_mask(seg_path)
+                if progress_cb is not None:
+                    progress_cb(1)
+
+        if inplace is True:
+            src_project.set_meta(dst_meta)
+
+    @staticmethod
     def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -599,7 +702,7 @@ class Project:
         det_meta, det_mapping = src_project.meta.to_detection_task(convert_classes=True)
 
         if inplace is False:
-            dst_project = Project(src_project_dir, OpenMode.CREATE)
+            dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(det_meta)
 
         for src_dataset in src_project.datasets:
@@ -844,7 +947,7 @@ def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=
                 ds_progress.iters_done_report(len(batch))
 
 
-def upload_project(dir, api, workspace_id, project_name=None, log_progress=True):
+def upload_project(dir, api, workspace_id, project_name=None, log_progress=True, progress_cb=None):
     project_fs = read_single_project(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -852,7 +955,7 @@ def upload_project(dir, api, workspace_id, project_name=None, log_progress=True)
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
-    project = api.project.create(workspace_id, project_name, )
+    project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
     for dataset_fs in project_fs.datasets:
@@ -865,14 +968,13 @@ def upload_project(dir, api, workspace_id, project_name=None, log_progress=True)
             img_paths.append(img_path)
             ann_paths.append(ann_path)
 
-        progress_cb = None
-        if log_progress:
+        if log_progress and progress_cb is None:
             ds_progress = Progress('Uploading images to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
             progress_cb = ds_progress.iters_done_report
         img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
         image_ids = [img_info.id for img_info in img_infos]
 
-        if log_progress:
+        if log_progress and progress_cb is None:
             ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
             progress_cb = ds_progress.iters_done_report
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
@@ -980,7 +1082,8 @@ def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=Non
                         img_info_to_add = img_info
                     dataset.add_item_file(item_name, img_cache_path, img_name_to_ann[img_info.id], _validate_item=False,
                                           _use_hardlink=True, img_info=img_info_to_add)
-                progress_cb(len(batch))
+                if progress_cb is not None:
+                    progress_cb(len(batch))
 
     # download images from server
     if len(images_to_download) > 0:

@@ -290,6 +290,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post('tasks.data.set', data)
         return resp.json()
 
+    def set_fields_from_dict(self, task_id, d):
+        fields = []
+        for k, v in d.items():
+            fields.append({ApiField.FIELD: k, ApiField.PAYLOAD: v})
+        return self.set_fields(task_id, fields)
+
     def set_field(self, task_id, field, payload, append=False, recursive=False):
         fields = [
             {
@@ -379,14 +385,23 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                        description="Download archive", icon="zmdi zmdi-archive",
                                        download=True)
 
-    def send_request(self, task_id, method, data, context={}, skip_response=False):
+    def set_output_file_download(self, task_id, file_id, file_name, file_url=None, download=True):
+        if file_url is None:
+            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+        return self._set_custom_output(task_id, file_id, file_name,
+                                       file_url=file_url,
+                                       description="Download file", icon="zmdi zmdi-file",
+                                       download=download)
+
+    def send_request(self, task_id, method, data, context={}, skip_response=False, timeout=60):
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
         resp = self._api.post("tasks.request.direct", {ApiField.TASK_ID: task_id,
                                                        ApiField.COMMAND: method,
                                                        ApiField.CONTEXT: context,
                                                        ApiField.STATE: data,
-                                                       'skipResponse': skip_response})
+                                                       'skipResponse': skip_response,
+                                                       'timeout': timeout})
         return resp.json()
 
     def set_output_directory(self, task_id, file_id, directory_path):

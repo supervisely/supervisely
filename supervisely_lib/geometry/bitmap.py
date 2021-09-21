@@ -5,6 +5,7 @@ import zlib
 import io
 import cv2
 import numpy as np
+from distutils.version import StrictVersion
 
 from PIL import Image
 from skimage import morphology as skimage_morphology
@@ -117,7 +118,10 @@ class Bitmap(BitmapBase):
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        _, contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
+            contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            _, contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if contours is not None:
             for cont in contours:
                 cont[:, :] += (self.origin.col, self.origin.row)  # cont with shape (rows, ?, 2)
@@ -187,12 +191,20 @@ class Bitmap(BitmapBase):
         The function to_contours get list of contours(in Polygon class objects) of all objects in Bitmap
         :return: list of contours
         '''
+
         origin, mask = self.origin, self.data
-        _, contours, hier = cv2.findContours(
-            mask.astype(np.uint8),
-            mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
-            method=cv2.CHAIN_APPROX_SIMPLE
-        )
+        if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
+            contours, hier = cv2.findContours(
+                mask.astype(np.uint8),
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
+                method=cv2.CHAIN_APPROX_SIMPLE
+            )
+        else:
+            _, contours, hier = cv2.findContours(
+                mask.astype(np.uint8),
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
+                method=cv2.CHAIN_APPROX_SIMPLE
+            )
         if (hier is None) or (contours is None):
             return []
 

@@ -139,6 +139,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
             return ordered_results
 
+    def upload_related_image(self, path):
+        return self.upload_related_images([path])
+
+    def upload_related_images(self, paths, progress_cb=None):
+        def path_to_bytes_stream(path):
+            return open(path, 'rb')
+        return self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
+
     def add_related_images(self, images_json):
         response = self._api.post('point-clouds.images.add', {ApiField.IMAGES: images_json})
         return response.json()

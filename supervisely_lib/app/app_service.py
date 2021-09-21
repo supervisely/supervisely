@@ -335,6 +335,14 @@ class AppService:
         all_levels = ["warning", "info", "error"]
         if level not in all_levels:
             raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
+
+        if level == "info":
+            self.logger.info(message)
+        elif level == "warning":
+            self.logger.warning(message)
+        elif level == "error":
+            self.logger.error(message, exc_info=True)
+
         self.public_api.app.set_field(self.task_id, "data.notifyDialog", {
             "type": level,
             "message": message

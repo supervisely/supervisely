@@ -67,9 +67,20 @@ class Polygon(VectorGeometry):
         '''
         from supervisely_lib.geometry.point_location import PointLocation
         try:
-            points = [PointLocation(row=rect.top, col=rect.left), PointLocation(row=rect.top, col=rect.right + 1),
-                PointLocation(row=rect.bottom + 1, col=rect.right + 1), PointLocation(row=rect.bottom + 1, col=rect.left)]
-            #points = rect.corners # old implementation with 1 pixel error (right bottom) #@TODO: investigate here (critical issue)
+            # points = [
+            #     PointLocation(row=rect.top, col=rect.left),
+            #     PointLocation(row=rect.top, col=rect.right + 1),
+            #     PointLocation(row=rect.bottom + 1, col=rect.right + 1),
+            #     PointLocation(row=rect.bottom + 1, col=rect.left)
+            # ]
+            points = [
+                PointLocation(row=rect.top, col=rect.left),
+                PointLocation(row=rect.top, col=rect.right),
+                PointLocation(row=rect.bottom, col=rect.right),
+                PointLocation(row=rect.bottom, col=rect.left)
+            ]
+            #points = rect.corners # old implementation with 1 pixel error (right bottom)
+            # #@TODO: investigate here (critical issue)
 
             clipping_window_shpl = ShapelyPolygon(points_to_row_col_list(points))
             self_shpl = ShapelyPolygon(self.exterior_np, holes=self.interior_np)

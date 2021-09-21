@@ -2,6 +2,8 @@
 
 from supervisely_lib.api.module_api import ApiField, ModuleNoParent, UpdateableModule
 from typing import List
+from supervisely_lib.sly_logger import logger
+
 
 #@TODO - umar will add meta with review status and duration
 class ActivityAction:
@@ -115,7 +117,11 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         return 'teams.editInfo'
 
     def get_activity(self, team_id,
-                     filter_user_id=None, filter_project_id=None, filter_job_id=None, filter_actions=None):
+                     filter_user_id=None, filter_project_id=None, filter_job_id=None, filter_actions=None,
+                     progress_cb=None, start_date=None, end_date=None):
+
+        from datetime import datetime, timedelta
+
         filters = []
         if filter_user_id is not None:
             filters.append({"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id})
@@ -125,8 +131,24 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             filters.append({"field": ApiField.JOB_ID, "operator": "=", "value": filter_job_id})
         if filter_actions is not None:
             if type(filter_actions) is not list:
-                raise TypeError("type(filter_actions) is {!r}. But has to be of type {!r}".format(type(filter_actions), list))
+                raise TypeError(
+                    "type(filter_actions) is {!r}. But has to be of type {!r}".format(type(filter_actions), list))
             filters.append({"field": ApiField.TYPE, "operator": "in", "value": filter_actions})
+
+        def _add_dt_filter(filters, dt, op):
+            dt_iso = None
+            if dt is None:
+                return
+            if type(dt) is str:
+                dt_iso = dt
+            elif type(dt) is datetime:
+                dt_iso = dt.isoformat()
+            else:
+                raise TypeError('DT type must be string in ISO8601 format or datetime, not {}'.format(type(dt)))
+            filters.append({"field": ApiField.DATE, "operator": op, "value": dt_iso})
+
+        _add_dt_filter(filters, start_date, ">=")
+        _add_dt_filter(filters, end_date, "<=")
 
         method = 'teams.activity'
         data = {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters}
@@ -138,6 +160,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         pages_count = first_response['pagesCount']
         results = first_response['entities']
 
+        if progress_cb is not None:
+            progress_cb(len(results), total)
         if pages_count == 1 and len(first_response['entities']) == total:
             pass
         else:
@@ -145,7 +169,10 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 temp_resp = self._api.post(method, {**data, 'page': page_idx, 'per_page': per_page})
                 temp_items = temp_resp.json()['entities']
                 results.extend(temp_items)
+                if progress_cb is not None:
+                    progress_cb(len(results), total)
             if len(results) != total:
-                raise RuntimeError('Method {!r}: error during pagination, some items are missed'.format(method))
+                logger.warn(f"Method '{method}': new events were created during pagination, "
+                            f"downloaded={len(results)}, total={total}")
 
         return results

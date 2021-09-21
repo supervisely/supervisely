@@ -187,6 +187,7 @@ class ApiField:
     CONTEXT =           'context'
     STATE =             'state'
     IDS =               'ids'
+    DATE =              'date'
 
 
 def _get_single_item(items):

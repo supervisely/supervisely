@@ -178,10 +178,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id):
-        #@TODO: reimplement - use api.team.get_activity with project_id filter
-        response = self._api.post('projects.activity', {ApiField.ID: id})
-        df = pd.DataFrame(response.json())
+    def get_activity(self, id, progress_cb=None):
+        proj_info = self.get_info_by_id(id)
+        workspace_info = self._api.workspace.get_info_by_id(proj_info.workspace_id)
+        activity = self._api.team.get_activity(workspace_info.team_id, filter_project_id=id, progress_cb=progress_cb)
+        df = pd.DataFrame(activity)
         return df
 
     def _convert_json_info(self, info: dict, skip_missing=True):

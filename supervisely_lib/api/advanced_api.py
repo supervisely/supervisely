@@ -20,3 +20,8 @@ class AdvancedApi(ModuleApiBase):
         data = {ApiField.ID: figure_id}
         resp = self._api.post('figures.tags.list', data)
         return resp.json()
+
+    def remove_tag_from_image(self, tag_meta_id, image_id, tag_id):
+        data = {ApiField.TAG_ID: tag_meta_id, ApiField.IMAGE_ID: image_id, ApiField.ID: tag_id}
+        resp = self._api.post('image-tags.remove-from-image', data)
+        return resp.json()

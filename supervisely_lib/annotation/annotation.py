@@ -8,6 +8,7 @@ from typing import List
 import operator
 import cv2
 from copy import deepcopy
+from PIL import Image
 
 from supervisely_lib import logger
 from supervisely_lib.annotation.label import Label
@@ -21,6 +22,7 @@ from supervisely_lib._utils import take_with_default
 from supervisely_lib.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.polygon import Polygon
+from supervisely_lib.io.fs import ensure_base_path
 
 # for imgaug
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -569,7 +571,8 @@ class Annotation:
         self.draw(vis_filled, color=color, thickness=thickness, draw_tags=draw_tags)
         vis = cv2.addWeighted(bitmap, 1, vis_filled, opacity, 0)
         np.copyto(bitmap, vis)
-        self.draw_contour(bitmap, color=color, thickness=thickness, draw_tags=draw_tags)
+        if thickness > 0:
+            self.draw_contour(bitmap, color=color, thickness=thickness, draw_tags=draw_tags)
         if output_path:
             sly_image.write(output_path, bitmap)
 
@@ -592,6 +595,17 @@ class Annotation:
                 new_labels.append(new_lbl)
         new_ann = self.clone(labels=new_labels)
         return new_ann
+
+    def to_indexed_color_mask(self, mask_path, palette=Image.ADAPTIVE, colors=256):
+        mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
+        for label in self.labels:
+            label.geometry.draw(mask, label.obj_class.color)
+
+        im = Image.fromarray(mask)
+        im = im.convert("P", palette=palette, colors=colors)
+
+        ensure_base_path(mask_path)
+        im.save(mask_path)
 
     def to_segmentation_task(self):
         class_mask = {}
@@ -711,3 +725,10 @@ class Annotation:
             return True
         else:
             return False
+
+    def filter_labels_by_classes(self, keep_classes):
+        new_labels = []
+        for lbl in self.labels:
+            if lbl.obj_class.name in keep_classes:
+                new_labels.append(lbl.clone())
+        return self.clone(labels=new_labels)

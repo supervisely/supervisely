@@ -97,7 +97,7 @@ RUN pip install \
 RUN pip install --upgrade pip
 RUN apt-get update && \
     apt-get -y install \
-        libexiv2-dev=0.27.2-8ubuntu2 \
+        libexiv2-dev \
         libboost-all-dev
 
 #RUN pip install py3exiv2==0.8.0

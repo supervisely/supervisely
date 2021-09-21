@@ -1,5 +1,7 @@
 # coding: utf-8
 import os
+import shutil
+import tarfile
 from pathlib import Path
 import urllib
 from supervisely_lib.api.module_api import ModuleApiBase, ApiField
@@ -10,8 +12,7 @@ from supervisely_lib.io.fs import get_file_ext, get_file_name, list_files_recurs
 from supervisely_lib.imaging.image import write_bytes, get_hash
 from supervisely_lib.task.progress import Progress
 from supervisely_lib.io.fs_cache import FileCache
-from supervisely_lib.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively
-
+from supervisely_lib.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove
 
 class FileApi(ModuleApiBase):
     @staticmethod
@@ -39,6 +40,18 @@ class FileApi(ModuleApiBase):
     def list(self, team_id, path):
         response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
         return response.json()
+
+    def list2(self, team_id, path):
+        response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        results = [self._convert_json_info(info_json) for info_json in response.json()]
+        return results
+
+    def get_directory_size(self, team_id, path):
+        dir_size = 0
+        file_infos = self.list2(team_id, path)
+        for file_info in file_infos:
+            dir_size += file_info.sizeb
+        return dir_size
 
     def _download(self, team_id, remote_path, local_save_path, progress_cb=None):  # TODO: progress bar
         response = self._api.post('file-storage.download', {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path}, stream=True)
@@ -70,6 +83,19 @@ class FileApi(ModuleApiBase):
                     cache.read_object(file_info.hash, local_save_path)
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
+
+    def download_directory(self, team_id, remote_path, local_save_path, progress_cb=None):
+        local_temp_archive = os.path.join(local_save_path, "temp.tar")
+        self._download(team_id, remote_path, local_temp_archive, progress_cb)
+        tr = tarfile.open(local_temp_archive)
+        tr.extractall(local_save_path)
+        silent_remove(local_temp_archive)
+        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        file_names = os.listdir(temp_dir)
+        for file_name in file_names:
+            shutil.move(os.path.join(temp_dir, file_name), local_save_path)
+        shutil.rmtree(temp_dir)
+
 
     def _upload_legacy(self, team_id, src, dst):
         def path_to_bytes_stream(path):

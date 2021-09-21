@@ -196,14 +196,15 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id, user_id):
+    def get_member_activity(self, team_id, user_id, progress_cb=None):
         '''
         :param team_id: int
         :param user_id: int
+        :param progress_cb: fn
         :return: pandas dataframe (table with activity data of given user)
         '''
-        response = self._api.post('members.activity', {ApiField.USER_ID: user_id, ApiField.TEAM_ID: team_id})
-        df = pd.DataFrame(response.json())
+        activity = self._api.team.get_activity(team_id, filter_user_id=user_id, progress_cb=progress_cb)
+        df = pd.DataFrame(activity)
         return df
 
     def add_to_team_by_login(self, user_login, team_id, role_id):

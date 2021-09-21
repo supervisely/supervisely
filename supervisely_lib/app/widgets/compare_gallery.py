@@ -19,8 +19,7 @@ from supervisely_lib.annotation.annotation import Annotation
 
 class CompareGallery:
 
-    def __init__(self, task_id, api: Api, v_model,
-                 project_meta: ProjectMeta):
+    def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
         self._task_id = task_id
         self._api = api
         self._v_model = v_model
@@ -43,7 +42,7 @@ class CompareGallery:
             "showOpacityInHeader": True,
             # "viewHeight": 450,
         }
-        self._init_options = False
+        self._options_initialized = False
 
     def update_project_meta(self, project_meta: ProjectMeta):
         self._project_meta = project_meta.clone()
@@ -78,9 +77,9 @@ class CompareGallery:
         if self._right_image_url is None:
             raise ValueError("Right item is not defined")
         gallery_json = self.to_json()
-        if options is True or self._init_options is False:
+        if options is True or self._options_initialized is False:
             self._api.task.set_field(self._task_id, self._v_model, gallery_json)
-            self._init_options = True
+            self._options_initialized = True
         else:
             self._api.task.set_field(self._task_id, f"{self._v_model}.content", gallery_json["content"])
 

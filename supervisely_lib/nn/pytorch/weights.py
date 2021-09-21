@@ -59,7 +59,7 @@ class WeightsRW:
         self._transfer_params(snapshot_weights, model)
         return model
 
-    def load_strictly(self, model):
+    def load_strictly(self, model, logger=None):
         snapshot_weights = torch.load(self._weights_fpath)
 
         # Make sure the sets of parameters exactly match between the model and the snapshot.
@@ -69,8 +69,8 @@ class WeightsRW:
         if len(snapshot_extra_keys) > 0:
             raise KeyError('Parameters found in the snapshot file, but not in the model: {}'.format(snapshot_extra_keys))
         model_extra_keys = model_keys - snapshot_keys
-        if len(model_extra_keys) > 0:
-            raise KeyError('Model parameters missing from the snapshot file: {}'.format(model_extra_keys))
+        if len(model_extra_keys) > 0 and logger is not None:
+            logger.warning('Model parameters missing from the snapshot file: {}'.format(model_extra_keys))
 
         self._transfer_params(snapshot_weights, model)
         return model
