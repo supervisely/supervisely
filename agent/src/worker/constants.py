@@ -277,10 +277,7 @@ def CPU_QUOTA():
 
 def MEM_LIMIT():
     val = read_optional_setting(_MEM_LIMIT)
-    if val is None:
-        return val
-    else:
-        return int(val)
+    return val
 
 
 def PULL_POLICY():

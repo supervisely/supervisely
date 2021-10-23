@@ -189,7 +189,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         if progress_cb is not None:
             progress_cb(len(remote_hashes))
 
-        # upload only new images to supervisely server
+        # upload only new images to supervisely_lib server
         items_to_upload = []
         for hash in new_hashes:
             items_to_upload.extend(hash_to_items[hash])

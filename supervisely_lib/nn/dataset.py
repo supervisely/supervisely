@@ -14,7 +14,7 @@ def samples_by_tags(required_tags, project):
     """
     Split samples from project by tags
     :param required_tags: list of tags names
-    :param project: supervisely `Project` class object
+    :param project: supervisely_lib `Project` class object
     :return:
     """
     img_annotations_groups = defaultdict(list)

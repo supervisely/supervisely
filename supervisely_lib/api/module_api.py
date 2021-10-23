@@ -41,6 +41,7 @@ class ApiField:
     LABELS_COUNT =      'labelsCount'
     FILTER =            'filter'
     META =              'meta'
+    FILE_META =         'fileMeta'
     SHARED_LINK =       'sharedLinkToken'
     EXPLORE_PATH =      'explorePath'
     MIME =              'mime'

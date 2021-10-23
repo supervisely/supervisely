@@ -16,6 +16,8 @@ from supervisely_lib.io.fs import ensure_base_path
 from supervisely_lib._utils import batched
 from supervisely_lib.video.video import get_video_streams, gen_video_stream_name
 
+from supervisely_lib.task.progress import Progress
+
 
 class VideoApi(RemoveableBulkModuleApi):
     def __init__(self, api):
@@ -44,7 +46,9 @@ class VideoApi(RemoveableBulkModuleApi):
                 ApiField.FRAME_WIDTH,
                 ApiField.FRAME_HEIGHT,
                 ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+                ApiField.UPDATED_AT,
+                ApiField.TAGS,
+                ApiField.FILE_META]
 
     @staticmethod
     def info_tuple_name():
@@ -122,17 +126,23 @@ class VideoApi(RemoveableBulkModuleApi):
         response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id, path):
+    def download_path(self, id, path, progress_cb=None):
         '''
         Download video with given id on the given path
         :param id: int
         :param path: str
+        :param progress_cb: SLY Progress Bar callback
         '''
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
+
         with open(path, 'wb') as fd:
-            for chunk in response.iter_content(chunk_size=1024*1024):
+            mb1 = 1024 * 1024
+            for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
+
+                if progress_cb is not None:
+                    progress_cb(len(chunk))
 
     def download_range_by_id(self, id, frame_start, frame_end, is_stream=True):
         '''

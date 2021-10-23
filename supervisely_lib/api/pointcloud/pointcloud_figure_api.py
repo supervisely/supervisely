@@ -17,3 +17,6 @@ class PointcloudFigureApi(FigureApi):
 
         self._append_bulk(pointcloud_id, figures_json, keys, key_id_map)
 
+    def _convert_json_info(self, info: dict, skip_missing=True):
+                return super()._convert_json_info(info, skip_missing)
+

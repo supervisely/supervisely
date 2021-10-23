@@ -8,12 +8,14 @@ class Provider(StrEnum):
     S3 = 's3'
     GOOGLE = 'google'
     AZURE = 'azure'
+    FS = 'fs'
 
     @staticmethod
     def validate_path(path):
         if not path.startswith(str(Provider.S3)) and \
             not path.startswith(str(Provider.GOOGLE)) and \
-            not path.startswith(str(Provider.AZURE)): \
+            not path.startswith(str(Provider.AZURE)) and \
+            not path.startswith(str(Provider.FS)): \
             raise ValueError("Incorrect cloud path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support")
 
 

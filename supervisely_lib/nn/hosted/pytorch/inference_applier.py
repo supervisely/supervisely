@@ -81,7 +81,7 @@ class PytorchSegmentationApplier(SingleImageInferenceBase):
         # Find the most likely class ID for every pixel.
         class_ids = np.argmax(class_scores_original_size, axis=2)
 
-        # Convert the raw segmentation array to supervisely labels, one per output class.
+        # Convert the raw segmentation array to supervisely_lib labels, one per output class.
         labels = raw_to_labels.segmentation_array_to_sly_bitmaps(idx_to_class=self.out_class_mapping, pred=class_ids)
 
         # Wrap the resulting labels into an image annotation and return.

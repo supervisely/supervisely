@@ -55,7 +55,7 @@
 
 
 
-<!-- "docker_image": "docker.deepsystems.io/supervisely/five/python-runner:ecosystem_add_images_project", -->
+<!-- "docker_image": "docker.deepsystems.io/supervisely_lib/five/python-runner:ecosystem_add_images_project", -->
 
 **main_script** (`required`) - String
 >  > Only for items with type "app"
