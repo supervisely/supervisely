@@ -1,3 +1,43 @@
+<div align="center" markdown>
+  
+<h1 align="center" style="border-bottom: 0"> <img align="center" src="https://i.imgur.com/17mhiuG.jpg" width="80"> Supervisely </h1>
+
+  <p align="center"><b>Python SDK to automate, customize and extend Supervisely Platform</b></p>
+
+  
+<p align="center">
+  <a href="#Overview">About Supervisely</a> •
+  <a href="#How-to-run">SDK overview</a> •
+  <a href="#How-to-use">How to use</a> •
+  <a href="#Demo">Demo</a> •
+  <a href="#Manual-object-correction">Manual object correction</a> •
+  <a href="#Acknowledgment">Acknowledgment</a> 
+</p>
+
+[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/ritm-interactive-segmentation/supervisely)
+[![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervise.ly/slack)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/ritm-interactive-segmentation)
+[![views](https://app.supervise.ly/public/api/v3/ecosystem.counters?repo=supervisely-ecosystem/ritm-interactive-segmentation/supervisely&counter=views&label=views)](https://supervise.ly)
+[![used by teams](https://app.supervise.ly/public/api/v3/ecosystem.counters?repo=supervisely-ecosystem/ritm-interactive-segmentation/supervisely&counter=downloads&label=used%20by%20teams)](https://supervise.ly)
+[![runs](https://app.supervise.ly/public/api/v3/ecosystem.counters?repo=supervisely-ecosystem/ritm-interactive-segmentation/supervisely&counter=runs&label=runs&123)](https://supervise.ly)
+
+
+<p float="left">
+  <img src="https://github.com/supervisely-ecosystem/ritm-interactive-segmentation/releases/download/v0.1/ritm_poster.gif?raw=true" style="width:80%;"/>
+</p>    
+ 
+</div>
+
+
+## Overview
+
+Application key points: 
+
+
+
+
+
+
 <h1 align="center">
   <br>
   <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/bFuEQ4K.png" width="250"></a>

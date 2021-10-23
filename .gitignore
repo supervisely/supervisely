@@ -6,6 +6,7 @@
 **/__pycache__
 *.egg-info
 
+media/*
 tasks_data/*
 !tasks_data/.gitkeep
 
