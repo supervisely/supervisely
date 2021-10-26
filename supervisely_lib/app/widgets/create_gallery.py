@@ -67,7 +67,7 @@ class Gallery:
 
         self.add_item(image_info.name, image_info.full_storage_url, ann, col_index)
 
-    def _get_item_annotation(self, name, with_info=False):
+    def _get_item_annotation(self, name):
         if self.with_info:
             return {
                 "url": self._data[name][0],
