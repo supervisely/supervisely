@@ -73,8 +73,7 @@ class Gallery:
                 "url": self._data[name][0],
                 "figures": [label.to_json() for label in self._data[name][1].labels],
                 "title": name,
-                "objects": "objects: {}".format(self._data[name][3]["objects"]),
-                "labelers": "labelers: {}".format(self._data[name][3]["labelers"])
+                "info": self._data[name][3]
             }
         else:
             return {
