@@ -85,16 +85,33 @@ class Gallery:
             }
 
 
-    def update(self, options=True):
+    def update(self, options=True, need_zoom=False):
         if len(self._data) == 0:
             raise ValueError("Items list is empty")
-
-        gallery_json = self.to_json()
+        if need_zoom:
+            gallery_json = self._zoom_to_figure()
+        else:
+            gallery_json = self.to_json()
         if options is True or self._options_initialized is False:
+            if need_zoom:
+                self._options["resizeOnZoom"] = True
             self._api.task.set_field(self._task_id, self._v_model, gallery_json)
             self._options_initialized = True
         else:
             self._api.task.set_field(self._task_id, f"{self._v_model}.content", gallery_json["content"])
+
+    def _zoom_to_figure(self, zoom_factor=1.2):
+        gallery_json = self.to_json()
+        items = self._data.items()
+        zoom_to_figure_name = "zoomToFigure"
+        for item in items:
+            for figure in gallery_json["content"]["annotations"][item[0]]["figures"]:
+                zoom_params = {
+                    "figureId": figure["id"],
+                    "factor": zoom_factor
+                }
+                gallery_json["content"]["annotations"][item[0]][zoom_to_figure_name] = zoom_params
+        return gallery_json
 
     def to_json(self):
 
