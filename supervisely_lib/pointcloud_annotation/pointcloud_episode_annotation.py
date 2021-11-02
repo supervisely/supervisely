@@ -4,7 +4,7 @@ import uuid
 
 from supervisely_lib._utils import take_with_default
 from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
-from supervisely_lib.video_annotation.constants import FRAMES, DESCRIPTION, FRAMES_COUNT, TAGS, OBJECTS, VIDEO_ID, KEY
+from supervisely_lib.video_annotation.constants import FRAMES, DESCRIPTION, FRAMES_COUNT, TAGS, OBJECTS, KEY
 from supervisely_lib.video_annotation.frame_collection import FrameCollection
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.video_annotation.video_annotation import VideoAnnotation
@@ -15,6 +15,7 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
     """
         This is a class for creating and using PointcloudEpisodeAnnotation
     """
+    DATASET_ID_KEY = 'datasetId'
 
     def __init__(self, frames_count, objects=None, frames=None, tags=None, description="", key=None):
         """
@@ -51,7 +52,7 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
         if key_id_map is not None:
             dataset_id = key_id_map.get_video_id(self.key())
             if dataset_id is not None:
-                res_json[VIDEO_ID] = dataset_id
+                res_json[self.DATASET_ID_KEY] = dataset_id
 
         return res_json
 
@@ -65,12 +66,16 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
         """
 
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+
+        if key_id_map is not None:
+            key_id_map.add_video(item_key, data.get(cls.DATASET_ID_KEY, None))
+
         description = data.get(DESCRIPTION, "")
         frames_count = data.get(FRAMES_COUNT, 0)
 
         tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
         objects = PointcloudObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
-        frames = FrameCollection.from_json(data[FRAMES], objects)
+        frames = FrameCollection.from_json(data[FRAMES], objects, key_id_map=key_id_map)
 
         return cls(frames_count, objects, frames, tags, description, item_key)
 

@@ -19,7 +19,10 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         return response.json()
 
     def download_bulk(self, dataset_id, entity_ids):
-        raise NotImplementedError
+        raise RuntimeError('Not supported for episodes')
 
     def append(self, dataset_id, ann: PointcloudEpisodeAnnotation, key_id_map: KeyIdMap = None):
-        raise NotImplementedError
+        info = self._api.dataset.get_info_by_id(dataset_id)
+        self._append(self._api.pointcloud.tag, self._api.pointcloud.object, self._api.pointcloud.figure,
+                     info.project_id, info.dataset_id, dataset_id,
+                     ann.tags, ann.objects, ann.figures, key_id_map)
