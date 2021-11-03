@@ -17,7 +17,7 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
     """
     DATASET_ID_KEY = 'datasetId'
 
-    def __init__(self, frames_count, objects=None, frames=None, tags=None, description="", key=None):
+    def __init__(self, frames_count=None, objects=None, frames=None, tags=None, description="", key=None):
         """
         :param frames_count: int
         :param objects: PointcloudObjectCollection
@@ -79,7 +79,7 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
 
         return cls(frames_count, objects, frames, tags, description, item_key)
 
-    def clone(self, frames_count, objects=None, frames=None, tags=None, description=""):
+    def clone(self, frames_count=None, objects=None, frames=None, tags=None, description=""):
         """
         :param frames_count: int
         :param frames: FrameCollection

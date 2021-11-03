@@ -26,6 +26,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         return [ApiField.ID,
+                ApiField.FRAME,
                 ApiField.DESCRIPTION,
                 ApiField.NAME,
                 ApiField.TEAM_ID,

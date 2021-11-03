@@ -16,7 +16,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :return: dataset episode annotation for given id, received after execution post request
         """
         response = self._api.post(self._method_download, {ApiField.DATASET_ID: dataset_id})
-        return response.json()
+        return response.json()[0]
 
     def download_bulk(self, dataset_id, entity_ids):
         raise RuntimeError('Not supported for episodes')
