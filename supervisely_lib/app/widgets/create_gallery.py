@@ -9,7 +9,7 @@ class Gallery:
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, with_info=False,
                  enable_zoom=False,
-                 sync_views=True, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
+                 sync_views=False, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
                  fillRectangle=False, borderWidth=3):
         self._task_id = task_id
         self._api = api
