@@ -57,6 +57,21 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     def _create(self):
         mkdir(self.item_dir)
 
+    def _read(self):
+        '''
+        Fills out the dictionary items: item file name -> annotation file name. Checks item and annotation directoris existing and dataset not empty.
+        Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
+        If not - it generate exception error.
+        '''
+        if not dir_exists(self.item_dir):
+            raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
+
+        item_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
+        item_names = [os.path.basename(path) for path in item_paths]
+        self.frame_to_pc_map = load_json_file(self.get_frame_pointcloud_map_path())
+        pc_to_frame = {v: k for k, v in self.frame_to_pc_map.items()}
+        self._item_to_ann = {name: pc_to_frame[name] for name in item_names}
+
 
 class PointcloudEpisodeProject(PointcloudProject):
     dataset_class = PointcloudEpisodeDataset
