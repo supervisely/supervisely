@@ -8,7 +8,7 @@ from supervisely_lib.annotation.annotation import Annotation
 class Gallery:
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, with_info=False,
-                 enable_zoom=False,
+                 enable_zoom=False, resize_on_zoom=False,
                  sync_views=False, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
                  fillRectangle=False, borderWidth=3):
         self._task_id = task_id
@@ -24,6 +24,7 @@ class Gallery:
         self._options = {
             "enableZoom": enable_zoom,
             "syncViews": sync_views,
+            "resizeOnZoom": resize_on_zoom,
             "showPreview": show_preview,
             "selectable": selectable,
             "opacity": opacity,
@@ -56,7 +57,6 @@ class Gallery:
                 if label.geometry.labeler_login not in labelers_cnt:
                     labelers_cnt.append(label.geometry.labeler_login)
             preview_data["labelers"] = len(labelers_cnt)
-
             self._data[title].append(preview_data)
 
     def add_item_by_id(self, image_id, with_ann = True, col_index = None):
