@@ -3,15 +3,14 @@ import supervisely_lib as sly
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.api.api import Api
 from supervisely_lib.annotation.annotation import Annotation
-import cv2
-from skimage import io
 
 
 class Gallery:
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, with_info=False,
-                 enable_zoom=True,
-                 sync_views=True, show_preview=False, selectable=False, opacity=0.5, show_opacity_header=True):
+                 enable_zoom=False,
+                 sync_views=True, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
+                 fillRectangle=False, borderWidth=3):
         self._task_id = task_id
         self._api = api
         self._v_model = v_model
@@ -28,7 +27,9 @@ class Gallery:
             "showPreview": show_preview,
             "selectable": selectable,
             "opacity": opacity,
-            "showOpacityInHeader": show_opacity_header
+            "showOpacityInHeader": show_opacity_header,
+            "fillRectangle": fillRectangle,
+            "borderWidth": borderWidth
         }
         self._options_initialized = False
 
@@ -68,7 +69,6 @@ class Gallery:
 
         self.add_item(image_info.name, image_info.full_storage_url, ann, col_index)
 
-
     def _get_item_annotation(self, name):
         if self.with_info:
             return {
@@ -83,7 +83,6 @@ class Gallery:
                 "figures": [label.to_json() for label in self._data[name][1].labels],
                 "title": name,
             }
-
 
     def update(self, options=True, need_zoom=False):
         if len(self._data) == 0:
