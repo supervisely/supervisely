@@ -732,3 +732,35 @@ class Annotation:
             if lbl.obj_class.name in keep_classes:
                 new_labels.append(lbl.clone())
         return self.clone(labels=new_labels)
+
+
+    @classmethod
+    def from_albumentations(cls, index_to_class, img, bboxes=[], masks=[], class_labels=[], rect_lbl_names={},
+                            meta=None):
+
+        def _get_sl_bbox(curr_bbox):
+            left = curr_bbox[0]
+            top = curr_bbox[1]
+            right = curr_bbox[2] + left
+            bottom = curr_bbox[3] + top
+            return top, left, bottom, right
+
+        if (len(bboxes) > 0 or len(masks) > 0) and meta is None:
+            raise ValueError("Project meta has to be provided")
+
+        new_labels = []
+        for bitmap_idx, class_name in index_to_class.items():
+            curr_mask = masks[bitmap_idx]
+            if len(np.unique(curr_mask)) == 1:
+                continue
+            new_geometry = Bitmap(curr_mask.astype(bool))
+            new_obj_class = meta.get_obj_class(class_name)
+            new_labels.append(Label(geometry=new_geometry, obj_class=new_obj_class))
+
+        for curr_bbox, curr_label_name in zip(bboxes, class_labels):
+            sl_bbox = _get_sl_bbox(curr_bbox)
+            new_geometry = Rectangle(*sl_bbox)
+            curr_label = rect_lbl_names[curr_label_name]
+            new_labels.append(curr_label.clone(geometry=new_geometry))
+
+        return cls(img_size=img.shape[:2], labels=new_labels)
