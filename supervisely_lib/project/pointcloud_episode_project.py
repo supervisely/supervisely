@@ -84,9 +84,11 @@ class PointcloudEpisodeProject(PointcloudProject):
         return read_project_wrapper(dir, cls)
 
 
-def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=None, download_items=True,
-                                        log_progress=False):
-    LOG_BATCH_SIZE = 1
+def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=None,
+                                        download_pcd=True,
+                                        download_realated_images=True,
+                                        download_annotations=True,
+                                        log_progress=False, batch_size=1):
 
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
@@ -103,32 +105,35 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
 
     for dataset in datasets_infos:
         dataset_fs = project_fs.create_dataset(dataset.name)
-
-        # Download annotation to project_path/dataset_path/annotation.json
-        ann_json = annotation_api.download(dataset.id)
-        annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
-        dataset_fs.set_ann(annotation)
-
         pointclouds = api.pointcloud.get_list(dataset.id)
 
-        # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
-        name_frame_map = dict(sorted([(x.frame, x.name) for x in pointclouds]))
-        frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
-        dump_json_file(name_frame_map, frame_pointcloud_map_path)
+        if download_annotations:
+            # Download annotation to project_path/dataset_path/annotation.json
+            ann_json = annotation_api.download(dataset.id)
+            annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
+            dataset_fs.set_ann(annotation)
+
+            # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
+            name_frame_map = dict(sorted([(x.frame, x.name) for x in pointclouds]))
+            frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
+            dump_json_file(name_frame_map, frame_pointcloud_map_path)
 
         # Download data
         if log_progress:
             ds_progress = Progress('Downloading dataset: {!r}'.format(dataset.name), total_cnt=len(pointclouds))
 
-        for batch in batched(pointclouds, batch_size=LOG_BATCH_SIZE):
+        for batch in batched(pointclouds, batch_size=batch_size):
             pointcloud_ids = [pointcloud_info.id for pointcloud_info in batch]
             pointcloud_names = [pointcloud_info.name for pointcloud_info in batch]
 
             for pointcloud_id, pointcloud_name in zip(pointcloud_ids, pointcloud_names):
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
-                if download_items is True:
+                if download_pcd is True:
                     api.pointcloud.download_path(pointcloud_id, pointcloud_file_path)
+                else:
+                    touch(pointcloud_file_path)
 
+                if download_realated_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
                     related_images = api.pointcloud.get_list_related_images(pointcloud_id)
                     for rimage_info in related_images:
@@ -140,9 +145,6 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
 
                         api.pointcloud.download_related_image(rimage_id, path_img)
                         dump_json_file(rimage_info, path_json)
-
-                else:
-                    touch(pointcloud_file_path)
 
                 dataset_fs.add_item_file(pointcloud_name,
                                          pointcloud_file_path,
