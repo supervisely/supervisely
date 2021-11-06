@@ -8,6 +8,7 @@ from supervisely_lib.video_annotation.constants import FRAMES, DESCRIPTION, FRAM
 from supervisely_lib.video_annotation.frame_collection import FrameCollection
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.video_annotation.video_annotation import VideoAnnotation
+from supervisely_lib.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
 
 
@@ -93,3 +94,10 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
                                            frames=take_with_default(frames, self.frames),
                                            tags=take_with_default(tags, self.tags),
                                            description=take_with_default(description, self.description))
+
+    def get_single_annotation(self, frame_idx):
+        frame = self.frames.get(frame_idx)
+        figures = frame.figures
+        tags = None  # TODO: make tags!
+        objects = PointcloudObjectCollection(set([fig.parent_object for fig in figures]))
+        return PointcloudAnnotation(objects, figures, tags)

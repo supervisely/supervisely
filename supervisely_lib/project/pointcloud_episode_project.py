@@ -68,10 +68,12 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
         item_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
         item_names = [os.path.basename(path) for path in item_paths]
-        self.frame_to_pc_map = load_json_file(self.get_frame_pointcloud_map_path())
-        pc_to_frame = {v: k for k, v in self.frame_to_pc_map.items()}
-        self._item_to_ann = {name: pc_to_frame[name] for name in item_names}
+        self._frame_to_pc_map = load_json_file(self.get_frame_pointcloud_map_path())
+        self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
+        self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
 
+    def get_frame_idx(self, item_name):
+        return int(self._item_to_ann[item_name])
 
 class PointcloudEpisodeProject(PointcloudProject):
     dataset_class = PointcloudEpisodeDataset
