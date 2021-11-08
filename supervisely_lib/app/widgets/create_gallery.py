@@ -90,9 +90,6 @@ class Gallery:
 
         gallery_json = self.to_json()
 
-        if self._need_zoom:
-            gallery_json = self._zoom_to_figure(gallery_json)
-
         if options is True or self._options_initialized is False:
             if self._need_zoom:
                 self._options["resizeOnZoom"] = True
@@ -138,6 +135,25 @@ class Gallery:
                     index_in_layout = 0
                 layout[index_in_layout].append(curr_data_name)
                 index_in_layout += 1
+
+        if self._need_zoom:
+            items = self._data.items()
+            zoom_to_figure_name = "zoomToFigure"
+            for item in items:
+                curr_image_name = item[0]
+                curr_image_data = item[1]
+
+                if len(curr_image_data) < 4:
+                    raise ValueError("Option zoom_to_figure not set for {} image".format(curr_image_name))
+
+                elif type(curr_image_data[3]) is not tuple:
+                    raise ValueError("Option zoom_to_figure not set for {} image".format(curr_image_name))
+
+                zoom_params = {
+                    "figureId": curr_image_data[3][0],
+                    "factor": curr_image_data[3][1]
+                }
+                annotations[curr_image_name][zoom_to_figure_name] = zoom_params
 
         return {
             "content": {
