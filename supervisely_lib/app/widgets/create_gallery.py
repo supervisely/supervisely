@@ -106,6 +106,9 @@ class Gallery:
             curr_image_name = item[0]
             curr_image_data = item[1]
 
+            if len(curr_image_data) < 5:
+                raise ValueError("Option zoom_to_figure not set for {} image".format(curr_image_name))
+
             zoom_params = {
                 "figureId": curr_image_data[4][0],
                 "factor": curr_image_data[4][1]
