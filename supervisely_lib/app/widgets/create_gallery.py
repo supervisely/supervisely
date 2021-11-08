@@ -6,7 +6,6 @@ from supervisely_lib.annotation.annotation import Annotation
 
 
 class Gallery:
-
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, preview_info=False,
                  enable_zoom=False, resize_on_zoom=False,
                  sync_views=False, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
@@ -38,10 +37,10 @@ class Gallery:
                  zoom_to_figure=None):
 
         if col_index is not None:
-            if col_index <=0 or col_index > self.col_number:
+            if col_index <= 0 or col_index > self.col_number:
                 raise ValueError("Column number is not correct, check your input data")
 
-        res_ann = Annotation((1,1))
+        res_ann = Annotation((1, 1))
         if ann is not None:
             if type(ann) is dict:
                 res_ann = Annotation.from_json(ann, self._project_meta)
@@ -50,12 +49,12 @@ class Gallery:
 
         self._data[title] = [image_url, res_ann, col_index]
 
+        if zoom_to_figure is not None:
+            self._data[title].append(zoom_to_figure)
+
         if self.preview_info:
             if info_dict is not None:
                 self._data[title].append(info_dict)
-
-        if zoom_to_figure is not None:
-            self._data[title].append(zoom_to_figure)
 
     def add_item_by_id(self, image_id, with_ann = True, col_index = None, info_dict=None,
                  zoom_to_figure=None):
@@ -106,20 +105,21 @@ class Gallery:
             curr_image_name = item[0]
             curr_image_data = item[1]
 
-            if len(curr_image_data) < 5:
+            if len(curr_image_data) < 4:
+                raise ValueError("Option zoom_to_figure not set for {} image".format(curr_image_name))
+
+            elif type(curr_image_data[3]) is not tuple:
                 raise ValueError("Option zoom_to_figure not set for {} image".format(curr_image_name))
 
             zoom_params = {
-                "figureId": curr_image_data[4][0],
-                "factor": curr_image_data[4][1]
+                "figureId": curr_image_data[3][0],
+                "factor": curr_image_data[3][1]
             }
-
             gallery_json["content"]["annotations"][curr_image_name][zoom_to_figure_name] = zoom_params
 
         return gallery_json
 
     def to_json(self):
-
         annotations = {}
         layout = []
         index_in_layout = 0
