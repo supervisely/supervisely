@@ -7,7 +7,7 @@ from supervisely_lib.annotation.annotation import Annotation
 
 class Gallery:
 
-    def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, with_info=False,
+    def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, preview_info=False,
                  enable_zoom=False, resize_on_zoom=False,
                  sync_views=False, show_preview=True, selectable=False, opacity=0.5, show_opacity_header=True,
                  fillRectangle=False, borderWidth=3):
@@ -17,7 +17,7 @@ class Gallery:
         self._project_meta = project_meta.clone()
         self._data = {}
         self.col_number = col_number
-        self.with_info = with_info
+        self.preview_info = preview_info
         if not isinstance(self.col_number, int):
             raise ValueError("Columns number must be integer, not {}".format(type(self.col_number).__name__))
 
@@ -34,7 +34,7 @@ class Gallery:
         }
         self._options_initialized = False
 
-    def add_item(self, title, image_url, ann: Union[Annotation, dict] = None, col_index = None):
+    def add_item(self, title, image_url, ann: Union[Annotation, dict] = None, col_index = None, info_dict=None):
 
         if col_index is not None:
             if col_index <=0 or col_index > self.col_number:
@@ -49,15 +49,9 @@ class Gallery:
 
         self._data[title] = [image_url, res_ann, col_index]
 
-        if self.with_info:
-            preview_data = {}
-            preview_data["objects"] = len(ann.labels)
-            labelers_cnt = []
-            for label in ann.labels:
-                if label.geometry.labeler_login not in labelers_cnt:
-                    labelers_cnt.append(label.geometry.labeler_login)
-            preview_data["labelers"] = len(labelers_cnt)
-            self._data[title].append(preview_data)
+        if self.preview_info:
+            if info_dict is not None:
+                self._data[title].append(info_dict)
 
     def add_item_by_id(self, image_id, with_ann = True, col_index = None):
         image_info = self._api.image.get_info_by_id(image_id)
@@ -70,7 +64,7 @@ class Gallery:
         self.add_item(image_info.name, image_info.full_storage_url, ann, col_index)
 
     def _get_item_annotation(self, name):
-        if self.with_info:
+        if self.preview_info:
             return {
                 "url": self._data[name][0],
                 "figures": [label.to_json() for label in self._data[name][1].labels],
