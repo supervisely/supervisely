@@ -17,6 +17,7 @@ class Gallery:
         self._data = {}
         self.col_number = col_number
         self.preview_info = preview_info
+        self._need_zoom = False
         if not isinstance(self.col_number, int):
             raise ValueError("Columns number must be integer, not {}".format(type(self.col_number).__name__))
 
@@ -51,12 +52,13 @@ class Gallery:
 
         if zoom_to_figure is not None:
             self._data[title].append(zoom_to_figure)
+            self._need_zoom = True
 
         if self.preview_info:
             if info_dict is not None:
                 self._data[title].append(info_dict)
 
-    def add_item_by_id(self, image_id, with_ann = True, col_index = None, info_dict=None,
+    def add_item_by_id(self, image_id, with_ann=True, col_index=None, info_dict=None,
                  zoom_to_figure=None):
         image_info = self._api.image.get_info_by_id(image_id)
         if with_ann:
@@ -82,15 +84,15 @@ class Gallery:
                 "title": name,
             }
 
-    def update(self, options=True, need_zoom=False):
+    def update(self, options=True):
         if len(self._data) == 0:
             raise ValueError("Items list is empty")
-        if need_zoom:
+        if self._need_zoom:
             gallery_json = self._zoom_to_figure()
         else:
             gallery_json = self.to_json()
         if options is True or self._options_initialized is False:
-            if need_zoom:
+            if self._need_zoom:
                 self._options["resizeOnZoom"] = True
             self._api.task.set_field(self._task_id, self._v_model, gallery_json)
             self._options_initialized = True
@@ -121,11 +123,8 @@ class Gallery:
 
     def to_json(self):
         annotations = {}
-        layout = []
+        layout = [[] for _ in range(self.col_number)]
         index_in_layout = 0
-
-        for _ in range(self.col_number):
-            layout.append([])
 
         for curr_data_name, curr_url_ann_index in self._data.items():
             annotations[curr_data_name] = self._get_item_annotation(curr_data_name)
