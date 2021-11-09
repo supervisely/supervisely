@@ -7,12 +7,10 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import P
 from supervisely_lib.video_annotation.constants import FRAMES, DESCRIPTION, FRAMES_COUNT, TAGS, OBJECTS, KEY
 from supervisely_lib.video_annotation.frame_collection import FrameCollection
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
-from supervisely_lib.video_annotation.video_annotation import VideoAnnotation
-from supervisely_lib.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
 
 
-class PointcloudEpisodeAnnotation(VideoAnnotation):
+class PointcloudEpisodeAnnotation:
     """
         This is a class for creating and using PointcloudEpisodeAnnotation
     """
@@ -95,9 +93,38 @@ class PointcloudEpisodeAnnotation(VideoAnnotation):
                                            tags=take_with_default(tags, self.tags),
                                            description=take_with_default(description, self.description))
 
-    def get_single_annotation(self, frame_idx):
-        frame = self.frames.get(frame_idx)
-        figures = frame.figures
-        tags = None  # TODO: make tags!
-        objects = PointcloudObjectCollection(set([fig.parent_object for fig in figures]))
-        return PointcloudAnnotation(objects, figures, tags)
+    @property
+    def frames_count(self):
+        return self._frames_count
+
+    @property
+    def objects(self):
+        return self._objects
+
+    @property
+    def frames(self):
+        return self._frames
+
+    @property
+    def figures(self):
+        '''
+        :return: list of figures from all frames in collection
+        '''
+        return self.frames.figures
+
+    @property
+    def tags(self):
+        return self._tags
+
+    def key(self):
+        return self._key
+
+    @property
+    def description(self):
+        return self._description
+
+    def is_empty(self):
+        if len(self.objects) == 0 and len(self.tags) == 0:
+            return True
+        else:
+            return False

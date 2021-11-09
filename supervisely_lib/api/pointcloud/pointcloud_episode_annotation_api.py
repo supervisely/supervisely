@@ -1,12 +1,9 @@
 # coding: utf-8
 
 from supervisely_lib.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
-from supervisely_lib.api.pointcloud.pointcloud_annotation_api import PointcloudAnnotationAPI
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.pointcloud_annotation.pointcloud_episode_annotation import PointcloudEpisodeAnnotation
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
-from supervisely_lib.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
 
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
@@ -24,15 +21,19 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     def download_bulk(self, dataset_id, entity_ids):
         raise RuntimeError('Not supported for episodes')
 
+    def append(self, object_api, figure_api, dataset_id, ann: PointcloudEpisodeAnnotation, frame_to_pointcloud_ids,
+               key_id_map: KeyIdMap = None):
+        if key_id_map is None:
+            # create for internal purposes (to link figures and tags to objects)
+            key_id_map = KeyIdMap()
 
-    def append(self, project_id, dataset_id, pointcloud_id, ann: PointcloudAnnotation, key_id_map: KeyIdMap = None):
-        new_objects = []
-        for object_3d in ann.objects:
-            if key_id_map is not None and key_id_map.get_object_id(object_3d.key()) is not None:
-                # object already uploaded
-                continue
-            new_objects.append(object_3d)
+        figures = []
+        pointcloud_ids = []
+        for i, frame in enumerate(ann.frames):
+            for fig in frame.figures:
+                figures.append(fig)
+                pointcloud_ids.append(frame_to_pointcloud_ids[i])
 
-        self._append(self._api.pointcloud.tag, self._api.pointcloud.object, self._api.pointcloud.figure,
-                     project_id, pointcloud_id,
-                     ann.tags, PointcloudObjectCollection(new_objects), ann.figures, key_id_map)
+        object_api.append_bulk(dataset_id, ann.objects, key_id_map)
+        figure_api.append_bulk(dataset_id, figures, pointcloud_ids, key_id_map)
+
