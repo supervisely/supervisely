@@ -3,6 +3,7 @@
 import uuid
 
 from supervisely_lib._utils import take_with_default
+from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
 from supervisely_lib.video_annotation.constants import FRAMES, DESCRIPTION, FRAMES_COUNT, TAGS, OBJECTS, KEY
 from supervisely_lib.video_annotation.frame_collection import FrameCollection
@@ -11,21 +12,7 @@ from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollec
 
 
 class PointcloudEpisodeAnnotation:
-    """
-        This is a class for creating and using PointcloudEpisodeAnnotation
-    """
-    DATASET_ID_KEY = 'datasetId'
-
     def __init__(self, frames_count=None, objects=None, frames=None, tags=None, description="", key=None):
-        """
-        :param frames_count: int
-        :param objects: PointcloudObjectCollection
-        :param frames: FrameCollection
-        :param tags: VideoTagCollection
-        :param description: str
-        :param key: uuid class object
-        """
-
         self._frames_count = frames_count
         self._description = description
         self._frames = take_with_default(frames, FrameCollection())
@@ -33,12 +20,7 @@ class PointcloudEpisodeAnnotation:
         self._objects = take_with_default(objects, PointcloudObjectCollection())
         self._key = take_with_default(key, uuid.uuid4())
 
-    def to_json(self, key_id_map: KeyIdMap=None):
-        '''
-        The function to_json convert PointcloudEpisodeAnnotation to json format
-        :param key_id_map: KeyIdMap class object
-        :return: PointcloudEpisodeAnnotation in json format
-        '''
+    def to_json(self, key_id_map: KeyIdMap = None):
         res_json = {
             DESCRIPTION: self.description,
             KEY: self.key().hex,
@@ -51,23 +33,16 @@ class PointcloudEpisodeAnnotation:
         if key_id_map is not None:
             dataset_id = key_id_map.get_video_id(self.key())
             if dataset_id is not None:
-                res_json[self.DATASET_ID_KEY] = dataset_id
+                res_json[ApiField.DATASET_ID] = dataset_id
 
         return res_json
 
     @classmethod
-    def from_json(cls, data, project_meta, key_id_map: KeyIdMap=None):
-        """
-        :param data: input PointcloudEpisodeAnnotation in json format
-        :param project_meta: ProjectMeta class object
-        :param key_id_map: KeyIdMap class object
-        :return: PointcloudEpisodeAnnotation class object
-        """
-
+    def from_json(cls, data, project_meta, key_id_map: KeyIdMap = None):
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
-            key_id_map.add_video(item_key, data.get(cls.DATASET_ID_KEY, None))
+            key_id_map.add_video(item_key, data.get(ApiField.DATASET_ID, None))
 
         description = data.get(DESCRIPTION, "")
         frames_count = data.get(FRAMES_COUNT, 0)
@@ -79,14 +54,6 @@ class PointcloudEpisodeAnnotation:
         return cls(frames_count, objects, frames, tags, description, item_key)
 
     def clone(self, frames_count=None, objects=None, frames=None, tags=None, description=""):
-        """
-        :param frames_count: int
-        :param frames: FrameCollection
-        :param objects: PointcloudObjectCollection
-        :param tags: VideoTagCollection
-        :param description: str
-        :return: PointcloudEpisodeAnnotation class object
-        """
         return PointcloudEpisodeAnnotation(frames_count=take_with_default(frames_count, self.frames_count),
                                            objects=take_with_default(objects, self.objects),
                                            frames=take_with_default(frames, self.frames),
@@ -107,9 +74,6 @@ class PointcloudEpisodeAnnotation:
 
     @property
     def figures(self):
-        '''
-        :return: list of figures from all frames in collection
-        '''
         return self.frames.figures
 
     @property

@@ -1,25 +1,21 @@
 # coding: utf-8
 
-from collections import namedtuple
 import os
+from collections import namedtuple
 
-from supervisely_lib.io.fs import file_exists, touch, dir_exists, list_files, get_file_name_with_ext, mkdir
-from supervisely_lib.imaging.image import SUPPORTED_IMG_EXTS
-from supervisely_lib.io.json import dump_json_file, load_json_file
-from supervisely_lib.project.project_meta import ProjectMeta
-from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
-from supervisely_lib.video_annotation.key_id_map import KeyIdMap
-
 from supervisely_lib.api.module_api import ApiField
+from supervisely_lib.api.pointcloud.pointcloud_episode_annotation_api import PointcloudEpisodeAnnotationAPI
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely_lib.io.fs import touch, dir_exists, list_files, mkdir
+from supervisely_lib.io.json import dump_json_file, load_json_file
+from supervisely_lib.pointcloud_annotation.pointcloud_episode_annotation import PointcloudEpisodeAnnotation
+from supervisely_lib.project.pointcloud_project import PointcloudProject, PointcloudDataset
 from supervisely_lib.project.project import OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
-
-from supervisely_lib.pointcloud_annotation.pointcloud_episode_annotation import PointcloudEpisodeAnnotation
-from supervisely_lib.api.pointcloud.pointcloud_episode_annotation_api import PointcloudEpisodeAnnotationAPI
-from supervisely_lib.project.pointcloud_project import PointcloudProject, PointcloudDataset
-from supervisely_lib.io.json import dump_json_file
+from supervisely_lib.project.project_meta import ProjectMeta
+from supervisely_lib.task.progress import Progress
+from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir'])
 
@@ -40,9 +36,6 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         return os.path.join(self.directory, "frame_pointcloud_map.json")
 
     def set_ann(self, ann):
-        '''
-        :param ann: VideoAnnotation class object, raise error if ann type is another
-        '''
         if type(ann) is not self.annotation_class:
             raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path()
@@ -58,11 +51,6 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         mkdir(self.item_dir)
 
     def _read(self):
-        '''
-        Fills out the dictionary items: item file name -> annotation file name. Checks item and annotation directoris existing and dataset not empty.
-        Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
-        If not - it generate exception error.
-        '''
         if not dir_exists(self.item_dir):
             raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
 
@@ -74,6 +62,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def get_frame_idx(self, item_name):
         return int(self._item_to_ann[item_name])
+
 
 class PointcloudEpisodeProject(PointcloudProject):
     dataset_class = PointcloudEpisodeDataset
@@ -91,7 +80,6 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
                                         download_realated_images=True,
                                         download_annotations=True,
                                         log_progress=False, batch_size=1):
-
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     annotation_api = PointcloudEpisodeAnnotationAPI(api)
