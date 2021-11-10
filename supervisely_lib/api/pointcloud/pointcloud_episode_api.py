@@ -4,9 +4,6 @@ from supervisely_lib.api.pointcloud.pointcloud_episode_annotation_api import Poi
 
 class PointcloudEpisodeApi(PointcloudApi):
     def __init__(self, api):
-        '''
-        :param api: Api class object
-        '''
         super().__init__(api)
         self.annotation = PointcloudEpisodeAnnotationAPI(api)
 
