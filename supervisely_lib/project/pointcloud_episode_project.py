@@ -5,7 +5,6 @@ from collections import namedtuple
 
 from supervisely_lib._utils import batched
 from supervisely_lib.api.module_api import ApiField
-from supervisely_lib.api.pointcloud.pointcloud_episode_annotation_api import PointcloudEpisodeAnnotationAPI
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely_lib.io.fs import touch, dir_exists, list_files, mkdir
 from supervisely_lib.io.json import dump_json_file, load_json_file
@@ -82,7 +81,6 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
                                         log_progress=False, batch_size=1):
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
-    annotation_api = PointcloudEpisodeAnnotationAPI(api)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
@@ -95,11 +93,11 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
 
     for dataset in datasets_infos:
         dataset_fs = project_fs.create_dataset(dataset.name)
-        pointclouds = api.pointcloud.get_list(dataset.id)
+        pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
         if download_annotations:
             # Download annotation to project_path/dataset_path/annotation.json
-            ann_json = annotation_api.download(dataset.id)
+            ann_json = api.pointcloud_episode.annotation.download(dataset.id)
             annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
             dataset_fs.set_ann(annotation)
 
@@ -119,13 +117,13 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
             for pointcloud_id, pointcloud_name in zip(pointcloud_ids, pointcloud_names):
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
                 if download_pcd is True:
-                    api.pointcloud.download_path(pointcloud_id, pointcloud_file_path)
+                    api.pointcloud_episode.download_path(pointcloud_id, pointcloud_file_path)
                 else:
                     touch(pointcloud_file_path)
 
                 if download_realated_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
-                    related_images = api.pointcloud.get_list_related_images(pointcloud_id)
+                    related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
                     for rimage_info in related_images:
                         name = rimage_info[ApiField.NAME]
                         rimage_id = rimage_info[ApiField.ID]
@@ -133,7 +131,7 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
                         path_img = os.path.join(related_images_path, name)
                         path_json = os.path.join(related_images_path, name + ".json")
 
-                        api.pointcloud.download_related_image(rimage_id, path_img)
+                        api.pointcloud_episode.download_related_image(rimage_id, path_img)
                         dump_json_file(rimage_info, path_json)
 
                 dataset_fs.add_item_file(pointcloud_name,
