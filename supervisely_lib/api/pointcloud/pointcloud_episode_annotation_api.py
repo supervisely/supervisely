@@ -21,7 +21,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     def download_bulk(self, dataset_id, entity_ids):
         raise RuntimeError('Not supported for episodes')
 
-    def append(self, object_api, figure_api, dataset_id, ann: PointcloudEpisodeAnnotation, frame_to_pointcloud_ids,
+    def append(self, dataset_id, ann: PointcloudEpisodeAnnotation, frame_to_pointcloud_ids,
                key_id_map: KeyIdMap = None):
         if key_id_map is None:
             # create for internal purposes (to link figures and tags to objects)
@@ -34,6 +34,6 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
                 figures.append(fig)
                 pointcloud_ids.append(frame_to_pointcloud_ids[i])
 
-        object_api.append_bulk(dataset_id, ann.objects, key_id_map)
-        figure_api.append_bulk(dataset_id, figures, pointcloud_ids, key_id_map)
+        self._api.pointcloud.object.append_to_dataset(dataset_id, ann.objects, key_id_map)
+        self._api.pointcloud.figure.append_to_dataset(dataset_id, figures, pointcloud_ids, key_id_map)
 

@@ -9,3 +9,6 @@ class PointcloudObjectApi(ObjectApi):
     def append_bulk(self, pointcloud_id, objects: PointcloudObjectCollection, key_id_map: KeyIdMap = None):
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
         return self._append_bulk(self._api.pointcloud.tag, pointcloud_id, info.project_id, info.dataset_id, objects, key_id_map, is_pointcloud=True)
+
+    def append_to_dataset(self, dataset_id, objects: PointcloudObjectCollection, key_id_map: KeyIdMap = None):
+        return self._append_to_dataset(self._api.pointcloud.tag, dataset_id, objects, key_id_map, is_pointcloud=True)
