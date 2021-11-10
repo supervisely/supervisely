@@ -78,14 +78,3 @@ class FigureApi(RemoveableBulkModuleApi):
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
-
-    def append_to_dataset(self, dataset_id, figures, entity_ids, key_id_map: KeyIdMap):
-        keys = []
-        figures_json = []
-        for figure, entity_id in zip(figures, entity_ids):
-            keys.append(figure.key())
-            figure_json = figure.to_json(key_id_map)
-            figure_json[ApiField.ENTITY_ID] = entity_id
-            figures_json.append(figure_json)
-
-        return self._append_bulk(dataset_id, figures_json, keys, key_id_map, field_name=ApiField.DATASET_ID)

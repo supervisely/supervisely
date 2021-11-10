@@ -54,7 +54,3 @@ class ObjectApi(RemoveableBulkModuleApi):
         tag_api.append_to_objects(entity_id, project_id, objects, key_id_map)
 
         return ids
-
-    def _append_to_dataset(self, tag_api, dataset_id, objects, key_id_map: KeyIdMap = None, is_pointcloud=False):
-        project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
-        return self._append_bulk(tag_api, dataset_id, project_id, dataset_id, objects, key_id_map, is_pointcloud)
