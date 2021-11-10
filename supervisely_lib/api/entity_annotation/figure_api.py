@@ -68,13 +68,13 @@ class FigureApi(RemoveableBulkModuleApi):
 
         return figures
 
-    def _append_bulk(self, entity_id, figures_json, figures_keys, key_id_map: KeyIdMap):
+    def _append_bulk(self, entity_id, figures_json, figures_keys, key_id_map: KeyIdMap, field_name=ApiField.ENTITY_ID):
         if len(figures_json) == 0:
             return
 
         for (batch_keys, batch_jsons) in zip(batched(figures_keys, batch_size=100),
                                              batched(figures_json, batch_size=100)):
-            resp = self._api.post('figures.bulk.add', {ApiField.ENTITY_ID: entity_id, ApiField.FIGURES: batch_jsons})
+            resp = self._api.post('figures.bulk.add', {field_name: entity_id, ApiField.FIGURES: batch_jsons})
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)

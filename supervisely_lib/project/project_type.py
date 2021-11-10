@@ -8,3 +8,4 @@ class ProjectType(StrEnum):
     VIDEOS = 'videos'
     VOLUMES = 'volumes'
     POINT_CLOUDS = 'point_clouds'
+    POINT_CLOUD_EPISODES = 'point_cloud_episodes'
