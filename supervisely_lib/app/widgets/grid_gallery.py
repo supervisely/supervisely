@@ -17,6 +17,7 @@ class Gallery:
         self.col_number = col_number
         self.preview_info = preview_info
         self._need_zoom = False
+        self._with_labeling_url = False
         if not isinstance(self.col_number, int):
             raise ValueError("Columns number must be integer, not {}".format(type(self.col_number).__name__))
 
@@ -54,11 +55,8 @@ class Gallery:
             self._need_zoom = True
 
         if labeling_url is not None:
-            self.preview_info = True
-            if custom_info is None:
-                custom_info = {"labelingUrl": labeling_url}
-            else:
-                custom_info["labelingUrl"] = labeling_url
+            self._with_labeling_url = True
+            self._data[title]["labelingUrl"] = labeling_url
 
         if self.preview_info:
             if custom_info is not None:
@@ -77,12 +75,21 @@ class Gallery:
 
     def _get_item_annotation(self, name):
         if self.preview_info:
-            return {
-                "url": self._data[name]["image_url"],
-                "figures": [label.to_json() for label in self._data[name]["ann"].labels],
-                "title": name,
-                "info": self._data[name]["info"]
-            }
+            if self._with_labeling_url:
+                return {
+                    "url": self._data[name]["image_url"],
+                    "figures": [label.to_json() for label in self._data[name]["ann"].labels],
+                    "title": name,
+                    "info": self._data[name]["info"],
+                    "labelingUrl": self._data[name]["labelingUrl"]
+                }
+            else:
+                return {
+                    "url": self._data[name]["image_url"],
+                    "figures": [label.to_json() for label in self._data[name]["ann"].labels],
+                    "title": name,
+                    "info": self._data[name]["info"]
+                }
         else:
             return {
                 "url": self._data[name]["image_url"],
