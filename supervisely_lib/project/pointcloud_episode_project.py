@@ -102,9 +102,9 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
             dataset_fs.set_ann(annotation)
 
             # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
-            name_frame_map = dict(sorted([(x.frame, x.name) for x in pointclouds]))
+            frame_name_map = api.pointcloud_episode.get_frame_name_map(dataset.id)
             frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
-            dump_json_file(name_frame_map, frame_pointcloud_map_path)
+            dump_json_file(frame_name_map, frame_pointcloud_map_path)
 
         # Download data
         if log_progress:

@@ -1,10 +1,6 @@
 # coding: utf-8
 from supervisely_lib.api.pointcloud.pointcloud_api import PointcloudApi
 from supervisely_lib.api.pointcloud.pointcloud_episode_annotation_api import PointcloudEpisodeAnnotationAPI
-from supervisely_lib.api.pointcloud.pointcloud_object_api import PointcloudObjectApi
-from supervisely_lib.api.pointcloud.pointcloud_figure_api import PointcloudFigureApi
-from supervisely_lib.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
-
 
 class PointcloudEpisodeApi(PointcloudApi):
     def __init__(self, api):
@@ -13,6 +9,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         '''
         super().__init__(api)
         self.annotation = PointcloudEpisodeAnnotationAPI(api)
-        self.object = PointcloudObjectApi(api)
-        self.figure = PointcloudFigureApi(api)
-        self.tag = PointcloudTagApi(api)
+
+    def get_frame_name_map(self, dataset_id):
+        pointclouds = self.get_list(dataset_id)
+        return {x.frame: x.name for x in pointclouds}
