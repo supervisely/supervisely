@@ -69,6 +69,8 @@ class PointcloudDataset(VideoDataset):
                 img_meta = {}
                 if file_exists(img_meta_path):
                     img_meta = load_json_file(img_meta_path)
+                    if img_meta[ApiField.NAME] != get_file_name_with_ext(file):
+                        raise RuntimeError('Wrong format: name field contains wrong image path')
                 results.append((file, img_meta))
         return results
 

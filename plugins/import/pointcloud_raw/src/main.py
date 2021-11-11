@@ -7,6 +7,7 @@ import supervisely_lib as sly
 from supervisely_lib.video.import_utils import get_dataset_name
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.pointcloud.pointcloud import is_valid_ext, ALLOWED_POINTCLOUD_EXTENSIONS
+from supervisely_lib.imaging import image
 
 DEFAULT_DATASET_NAME = 'ds0'
 root_ds_name = DEFAULT_DATASET_NAME
@@ -109,6 +110,10 @@ def add_pointclouds_to_project():
             img_meta = {}
             if sly.fs.file_exists(img_meta_path):
                 img_meta = load_json_file(img_meta_path)
+                if not image.has_valid_ext(img_meta[ApiField.NAME]):
+                    raise RuntimeError('Wrong format: name field contains path with unsupported extension')
+                if img_meta[ApiField.NAME] != sly.fs.get_file_name_with_ext(file):
+                    raise RuntimeError('Wrong format: name field contains wrong image path')
             related_items.append((file, img_meta, context_img_to_hash[file]['hash']))
 
         if len(related_items) != 0:
