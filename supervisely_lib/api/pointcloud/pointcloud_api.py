@@ -41,6 +41,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 ApiField.FIGURES_COUNT,
                 ApiField.ANN_OBJECTS_COUNT,
                 ApiField.TAGS,
+                ApiField.META,
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT]
 
