@@ -5,6 +5,7 @@ from supervisely_lib import TaskPaths
 import supervisely_lib as sly
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
+from supervisely_lib.imaging import image
 
 DEFAULT_DATASET_NAME = 'ds0'
 root_ds_name = DEFAULT_DATASET_NAME
@@ -92,6 +93,8 @@ def add_pointclouds_to_project():
             if len(related_items) != 0:
                 rimg_infos = []
                 for img_path, meta_json in related_items:
+                    if not image.has_valid_ext(meta_json[ApiField.NAME]):
+                        raise RuntimeError('Wrong format: name field contains path with unsupported extension')
                     rimg_infos.append({ApiField.ENTITY_ID: pointcloud.id,
                                        ApiField.NAME: meta_json[ApiField.NAME],
                                        ApiField.HASH: path_info_map[img_path][ApiField.HASH],

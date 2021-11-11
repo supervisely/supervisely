@@ -3,8 +3,8 @@
 from collections import namedtuple
 import os
 
-from supervisely_lib.io.fs import file_exists, touch, dir_exists, list_files, get_file_name_with_ext
-from supervisely_lib.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely_lib.io.fs import file_exists, touch, dir_exists, list_files, get_file_name_with_ext, get_file_name
+from supervisely_lib.imaging.image import SUPPORTED_IMG_EXTS, has_valid_ext
 from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
@@ -69,6 +69,8 @@ class PointcloudDataset(VideoDataset):
                 img_meta = {}
                 if file_exists(img_meta_path):
                     img_meta = load_json_file(img_meta_path)
+                    if img_meta[ApiField.NAME] != get_file_name_with_ext(file):
+                        raise RuntimeError('Wrong format: name field contains wrong image path')
                 results.append((file, img_meta))
         return results
 
@@ -126,6 +128,16 @@ def download_pointcloud_project(api, project_id, dest_dir, dataset_ids=None, dow
                     related_images = api.pointcloud.get_list_related_images(pointcloud_id)
                     for rimage_info in related_images:
                         name = rimage_info[ApiField.NAME]
+
+                        if not has_valid_ext(name):
+                            new_name = get_file_name(name)  # to fix cases like .png.json
+                            if has_valid_ext(new_name):
+                                name = new_name
+                                rimage_info[ApiField.NAME] = name
+                            else:
+                                raise RuntimeError('Something wrong with photo context filenames.\
+                                                    Please, contact support')
+
                         rimage_id = rimage_info[ApiField.ID]
 
                         path_img = os.path.join(related_images_path, name)
