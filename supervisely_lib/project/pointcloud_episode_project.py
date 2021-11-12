@@ -15,6 +15,7 @@ from supervisely_lib.project.project import read_single_project as read_project_
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
+from supervisely_lib.project.project_type import ProjectType
 
 PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir'])
 
@@ -78,7 +79,7 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
                                         download_pcd=True,
                                         download_realated_images=True,
                                         download_annotations=True,
-                                        log_progress=False, batch_size=1):
+                                        log_progress=False, batch_size=10):
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -141,3 +142,69 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
                 ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
+
+
+def upload_pointcloud_episode_project(directory, api, workspace_id, project_name=None, log_progress=False):
+    project_fs = PointcloudEpisodeProject.read_single(directory)
+    if project_name is None:
+        project_name = project_fs.name
+
+    if api.project.exists(workspace_id, project_name):
+        project_name = api.project.get_free_name(workspace_id, project_name)
+
+    project = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES)
+    api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    uploaded_objects = KeyIdMap()
+    for dataset_fs in project_fs.datasets:
+        ann_json = load_json_file(dataset_fs.get_ann_path())
+        episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_fs.meta)
+
+        dataset = api.dataset.create(project.id,
+                                     dataset_fs.name,
+                                     description=episode_annotation.description,
+                                     change_name_if_conflict=True)
+
+        frame_to_pointcloud_ids = {}
+        ds_progress = None
+        if log_progress:
+            ds_progress = Progress('Uploading dataset: {!r}'.format(dataset.name), total_cnt=len(dataset_fs))
+
+        for item_name in dataset_fs:
+            item_path, related_images_dir = dataset_fs.get_item_paths(item_name)
+            related_items = dataset_fs.get_related_images(item_name)
+
+            item_meta = {}
+            try:
+                _, meta = related_items[0]
+                timestamp = meta[ApiField.META]['timestamp']
+                item_meta["timestamp"] = timestamp
+            except (KeyError, IndexError):
+                pass
+
+            frame_idx = dataset_fs.get_frame_idx(item_name)
+            item_meta["frame"] = frame_idx
+            pointcloud = api.pointcloud_episode.upload_path(dataset.id, item_name, item_path, item_meta)
+
+            if len(related_items) != 0:
+                img_infos = []
+                for img_path, meta_json in related_items:
+                    img = api.pointcloud_episode.upload_related_image(img_path)[0]
+                    img_infos.append({ApiField.ENTITY_ID: pointcloud.id,
+                                      ApiField.NAME: meta_json[ApiField.NAME],
+                                      ApiField.HASH: img,
+                                      ApiField.META: meta_json[ApiField.META]})
+
+                api.pointcloud_episode.add_related_images(img_infos)
+
+            frame_to_pointcloud_ids[frame_idx] = pointcloud.id
+
+            if log_progress:
+                ds_progress.iters_done_report(1)
+
+        api.pointcloud_episode.annotation.append(dataset.id,
+                                                 episode_annotation,
+                                                 frame_to_pointcloud_ids,
+                                                 uploaded_objects)
+
+    return project.id, project.name
