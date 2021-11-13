@@ -22,6 +22,7 @@ import supervisely_lib.api.labeling_job_api as labeling_job_api
 import supervisely_lib.api.video.video_api as video_api
 import supervisely_lib.api.pointcloud.pointcloud_api as pointcloud_api
 import supervisely_lib.api.pointcloud.pointcloud_episode_api as pointcloud_episode_api
+import supervisely_lib.api.volume.volume_api as volume_api
 import supervisely_lib.api.object_class_api as object_class_api
 import supervisely_lib.api.report_api as report_api
 import supervisely_lib.api.app_api as app_api
@@ -91,6 +92,7 @@ class Api:
         self.report = report_api.ReportApi(self)
         self.pointcloud = pointcloud_api.PointcloudApi(self)
         self.pointcloud_episode = pointcloud_episode_api.PointcloudEpisodeApi(self)
+        self.volume = volume_api.VolumeApi(self)
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
         self.img_ann_tool = image_annotation_tool_api.ImageAnnotationToolApi(self)
