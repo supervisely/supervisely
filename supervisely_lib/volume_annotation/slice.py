@@ -43,7 +43,7 @@ class Slice(KeyObject):
 
         figures = []
         for figure_json in data.get(const.FIGURES, []):
-            figure = VolumeFigure.from_json(figure_json, objects, index, key_id_map)
+            figure = VolumeFigure.from_json(figure_json, objects, key_id_map)
             figures.append(figure)
         return cls(index=index, figures=figures)
 

@@ -1,20 +1,31 @@
-from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
 from supervisely_lib.volume_annotation.slice import Slice
 from supervisely_lib.volume_annotation.constants import PLANE_NAMES, NAME, NORMAL, SLICES
 from supervisely_lib._utils import take_with_default
 
 
-class Plane(KeyIndexedCollection):
+class Plane(KeyIndexedCollection, KeyObject):
     item_type = Slice
 
     def __init__(self, name, normal, slices=None):
         super(Plane, self).__init__(items=slices)
         self.validate_plane_name(name)
-        self.name = name
-        self.normal = normal
+        self._name = name
+        self._normal = normal
 
     def __str__(self):
         return f'Plane name: {self.name}, Normal: {self.normal}, Slices: {super(Plane, self).__str__()}'
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def normal(self):
+        return self._normal
+
+    def key(self):
+        return self.name
 
     def to_json(self, key_id_map=None):
         return {NAME: self.name,
@@ -23,9 +34,10 @@ class Plane(KeyIndexedCollection):
 
     @classmethod
     def from_json(cls, data, objects, key_id_map=None):
+        slices_json = data[SLICES]
         name = take_with_default(data[NAME], None)
         normal = data[NORMAL]
-        slices = [cls.item_type.from_json(slice_json, objects, key_id_map) for slice_json in data]
+        slices = [cls.item_type.from_json(slice_json, objects, key_id_map) for slice_json in slices_json]
         return cls(name, normal, slices)
 
     @property

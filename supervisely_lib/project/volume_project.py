@@ -48,7 +48,8 @@ class VolumeDataset(Dataset):
 
     def set_ann(self, item_name: str, ann):
         if type(ann) is not self.annotation_class:
-            raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
+            raise TypeError(f"Type of 'ann' have to be {self.annotation_class}, not a {ann}")
+
         dst_ann_path = self.get_ann_path(item_name)
         dump_json_file(ann.to_json(), dst_ann_path)
 
@@ -118,11 +119,11 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
             ds_progress = Progress('Downloading dataset: {!r}'.format(dataset.name), total_cnt=len(volumes))
         for batch in batched(volumes, batch_size=batch_size):
             volume_ids = [volume_info.id for volume_info in batch]
-            video_names = [volume_info.name for volume_info in batch]
-
+            volume_names = [volume_info.name for volume_info in batch]
+            print(volume_names)
             ann_jsons = api.volume.annotation.download_bulk(dataset.id, volume_ids)
 
-            for volume_id, volume_name, ann_json in zip(volume_ids, video_names, ann_jsons):
+            for volume_id, volume_name, ann_json in zip(volume_ids, volume_names, ann_jsons):
                 if volume_name != ann_json[ApiField.VOLUME_NAME]:
                     raise RuntimeError("Error in api.volume.annotation.download_batch: broken order")
 
@@ -136,7 +137,7 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
                                          volume_file_path,
                                          ann=VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
                                          _validate_item=False)
-
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
