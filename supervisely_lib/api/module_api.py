@@ -123,6 +123,7 @@ class ApiField:
     STOPPED =           'stopped'
     VIDEOS =            'videos'
     VOLUMES =           'volumes'
+    VOLUME_NAME =       'volumeName'
     VOLUME_IDS =        'volumeIds'
     FILENAME =          'filename'
     SHAPE =             'shape'

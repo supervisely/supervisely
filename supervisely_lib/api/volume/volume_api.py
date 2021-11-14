@@ -3,7 +3,7 @@
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.api.volume.volume_annotation_api import VolumeAnnotationApi
 from supervisely_lib.io.fs import ensure_base_path
-
+from supervisely_lib.volume.volume import validate_format
 
 class VolumeApi(RemoveableBulkModuleApi):
     def __init__(self, api):
@@ -52,8 +52,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         return infos
 
     def download_path(self, id, path, progress_cb=None):
-        response = self._download(id, is_stream=True)
+        validate_format(path)
         ensure_base_path(path)
+        response = self._download(id, is_stream=True)
 
         with open(path, 'wb') as fd:
             mb1 = 1024 * 1024
