@@ -60,7 +60,7 @@ class VolumeAnnotation:
             key_id_map.add_video(volume_key, data.get(VOLUME_ID, None))
 
         description = data.get(DESCRIPTION, "")
-        volume_meta = data.get(VOLUME_META, None)
+        volume_meta = data[VOLUME_META]  # STRICT!
         tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
         objects = VolumeObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
         planes = PlaneCollection.from_json(data[PLANES], objects, key_id_map)
