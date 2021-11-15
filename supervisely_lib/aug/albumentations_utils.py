@@ -18,7 +18,7 @@ def get_coco_bbox(rect):
     return [rect.left, rect.top, rect.width, rect.height]
 
 
-def create_albumentations_info(category_name, aug_name, params, sometimes: float = None):
+def create_albumentations_info(category_name, aug_name, params, sometimes=None):
     clean_params = params
     res = {
         "category": category_name,
@@ -26,7 +26,7 @@ def create_albumentations_info(category_name, aug_name, params, sometimes: float
         "params": clean_params,
     }
     if sometimes is not None:
-        if type(sometimes) is not float or not (0.0 <= sometimes <= 1.0):
+        if not (0.0 <= sometimes <= 1):
             raise ValueError(f"sometimes={sometimes}, type != {type(sometimes)}")
         res["sometimes"] = sometimes
     res["python"] = albumentations_to_python(res)
