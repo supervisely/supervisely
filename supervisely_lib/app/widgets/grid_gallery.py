@@ -55,6 +55,7 @@ class Gallery:
             self._need_zoom = True
 
         if labeling_url is not None:
+            self.preview_info = True
             self._with_labeling_url = True
             self._data[title]["labelingUrl"] = labeling_url
 
