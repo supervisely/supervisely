@@ -120,7 +120,6 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
         for batch in batched(volumes, batch_size=batch_size):
             volume_ids = [volume_info.id for volume_info in batch]
             volume_names = [volume_info.name for volume_info in batch]
-            print(volume_names)
             ann_jsons = api.volume.annotation.download_bulk(dataset.id, volume_ids)
 
             for volume_id, volume_name, ann_json in zip(volume_ids, volume_names, ann_jsons):
