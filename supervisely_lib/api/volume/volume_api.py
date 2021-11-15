@@ -7,12 +7,17 @@ from supervisely_lib.volume.volume import validate_format
 from supervisely_lib._utils import batched
 from requests_toolbelt import MultipartEncoder
 from collections import defaultdict
+from supervisely_lib.api.volume.volume_figure_api import VolumeFigureApi
+from supervisely_lib.api.volume.volume_object_api import VolumeObjectApi
+from supervisely_lib.api.volume.volume_tag_api import VolumeTagApi
 
 class VolumeApi(RemoveableBulkModuleApi):
     def __init__(self, api):
         super().__init__(api)
         self.annotation = VolumeAnnotationApi(api)
-        # TODO: add objects, figures, tags api
+        self.object = VolumeObjectApi(api)
+        self.figure = VolumeFigureApi(api)
+        self.tag = VolumeTagApi(api)
 
     @staticmethod
     def info_sequence():
