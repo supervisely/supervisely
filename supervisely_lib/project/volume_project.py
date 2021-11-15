@@ -140,3 +140,7 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
                 ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
+
+
+def upload_volume_project():
+    pass
