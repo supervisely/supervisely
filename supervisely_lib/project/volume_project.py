@@ -142,5 +142,32 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_volume_project():
-    pass
+def upload_volume_project(directory, api, workspace_id, project_name=None, log_progress=False):
+    project_fs = VolumeProject(directory, mode=OpenMode.READ)
+    if project_name is None:
+       project_name = project_fs.name
+
+    if api.project.exists(workspace_id, project_name):
+       project_name = api.project.get_free_name(workspace_id, project_name)
+
+    project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
+    api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    uploaded_objects = KeyIdMap()
+    for dataset_fs in project_fs:
+        dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
+
+        ds_progress = None
+        if log_progress:
+            ds_progress = Progress('Uploading dataset: {!r}'.format(dataset.name), total_cnt=len(dataset_fs))
+
+        for item_name in dataset_fs:
+            volume_path, ann_path = dataset_fs.get_item_paths(item_name)
+            ann = VolumeAnnotation.from_json(load_json_file(ann_path), project_fs.meta)
+
+            volume = api.volume.upload_path(dataset.id, item_name, volume_path, ann.volume_meta)
+            api.volume.get_list(volume.dataset_id)  #TODO: remove - workaround HACK to _get_by_id info
+            api.volume.annotation.append(volume.id, ann, uploaded_objects)
+
+            if log_progress:
+                ds_progress.iters_done_report(1)
