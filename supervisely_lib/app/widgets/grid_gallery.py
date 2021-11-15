@@ -61,6 +61,8 @@ class Gallery:
         if self.preview_info:
             if custom_info is not None:
                 self._data[title]["info"] = custom_info
+            else:
+                self._data[title]["info"] = None
 
     def add_item_by_id(self, image_id, with_ann=True, col_index=None, info_dict=None,
                  zoom_to_figure=None, labeling_url=None):
