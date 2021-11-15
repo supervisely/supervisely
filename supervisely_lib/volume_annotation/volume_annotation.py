@@ -53,7 +53,7 @@ class VolumeAnnotation:
         return self._key
 
     @classmethod
-    def from_json(cls, data, project_meta, key_id_map: KeyIdMap=None):
+    def from_json(cls, data, project_meta, key_id_map: KeyIdMap = None):
         volume_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
@@ -72,13 +72,7 @@ class VolumeAnnotation:
                    description=description,
                    key=volume_key)
 
-
     def to_json(self, key_id_map: KeyIdMap = None):
-        '''
-        The function to_json convert videoannotation to json format
-        :param key_id_map: KeyIdMap class object
-        :return: videoannotation in json format
-        '''
         res_json = {
             VOLUME_META: self.volume_meta,
             DESCRIPTION: self.description,
@@ -92,8 +86,6 @@ class VolumeAnnotation:
             volume_id = key_id_map.get_video_id(self.key())
             if volume_id is not None:
                 res_json[VOLUME_ID] = volume_id
-            else:
-                raise ImportError
         return res_json
 
     def clone(self, volume_meta=None, objects=None, planes=None, tags=None, description=None):
@@ -102,5 +94,3 @@ class VolumeAnnotation:
                                 objects=take_with_default(objects, self.objects),
                                 tags=take_with_default(tags, self.tags),
                                 description=take_with_default(description, self.description))
-
-
