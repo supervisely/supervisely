@@ -17,7 +17,7 @@ class Gallery:
         self.col_number = col_number
         self.preview_info = preview_info
         self._need_zoom = False
-        self._with_labeling_url = False
+        self._with_title_url = False
         if not isinstance(self.col_number, int):
             raise ValueError("Columns number must be integer, not {}".format(type(self.col_number).__name__))
 
@@ -35,7 +35,7 @@ class Gallery:
         self._options_initialized = False
 
     def add_item(self, title, image_url, ann: Union[Annotation, dict] = None, col_index=None, custom_info: dict = None,
-                 zoom_to_figure=None, labeling_url=None):
+                 zoom_to_figure=None, title_url=None):
 
         if col_index is not None:
             if col_index <= 0 or col_index > self.col_number:
@@ -54,10 +54,10 @@ class Gallery:
             self._data[title]["zoom_to_figure"] = zoom_to_figure
             self._need_zoom = True
 
-        if labeling_url is not None:
+        if title_url is not None:
             self.preview_info = True
-            self._with_labeling_url = True
-            self._data[title]["labelingUrl"] = labeling_url
+            self._with_title_url = True
+            self._data[title]["labelingUrl"] = title_url
 
         if self.preview_info:
             if custom_info is not None:
@@ -66,7 +66,7 @@ class Gallery:
                 self._data[title]["info"] = None
 
     def add_item_by_id(self, image_id, with_ann=True, col_index=None, info_dict=None,
-                 zoom_to_figure=None, labeling_url=None):
+                 zoom_to_figure=None, title_url=None):
         image_info = self._api.image.get_info_by_id(image_id)
         if with_ann:
             ann_info = self._api.annotation.download(image_id)
@@ -74,11 +74,11 @@ class Gallery:
         else:
             ann = None
 
-        self.add_item(image_info.name, image_info.full_storage_url, ann, col_index, info_dict, zoom_to_figure, labeling_url)
+        self.add_item(image_info.name, image_info.full_storage_url, ann, col_index, info_dict, zoom_to_figure, title_url)
 
     def _get_item_annotation(self, name):
         if self.preview_info:
-            if self._with_labeling_url:
+            if self._with_title_url:
                 return {
                     "url": self._data[name]["image_url"],
                     "figures": [label.to_json() for label in self._data[name]["ann"].labels],
