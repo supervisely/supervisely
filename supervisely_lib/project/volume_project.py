@@ -17,6 +17,7 @@ from supervisely_lib.project.project import Dataset, Project, OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
 from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely_lib.volume.volume import validate_format
 
 VolumeItemPaths = namedtuple('VolumeItemPaths', ['volume_path', 'ann_path'])
 
@@ -54,6 +55,8 @@ class VolumeDataset(Dataset):
         dump_json_file(ann.to_json(), dst_ann_path)
 
     def get_item_paths(self, item_name) -> VolumeItemPaths:
+        volume_path = self.get_img_path(item_name)
+        validate_format(volume_path)
         return VolumeItemPaths(volume_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
 
 
@@ -142,7 +145,7 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_volume_project(directory, api, workspace_id, project_name=None, log_progress=False):
+def upload_volume_project(directory, api, workspace_id, project_name=None, progress_cb=None):
     project_fs = VolumeProject(directory, mode=OpenMode.READ)
     if project_name is None:
        project_name = project_fs.name
@@ -157,17 +160,18 @@ def upload_volume_project(directory, api, workspace_id, project_name=None, log_p
     for dataset_fs in project_fs:
         dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
 
-        ds_progress = None
-        if log_progress:
-            ds_progress = Progress('Uploading dataset: {!r}'.format(dataset.name), total_cnt=len(dataset_fs))
-
+        anns, item_names, volume_paths, volume_metas = [], [], [], []
         for item_name in dataset_fs:
             volume_path, ann_path = dataset_fs.get_item_paths(item_name)
             ann = VolumeAnnotation.from_json(load_json_file(ann_path), project_fs.meta)
+            anns.append(ann)
+            item_names.append(item_name)
+            volume_paths.append(volume_path)
+            volume_metas.append(ann.volume_meta)
 
-            volume = api.volume.upload_path(dataset.id, item_name, volume_path, ann.volume_meta)
-            api.volume.get_list(volume.dataset_id)  #TODO: remove - workaround HACK to _get_by_id info
-            api.volume.annotation.append(volume.id, ann, uploaded_objects)
+        volumes = api.volume.upload_paths(dataset.id, item_names, volume_paths, volume_metas, progress_cb=progress_cb)
+        api.volume.get_list(volumes[0].dataset_id)  # TODO: remove - workaround HACK to _get_by_id info
 
-            if log_progress:
-                ds_progress.iters_done_report(1)
+        for i, ann in enumerate(anns):
+            api.volume.annotation.append(volumes[i].id, ann, uploaded_objects)
+
