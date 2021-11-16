@@ -381,8 +381,6 @@ class Dataset(KeyObject):
         if type(ann) is not self.annotation_class:
             raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
-        print(ann)
-        raise ValueError
         dump_json_file(ann.to_json(), dst_ann_path, indent=4)
 
     def set_ann_file(self, item_name: str, ann_path: str):
