@@ -59,6 +59,8 @@ class VolumeDataset(Dataset):
 
     def set_vol_interp(self, volume_name, objects, vol_interp):
         for obj, interp in zip(objects, vol_interp):
+            if not interp:
+                continue
             dst_vol_interp_path = self.get_volumetric_interpolation_path(volume_name, obj)
             mkdir(os.path.dirname(dst_vol_interp_path))
             with open(dst_vol_interp_path, 'wb') as f:
