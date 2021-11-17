@@ -20,13 +20,7 @@ NORMAL = 'normal'
 CORONAL = 'coronal'
 SAGITTAL = 'sagittal'
 
-POINTS = 'points'
-POINTS_DATA = 'data'
-POINTS_ORIGIN = 'origin'
-
 META = 'meta'
-BITMAP = 'bitmap'
-PRIORITY = 'priority'
 DESCRIPTION = 'description'
 
 PLANE_NAMES = [AXIAL, SAGITTAL, CORONAL]

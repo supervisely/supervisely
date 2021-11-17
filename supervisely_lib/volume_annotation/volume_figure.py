@@ -18,14 +18,12 @@ from supervisely_lib.volume_annotation import constants as vol_const
 
 
 class VolumeFigure:
-    def __init__(self, volume_object, geometry, meta, key=None, priority=None, bitmap=None, description=None,
+    def __init__(self, volume_object, geometry, meta, key=None, description=None,
                  class_id=None, labeler_login=None, updated_at=None, created_at=None):
         self._volume_object = volume_object
-        self._priority = priority
-        self._meta = meta
         self._set_geometry_inplace(geometry)
-        self._bitmap = bitmap
         self._description = take_with_default(description, '')
+        self._meta = meta
         self._key = take_with_default(key, uuid.uuid4())
         self.class_id = class_id
         self.labeler_login = labeler_login
@@ -56,10 +54,6 @@ class VolumeFigure:
     @property
     def geometry(self):
         return self._geometry
-
-    @property
-    def priority(self):
-        return self._priority
 
     @property
     def meta(self):
@@ -93,7 +87,7 @@ class VolumeFigure:
                                    .format(type(self._geometry), self.parent_object.obj_class.geometry_type))
 
     @classmethod
-    def from_json(cls, data, objects: VolumeObjectCollection, key_id_map: KeyIdMap = None):
+    def from_json(cls, data, objects: VolumeObjectCollection, meta, key_id_map: KeyIdMap = None):
         object_id = data.get(ApiField.OBJECT_ID, None)
         object_key = None
         if vol_const.OBJECT_KEY in data:
@@ -116,16 +110,8 @@ class VolumeFigure:
                     object_key.hex))
 
         shape_str = data[ApiField.GEOMETRY_TYPE]
-        geometry_json = data[vol_const.POINTS]
-
+        geometry_json = data[ApiField.GEOMETRY]
         shape = GET_GEOMETRY_FROM_STR(shape_str)
-        if shape is Bitmap:
-            geometry_json = {geo_const.BITMAP: geometry_json}
-        elif shape is Rectangle:
-            geometry_json = {geo_const.POINTS: {geo_const.EXTERIOR: geometry_json, geo_const.INTERIOR: []}}
-        else:
-            raise RuntimeError(f'{shape_str} not supported by volumes')
-
         geometry = shape.from_json(geometry_json)
 
         key = uuid.UUID(data[vol_const.KEY]) if vol_const.KEY in data else uuid.uuid4()
@@ -133,21 +119,17 @@ class VolumeFigure:
         if key_id_map is not None:
             key_id_map.add_figure(key, data.get(vol_const.ID, None))
 
-        meta = data.get(vol_const.META, None)
         description = data.get(vol_const.DESCRIPTION, '')
-        priority = data.get(vol_const.PRIORITY, None)
-        bitmap = data.get(vol_const.BITMAP, None)
-
         class_id = data.get(geo_const.CLASS_ID, None)
         labeler_login = data.get(geo_const.LABELER_LOGIN, None)
         updated_at = data.get(geo_const.UPDATED_AT, None)
         created_at = data.get(geo_const.CREATED_AT, None)
 
         return cls(object,
-                   geometry, meta,
+                   geometry,
+                   meta=meta,
                    key=key,
-                   priority=priority,
-                   description=description, bitmap=bitmap,
+                   description=description,
                    class_id=class_id, labeler_login=labeler_login,
                    updated_at=updated_at, created_at=created_at)
 
@@ -155,21 +137,10 @@ class VolumeFigure:
         data_json = {
             vol_const.KEY: self.key().hex,
             vol_const.OBJECT_KEY: self.parent_object.key().hex,
-            vol_const.PRIORITY: self.priority,
             vol_const.DESCRIPTION: self._description,
-            vol_const.META: self.meta,
-            vol_const.BITMAP: self._bitmap,
+            ApiField.GEOMETRY: self.geometry.to_json(),
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
         }
-
-        if isinstance(self.geometry, Bitmap):
-            geometry_json = self.geometry.to_json()[geo_const.BITMAP]
-        elif isinstance(self.geometry, Rectangle):
-            geometry_json = self.geometry.to_json()[geo_const.POINTS][geo_const.EXTERIOR]
-        else:
-            raise ValueError(f"Figure of {type(self.geometry)} not supported by Volume")
-
-        data_json[vol_const.POINTS] = geometry_json
 
         if key_id_map is not None:
             item_id = key_id_map.get_figure_id(self.key())
@@ -183,14 +154,12 @@ class VolumeFigure:
         self._add_creation_info(data_json)
         return data_json
 
-    def clone(self, volume_object=None, geometry=None, meta=None, key=None, priority=None, bitmap=None,
+    def clone(self, volume_object=None, geometry=None, meta=None, key=None,
               description=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         return self.__class__(volume_object=take_with_default(volume_object, self.parent_object),
                               geometry=take_with_default(geometry, self.geometry),
-                              meta=take_with_default(meta, self.meta),
                               key=take_with_default(key, self._key),
-                              priority=take_with_default(priority, self.priority),
-                              bitmap=take_with_default(bitmap, self._bitmap),
+                              meta=take_with_default(meta, self.meta),
                               description=take_with_default(description, self._description),
                               class_id=take_with_default(class_id, self.class_id),
                               labeler_login=take_with_default(labeler_login, self.labeler_login),

@@ -200,4 +200,4 @@ def upload_volume_project(directory, api, workspace_id, project_name=None, progr
 
         for i, ann in enumerate(anns):
             api.volume.annotation.append(volumes[i].id, ann, uploaded_objects)
-
+    return project
