@@ -69,8 +69,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                     progress_cb(len(chunk))
 
     def _download(self, id, is_stream=False):
-        # TODO: videos.download -> volumes.download
-        response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
+        response = self._api.post('volumes.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
     def upload_hash(self, dataset_id, name, hash, meta):
