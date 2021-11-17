@@ -21,5 +21,8 @@ class VolumeObjectApi(ObjectApi):
         for object in objects:
             object_id = key_id_map.get_object_id(object.key())
             response = self._get_volumetric_interpolation(volume_id, object_id)
-            results.append(response.content)
+            if response.status_code == 200:
+                results.append(response.content)
+            else:
+                results.append(None)
         return results
