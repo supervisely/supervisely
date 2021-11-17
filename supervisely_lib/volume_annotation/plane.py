@@ -37,7 +37,7 @@ class Plane(KeyIndexedCollection, KeyObject):
         slices_json = data[SLICES]
         name = take_with_default(data[NAME], None)
         normal = data[NORMAL]
-        slices = [cls.item_type.from_json(slice_json, objects, key_id_map) for slice_json in slices_json]
+        slices = [cls.item_type.from_json(slice_json, objects, normal, key_id_map) for slice_json in slices_json]
         return cls(name, normal, slices)
 
     @property
