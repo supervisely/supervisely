@@ -196,7 +196,6 @@ def upload_volume_project(directory, api, workspace_id, project_name=None, progr
             volume_metas.append(ann.volume_meta)
 
         volumes = api.volume.upload_paths(dataset.id, item_names, volume_paths, volume_metas, progress_cb=progress_cb)
-        api.volume.get_list(volumes[0].dataset_id)  # TODO: remove - workaround HACK to _get_by_id info
 
         for i, ann in enumerate(anns):
             api.volume.annotation.append(volumes[i].id, ann, uploaded_objects)
