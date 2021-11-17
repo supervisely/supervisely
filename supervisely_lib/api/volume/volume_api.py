@@ -48,14 +48,11 @@ class VolumeApi(RemoveableBulkModuleApi):
         return super(VolumeApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
     def get_info_by_id(self, id):
-        for info in self.tmp_infos:  # TODO: remove after creating info method
-            if info.id == id:
-                return info
+        return self._get_info_by_id(id, 'volumes.info')
 
     def get_list(self, dataset_id, filters=None):
         infos = self.get_list_all_pages('volumes.list', {ApiField.DATASET_ID: dataset_id,
                                                          ApiField.FILTER: filters or []})
-        self.tmp_infos = infos  # TODO: remove after creating info method
         return infos
 
     def download_path(self, id, path, progress_cb=None):
