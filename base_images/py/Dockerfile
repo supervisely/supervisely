@@ -1,7 +1,8 @@
 #FROM supervisely/base-py:6.0.17
 #FROM nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
 
-FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu20.04
+#FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu20.04
+FROM supervisely/nvidia-cuda:11.1-cudnn8-runtime-ubuntu20.04
 
 ##############################################################################
 # common
