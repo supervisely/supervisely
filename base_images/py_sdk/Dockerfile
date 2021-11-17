@@ -1,6 +1,4 @@
-ARG REGISTRY
-ARG TAG
-FROM ${REGISTRY}/base-py:${TAG}
+FROM supervisely/base-py:6.1.7
 
 ARG tag_ref_name
 
