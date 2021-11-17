@@ -1,4 +1,5 @@
 import os
+import requests
 
 from setuptools import find_packages, setup
 
@@ -8,13 +9,16 @@ def read(fname):
         return fin.read()
 
 
+response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
+version = response.json()["name"]
+
 # Dependencies do not include PyTorch, so
 # supervisely_lib.nn.hosted.pytorch will not work out of the box.
 # If you need to invoke that part of the code, it is very likely you
 # already have PyTorch installed.
 setup(
     name="supervisely",
-    version="6.2.2",
+    version=version,
     packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*']),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
