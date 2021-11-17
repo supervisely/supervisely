@@ -3,7 +3,7 @@
 from collections import namedtuple
 import os
 
-from supervisely_lib.io.fs import file_exists, touch
+from supervisely_lib.io.fs import file_exists, touch, get_file_name, mkdir
 from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
@@ -24,6 +24,7 @@ VolumeItemPaths = namedtuple('VolumeItemPaths', ['volume_path', 'ann_path'])
 
 class VolumeDataset(Dataset):
     item_dir_name = 'volume'
+    related_files_dir_name = 'volumetric_interpolation'
     annotation_class = VolumeAnnotation
 
     @staticmethod
@@ -46,6 +47,22 @@ class VolumeDataset(Dataset):
         except (sly_volume.UnsupportedVolumeFormat, sly_volume.VolumeReadException) as e:
             os.remove(item_path)
             raise e
+
+    def get_related_files_path(self, item_name):
+        item_name_temp = item_name.replace(".", "_")
+        rimg_dir = os.path.join(self.directory, self.related_files_dir_name, item_name_temp)
+        return rimg_dir
+
+    def get_volumetric_interpolation_path(self, item_name, object):
+        rel_dir = self.get_related_files_path(item_name)
+        return os.path.join(rel_dir, object.key().hex + '.stl')
+
+    def set_vol_interp(self, volume_name, objects, vol_interp):
+        for obj, interp in zip(objects, vol_interp):
+            dst_vol_interp_path = self.get_volumetric_interpolation_path(volume_name, obj)
+            mkdir(os.path.dirname(dst_vol_interp_path))
+            with open(dst_vol_interp_path, 'wb') as f:
+                f.write(interp)
 
     def set_ann(self, item_name: str, ann):
         if type(ann) is not self.annotation_class:
@@ -129,6 +146,7 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
                 if volume_name != ann_json[ApiField.VOLUME_NAME]:
                     raise RuntimeError("Error in api.volume.annotation.download_batch: broken order")
 
+                volume_annotation = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
                 volume_file_path = dataset_fs.generate_item_path(volume_name)
                 if download_volumes is True:
                     api.volume.download_path(volume_id, volume_file_path)
@@ -137,8 +155,14 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
 
                 dataset_fs.add_item_file(volume_name,
                                          volume_file_path,
-                                         ann=VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
+                                         ann=volume_annotation,
                                          _validate_item=False)
+
+                vol_interp = api.volume.object.get_volumetric_interpolation(volume_id,
+                                                                            volume_annotation.objects,
+                                                                            key_id_map)
+                dataset_fs.set_vol_interp(volume_name, volume_annotation.objects, vol_interp)
+
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
 
