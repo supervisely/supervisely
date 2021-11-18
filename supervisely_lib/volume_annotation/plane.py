@@ -1,11 +1,10 @@
-from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection, KeyObject
-from supervisely_lib.volume_annotation.slice import Slice
+from supervisely_lib.video_annotation.frame import Frame
+from supervisely_lib.video_annotation.frame_collection import FrameCollection
 from supervisely_lib.volume_annotation.constants import PLANE_NAMES, NAME, NORMAL, SLICES
-from supervisely_lib._utils import take_with_default
 
 
-class Plane(KeyIndexedCollection, KeyObject):
-    item_type = Slice
+class Plane(FrameCollection):
+    item_type = Frame
 
     def __init__(self, name, normal, slices=None):
         super(Plane, self).__init__(items=slices)
@@ -24,9 +23,6 @@ class Plane(KeyIndexedCollection, KeyObject):
     def normal(self):
         return self._normal
 
-    def key(self):
-        return self.name
-
     def to_json(self, key_id_map=None):
         return {NAME: self.name,
                 NORMAL: self.normal,
@@ -35,19 +31,13 @@ class Plane(KeyIndexedCollection, KeyObject):
     @classmethod
     def from_json(cls, data, objects, key_id_map=None):
         slices_json = data[SLICES]
-        name = take_with_default(data[NAME], None)
-        normal = data[NORMAL]
-        slices = [cls.item_type.from_json(slice_json, objects, normal, key_id_map) for slice_json in slices_json]
-        return cls(name, normal, slices)
+        slices = [cls.item_type.from_json(slice_json, objects, key_id_map=key_id_map) for slice_json in slices_json]
 
-    @property
-    def figures(self):
-        figures_array = []
-        for slice in self:
-            figures_array.extend(slice.figures)
-        return figures_array
+        name = data[NAME]
+        normal = data[NORMAL]
+        return cls(name, normal, slices)
 
     @staticmethod
     def validate_plane_name(plane_name):
         if plane_name not in PLANE_NAMES:
-            raise NameError(f'plane name {plane_name} not in allowed {PLANE_NAMES}')
+            raise NameError(f'plane name {plane_name} not allowed. Only {PLANE_NAMES}')
