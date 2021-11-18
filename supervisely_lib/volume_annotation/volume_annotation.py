@@ -21,9 +21,9 @@ class VolumeAnnotation:
 
         self._volume_meta = volume_meta
         self._objects = take_with_default(objects, VolumeObjectCollection())
-        self._axial = take_with_default(axial, Plane(const.AXIAL, const.PLANE_NORMALS[const.AXIAL]))
-        self._sagittal = take_with_default(sagittal, Plane(const.SAGITTAL, const.PLANE_NORMALS[const.SAGITTAL]))
-        self._coronal = take_with_default(coronal, Plane(const.CORONAL, const.PLANE_NORMALS[const.CORONAL]))
+        self._axial = take_with_default(axial, Plane())
+        self._sagittal = take_with_default(sagittal, Plane())
+        self._coronal = take_with_default(coronal, Plane())
         self._tags = take_with_default(tags, VideoTagCollection())
         self._description = description
         self._key = take_with_default(key, uuid.uuid4())
@@ -73,6 +73,7 @@ class VolumeAnnotation:
 
         planes = {const.AXIAL: None, const.SAGITTAL: None, const.CORONAL: None}
         for plane in data[const.PLANES]:
+
             plane_name = plane[const.NAME]
             if plane_name in planes.keys():
                 if not planes[plane_name]:
@@ -98,10 +99,12 @@ class VolumeAnnotation:
             const.KEY: self.key().hex,
             const.TAGS: self.tags.to_json(key_id_map),
             const.OBJECTS: self.objects.to_json(key_id_map),
-            const.PLANES: [self.axial.to_json(key_id_map),
-                           self.sagittal.to_json(key_id_map),
-                           self.coronal.to_json(key_id_map)]
+            const.PLANES: []
         }
+
+        for plane in self.axial, self.sagittal, self.coronal:
+            if plane.name in const.PLANE_NAMES:
+                res_json[const.PLANES].append(plane.to_json(key_id_map))
 
         if key_id_map is not None:
             volume_id = key_id_map.get_video_id(self.key())

@@ -5,7 +5,7 @@ from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely_lib.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
-from supervisely_lib.io.json import dump_json_file
+
 
 class VolumeAnnotationApi(EntityAnnotationAPI):
     _method_download_bulk = 'volumes.annotations.bulk.info'
@@ -29,6 +29,6 @@ class VolumeAnnotationApi(EntityAnnotationAPI):
         self._api.volume.tag.append_to_entity(volume_id, info.project_id, ann.tags, key_id_map)
         self._api.volume.object.append_bulk(volume_id, ann.objects, key_id_map)
 
-        self._api.volume.figure.append_bulk(volume_id, ann.axial.figures, const.AXIAL, key_id_map)
-        self._api.volume.figure.append_bulk(volume_id, ann.coronal.figures, const.CORONAL, key_id_map)
-        self._api.volume.figure.append_bulk(volume_id, ann.sagittal.figures, const.SAGITTAL, key_id_map)
+        self._api.volume.figure.append_bulk(volume_id, ann.axial.figures, ann.axial.normal, key_id_map)
+        self._api.volume.figure.append_bulk(volume_id, ann.coronal.figures, ann.coronal.normal, key_id_map)
+        self._api.volume.figure.append_bulk(volume_id, ann.sagittal.figures, ann.sagittal.normal, key_id_map)
