@@ -6,7 +6,7 @@ from supervisely_lib.volume_annotation.constants import PLANE_NAMES, NAME, NORMA
 class Plane(FrameCollection):
     item_type = Frame
 
-    def __init__(self, name, normal, slices=None):
+    def __init__(self, name=None, normal=None, slices=None):
         super(Plane, self).__init__(items=slices)
         self.validate_plane_name(name)
         self._name = name
@@ -39,5 +39,5 @@ class Plane(FrameCollection):
 
     @staticmethod
     def validate_plane_name(plane_name):
-        if plane_name not in PLANE_NAMES:
+        if plane_name not in PLANE_NAMES and plane_name:
             raise NameError(f'plane name {plane_name} not allowed. Only {PLANE_NAMES}')

@@ -13,10 +13,9 @@ class VolumeFigureApi(VideoFigureApi):
                               geometry_json,
                               geometry_type)
 
-    def append_bulk(self, volume_id, figures, plane_name, key_id_map: KeyIdMap):
+    def append_bulk(self, volume_id, figures, normal, key_id_map: KeyIdMap):
         keys = []
         figures_json = []
-        normal = const.PLANE_NORMALS[plane_name]
         for figure in figures:
             keys.append(figure.key())
             fig_json = figure.to_json(key_id_map, save_meta=True)
