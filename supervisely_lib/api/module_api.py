@@ -90,7 +90,6 @@ class ApiField:
     IMAGES_RANGE =      (['meta', 'range'], 'images_range')
     REJECTED_IMAGES_COUNT = 'rejectedImagesCount'
     ACCEPTED_IMAGES_COUNT = 'acceptedImagesCount'
-    GENERATE_UNIQUE_NAMES = 'generateUniqueNames'
     OBJECTS_LIMIT_PER_IMAGE = (['meta', 'imageFiguresLimit'], 'objects_limit_per_image')
     TAGS_LIMIT_PER_IMAGE = (['meta', 'imageTagsLimit'], 'tags_limit_per_image')
     FILTER_IMAGES_BY_TAGS = (['meta', 'imageTags'], 'filter_images_by_tags')
