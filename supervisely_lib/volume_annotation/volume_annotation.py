@@ -4,23 +4,26 @@ from supervisely_lib._utils import take_with_default
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely_lib.volume_annotation.volume_object_collection import VolumeObjectCollection
-from supervisely_lib.volume_annotation.plane_collection import PlaneCollection
-
-from supervisely_lib.volume_annotation.constants import VOLUME_META, OBJECTS, KEY, VOLUME_ID, DESCRIPTION, TAGS, PLANES
+from supervisely_lib.volume_annotation.plane import Plane
+import supervisely_lib.volume_annotation.constants as const
 
 
 class VolumeAnnotation:
     def __init__(self,
                  volume_meta: dict,
                  objects: VolumeObjectCollection,
-                 planes: PlaneCollection,
+                 axial: Plane = None,
+                 sagittal: Plane = None,
+                 coronal: Plane = None,
                  tags: VideoTagCollection = None,
                  description: str = "",
                  key=None):
 
         self._volume_meta = volume_meta
         self._objects = take_with_default(objects, VolumeObjectCollection())
-        self._planes = take_with_default(planes, PlaneCollection())
+        self._axial = take_with_default(axial, Plane(const.AXIAL, const.PLANE_NORMALS[const.AXIAL]))
+        self._sagittal = take_with_default(sagittal, Plane(const.SAGITTAL, const.PLANE_NORMALS[const.SAGITTAL]))
+        self._coronal = take_with_default(coronal, Plane(const.CORONAL, const.PLANE_NORMALS[const.CORONAL]))
         self._tags = take_with_default(tags, VideoTagCollection())
         self._description = description
         self._key = take_with_default(key, uuid.uuid4())
@@ -30,8 +33,16 @@ class VolumeAnnotation:
         return self._volume_meta
 
     @property
-    def planes(self):
-        return self._planes
+    def axial(self):
+        return self._axial
+
+    @property
+    def sagittal(self):
+        return self._sagittal
+
+    @property
+    def coronal(self):
+        return self._coronal
 
     @property
     def objects(self):
@@ -45,52 +56,64 @@ class VolumeAnnotation:
     def description(self):
         return self._description
 
-    @property
-    def figures(self):
-        return self.planes.figures
-
     def key(self):
         return self._key
 
     @classmethod
     def from_json(cls, data, project_meta, key_id_map: KeyIdMap = None):
-        volume_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+        volume_key = uuid.UUID(data[const.KEY]) if const.KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
-            key_id_map.add_video(volume_key, data.get(VOLUME_ID, None))
+            key_id_map.add_video(volume_key, data.get(const.VOLUME_ID, None))
 
-        description = data.get(DESCRIPTION, "")
-        volume_meta = data[VOLUME_META]  # STRICT!
-        tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
-        objects = VolumeObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
-        planes = PlaneCollection.from_json(data[PLANES], objects, key_id_map)
+        description = data.get(const.DESCRIPTION, "")
+        volume_meta = data[const.VOLUME_META]
+        tags = VideoTagCollection.from_json(data[const.TAGS], project_meta.tag_metas, key_id_map)
+        objects = VolumeObjectCollection.from_json(data[const.OBJECTS], project_meta, key_id_map)
+
+        planes = {const.AXIAL: None, const.SAGITTAL: None, const.CORONAL: None}
+        for plane in data[const.PLANES]:
+            plane_name = plane[const.NAME]
+            if plane_name in planes.keys():
+                if not planes[plane_name]:
+                    planes[plane_name] = Plane.from_json(plane, objects, key_id_map)
+                else:
+                    raise RuntimeError(f'Cannot add more that one plane of type {plane_name}')
+            else:
+                raise RuntimeError(f'Wrong plane type {plane_name}!')
 
         return cls(volume_meta=volume_meta,
                    objects=objects,
-                   planes=planes,
+                   axial=planes[const.AXIAL],
+                   sagittal=planes[const.SAGITTAL],
+                   coronal=planes[const.CORONAL],
                    tags=tags,
                    description=description,
                    key=volume_key)
 
     def to_json(self, key_id_map: KeyIdMap = None):
         res_json = {
-            VOLUME_META: self.volume_meta,
-            DESCRIPTION: self.description,
-            KEY: self.key().hex,
-            TAGS: self.tags.to_json(key_id_map),
-            OBJECTS: self.objects.to_json(key_id_map),
-            PLANES: self.planes.to_json(key_id_map),
+            const.VOLUME_META: self.volume_meta,
+            const.DESCRIPTION: self.description,
+            const.KEY: self.key().hex,
+            const.TAGS: self.tags.to_json(key_id_map),
+            const.OBJECTS: self.objects.to_json(key_id_map),
+            const.PLANES: [self.axial.to_json(key_id_map),
+                           self.sagittal.to_json(key_id_map),
+                           self.coronal.to_json(key_id_map)]
         }
 
         if key_id_map is not None:
             volume_id = key_id_map.get_video_id(self.key())
             if volume_id is not None:
-                res_json[VOLUME_ID] = volume_id
+                res_json[const.VOLUME_ID] = volume_id
         return res_json
 
-    def clone(self, volume_meta=None, objects=None, planes=None, tags=None, description=None):
+    def clone(self, volume_meta=None, objects=None, axial=None, sagittal=None, coronal=None, tags=None, description=None):
         return VolumeAnnotation(volume_meta=take_with_default(volume_meta, self.volume_meta),
-                                planes=take_with_default(planes, self.planes),
+                                axial=take_with_default(axial, self.axial),
+                                coronal=take_with_default(coronal, self.coronal),
+                                sagittal=take_with_default(sagittal, self.sagittal),
                                 objects=take_with_default(objects, self.objects),
                                 tags=take_with_default(tags, self.tags),
                                 description=take_with_default(description, self.description))
