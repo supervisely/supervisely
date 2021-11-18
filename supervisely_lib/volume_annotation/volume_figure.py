@@ -18,8 +18,7 @@ from supervisely_lib.volume_annotation import constants as vol_const
 
 
 class VolumeFigure:
-    def __init__(self, volume_object, geometry, meta, key=None, description=None,
-                 class_id=None, labeler_login=None, updated_at=None, created_at=None):
+    def __init__(self, volume_object, geometry, meta, key=None, description=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         self._volume_object = volume_object
         self._set_geometry_inplace(geometry)
         self._description = take_with_default(description, '')
@@ -86,6 +85,29 @@ class VolumeFigure:
                 raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
                                    .format(type(self._geometry), self.parent_object.obj_class.geometry_type))
 
+    def to_json(self, key_id_map=None, save_meta=False):
+        data_json = {
+            vol_const.KEY: self.key().hex,
+            vol_const.OBJECT_KEY: self.parent_object.key().hex,
+            vol_const.DESCRIPTION: self._description,
+            ApiField.GEOMETRY: self.geometry.to_json(),
+            ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
+        }
+
+        if key_id_map is not None:
+            item_id = key_id_map.get_figure_id(self.key())
+            if item_id is not None:
+                data_json[vol_const.ID] = item_id
+
+            object_id = key_id_map.get_object_id(self.parent_object.key())
+            if object_id is not None:
+                data_json[ApiField.OBJECT_ID] = object_id
+        if save_meta:
+            data_json[ApiField.META] = self.meta
+
+        self._add_creation_info(data_json)
+        return data_json
+
     @classmethod
     def from_json(cls, data, objects: VolumeObjectCollection, meta, key_id_map: KeyIdMap = None):
         object_id = data.get(ApiField.OBJECT_ID, None)
@@ -125,34 +147,9 @@ class VolumeFigure:
         updated_at = data.get(geo_const.UPDATED_AT, None)
         created_at = data.get(geo_const.CREATED_AT, None)
 
-        return cls(object,
-                   geometry,
-                   meta=meta,
-                   key=key,
-                   description=description,
-                   class_id=class_id, labeler_login=labeler_login,
-                   updated_at=updated_at, created_at=created_at)
-
-    def to_json(self, key_id_map=None):
-        data_json = {
-            vol_const.KEY: self.key().hex,
-            vol_const.OBJECT_KEY: self.parent_object.key().hex,
-            vol_const.DESCRIPTION: self._description,
-            ApiField.GEOMETRY: self.geometry.to_json(),
-            ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
-        }
-
-        if key_id_map is not None:
-            item_id = key_id_map.get_figure_id(self.key())
-            if item_id is not None:
-                data_json[vol_const.ID] = item_id
-
-            object_id = key_id_map.get_object_id(self.parent_object.key())
-            if object_id is not None:
-                data_json[ApiField.OBJECT_ID] = object_id
-
-        self._add_creation_info(data_json)
-        return data_json
+        return cls(object, geometry, meta, key,
+                   class_id=class_id,
+                   description=description, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def clone(self, volume_object=None, geometry=None, meta=None, key=None,
               description=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
