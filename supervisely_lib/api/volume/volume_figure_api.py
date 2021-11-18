@@ -9,7 +9,7 @@ class VolumeFigureApi(VideoFigureApi):
     def create(self, volume_id, object_id, slice_index, normal, geometry_json, geometry_type):
         return super().create(volume_id,
                               object_id,
-                              {ApiField.META: {const.INDEX: slice_index, const.NORMAL: normal}},
+                              {ApiField.META: {const.SLICE_INDEX: slice_index, const.NORMAL: normal}},
                               geometry_json,
                               geometry_type)
 
@@ -22,7 +22,7 @@ class VolumeFigureApi(VideoFigureApi):
             fig_json = figure.to_json(key_id_map, save_meta=True)
 
             slice_index = fig_json[ApiField.META][ApiField.FRAME]
-            fig_json[ApiField.META] = {const.INDEX: slice_index, const.NORMAL: normal}
+            fig_json[ApiField.META] = {const.SLICE_INDEX: slice_index, const.NORMAL: normal}
             figures_json.append(fig_json)
 
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
