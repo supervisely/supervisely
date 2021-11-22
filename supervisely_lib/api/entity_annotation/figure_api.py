@@ -74,7 +74,6 @@ class FigureApi(RemoveableBulkModuleApi):
 
         for (batch_keys, batch_jsons) in zip(batched(figures_keys, batch_size=100),
                                              batched(figures_json, batch_size=100)):
-
             resp = self._api.post('figures.bulk.add', {field_name: entity_id, ApiField.FIGURES: batch_jsons})
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
