@@ -79,43 +79,11 @@ class VolumeDataset(Dataset):
         return VolumeItemPaths(volume_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
 
 
-class VolumeProject(Project):
+class VolumeProject(VideoProject):
     dataset_class = VolumeDataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = VolumeDataset
-
-    def __init__(self, directory, mode: OpenMode):
-        self._key_id_map: KeyIdMap = None
-        super().__init__(directory, mode)
-
-    def _read(self):
-        super(VolumeProject, self)._read()
-        self._key_id_map = KeyIdMap()
-        self._key_id_map.load_json(self._get_key_id_map_path())
-
-    def _create(self):
-        super()._create()
-        self.set_key_id_map(KeyIdMap())
-
-    def _add_item_file_to_dataset(self, ds, item_name, item_paths, _validate_item, _use_hardlink):
-        ds.add_item_file(item_name, item_paths.item_path,
-                         ann=item_paths.ann_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
-
-    @property
-    def key_id_map(self):
-        return self._key_id_map
-
-    def set_key_id_map(self, new_map: KeyIdMap):
-        self._key_id_map = new_map
-        self._key_id_map.dump_json(self._get_key_id_map_path())
-
-    def _get_key_id_map_path(self):
-        return os.path.join(self.directory, 'key_id_map.json')
-
-    @classmethod
-    def read_single(cls, dir):
-        return read_project_wrapper(dir, cls)
 
 
 def download_volume_project(api, project_id, dest_dir, dataset_ids=None, download_volumes=True, batch_size=10, log_progress=False):
