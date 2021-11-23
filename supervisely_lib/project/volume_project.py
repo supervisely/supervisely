@@ -25,7 +25,7 @@ VolumeItemPaths = namedtuple('VolumeItemPaths', ['volume_path', 'ann_path'])
 
 class VolumeDataset(VideoDataset):
     item_dir_name = 'volume'
-    related_files_dir_name = 'volumetric_interpolation'
+    related_files_dir_name = 'interpolation'
     annotation_class = VolumeAnnotation
 
     @staticmethod
@@ -44,8 +44,7 @@ class VolumeDataset(VideoDataset):
             raise e
 
     def get_related_files_path(self, item_name):
-        item_name_temp = item_name.replace(".", "_")
-        rimg_dir = os.path.join(self.directory, self.related_files_dir_name, item_name_temp)
+        rimg_dir = os.path.join(self.directory, self.related_files_dir_name, item_name)
         return rimg_dir
 
     def get_interpolation_path(self, item_name, object):
@@ -60,13 +59,6 @@ class VolumeDataset(VideoDataset):
             mkdir(os.path.dirname(dst_interpolation_path))
             with open(dst_interpolation_path, 'wb') as f:
                 f.write(interpolation_bytes)
-
-    def set_ann(self, item_name: str, ann):
-        if type(ann) is not self.annotation_class:
-            raise TypeError(f"Type of 'ann' have to be {self.annotation_class}, not a {ann}")
-
-        dst_ann_path = self.get_ann_path(item_name)
-        dump_json_file(ann.to_json(), dst_ann_path)
 
     def get_item_paths(self, item_name) -> VolumeItemPaths:
         volume_path = self.get_img_path(item_name)
