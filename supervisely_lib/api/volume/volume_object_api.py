@@ -12,15 +12,15 @@ class VolumeObjectApi(ObjectApi):
         return self._append_bulk(self._api.volume.tag, dataset_id, info.project_id, info.dataset_id, objects,
                                  key_id_map)
 
-    def _get_volumetric_interpolation(self, volume_id, object_id):
+    def _get_interpolation(self, volume_id, object_id):
         return self._api.post('figures.volumetric_interpolation', {ApiField.VOLUME_ID: volume_id,
                                                                    ApiField.OBJECT_ID: object_id})
 
-    def get_volumetric_interpolation(self, volume_id, objects: VolumeObjectCollection, key_id_map):
+    def get_interpolation(self, volume_id, objects: VolumeObjectCollection, key_id_map):
         results = []
         for object in objects:
             object_id = key_id_map.get_object_id(object.key())
-            response = self._get_volumetric_interpolation(volume_id, object_id)
+            response = self._get_interpolation(volume_id, object_id)
             if response.status_code == 200:
                 results.append(response.content)
             else:
