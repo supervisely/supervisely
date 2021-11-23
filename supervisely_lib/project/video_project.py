@@ -41,11 +41,6 @@ class VideoDataset(Dataset):
         return sly_video.has_valid_ext(path)
 
     def _get_empty_annotaion(self, item_name):
-        '''
-        Create empty VideoAnnotation for given video
-        :param item_name: str
-        :return: VideoAnnotation class object
-        '''
         img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
 
