@@ -93,7 +93,11 @@ from supervisely_lib.pointcloud_annotation.pointcloud_object import PointcloudOb
 from supervisely_lib.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely_lib.project.pointcloud_project import PointcloudDataset, PointcloudProject, download_pointcloud_project
 
-from supervisely_lib.project.volume_project import download_volume_project
+from supervisely_lib.volume import volume
+from supervisely_lib.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely_lib.volume_annotation.volume_object import VolumeObject
+from supervisely_lib.volume_annotation.volume_figure import VolumeFigure
+from supervisely_lib.project.volume_project import VolumeDataset, VolumeProject, download_volume_project
 
 from supervisely_lib.pyscripts_utils import utils as ps
 from supervisely_lib.io import docker_utils
