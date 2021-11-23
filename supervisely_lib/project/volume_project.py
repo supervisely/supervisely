@@ -13,8 +13,9 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely_lib.volume import volume as sly_volume
-from supervisely_lib.project.project import Dataset, Project, OpenMode
+from supervisely_lib.project.project import Dataset, OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
+from supervisely_lib.project.video_project import VideoProject, VideoDataset
 from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely_lib.volume.volume import validate_format
@@ -22,7 +23,7 @@ from supervisely_lib.volume.volume import validate_format
 VolumeItemPaths = namedtuple('VolumeItemPaths', ['volume_path', 'ann_path'])
 
 
-class VolumeDataset(Dataset):
+class VolumeDataset(VideoDataset):
     item_dir_name = 'volume'
     related_files_dir_name = 'volumetric_interpolation'
     annotation_class = VolumeAnnotation
@@ -33,12 +34,6 @@ class VolumeDataset(Dataset):
 
     def _get_empty_annotaion(self, item_name):
         return self.annotation_class()
-
-    def add_item_np(self, item_name, img, ann=None):
-        raise RuntimeError("Deprecated method. Works only with images project")
-
-    def _add_img_np(self, item_name, img):
-        raise RuntimeError("Deprecated method. Works only with images project")
 
     @staticmethod
     def _validate_added_item_or_die(item_path):
@@ -53,18 +48,18 @@ class VolumeDataset(Dataset):
         rimg_dir = os.path.join(self.directory, self.related_files_dir_name, item_name_temp)
         return rimg_dir
 
-    def get_volumetric_interpolation_path(self, item_name, object):
+    def get_interpolation_path(self, item_name, object):
         rel_dir = self.get_related_files_path(item_name)
         return os.path.join(rel_dir, object.key().hex + '.stl')
 
-    def set_vol_interp(self, volume_name, objects, vol_interp):
-        for obj, interp in zip(objects, vol_interp):
-            if not interp:
+    def set_interpolation(self, volume_name, objects, interpolations_bytes):
+        for obj, interpolation_bytes in zip(objects, interpolations_bytes):
+            if not interpolation_bytes:
                 continue
-            dst_vol_interp_path = self.get_volumetric_interpolation_path(volume_name, obj)
-            mkdir(os.path.dirname(dst_vol_interp_path))
-            with open(dst_vol_interp_path, 'wb') as f:
-                f.write(interp)
+            dst_interpolation_path = self.get_interpolation_path(volume_name, obj)
+            mkdir(os.path.dirname(dst_interpolation_path))
+            with open(dst_interpolation_path, 'wb') as f:
+                f.write(interpolation_bytes)
 
     def set_ann(self, item_name: str, ann):
         if type(ann) is not self.annotation_class:
@@ -131,7 +126,7 @@ def download_volume_project(api, project_id, dest_dir, dataset_ids=None, downloa
                 vol_interp = api.volume.object.get_volumetric_interpolation(volume_id,
                                                                             volume_annotation.objects,
                                                                             key_id_map)
-                dataset_fs.set_vol_interp(volume_name, volume_annotation.objects, vol_interp)
+                dataset_fs.set_interpolation(volume_name, volume_annotation.objects, vol_interp)
 
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
