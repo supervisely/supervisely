@@ -73,7 +73,6 @@ class VolumeAnnotation:
 
         planes = {const.AXIAL: None, const.SAGITTAL: None, const.CORONAL: None}
         for plane in data[const.PLANES]:
-
             plane_name = plane[const.NAME]
             if plane_name in planes.keys():
                 if not planes[plane_name]:
@@ -102,7 +101,7 @@ class VolumeAnnotation:
             const.PLANES: []
         }
 
-        for plane in self.axial, self.sagittal, self.coronal:
+        for plane in [self.axial, self.sagittal, self.coronal]:
             if plane.name in const.PLANE_NAMES:
                 res_json[const.PLANES].append(plane.to_json(key_id_map))
 

@@ -59,12 +59,10 @@ class VolumeApi(RemoveableBulkModuleApi):
         validate_format(path)
         ensure_base_path(path)
         response = self._download(id, is_stream=True)
-
         with open(path, 'wb') as fd:
             mb1 = 1024 * 1024
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
-
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
