@@ -53,7 +53,8 @@ setup(
         "docker>=4.4.1",
         "psutil>=5.4.5",
         "imgaug==0.4.0",
-        "imagecorruptions==1.1.2"
+        "imagecorruptions==1.1.2",
+        "python-dotenv==0.19.2"
     ],
     include_package_data=True
 )
