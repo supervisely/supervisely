@@ -868,30 +868,28 @@ class Project:
 
 def read_single_project(dir, project_class=Project):
     '''
-    Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
+    Trying to read project from given ditectory and its subdirs (depth=2)
+    Throws exceptions if the given directory contains more than one subdirectory.
+    The last exception will be printed with all previous exceptions.
     :param dir: str
     :param project_class: Project class object type
     :return: Project class object
     '''
     try:
         project_fs = project_class(dir, OpenMode.READ)
-        return project_fs
-    except Exception as e:
-        pass
-
-    projects_in_dir = get_subdirs(dir)
-    if len(projects_in_dir) != 1:
-        raise RuntimeError('Found {} dirs instead of 1'.format(len(projects_in_dir)))
-
-    project_dir = os.path.join(dir, projects_in_dir[0])
-    try:
-        project_fs = project_class(project_dir, OpenMode.READ)
-    except Exception as e:
-        projects_in_dir = get_subdirs(project_dir)
+    except:
+        projects_in_dir = get_subdirs(dir)
         if len(projects_in_dir) != 1:
-            raise e
-        project_dir = os.path.join(project_dir, projects_in_dir[0])
-        project_fs = project_class(project_dir, OpenMode.READ)
+            raise RuntimeError(f'Found {len(projects_in_dir)} dirs instead of 1 inside {dir}')
+        project_dir = os.path.join(dir, projects_in_dir[0])
+        try:
+            project_fs = project_class(project_dir, OpenMode.READ)
+        except:
+            projects_in_dir = get_subdirs(project_dir)
+            if len(projects_in_dir) != 1:
+                raise RuntimeError(f'Found {len(projects_in_dir)} dirs instead of 1 inside {project_dir}')
+            project_dir = os.path.join(project_dir, projects_in_dir[0])
+            project_fs = project_class(project_dir, OpenMode.READ)
 
     return project_fs
 
