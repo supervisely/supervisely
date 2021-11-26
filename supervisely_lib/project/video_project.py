@@ -7,6 +7,7 @@ from supervisely_lib.io.fs import file_exists, touch
 from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
+from supervisely_lib.sly_logger import logger
 from supervisely_lib._utils import batched
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
@@ -112,7 +113,12 @@ class VideoProject(Project):
         '''
         super(VideoProject, self)._read()
         self._key_id_map = KeyIdMap()
-        self._key_id_map.load_json(self._get_key_id_map_path())
+
+        key_id_map_path = self._get_key_id_map_path()
+        try:
+            self._key_id_map.load_json(key_id_map_path)
+        except FileNotFoundError:
+            logger.warn(f"Key ID Map file not found at {key_id_map_path} Trying to read anyway")
 
     def _create(self):
         '''
