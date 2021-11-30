@@ -87,4 +87,4 @@ def get_run_mode(docker_api, task_msg):
     return result
 
 def is_task_type(task_obj, task_name):
-    return type(a) is _task_class_mapping[task_name]
+    return type(task_obj) is _task_class_mapping[task_name]
