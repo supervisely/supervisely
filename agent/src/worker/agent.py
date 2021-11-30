@@ -11,7 +11,7 @@ import supervisely_lib as sly
 import uuid
 
 from worker import constants
-from worker.task_factory import create_task
+from worker.task_factory import create_task, is_task_type
 from worker.logs_to_rpc import add_task_handler
 from worker.agent_utils import LogQueue
 from worker.system_info import get_hw_info, get_self_docker_image_digest
@@ -172,8 +172,19 @@ class Agent:
                 task_id = task['task_id']
                 task["agent_version"] = self.agent_info["agent_version"]
                 try:
-                    self.task_pool[task_id] = create_task(task, self.docker_api)
-                    self.task_pool[task_id].start()
+                    # check existing upgrade task to avoid agent duplication
+                    need_skip = False
+                    for temp_id, temp_task in self.task_pool.items():
+                        if is_task_type(temp_task, 'update_agent'):
+                            need_skip = True
+                            break
+
+                    if need_skip is False:
+                        self.task_pool[task_id] = create_task(task, self.docker_api)
+                        self.task_pool[task_id].start()
+                    else:
+                        self.logger.warning('Agent Update is running, current task is skipped due to duplication',
+                                            extra={'task_id': task_id})
                 except Exception as e:
                     self.logger.critical('Unexpected exception in task start.', exc_info=True, extra={
                         'event_type': sly.EventType.TASK_CRASHED,
