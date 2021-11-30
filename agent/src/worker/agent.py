@@ -174,10 +174,11 @@ class Agent:
                 try:
                     # check existing upgrade task to avoid agent duplication
                     need_skip = False
-                    for temp_id, temp_task in self.task_pool.items():
-                        if is_task_type(temp_task, 'update_agent'):
-                            need_skip = True
-                            break
+                    if task['task_type'] == "update_agent":
+                        for temp_id, temp_task in self.task_pool.items():
+                            if is_task_type(temp_task, "update_agent"):
+                                need_skip = True
+                                break
 
                     if need_skip is False:
                         self.task_pool[task_id] = create_task(task, self.docker_api)
