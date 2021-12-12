@@ -100,6 +100,8 @@ from supervisely_lib.app.app_service import AppService
 import supervisely_lib.app.widgets
 
 from supervisely_lib.decorators.profile import timeit
+from supervisely_lib.decorators.profile import update_fields
+
 import supervisely_lib.script as script
 from supervisely_lib.user.user import UserRoleName
 from supervisely_lib.io import github_utils as git

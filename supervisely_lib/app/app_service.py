@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import traceback
 import functools
 import sys
@@ -23,6 +24,8 @@ from supervisely_lib.io.json import load_json_file
 from supervisely_lib._utils import _remove_sensitive_information
 from supervisely_lib.worker_api.agent_rpc import send_from_memory_generator
 from supervisely_lib.io.fs_cache import FileCache
+
+
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
 
@@ -78,7 +81,9 @@ class AppService:
         self.api.add_to_metadata('x-task-id', str(self.task_id))
 
         self.callbacks = {}
-        self.processing_queue = queue.Queue()#(maxsize=self.QUEUE_MAX_SIZE)
+        self.periodic_items = {}
+
+        self.processing_queue = queue.Queue()  # (maxsize=self.QUEUE_MAX_SIZE)
         self.logger.debug('App is created', extra={"task_id": self.task_id, "server_address": self.server_address})
 
         self._ignore_stop_for_debug = False
@@ -100,7 +105,7 @@ class AppService:
         # context["message"] will always be there; but context["exception"] may not
         msg = context.get("exception", context["message"])
         if isinstance(msg, Exception):
-            #self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(msg), 'future_info': context["future"]})
+            # self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(msg), 'future_info': context["future"]})
             self.logger.error(msg, exc_info=True, extra={'future_info': context["future"]})
         else:
             self.logger.error("Caught exception: {}".format(msg))
@@ -136,17 +141,75 @@ class AppService:
                 return 'Hello World'
         :param callback_name: the command name as string
         """
+
         def decorator(f):
             self._add_callback(callback_name, f)
 
             @functools.wraps(f)
             def wrapper(*args, **kwargs):
                 f(*args, **kwargs)
+
             return wrapper
+
+        return decorator
+
+    def call_periodic_function_sync(self, f, period):
+        while True:
+            then = time.time()
+
+            try:
+                f(api=self.public_api,
+                  task_id=self.task_id)
+            except Exception as ex:
+                tb = traceback.format_exc()
+                self.logger.error(f"Exception in periodic function: {f.__name__}\n"
+                                  f"{tb}")
+                self.logger.info("App will be stopped due to error")
+
+                asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
+
+            elapsed = time.time() - then
+
+            if (period - elapsed) > 0:
+                # await asyncio.sleep(period - elapsed)
+                time.sleep(period - elapsed)
+
+    # async def call_periodic_function(self, period, f):
+
+    async def scheduler(self):
+        self.logger.info("Starting scheduler")
+
+        for f, seconds in self.periodic_items.items():
+            asyncio.ensure_future(
+                self.loop.run_in_executor(self.executor, self.call_periodic_function_sync, f, seconds), loop=self.loop
+            )
+            # self.loop.create_task(self.call_periodic_function(seconds, f))
+
+    def _add_periodic(self, seconds, f):
+        self.periodic_items[f] = seconds
+
+    def periodic(self, seconds):
+        """A decorator that is used to call functions periodically
+            @app.periodic(seconds=5)
+            def log_message_periodically():
+                sly.logger.info('periodically message')
+        :param seconds: interval of function call in seconds
+        """
+
+        def decorator(f):
+            self._add_periodic(seconds, f)
+
+            @functools.wraps(f)
+            def wrapper(*args, **kwargs):
+                f(*args, **kwargs)
+
+            return wrapper
+
         return decorator
 
     def handle_message_sync(self, request_msg):
         try:
+
             state = request_msg.get(STATE, None)
             context = request_msg.get(CONTEXT, None)
             if context is not None:
@@ -164,17 +227,17 @@ class AppService:
             if command == STOP_COMMAND and command not in self.callbacks:
                 _default_stop(user_public_api, self.task_id, context, state, self.logger)
                 if self._ignore_stop_for_debug is False:
-                    #self.stop()
+                    # self.stop()
                     asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
                     return
                 else:
                     self.logger.info("STOP event is ignored ...")
             elif command in AppService.DEFAULT_EVENTS and command not in self.callbacks:
                 raise AppCommandNotFound("App received default command {!r}. Use decorator \"callback\" to handle it."
-                               .format(command))
+                                         .format(command))
             elif command not in self.callbacks:
                 raise AppCommandNotFound("App received unhandled command {!r}. Use decorator \"callback\" to handle it."
-                               .format(command))
+                                         .format(command))
 
             if command == STOP_COMMAND:
                 if self._ignore_stop_for_debug is False:
@@ -203,7 +266,7 @@ class AppService:
                     'event_type': EventType.TASK_CRASHED
                 })
                 self.logger.info("App will be stopped due to error")
-                #asyncio.create_task(self._shutdown(error=e))
+                # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
@@ -216,7 +279,7 @@ class AppService:
             request_msg = self.processing_queue.get()
             to_log = _remove_sensitive_information(request_msg)
             self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': to_log})
-            #asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
+            # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
                 self.loop.run_in_executor(self.executor, self.handle_message_sync, request_msg), loop=self.loop
             )
@@ -233,7 +296,8 @@ class AppService:
                 event_obj["api_token"] = os.environ[API_TOKEN]
                 self.processing_queue.put(event_obj)
 
-        for gen_event in self.api.get_endless_stream('GetGeneralEventsStream', api_proto.GeneralEvent, api_proto.Empty()):
+        for gen_event in self.api.get_endless_stream('GetGeneralEventsStream', api_proto.GeneralEvent,
+                                                     api_proto.Empty()):
             try:
                 data = {}
                 if gen_event.data is not None and gen_event.data != b'':
@@ -277,6 +341,7 @@ class AppService:
             self._run_executors()
             self.loop.create_task(self.publish(initial_events), name="Publisher")
             self.loop.create_task(self.consume(), name="Consumer")
+            self.loop.create_task(self.scheduler(), name="Scheduler")
             self.loop.run_forever()
         finally:
             self.loop.close()
@@ -286,13 +351,13 @@ class AppService:
             raise self._error
 
     def stop(self, wait=True):
-        #@TODO: add timeout
+        # @TODO: add timeout
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.processing_queue.put(event_obj)
         else:
             self.logger.info('Stop app (force, no wait)', extra={'event_type': EventType.APP_FINISHED})
-            #asyncio.create_task(self._shutdown())
+            # asyncio.create_task(self._shutdown())
             asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
 
     async def _shutdown(self, signal=None, error=None):
@@ -410,5 +475,7 @@ class AppService:
                     )
                     self.show_modal_window(f"Oops! Something went wrong, please try again or contact tech support."
                                            f" Find more info in the app logs. Error: {repr(e)}", level="error")
+
             return wrapper
+
         return decorator

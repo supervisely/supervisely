@@ -1,5 +1,6 @@
 # coding: utf-8
 import json
+import urllib.parse
 from functools import partial
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
@@ -53,6 +54,20 @@ class VideoApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         return 'VideoInfo'
+
+    def url(self, dataset_id, video_id, video_frame=0):
+        '''
+        :param dataset_id: int
+        :param video_id: int
+        :param video_frame: int
+        :return: url of given video id
+        '''
+        result = urllib.parse.urljoin(self._api.server_address, f'app/videos/?'
+                                                                f'datasetId={dataset_id}&'
+                                                                f'videoFrame={video_frame}&'
+                                                                f'videoId={video_id}')
+
+        return result
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         return super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)

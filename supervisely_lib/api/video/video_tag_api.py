@@ -17,6 +17,18 @@ class VideoTagApi(TagApi):
     def update_value(self, tag_id, tag_value):
         self._api.post('videos.tags.update-value', {ApiField.ID: tag_id, ApiField.VALUE: tag_value})
 
+    def add_tag(self, project_meta_tag_id, video_id, value=None, frame_range=None):
+        request_data = {
+            ApiField.TAG_ID: project_meta_tag_id,
+            ApiField.VIDEO_ID: video_id
+        }
+        if value:
+            request_data[ApiField.VALUE] = value
+        if frame_range:
+            request_data[ApiField.FRAME_RANGE] = frame_range
+
+        self._api.post('videos.tags.add', request_data)
+
 
 """
     import supervisely_lib as sly
