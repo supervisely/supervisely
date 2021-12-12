@@ -35,7 +35,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT,
                 ApiField.TYPE,
-                ApiField.REFERENCE_IMAGE_URL]
+                ApiField.REFERENCE_IMAGE_URL,
+                ApiField.CUSTOM_DATA
+                ]
 
     @staticmethod
     def info_tuple_name():
