@@ -1,4 +1,7 @@
 # coding: utf-8
+from __future__ import annotations
+from typing import List
+from typing import NamedTuple
 
 from supervisely_lib.api.module_api import ApiField, ModuleNoParent, UpdateableModule
 from typing import List
@@ -7,6 +10,9 @@ from supervisely_lib.sly_logger import logger
 
 #@TODO - umar will add meta with review status and duration
 class ActivityAction:
+    """
+    List of Team Actions to sort Team Activity.
+    """
     LOGIN = 'login'
     LOGOUT = 'logout'
     CREATE_PROJECT = 'create_project'
@@ -70,8 +76,43 @@ class ActivityAction:
 
 
 class TeamApi(ModuleNoParent, UpdateableModule):
+    """
+    API for working with Team. :class:`TeamApi<TeamApi>` object is immutable.
+
+    :param api: API connection to the server
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        team_info = api.worksapce.get_info_by_id(team_id) # api usage example
+    """
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple TeamInfo containing information about Team.
+
+        :Example:
+
+         .. code-block:: python
+
+            TeamInfo(id=1,
+                     name='Vehicle',
+                     description='',
+                     role='admin',
+                     created_at='2020-03-31T14:49:08.931Z',
+                     updated_at='2020-03-31T14:49:08.931Z')
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -81,34 +122,134 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **TeamInfo**.
+        """
         return 'TeamInfo'
 
     def __init__(self, api):
         ModuleNoParent.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, filters=None):
-        '''
-        :param filters: list
-        :return: list of all teams
-        '''
+    def get_list(self, filters: List[dict] = None) -> List[NamedTuple]:
+        """
+        List of all Teams.
+
+        :param filters: List of params to sort output Teams.
+        :type filters: list, optional
+        :return: List of all Teams with information. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            team_id = 8
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_list = api.team.get_list(team_id)
+            print(team_list)
+            # Output: [TeamInfo(id=1,
+            #                   name='Vehicle',
+            #                   description='',
+            #                   role='admin',
+            #                   created_at='2020-03-31T14:49:08.931Z',
+            #                   updated_at='2020-03-31T14:49:08.931Z'),
+            # TeamInfo(id=2,
+            #          name='Road',
+            #          description='',
+            #          role='admin',
+            #          created_at='2020-03-31T08:52:11.000Z',
+            #          updated_at='2020-03-31T08:52:11.000Z'),
+            # TeamInfo(id=3,
+            #          name='Animal',
+            #          description='',
+            #          role='admin',
+            #          created_at='2020-04-02T08:59:03.717Z',
+            #          updated_at='2020-04-02T08:59:03.717Z')
+            # ]
+
+            # Filtered Team list
+            team_list = api.team.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Animal' }])
+            print(team_list)
+            # Output: [TeamInfo(id=3,
+            #                  name='Animal',
+            #                  description='',
+            #                  role='admin',
+            #                  created_at='2020-04-02T08:59:03.717Z',
+            #                  updated_at='2020-04-02T08:59:03.717Z')
+            # ]
+        """
         return self.get_list_all_pages('teams.list',  {ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id):
-        '''
-        :param id: int
-        :return: team metainformation with given id
-        '''
+    def get_info_by_id(self, id: int) -> NamedTuple:
+        """
+        Get Team information by ID.
+
+        :param id: Team ID in Supervisely.
+        :type id: int
+        :return: Information about Team. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_info = api.team.get_info_by_id(8)
+            print(team_info)
+            # Output: TeamInfo(id=8,
+            #          name='Fruits',
+            #          description='',
+            #          role='admin',
+            #          created_at='2020-04-15T10:50:41.926Z',
+            #          updated_at='2020-04-15T10:50:41.926Z')
+
+            # You can also get Team info by name
+            team_info = api.team.get_info_by_name("Fruits")
+            print(team_info)
+            # Output: TeamInfo(id=8,
+            #          name='Fruits',
+            #          description='',
+            #          role='admin',
+            #          created_at='2020-04-15T10:50:41.926Z',
+            #          updated_at='2020-04-15T10:50:41.926Z')
+        """
         return self._get_info_by_id(id, 'teams.info')
 
-    def create(self, name, description="", change_name_if_conflict=False):
-        '''
-        Create team with given name
-        :param name: str
-        :param description: str
-        :param change_name_if_conflict: bool
-        :return: team metainformation
-        '''
+    def create(self, name: str, description: str = "", change_name_if_conflict: bool = False) -> NamedTuple:
+        """
+        Creates Team with given name.
+
+        :param name: Team name.
+        :type name: str
+        :param description: Team description.
+        :type description: str
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :return: Information about Team. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_team = api.team.create("Flowers")
+            print(new_team)
+            # Output: TeamInfo(id=228,
+            #                  name='Flowers',
+            #                  description='',
+            #                  role='admin',
+            #                  created_at='2021-03-11T11:18:46.576Z',
+            #                  updated_at='2021-03-11T11:18:46.576Z')
+        """
         effective_name = self._get_effective_new_name(name=name, change_name_if_conflict=change_name_if_conflict)
         response = self._api.post('teams.add', {ApiField.NAME: effective_name, ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())
@@ -116,10 +257,85 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     def _get_update_method(self):
         return 'teams.editInfo'
 
-    def get_activity(self, team_id,
-                     filter_user_id=None, filter_project_id=None, filter_job_id=None, filter_actions=None,
-                     progress_cb=None, start_date=None, end_date=None):
+    def get_activity(self, team_id: int,
+                     filter_user_id=None, filter_project_id=None, filter_job_id=None, filter_actions: list=None,
+                     progress_cb=None, start_date=None, end_date=None) -> List[dict]:
+        """
+        Get Team activity by ID.
 
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param filter_user_id: User ID by which the activity will be filtered.
+        :type filter_user_id: int, optional
+        :param filter_project_id: Project ID by which the activity will be filtered.
+        :type filter_project_id: int, optional
+        :param filter_job_id: Job ID by which the activity will be filtered.
+        :type filter_job_id: int, optional
+        :param filter_actions: List of ActivityAction by which the activity will be filtered.
+        :type filter_actions: list, optional
+        :return: Team activity
+        :rtype: :class:`List[dict]`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely_lib.api.team_api import ActivityAction as aa
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            labeling_actions = [
+                aa.ATTACH_TAG,
+                aa.UPDATE_TAG_VALUE,
+                aa.DETACH_TAG,
+            ]
+
+            team_activity = api.team.get_activity(8, filter_actions=labeling_actions)
+            print(team_activity)
+            # Output: [
+            #     {
+            #         "userId":7,
+            #         "action":"detach_tag",
+            #         "date":"2021-01-15T15:11:55.985Z",
+            #         "user":"cxnt",
+            #         "projectId":1817,
+            #         "project":"App_Test_Poly",
+            #         "datasetId":2370,
+            #         "dataset":"train",
+            #         "imageId":726985,
+            #         "image":"IMG_8144.jpeg",
+            #         "classId":"None",
+            #         "class":"None",
+            #         "figureId":"None",
+            #         "job":"None",
+            #         "jobId":"None",
+            #         "tag":"hhhlk",
+            #         "tagId":4720,
+            #         "meta":{}
+            #     },
+            #     {
+            #         "userId":7,
+            #         "action":"attach_tag",
+            #         "date":"2021-01-15T14:24:58.480Z",
+            #         "user":"cxnt",
+            #         "projectId":1817,
+            #         "project":"App_Test_Poly",
+            #         "datasetId":2370,
+            #         "dataset":"train",
+            #         "imageId":726985,
+            #         "image":"IMG_8144.jpeg",
+            #         "classId":"None",
+            #         "class":"None",
+            #         "figureId":"None",
+            #         "job":"None",
+            #         "jobId":"None",
+            #         "tag":"hhhlk",
+            #         "tagId":4720,
+            #         "meta":{}
+            #     }
+            # ]
+        """
         from datetime import datetime, timedelta
 
         filters = []
