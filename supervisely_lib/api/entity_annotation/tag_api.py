@@ -1,5 +1,7 @@
 # coding: utf-8
-
+from __future__ import annotations
+from typing import List, Tuple
+from typing import NamedTuple
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
@@ -7,11 +9,30 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 
 class TagApi(ModuleApi):
+    """
+    Tag object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`.
+    """
     _entity_id_field = None
     _method_bulk_add = None
 
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple ObjectInfo information about Object.
+
+        :Example:
+
+         .. code-block:: python
+
+            TagInfo(id=29098692,
+                    project_id=124976,
+                    name='number_of_objects',
+                    settings={'type': 'any_number',
+                    'options': {'autoIncrement': False}},
+                    color='#1F380F',
+                    created_at='2021-03-23T13:25:34.705Z',
+                    updated_at='2021-03-23T13:25:34.705Z')
+        """
         return [ApiField.ID,
                 ApiField.PROJECT_ID,
                 ApiField.NAME,
@@ -25,10 +46,128 @@ class TagApi(ModuleApi):
     def info_tuple_name():
         return 'TagInfo'
 
-    def get_list(self, project_id, filters=None):
+    def get_list(self, project_id: int, filters: List[dict]=None) -> List[NamedTuple]:
+        """
+        Get list of information about all video Tags for a given project ID.
+
+        :param dataset_id: Project ID in Supervisely.
+        :type dataset_id: int
+        :param filters: List of parameters to sort output Tags.
+        :type filters: List[dict], optional
+        :return: Information about Tags. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 124976
+            tag_infos = api.video.tag.get_list(project_id)
+            print(tag_infos)
+            # Output: [
+            #     [
+            #         29098692,
+            #         124976,
+            #         "number_of_objects",
+            #         {
+            #             "type": "any_number",
+            #             "options": {
+            #                 "autoIncrement": false
+            #             }
+            #         },
+            #         "#1F380F",
+            #         "2021-03-23T13:25:34.705Z",
+            #         "2021-03-23T13:25:34.705Z"
+            #     ],
+            #     [
+            #         29098693,
+            #         124976,
+            #         "objects_present",
+            #         {
+            #             "type": "none",
+            #             "options": {}
+            #         },
+            #         "#F8E71C",
+            #         "2021-03-23T13:25:34.705Z",
+            #         "2021-03-23T13:25:34.705Z"
+            #     ],
+            #     [
+            #         29098694,
+            #         124976,
+            #         "vehicle_colour",
+            #         {
+            #             "type": "any_string",
+            #             "options": {}
+            #         },
+            #         "#65C0D7",
+            #         "2021-03-23T13:25:34.705Z",
+            #         "2021-03-23T13:25:34.705Z"
+            #     ],
+            #     [
+            #         29098695,
+            #         124976,
+            #         "animal_present",
+            #         {
+            #             "type": "none",
+            #             "options": {}
+            #         },
+            #         "#872D8B",
+            #         "2021-03-23T13:25:34.705Z",
+            #         "2021-03-23T13:25:34.705Z"
+            #     ],
+            #     [
+            #         29098696,
+            #         124976,
+            #         "animal_age_group",
+            #         {
+            #             "type": "oneof_string",
+            #             "values": [
+            #                 "juvenile",
+            #                 "adult",
+            #                 "senior"
+            #             ],
+            #             "options": {}
+            #         },
+            #         "#14902E",
+            #         "2021-03-23T13:25:34.705Z",
+            #         "2021-03-23T13:25:34.705Z"
+            #     ]
+            # ]
+        """
         return self.get_list_all_pages('tags.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
-    def get_name_to_id_map(self, project_id):
+    def get_name_to_id_map(self, project_id: int) -> dict:
+        """
+        Get matching the tag name to its ID.
+
+        :param dataset_id: Project ID in Supervisely.
+        :type dataset_id: int
+        :return: Matching Tag name to it ID in Supervisely
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 124976
+            tags_to_ids = api.video.tag.get_name_to_id_map(project_id)
+            print(tags_to_ids)
+            # Output: {
+            #     "number_of_objects": 29098692,
+            #     "objects_present": 29098693,
+            #     "vehicle_colour": 29098694,
+            #     "animal_present": 29098695,
+            #     "animal_age_group": 29098696
+            # }
+        """
         tags_info = self.get_list(project_id)
         return {tag_info.name: tag_info.id for tag_info in tags_info}
 

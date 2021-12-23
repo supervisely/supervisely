@@ -1,5 +1,6 @@
 # coding: utf-8
-
+from typing import List
+from typing import NamedTuple
 import os
 import time
 from collections import defaultdict, OrderedDict
@@ -13,6 +14,28 @@ from supervisely_lib._utils import batched
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
+    """
+    API for working with Tasks. :class:`TaskApi<TaskApi>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        task_id = 121230
+        task_info = api.task.get_info_by_id(task_id)
+    """
     class RestartPolicy(StrEnum):
         NEVER = 'never'
         ON_ERROR = 'on_error'
@@ -38,47 +61,164 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         ModuleApiBase.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, workspace_id, filters=None):
-        '''
-        :param workspace_id: int
-        :param filters: list
-        :return: list of all tasks in given workspace
-        '''
+    def get_list(self, workspace_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+        """
+        List of Tasks in the given Workspace.
+
+        :param workspace_id: Workspace ID.
+        :type workspace_id: int
+        :param filters: List of params to sort output Projects.
+        :type filters: List[dict], optional
+        :return: List of Tasks with information for the given Workspace.
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            workspace_id = 23821
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_infos = api.task.get_list(workspace_id)
+
+            task_infos_filter = api.task.get_list(23821, filters=[{'field': 'id', 'operator': '=', 'value': 121230}])
+            print(task_infos_filter)
+            # Output: [
+            #     {
+            #         "id": 121230,
+            #         "type": "clone",
+            #         "status": "finished",
+            #         "startedAt": "2019-12-19T12:13:09.702Z",
+            #         "finishedAt": "2019-12-19T12:13:09.701Z",
+            #         "meta": {
+            #             "input": {
+            #                 "model": {
+            #                     "id": 1849
+            #                 },
+            #                 "isExternal": true,
+            #                 "pluginVersionId": 84479
+            #             },
+            #             "output": {
+            #                 "model": {
+            #                     "id": 12380
+            #                 },
+            #                 "pluginVersionId": 84479
+            #             }
+            #         },
+            #         "description": ""
+            #     }
+            # ]
+        """
         return self.get_list_all_pages('tasks.list',
                                        {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id):
-        '''
-        :param id: int
-        :return: tast metadata by numeric id
-        '''
+    def get_info_by_id(self, id: int) -> NamedTuple:
+        """
+        Get Task information by ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Information about Task.
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_info = api.task.get_info_by_id(task_id)
+            print(task_info)
+            # Output: {
+            #     "id": 121230,
+            #     "workspaceId": 23821,
+            #     "description": "",
+            #     "type": "clone",
+            #     "status": "finished",
+            #     "startedAt": "2019-12-19T12:13:09.702Z",
+            #     "finishedAt": "2019-12-19T12:13:09.701Z",
+            #     "userId": 16154,
+            #     "meta": {
+            #         "input": {
+            #             "model": {
+            #                 "id": 1849
+            #             },
+            #             "isExternal": true,
+            #             "pluginVersionId": 84479
+            #         },
+            #         "output": {
+            #             "model": {
+            #                 "id": 12380
+            #             },
+            #             "pluginVersionId": 84479
+            #         }
+            #     },
+            #     "settings": {},
+            #     "agentName": null,
+            #     "userLogin": "alexxx",
+            #     "teamId": 16087,
+            #     "agentId": null
+            # }
+        """
         return self._get_info_by_id(id, 'tasks.info')
 
-    def get_status(self, task_id):
-        '''
-        :param task_id: int
-        :return: Status class object (status of task with given id)
-        '''
+    def get_status(self, task_id: int) -> Status:
+        """
+        Check status of Task by ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Status object
+        :rtype: :class:`Status`
+        :Usage example:
+
+         .. code-block:: python
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_status = api.task.get_status(task_id)
+            print(task_status)
+            # Output: finished
+        """
         status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
-    def raise_for_status(self, status):
-        '''
-        Raise error if status is ERROR
-        :param status: Status class object
-        '''
+    def raise_for_status(self, status: Status) -> None:
+        """
+        Raise error if Task status is ERROR.
+
+        :param status: Status object.
+        :type status: Status
+        :return: None
+        :rtype: :class:`NoneType`
+        """
         if status is self.Status.ERROR:
             raise RuntimeError('Task status: ERROR')
 
-    def wait(self, id, target_status, wait_attempts=None, wait_attempt_timeout_sec=None):
-        '''
-        Awaiting achievement by given task of a given status
-        :param id: int
-        :param target_status: Status class object (status of task we expect to destinate)
-        :param wait_attempts: int
-        :param wait_attempt_timeout_sec: int (raise error if waiting time exceeded)
-        :return: bool
-        '''
+    def wait(self, id: int, target_status: Status, wait_attempts: int=None, wait_attempt_timeout_sec: int=None) -> bool:
+        """
+        Awaiting achievement by given Task of a given status.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :param target_status: Status object(status of task we expect to destinate).
+        :type target_status: Status
+        :param wait_attempts: The number of attempts to determine the status of the task that we are waiting for.
+        :type wait_attempts: int, optional
+        :param wait_attempt_timeout_sec: Number of seconds for intervals between attempts(raise error if waiting time exceeded).
+        :type wait_attempt_timeout_sec: int, optional
+        :return: True if the desired status is reached, False otherwise
+        :rtype: :class:`bool`
+        """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
@@ -113,7 +253,37 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                                        ApiField.VERSION: version})
         return response.json()[ApiField.TASK_ID]
 
-    def get_context(self, id):
+    def get_context(self, id: int) -> dict:
+        """
+        Get context information by task ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Context information in dict format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            context = api.task.get_context(task_id)
+            print(context)
+            # Output: {
+            #     "team": {
+            #         "id": 16087,
+            #         "name": "alexxx"
+            #     },
+            #     "workspace": {
+            #         "id": 23821,
+            #         "name": "my_super_workspace"
+            #     }
+            # }
+        """
         response = self._api.post('GetTaskContext', {ApiField.ID: id})
         return response.json()
 

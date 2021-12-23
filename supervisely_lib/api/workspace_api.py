@@ -1,11 +1,49 @@
 # coding: utf-8
+from __future__ import annotations
+from typing import NamedTuple
+from typing import List
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
 class WorkspaceApi(ModuleApi, UpdateableModule):
+    """
+    API for working with Workspace. :class:`WorkspaceApi<WorkspaceApi>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        workspace_info = api.worksapce.get_info_by_id(workspace_id) # api usage example
+    """
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple WorkspaceInfo containing information about Workspace.
+
+        :Example:
+
+         .. code-block:: python
+
+            WorkspaceInfo(id=15,
+                          name='Cars',
+                          description='Workspace contains Project with annotated Cars',
+                          team_id=8,
+                          created_at='2020-04-15T10:50:41.926Z',
+                          updated_at='2020-04-15T10:50:41.926Z')
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -15,36 +53,128 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **WorkspaceInfo**.
+        """
         return 'WorkspaceInfo'
 
     def __init__(self, api):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, team_id, filters=None):
-        '''
-        :param team_id: int
-        :param filters: list
-        :return: list of all the workspaces in the selected team
-        '''
+    def get_list(self, team_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+        """
+        List of Workspaces in the given Team.
+
+        :param team_id: Team ID in which the Workspaces are located.
+        :type team_id: int
+        :param filters: List of params to sort output Workspaces.
+        :type filters: List[dict], optional
+        :return: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            workspace_infos = api.workspace.get_list(8)
+            print(workspace_infos)
+            # Output: [
+            # WorkspaceInfo(id=15,
+            #               name='Cars',
+            #               description='',
+            #               team_id=8,
+            #               created_at='2020-04-15T10:50:41.926Z',
+            #               updated_at='2020-04-15T10:50:41.926Z'),
+            # WorkspaceInfo(id=18,
+            #               name='Heart',
+            #               description='',
+            #               team_id=8,
+            #               created_at='2020-05-20T15:01:54.172Z',
+            #               updated_at='2020-05-20T15:01:54.172Z'),
+            # WorkspaceInfo(id=20,
+            #               name='PCD',
+            #               description='',
+            #               team_id=8,
+            #               created_at='2020-06-24T11:51:11.336Z',
+            #               updated_at='2020-06-24T11:51:11.336Z')
+            # ]
+
+            # Filtered Workspace list
+            workspace_infos = api.workspace.get_list(8, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Heart'}])
+            print(workspace_infos)
+            # Output: [WorkspaceInfo(id=18,
+            #                       name='Heart',
+            #                       description='',
+            #                       team_id=8,
+            #                       created_at='2020-05-20T15:01:54.172Z',
+            #                       updated_at='2020-05-20T15:01:54.172Z')
+            # ]
+        """
         return self.get_list_all_pages('workspaces.list',  {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id):
-        '''
-        :param id: int
-        :return: workspace metadata
-        '''
+    def get_info_by_id(self, id: int) -> NamedTuple:
+        """
+        Get Workspace information by ID.
+
+        :param id: Workspace ID in Supervisely.
+        :type id: int
+        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            workspace_info = api.workspace.get_info_by_id(58)
+            print(workspace_info)
+            # Output: WorkspaceInfo(id=58,
+            #                       name='Test',
+            #                       description='',
+            #                       team_id=8,
+            #                       created_at='2020-11-09T18:21:08.202Z',
+            #                       updated_at='2020-11-09T18:21:08.202Z')
+        """
         return self._get_info_by_id(id, 'workspaces.info')
 
-    def create(self, team_id, name, description="", change_name_if_conflict=False):
-        '''
-        Create workspaces in team with given id
-        :param team_id: int
-        :param name: str
-        :param description: str
-        :param change_name_if_conflict: bool
-        :return: new workspace metadata
-        '''
+    def create(self, team_id: int, name: str, description: str = "",
+               change_name_if_conflict: bool = False) -> NamedTuple:
+        """
+        Create Workspace with given name in the given Team.
+
+        :param team_id: Team ID in Supervisely where Workspace will be created.
+        :type team_id: int
+        :param name: Workspace Name.
+        :type name: str
+        :param description: Workspace description.
+        :type description: str, optional
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_workspace = api.workspace.create(8, "Vehicle Detection")
+            print(new_workspace)
+            # Output: WorkspaceInfo(id=274,
+            #                       name='Vehicle Detection"',
+            #                       description='',
+            #                       team_id=8,
+            #                       created_at='2021-03-11T12:24:21.773Z',
+            #                       updated_at='2021-03-11T12:24:21.773Z')
+        """
         effective_name = self._get_effective_new_name(
             parent_id=team_id, name=name, change_name_if_conflict=change_name_if_conflict)
         response = self._api.post('workspaces.add', {ApiField.TEAM_ID: team_id,

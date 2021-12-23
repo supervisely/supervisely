@@ -1,4 +1,7 @@
 # coding: utf-8
+from __future__ import annotations
+from typing import NamedTuple
+from typing import List
 
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField
@@ -6,8 +9,46 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 
 class ObjectClassApi(ModuleApi):
+    """
+    API for working with :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>`. :class:`ObjectClassApi<ObjectClassApi>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        project_id = 1951
+        obj_class_infos = api.object_class.get_list(project_id)
+    """
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple ObjectClassInfo information about ObjectClass.
+
+        :Example:
+
+         .. code-block:: python
+
+            ObjectClassInfo(id=22309,
+                            name='lemon',
+                            description='',
+                            shape='bitmap',
+                            color='#51C6AA',
+                            settings={},
+                            created_at='2021-03-02T10:04:33.973Z',
+                            updated_at='2021-03-11T09:37:07.111Z')
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -20,21 +61,85 @@ class ObjectClassApi(ModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **ObjectClassInfo**.
+        """
         return 'ObjectClassInfo'
 
-    def get_list(self, project_id, filters=None):
-        '''
-        :param project_id: int
-        :param filters: list
-        :return: List the object classes from the given project
-        '''
+    def get_list(self, project_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+        """
+        List of ObjClasses in the given Project.
+
+        :param project_id: Project ID in which the ObjClasses are located.
+        :type project_id: int
+        :param filters: List of params to sort output ObjClasses.
+        :type filters: List[dict], optional
+        :return: List of ObjClasses with information from the given Project. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 1951
+            obj_class_infos = api.object_class.get_list(project_id)
+            print(obj_class_infos)
+            # Output: [ObjectClassInfo(id=22309,
+            #                          name='lemon',
+            #                          description='',
+            #                          shape='bitmap',
+            #                          color='#51C6AA',
+            #                          settings={},
+            #                          created_at='2021-03-02T10:04:33.973Z',
+            #                          updated_at='2021-03-11T09:37:07.111Z'),
+            #  ObjectClassInfo(id=22310,
+            #                  name='kiwi',
+            #                  description='',
+            #                  shape='bitmap',
+            #                  color='#FF0000',
+            #                  settings={},
+            #                  created_at='2021-03-02T10:04:33.973Z',
+            #                  updated_at='2021-03-11T09:37:07.111Z')
+            # ]
+
+            obj_class_list = api.object_class.get_list(1951, filters=[{'field': 'name', 'operator': '=', 'value': 'lemon' }])
+            print(obj_class_list)
+            # Output: [
+            #     [
+            #         22309,
+            #         "lemon",
+            #         "",
+            #         "bitmap",
+            #         "#51C6AA",
+            #         {},
+            #         "2021-03-02T10:04:33.973Z",
+            #         "2021-03-11T09:37:07.111Z"
+            #     ]
+            # ]
+        """
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
-    def get_name_to_id_map(self, project_id):
-        '''
-        :param project_id: int
-        :return: dictionary object class name -> object class id
-        '''
+    def get_name_to_id_map(self, project_id: int) -> dict:
+        """
+        :param project_id: Project ID in which the ObjClasses are located.
+        :type project_id: int
+        :return: Dictionary Key ID Map {'key': id}
+        :rtype: :class:`KeyIdMap<supervisely_lib.video_annotation.key_id_map.KeyIdMap>`
+        :Usage example:
+
+        .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            obj_class_map = api.object_class.get_name_to_id_map(1951)
+            print(obj_class_map)
+            # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
+        """
         objects_infos = self.get_list(project_id)
         return {object_info.name: object_info.id for object_info in objects_infos}
 

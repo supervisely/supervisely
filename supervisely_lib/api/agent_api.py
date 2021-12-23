@@ -45,7 +45,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
     @staticmethod
     def info_sequence():
-        '''
+        """
         NamedTuple AgentInfo information about Agent.
 
         :Example:
@@ -53,7 +53,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
          .. code-block:: python
 
             AgentInfo("some info")
-        '''
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.TOKEN,
@@ -101,7 +101,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         return self.get_list_all_pages('agents.list',  {'teamId': team_id, "filter": filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:
-        '''
+        """
         Get Agent information by ID.
 
         :param id: Agent ID in Supervisely.
@@ -117,11 +117,11 @@ class AgentApi(ModuleApi, ModuleWithStatus):
             api = sly.Api.from_env()
 
             agent = api.agent.get_info_by_id(7)
-        '''
+        """
         return self._get_info_by_id(id, 'agent.info')
 
     def get_status(self, id: int) -> Status:
-        '''
+        """
         Status object containing status of Agent: waiting or running.
 
         :param id: Agent ID in Supervisely.
@@ -137,7 +137,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
             api = sly.Api.from_env()
 
             agent = api.agent.get_status(7)
-        '''
+        """
         status_str = self.get_info_by_id(id).status
         return self.Status(status_str)
 

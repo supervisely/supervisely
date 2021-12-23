@@ -1,4 +1,8 @@
 # coding: utf-8
+from __future__ import annotations
+from typing import List
+from typing import NamedTuple
+from pandas.core.frame import DataFrame
 
 from enum import Enum
 import pandas as pd
@@ -21,8 +25,51 @@ class ExpectedProjectTypeMismatch(Exception):
 
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
+    """
+    API for working with :class:`Project<supervisely_lib.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
+
+    :param api: API connection to the server
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        project_id = 1951
+        project_info = api.project.get_info_by_id(project_id)
+    """
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple ProjectInfo with API Fields containing information about Project.
+
+        :Example:
+
+         .. code-block:: python
+
+            ProjectInfo(id=999,
+                        name='Cat_breeds',
+                        description='',
+                        size='861069',
+                        readme='',
+                        workspace_id=58,
+                        images_count=10,
+                        items_count=10,
+                        datasets_count=2,
+                        created_at='2020-11-17T17:44:28.158Z',
+                        updated_at='2021-03-01T10:51:57.545Z',
+                        type='images',
+                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -41,39 +88,169 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **ProjectInfo**.
+        """
         return 'ProjectInfo'
 
     def __init__(self, api):
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, workspace_id, filters=None):
-        '''
-        :param workspace_id: int
-        :param filters: list
-        :return: list all the projects for a given workspace
-        '''
+    def get_list(self, workspace_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+        """
+        List of Projects in the given Workspace.
+
+        :param workspace_id: Workspace ID in which the Projects are located.
+        :type workspace_id: int
+        :param filters: List of params to sort output Projects.
+        :type filters: List[dict], optional
+        :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            workspace_id = 58
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_list = api.project.get_list(workspace_id)
+            print(project_list)
+            # Output: [
+            # ProjectInfo(id=861,
+            #             name='Project_COCO',
+            #             description='',
+            #             size='22172241',
+            #             readme='',
+            #             workspace_id=58,
+            #             images_count=6,
+            #             items_count=6,
+            #             datasets_count=1,
+            #             created_at='2020-11-09T18:21:32.356Z',
+            #             updated_at='2020-11-09T18:21:32.356Z',
+            #             type='images',
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            # ProjectInfo(id=999,
+            #             name='Cat_breeds',
+            #             description='',
+            #             size='861069',
+            #             readme='',
+            #             workspace_id=58,
+            #             images_count=10,
+            #             items_count=10,
+            #             datasets_count=2,
+            #             created_at='2020-11-17T17:44:28.158Z',
+            #             updated_at='2021-03-01T10:51:57.545Z',
+            #             type='images',
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            # ]
+
+            # Filtered Project list
+            project_list = api.project.get_list(workspace_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Cat_breeds'}])
+            print(project_list)
+            # Output: ProjectInfo(id=999,
+            #                     name='Cat_breeds',
+            #                     description='',
+            #                     size='861069',
+            #                     readme='',
+            #                     workspace_id=58,
+            #                     images_count=10,
+            #                     items_count=10,
+            #                     datasets_count=2,
+            #                     created_at='2020-11-17T17:44:28.158Z',
+            #                     updated_at='2021-03-01T10:51:57.545Z',
+            #                     type='images',
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            # ]
+
+        """
         return self.get_list_all_pages('projects.list',  {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []})
 
-    def get_info_by_id(self, id, expected_type=None, raise_error=False):
-        '''
-        :param id: int
-        :param expected_type: type of data we expext to get info (raise error if type of project is not None and != expected type)
-        :param raise_error: bool
-        :return: project metadata by numeric id (None if request status_code == 404, raise error in over way)
-        '''
+    def get_info_by_id(self, id: int, expected_type: str = None, raise_error: bool = False) -> NamedTuple:
+        """
+        Get Project information by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param expected_type: Expected ProjectType.
+        :type expected_type: ProjectType, optional
+        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :type raise_error: bool, optional
+        :raises: Error if type of project is not None and != expected type
+        :return: Information about Project. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 1951
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_info = api.project.get_info_by_id(project_id)
+            print(project_info)
+            # Output: ProjectInfo(id=861,
+            #                     name='fruits_annotated',
+            #                     description='',
+            #                     size='22172241',
+            #                     readme='',
+            #                     workspace_id=58,
+            #                     images_count=6,
+            #                     items_count=6,
+            #                     datasets_count=1,
+            #                     created_at='2020-11-09T18:21:32.356Z',
+            #                     updated_at='2020-11-09T18:21:32.356Z',
+            #                     type='images',
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+
+        """
         info = self._get_info_by_id(id, 'projects.info')
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
-    def get_info_by_name(self, parent_id, name, expected_type=None, raise_error=False):
-        '''
-        :param parent_id: int
-        :param name: str
-        :param expected_type: type of data we expext to get info
-        :param raise_error: bool
-        :return: project metadata by numeric workspace id and given name of project
-        '''
+    def get_info_by_name(self, parent_id: int, name: str, expected_type: ProjectType = None, raise_error: bool = False) -> NamedTuple:
+        """
+        Get Project information by name.
+
+        :param parent_id: Workspace ID.
+        :type parent_id: int
+        :param name: Project name.
+        :type name: str
+        :param expected_type: Expected ProjectType.
+        :type expected_type: ProjectType, optional
+        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :type raise_error: bool, optional
+        :return: Information about Project. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_info = api.project.get_info_by_name(58, "fruits_annotated")
+            print(project_info)
+            # Output: ProjectInfo(id=861,
+            #                     name='fruits_annotated',
+            #                     description='',
+            #                     size='22172241',
+            #                     readme='',
+            #                     workspace_id=58,
+            #                     images_count=6,
+            #                     items_count=6,
+            #                     datasets_count=1,
+            #                     created_at='2020-11-09T18:21:32.356Z',
+            #                     updated_at='2020-11-09T18:21:32.356Z',
+            #                     type='images',
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+        """
         info = super().get_info_by_name(parent_id, name)
         self._check_project_info(info, name=name, expected_type=expected_type, raise_error=raise_error)
         return info
@@ -102,24 +279,91 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise ExpectedProjectTypeMismatch("Project {!r} has type {!r}, but expected type is {!r}"
                                               .format(str_id, info.type, expected_type))
 
-    def get_meta(self, id):
-        '''
-        :param id: int
-        :return: labeling meta information for the project - the set of available object classes and tags
-        '''
+    def get_meta(self, id: int) -> dict:
+        """
+        Get ProjectMeta by Project ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: ProjectMeta dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_meta = api.project.get_meta(project_id)
+            print(project_meta)
+            # Output: {
+            #     "classes":[
+            #         {
+            #             "id":22310,
+            #             "title":"kiwi",
+            #             "shape":"bitmap",
+            #             "hotkey":"",
+            #             "color":"#FF0000"
+            #         },
+            #         {
+            #             "id":22309,
+            #             "title":"lemon",
+            #             "shape":"bitmap",
+            #             "hotkey":"",
+            #             "color":"#51C6AA"
+            #         }
+            #     ],
+            #     "tags":[],
+            #     "projectType":"images"
+            # }
+        """
         response = self._api.post('projects.meta', {'id': id})
         return response.json()
 
-    def create(self, workspace_id, name, type=ProjectType.IMAGES, description="", change_name_if_conflict=False):
-        '''
-        Create project with given name in workspace with given id
-        :param workspace_id: int
-        :param name: str
-        :param type: type of progect to create
-        :param description: str
-        :param change_name_if_conflict: bool
-        :return: created project metadata
-        '''
+    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES, description: str = "",
+               change_name_if_conflict: bool = False) -> NamedTuple:
+        """
+        Create Project with given name in the given Workspace ID.
+
+        :param workspace_id: Workspace ID in Supervisely where Project will be created.
+        :type workspace_id: int
+        :param name: Project Name.
+        :type name: str
+        :param type: Type of created Project.
+        :type type: ProjectType
+        :param description: Project description.
+        :type description: str
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :return: Information about Project. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            workspace_id = 8
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_proj = api.project.create(workspace_id, "fruits_test", sly.ProjectType.IMAGES)
+            print(new_proj)
+            # Output: ProjectInfo(id=1993,
+            #                     name='fruits_test',
+            #                     description='',
+            #                     size='0',
+            #                     readme='',
+            #                     workspace_id=58,
+            #                     images_count=None,
+            #                     items_count=None,
+            #                     datasets_count=None,
+            #                     created_at='2021-03-11T09:28:42.585Z',
+            #                     updated_at='2021-03-11T09:28:42.585Z',
+            #                     type='images',
+            #                     reference_image_url=None)
+        """
         effective_name = self._get_effective_new_name(
             parent_id=workspace_id, name=name, change_name_if_conflict=change_name_if_conflict)
         response = self._api.post('projects.add', {ApiField.WORKSPACE_ID: workspace_id,
@@ -131,43 +375,111 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def _get_update_method(self):
         return 'projects.editInfo'
 
-    def update_meta(self, id, meta):
-        '''
-        Update given project with given metadata
-        :param id: int
-        :param meta: project metainformation
-        '''
+    def update_meta(self, id: int, meta: dict) -> None:
+        """
+        Updates given Project with given ProjectMeta.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param meta: ProjectMeta dict
+        :type meta: dict
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            lemons_proj_id = 1951
+            kiwis_proj_id = 1952
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_meta = api.project.get_meta(lemons_proj_id)
+            updated_meta = api.project.update_meta(kiwis_proj_id, project_meta)
+        """
         self._api.post('projects.meta.update', {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
         return 'projects.clone'
 
-    def get_datasets_count(self, id):
-        '''
-        :param id: int
-        :return: int (number of datasets in given project)
-        '''
+    def get_datasets_count(self, id: int) -> int:
+        """
+        Number of Datasets in the given Project by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Number of Datasets in the given Project
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 454
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_ds_count = api.project.get_datasets_count(project_id)
+            print(project_ds_count)
+            # Output: 4
+        """
         datasets = self._api.dataset.get_list(id)
         return len(datasets)
 
-    def get_images_count(self, id):
-        '''
-        :param id: int
-        :return: int (number of images in given project)
-        '''
+    def get_images_count(self, id: int) -> int:
+        """
+        Number of images in the given Project by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Number of images in the given Project
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 454
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_imgs_count = api.project.get_images_count(project_id)
+            print(project_imgs_count)
+            # Output: 24
+        """
         datasets = self._api.dataset.get_list(id)
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
         return 'projects.remove'
 
-    def merge_metas(self, src_project_id, dst_project_id):
-        '''
-        Add metadata from given progect to given destination project
-        :param src_project_id: int
-        :param dst_project_id: int
-        :return: merged project metainformation
-        '''
+    def merge_metas(self, src_project_id: int, dst_project_id: int) -> dict:
+        """
+        Merges ProjectMeta from given Project to given destination Project.
+
+        :param src_project_id: Source Project ID.
+        :type src_project_id: int
+        :param dst_project_id: Destination Project ID.
+        :type dst_project_id: int
+        :return: ProjectMeta dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            lemons_proj_id = 1951
+            kiwis_proj_id = 1980
+
+            merged_projects = api.project.merge_metas(lemons_proj_id, kiwis_proj_id)
+        """
         if src_project_id == dst_project_id:
             return self.get_meta(src_project_id)
 
@@ -180,7 +492,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id, progress_cb=None):
+    def get_activity(self, id: int, progress_cb=None) -> DataFrame:
+        """
+        Get Project activity by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: `Pandas DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
+        :rtype: :class:`DataFrame`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 1951
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_activity = api.project.get_activity(project_id)
+            print(project_activity)
+            # Output:    userId               action  ... tagId             meta
+            #         0       7  annotation_duration  ...  None  {'duration': 1}
+            #         1       7  annotation_duration  ...  None  {'duration': 2}
+            #         2       7        create_figure  ...  None               {}
+            #
+            #         [3 rows x 18 columns]
+        """
         proj_info = self.get_info_by_id(id)
         workspace_info = self._api.workspace.get_info_by_id(proj_info.workspace_id)
         activity = self._api.team.get_activity(workspace_info.team_id, filter_project_id=id, progress_cb=progress_cb)
@@ -195,15 +533,77 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             res = res._replace(items_count=res.images_count)
         return res
 
-    def get_stats(self, id):
+    def get_stats(self, id: int) -> dict:
+        """
+        Get Project stats by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Project statistics
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 1951
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_stats = api.project.get_stats(project_id)
+        """
         response = self._api.post('projects.stats', {ApiField.ID: id})
         return response.json()
 
-    def url(self, id):
+    def url(self, id: int) -> str:
+        """
+        Get Project URL by ID.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Project URL
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 1951
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_url = api.project.url(project_id)
+            print(project_url)
+            # Output: http://supervise.ly/projects/1951/datasets
+        """
         result = urllib.parse.urljoin(self._api.server_address, 'projects/{}/datasets'.format(id))
         return result
 
-    def update_custom_data(self, id, data):
+    def update_custom_data(self, id: int, data: dict) -> dict:
+        """
+        Updates custom data of the Project by ID
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param data: Custom data
+        :type data: dict
+        :return: Project information in dict format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_id = 1951
+            custom_data = {1:2}
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_info = api.project.update_custom_data(project_id, custom_data)
+        """
         if type(data) is not dict:
             raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
         response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
