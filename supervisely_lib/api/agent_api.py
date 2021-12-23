@@ -1,5 +1,9 @@
 # coding: utf-8
 
+from __future__ import annotations
+
+from typing import NamedTuple
+from typing import List
 from enum import Enum
 from supervisely_lib.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
@@ -13,12 +17,43 @@ class AgentNotRunning(Exception):
 
 
 class AgentApi(ModuleApi, ModuleWithStatus):
+    """
+    API for working with agent. :class:`AgentApi<AgentApi>` object is immutable.
+
+    :param api: API connection to the server
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        team_id = 8
+        agents = api.agent.get_list(team_id)
+    """
     class Status(Enum):
         WAITING = 'waiting'
         RUNNING = 'running'
 
     @staticmethod
     def info_sequence():
+        '''
+        NamedTuple AgentInfo information about Agent.
+
+        :Example:
+
+         .. code-block:: python
+
+            AgentInfo("some info")
+        '''
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.TOKEN,
@@ -31,31 +66,77 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **AgentInfo**.
+        """
         return 'AgentInfo'
 
     def __init__(self, api):
         ModuleApi.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, team_id, filters=None):
+    def get_list(self, team_id: int, filters: List[dict] = None) -> List[NamedTuple]:
         '''
-        :param team_id: int
-        :param filters: list
-        :return: list of all agents with given team id
+        List of all agents in the given Team.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param filters: List of params to sort output Agents.
+        :type filters: List[dict], optional
+        :return: List of Agents with information. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 16087
+            agents = api.agent.get_list(team_id)
+
+            filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         '''
         return self.get_list_all_pages('agents.list',  {'teamId': team_id, "filter": filters or []})
 
-    def get_info_by_id(self, id):
+    def get_info_by_id(self, id: int) -> NamedTuple:
         '''
-        :param id: int
-        :return: workspace metadata by workspace numeric ID
+        Get Agent information by ID.
+
+        :param id: Agent ID in Supervisely.
+        :type id: int
+        :return: Information about Agent. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            agent = api.agent.get_info_by_id(7)
         '''
         return self._get_info_by_id(id, 'agent.info')
 
-    def get_status(self, id):
+    def get_status(self, id: int) -> Status:
         '''
-        :param id: int
-        :return: Status class object containing status of workspace with given numeric ID (maybe waiting or running)
+        Status object containing status of Agent: waiting or running.
+
+        :param id: Agent ID in Supervisely.
+        :type id: int
+        :return: Agent Status
+        :rtype: :class:`Status<Status>`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            agent = api.agent.get_status(7)
         '''
         status_str = self.get_info_by_id(id).status
         return self.Status(status_str)
