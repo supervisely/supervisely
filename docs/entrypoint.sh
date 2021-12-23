@@ -1,0 +1,1 @@
+sphinx-build /app/source /app/build
