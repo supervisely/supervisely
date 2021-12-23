@@ -1,15 +1,56 @@
 # coding: utf-8
 
+
+from __future__ import annotations
+
 import json
+from typing import List
+from typing import NamedTuple
 
 from supervisely_lib.annotation.annotation import Annotation
 from supervisely_lib.api.module_api import ApiField, ModuleApi
 from supervisely_lib._utils import batched
+from supervisely_lib.task.progress import Progress
 
 
 class AnnotationApi(ModuleApi):
+    '''
+    Annotation for a single image. :class:`AnnotationApi<AnnotationApi>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dataset_id = 254737
+        ann_infos = api.annotation.get_list(dataset_id)
+    '''
     @staticmethod
     def info_sequence():
+        '''
+        NamedTuple AnnotationInfo information about Annotation.
+
+        :Example:
+
+         .. code-block:: python
+
+            AnnotationInfo(image_id=121236919,
+                           image_name='IMG_1836',
+                           annotation={'description': '', 'tags': [], 'size': {'height': 800, 'width': 1067}, 'objects': []},
+                           created_at='2019-12-19T12:06:59.435Z',
+                           updated_at='2021-02-06T11:07:26.080Z')
+        '''
         return [ApiField.IMAGE_ID,
                 ApiField.IMAGE_NAME,
                 ApiField.ANNOTATION,
@@ -18,32 +59,139 @@ class AnnotationApi(ModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """
+        NamedTuple name - **AnnotationInfo**.
+        """
         return 'AnnotationInfo'
 
-    def get_list(self, dataset_id, filters=None, progress_cb=None):
+    def get_list(self, dataset_id: int, filters: List[dict] = None, progress_cb: Progress = None) -> List[NamedTuple]:
         '''
-        :param dataset_id: int
-        :param filters: list
-        :param progress_cb:
-        :return: list all the annotations for a given dataset
+        Get list of information about all annotations for a given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param filters: List of parameters to sort output Annotations.
+        :type filters: List[dict], optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            dataset_id = 254737
+            ann_infos = api.annotation.get_list(dataset_id)
+            print(json.dumps(ann_infos[0], indent=4))
+            # Output: [
+            #     121236918,
+            #     "IMG_0748.jpeg",
+            #     {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     },
+            #     "2019-12-19T12:06:59.435Z",
+            #     "2021-02-06T11:07:26.080Z"
+            # ]
+
+            ann_infos_filter = api.annotation.get_list(dataset_id, filters={ 'field': 'name', 'operator': '=', 'value': 'IMG_1836' })
+            print(json.dumps(ann_infos_filter, indent=4))
+            # Output: [
+            #     121236919,
+            #     "IMG_1836",
+            #     {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     },
+            #     "2019-12-19T12:06:59.435Z",
+            #     "2021-02-06T11:07:26.080Z"
+            # ]
         '''
         return self.get_list_all_pages('annotations.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}, progress_cb)
 
-    def download(self, image_id, with_custom_data=False):
+    def download(self, image_id: int, with_custom_data: bool = False) -> NamedTuple:
         '''
-        :param image_id: int
-        :return: serialized JSON annotation for the image id
+        Download AnnotationInfo by image ID from API.
+
+        :param image_id: Image ID in Supervisely.
+        :type image_id: int
+        :param with_custom_data:
+        :type with_custom_data: bool, optional
+        :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`Namedtuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            ann_info = api.annotation.download(image_id)
+            print(json.dumps(ann_info, indent=4))
+            # Output: [
+            #     121236918,
+            #     "IMG_0748.jpeg",
+            #     {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     },
+            #     "2019-12-19T12:06:59.435Z",
+            #     "2021-02-06T11:07:26.080Z"
+            # ]
         '''
         response = self._api.post('annotations.info',
                                   {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data})
         return self._convert_json_info(response.json())
 
-    def download_batch(self, dataset_id, image_ids, progress_cb=None, with_custom_data=False):
+    def download_batch(self, dataset_id: int, image_ids: List[int], progress_cb: Progress = None, with_custom_data: bool = False) -> List[NamedTuple]:
         '''
-        :param dataset_id: int
-        :param image_ids: list of integers
-        :param progress_cb:
-        :return: list of serialized JSON annotations for the given dataset id and image id's
+        Get list of AnnotationInfos for given dataset ID from API.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of integers.
+        :type image_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[Namedtuple]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            progress = sly.Progress("Annotations downloaded: ", len(image_ids))
+            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=progress.iters_done_report)
+            # Output:
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
         '''
         id_to_ann = {}
         for batch in batched(image_ids):
@@ -61,27 +209,159 @@ class AnnotationApi(ModuleApi):
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
         return ordered_results
 
-    def upload_path(self, img_id, ann_path):
+    def upload_path(self, img_id: int, ann_path: str) -> None:
+        '''
+        Loads an annotation from a given path to a given image ID in the API.
+
+        :param img_id: Image ID in Supervisely.
+        :type img_id: int
+        :param ann_path: Path to annotation on host.
+        :type ann_path: str
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            ann_path = '/home/admin/work/supervisely/example/ann.json'
+            upl_path = api.annotation.upload_path(image_id, ann_path)
+        '''
         self.upload_paths([img_id], [ann_path])
 
-    def upload_paths(self, img_ids, ann_paths, progress_cb=None):
-        # img_ids from the same dataset
+    def upload_paths(self, img_ids: List[int], ann_paths: List[str], progress_cb: Progress = None) -> None:
+        '''
+        Loads an annotations from a given paths to a given images IDs in the API. Images IDs must be from one dataset.
+
+        :param img_ids: Images IDs in Supervisely.
+        :type img_ids: List[int]
+        :param ann_paths: Paths to annotations on local machine.
+        :type ann_paths: List[str]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_ids = [121236918, 121236919]
+            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            upl_paths = api.annotation.upload_paths(img_ids, ann_pathes)
+        '''
         def read_json(ann_path):
             with open(ann_path) as json_file:
                 return json.load(json_file)
         self._upload_batch(read_json, img_ids, ann_paths, progress_cb)
 
-    def upload_json(self, img_id, ann_json):
+    def upload_json(self, img_id: int, ann_json: dict) -> None:
+        '''
+        Loads an annotation from dict to a given image ID in the API.
+
+        :param img_id: Image ID in Supervisely.
+        :type img_id: int
+        :param ann_json: Annotation in JSON format.
+        :type ann_json: dict
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            upl_json = api.annotation.upload_json(image_id, ann_json)
+        '''
         self.upload_jsons([img_id], [ann_json])
 
-    def upload_jsons(self, img_ids, ann_jsons, progress_cb=None):
-        # img_ids from the same dataset
+    def upload_jsons(self, img_ids: List[int], ann_jsons: List[dict], progress_cb: Progress = None) -> None:
+        '''
+        Loads an annotations from dicts to a given images IDs in the API. Images IDs must be from one dataset.
+
+        :param img_ids: Image ID in Supervisely.
+        :type img_ids: List[int]
+        :param ann_jsons: Annotation in JSON format.
+        :type ann_jsons: List[dict]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_ids = [121236918, 121236919]
+            upl_jsons = api.annotation.upload_jsons(img_ids, ann_jsons)
+        '''
         self._upload_batch(lambda x: x, img_ids, ann_jsons, progress_cb)
 
-    def upload_ann(self, img_id, ann):
+    def upload_ann(self, img_id: int, ann: Annotation) -> None:
+        '''
+        Loads an :class:`Annotation<supervisely_lib.annotation.annotation.Annotation>` to a given image ID in the API.
+
+        :param img_id: Image ID in Supervisely.
+        :type img_id: int
+        :param ann: Annotation object.
+        :type ann: Annotation
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            upl_ann = api.annotation.upload_ann(image_id, ann)
+        '''
         self.upload_anns([img_id], [ann])
 
-    def upload_anns(self, img_ids, anns, progress_cb=None):
+    def upload_anns(self, img_ids: List[int], anns: List[Annotation], progress_cb: Progress = None) -> None:
+        '''
+        Loads an :class:`Annotations<supervisely_lib.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
+
+        :param img_ids: Image ID in Supervisely.
+        :type img_ids: List[int]
+        :param anns: List of Annotation objects.
+        :type anns: List[Annotation]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_ids = [121236918, 121236919]
+            upl_anns = api.annotation.upload_anns(img_ids, [ann1, ann2])
+        '''
         # img_ids from the same dataset
         self._upload_batch(Annotation.to_json, img_ids, anns, progress_cb)
 
@@ -114,7 +394,36 @@ class AnnotationApi(ModuleApi):
     def _add_sort_param(self, data):
         return data
 
-    def copy_batch(self, src_image_ids, dst_image_ids, progress_cb=None):
+    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int], progress_cb: Progress = None) -> None:
+        '''
+        Copy annotations from one images IDs to another in API.
+
+        :param src_image_ids: Images IDs in Supervisely.
+        :type src_image_ids: List[int]
+        :param dst_image_ids: Unique IDs of images in API.
+        :type dst_image_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_ids = [121236918, 121236919]
+            dst_ids = [547837053, 547837054]
+            progress = sly.Progress("Annotations copy: ", len(src_ids))
+            copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=progress.iters_done_report)
+            # Output:
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:24:31.286Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}
+        '''
         if len(src_image_ids) != len(dst_image_ids):
             raise RuntimeError('Can not match "src_image_ids" and "dst_image_ids" lists, '
                                'len(src_image_ids) != len(dst_image_ids)')
@@ -130,7 +439,29 @@ class AnnotationApi(ModuleApi):
             if progress_cb is not None:
                 progress_cb(len(src_ids_batch))
 
-    def copy(self, src_image_id, dst_image_id):
+    def copy(self, src_image_id: int, dst_image_id: int) -> None:
+        '''
+        Copy annotation from one image ID to another image ID in API.
+
+        :param src_image_id: Image ID in Supervisely.
+        :type src_image_id: int
+        :param dst_image_id: Image ID in Supervisely..
+        :type dst_image_id: int
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_id = 121236918
+            dst_id = 547837053
+            copy_ann = api.annotation.copy(src_id, dst_id)
+        '''
         self.copy_batch([src_image_id], [dst_image_id])
 
     def copy_batch_by_ids(self, src_image_ids, dst_image_ids):
