@@ -1,7 +1,9 @@
 # coding: utf-8
 
+from __future__ import annotations
 import cv2
 import numpy as np
+from typing import List, Tuple
 
 from shapely.geometry import mapping, Polygon as ShapelyPolygon
 
@@ -11,22 +13,44 @@ from supervisely_lib.geometry.vector_geometry import VectorGeometry
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry import validation
 from supervisely_lib.sly_logger import logger
+from supervisely_lib.geometry.point_location import PointLocation
+from supervisely_lib.geometry.rectangle import Rectangle
 
 
 class Polygon(VectorGeometry):
-    '''
-    This is a class for creating and using Polygon objects for Labels
-    '''
+    """
+    Polygon geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
+
+    :param exterior: List of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects, the object contour is defined with these points.
+    :type exterior: List[PointLocation]
+    :param interior: List of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects, the object holes is defined with these points.
+    :type interior: List[List[PointLocation]]
+    :param sly_id: Polygon ID in Supervisely server.
+    :type sly_id: int, optional
+    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Polygon belongs.
+    :type class_id: int, optional
+    :param labeler_login: Login of the user who created Polygon.
+    :type labeler_login: str, optional
+    :param updated_at: Date and Time when Polygon was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :type updated_at: str, optional
+    :param created_at: Date and Time when Polygon was created. Date Format is the same as in "updated_at" parameter.
+    :type created_at: str, optional
+    :raises: :class:`ValueError`, if len(exterior) < 3 or len(any element in interior list) < 3
+
+    :Usage example:
+
+     .. code-block:: python
+
+            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+            interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+            figure = sly.Polygon(exterior, interior)
+    """
     @staticmethod
     def geometry_name():
         return 'polygon'
 
-    def __init__(self, exterior, interior,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        '''
-        :param exterior: list of PointLocation objects, the object contour is defined with these points
-        :param interior: list of elements that has the same structure like the "exterior" field. This is the list of polygons that define object holes.
-        '''
+    def __init__(self, exterior: List[PointLocation], interior: list,
+                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
             logger.warn('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
@@ -43,12 +67,37 @@ class Polygon(VectorGeometry):
                          updated_at=updated_at, created_at=created_at)
 
     @classmethod
-    def from_json(cls, data):
-        '''
-        The function from_json convert Poligon from json format to Poligon class object. If json format is not correct it generate exception error.
-        :param data: input Poligon in json format
-        :return: Poligon class object
-        '''
+    def from_json(cls, data: dict) -> Polygon:
+        """
+        Convert a json dict to Polygon. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: Polygon in json format as a dict.
+        :type data: dict
+        :return: Polygon object
+        :rtype: :class:`Polygon<Polygon>`
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_json =  {
+                "points": {
+                    "exterior": [
+                        [2104, 730],
+                        [402, 2479],
+                        [1646, 3746]
+                    ],
+                    "interior": [
+                        [
+                            [1255, 1907],
+                            [875, 2468],
+                            [577, 2679]
+                        ]
+                    ]
+                }
+            }
+
+            figure = sly.Polygon.from_json(figure_json)
+        """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -59,13 +108,21 @@ class Polygon(VectorGeometry):
                    interior=[row_col_list_to_points(i, flip_row_col_order=True) for i in data[POINTS][INTERIOR]],
                    sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def crop(self, rect):
-        '''
-        Crop the current Polygon with a given rectangle, if polygon cat't be cropped it generate exception error
-        :param rect: Rectangle class object
-        :return: list of Poligon class objects
-        '''
-        from supervisely_lib.geometry.point_location import PointLocation
+    def crop(self, rect: Rectangle) -> List[Polygon]:
+        """
+        Crops current Polygon.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: List of Polygon objects
+        :rtype: :class:`List[Polygon]<Polygon>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+        """
         try:
             # points = [
             #     PointLocation(row=rect.top, col=rect.left),
@@ -126,10 +183,20 @@ class Polygon(VectorGeometry):
     # @TODO: extend possibilities, consider interior
     # returns area of exterior figure only
     @property
-    def area(self):
-        '''
-        :return: area of current Poligon(exterior figure only)
-        '''
+    def area(self) -> float:
+        """
+        Polygon area.
+
+        :return: Area of current Polygon object (exterior figure only).
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.area)
+            # Output: 7288.0
+        """
         exterior = self.exterior_np
         return self._get_area_by_gauss_formula(exterior[:, 0], exterior[:, 1])
 
@@ -137,12 +204,22 @@ class Polygon(VectorGeometry):
     def _get_area_by_gauss_formula(rows, cols):
         return 0.5 * np.abs(np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1)))
 
-    def approx_dp(self, epsilon):
-        '''
-        The function approx_dp approximates a polygonal curve with the specified precision
-        :param epsilon: Parameter specifying the approximation accuracy. This is the maximum distance between the original curve and its approximation.
-        :return: Poligon class object
-        '''
+    def approx_dp(self, epsilon: float) -> Polygon:
+        """
+        Approximates a Polygon curve with the specified precision.
+
+        :param epsilon: Specifying the approximation accuracy.
+        :type epsilon: float
+        :return: Polygon object
+        :rtype: :class:`Polygon<Polygon>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
+            approx_figure = figure.approx_dp(0.75)
+        """
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         interior_np = [self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np]
         exterior = row_col_list_to_points(exterior_np, do_round=True)

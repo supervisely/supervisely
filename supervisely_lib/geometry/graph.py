@@ -1,8 +1,8 @@
 # coding: utf-8
-
+from __future__ import annotations
 import cv2
 from copy import deepcopy
-
+from typing import List, Tuple
 from supervisely_lib.imaging.color import rgb2hex, hex2rgb
 from supervisely_lib.io.json import JsonSerializable
 
@@ -11,6 +11,7 @@ from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.constants import LABELER_LOGIN, CREATED_AT, UPDATED_AT, ID, CLASS_ID
+from supervisely_lib.geometry.image_rotator import ImageRotator
 
 
 EDGES = 'edges'
@@ -25,92 +26,185 @@ COLOR = 'color'
 
 
 class Node(JsonSerializable):
-    '''
-    This is a class for creating and using Nodes
-    '''
-    def __init__(self, location: PointLocation, disabled=True):
-        '''
-        :param location: PointLocation class object
-        :param disabled: bool
-        '''
+    """
+    Node for a single :class:`GraphNodes<GraphNodes>`.
+
+    :param location: PointLocation object.
+    :type location: PointLocation
+    :param disabled: Determines whether to display the Node when drawing or not.
+    :type disabled: bool, optional
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely_lib.geometry.graph import Node
+        vertex = Node(sly.PointLocation(5, 5))
+    """
+    def __init__(self, location: PointLocation, disabled: bool = True):
         self._location = location
         self._disabled = disabled
 
     @property
-    def location(self):
+    def location(self) -> PointLocation:
+        """
+        Location of Node.
+
+        :return: PointLocation object
+        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        """
         return self._location
 
     @property
-    def disabled(self):
+    def disabled(self) -> bool:
+        """
+        Display the Node when drawing or not.
+
+        :return: Boolean
+        :rtype: :class:`bool`
+        """
         return self._disabled
 
     @classmethod
-    def from_json(cls, data):
-        '''
-        The function from_json convert Node from json format to Node class object.
-        :param data: input node in json format
-        :return: Node class object
-        '''
+    def from_json(cls, data: dict) -> Node:
+        """
+        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: Node in json format as a dict.
+        :type data: dict
+        :return: Node object
+        :rtype: :class:`Node<Node>`
+        :Usage example:
+
+         .. code-block:: python
+
+            vertex_json = {
+                "loc": [5, 5]
+            }
+            vertex = Node.from_json(vertex_json)
+        """
         # TODO validations
         loc = data[LOC]
         return cls(location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False))
 
-    def to_json(self):
-        '''
-        The function to_json convert node to json format
-        :return: node in json format
-        '''
+    def to_json(self) -> dict:
+        """
+        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely_lib.geometry.graph import Node
+            vertex = Node(sly.PointLocation(5, 5))
+            vertex_json = vertex.to_json()
+            print(vertex_json)
+            # Output: {
+            #    "loc": [5, 5]
+            # }
+        """
         result = {LOC: [self._location.col, self._location.row]}
         if self.disabled:
             result[DISABLED] = True
         return result
 
     def transform_location(self, transform_fn):
-        '''
+        """
         :param transform_fn: function to convert location
         :return: Node class object with the changed location attribute using the given function
-        '''
+        """
         return Node(transform_fn(self._location), disabled=self.disabled)
 
 
 def _maybe_transform_colors(elements, process_fn):
-    '''
+    """
     Function _maybe_transform_colors convert some list of parameters using the given function
     :param elements: list of elements
     :param process_fn: function to convert
-    '''
+    """
     for elem in elements:
         if COLOR in elem:
             elem[COLOR] = process_fn(elem[COLOR])
 
 
 class GraphNodes(Geometry):
-    '''
-    This is a class for creating and using GraphNodes
-    '''
+    """
+    GraphNodes geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
+
+    :param nodes: Dict containing nodes of graph.
+    :type nodes: dict
+    :param sly_id: GraphNodes ID in Supervisely server.
+    :type sly_id: int, optional
+    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which GraphNodes belongs.
+    :type class_id: int, optional
+    :param labeler_login: Login of the user who created GraphNodes.
+    :type labeler_login: str, optional
+    :param updated_at: Date and Time when GraphNodes was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :type updated_at: str, optional
+    :param created_at: Date and Time when GraphNodes was created. Date Format is the same as in "updated_at" parameter.
+    :type created_at: str, optional
+
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely_lib.geometry.graph import Node, GraphNodes
+        vertex_1 = Node(sly.PointLocation(5, 5))
+        vertex_2 = Node(sly.PointLocation(100, 100))
+        vertex_3 = Node(sly.PointLocation(200, 250))
+        nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+        figure = GraphNodes(nodes)
+    """
     @staticmethod
     def geometry_name():
         return 'graph'
 
     def __init__(self, nodes: dict,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        '''
-        :param nodes: dictionary containing nodes of graph
-        '''
+                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._nodes = nodes
 
     @property
     def nodes(self):
+        """
+        Copy of GraphNodes nodes.
+
+        :return: GraphNodes nodes
+        :rtype: :class:`dict`
+        """
         return self._nodes.copy()
 
     @classmethod
-    def from_json(cls, data):
-        '''
-        The function from_json convert GraphNodes from json format to GraphNodes class object.
-        :param data: input graph in json format
-        :return: GraphNodes class object
-        '''
+    def from_json(cls, data: dict) -> GraphNodes:
+        """
+        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: GraphNodes in json format as a dict.
+        :type data: dict
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_json = {
+                "nodes": {
+                    "0": {
+                        "loc": [5, 5]
+                    },
+                    "1": {
+                        "loc": [100, 100]
+                    },
+                    "2": {
+                        "loc": [250, 200]
+                    }
+                }
+            }
+            from supervisely_lib.geometry.graph import GraphNodes
+            figure = GraphNodes.from_json(figure_json)
+        """
         nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data['nodes'].items()}
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -120,95 +214,211 @@ class GraphNodes(Geometry):
         return GraphNodes(nodes=nodes, sly_id=sly_id, class_id=class_id,
                           labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def to_json(self):
-        '''
-        The function to_json convert graph to json format
-        :return: graph in json format
-        '''
+    def to_json(self) -> dict:
+        """
+        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely_lib.geometry.graph import Node, GraphNodes
+            vertex_1 = Node(sly.PointLocation(5, 5))
+            vertex_2 = Node(sly.PointLocation(100, 100))
+            vertex_3 = Node(sly.PointLocation(200, 250))
+            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+            figure = GraphNodes(nodes)
+
+            figure_json = figure.to_json()
+            print(figure_json)
+            # Output: {
+            #    "nodes": {
+            #        "0": {
+            #            "loc": [5, 5]
+            #        },
+            #        "1": {
+            #            "loc": [100, 100]
+            #        },
+            #        "2": {
+            #            "loc": [250, 200]
+            #        }
+            #    }
+            # }
+        """
         res = {NODES: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
         self._add_creation_info(res)
         return res
 
-    def crop(self, rect: Rectangle):
-        '''
-        The function "crop" return list containing graph if all nodes of graph located in given rectangle and an empty list otherwise
-        :param rect: Rectangle class object
-        :return: list containing GraphNodes class object or empty list
-        '''
+    def crop(self, rect: Rectangle) -> List[GraphNodes]:
+        """
+        Crops current GraphNodes.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: List of GraphNodes objects
+        :rtype: :class:`List[GraphNodes]`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
+        """
         is_all_nodes_inside = all(rect.contains_point_location(node.location) for node in self._nodes.values())
         return [self] if is_all_nodes_inside else []
 
-    def relative_crop(self, rect):
-        '''
-        The function relative_crop calculates new parameters of graph nodes after shifts it with given rectangle(on value of it left top angle)
-        :param rect: Rectangle class object
-        :return: GraphNodes class object
-        '''
+    def relative_crop(self, rect: Rectangle) -> List[GraphNodes]:
+        """
+        Crops current GraphNodes with given rectangle and shifts it on value of rectangle left top angle.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: List of GraphNodes objects
+        :rtype: :class:`List[GraphNodes]<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            rel_crop_figures = figure.relative_crop(sly.Rectangle(0, 0, 300, 350))
+        """
         return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
-    def transform(self, transform_fn):
-        '''
-        The function "transform" transform graph nodes with given function
-        :param transform_fn: function to convert
-        :return: GraphNodes class object
-        '''
+    def transform(self, transform_fn) -> GraphNodes:
+        """
+        :param transform_fn: Function to convert GraphNodes.
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+        """
         return GraphNodes(nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()})
 
-    def transform_locations(self, transform_fn):
-        '''
-        :param transform_fn: function to convert location
-        :return: GraphNodes class object with the changed location attribute of the nodes using the given function
-        '''
+    def transform_locations(self, transform_fn) -> GraphNodes:
+        """
+        :param transform_fn: Function to convert GraphNodes location.
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+        """
         return self.transform(lambda kp: kp.transform_location(transform_fn))
 
-    def resize(self, in_size, out_size):
-        '''
-        The function resize calculates new values of graph nodes after resizing graph
-        :param in_size: old image size
-        :param out_size: new image size
-        :return: GraphNodes class object
-        '''
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> GraphNodes:
+        """
+        Resizes current GraphNodes.
+
+        :param in_size: Input image size (height, width) to which belongs GraphNodes.
+        :type in_size: Tuple[int, int]
+        :param out_size: Desired output image size (height, width) to which belongs GraphNodes.
+        :type out_size: Tuple[int, int]
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            in_height, in_width = 300, 400
+            out_height, out_width = 600, 800
+            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+        """
         return self.transform_locations(lambda p: p.resize(in_size, out_size))
 
-    def scale(self, factor):
-        '''
-        The function scale calculates new values of graph nodes after scaling graph with given factor
-        :param factor: float scale parameter
-        :return: GraphNodes class object
-        '''
+    def scale(self, factor: float) -> GraphNodes:
+        """
+        Scales current GraphNodes.
+
+        :param factor: Scale parameter.
+        :type factor: float
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            scale_figure = figure.scale(0.75)
+        """
         return self.transform_locations(lambda p: p.scale(factor))
 
-    def translate(self, drow, dcol):
-        '''
-        The function translate calculates new values of graph nodes after shifts it by a certain number of pixels
-        :param drow: int
-        :param dcol: int
-        :return: GraphNodes class object
-        '''
+    def translate(self, drow: int, dcol: int) -> GraphNodes:
+        """
+        Translates current GraphNodes.
+
+        :param drow: Horizontal shift.
+        :type drow: int
+        :param dcol: Vertical shift.
+        :type dcol: int
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            translate_figure = figure.translate(150, 250)
+        """
         return self.transform_locations(lambda p: p.translate(drow, dcol))
 
-    def rotate(self, rotator):
-        '''
-        The function rotate calculates new values of graph nodes after rotating graph
-        :param rotator: ImageRotator class object
-        :return: GraphNodes class object
-        '''
+    def rotate(self, rotator: ImageRotator) -> GraphNodes:
+        """
+        Rotates current GraphNodes.
+
+        :param rotator: ImageRotator object for rotation.
+        :type rotator: ImageRotator
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            from supervisely_lib.geometry.image_rotator import ImageRotator
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            rotator = ImageRotator((height, width), 25)
+            rotate_figure = figure.rotate(rotator)
+        """
         return self.transform_locations(lambda p: p.rotate(rotator))
 
-    def fliplr(self, img_size):
-        '''
-        The function fliplr calculates new values of graph nodes after fliping graph in horizontal
-        :param img_size: tuple or list of integers (image size)
-        :return: GraphNodes class object
-        '''
+    def fliplr(self, img_size: Tuple[int, int]) -> GraphNodes:
+        """
+        Flips current GraphNodes in horizontal.
+
+        :param img_size: Input image size (height, width) to which belongs GraphNodes.
+        :type img_size: Tuple[int, int]
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            fliplr_figure = figure.fliplr((height, width))
+        """
         return self.transform_locations(lambda p: p.fliplr(img_size))
 
-    def flipud(self, img_size):
-        '''
-        The function fliplr calculates new values of graph nodes after fliping graph in vertical
-        :param img_size: tuple or list of integers (image size)
-        :return: GraphNodes class object
-        '''
+    def flipud(self, img_size: Tuple[int, int]) -> GraphNodes:
+        """
+        Flips current GraphNodes in vertical.
+
+        :param img_size: Input image size (height, width) to which belongs GraphNodes.
+        :type img_size: Tuple[int, int]
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            flipud_figure = figure.flipud((height, width))
+        """
         return self.transform_locations(lambda p: p.flipud(img_size))
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
@@ -255,18 +465,52 @@ class GraphNodes(Geometry):
                     bitmap=bitmap, color=effective_color, thickness=thickness, config=None)
 
     @property
-    def area(self):
+    def area(self) -> float:
+        """
+        GraphNodes area.
+
+        :return: Area of current GraphNodes, always 0.0
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.area)
+            # Output: 0.0
+        """
         return 0.0
 
-    def to_bbox(self):
-        '''
-        The function to_bbox create Rectangle class object from current GraphNodes class object
-        :return: Rectangle class object
-        '''
+    def to_bbox(self) -> Rectangle:
+        """
+        Create Rectangle object from current GraphNodes.
+
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            rectangle = figure.to_bbox()
+        """
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()])
 
-    def clone(self):
+    def clone(self) -> GraphNodes:
+        """
+        Makes a copy of the GraphNodes.
+
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of PointLocation to a new variable
+            new_figure = figure.clone()
+        """
         return self
 
     def validate(self, name, settings):

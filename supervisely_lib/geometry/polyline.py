@@ -1,7 +1,9 @@
 # coding: utf-8
 
+from __future__ import annotations
 import cv2
 import numpy as np
+from typing import List, Tuple
 
 from shapely.geometry import mapping, LineString, Polygon as ShapelyPolygon
 from supervisely_lib.geometry.conversions import shapely_figure_to_coords_list
@@ -10,21 +12,41 @@ from supervisely_lib.geometry.vector_geometry import VectorGeometry
 from supervisely_lib.geometry.constants import EXTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry import validation
 from supervisely_lib import logger
+from supervisely_lib.geometry.point import PointLocation
+from supervisely_lib.geometry.rectangle import Rectangle
 
 
 class Polyline(VectorGeometry):
-    '''
-    This is a class for creating and using Polyline objects for Labels
-    '''
+    """
+    Polyline geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
+
+    :param exterior: List of PointLocation objects, the Polyline is defined with these points.
+    :type exterior: List[PointLocation]
+    :param sly_id: Polyline ID in Supervisely server.
+    :type sly_id: int, optional
+    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Polyline belongs.
+    :type class_id: int, optional
+    :param labeler_login: Login of the user who created Polyline.
+    :type labeler_login: str, optional
+    :param updated_at: Date and Time when Polyline was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :type updated_at: str, optional
+    :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
+    :type created_at: str, optional
+    :raises: :class:`ValueError`, field exterior must contain at least two points to create Polyline object
+
+    :Usage example:
+
+     .. code-block:: python
+
+        exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
+        figure = sly.Polyline(exterior)
+    """
     @staticmethod
     def geometry_name():
         return 'line'
 
-    def __init__(self, exterior,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        """
-        :param exterior: list of PointLocation objects
-        """
+    def __init__(self, exterior: List[PointLocation],
+                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
         if len(exterior) < 2:
             raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
                              .format(EXTERIOR))
@@ -33,12 +55,30 @@ class Polyline(VectorGeometry):
                          created_at=created_at)
 
     @classmethod
-    def from_json(cls, data):
-        '''
-        The function from_json convert Polyline from json format to Poligon class object. If json format is not correct it generate exception error.
-        :param data: input Polyline in json format
-        :return: Polyline class object
-        '''
+    def from_json(cls, data: dict) -> Polyline:
+        """
+        Convert a json dict to Polyline. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: Polyline in json format as a dict.
+        :type data: dict
+        :return: Polyline object
+        :rtype: :class:`Polyline<Polyline>`
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_json = {
+                "points": {
+                    "exterior": [
+                        [2104, 730],
+                        [402, 2479],
+                        [780, 1500]
+                    ],
+                    "interior": []
+                }
+            }
+            figure = sly.Polyline.from_json(figure_json)
+        """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -48,12 +88,21 @@ class Polyline(VectorGeometry):
         return cls(exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
                    sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def crop(self, rect):
-        '''
-        Crop the current Polyline with a given rectangle, if polyline cat't be cropped it generate exception error
-        :param rect: Rectangle class object
-        :return: list of Polyline class objects
-        '''
+    def crop(self, rect: Rectangle) -> List[Polyline]:
+        """
+        Crops current Polyline.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: List of Polyline objects
+        :rtype: :class:`List[Polyline]<Polyline>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
+        """
         try:
             clipping_window = [[rect.top, rect.left], [rect.top, rect.right],
                                [rect.bottom, rect.right], [rect.bottom, rect.left]]
@@ -88,15 +137,38 @@ class Polyline(VectorGeometry):
         cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)
 
     @property
-    def area(self):
+    def area(self) -> float:
+        """
+        Polyline area, always 0.0.
+
+        :return: Area of current Polyline
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.area)
+            # Output: 0.0
+        """
         return 0.0
 
-    def approx_dp(self, epsilon):
-        '''
-        The function approx_dp approximates a polygonal curve with the specified precision
-        :param epsilon: Parameter specifying the approximation accuracy. This is the maximum distance between the original curve and its approximation
-        :return: Polyline class object
-        '''
+    def approx_dp(self, epsilon: float) -> Polyline:
+        """
+        Approximates a Polyline with the specified precision.
+
+        :param epsilon: Specifying the approximation accuracy.
+        :type epsilon: float
+        :return: Polyline object
+        :rtype: :class:`Polyline<Polyline>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
+            approx_figure = figure.approx_dp(0.75)
+        """
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         return Polyline(exterior)
