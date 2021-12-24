@@ -1,12 +1,9 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List, Tuple
+from typing import Tuple
 import uuid
 from uuid import UUID
-from bidict import bidict
-
-from supervisely_lib.api.module_api import ApiField
 
 from supervisely_lib._utils import take_with_default
 from supervisely_lib.geometry.any_geometry import AnyGeometry
