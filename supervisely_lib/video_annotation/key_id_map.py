@@ -1,6 +1,8 @@
 # coding: utf-8
-
+from __future__ import annotations
+from typing import List, Tuple
 import uuid
+from uuid import UUID
 from bidict import bidict
 from supervisely_lib.io.json import dump_json_file, load_json_file
 
@@ -13,9 +15,22 @@ ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
 
 class KeyIdMap:
-    '''
-    This is a class for creating and using key_id_maps for videos
-    '''
+    """
+    KeyIdMap object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`. It consist from dict with bidict values.
+
+    :Usage example:
+
+     .. code-block:: python
+
+        key_id_map = KeyIdMap()
+        print(key_id_map.to_dict())
+        # Output: {
+        #     "tags": {},
+        #     "objects": {},
+        #     "figures": {},
+        #     "videos": {}
+        # }
+    """
     def __init__(self):
         self._data = dict()
         self._data[TAGS] = bidict()
@@ -38,36 +53,124 @@ class KeyIdMap:
             raise RuntimeError("Id should be of type int")
         self._data[key_type].update(bidict({key: id}))
 
-    def add_object(self, key: uuid.UUID, id: int):
-        '''
-        Add objects in self._data dictionary with given key and id.
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_object(self, key: UUID, id: int) -> None:
+        """
+        Add UUID and ID of :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` in KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
+            key_id_map.add_object(new_uuid, 1)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {
+            #         "0c0033c5b4834d4cbabece4317295f07": 1
+            #     },
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
         self._add(OBJECTS, key, id)
 
-    def add_tag(self, key: uuid.UUID, id: int):
-        '''
-        Add tags in self._data dictionary with given key and id.
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_tag(self, key: UUID, id: int) -> None:
+        """
+        Add UUID and ID of :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` in KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
+            key_id_map.add_tag(new_uuid, 34)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {
+            #         "697d005df2a94bb386188c78a61b0a86": 34
+            #     },
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
         self._add(TAGS, key, id)
 
-    def add_figure(self, key: uuid.UUID, id: int):
-        '''
-        Add figures in self._data dictionary with given key and id.
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_figure(self, key: UUID, id: int) -> None:
+        """
+        Add UUID and ID of :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` in KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
+            key_id_map.add_figure(new_uuid, 55)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {
+            #         "ac1018e6673d405590086063af8184ca": 55
+            #     },
+            #     "videos": {}
+            # }
+        """
         self._add(FIGURES, key, id)
 
-    def add_video(self, key: uuid.UUID, id: int):
-        '''
-        Add videos in self._data dictionary with given key and id.
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_video(self, key: UUID, id: int) -> None:
+        """
+        Add UUID and ID of :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` in KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
+            key_id_map.add_video(new_uuid, 77)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {
+            #         "775f2c581cec44ca8c10419c20c52fcc": 77
+            #     }
+            # }
+        """
         self._add(VIDEOS, key, id)
 
     def _get_id_by_key(self, key_type, key: uuid.UUID):
@@ -96,67 +199,170 @@ class KeyIdMap:
             return None
         return self._data[key_type].inverse[id]
 
-    def get_object_id(self, key: uuid.UUID):
-        '''
-        :param key: uuid class object
-        :return: Id by given key for objects field.
-        '''
+    def get_object_id(self, key: UUID) -> int:
+        """
+        Get :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` ID.
+
+        :param key: UUID object.
+        :type key: UUID
+        :return: :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` ID
+        :rtype: :class:`int`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            obj_uuid = '0c0033c5b4834d4cbabece4317295f07'
+            obj_id = key_id_map.get_object_id(obj_uuid) # 1
+        """
         return self._get_id_by_key(OBJECTS, key)
 
-    def get_tag_id(self, key: uuid.UUID):
-        '''
-        :param key: uuid class object
-        :return: Id by given key for tags field.
-        '''
+    def get_tag_id(self, key: UUID) -> int:
+        """
+        Get :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` ID.
+
+        :param key: UUID object.
+        :type key: UUID
+        :return: :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` ID
+        :rtype: :class:`int`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            tag_uuid = '697d005df2a94bb386188c78a61b0a86'
+            tag_id = key_id_map.get_tag_id(tag_uuid) # 34
+        """
         return self._get_id_by_key(TAGS, key)
 
-    def get_figure_id(self, key: uuid.UUID):
-        '''
-        :param key: uuid class object
-        :return: Id by given key for figures field.
-        '''
+    def get_figure_id(self, key: UUID) -> int:
+        """
+        Get :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` ID.
+
+        :param key: UUID object.
+        :type key: UUID
+        :return: :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` ID
+        :rtype: :class:`int`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_uuid = 'ac1018e6673d405590086063af8184ca'
+            figure_id = key_id_map.get_figure_id(figure_uuid) # 55
+        """
         return self._get_id_by_key(FIGURES, key)
 
-    def get_video_id(self, key: uuid.UUID):
-        '''
-        :param key: uuid class object
-        :return: Id by given key for videos field.
-        '''
+    def get_video_id(self, key: UUID) -> int:
+        """
+        Get :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` ID.
+
+        :param key: UUID object.
+        :type key: UUID
+        :return: :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` ID
+        :rtype: :class:`int`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            video_uuid = '775f2c581cec44ca8c10419c20c52fcc'
+            video_id = key_id_map.get_video_id(video_uuid) # 77
+        """
         return self._get_id_by_key(VIDEOS, key)
 
-    def get_object_key(self, id: int):
-        '''
-        :param id: int
-        :return: Key by given id for objects field.
-        '''
+    def get_object_key(self, id: int) -> UUID:
+        """
+        Get :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` UUID key.
+
+        :param key: :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` ID.
+        :type key: int
+        :return: :class:`UUID` object
+        :rtype: :class:`UUID`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            obj_id = 1
+            obj_uuid = key_id_map.get_object_id(obj_id) # '0c0033c5b4834d4cbabece4317295f07'
+        """
         return self._get_key_by_id(OBJECTS, id)
 
-    def get_tag_key(self, id: int):
-        '''
-        :param id: int
-        :return: Key by given id for tags field.
-        '''
+    def get_tag_key(self, id: int) -> UUID:
+        """
+        Get :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` UUID key.
+
+        :param key: :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` ID.
+        :type key: int
+        :return: :class:`UUID` object
+        :rtype: :class:`UUID`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            tag_id = 34
+            tag_uuid = key_id_map.get_tag_key(tag_id) # '697d005df2a94bb386188c78a61b0a86'
+        """
         return self._get_key_by_id(TAGS, id)
 
-    def get_figure_key(self, id: int):
-        '''
-        :param id: int
-        :return: Key by given id for figures field.
-        '''
+    def get_figure_key(self, id: int) -> UUID:
+        """
+        Get :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` UUID key.
+
+        :param key: :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` ID.
+        :type key: int
+        :return: :class:`UUID` object
+        :rtype: :class:`UUID`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_id = 55
+            figure_uuid = key_id_map.get_figure_key(figure_id) # 'ac1018e6673d405590086063af8184ca'
+        """
         return self._get_key_by_id(FIGURES, id)
 
-    def get_video_key(self, id: int):
-        '''
-        :param id: int
-        :return: Key by given id for videos field.
-        '''
+    def get_video_key(self, id: int) -> UUID:
+        """
+        Get :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` UUID key.
+
+        :param key: :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` ID.
+        :type key: int
+        :return: :class:`UUID` object
+        :rtype: :class:`UUID`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            video_id = 77
+            video_uuid = key_id_map.get_video_key(video_id) # '775f2c581cec44ca8c10419c20c52fcc'
+        """
         return self._get_key_by_id(VIDEOS, id)
 
-    def to_dict(self):
-        '''
-        Convert current self._data dictionary with bidict values to dictionary with dict values
-        :return: dict
-        '''
+    def to_dict(self) -> dict:
+        """
+        Convert the KeyIdMap to a dict(bidict values to dictionary with dict values).
+
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
         simple_dict = {}
         for type_str, value_bidict in self._data.items():
             sub_dict = {}
@@ -165,21 +371,40 @@ class KeyIdMap:
             simple_dict[type_str] = sub_dict
         return simple_dict
 
-    def dump_json(self, path):
-        '''
-        Save current class object data in json format by given path
-        :param path: str
-        '''
+    def dump_json(self, path: str) -> None:
+        """
+        Write KeyIdMap to file with given path.
+
+        :param path: Target file path.
+        :type path: str
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map.dump_json('/home/admin/work/projects/key_id.json')
+        """
         simple_dict = self.to_dict()
         dump_json_file(simple_dict, path, indent=4)
 
     @classmethod
-    def load_json(cls, path):
-        '''
-        Download json data by given path and convert in to dict with bidict values
-        :param path: str
-        :return: dict
-        '''
+    def load_json(cls, path: str) -> KeyIdMap:
+        """
+        Decoding data from json file with given filename to KeyIdMap.
+
+        :param path: Target file path.
+        :type path: str
+        :return: KeyIdMap object
+        :rtype: :class:`KeyIdMap`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            new_key_id = KeyIdMap.load_json('/home/admin/work/projects/key_id.json')
+        """
         simple_dict = load_json_file(path)
         result = cls()
         for key_type, value_dict in simple_dict.items():
@@ -189,95 +414,223 @@ class KeyIdMap:
 
     @classmethod
     def _add_to(cls, key_id_map, key_type, keys, ids):
-        '''
+        """
         Add given values(keys, ids) to KeyIdMap class object with given type of key
         :param key_id_map: KeyIdMap class object
         :param key_type: str
         :param keys: list of uuid class objects
         :param ids: list of integers
         :return: None if key_id_map parameter is None
-        '''
+        """
         if key_id_map is None:
             return
         for key, id in zip(keys, ids):
             key_id_map._add(key_type, key, id)
 
     @classmethod
-    def add_tags_to(cls, key_id_map, keys, ids):
-        '''
-        Add tags type of key with given values(keys, ids) to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param keys: list of uuid class objects
-        :param ids: list of integers
-        '''
+    def add_tags_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
+        """
+        Add :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` type of instances with given values(keys, ids) to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            tag_id_1 = 1213
+            uuid_2 = uuid.uuid4()
+            tag_id_2 = 3686
+            KeyIdMap.add_tags_to(key_id_map, [uuid_1, uuid_2], [tag_id_1, tag_id_2])
+        """
         cls._add_to(key_id_map, TAGS, keys, ids)
 
     @classmethod
-    def add_tag_to(cls, key_id_map, key, id):
-        '''
-        Add tags type of key with given key and id to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_tag_to(cls, key_id_map: KeyIdMap, key: UUID, id: int) -> None:
+        """
+        Add :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` type of instance with given key and id to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            new_tag_id = 1213
+            KeyIdMap.add_tag_to(key_id_map, new_uuid, new_tag_id)
+        """
         cls._add_tags_to(key_id_map, [key], [id])
 
     @classmethod
-    def add_objects_to(cls, key_id_map, keys, ids):
-        '''
-        Add objects type of key with given values(keys, ids) to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param keys: list of uuid class objects
-        :param ids: list of integers
-        '''
+    def add_objects_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
+        """
+        Add :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` type of instances with given values(keys, ids) to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            object_id_1 = 23
+            uuid_2 = uuid.uuid4()
+            object_id_2 = 57
+            KeyIdMap.add_objects_to(key_id_map, [uuid_1, uuid_2], [object_id_1, object_id_2])
+        """
         cls._add_to(key_id_map, OBJECTS, keys, ids)
 
     @classmethod
-    def add_object_to(cls, key_id_map, key, id):
-        '''
-        Add objects type of key with given key and id to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_object_to(cls, key_id_map: KeyIdMap, key: UUID, id: int) -> None:
+        """
+        Add :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` type of instance with given key and id to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            new_object_id = 76
+            KeyIdMap.add_object_to(key_id_map, new_uuid, new_object_id)
+        """
         cls._add_objects_to(key_id_map, [key], [id])
 
     @classmethod
-    def add_figures_to(cls, key_id_map, keys, ids):
-        '''
-        Add figures type of key with given values(keys, ids) to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param keys: list of uuid class objects
-        :param ids: list of integers
-        '''
+    def add_figures_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
+        """
+        Add :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` type of instances with given values(keys, ids) to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            figure_id_1 = 23
+            uuid_2 = uuid.uuid4()
+            figure_id_2 = 57
+            KeyIdMap.add_figures_to(key_id_map, [uuid_1, uuid_2], [figure_id_1, figure_id_2])
+        """
         cls._add_to(key_id_map, FIGURES, keys, ids)
 
     @classmethod
-    def add_figure_to(cls, key_id_map, key, id):
-        '''
-        Add figure type of key with given key and id to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_figure_to(cls, key_id_map: KeyIdMap, key: UUID, id: int) -> None:
+        """
+        Add :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` type of instance with given key and id to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            new_figure_id = 3834
+            KeyIdMap.add_figure_to(key_id_map, new_uuid, new_figure_id)
+        """
         cls._add_figures_to(key_id_map, [key], [id])
 
     @classmethod
-    def add_videos_to(cls, key_id_map, keys, ids):
-        '''
-        Add videos type of key with given values(keys, ids) to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param keys: list of uuid class objects
-        :param ids: list of integers
-        '''
+    def add_videos_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
+        """
+        Add :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` type of instances with given values(keys, ids) to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            video_id_1 = 567
+            uuid_2 = uuid.uuid4()
+            video_id_2 = 5200
+            KeyIdMap.add_videos_to(key_id_map, [uuid_1, uuid_2], [video_id_1, video_id_2])
+        """
         cls._add_to(key_id_map, VIDEOS, keys, ids)
 
     @classmethod
-    def add_video_to(cls, key_id_map, key, id):
-        '''
-        Add video type of key with given key and id to KeyIdMap class object
-        :param key_id_map: KeyIdMap class object
-        :param key: uuid class object
-        :param id: int
-        '''
+    def add_video_to(cls, key_id_map: KeyIdMap, key: UUID, id: int) -> None:
+        """
+        Add :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` type of instance with given key and id to KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            new_video_id = 3834
+            KeyIdMap.add_video_to(key_id_map, new_uuid, new_video_id)
+        """
         cls._add_videos_to(key_id_map, [key], [id])

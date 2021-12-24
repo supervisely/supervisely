@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import annotations
 
 import math
 
@@ -11,15 +12,53 @@ def epoch_float(epoch, train_it, train_its):
 
 
 class Progress:
-    '''
-    This is a class for conveniently monitoring the operation of modules and displaying statistics on data processing
-    '''
-    def __init__(self, message, total_cnt, ext_logger=None, is_size=False, need_info_log=False, min_report_percent=1):
-        '''
-        :param message: str
-        :param total_cnt: int
-        :param ext_logger: Logger class object
-        '''
+    """
+    Modules operations monitoring and displaying statistics of data processing. :class:`Progress<Progress>` object is immutable.
+
+    :param message: Progress message e.g. "Images uploaded:", "Processing:".
+    :type message: str
+    :param total_cnt: Total count.
+    :type total_cnt: int
+    :param ext_logger: Logger object.
+    :type ext_logger: logger, optional
+    :param is_size: Shows Label size.
+    :type is_size: bool, optional
+    :param need_info_log: Shows info log.
+    :type need_info_log: bool, optional
+    :param min_report_percent: Minimum report percent of total items in progress to log.
+    :type min_report_percent: int, optional
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely_lib.sly_logger import logger
+
+        progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
+        api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
+
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0,
+        #  "total": 6, "current_label": "0.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:45.659Z", "level": "info"}
+        # {"message": "Images downloaded:  [0.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:45.660Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1,
+        #  "total": 6, "current_label": "1.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+        # {"message": "Images downloaded:  [1.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2,
+        #  "total": 6, "current_label": "2.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "Images downloaded:  [2.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3,
+        #  "total": 6, "current_label": "3.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "Images downloaded:  [3.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4,
+        #  "total": 6, "current_label": "4.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "Images downloaded:  [4.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5,
+        #  "total": 6, "current_label": "5.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+        # {"message": "Images downloaded:  [5.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6,
+        #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+        # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+    """
+    def __init__(self, message: str, total_cnt: int, ext_logger: logger = None, is_size: bool = False, need_info_log: bool = False, min_report_percent: int = 1):
         self.is_size = is_size
         self.message = message
         self.total = total_cnt
@@ -57,25 +96,33 @@ class Progress:
             self.current_label = str(self.current)
 
     def iter_done(self):
-        '''
+        """
         Increments the current iteration counter by 1
-        '''
+        """
         self.current += 1
         if self.is_total_unknown:
             self.total = self.current
         self._refresh_labels()
 
-    def iters_done(self, count):
-        '''
+    def iters_done(self, count: int):
+        """
         Increments the current iteration counter by given count
-        :param count: int
-        '''
+
+        :param count: Amount of iters
+        :type count: int
+        """
         self.current += count
         if self.is_total_unknown:
             self.total = self.current
         self._refresh_labels()
 
     def report_progress(self):
+        """
+        Logs a message with level INFO in logger. Message contain type of progress, subtask message, current and total number of iterations
+
+        :return: None
+        :rtype: :class:`NoneType`
+        """
         self.print_progress()
         self.reported_cnt += 1
 
@@ -113,32 +160,102 @@ class Progress:
             self.report_progress()
 
     def iter_done_report(self):  # finish & report
-        '''
-        Increments the current iteration counter by 1 and logs a message depending on current number of iterations
-        :return:
-        '''
+        """
+        Increments the current iteration counter by 1 and logs a message depending on current number of iterations.
+
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            progress = sly.Progress("Processing:", len(img_infos))
+            for img_info in img_infos:
+                img_names.append(img_info.name)
+                progress.iter_done_report()
+
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+        """
         self.iter_done()
         self.report_if_needed()
 
-    def iters_done_report(self, count):  # finish & report
-        '''
-        Increments the current iteration counter by given count and logs a message depending on current number of iterations
-        :param count: int
-        '''
+    def iters_done_report(self, count: int):  # finish & report
+        """
+        Increments the current iteration counter by given count and logs a message depending on current number of iterations.
+
+        :param count: Counter.
+        :type count: int
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            progress = sly.Progress("Processing:", len(img_infos))
+            for img_info in img_infos:
+                img_names.append(img_info.name)
+                progress.iters_done_report(1)
+
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+        """
         self.iters_done(count)
         self.report_if_needed()
 
-    def set_current_value(self, value, report=True):
-        '''
-        Increments the current iteration counter by this value minus the current value of the counter and logs a message depending on current number of iterations
-        :param value: int
-        '''
+    def set_current_value(self, value: int, report: bool = True):
+        """
+        Increments the current iteration counter by this value minus the current value of the counter and logs a message depending on current number of iterations.
+
+        :param value: Current value.
+        :type value: int
+        :param report: Defines whether to report to log or not.
+        :type report: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
         if report is True:
             self.iters_done_report(value - self.current)
         else:
             self.iters_done(value - self.current)
 
-    def set(self, current, total, report=True):
+    def set(self, current: int, total: int, report: bool = True):
+        """
+        Sets counter current value and total value and logs a message depending on current number of iterations.
+
+        :param current: Current count.
+        :type current: int
+        :param total: Total count.
+        :type total: int
+        :param report: Defines whether to report to log or not.
+        :type report: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
         self.total = total
         if self.total != 0:
             self.is_total_unknown = False
