@@ -1,5 +1,8 @@
 # coding: utf-8
 
+from __future__ import annotations
+from typing import Tuple, List
+
 import os
 import skvideo.io
 from supervisely_lib import logger as default_logger
@@ -28,39 +31,80 @@ class VideoReadException(Exception):
 
 
 def is_valid_ext(ext: str) -> bool:
-    '''
-    Checks if given extention is supported
-    :param ext: str
+    """
+    Checks if given extension is supported.
+
+    :param ext: Video file extension.
+    :type ext: str
     :return: bool
-    '''
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        sly.video.is_valid_ext(".mp4")  # True
+        sly.video.is_valid_ext(".jpeg") # False
+    """
     return ext.lower() in ALLOWED_VIDEO_EXTENSIONS
 
 
 def has_valid_ext(path: str) -> bool:
-    '''
-    Checks if file from given path with given extention is supported
-    :param path: str
+    """
+    Checks if Video file from given path has supported extension.
+
+    :param path: Path to Video file.
+    :type path: str
     :return: bool
-    '''
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        video_path = "/home/admin/work//videos/Cars/ds0/video/6x.mp4"
+        sly.video.has_valid_ext(video_path) # True
+    """
     return is_valid_ext(os.path.splitext(path)[1])
 
 
 def validate_ext(ext: str):
-    '''
-    Raise error if given extention is not supported
-    :param ext: str
-    '''
+    """
+    Raises error if given extension is not supported.
+
+    :param ext: Extension.
+    :type ext: str
+    :raises: :class:`UnsupportedVideoFormat` if given extension is not supported.
+    :return: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        sly.video.validate_ext(".jpeg")
+        # Unsupported video extension: .jpeg.
+        # Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
+    """
     if not is_valid_ext(ext):
         raise UnsupportedVideoFormat('Unsupported video extension: {}. Only the following extensions are supported: {}.'
                                      .format(ext, ALLOWED_VIDEO_EXTENSIONS))
 
 
-def get_image_size_and_frames_count(path):
-    '''
-    Find size of image and number of frames from given video path
-    :param path: str
-    :return: tuple of integers, int
-    '''
+def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
+    """
+    Gets image size and number of frames from Video file.
+
+    :param path: Path to Video file.
+    :type path: str
+    :return: Image size and number of Video frames.
+    :rtype: :class:`Tuple[Tuple[int, int], int]`
+    :Usage example:
+
+     .. code-block:: python
+
+        video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
+        video_info = sly.video.get_image_size_and_frames_count(video_path)
+        print(video_info)
+        # Output: ((720, 1280), 152)
+    """
     vreader = skvideo.io.FFmpegReader(path)
     vlength = vreader.getShape()[0]
     img_height = vreader.getShape()[1]
@@ -71,11 +115,23 @@ def get_image_size_and_frames_count(path):
     return img_size, vlength
 
 
-def validate_format(path):
-    '''
-    Raise error if video from given path can't be read or file extention from given path with is not supported
-    :param path: str
-    '''
+def validate_format(path: str) -> None:
+    """
+    Raise error if Video file from given path couldn't be read or file extension is not supported.
+
+    :param path: Path to Video file.
+    :type path: str
+    :raises: :class:`VideoReadException` if Video file from given path couldn't be read or file extension is not supported
+    :return: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        video_path = "/home/paul/work/sphinx-docs/supervisely_py/docs/source/debug/video/Prius_360/ds0/video/video.jpg"
+        sly.video.validate_format(video_path)
+        # Unsupported video extension: .jpg. Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
+    """
     try:
         get_image_size_and_frames_count(path)
     except Exception as e:
@@ -110,12 +166,15 @@ def _check_video_requires_processing(video_info, stream_info):
     return True
 
 
-def count_video_streams(all_streams):
-    '''
-    Count number of video streams
-    :param all_streams: list of streams(dict)
-    :return: int
-    '''
+def count_video_streams(all_streams: List[dict]) -> int:
+    """
+    Count number of video streams in video.
+
+    :param all_streams: List of Video file audio and video streams.
+    :type all_streams: List[dict]
+    :return: Number of video streams in Video file
+    :rtype: :class:`int`
+    """
     count = 0
     for stream_info in all_streams:
         if stream_info["codecType"] == "video":
@@ -123,12 +182,15 @@ def count_video_streams(all_streams):
     return count
 
 
-def get_video_streams(all_streams):
-    '''
-    Get list of video streams from given list of all streams
-    :param all_streams: list of streams(dict)
-    :return: list
-    '''
+def get_video_streams(all_streams: List[dict]) -> list:
+    """
+    Get list of video streams from given list of all streams.
+
+    :param all_streams: List of Video file audio and video streams.
+    :type all_streams: List[dict]
+    :return: List of video streams in Video file.
+    :rtype: :class:`list`
+    """
     video_streams = []
     for stream_info in all_streams:
         if stream_info["codecType"] == "video":
@@ -136,24 +198,40 @@ def get_video_streams(all_streams):
     return video_streams
 
 
-def warn_video_requires_processing(file_name, logger=None):
-    '''
-    Create logger if it was not there and displays message about the need for transcoding
-    :param file_name: str
-    :param logger: logger class object
-    '''
+def warn_video_requires_processing(file_name: str, logger=None) -> None:
+    """
+    Create logger if it was not there and displays message about the need for transcoding.
+
+    :param file_name: Video file name.
+    :type file_name: str
+    :param logger: Logger object.
+    :type logger: logger
+    :return: None
+    :rtype: :class:`NoneType`
+    """
     if logger is None:
         logger = default_logger
     logger.warning("Video Stream {!r} is skipped: requires transcoding. Transcoding is supported only in Enterprise Edition (EE)".format(file_name))
 
 
-def gen_video_stream_name(file_name, stream_index):
-    '''
-    Create name to video stream from given filename and index of stream
-    :param file_name: str
-    :param stream_index: int
+def gen_video_stream_name(file_name: str, stream_index: int) -> str:
+    """
+    Create name to video stream from given filename and index of stream.
+
+    :param file_name: Video file name.
+    :type file_name: str
+    :param stream_index: Stream index.
+    :type stream_index: int
     :return: str
-    '''
+    :rtype: str
+    :Usage example:
+
+     .. code-block:: python
+
+        stream_name = gen_video_stream_name('my_video.mp4', 2)
+        print(stream_name)
+        # Output: my_video_stream_2_CULxO.mp4
+    """
     return "{}_stream_{}_{}{}".format(get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name))
 
 
