@@ -4,7 +4,7 @@ import math
 
 import cv2
 import numpy as np
-
+from typing import List, Tuple
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.point_location import PointLocation
 
@@ -12,6 +12,21 @@ from supervisely_lib.geometry.point_location import PointLocation
 # to rotate image & objects wrt source img center
 # output image will contain all 'pixels' from source img
 class ImageRotator:
+    """
+    ImageRotator for rotating images and geometry figures.
+
+    :param imsize: Shape of the image (height, width)
+    :type imsize: Tuple[int, int] or List[int, int]
+    :param angle_degrees_ccw: Angle to rotate image.
+    :type angle_degrees_ccw: int
+
+    :Usage example:
+
+     .. code-block:: python
+
+        height, width = 300, 400
+        rotator = ImageRotator((height, width), 25)
+    """
     # to get rect with max 'coloured' area in rotated img
     def _calc_inner_crop(self):
         """
@@ -78,12 +93,7 @@ class ImageRotator:
         new_canvas_size = np.ceil(rotated_upper_values - rotated_lower_values + 1).astype(np.int64).tolist()
         return affine_matrix, new_canvas_size
 
-    def __init__(self, imsize, angle_degrees_ccw):
-        '''
-        This is a class for rotating images & objects wrt source img center
-        :param imsize: image to rotate
-        :param angle_degrees_ccw: angle in degrees to rotate image
-        '''
+    def __init__(self, imsize: Tuple[int, int], angle_degrees_ccw: int):
         self.src_imsize = tuple(imsize)
         self.angle_degrees_ccw = angle_degrees_ccw
         # Transform matrix for the RHS (col, row) coordinate system.
@@ -94,24 +104,61 @@ class ImageRotator:
         self.opencv_affine_matrix, _ = self._affine_matrix_and_new_canvas_size(imsize[::-1], -angle_degrees_ccw)
         self._calc_inner_crop()
 
-    def transform_point(self, point):
-        '''
-        The function transform_point calculates new parameters of point after rotating
-        :param point: PointLocation class object
-        :return: PointLocation class object
-        '''
+    def transform_point(self, point: PointLocation) -> PointLocation:
+        """
+        Calculates new parameters of PointLocation after rotation.
+
+        :param point: PointLocation object.
+        :type point: PointLocation
+        :return: PointLocation object
+        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            point = sly.PointLocation(100, 200)
+            height, width = 300, 400
+            rotator = ImageRotator((height, width), 25)
+
+            rotate_point = rotator.transform_point(point)
+            rotate_point_json = rotate_point.to_json()
+            print(rotate_point_json)
+            # Output:
+            # {
+            #    "points": {
+            #        "exterior": [
+            #            [224, 175]
+            #        ],
+            #        "interior": []
+            #    }
+            # }
+        """
         point_np_uniform = np.array([point.row, point.col, 1])
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.
         return PointLocation(row=round(transformed_np[0].item()), col=round(transformed_np[1].item()))
 
-    def rotate_img(self, img, use_inter_nearest):
-        '''
-        The function rotate_img rotate image with given parameter
-        :param img: image to rotate
-        :param use_inter_nearest: parameter of rotation
-        :return: rotated image
-        '''
+    def rotate_img(self, img: np.ndarray, use_inter_nearest: bool) -> np.ndarray:
+        """
+        Calculates new parameters of image after rotation.
+
+        :param img: Image to rotate.
+        :type img: np.ndarray
+        :param use_inter_nearest: If True uses `cv2.INTER_NEAREST <https://docs.opencv.org/3.4/da/d54/group__imgproc__transform.html#gga5bb5a1fea74ea38e1a5445ca803ff121aa5521d8e080972c762467c45f3b70e6c>`_ parameter in rotation, otherwise don't.
+        :type use_inter_nearest: bool
+        :return: Rotated image
+        :rtype: :class:`np.ndarray`
+        :Usage example:
+
+         .. code-block:: python
+
+            height, width = 300, 400
+            rotator = ImageRotator((height, width), 25)
+            mask = np.zeros((height, width, 3), dtype=np.uint8)
+            rotate_mask = rotator.rotate_img(mask, True)
+            print(rotate_mask.shape)
+            # Output: (441, 489, 3)
+        """
         if use_inter_nearest:
             interp = cv2.INTER_NEAREST  # @TODO: cv2 INTER_NEAREST may shift coords, what to do?
         else:
