@@ -8,8 +8,7 @@ from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.geometry import validation
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS
 from supervisely_lib._utils import unwrap_if_numpy
-from supervisely_lib.geometry.point import PointLocation
-from supervisely_lib.geometry.image_rotator import ImageRotator
+import supervisely_lib as sly
 
 
 class PointLocation(JsonSerializable):
@@ -187,7 +186,7 @@ class PointLocation(JsonSerializable):
         """
         return PointLocation(row=(self.row + drow), col=(self.col + dcol))
 
-    def rotate(self, rotator: ImageRotator) -> PointLocation:
+    def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> PointLocation:
         """
         Rotates current PointLocation object.
 
