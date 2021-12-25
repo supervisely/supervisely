@@ -14,11 +14,9 @@ from supervisely_lib.api.module_api import ModuleApiBase, ApiField
 from supervisely_lib.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
-from supervisely_lib.io.fs import get_file_ext, get_file_name, list_files_recursively
-from supervisely_lib.imaging.image import write_bytes, get_hash
 from supervisely_lib.task.progress import Progress
 from supervisely_lib.io.fs_cache import FileCache
-from supervisely_lib.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove
+from supervisely_lib.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove, get_file_name
 
 class FileApi(ModuleApiBase):
     """
@@ -46,7 +44,7 @@ class FileApi(ModuleApiBase):
     """
     @staticmethod
     def info_sequence():
-        '''
+        """
         NamedTuple FileInfo information about File.
 
         :Example:
@@ -66,7 +64,7 @@ class FileApi(ModuleApiBase):
                      created_at='2021-01-11T09:04:17.959Z',
                      updated_at='2021-01-11T09:04:17.959Z',
                      full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
-        '''
+        """
         return [
             ApiField.TEAM_ID,
             ApiField.ID,

@@ -273,7 +273,7 @@ class TagMeta(KeyObject, JsonSerializable):
         return self._applicable_classes
 
     def to_json(self) -> dict:
-        '''
+        """
         Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
@@ -313,7 +313,7 @@ class TagMeta(KeyObject, JsonSerializable):
             #         "bicycle"
             #     ]
             # }
-        '''
+        """
         jdict = {
             TagMetaJsonFields.NAME: self.name,
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
@@ -335,7 +335,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
     @classmethod
     def from_json(cls, data: dict) -> TagMeta:
-        '''
+        """
         Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: TagMeta in json format as a dict.
@@ -368,7 +368,7 @@ class TagMeta(KeyObject, JsonSerializable):
             }
 
             meta_colors = sly.TagMeta.from_json(data)
-        '''
+        """
         if isinstance(data, str):
             return cls(name=data, value_type=TagValueType.NONE)
         elif isinstance(data, dict):
@@ -425,7 +425,7 @@ class TagMeta(KeyObject, JsonSerializable):
             raise ValueError("Tag {!r} has type {!r}. Possible value can be added only to oneof_string".format(self.name, self.value_type))
 
     def is_valid_value(self, value: str) -> bool:
-        '''
+        """
         Checks value against object value type to make sure that value is valid.
 
         :param value: Value to check.
@@ -454,7 +454,7 @@ class TagMeta(KeyObject, JsonSerializable):
             meta_quantity.is_valid_value('new string value') # False
             meta_quantity.is_valid_value(555)                # True
             meta_quantity.is_valid_value(3.14159265359)      # True
-        '''
+        """
         if self.value_type == TagValueType.NONE:
             return value is None
         elif self.value_type == TagValueType.ANY_NUMBER:
@@ -532,7 +532,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
     def clone(self, name: str = None, value_type: str = None, possible_values: List[str] = None, color: List[int, int, int] = None, sly_id: int = None,
               hotkey: str = None, applicable_to: str = None, applicable_classes: List[str] = None) -> TagMeta:
-        '''
+        """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
 
         :param name: Tag name.
@@ -570,7 +570,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
             C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
             meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
-        '''
+        """
         return TagMeta(name=take_with_default(name, self.name),
                        value_type=take_with_default(value_type, self.value_type),
                        possible_values=take_with_default(possible_values, self.possible_values),

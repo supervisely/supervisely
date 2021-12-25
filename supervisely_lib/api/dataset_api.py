@@ -35,7 +35,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     """
     @staticmethod
     def info_sequence():
-        '''
+        """
         NamedTuple DatasetInfo information about Dataset.
 
         :Example:
@@ -52,7 +52,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         created_at='2021-03-03T15:54:08.802Z',
                         updated_at='2021-03-16T09:31:37.063Z',
                         reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png')
-        '''
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -76,7 +76,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         UpdateableModule.__init__(self, api)
 
     def get_list(self, project_id: int, filters: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         List of Datasets in the given Project.
 
         :param project_id: Project ID in which the Datasets are located.
@@ -119,11 +119,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 updated_at="2021-03-10T09:31:44.196Z",
             #                 reference_image_url="http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
             # ]
-        '''
+        """
         return self.get_list_all_pages('datasets.list',  {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:
-        '''
+        """
         Get Datasets information by ID.
 
         :param id: Dataset ID in Supervisely.
@@ -141,11 +141,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             api = sly.Api.from_env()
 
             ds_info = api.dataset.get_info_by_id(dataset_id)
-        '''
+        """
         return self._get_info_by_id(id, 'datasets.info')
 
     def create(self, project_id: int, name: str, description: str = "", change_name_if_conflict: bool = False) -> NamedTuple:
-        '''
+        """
         Create Dataset with given name in the given Project.
 
         :param project_id: Project ID in Supervisely where Dataset will be created.
@@ -174,7 +174,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_ds = api.dataset.create(project_id, 'new_ds')
             new_ds_info = api.dataset.get_list(project_id)
             print(len(new_ds_info)) # 2
-        '''
+        """
         effective_name = self._get_effective_new_name(
             parent_id=project_id, name=name, change_name_if_conflict=change_name_if_conflict)
         response = self._api.post('datasets.add', {ApiField.PROJECT_ID: project_id,
@@ -183,7 +183,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return self._convert_json_info(response.json())
 
     def get_or_create(self, project_id: int, name: str, description: str = "") -> NamedTuple:
-        '''
+        """
         Checks if Dataset with given name already exists in the Project, if not creates Dataset with the given name.
 
         :param project_id: Project ID in Supervisely.
@@ -214,7 +214,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             api.dataset.get_or_create(project_id, 'new_ds')
             ds_info = api.dataset.get_list(project_id)
             print(len(ds_info)) # 2
-        '''
+        """
         dataset_info = self.get_info_by_name(project_id, name)
         if dataset_info is None:
             dataset_info = self.create(project_id, name, description=description)
@@ -227,7 +227,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return 'datasets.remove'
 
     def copy_batch(self, dst_project_id: int, ids: List[int], new_names: List[str] = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
-        '''
+        """
         Copy given Datasets to the destination Project by IDs.
 
         :param dst_project_id: Destination Project ID in Supervisely.
@@ -261,7 +261,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             copied_datasets = api.dataset.copy_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
             ds = api.dataset.get_list(dst_proj_id)
             print(len(ds)) # 2
-        '''
+        """
         if new_names is not None and len(ids) != len(new_names):
             raise RuntimeError('Can not match "ids" and "new_names" lists, len(ids) != len(new_names)')
 
@@ -280,7 +280,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return new_datasets
 
     def copy(self, dst_project_id: int, id: int, new_name: str = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
-        '''
+        """
         Copies given Dataset in destination Project by ID.
 
         :param dst_project_id: Destination Project ID in Supervisely.
@@ -310,14 +310,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_ds = api.dataset.copy(dst_proj_id, id=2540, new_name="banana", with_annotations=True)
             ds = api.dataset.get_list(dst_proj_id)
             print(len(ds)) # 1
-        '''
+        """
         new_datasets = self.copy_batch(dst_project_id, [id], [new_name], change_name_if_conflict, with_annotations)
         if len(new_datasets) == 0:
             return None
         return new_datasets[0]
 
     def move_batch(self, dst_project_id: int, ids: List[int], new_names: List[str] = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
-        '''
+        """
         Moves given Datasets to the destination Project by IDs.
 
         :param dst_project_id: Destination Project ID in Supervisely.
@@ -351,13 +351,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             movied_datasets = api.dataset.move_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
             ds = api.dataset.get_list(dst_proj_id)
             print(len(ds)) # 2
-        '''
+        """
         new_datasets = self.copy_batch(dst_project_id, ids, new_names, change_name_if_conflict, with_annotations)
         self.remove_batch(ids)
         return new_datasets
 
     def move(self, dst_project_id: int, id: int, new_name: str = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
-        '''
+        """
         Moves given Dataset in destination Project by ID.
 
         :param dst_project_id: Destination Project ID in Supervisely.
@@ -387,7 +387,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_ds = api.dataset.move(dst_proj_id, id=2550, new_name="cucumber", with_annotations=True)
             ds = api.dataset.get_list(dst_proj_id)
             print(len(ds)) # 1
-        '''
+        """
         new_dataset = self.copy(dst_project_id, id, new_name, change_name_if_conflict, with_annotations)
         self.remove(id)
         return new_dataset

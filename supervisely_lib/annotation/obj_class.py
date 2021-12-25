@@ -144,7 +144,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
     @property
     def hotkey(self) -> str:
-        '''
+        """
         Hotkey for ObjClass in annotation tool UI..
 
         :return: Hotkey
@@ -156,7 +156,7 @@ class ObjClass(KeyObject, JsonSerializable):
             class_lemon = sly.ObjClass('lemon', sly.Rectangle, hotkey='M')
             print(class_lemon.hotkey)
             # Output: 'M'
-        '''
+        """
         return self._hotkey
 
     def to_json(self) -> dict:

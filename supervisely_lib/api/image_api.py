@@ -18,6 +18,7 @@ from supervisely_lib.io.fs import ensure_base_path, get_file_hash, get_file_ext,
 from supervisely_lib.sly_logger import logger
 from supervisely_lib._utils import batched, generate_free_name
 from supervisely_lib.task.progress import Progress
+import numpy as np
 
 
 class ImageApi(RemoveableBulkModuleApi):
@@ -96,7 +97,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return 'ImageInfo'
 
     def get_list(self, dataset_id: int, filters: List[dict] = None, sort: str = "id", sort_order: str = "asc") -> List[NamedTuple]:
-        '''
+        """
         List of Images in the given Dataset.
 
         :param dataset_id: Dataset ID in which the Images are located.
@@ -153,7 +154,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
             #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg')
             # ]
-        '''
+        """
         return self.get_list_all_pages('images.list',  {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
@@ -162,7 +163,7 @@ class ImageApi(RemoveableBulkModuleApi):
         })
 
     def get_info_by_id(self, id: int) -> NamedTuple:
-        '''
+        """
         Get Image information by ID.
 
         :param id: Image ID in Supervisely.
@@ -180,12 +181,12 @@ class ImageApi(RemoveableBulkModuleApi):
             # You can get Image ID by listing all images in the Dataset as shown in get_list
             # Or you can open certain image in Supervisely Annotation Tool UI and get last digits of the URL
             img_info = api.image.get_info_by_id(770918)
-        '''
+        """
         return self._get_info_by_id(id, 'images.info')
 
     # @TODO: reimplement to new method images.bulk.info
     def get_info_by_id_batch(self, ids: List[int]) -> List[NamedTuple]:
-        '''
+        """
         Get Images information by ID.
 
         :param ids: Images IDs in Supervisely.
@@ -202,7 +203,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_ids = [376728, 376729, 376730, 376731, 376732, 376733]
             img_infos = image.get_info_by_id_batch(img_ids)
-        '''
+        """
         results = []
         if len(ids) == 0:
             return results
@@ -220,7 +221,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return response
 
     def download_np(self, id: int, keep_alpha: bool = False) -> np.ndarray:
-        '''
+        """
         Download Image with given id in numpy format.
 
         :param id: Image ID in Supervisely.
@@ -238,13 +239,13 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             image_np = api.image.download_np(770918)
-        '''
+        """
         response = self._download(id)
         img = sly_image.read_bytes(response.content, keep_alpha)
         return img
 
     def download_path(self, id: int, path: str) -> None:
-        '''
+        """
         Downloads Image from Dataset to local path by ID.
 
         :param id: Image ID in Supervisely.
@@ -265,7 +266,7 @@ class ImageApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
 
             api.image.download_path(770918, save_path)
-        '''
+        """
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:
@@ -285,7 +286,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 yield img_id, part
 
     def download_paths(self, dataset_id: int, ids: List[int], paths: List[str], progress_cb: Progress = None) -> None:
-        '''
+        """
         Download Images with given ids and saves them for the given paths.
 
         :param dataset_id: Dataset ID in Supervisely, where Images are located.
@@ -325,7 +326,7 @@ class ImageApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
-        '''
+        """
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
@@ -342,8 +343,8 @@ class ImageApi(RemoveableBulkModuleApi):
         #if ids != debug_ids:
         #    raise RuntimeError("images.bulk.download: imageIds order is broken")
 
-    def download_bytes(self, dataset_id: int, ids: List[int], progress_cb: Progress = None) -> bytes:
-        '''
+    def download_bytes(self, dataset_id: int, ids: List[int], progress_cb: Progress = None) -> [bytes]:
+        """
         Download Images with given IDs from Dataset in Binary format.
 
         :param dataset_id: Dataset ID in Supervisely, where Images are located.
@@ -365,7 +366,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_bytes = api.image.download_bytes(dataset_id, [770918])
             print(img_bytes)
             # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
-        '''
+        """
         if len(ids) == 0:
             return []
 
@@ -378,7 +379,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return [id_to_img[id] for id in ids]
 
     def download_nps(self, dataset_id: int, ids: List[int], progress_cb: Progress = None, keep_alpha: bool = False) -> List[np.ndarray]:
-        '''
+        """
         Download Images with given IDs in numpy format.
 
         :param dataset_id: Dataset ID in Supervisely, where Images are located.
@@ -401,12 +402,12 @@ class ImageApi(RemoveableBulkModuleApi):
 
             image_ids = [770918, 770919, 770920]
             image_nps = api.image.download_nps(dataset_id, image_ids)
-        '''
+        """
         return [sly_image.read_bytes(img_bytes, keep_alpha)
                 for img_bytes in self.download_bytes(dataset_id=dataset_id, ids=ids, progress_cb=progress_cb)]
 
     def check_existing_hashes(self, hashes: List[str]) -> List[str]:
-        '''
+        """
         Checks existing hashes for Images.
 
         :param hashes: List of hashes.
@@ -443,7 +444,7 @@ class ImageApi(RemoveableBulkModuleApi):
             # Get hashes that are already on server
             remote_hashes = api.image.check_existing_hashes(images_hashes)
             already_uploaded_images = {hh: hash_to_image[hh] for hh in remote_hashes}
-        '''
+        """
         results = []
         if len(hashes) == 0:
             return results
@@ -453,7 +454,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return results
 
     def check_image_uploaded(self, hash: str) -> bool:
-        '''
+        """
         Checks if Image has been uploaded.
 
         :param hash: Image hash in Supervisely.
@@ -471,7 +472,7 @@ class ImageApi(RemoveableBulkModuleApi):
             image_check_uploaded = api.image.check_image_uploaded("YZKQrZH5C0rBvGGA3p7hjWahz3/pV09u5m30Bz8GeYs=")
             print(image_check_uploaded)
             # Output: True
-        '''
+        """
         response = self._api.post('images.internal.hashes.list', [hash])
         results = response.json()
         if len(results) == 0:
@@ -531,7 +532,7 @@ class ImageApi(RemoveableBulkModuleApi):
                            "Please check if images are in supported format and if ones aren't corrupted.")
 
     def upload_path(self, dataset_id: int, name: str, path: str, meta: dict = None) -> NamedTuple:
-        '''
+        """
         Uploads Image with given name from given local path to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -553,12 +554,12 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
-        '''
+        """
         metas = None if meta is None else [meta]
         return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
     def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Progress = None, metas: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         Uploads Images with given names from given local path to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -586,7 +587,7 @@ class ImageApi(RemoveableBulkModuleApi):
             image_paths = ["/home/admin/Downloads/img/770918.jpeg", "/home/admin/Downloads/img/770919.jpeg", "/home/admin/Downloads/img/770920.jpeg"]
 
             img_infos = api.image.upload_path(dataset_id, names=img_names, paths=img_paths)
-        '''
+        """
         def path_to_bytes_stream(path):
             return open(path, 'rb')
 
@@ -596,7 +597,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_np(self, dataset_id: int, name: str, img: np.ndarray, meta: dict = None) -> NamedTuple:
-        '''
+        """
         Upload given Image in numpy format with given name to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -619,12 +620,12 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_np = sly.image.read("/home/admin/Downloads/7777.jpeg")
             img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
-        '''
+        """
         metas = None if meta is None else [meta]
         return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
 
     def upload_nps(self, dataset_id: int, names: List[str], imgs: List[np.ndarray], progress_cb: Progress = None, metas: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         Upload given Images in numpy format with given names to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -655,7 +656,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_nps = [img_np_1, img_np_2, img_np_3]
 
             img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps)
-        '''
+        """
         def img_to_bytes_stream(item):
             img, name = item[0], item[1]
             img_bytes = sly_image.write_bytes(img, get_file_ext(name))
@@ -672,7 +673,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_link(self, dataset_id: int, name: str, link: str, meta: dict = None) -> NamedTuple:
-        '''
+        """
         Uploads Image from given link to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -697,12 +698,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
 
             img_info = api.image.upload_link(dataset_id, img_name, img_link)
-        '''
+        """
         metas = None if meta is None else [meta]
         return self.upload_links(dataset_id, [name], [link], metas=metas)[0]
 
     def upload_links(self, dataset_id: int, names: List[str], links: List[str], progress_cb: Progress = None,  metas: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         Uploads Images from given links to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -731,11 +732,11 @@ class ImageApi(RemoveableBulkModuleApi):
                          'https://m.media-amazon.com/images/M/MV5BNjQ3NWNlNmQtMTE5ZS00MDdmLTlkZjUtZTBlM2UxMGFiMTU3XkEyXkFqcGdeQXVyNjUwNzk3NDc@._V1_.jpg']
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
-        '''
+        """
         return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, progress_cb, metas=metas)
 
     def upload_hash(self, dataset_id: int, name: str, hash: str, meta: dict = None) -> NamedTuple:
-        '''
+        """
         Upload Image from given hash to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -784,12 +785,12 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
-        '''
+        """
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
 
     def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], progress_cb: Progress = None, metas: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         Upload images from given hashes to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -830,11 +831,11 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
-        '''
+        """
         return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, progress_cb, metas=metas)
 
     def upload_id(self, dataset_id: int, name: str, id: int, meta: dict = None) -> NamedTuple:
-        '''
+        """
         Upload Image by ID to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -883,12 +884,12 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
-        '''
+        """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
     def upload_ids(self, dataset_id: int, names: List[str], ids: List[int], progress_cb: Progress = None, metas: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         Upload Images by IDs to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -930,7 +931,7 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T12:31:36.550Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T12:31:37.119Z", "level": "info"}
-        '''
+        """
         if metas is None:
             metas = [{}] * len(names)
 
@@ -1043,7 +1044,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return ApiField.IMAGE_IDS
 
     def copy_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
-        '''
+        """
         Copies Images with given IDs to Dataset.
 
         :param dst_dataset_id: Destination Dataset ID in Supervisely.
@@ -1078,7 +1079,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             ds_fruit_id = 2574
             ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
-        '''
+        """
         if type(ids) is not list:
             raise RuntimeError("ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list))
 
@@ -1115,7 +1116,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return new_images
 
     def move_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
-        '''
+        """
         Moves Images with given IDs to Dataset.
 
         :param dst_dataset_id: Destination Dataset ID in Supervisely.
@@ -1150,13 +1151,13 @@ class ImageApi(RemoveableBulkModuleApi):
 
             ds_fruit_id = 2574
             ds_fruit_img_infos = api.image.move_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
-        '''
+        """
         new_images = self.copy_batch(dst_dataset_id, ids, change_name_if_conflict, with_annotations)
         self.remove_batch(ids)
         return new_images
 
     def copy(self, dst_dataset_id: int, id: int, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
-        '''
+        """
         Copies Image with given ID to destination Dataset.
 
         :param dst_dataset_id: Destination Dataset ID in Supervisely.
@@ -1181,11 +1182,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_id = 121236920
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
-        '''
+        """
         return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def move(self, dst_dataset_id: int, id: int, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
-        '''
+        """
         Moves Image with given ID to destination Dataset.
 
         :param dst_dataset_id: Destination Dataset ID in Supervisely.
@@ -1210,11 +1211,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_id = 533336920
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
-        '''
+        """
         return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def url(self, team_id: int, workspace_id: int, project_id: int, dataset_id: int, image_id: int) -> str:
-        '''
+        """
         Gets Image URL by ID.
 
         :param team_id: Team ID in Supervisely.
@@ -1246,7 +1247,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
             print(url)
             # Output: https://app.supervise.ly/app/images/16087/23821/53939/254737#image-121236920
-        '''
+        """
         result = urllib.parse.urljoin(self._api.server_address,
                                       'app/images/{}/{}/{}/{}#image-{}'.format(team_id,
                                                                                workspace_id,
@@ -1270,7 +1271,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 yield h, part
 
     def download_paths_by_hashes(self, hashes: List[str], paths: List[str], progress_cb: Progress=None) -> None:
-        '''
+        """
         Download Images with given hashes in Supervisely server and saves them for the given paths.
 
         :param hashes: List of images hashes in Supervisely.
@@ -1300,7 +1301,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 # It is necessary to save images with the same names(extentions) as on the server
                 paths.append(os.path.join(dir_for_save, im_info.name))
             api.image.download_paths_by_hashes(hashes, paths)
-        '''
+        """
         if len(hashes) == 0:
             return
         if len(hashes) != len(paths):
@@ -1353,7 +1354,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return res_title
 
     def storage_url(self, path_original: str) -> str:
-        '''
+        """
         Get full Image URL link in Supervisely server.
 
         :param path_original: Original Image path in Supervisely server.
@@ -1371,12 +1372,12 @@ class ImageApi(RemoveableBulkModuleApi):
             image_id = 376729
             img_info = api.image.get_info_by_id(image_id)
             img_storage_url = api.image.storage_url(img_info.path_original)
-        '''
+        """
         result = urllib.parse.urljoin(self._api.server_address, '{}'.format(path_original))
         return result
 
     def preview_url(self, url: str, width: int = None, height: int = None, quality: int = 70) -> str:
-        '''
+        """
         Previews Image with the given resolution parameters.
 
         :param url: Full Image storage URL.
@@ -1402,7 +1403,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
 
             # DOESN'T WORK
-        '''
+        """
         #@TODO: if both width and height are defined, and they are not proportioned to original image resolution,
         # then images will be croped from center
         if width is None:

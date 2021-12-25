@@ -102,12 +102,12 @@ class VideoApi(RemoveableBulkModuleApi):
         return 'VideoInfo'
 
     def url(self, dataset_id, video_id, video_frame=0):
-        '''
+        """
         :param dataset_id: int
         :param video_id: int
         :param video_frame: int
         :return: url of given video id
-        '''
+        """
         result = urllib.parse.urljoin(self._api.server_address, f'app/videos/?'
                                                                 f'datasetId={dataset_id}&'
                                                                 f'videoFrame={video_frame}&'
@@ -422,11 +422,11 @@ class VideoApi(RemoveableBulkModuleApi):
             return ordered_results
 
     def _download(self, id, is_stream=False):
-        '''
+        """
         :param id: int
         :param is_stream: bool
         :return: Response object containing video with given id
-        '''
+        """
         response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
@@ -567,7 +567,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return save_path
 
     def notify_progress(self, track_id, video_id, frame_start, frame_end, current, total):
-        '''
+        """
         :param track_id: int
         :param video_id: int
         :param frame_start: int
@@ -575,7 +575,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param current: int
         :param total: int
         :return: str
-        '''
+        """
         response = self._api.post('videos.notify-annotation-tool', {"type": "videos:fetch-figures-in-range",
                                                                     "data": {
                                                                         ApiField.TRACK_ID: track_id,
@@ -590,12 +590,12 @@ class VideoApi(RemoveableBulkModuleApi):
         return response.json()[ApiField.STOPPED]
 
     def notify_tracking_error(self, track_id, error, message):
-        '''
+        """
         :param track_id: int
         :param error: str
         :param message: str
         :return: #TODO nothing to return
-        '''
+        """
         response = self._api.post('videos.notify-annotation-tool', {"type": "videos:tracking-error",
                                                                     "data": {
                                                                         ApiField.TRACK_ID: track_id,
@@ -661,7 +661,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return results
 
     def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Progress=None, metas: List[dict]=None, infos=None, item_progress=None) -> List[NamedTuple]:
-        '''
+        """
         Uploads Videos with given names from given local paths to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
@@ -689,7 +689,7 @@ class VideoApi(RemoveableBulkModuleApi):
             video_paths = ["/home/admin/Downloads/video/770918.mp4", "/home/admin/Downloads/video/770919.mp4", "/home/admin/Downloads/video/770920.mp4"]
 
             video_infos = api.video.upload_path(dataset_id, names=video_names, paths=video_paths)
-        '''
+        """
         def path_to_bytes_stream(path):
             return open(path, 'rb')
 

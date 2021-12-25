@@ -8,7 +8,6 @@ from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.imaging.color import rgb2hex, hex2rgb
 from supervisely_lib import logger
-from supervisely_lib.annotation.renamer import Renamer
 
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):

@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import NamedTuple
 from typing import List
-from typing import Tuple
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 import json

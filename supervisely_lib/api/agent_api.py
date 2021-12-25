@@ -76,7 +76,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         ModuleWithStatus.__init__(self)
 
     def get_list(self, team_id: int, filters: List[dict] = None) -> List[NamedTuple]:
-        '''
+        """
         List of all agents in the given Team.
 
         :param team_id: Team ID in Supervisely.
@@ -97,7 +97,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
             agents = api.agent.get_list(team_id)
 
             filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
-        '''
+        """
         return self.get_list_all_pages('agents.list',  {'teamId': team_id, "filter": filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:

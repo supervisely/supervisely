@@ -217,7 +217,7 @@ class Annotation:
         return self._img_tags
 
     def to_json(self) -> dict:
-        '''
+        """
         Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
@@ -240,7 +240,7 @@ class Annotation:
             #     "objects": [],
             #     "customBigData": {}
             # }
-        '''
+        """
         res = {
             AnnotationJsonFields.IMG_DESCRIPTION: self.img_description,
             AnnotationJsonFields.IMG_SIZE: {
@@ -270,7 +270,7 @@ class Annotation:
 
     @classmethod
     def from_json(cls, data: dict, project_meta: ProjectMeta) -> Annotation:
-        '''
+        """
         Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Annotation in json format as a dict.
@@ -296,7 +296,7 @@ class Annotation:
             }
 
             ann = sly.Annotation.from_json(ann_json, meta)
-        '''
+        """
         img_size_dict = data[AnnotationJsonFields.IMG_SIZE]
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
@@ -335,7 +335,7 @@ class Annotation:
 
     @classmethod
     def load_json_file(cls, path: str, project_meta: ProjectMeta) -> Annotation:
-        '''
+        """
         Loads json file and converts it to Annotation.
 
         :param path: Path to the json file.
@@ -361,14 +361,14 @@ class Annotation:
             # Load json file
             path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
             ann = sly.Annotation.load_json_file(path, meta)
-        '''
+        """
         with open(path) as fin:
             data = json.load(fin)
         return cls.from_json(data, project_meta)
 
     def clone(self, img_size: Tuple[int, int] = None, labels: List[Label] = None, img_tags: TagCollection = None, img_description: str = None,
               pixelwise_scores_labels: list = None, custom_data: dict = None, image_id: int = None) -> Annotation:
-        '''
+        """
         Makes a copy of Annotation with new fields, if fields are given, otherwise it will use fields of the original Annotation.
 
         :param img_size: Size of the image (height, width).
@@ -402,7 +402,7 @@ class Annotation:
             # Assign cloned annotation to a new variable
             ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
 
-        '''
+        """
         return Annotation(img_size=take_with_default(img_size, self.img_size),
                           labels=take_with_default(labels, self.labels),
                           img_tags=take_with_default(img_tags, self.img_tags),
@@ -413,19 +413,13 @@ class Annotation:
                           )
 
     def _add_labels_impl(self, dest, labels):
-        '''
-        The function _add_labels_impl extend list of the labels of the current Annotation object
-        :param dest: destination list of the Label class objects
-        :param labels: list of the Label class objects to be added to the destination list
-        :return: list of the Label class objects
-        '''
         for label in labels:
             # TODO Reconsider silent automatic normalization, reimplement
             canvas_rect = Rectangle.from_size(self.img_size)
             dest.extend(label.crop(canvas_rect))
 
     def add_label(self, label: Label) -> Annotation:
-        '''
+        """
         Clones Annotation and adds a new Label.
 
         :param label: Label to be added.
@@ -445,11 +439,11 @@ class Annotation:
             # Add label to Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.add_label(label_kiwi)
-        '''
+        """
         return self.add_labels([label])
 
     def add_labels(self, labels: List[Label]) -> Annotation:
-        '''
+        """
         Clones Annotation and adds a new Labels.
 
         :param labels: List of Label objects to be added.
@@ -472,13 +466,13 @@ class Annotation:
             # Add labels to Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.add_labels([label_kiwi, label_lemon])
-        '''
+        """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
         return self.clone(labels=[*self._labels, *new_labels])
 
     def delete_label(self, label: Label) -> Annotation:
-        '''
+        """
         Clones Annotation with removed Label.
 
         :param label: Label to be deleted.
@@ -512,34 +506,34 @@ class Annotation:
 
             print(len(ann.labels))
             # Output: 1
-        '''
+        """
         retained_labels = [_label for _label in self._labels if _label != label]
         if len(retained_labels) == len(self._labels):
             raise KeyError('Trying to delete a non-existing label of class: {}'.format(label.obj_class.name))
         return self.clone(labels=retained_labels)
 
     def add_pixelwise_score_label(self, label):
-        '''
+        """
         The function add_pixelwise_score_label add label to the pixelwise_scores_labels and return the copy of the
         current  Annotation object
         :param label: Label class object to be added
         :return: Annotation class object with the new list of the pixelwise_scores_labels
-        '''
+        """
         return self.add_pixelwise_score_labels([label])
 
     def add_pixelwise_score_labels(self, labels):
-        '''
+        """
         The function add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
         the copy of the current  Annotation object.
         :param labels: list of the Label class objects to be added
         :return: Annotation class object with the new list of the pixelwise_scores_labels
-        '''
+        """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
         return self.clone(pixelwise_scores_labels=[*self._pixelwise_scores_labels, *new_labels])
 
     def add_tag(self, tag: Tag) -> Annotation:
-        '''
+        """
         Clones Annotation and adds a new Tag.
 
         :param tag: Tag object to be added.
@@ -560,11 +554,11 @@ class Annotation:
             # Add Tag to Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.add_tag(tag_message)
-        '''
+        """
         return self.clone(img_tags=self._img_tags.add(tag))
 
     def add_tags(self, tags: List[Tag]) -> Annotation:
-        '''
+        """
         Clones Annotation and adds a new list of Tags.
 
         :param tags: List of Tags to be added.
@@ -588,11 +582,11 @@ class Annotation:
             # Add Tags to Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.add_tags([tag_message, tag_alert])
-        '''
+        """
         return self.clone(img_tags=self._img_tags.add_items(tags))
 
     def delete_tags_by_name(self, tag_names: List[str]) -> Annotation:
-        '''
+        """
         Clones Annotation and removes Tags by their names.
 
         :param tag_names: List of Tags names to be deleted.
@@ -616,12 +610,12 @@ class Annotation:
             # Delete Tags from Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.delete_tags_by_name(['Message', 'Alert'])
-        '''
+        """
         retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
         return self.clone(img_tags=TagCollection(items=retained_tags))
 
     def delete_tag_by_name(self, tag_name: str) -> Annotation:
-        '''
+        """
         Clones Annotation with removed Tag by it's name.
 
         :param tag_name: Tag name to be delete.
@@ -645,11 +639,11 @@ class Annotation:
             # Delete Tag from Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = ann.delete_tag_by_name('Alert')
-        '''
+        """
         return self.delete_tags_by_name([tag_name])
 
     def delete_tags(self, tags: List[Tag]) -> Annotation:
-        '''
+        """
         Clones Annotation with removed Tags.
 
         :param tags: List of Tags to be deleted.
@@ -676,11 +670,11 @@ class Annotation:
             new_ann = ann.delete_tags([tag_message, tag_alert])
             print(len(new_ann.img_tags))
             # Output: 0
-        '''
+        """
         return self.delete_tags_by_name([tag.meta.name for tag in tags])
 
     def delete_tag(self, tag: Tag) -> Annotation:
-        '''
+        """
         Clones Annotation with removed Tag.
 
         :param tag: Tag to be deleted.
@@ -707,17 +701,17 @@ class Annotation:
             new_ann = ann.delete_tag(tag_dog)
             print(len(new_ann.img_tags))
             # Output: 1
-        '''
+        """
         return self.delete_tags_by_name([tag.meta.name])
 
     def transform_labels(self, label_transform_fn, new_size=None):
-        '''
+        """
         The function transform_labels transform labels and change image size in current Annotation object and return the copy of the current
         Annotation object
         :param label_transform_fn: function for transform labels
         :param new_size: new image size
         :return: Annotation class object with new labels and image size
-        '''
+        """
         def _do_transform_labels(src_labels, label_transform_fn):
             # long easy to debug
             # result = []
@@ -733,7 +727,7 @@ class Annotation:
                           pixelwise_scores_labels=new_pixelwise_scores_labels)
 
     def crop_labels(self, rect: Rectangle) -> Annotation:
-        '''
+        """
         Crops Labels of the current Annotation.
 
         :param rect: Rectangle object for crop.
@@ -777,13 +771,13 @@ class Annotation:
               - .. figure:: https://i.imgur.com/w2wR4h8.jpg
 
                    After
-        '''
+        """
         def _crop_label(label):
             return label.crop(rect)
         return self.transform_labels(_crop_label)
 
     def relative_crop(self, rect: Rectangle) -> Annotation:
-        '''
+        """
         Crops current Annotation and with image size (height, width) changes.
 
         :param rect: Rectangle object for crop.
@@ -828,13 +822,13 @@ class Annotation:
               - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
 
                    After
-        '''
+        """
         def _crop_label(label):
             return label.relative_crop(rect)
         return self.transform_labels(_crop_label, rect.to_size())
 
     def rotate(self, rotator: ImageRotator) -> Annotation:
-        '''
+        """
         Rotates current Annotation.
 
         :param rotator: ImageRotator object.
@@ -881,13 +875,13 @@ class Annotation:
               - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
 
                    After
-        '''
+        """
         def _rotate_label(label):
             return [label.rotate(rotator)]
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
     def resize(self, out_size: Tuple[int, int]) -> Annotation:
-        '''
+        """
         Resizes current Annotation.
 
         :param out_size: Desired output image size (height, width).
@@ -932,13 +926,13 @@ class Annotation:
               - .. figure:: https://i.imgur.com/RrvNMoV.jpg
 
                    After
-        '''
+        """
         def _resize_label(label):
             return [label.resize(self.img_size, out_size)]
         return self.transform_labels(_resize_label, out_size)
 
     def scale(self, factor: float) -> Annotation:
-        '''
+        """
         Scales current Annotation with the given factor.
 
         :param factor: Scale size.
@@ -983,14 +977,14 @@ class Annotation:
               - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
 
                    After
-        '''
+        """
         def _scale_label(label):
             return [label.scale(factor)]
         result_size = (round(self.img_size[0] * factor), round(self.img_size[1] * factor))
         return self.transform_labels(_scale_label, result_size)
 
     def fliplr(self) -> Annotation:
-        '''
+        """
         Flips the current Annotation horizontally.
 
         :return: New instance of Annotation
@@ -1033,13 +1027,13 @@ class Annotation:
               - .. figure:: https://i.imgur.com/AQSuqIN.jpg
 
                    After
-        '''
+        """
         def _fliplr_label(label):
             return [label.fliplr(self.img_size)]
         return self.transform_labels(_fliplr_label)
 
     def flipud(self) -> Annotation:
-        '''
+        """
         Flips the current Annotation vertically.
 
         :return: New instance of Annotation
@@ -1082,7 +1076,7 @@ class Annotation:
               - .. figure:: https://i.imgur.com/NVhvPDb.jpg
 
                    After
-        '''
+        """
         def _flipud_label(label):
             return [label.flipud(self.img_size)]
         return self.transform_labels(_flipud_label)
@@ -1096,7 +1090,7 @@ class Annotation:
                                      font=self._get_font())
 
     def draw(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False) -> None:
-        '''
+        """
         Draws current Annotation on image. Modifies mask.
 
         :param bitmap: Image.
@@ -1132,7 +1126,7 @@ class Annotation:
         .. image:: https://i.imgur.com/1W1Nfl1.jpg
             :width: 600
             :height: 500
-        '''
+        """
         tags_font = None
         if draw_tags is True:
             tags_font = self._get_font()
@@ -1143,7 +1137,7 @@ class Annotation:
 
 
     def draw_contour(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False) -> None:
-        '''
+        """
         Draws geometry contour of Annotation on image. Modifies mask.
 
         :param bitmap: Image.
@@ -1179,7 +1173,7 @@ class Annotation:
         .. image:: https://i.imgur.com/F8KGZS4.jpg
             :width: 600
             :height: 500
-        '''
+        """
         tags_font = None
         if draw_tags is True:
             tags_font = self._get_font()
@@ -1190,7 +1184,7 @@ class Annotation:
 
     @classmethod
     def from_img_path(cls, img_path: str) -> Annotation:
-        '''
+        """
         Creates empty Annotation from image.
 
         :param img_path: Path to the input image.
@@ -1204,14 +1198,14 @@ class Annotation:
 
             img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
             ann = sly.Annotation.from_img_path(img_path)
-        '''
+        """
         img = sly_image.read(img_path)
         img_size = img.shape[:2]
         return cls(img_size)
 
     @classmethod
     def stat_area(cls, render: np.ndarray, names: List[str], colors: List[List[int, int, int]]) -> dict:
-        '''
+        """
         Get statistics about color area representation on the given render for the current Annotation.
 
         :param render: Target render.
@@ -1260,7 +1254,7 @@ class Annotation:
             # }
 
             print(stat_area)
-        '''
+        """
         if len(names) != len(colors):
             raise RuntimeError("len(names) != len(colors) [{} != {}]".format(len(names), len(colors)))
 
@@ -1299,7 +1293,7 @@ class Annotation:
         return result
 
     def stat_class_count(self, class_names: List[str]=None) -> defaultdict:
-        '''
+        """
         Get statistics about number of each class in Annotation.
 
         :param class_names: List of classes names.
@@ -1327,7 +1321,7 @@ class Annotation:
             stat_class = ann.stat_class_count()
 
             # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
-        '''
+        """
         total = 0
         stat = {name: 0 for name in class_names}
         for label in self._labels:
@@ -1340,7 +1334,7 @@ class Annotation:
         return stat
 
     def draw_class_idx_rgb(self, render: np.ndarray, name_to_index: dict) -> None:
-        '''
+        """
         Draws current Annotation on render.
 
         :param render: Target render to draw classes.
@@ -1371,7 +1365,7 @@ class Annotation:
         .. image:: https://i.imgur.com/ACSaBgw.jpg
             :width: 600
             :height: 500
-        '''
+        """
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
             color = [class_idx, class_idx, class_idx]
@@ -1382,7 +1376,7 @@ class Annotation:
         return self._custom_data.copy()
 
     def filter_labels_by_min_side(self, thresh: int, filter_operator: operator = operator.lt, classes: List[str] = None) -> Annotation:
-        '''
+        """
         Filters Labels of the current Annotation by side. If minimal side is smaller than Label threshold it will be ignored.
 
         :param thresh: Side threshold to filter.
@@ -1426,7 +1420,7 @@ class Annotation:
               - .. figure:: https://i.imgur.com/uunTbPR.jpg
 
                    After
-        '''
+        """
         def filter(label):
             if classes == None or label.obj_class.name in classes:
                 bbox = label.geometry.to_bbox()
@@ -1438,7 +1432,7 @@ class Annotation:
         return self.transform_labels(filter)
 
     def get_label_by_id(self, sly_id: int) -> Label or None:
-        '''
+        """
         Get Label from current Annotation by sly_id.
 
         :param sly_id: Label ID from Supervisely server.
@@ -1488,7 +1482,7 @@ class Annotation:
             # Returns None if Label ID doesn't exist on the given image ID
             label_by_id = ann.get_label_by_id(sly_id=9999999)
             # Output: None
-        '''
+        """
         for label in self._labels:
             if label.geometry.sly_id == sly_id:
                 return label
