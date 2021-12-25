@@ -308,11 +308,11 @@ class UserApi(ModuleApiBase):
         return self.get_info_by_id(response.json()[ApiField.USER_ID])
 
     def _set_disabled(self, id, disable):
-        '''
+        """
         Check status of the user with given id
         :param id: int
         :param disable: bool
-        '''
+        """
         self._api.post('users.disable', {ApiField.ID: id, ApiField.DISABLE: disable})
 
     def disable(self, id: int) -> None:

@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
 from supervisely_lib.annotation.tag_meta import TagValueType, TagMeta
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
 from supervisely_lib.collection.key_indexed_collection import KeyObject
@@ -19,7 +18,7 @@ class TagJsonFields:
 
 
 class Tag(KeyObject):
-    '''
+    """
     :class:`Tag<Tag>` can be attached to whole image and/or to individual :class:`Label<LabelBase>`. :class:`Tag<Tag>` object is immutable.
 
     :param meta: General information about Tag.
@@ -65,7 +64,7 @@ class Tag(KeyObject):
         # If given value is not in a list of possible Tags, ValueError will be raised
         tag_coat_color = sly.Tag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
-    '''
+    """
     def __init__(self, meta: TagMeta, value: str or int or float or None = None, sly_id: int = None, labeler_login: str = None, updated_at : str = None, created_at: str = None):
         if meta is None:
             raise ValueError('TagMeta is None')
@@ -148,7 +147,7 @@ class Tag(KeyObject):
         return self._meta.key()
 
     def to_json(self) -> dict:
-        '''
+        """
         Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
@@ -172,7 +171,7 @@ class Tag(KeyObject):
             #  "updatedAt": "2021-01-22T19:37:50.158Z",
             #  "createdAt": "2021-01-22T18:00:00.000Z"
             # }
-        '''
+        """
         res = {
             TagJsonFields.TAG_NAME: self.meta.name,
             #TagJsonFields.VALUE: self.value
@@ -196,7 +195,7 @@ class Tag(KeyObject):
 
     @classmethod
     def from_json(cls, data: dict, tag_meta_collection: TagMetaCollection) -> Tag:
-        '''
+        """
         Convert a json dict to Tag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Tag in json format as a dict.
@@ -221,7 +220,7 @@ class Tag(KeyObject):
             }
 
             tag_dog = sly.Tag.from_json(data, tag_metas)
-        '''
+        """
         if type(data) is str:
             tag_name = data
             value = None
@@ -240,7 +239,7 @@ class Tag(KeyObject):
         return cls(meta=meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     def get_compact_str(self) -> str:
-        '''
+        """
         Displays information about Tag's name and value in string format.
 
         :return: Name and value of the given Tag
@@ -254,7 +253,7 @@ class Tag(KeyObject):
 
             print(tag_dog.get_compact_str())
             # Output: 'dog:Husky'
-        '''
+        """
         if (self.meta.value_type != TagValueType.NONE) and (len(str(self.value)) > 0):
             return '{}:{}'.format(self.name, self.value)
         return self.name
@@ -322,7 +321,7 @@ class Tag(KeyObject):
         return not self == other
 
     def clone(self, meta: TagMeta = None, value: str or int or float = None, sly_id: int = None, labeler_login: str = None, updated_at: str = None, created_at: str = None) -> Tag:
-        '''
+        """
         Clone makes a copy of Tag with new fields, if fields are given, otherwise it will use original Tag fields.
 
         :param meta: General information about Tag.
@@ -355,7 +354,7 @@ class Tag(KeyObject):
             clone_weather_2 = tag_weather.clone(value="Cloudy")
 
             clone_weather_3 = tag_weather.clone(value="Rainy")
-        '''
+        """
         return Tag(meta=take_with_default(meta, self.meta),
                    value=take_with_default(value, self.value),
                    sly_id=take_with_default(sly_id, self.sly_id),

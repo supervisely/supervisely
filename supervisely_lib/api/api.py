@@ -44,7 +44,7 @@ API_TOKEN = 'API_TOKEN'
 
 
 class Api:
-    '''
+    """
     An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<Api>` object is immutable.
 
     :param server_address: Address of the server.
@@ -73,7 +73,7 @@ class Api:
         os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
-    '''
+    """
     def __init__(self, server_address: str, token: str, retry_count: int = None, retry_sleep_sec: int = None, external_logger: logger = None, ignore_task_id: bool = False):
         if token is None:
             raise ValueError("Token is None")
@@ -129,7 +129,7 @@ class Api:
 
     @classmethod
     def from_env(cls, retry_count: int=5, ignore_task_id: bool=False) -> Api:
-        '''
+        """
         Initialize API use environment variables.
 
         :param retry_count: The number of attempts to connect to the server.
@@ -146,11 +146,11 @@ class Api:
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
-        '''
+        """
         return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN], retry_count=retry_count, ignore_task_id=ignore_task_id)
 
     def add_header(self, key: str, value: str) -> None:
-        '''
+        """
         Add given key and value to headers dictionary.
 
         :param key: New key.
@@ -160,14 +160,14 @@ class Api:
         :raises: :class:`RuntimeError`, if key is already set
         :return: None
         :rtype: :class:`NoneType`
-        '''
+        """
         if key in self.headers:
             raise RuntimeError(f'Header {key!r} is already set for the API object. '
                                f'Current value: {self.headers[key]!r}. Tried to set value: {value!r}')
         self.headers[key] = value
 
     def add_additional_field(self, key: str, value: str) -> None:
-        '''
+        """
         Add given key and value to additional_fields dictionary.
 
         :param key: New key.
@@ -176,11 +176,11 @@ class Api:
         :type value: str
         :return: None
         :rtype: :class:`NoneType`
-        '''
+        """
         self.additional_fields[key] = value
 
     def post(self, method: str, data: dict, retries: int=None, stream: bool=False) -> requests.Response:
-        '''
+        """
         Performs POST request to server with given parameters.
 
         :param method:
@@ -193,7 +193,7 @@ class Api:
         :type stream: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
-        '''
+        """
         if retries is None:
             retries = self.retry_count
 
@@ -226,7 +226,7 @@ class Api:
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
     def get(self, method: str, params: dict, retries: int = None, stream: bool = False, use_public_api: bool = True) -> requests.Response:
-        '''
+        """
         Performs GET request to server with given parameters.
 
         :param method:
@@ -241,7 +241,7 @@ class Api:
         :type method: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
-        '''
+        """
         if retries is None:
             retries = self.retry_count
 
@@ -270,10 +270,10 @@ class Api:
 
     @staticmethod
     def _raise_for_status(response):
-        '''
+        """
         Raise error and show message with code of mistake if given response can not connect to server.
         :param response: Request class object
-        '''
+        """
         """Raises stored :class:`HTTPError`, if one occurred."""
         http_error_msg = ''
         if isinstance(response.reason, bytes):
@@ -295,7 +295,7 @@ class Api:
 
     @staticmethod
     def parse_error(response: requests.Response, default_error: str="Error", default_message: str="please, contact administrator"):
-        '''
+        """
         Processes error from response.
 
         :param response: Request object.
@@ -306,7 +306,7 @@ class Api:
         :type method: str, optional
         :return: Number of error and message about curren connection mistake
         :rtype: :class:`int`, :class:`str`
-        '''
+        """
         ERROR_FIELD = "error"
         MESSAGE_FIELD = "message"
         DETAILS_FIELD = "details"

@@ -27,7 +27,7 @@ class LabelJsonFields:
 
 
 class LabelBase:
-    '''
+    """
     Labeling object for :class:`Annotation<supervisely_lib.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
 
     :param geometry: Label :class:`geometry<supervisely_lib.geometry.geometry.Geometry>`.
@@ -57,7 +57,7 @@ class LabelBase:
         # Label
         geometry_figure = sly.Rectangle(0, 0, 300, 300)
         label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
-    '''
+    """
     def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: TagCollection = None, description: str = ""):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -180,7 +180,7 @@ class LabelBase:
         return self._tags.clone()
 
     def to_json(self) -> dict:
-        '''
+        """
         Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
@@ -209,7 +209,7 @@ class LabelBase:
             #    "geometryType": "rectangle",
             #    "shape": "rectangle"
             # }
-        '''
+        """
         res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
@@ -222,7 +222,7 @@ class LabelBase:
 
     @classmethod
     def from_json(cls, data: dict, project_meta: ProjectMeta) -> LabelBase:
-        '''
+        """
         Convert a json dict to Label. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Label in json format as a dict.
@@ -252,7 +252,7 @@ class LabelBase:
             }
 
             label_dog = sly.Label.from_json(data, meta)
-        '''
+        """
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:
@@ -271,7 +271,7 @@ class LabelBase:
                    description=data.get(LabelJsonFields.DESCRIPTION, ""))
 
     def add_tag(self, tag: Tag) -> LabelBase:
-        '''
+        """
         Adds Tag to the current Label.
 
         :param tag: Tag to be added.
@@ -293,11 +293,11 @@ class LabelBase:
             # Add Tag
             # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
             new_label = label_dog.add_tag(tag_dog)
-        '''
+        """
         return self.clone(tags=self._tags.add(tag))
 
     def add_tags(self, tags: List[Tag]) -> LabelBase:
-        '''
+        """
         Adds multiple Tags to the current Label.
 
         :param tags: List of Tags to be added.
@@ -324,12 +324,12 @@ class LabelBase:
             # Add Tags
             # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
             new_label = label.add_tags(tags_arr)
-        '''
+        """
         return self.clone(tags=self._tags.add_items(tags))
 
     def clone(self, geometry: Geometry = None, obj_class: ObjClass = None, tags: TagCollection = None,
               description: str = None) -> LabelBase:
-        '''
+        """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
         :param geometry: Label :class:`geometry<supervisely_lib.geometry.geometry.Geometry>`.
@@ -373,21 +373,21 @@ class LabelBase:
 
             clone_label_dog = label_dog.clone(sly.Label(sly.Bitmap(mask_bool), class_dog))
             # In this case RuntimeError will be raised
-        '''
+        """
         return self.__class__(geometry=take_with_default(geometry, self.geometry),
                               obj_class=take_with_default(obj_class, self.obj_class),
                               tags=take_with_default(tags, self.tags),
                               description=take_with_default(description, self.description))
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
-        '''
+        """
         Clones the current Label and crops it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.crop_labels>`.
 
         :param rect: Rectangle object.
         :type rect: Rectangle
         :return: List of Labels with new geometries
         :rtype: :class:`List[Label]<LabelBase>`
-        '''
+        """
         if rect.contains(self.geometry.to_bbox()):
             return [self]
         else:
@@ -401,29 +401,29 @@ class LabelBase:
                 return [self.clone(geometry=g) for g in self.geometry.crop(rect)]
 
     def relative_crop(self, rect: Rectangle) -> List[LabelBase]:
-        '''
+        """
         Clones the current Label and crops it, but return results with coordinates relative to the given Rectangle. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.relative_crop>`.
 
         :param rect: Rectangle object.
         :type rect: Rectangle
         :return: List of Labels with new geometries
         :rtype: :class:`List[Label]<LabelBase>`
-        '''
+        """
         return [self.clone(geometry=g) for g in self.geometry.relative_crop(rect)]
 
     def rotate(self, rotator: ImageRotator) -> LabelBase:
-        '''
+        """
         Clones the current Label and rotates it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.rotate>`.
 
         :param rotator: ImageRotator object.
         :type rotator: ImageRotator
         :return: New instance of Label with rotated geometry
         :rtype: :class:`Label<LabelBase>`
-        '''
+        """
         return self.clone(geometry=self.geometry.rotate(rotator))
 
     def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> LabelBase:
-        '''
+        """
         Clones the current Label and resizes it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.resize>`.
 
         :param in_size: Input image size (height, width) of the Annotation to which Label belongs.
@@ -432,22 +432,22 @@ class LabelBase:
         :type out_size: Tuple[int, int]
         :return: New instance of Label with resized geometry
         :rtype: :class:`Label<LabelBase>`
-        '''
+        """
         return self.clone(geometry=self.geometry.resize(in_size, out_size))
 
     def scale(self, factor: float) -> LabelBase:
-        '''
+        """
         Clones the current Label and scales it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.scale>`.
 
         :param factor: Scale factor.
         :type factor: float
         :return: New instance of Label with scaled geometry
         :rtype: :class:`Label<LabelBase>`
-        '''
+        """
         return self.clone(geometry=self.geometry.scale(factor))
 
     def translate(self, drow: int, dcol: int) -> LabelBase:
-        '''
+        """
         Clones the current Label and shifts it by a certain number of pixels. Mostly used for internal implementation.
 
         :param drow: Horizontal shift.
@@ -481,29 +481,29 @@ class LabelBase:
                     new_labels.append(label)
             ann = ann.clone(labels=new_labels)
             ann.draw_pretty(new_img, thickness=3)  # after
-        '''
+        """
         return self.clone(geometry=self.geometry.translate(drow=drow, dcol=dcol))
 
     def fliplr(self, img_size: Tuple[int, int]) -> LabelBase:
-        '''
+        """
         Clones the current Label and flips it horizontally. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.fliplr>`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :return: New instance of Label with flipped geometry
         :rtype: :class:`Label<LabelBase>`
-        '''
+        """
         return self.clone(geometry=self.geometry.fliplr(img_size))
 
     def flipud(self, img_size: Tuple[int, int]) -> LabelBase:
-        '''
+        """
         Clones the current Label and flips it vertically. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.flipud>`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :return: New instance of Label with flipped geometry
         :rtype: :class:`Label<LabelBase>`
-        '''
+        """
         return self.clone(geometry=self.geometry.flipud(img_size))
 
     def _draw_tags(self, bitmap, font):
@@ -517,7 +517,7 @@ class LabelBase:
 
     def draw(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False,
              tags_font: FreeTypeFont = None) -> None:
-        '''
+        """
         Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.draw>`.
 
         :param bitmap: image.
@@ -532,7 +532,7 @@ class LabelBase:
         :type tags_font: FreeTypeFont, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        '''
+        """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
@@ -540,7 +540,7 @@ class LabelBase:
 
     def draw_contour(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1,
                      draw_tags: bool = False, tags_font: FreeTypeFont = None) -> None:
-        '''
+        """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.draw_contour>`.
 
         :param bitmap: image.
@@ -555,7 +555,7 @@ class LabelBase:
         :type tags_font: FreeTypeFont, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        '''
+        """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw_contour(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
@@ -563,7 +563,7 @@ class LabelBase:
 
     @property
     def area(self) -> float:
-        '''
+        """
         Label area.
 
         :return: Area of current geometry in Label.
@@ -579,11 +579,11 @@ class LabelBase:
             figure_area = label_dog.area
             print(figure_area)
             # Output: 300000.0
-        '''
+        """
         return self.geometry.area
 
     def convert(self, new_obj_class: ObjClass) -> List[LabelBase]:
-        '''
+        """
         Converts Label geometry to another geometry shape.
 
         :param new_obj_class: ObjClass with new geometry shape.
@@ -609,7 +609,7 @@ class LabelBase:
             for label_bitmap in convert_label:
                 print(label_bitmap.geometry.to_json())
                 # Output: {'geometryType': 'bitmap'}
-        '''
+        """
         labels = []
         geometries = self.geometry.convert(new_obj_class.geometry_type)
         for g in geometries:
@@ -619,9 +619,9 @@ class LabelBase:
 
 class Label(LabelBase):
     def _validate_geometry_type(self):
-        '''
+        """
         Checks geometry type for correctness
-        '''
+        """
         if self._obj_class.geometry_type != AnyGeometry:
             if type(self._geometry) is not self._obj_class.geometry_type:
                 raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"

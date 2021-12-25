@@ -4,7 +4,6 @@ from typing import List
 from typing import NamedTuple
 from pandas.core.frame import DataFrame
 
-from enum import Enum
 import pandas as pd
 import urllib
 from collections import defaultdict
@@ -256,14 +255,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return info
 
     def _check_project_info(self, info, id=None, name=None, expected_type=None, raise_error=False):
-        '''
+        """
         Checks if a project exists with a given id and type of project == expected type
         :param info: project metadata information
         :param id: int
         :param name: str
         :param expected_type: type of data we expext to get info
         :param raise_error: bool
-        '''
+        """
         if raise_error is False:
             return
 
