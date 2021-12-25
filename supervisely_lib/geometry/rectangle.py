@@ -1,17 +1,17 @@
 # coding: utf-8
 from __future__ import annotations
+
 import cv2
 import numpy as np
 from typing import List, Tuple
+
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
-from supervisely_lib.geometry.image_rotator import ImageRotator
 from supervisely_lib.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely_lib.geometry import validation
-import supervisely_lib.geometry.geometry
+import supervisely_lib as sly
 
 
-# @TODO: validation
 class Rectangle(Geometry):
     """
     Rectangle geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
@@ -185,7 +185,7 @@ class Rectangle(Geometry):
         return [PointLocation(row=self.top, col=self.left), PointLocation(row=self.top, col=self.right),
                 PointLocation(row=self.bottom, col=self.right), PointLocation(row=self.bottom, col=self.left)]
 
-    def rotate(self, rotator: ImageRotator) -> Rectangle:
+    def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
         """
         Rotates current Rectangle.
 

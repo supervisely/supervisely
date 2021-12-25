@@ -5,6 +5,7 @@ import math
 import cv2
 import numpy as np
 from typing import List, Tuple
+
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.point_location import PointLocation
 

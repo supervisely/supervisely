@@ -4,7 +4,6 @@ import os.path
 from pkg_resources import parse_version
 import base64
 import requests
-import numpy as np
 from typing import List, Tuple
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
@@ -60,7 +59,6 @@ def is_valid_ext(ext: str) -> bool:
     :type ext: str
     :return: True if image extention in list of supported images extensions, False - in otherwise
     :rtype: :class:`bool`
-
     :Usage example:
 
      .. code-block:: python

@@ -14,7 +14,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('./repo'))
+#sys.path.insert(0, os.path.abspath('./repo'))
+sys.path.insert(0, os.path.abspath('../../supervisely_lib'))
 #sys.path.insert(0, '/app')
 
 
