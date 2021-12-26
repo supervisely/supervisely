@@ -438,7 +438,7 @@ class VideoAnnotation:
 
     @classmethod
     def from_json(cls, data: dict, project_meta: ProjectMeta, key_id_map: KeyIdMap=None) -> VideoAnnotation:
-        '''
+        """
         Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
@@ -466,7 +466,7 @@ class VideoAnnotation:
             }
             meta = sly.ProjectMeta()
             video_ann = sly.VideoAnnotation.from_json(video_ann_json, meta)
-        '''
+        """
         #video_name = data[VIDEO_NAME]
         video_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 

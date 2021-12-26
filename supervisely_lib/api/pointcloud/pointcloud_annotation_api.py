@@ -13,10 +13,10 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
     def download(self, pointcloud_id):
-        '''
+        """
         :param pointcloud_id: int
         :return: list of content of pointcloud object with given id, received after execution post request
-        '''
+        """
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
         return self._download(info.dataset_id, pointcloud_id)
 

@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
 import numpy as np
-from typing import List
 from typing import Tuple
 
 from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \

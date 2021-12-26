@@ -86,10 +86,10 @@ def total_items_count(job_info: NamedTuple) -> int:
 
 
 def labeled_items_count_desc() -> Tuple[str, str]:
-    '''
+    """
     :return: Description about total number of labeled items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
-    '''
+    """
     return "LABELED", "the total number of labeled items (labelers marked as \"finished\") in all labeling jobs"
 
 

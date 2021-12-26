@@ -7,7 +7,7 @@ from supervisely_lib.annotation.label import LabelJsonFields
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib._utils import take_with_default
-from supervisely_lib.video_annotation.constants import KEY, ID, OBJECTS_MAP
+from supervisely_lib.video_annotation.constants import KEY, ID
 from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely_lib.video_annotation.video_tag import VideoTag
 from supervisely_lib.collection.key_indexed_collection import KeyObject

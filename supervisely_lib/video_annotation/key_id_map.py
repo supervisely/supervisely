@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List
 import uuid
 from uuid import UUID
 from bidict import bidict
@@ -39,12 +39,12 @@ class KeyIdMap:
         self._data[VIDEOS] = bidict()
 
     def _add(self, key_type, key: uuid.UUID, id: int = None):
-        '''
+        """
         Add given data in self._data dictionary. Raise error if data type of any parameter is invalid
         :param key_type: str
         :param key: uuid class object
         :param id: int
-        '''
+        """
         if key_type not in ALLOWED_KEY_TYPES:
             raise RuntimeError("Key type {!r} is not allowed. Allowed types are {}".format(key_type, ALLOWED_KEY_TYPES))
         if type(key) is not uuid.UUID:
@@ -174,11 +174,11 @@ class KeyIdMap:
         self._add(VIDEOS, key, id)
 
     def _get_id_by_key(self, key_type, key: uuid.UUID):
-        '''
+        """
         :param key_type: str
         :param key: uuid class object
         :return: Id by given key. None if there is no such key. Raise error if key type is not uuid.UUID
-        '''
+        """
         if type(key) is not uuid.UUID:
             raise RuntimeError("Key should be of type uuid.UUID")
 
@@ -188,11 +188,11 @@ class KeyIdMap:
             return None
 
     def _get_key_by_id(self, key_type, id: int):
-        '''
+        """
         :param key_type: str
         :param id: int
         :return: Key by given id. None if there is no such id. Raise error if id type is not int
-        '''
+        """
         if type(id) is not int:
             raise RuntimeError("Id should be of type int")
         if id not in self._data[key_type].inverse:

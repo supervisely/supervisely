@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List
 from supervisely_lib.video_annotation.video_figure import VideoFigure
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap

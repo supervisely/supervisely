@@ -10,11 +10,11 @@ class VideoFrameAPI(ModuleApi):
     :class:`Frame<supervisely_lib.video_annotation.frame.Frame>` for a single video. :class:`VideoFrameAPI<VideoFrameAPI>` object is immutable.
     """
     def _download(self, video_id, frame_index):
-        '''
+        """
         :param video_id: int
         :param frame_index: int
         :return: Response class object containing frame data with given index from given video id
-        '''
+        """
         response = self._api.post('videos.download-frame', {ApiField.VIDEO_ID: video_id, ApiField.FRAME: frame_index})
         return response
 

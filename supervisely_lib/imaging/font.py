@@ -68,11 +68,11 @@ def get_font(font_file_name: str = None, font_size: int = 12) -> ImageFont.FreeT
 
 
 def get_readable_font_size(img_size) -> int:
-    '''
+    """
     Get size of font for image with given sizes
     :param img_size: size of image
     :return: size of font
-    '''
+    """
     minimal_font_size = 6
     base_font_size = 14
     base_image_size = 512

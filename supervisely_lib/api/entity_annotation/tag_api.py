@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List
 from typing import NamedTuple
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField

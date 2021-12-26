@@ -2,7 +2,7 @@
 from __future__ import annotations
 from prettytable import PrettyTable
 from supervisely_lib._utils import take_with_default
-from typing import List, Iterable
+from typing import List
 from collections import defaultdict
 
 
@@ -105,12 +105,12 @@ class KeyIndexedCollection:
         self._add_items_impl(self._collection, take_with_default(items, []))
 
     def _add_impl(self, dst_collection, item):
-        '''
+        """
         Add given item to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
         :param dst_collection: dictionary
         :param item: ObjClass, TagMeta or Tag class object
         :return: dictionary
-        '''
+        """
         if not isinstance(item, KeyIndexedCollection.item_type):
             raise TypeError(
                 'Item type ({!r}) != {!r}'.format(type(item).__name__, KeyIndexedCollection.item_type.__name__))
@@ -119,11 +119,11 @@ class KeyIndexedCollection:
         dst_collection[item.key()] = item
 
     def _add_items_impl(self, dst_collection, items):
-        '''
+        """
         Add items from input list to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
         :param dst_collection: dictionary
         :param items: list of ObjClass, TagMeta or Tag class objects
-        '''
+        """
         for item in items:
             self._add_impl(dst_collection, item)
 

@@ -1,16 +1,16 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List
 from typing import NamedTuple
-from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
+from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib._utils import batched
 
 
 class FigureApi(RemoveableBulkModuleApi):
-    '''
+    """
     Figure object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`.
-    '''
+    """
     @staticmethod
     def info_sequence():
         """

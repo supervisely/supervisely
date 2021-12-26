@@ -127,9 +127,9 @@ class Progress:
         self.reported_cnt += 1
 
     def print_progress(self):
-        '''
+        """
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
-        '''
+        """
         extra = {
             'event_type': EventType.PROGRESS,
             'subtask': self.message,
@@ -153,9 +153,9 @@ class Progress:
         return False
 
     def report_if_needed(self):
-        '''
+        """
         The function determines whether the message should be logged depending on current number of iterations
-        '''
+        """
         if self.need_report():
             self.report_progress()
 
@@ -268,38 +268,38 @@ class Progress:
 
 
 def report_agent_rpc_ready():
-    '''
+    """
     Logs a message with level INFO on logger
-    '''
+    """
     logger.info('Ready to get events', extra={ 'event_type': EventType.TASK_DEPLOYED })
 
 
 def report_import_finished():
-    '''
+    """
     Logs a message with level INFO on logger
-    '''
+    """
     logger.info('import finished', extra={'event_type': EventType.IMPORT_APPLIED})
 
 
 def report_inference_finished():
-    '''
+    """
     Logs a message with level INFO on logger
-    '''
+    """
     logger.info('model applied', extra={'event_type': EventType.MODEL_APPLIED})
 
 
 def report_dtl_finished():
-    '''
+    """
     Logs a message with level INFO on logger
-    '''
+    """
     logger.info('DTL finished', extra={'event_type': EventType.DTL_APPLIED})
 
 
 def report_dtl_verification_finished(output):
-    '''
+    """
     Logs a message with level INFO on logger
     :param output: str
-    '''
+    """
     logger.info('Verification finished.', extra={'output': output, 'event_type': EventType.TASK_VERIFIED})
 
 
