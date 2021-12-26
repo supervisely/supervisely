@@ -142,12 +142,12 @@ def validate_format(path: str) -> None:
 
 
 def _check_video_requires_processing(video_info, stream_info):
-    '''
+    """
     Check if video need container or codec processing
     :param video_info: dict
     :param stream_info: dict
     :return: bool
-    '''
+    """
     need_process_container = True
     for name in video_info["meta"]["formatName"].split(','):
         name = name.strip().split('.')[-1]

@@ -387,7 +387,7 @@ class Rectangle(Geometry):
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
-    def from_geometries_list(cls, geometries: List[supervisely_lib.geometry.geometry]) -> Rectangle:
+    def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
         """
         Create Rectangle from given geometry objects.
 

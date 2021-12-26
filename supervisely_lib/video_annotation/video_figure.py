@@ -94,10 +94,10 @@ class VideoFigure:
             d[CREATED_AT] = self.created_at
 
     def _set_geometry_inplace(self, geometry):
-        '''
+        """
         Checks the given geometry for correctness. Raise error if given geometry type != geometry type of VideoObject class
         :param geometry: Geometry class object (Point, Rectangle etc)
-        '''
+        """
         self._geometry = geometry
         self._validate_geometry_type()
         self._validate_geometry()
@@ -195,16 +195,16 @@ class VideoFigure:
         return self._key
 
     def _validate_geometry(self):
-        '''
+        """
         Checks geometry of VideoFigure class object for correctness
-        '''
+        """
         self._geometry.validate(self.parent_object.obj_class.geometry_type.geometry_name(),
                                 self.parent_object.obj_class.geometry_config)
 
     def _validate_geometry_type(self):
-        '''
+        """
         Raise error if given geometry type != geometry type of VideoObject class
-        '''
+        """
         if self.parent_object.obj_class.geometry_type != AnyGeometry:
             if type(self._geometry) is not self.parent_object.obj_class.geometry_type:
                 raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"

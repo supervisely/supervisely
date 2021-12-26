@@ -422,13 +422,13 @@ class GraphNodes(Geometry):
         return self.transform_locations(lambda p: p.flipud(img_size))
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
-        '''
+        """
         Draws the graph contour on a given bitmap canvas
         :param bitmap: numpy array
         :param color: tuple or list of integers
         :param thickness: int
         :param config: drawing config specific to a concrete subclass, e.g. per edge colors
-        '''
+        """
         self.draw_contour(bitmap, color, thickness, config=config)
 
     @staticmethod
@@ -514,9 +514,9 @@ class GraphNodes(Geometry):
         return self
 
     def validate(self, name, settings):
-        '''
+        """
         Checks the graph for correctness and compliance with the template
-        '''
+        """
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
@@ -526,12 +526,12 @@ class GraphNodes(Geometry):
 
     @staticmethod
     def _transform_config_colors(config, transform_fn):
-        '''
+        """
         Transform colors of edges and nodes in graph template
         :param config: dictionary(graph template)
         :param transform_fn: function to convert
         :return: dictionary(graph template)
-        '''
+        """
         if config is None:
             return None
 
@@ -542,20 +542,20 @@ class GraphNodes(Geometry):
 
     @staticmethod
     def config_from_json(config):
-        '''
+        """
         Convert graph template from json format
         :param config: dictionary(graph template) in json format
         :return: dictionary(graph template)
-        '''
+        """
         return GraphNodes._transform_config_colors(config, hex2rgb)
 
     @staticmethod
     def config_to_json(config):
-        '''
+        """
         Convert graph template in json format
         :param config: dictionary(graph template)
         :return: dictionary(graph template) in json format
-        '''
+        """
         return GraphNodes._transform_config_colors(config, rgb2hex)
 
     @classmethod

@@ -13,9 +13,8 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely_lib.video import video as sly_video
 
-from supervisely_lib.project.project import Dataset, Project, OpenMode
+from supervisely_lib.project.project import OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
 
 

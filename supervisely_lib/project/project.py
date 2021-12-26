@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from collections import namedtuple
-from typing import List
 import os
-import json
 from enum import Enum
 from typing import List
 import random
@@ -21,7 +19,7 @@ from supervisely_lib.io.json import dump_json_file, load_json_file
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib._utils import batched
-from supervisely_lib.io.fs import file_exists, ensure_base_path, get_file_name
+from supervisely_lib.io.fs import ensure_base_path
 from supervisely_lib.api.api import Api
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.fs_cache import FileCache
@@ -199,19 +197,19 @@ class Dataset(KeyObject):
 
     @staticmethod
     def _has_valid_ext(path: str) -> bool:
-        '''
+        """
         The function _has_valid_ext checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
         :param path: the path to the file
         :return: bool (True if a given file has a supported extension, False - in otherwise)
-        '''
+        """
         return sly_image.has_valid_ext(path)
 
     def _read(self):
-        '''
+        """
         Fills out the dictionary items: item file name -> annotation file name. Checks item and annotation directoris existing and dataset not empty.
         Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
-        '''
+        """
         if not dir_exists(self.item_dir):
             raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
         if not dir_exists(self.ann_dir):
@@ -240,9 +238,9 @@ class Dataset(KeyObject):
             self._item_to_ann[img_name] = ann_name
 
     def _create(self):
-        '''
+        """
         Creates a leaf directory and all intermediate ones for items and annatations.
-        '''
+        """
         mkdir(self.ann_dir)
         mkdir(self.item_dir)
 
@@ -461,20 +459,20 @@ class Dataset(KeyObject):
         self._add_img_info(item_name, img_info)
 
     def _get_empty_annotaion(self, item_name):
-        '''
+        """
         Create empty annotation from given item. Generate exception error if item not found in project
         :param item_name: str
         :return: Annotation class object
-        '''
+        """
         img_size = sly_image.read(self.get_img_path(item_name)).shape[:2]
         return self.annotation_class(img_size)
 
     def _add_ann_by_type(self, item_name, ann):
-        '''
+        """
         Add given annatation to dataset annotations dir and to dictionary items: item file name -> annotation file name
         :param item_name: str
         :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
-        '''
+        """
         # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
         # an annotation either.
         self._item_to_ann[item_name] = item_name + ANN_EXT
@@ -501,22 +499,22 @@ class Dataset(KeyObject):
             dump_json_file(img_info._asdict(), dst_info_path, indent=4)
 
     def _check_add_item_name(self, item_name):
-        '''
+        """
         Generate exception error if item name already exists in dataset or has unsupported extension
         :param item_name: str
-        '''
+        """
         if item_name in self._item_to_ann:
             raise RuntimeError('Item {!r} already exists in dataset {!r}.'.format(item_name, self.name))
         if not self._has_valid_ext(item_name):
             raise RuntimeError('Item name {!r} has unsupported extension.'.format(item_name))
 
     def _add_item_raw_bytes(self, item_name, item_raw_bytes):
-        '''
+        """
         Write given binary object to dataset items directory, Generate exception error if item_name already exists in
         dataset or item name has unsupported extension. Make sure we actually received a valid image file, clean it up and fail if not so.
         :param item_name: str
         :param item_raw_bytes: binary object
-        '''
+        """
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.item_dir, item_name)
         with open(dst_img_path, 'wb') as fout:
@@ -545,12 +543,12 @@ class Dataset(KeyObject):
         return os.path.join(self.item_dir, item_name)
 
     def _add_img_np(self, item_name, img):
-        '''
+        """
         Write given image(RGB format(numpy matrix)) to dataset items directory. Generate exception error if item_name
         already exists in dataset or item name has unsupported extension
         :param item_name: str
         :param img: image in RGB format(numpy matrix)
-        '''
+        """
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.item_dir, item_name)
         sly_image.write(dst_img_path, img)
@@ -559,14 +557,14 @@ class Dataset(KeyObject):
         self._add_img_file(item_name, item_path, _validate_item, _use_hardlink)
 
     def _add_img_file(self, item_name, img_path, _validate_img=True, _use_hardlink=False):
-        '''
+        """
         Add given item file to dataset items directory. Generate exception error if item_name already exists in dataset
         or item name has unsupported extension
         :param item_name: str
         :param img_path: str
         :param _validate_img: bool
         :param _use_hardlink: bool
-        '''
+        """
         # @TODO: deprecated method, should be private and be (refactored, renamed) in future
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.item_dir, item_name)
@@ -585,10 +583,10 @@ class Dataset(KeyObject):
 
     @staticmethod
     def _validate_added_item_or_die(item_path):
-        '''
+        """
         Make sure we actually received a valid image file, clean it up and fail if not so
         :param item_path: str
-        '''
+        """
         # Make sure we actually received a valid image file, clean it up and fail if not so.
         try:
             sly_image.validate_format(item_path)
@@ -879,16 +877,16 @@ class Project:
         return sum(len(ds) for ds in self._datasets)
 
     def _get_project_meta_path(self):
-        '''
+        """
         :return: str (path to project meta file(meta.json))
-        '''
+        """
         return os.path.join(self.directory, 'meta.json')
 
     def _read(self):
-        '''
+        """
         Download project from given project directory. Checks item and annotation directoris existing and dataset not empty.
         Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
-        '''
+        """
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
@@ -901,9 +899,9 @@ class Project:
             raise RuntimeError('Project is empty')
 
     def _create(self):
-        '''
+        """
         Creates a leaf directory and empty meta.json file. Generate exception error if project directory already exists and is not empty.
-        '''
+        """
         if dir_exists(self.directory):
             if len(list_files_recursively(self.directory)) > 0:
                 raise RuntimeError(
@@ -1025,11 +1023,11 @@ class Project:
 
     @staticmethod
     def _parse_path(project_dir):
-        '''
+        """
         Split given path to project on parent directory and directory where project is located
         :param project_dir: str
         :return: str, str
-        '''
+        """
         #alternative implementation
         #temp_parent_dir = os.path.dirname(parent_dir)
         #temp_name = os.path.basename(parent_dir)

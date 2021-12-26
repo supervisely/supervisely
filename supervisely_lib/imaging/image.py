@@ -789,9 +789,9 @@ def rotate(img: np.ndarray, degrees_angle: int, mode=RotateMode.KEEP_BLACK) -> n
 
 # Color augmentations
 def _check_contrast_brightness_inputs(min_value, max_value):
-    '''
+    """
     The function _check_contrast_brightness_inputs checks the input brightness or contrast for correctness.
-    '''
+    """
     if min_value < 0:
         raise ValueError('Minimum value must be greater than or equal to 0.')
     if min_value > max_value:

@@ -523,7 +523,7 @@ class ProjectMeta(JsonSerializable):
         return self.add_tag_metas([new_tag_meta])
 
     def add_tag_metas(self, new_tag_metas: List[TagMeta]) -> ProjectMeta:
-        '''
+        """
         Adds given TagMetas to ProjectMeta.
 
         :param new_tag_metas: List of TagMeta objects.
@@ -562,16 +562,16 @@ class ProjectMeta(JsonSerializable):
             #         }
             #     ]
             # }
-        '''
+        """
         return self.clone(tag_metas=self.tag_metas.add_items(new_tag_metas))
 
     @staticmethod
     def _delete_items(collection, item_names):
-        '''
+        """
         :param collection: ObjClassCollection or TagMetaCollection instance
         :param item_names: list of item names to delete
         :return: list of items, which are in collection and not in given list of items to delete
-        '''
+        """
         names_to_delete = set(item_names)
         res_items = []
         for item in collection:
@@ -874,7 +874,7 @@ class ProjectMeta(JsonSerializable):
 
     @staticmethod
     def merge_list(metas):
-        '''
+        """
         Merge ProjectMetas from given list of ProjectMetas into single ProjectMeta object.
 
         :param metas: List of ProjectMeta objects.
@@ -920,7 +920,7 @@ class ProjectMeta(JsonSerializable):
             #         }
             #     ]
             # }
-        '''
+        """
         res_meta = ProjectMeta()
         for meta in metas:
             res_meta = res_meta.merge(meta)
