@@ -1,0 +1,18 @@
+
+To build documentation run command 'docker-compose up' in docs folder.
+
+
+
+To build docs local:
+
+1) Change path to your local supervisely_lib in source/conf.py, string - sys.path.insert(0, os.path.abspath('../../supervisely_lib'))
+
+2) Install sphinx:
+
+pip install sphinx==3.4.3
+pip install  sphinx-rtd-theme==0.5.1
+pip install  sphinx-copybutton==0.3.1
+pip install m2r2==0.2.7
+pip install nbsphinx==0.8.1
+
+3) Run build_html.sh script
