@@ -272,6 +272,12 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type filter_job_id: int, optional
         :param filter_actions: List of ActivityAction by which the activity will be filtered.
         :type filter_actions: list, optional
+        :param progress_cb: Function to check progress.
+        :type progress_cb: Function, optional
+        :param start_date: Start date to get Team activity.
+        :type start_date: str, optional
+        :param end_date: End date to get Team activity.
+        :type end_date: str, optional
         :return: Team activity
         :rtype: :class:`List[dict]`
         :Usage example:

@@ -602,6 +602,8 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param user_id: User ID in Supervisely.
         :type user_id: int
+        :param progress_cb: Function to check progress.
+        :type progress_cb: Function, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
         :Usage example:

@@ -381,6 +381,8 @@ class Dataset(KeyObject):
         :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: bool, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
         :return: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension.
@@ -409,6 +411,8 @@ class Dataset(KeyObject):
         :type img: np.ndarray
         :param ann: Annotation object or path to annotation.json file.
         :type ann: Annotation or str, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
         :return: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
@@ -438,6 +442,8 @@ class Dataset(KeyObject):
         :type item_raw_bytes: bytes
         :param ann: Annotation object or path to annotation.json file.
         :type ann: Annotation or str, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
         :return: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
@@ -1407,6 +1413,8 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: str = No
     :type project_name: str, optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: bool, optional
+    :param progress_cb: Function to check progress.
+    :type progress_cb: Function, optional
     :return: Project ID and name
     :rtype: :class:`int`, :class:`str`
     :Usage example:
@@ -1482,7 +1490,11 @@ def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: List
     :param cache: FileCache object.
     :type cache: FileCache, optional
     :param progress_cb: Function to check progress.
-    :type progress_cb: Function
+    :type progress_cb: Function, optional
+    :param only_image_tags: Download project with only images tags.
+    :type only_image_tags: bool, optional
+    :param save_image_info: Save images infos.
+    :type save_image_info: bool, optional
     :return: None
     :rtype: :class:`NoneType`
     :Usage example:
