@@ -67,7 +67,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         created_at='2020-11-17T17:44:28.158Z',
                         updated_at='2021-03-01T10:51:57.545Z',
                         type='images',
-                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+                        custom_data={}
         """
         return [ApiField.ID,
                 ApiField.NAME,

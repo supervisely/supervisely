@@ -438,6 +438,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for Video.
         :type path: str
+        :param progress_cb: Function to check progress.
+        :type progress_cb: Function, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:

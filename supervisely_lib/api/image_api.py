@@ -67,7 +67,8 @@ class ImageApi(RemoveableBulkModuleApi):
                       updated_at='2021-03-02T10:04:33.973Z',
                       meta={},
                       path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-                      full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg')
+                      full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+                      tags=[]
         """
         return [
             ApiField.ID,
@@ -137,6 +138,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #                    meta={},
             #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
             #                    full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            #                    tags=[],
             # ImageInfo(id=770916,
             #           name='IMG_1836.jpeg',
             #           link=None,
@@ -152,7 +154,8 @@ class ImageApi(RemoveableBulkModuleApi):
             #           updated_at='2021-03-02T10:04:33.973Z',
             #           meta={},
             #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
-            #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg')
+            #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
+            #           tags=[]
             # ]
         """
         return self.get_list_all_pages('images.list',  {

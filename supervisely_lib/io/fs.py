@@ -164,6 +164,8 @@ def mkdir(dir: str, remove_content_if_exists: bool=False) -> None:
 
     :param dir: Target dir path.
     :param dir: str
+    :remove_content_if_exists: Remove directory content if it exist.
+    :remove_content_if_exists: bool
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -358,6 +360,8 @@ def clean_dir(dir_: str, ignore_errors: bool=True) -> None:
 
     :param dir_: Target directory path.
     :type dir_: str
+    :ignore_errors: Ignore possible errors while removes directory content.
+    :ignore_errors: bool
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
