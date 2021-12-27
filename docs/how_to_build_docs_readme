@@ -1,0 +1,19 @@
+1) Билд доки через докер
+  a) проверить что указан верный путь до папки с библиотекой (./repo)
+  b) запустить команду 'docker-compose up' из папки docs.
+  с) в папке docs появится папка build с документацией
+  d) опционально, открыть в браузере index.html из папки build
+
+
+2) Билд доки локально
+  a) проверить что указан верный путь до папки с библиотекой (../../supervisely_lib)
+  b) установить sphinx и дополнения которые используются в документации:
+      pip install sphinx==3.4.3
+      pip install sphinx-rtd-theme==0.5.1
+      pip install sphinx-copybutton==0.3.1
+      pip install m2r2==0.2.7
+      pip install nbsphinx==0.8.1
+      
+  с) запустить "./build_html.sh" или ввести "sphinx-build source/ build/" из папки docs
+  d) в папке docs появится папка build с документацией
+  e) опционально, открыть в браузере index.html из папки build
