@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.tag_meta import TagMeta
@@ -160,7 +160,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     """
     item_type = TagMeta
 
-    def to_json(self) -> List[dict]:
+    def to_json(self) -> List[Dict]:
         """
         Convert the TagMetaCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -195,7 +195,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         return [tag_meta.to_json() for tag_meta in self]
 
     @classmethod
-    def from_json(cls, data: List[dict]) -> TagMetaCollection:
+    def from_json(cls, data: List[Dict]) -> TagMetaCollection:
         """
         Convert a list with dicts in json format to TagMetaCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -232,7 +232,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         tags = [TagMeta.from_json(tag_meta_json) for tag_meta_json in data]
         return cls(tags)
 
-    def get_id_mapping(self, raise_if_no_id=False):
+    def get_id_mapping(self, raise_if_no_id: Optional[bool]=False) -> Dict[int, TagMeta]:
         res = {}
         without_id = []
         for tag_meta in self:

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
+from typing import List, Optional, Dict
 from supervisely_lib.collection.key_indexed_collection import MultiKeyIndexedCollection
 from supervisely_lib.annotation.tag import Tag
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
@@ -130,7 +130,7 @@ class TagCollection(MultiKeyIndexedCollection):
     """
     item_type = Tag
 
-    def to_json(self) -> List[dict]:
+    def to_json(self) -> List[Dict]:
         """
         Convert the TagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -166,7 +166,7 @@ class TagCollection(MultiKeyIndexedCollection):
         return [tag.to_json() for tag in self]
 
     @classmethod
-    def from_json(cls, data: List[dict], tag_meta_collection: TagMetaCollection) -> TagCollection:
+    def from_json(cls, data: List[Dict], tag_meta_collection: TagMetaCollection) -> TagCollection:
         """
         Convert a list with dicts in json format to TagCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

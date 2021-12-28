@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from copy import deepcopy
-from typing import List
+from typing import List, Optional, Dict
 from supervisely_lib.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.collection.key_indexed_collection import KeyObject
@@ -48,8 +48,8 @@ class ObjClass(KeyObject, JsonSerializable):
         # More complex ObjClass example
         class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
     """
-    def __init__(self, name: str, geometry_type: type, color: List[int] = None, geometry_config: dict = None, sly_id = None,
-                 hotkey: str = None):
+    def __init__(self, name: str, geometry_type: type, color: Optional[List[int]] = None, geometry_config: Optional[Dict] = None,
+                 sly_id: Optional[int] = None, hotkey: Optional[str] = None):
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
@@ -105,7 +105,7 @@ class ObjClass(KeyObject, JsonSerializable):
         return self._geometry_type
 
     @property
-    def geometry_config(self) -> dict:
+    def geometry_config(self) -> Dict:
         return deepcopy(self._geometry_config)
 
     @property
@@ -159,7 +159,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         return self._hotkey
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -194,7 +194,7 @@ class ObjClass(KeyObject, JsonSerializable):
         return res
 
     @classmethod
-    def from_json(cls, data: dict) -> ObjClass:
+    def from_json(cls, data: Dict) -> ObjClass:
         """
         Convert a json dict to ObjClass. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -295,8 +295,8 @@ class ObjClass(KeyObject, JsonSerializable):
     def get_row_ptable(self):
         return [self.name, self.geometry_type.__name__, self.color, self.hotkey]
 
-    def clone(self, name: str = None, geometry_type: Geometry = None, color: List[int, int, int] = None,
-              geometry_config: dict = None, sly_id = None, hotkey = None) -> ObjClass:
+    def clone(self, name: Optional[str] = None, geometry_type: Optional[Geometry] = None, color: Optional[List[int, int, int]] = None,
+              geometry_config: Optional[Dict] = None, sly_id: Optional[int] = None, hotkey: Optional[str] = None) -> ObjClass:
         """
         Makes a copy of ObjClass with new fields, if fields are given, otherwise it will use fields of the original ObjClass.
 

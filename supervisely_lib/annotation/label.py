@@ -1,8 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
-from typing import Tuple
+from typing import List, Optional, Tuple, Dict
 from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.geometry.any_geometry import AnyGeometry
@@ -58,7 +57,7 @@ class LabelBase:
         geometry_figure = sly.Rectangle(0, 0, 300, 300)
         label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
     """
-    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: TagCollection = None, description: str = ""):
+    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[TagCollection] = None, description: Optional[str] = ""):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -179,7 +178,7 @@ class LabelBase:
         """
         return self._tags.clone()
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -221,7 +220,7 @@ class LabelBase:
         return res
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta) -> LabelBase:
+    def from_json(cls, data: Dict, project_meta: ProjectMeta) -> LabelBase:
         """
         Convert a json dict to Label. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -327,8 +326,8 @@ class LabelBase:
         """
         return self.clone(tags=self._tags.add_items(tags))
 
-    def clone(self, geometry: Geometry = None, obj_class: ObjClass = None, tags: TagCollection = None,
-              description: str = None) -> LabelBase:
+    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None, tags: Optional[TagCollection] = None,
+              description: Optional[str] = None) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
@@ -515,8 +514,8 @@ class LabelBase:
                                      corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
                                      font=font)
 
-    def draw(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False,
-             tags_font: FreeTypeFont = None) -> None:
+    def draw(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+             draw_tags: Optional[bool] = False, tags_font: Optional[FreeTypeFont] = None) -> None:
         """
         Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.draw>`.
 
@@ -538,8 +537,8 @@ class LabelBase:
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 
-    def draw_contour(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1,
-                     draw_tags: bool = False, tags_font: FreeTypeFont = None) -> None:
+    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+                     draw_tags: Optional[bool] = False, tags_font: Optional[FreeTypeFont] = None) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely_lib.annotation.annotation.Annotation.draw_contour>`.
 

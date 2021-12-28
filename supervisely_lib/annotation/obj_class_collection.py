@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
+from typing import List, Optional, Dict
 from collections import defaultdict
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely_lib.io.json import JsonSerializable
@@ -156,7 +156,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
     item_type = ObjClass
 
-    def to_json(self) -> List[dict]:
+    def to_json(self) -> List[Dict]:
         """
         Convert the ObjClassCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -194,7 +194,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         return [obj_class.to_json() for obj_class in self]
 
     @classmethod
-    def from_json(cls, data: List[dict]) -> ObjClassCollection:
+    def from_json(cls, data: List[Dict]) -> ObjClassCollection:
         """
         Convert a list with dicts in json format to ObjClassCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -226,7 +226,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         obj_classes = [ObjClass.from_json(obj_class_json) for obj_class_json in data]
         return cls(obj_classes)
 
-    def validate_classes_colors(self, logger: logger = None) -> str or None:
+    def validate_classes_colors(self, logger: Optional[logger] = None) -> str or None:
         """
         Checks for unique colors in the ObjClassCollection.
 
