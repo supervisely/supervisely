@@ -4,8 +4,7 @@ from __future__ import annotations
 import json
 import itertools
 import numpy as np
-from typing import List
-from typing import Tuple
+from typing import List, Tuple, Optional, Dict
 import operator
 import cv2
 from copy import deepcopy
@@ -27,6 +26,7 @@ from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.io.fs import ensure_base_path
 from supervisely_lib.geometry.image_rotator import ImageRotator
+from supervisely_lib.annotation.obj_class import ObjClass
 
 # for imgaug
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -93,8 +93,9 @@ class Annotation:
         ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
         # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
     """
-    def __init__(self, img_size: Tuple[int, int], labels: List[Label] = None, img_tags: TagCollection = None, img_description: str = "",
-                 pixelwise_scores_labels: list = None, custom_data: dict = None, image_id: int = None):
+    def __init__(self, img_size: Tuple[int, int], labels: Optional[List[Label]] = None, img_tags: Optional[TagCollection] = None,
+                 img_description: Optional[str] = "", pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
+                 image_id: Optional[int] = None):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
@@ -126,7 +127,22 @@ class Annotation:
         return deepcopy(self._img_size)
 
     @property
-    def image_id(self):
+    def image_id(self) -> int:
+        """
+        Id of the image.
+
+        :return: Image id
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            height, width = 300, 400
+            image_id = 12345
+            ann = sly.Annotation((height, width), image_id=image_id)
+            print(ann.image_id)
+            # Output: 12345
+        """
         return self._image_id
 
     @property
@@ -216,7 +232,7 @@ class Annotation:
         """
         return self._img_tags
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -269,7 +285,7 @@ class Annotation:
         return res
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta) -> Annotation:
+    def from_json(cls, data: Dict, project_meta: ProjectMeta) -> Annotation:
         """
         Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -366,8 +382,10 @@ class Annotation:
             data = json.load(fin)
         return cls.from_json(data, project_meta)
 
-    def clone(self, img_size: Tuple[int, int] = None, labels: List[Label] = None, img_tags: TagCollection = None, img_description: str = None,
-              pixelwise_scores_labels: list = None, custom_data: dict = None, image_id: int = None) -> Annotation:
+    def clone(self, img_size: Optional[Tuple[int, int]] = None, labels: Optional[List[Label]] = None,
+              img_tags: Optional[TagCollection] = None, img_description: Optional[str] = None,
+              pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
+              image_id: Optional[int] = None) -> Annotation:
         """
         Makes a copy of Annotation with new fields, if fields are given, otherwise it will use fields of the original Annotation.
 
@@ -1089,7 +1107,8 @@ class Annotation:
         sly_image.draw_text_sequence(bitmap, texts, (0, 0), sly_image.CornerAnchorMode.TOP_LEFT,
                                      font=self._get_font())
 
-    def draw(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False) -> None:
+    def draw(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+             draw_tags: Optional[bool] = False) -> None:
         """
         Draws current Annotation on image. Modifies mask.
 
@@ -1136,7 +1155,8 @@ class Annotation:
             self._draw_tags(bitmap)
 
 
-    def draw_contour(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1, draw_tags: bool = False) -> None:
+    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+                     draw_tags: Optional[bool] = False) -> None:
         """
         Draws geometry contour of Annotation on image. Modifies mask.
 
@@ -1204,7 +1224,7 @@ class Annotation:
         return cls(img_size)
 
     @classmethod
-    def stat_area(cls, render: np.ndarray, names: List[str], colors: List[List[int, int, int]]) -> dict:
+    def stat_area(cls, render: np.ndarray, names: List[str], colors: List[List[int, int, int]]) -> Dict[str, float]:
         """
         Get statistics about color area representation on the given render for the current Annotation.
 
@@ -1292,7 +1312,7 @@ class Annotation:
         result['channels'] = channels
         return result
 
-    def stat_class_count(self, class_names: List[str]=None) -> defaultdict:
+    def stat_class_count(self, class_names: Optional[List[str]]=None) -> defaultdict:
         """
         Get statistics about number of each class in Annotation.
 
@@ -1333,7 +1353,7 @@ class Annotation:
         stat['total'] = total
         return stat
 
-    def draw_class_idx_rgb(self, render: np.ndarray, name_to_index: dict) -> None:
+    def draw_class_idx_rgb(self, render: np.ndarray, name_to_index: Dict[str, int]) -> None:
         """
         Draws current Annotation on render.
 
@@ -1375,7 +1395,7 @@ class Annotation:
     def custom_data(self):
         return self._custom_data.copy()
 
-    def filter_labels_by_min_side(self, thresh: int, filter_operator: operator = operator.lt, classes: List[str] = None) -> Annotation:
+    def filter_labels_by_min_side(self, thresh: int, filter_operator: operator = operator.lt, classes: Optional[List[str]] = None) -> Annotation:
         """
         Filters Labels of the current Annotation by side. If minimal side is smaller than Label threshold it will be ignored.
 
@@ -1488,14 +1508,51 @@ class Annotation:
                 return label
         return None
 
-    def merge(self, other: Annotation):
+    def merge(self, other: Annotation) -> Annotation:
+        """
+        Merge current Annotation with another Annotation.
+
+        :param other: Annotation to merge.
+        :type other: Annotation
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+         .. code-block:: python
+
+            # Create annotation
+            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+            tag_lemon = sly.Tag(meta_lemon, 'lemon')
+            tags_lemon = sly.TagCollection([tag_lemon])
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+            height, width = 300, 400
+            ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
+
+            # Create annotation to merge
+            meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+            tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
+            tags_kiwi = sly.TagCollection([tag_kiwi])
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
+            height, width = 700, 500
+            ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
+
+            # Merge annotations
+            ann_merge = ann_lemon.merge(ann_kiwi)
+
+            for label in ann_merge.labels:
+                print(label.obj_class.name)
+
+            # Output: lemon
+            # Output: kiwi
+        """
         res = self.clone()
         res = res.add_labels(other.labels)
         res = res.add_tags(other.img_tags)
         return res
 
-    def draw_pretty(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1,
-                    opacity: float = 0.5, draw_tags: bool = False, output_path: str = None) -> None:
+    def draw_pretty(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+                    opacity: Optional[float] = 0.5, draw_tags: Optional[bool] = False, output_path: Optional[str] = None) -> None:
         """
         Draws current Annotation on image with contour. Modifies mask.
 
@@ -1545,7 +1602,15 @@ class Annotation:
         if output_path:
             sly_image.write(output_path, bitmap)
 
-    def to_nonoverlapping_masks(self, mapping):
+    def to_nonoverlapping_masks(self, mapping: Dict[ObjClass, ObjClass]) -> Annotation:
+        """
+        Create new annotation with non-overlapping labels masks.
+
+        :param mapping: Dict with ObjClasses for mapping.
+        :type mapping: Dict[ObjClass, ObjClass]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        """
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
             #if mapping[lbl.obj_class] is not None:
@@ -1565,7 +1630,19 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def to_indexed_color_mask(self, mask_path, palette=Image.ADAPTIVE, colors=256):
+    def to_indexed_color_mask(self, mask_path: str, palette: Optional[Image.ADAPTIVE], colors: Optional[int]=256) -> None:
+        """
+        Draw current Annotation on image and save it in PIL format.
+
+        :param mask_path: Saves image to the given path.
+        :type mask_path: str
+        :param palette: Palette to use when converting image from mode "RGB" to "P".
+        :type palette: Available palettes are `WEB` or `ADAPTIVE`, optional
+        :param colors: Number of colors to use for the `ADAPTIVE` palette.
+        :type colors: int, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        """
         mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
         for label in self.labels:
             label.geometry.draw(mask, label.obj_class.color)
@@ -1576,7 +1653,13 @@ class Annotation:
         ensure_base_path(mask_path)
         im.save(mask_path)
 
-    def to_segmentation_task(self):
+    def to_segmentation_task(self) -> Annotation:
+        """
+        Prepare current Annotation to segmentation tasks by joining labels with same object classes names to one label.
+
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        """
         class_mask = {}
         for label in self.labels:
             if label.obj_class not in class_mask:
@@ -1589,7 +1672,7 @@ class Annotation:
             new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
         return self.clone(labels=new_labels)
 
-    def to_detection_task(self, mapping):
+    def to_detection_task(self, mapping: Dict[ObjClass, ObjClass]) -> Annotation:
         aux_mapping = mapping.copy()
 
         to_render_mapping = {}
@@ -1627,7 +1710,15 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def masks_to_imgaug(self, class_to_index) -> SegmentationMapsOnImage:
+    def masks_to_imgaug(self, class_to_index: Dict[str, int]) -> SegmentationMapsOnImage or None:
+        """
+        Convert current annotation objects masks to SegmentationMapsOnImage format.
+
+        :param class_to_index: Dict matching class name to index.
+        :type class_to_index: dict
+        :return: SegmentationMapsOnImage, otherwise :class:`None`
+        :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
+        """
         h = self.img_size[0]
         w = self.img_size[1]
         mask = np.zeros((h, w, 1), dtype=np.int32)
@@ -1642,7 +1733,13 @@ class Annotation:
             segmaps = SegmentationMapsOnImage(mask, shape=self.img_size)
         return segmaps
 
-    def bboxes_to_imgaug(self):
+    def bboxes_to_imgaug(self) -> BoundingBoxesOnImage or None:
+        """
+        Convert current annotation objects boxes to BoundingBoxesOnImage format.
+
+        :return: BoundingBoxesOnImage, otherwise :class:`None`
+        :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
+        """
         boxes = []
         for label in self.labels:
             if type(label.geometry) == Rectangle:
@@ -1658,9 +1755,9 @@ class Annotation:
         return bbs
 
     @classmethod
-    def from_imgaug(cls, img, ia_boxes=None, ia_masks=None,
-                    index_to_class=None,
-                    meta: ProjectMeta = None):
+    def from_imgaug(cls, img: np.ndarray, ia_boxes: Optional[List] = None, ia_masks:Optional[List] = None,
+                    index_to_class: Dict[int, str] = None,
+                    meta: ProjectMeta = None) -> Annotation:
         if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
             raise ValueError("Project meta has to be provided")
 
@@ -1689,13 +1786,27 @@ class Annotation:
 
         return cls(img_size=img.shape[:2], labels=labels)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """
+        Check whether annotation contains labels or tags, or not.
+
+        :returns: True if annotation is empty, False otherwise.
+        :rtype: :class:`bool`
+        """
         if len(self.labels) == 0 and len(self.img_tags) == 0:
             return True
         else:
             return False
 
-    def filter_labels_by_classes(self, keep_classes):
+    def filter_labels_by_classes(self, keep_classes: List[str]) -> Annotation:
+        """
+        Filter annotation labels by given classes names.
+
+        :param keep_classes: List with classes names.
+        :type keep_classes: list
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        """
         new_labels = []
         for lbl in self.labels:
             if lbl.obj_class.name in keep_classes:

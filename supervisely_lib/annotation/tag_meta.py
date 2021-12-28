@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
+from typing import List, Optional, Dict
 from copy import deepcopy
 from supervisely_lib.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
 from supervisely_lib.io.json import JsonSerializable
@@ -83,8 +83,9 @@ class TagMeta(KeyObject, JsonSerializable):
         # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
         meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
     """
-    def __init__(self, name: str, value_type: str, possible_values: List[str] = None, color: List[int]=None, sly_id=None,
-                 hotkey: str = None, applicable_to: str = None, applicable_classes: List[str]=None):
+    def __init__(self, name: str, value_type: str, possible_values: Optional[List[str]] = None, color: Optional[List[int]]=None,
+                 sly_id: Optional[int]=None, hotkey: Optional[str] = None, applicable_to: Optional[str] = None,
+                 applicable_classes: Optional[List[str]]=None):
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
             raise ValueError("value_type = {!r} is unknown, should be one of {}"
                              .format(value_type, SUPPORTED_TAG_VALUE_TYPES))
@@ -272,7 +273,7 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         return self._applicable_classes
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -334,7 +335,7 @@ class TagMeta(KeyObject, JsonSerializable):
         return jdict
 
     @classmethod
-    def from_json(cls, data: dict) -> TagMeta:
+    def from_json(cls, data: Dict) -> TagMeta:
         """
         Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -530,8 +531,9 @@ class TagMeta(KeyObject, JsonSerializable):
                 self.value_type == other.value_type and
                 self.possible_values == other.possible_values)
 
-    def clone(self, name: str = None, value_type: str = None, possible_values: List[str] = None, color: List[int, int, int] = None, sly_id: int = None,
-              hotkey: str = None, applicable_to: str = None, applicable_classes: List[str] = None) -> TagMeta:
+    def clone(self, name: Optional[str] = None, value_type: Optional[str] = None, possible_values: Optional[List[str]] = None,
+              color: Optional[List[int, int, int]] = None, sly_id: Optional[int] = None,
+              hotkey: Optional[str] = None, applicable_to: Optional[str] = None, applicable_classes: Optional[List[str]] = None) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
 
