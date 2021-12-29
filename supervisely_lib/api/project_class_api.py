@@ -2,6 +2,7 @@
 
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField
+from typing import Optional, List, Dict
 
 
 class ProjectClassApi(ModuleApi):
@@ -30,7 +31,7 @@ class ProjectClassApi(ModuleApi):
         """
         return 'ProjectClassInfo'
 
-    def get_list(self, project_id: int, filters: list = None) -> list:
+    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> list:
         """
         List of Classes in the given Project.
 

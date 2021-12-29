@@ -233,6 +233,15 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         return cls(tags)
 
     def get_id_mapping(self, raise_if_no_id: Optional[bool]=False) -> Dict[int, TagMeta]:
+        """
+        Create dict matching TagMetas id to TagMeta.
+
+        :param raise_if_no_id: Raise ValueError if where is TagMetas without id.
+        :type raise_if_no_id: bool, optional
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        :raises: :class:`KeyError`, if where is duplication of TagMetas id
+        """
         res = {}
         without_id = []
         for tag_meta in self:

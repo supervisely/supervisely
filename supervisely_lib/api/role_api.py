@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 from enum import IntEnum
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase
 
@@ -59,7 +59,7 @@ class RoleApi(ModuleApiBase):
         """
         return 'RoleInfo'
 
-    def get_list(self, filters: List[dict]=None) -> list:
+    def get_list(self, filters: Optional[List[Dict[str, str]]]=None) -> List:
         """
         List of all roles that are available on private Supervisely instance.
 

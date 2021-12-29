@@ -10,7 +10,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     _method_download = 'point-clouds.episodes.annotations.info'
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
-    def download(self, dataset_id):
+    def download(self, dataset_id: int):
         """
         :param dataset_id: int
         :return: dataset episode annotation for given id, received after execution post request

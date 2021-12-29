@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Dict, Optional
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.collection.key_indexed_collection import KeyIndexedCollection
@@ -46,7 +45,7 @@ class TagApi(ModuleApi):
     def info_tuple_name():
         return 'TagInfo'
 
-    def get_list(self, project_id: int, filters: List[dict]=None) -> List[NamedTuple]:
+    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]]=None) -> List[NamedTuple]:
         """
         Get list of information about all video Tags for a given project ID.
 
@@ -140,7 +139,7 @@ class TagApi(ModuleApi):
         """
         return self.get_list_all_pages('tags.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
-    def get_name_to_id_map(self, project_id: int) -> dict:
+    def get_name_to_id_map(self, project_id: int) -> Dict[str, int]:
         """
         Get matching the tag name to its ID.
 
@@ -185,7 +184,7 @@ class TagApi(ModuleApi):
             tags_keys.append(tag.key())
         return tags_json, tags_keys
 
-    def append_to_entity(self, entity_id, project_id, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
+    def append_to_entity(self, entity_id: int, project_id: int, tags: KeyIndexedCollection, key_id_map: Optional[KeyIdMap] = None) -> List[int]:
         if len(tags) == 0:
             return []
         tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
@@ -205,7 +204,7 @@ class TagApi(ModuleApi):
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def append_to_objects(self, entity_id, project_id, objects: KeyIndexedCollection, key_id_map: KeyIdMap):
+    def append_to_objects(self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap) -> None:
         tag_name_id_map = self.get_name_to_id_map(project_id)
 
         tags_to_add = []
@@ -227,7 +226,7 @@ class TagApi(ModuleApi):
         ids = self.append_to_objects_json(entity_id, tags_to_add)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
 
-    def append_to_objects_json(self, entity_id, tags_json):
+    def append_to_objects_json(self, entity_id: int, tags_json: List[Dict]) -> List[int]:
         if len(tags_json) == 0:
             return []
         response = self._api.post('annotation-objects.tags.bulk.add', {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json})

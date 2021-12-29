@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import NamedTuple
-from typing import List
+from typing import NamedTuple, List, Dict, Optional
 
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField
@@ -66,7 +65,7 @@ class ObjectClassApi(ModuleApi):
         """
         return 'ObjectClassInfo'
 
-    def get_list(self, project_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         List of ObjClasses in the given Project.
 
@@ -122,7 +121,7 @@ class ObjectClassApi(ModuleApi):
         """
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
-    def get_name_to_id_map(self, project_id: int) -> dict:
+    def get_name_to_id_map(self, project_id: int) -> Dict[str, int]:
         """
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int

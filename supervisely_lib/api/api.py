@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import requests
 import json
-
+from typing import List, Optional, NamedTuple, Dict
 from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
 
 import supervisely_lib.api.team_api as team_api
@@ -74,7 +74,8 @@ class Api:
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
     """
-    def __init__(self, server_address: str, token: str, retry_count: int = None, retry_sleep_sec: int = None, external_logger: logger = None, ignore_task_id: bool = False):
+    def __init__(self, server_address: str, token: str, retry_count: Optional[int] = None, retry_sleep_sec: Optional[int] = None,
+                 external_logger: Optional[logger] = None, ignore_task_id: Optional[bool] = False):
         if token is None:
             raise ValueError("Token is None")
         self.server_address = server_address.strip('/')
@@ -128,7 +129,7 @@ class Api:
         self.logger = external_logger or logger
 
     @classmethod
-    def from_env(cls, retry_count: int=5, ignore_task_id: bool=False) -> Api:
+    def from_env(cls, retry_count: Optional[int]=5, ignore_task_id: Optional[bool]=False) -> Api:
         """
         Initialize API use environment variables.
 
@@ -179,7 +180,7 @@ class Api:
         """
         self.additional_fields[key] = value
 
-    def post(self, method: str, data: dict, retries: int=None, stream: bool=False) -> requests.Response:
+    def post(self, method: str, data: Dict, retries: Optional[int]=None, stream: Optional[bool]=False) -> requests.Response:
         """
         Performs POST request to server with given parameters.
 
@@ -225,7 +226,8 @@ class Api:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
-    def get(self, method: str, params: dict, retries: int = None, stream: bool = False, use_public_api: bool = True) -> requests.Response:
+    def get(self, method: str, params: Dict, retries: Optional[int] = None, stream: Optional[bool] = False,
+            use_public_api: Optional[bool] = True) -> requests.Response:
         """
         Performs GET request to server with given parameters.
 
@@ -294,7 +296,7 @@ class Api:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
 
     @staticmethod
-    def parse_error(response: requests.Response, default_error: str="Error", default_message: str="please, contact administrator"):
+    def parse_error(response: requests.Response, default_error: Optional[str]="Error", default_message: Optional[str]="please, contact administrator"):
         """
         Processes error from response.
 
