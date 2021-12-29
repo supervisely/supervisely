@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Dict, Optional
 from pandas.core.frame import DataFrame
 
 import pandas as pd
@@ -12,7 +11,8 @@ from supervisely_lib.api.module_api import ApiField, CloneableModuleApi, Updatea
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.annotation.annotation import TagCollection
-
+from supervisely_lib.task.progress import Progress
+import supervisely_lib as sly
 
 
 class ProjectNotFound(Exception):
@@ -97,7 +97,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, workspace_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         List of Projects in the given Workspace.
 
@@ -169,7 +169,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self.get_list_all_pages('projects.list',  {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []})
 
-    def get_info_by_id(self, id: int, expected_type: str = None, raise_error: bool = False) -> NamedTuple:
+    def get_info_by_id(self, id: int, expected_type: Optional[str] = None, raise_error: Optional[bool] = False) -> NamedTuple:
         """
         Get Project information by ID.
 
@@ -213,7 +213,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
-    def get_info_by_name(self, parent_id: int, name: str, expected_type: ProjectType = None, raise_error: bool = False) -> NamedTuple:
+    def get_info_by_name(self, parent_id: int, name: str, expected_type: Optional[ProjectType] = None,
+                         raise_error: Optional[bool] = False) -> NamedTuple:
         """
         Get Project information by name.
 
@@ -255,7 +256,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._check_project_info(info, name=name, expected_type=expected_type, raise_error=raise_error)
         return info
 
-    def _check_project_info(self, info, id=None, name=None, expected_type=None, raise_error=False):
+    def _check_project_info(self, info, id: Optional[int]=None, name: Optional[str]=None, expected_type=None, raise_error=False):
         """
         Checks if a project exists with a given id and type of project == expected type
         :param info: project metadata information
@@ -279,7 +280,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise ExpectedProjectTypeMismatch("Project {!r} has type {!r}, but expected type is {!r}"
                                               .format(str_id, info.type, expected_type))
 
-    def get_meta(self, id: int) -> dict:
+    def get_meta(self, id: int) -> Dict:
         """
         Get ProjectMeta by Project ID.
 
@@ -321,8 +322,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post('projects.meta', {'id': id})
         return response.json()
 
-    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES, description: str = "",
-               change_name_if_conflict: bool = False) -> NamedTuple:
+    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES, description: Optional[str] = "",
+               change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
         """
         Create Project with given name in the given Workspace ID.
 
@@ -375,7 +376,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def _get_update_method(self):
         return 'projects.editInfo'
 
-    def update_meta(self, id: int, meta: dict) -> None:
+    def update_meta(self, id: int, meta: Dict) -> None:
         """
         Updates given Project with given ProjectMeta.
 
@@ -457,7 +458,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def _remove_api_method_name(self):
         return 'projects.remove'
 
-    def merge_metas(self, src_project_id: int, dst_project_id: int) -> dict:
+    def merge_metas(self, src_project_id: int, dst_project_id: int) -> Dict:
         """
         Merges ProjectMeta from given Project to given destination Project.
 
@@ -492,7 +493,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb=None) -> DataFrame:
+    def get_activity(self, id: int, progress_cb: Optional[Progress]=None) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -533,7 +534,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             res = res._replace(items_count=res.images_count)
         return res
 
-    def get_stats(self, id: int) -> dict:
+    def get_stats(self, id: int) -> Dict:
         """
         Get Project stats by ID.
 
@@ -581,7 +582,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         result = urllib.parse.urljoin(self._api.server_address, 'projects/{}/datasets'.format(id))
         return result
 
-    def update_custom_data(self, id: int, data: dict) -> dict:
+    def update_custom_data(self, id: int, data: Dict) -> Dict:
         """
         Updates custom data of the Project by ID
 
@@ -609,9 +610,36 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
         return response.json()
 
-    def download_images_tags(self, id, progress_cb=None):
+    def download_images_tags(self, id: int, progress_cb: Optional[Progress]=None) -> defaultdict:
+        """
+        Get matching tag names to ImageInfos.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: Defaultdict matching tag names to ImageInfos
+        :rtype: :class:`defaultdict`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 8200
+            tags_to_infos = api.project.download_images_tags(project_id)
+            for tag_name in tags_to_infos:
+                print(tag_name, tags_to_infos[tag_name])
+            # Output:
+            # train [ImageInfo(id=2389064, name='IMG_4451_JjH4WPkHlk.jpeg', link=None, hash='6EpjCL+lBdMBYo...
+            # val [ImageInfo(id=2389066, name='IMG_1836.jpeg', link=None, hash='Si0WvJreU6pmrx1EDa1itkqqSkQkZFzNJSu...
+        """
         # returns dict: tagname->images infos
-        project_meta = self.get_meta(id)
+        #project_meta = self.get_meta(id) #TODO alex check bug
+        meta = self.get_meta(id) #TODO alex check bug
+        project_meta = sly.ProjectMeta.from_json(meta) #TODO alex check bug
         id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
         tag2images = defaultdict(list)
         for dataset in self._api.dataset.get_list(id):

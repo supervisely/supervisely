@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Optional, Dict
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib._utils import batched
@@ -90,7 +89,7 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         return self._get_info_by_id(id, 'figures.info')
 
-    def create(self, entity_id, object_id, meta, geometry_json, geometry_type, track_id=None):
+    def create(self, entity_id: int, object_id: int, meta: Dict, geometry_json: Dict, geometry_type, track_id: Optional[int]=None):
         input_figure = {
                     ApiField.META: meta,
                     ApiField.OBJECT_ID: object_id,

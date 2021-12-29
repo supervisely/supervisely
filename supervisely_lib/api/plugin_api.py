@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import NamedTuple
-from typing import List
+from typing import NamedTuple, List, Dict, Optional
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi
 
@@ -69,7 +68,7 @@ class PluginApi(ModuleApi):
         """
         return 'PluginInfo'
 
-    def get_list(self, team_id: int, filters: list = None) -> List[NamedTuple]:
+    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         Get list of plugins in the Team.
 

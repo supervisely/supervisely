@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 import json
@@ -38,7 +38,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = 'videos.annotations.bulk.info'
     _entity_ids_str = ApiField.VIDEO_IDS
 
-    def download(self, video_id: int) -> dict:
+    def download(self, video_id: int) -> Dict:
         """
         Download information about VideoAnnotation by video ID from API.
 
@@ -76,7 +76,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_info = self._api.video.get_info_by_id(video_id)
         return self._download(video_info.dataset_id, video_id)
 
-    def append(self, video_id: int, ann: VideoAnnotation, key_id_map: KeyIdMap = None) -> None:
+    def append(self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
 
@@ -105,7 +105,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                      info.project_id, info.dataset_id, video_id,
                      ann.tags, ann.objects, ann.figures, key_id_map)
 
-    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta, progress_cb: Progress=None) -> None:
+    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta, progress_cb: Optional[Progress]=None) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
 

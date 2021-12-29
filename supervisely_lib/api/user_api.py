@@ -1,11 +1,10 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Dict, Optional
 
 from collections import namedtuple
 import pandas as pd
-
+from supervisely_lib.task.progress import Progress
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
 
@@ -224,7 +223,7 @@ class UserApi(ModuleApiBase):
                                                convert_json_info_cb=self._api.user._convert_json_info)
         return _get_single_item(team_members)
 
-    def get_list(self, filters: List[dict]=None) -> List[NamedTuple]:
+    def get_list(self, filters: List[Dict[str, str]]=None) -> List[NamedTuple]:
         """
         Get list of information about Users.
 
@@ -259,7 +258,7 @@ class UserApi(ModuleApiBase):
         """
         return self.get_list_all_pages('users.list', {ApiField.FILTER: filters or []})
 
-    def create(self, login: str, password: str, is_restricted: bool=False, name: str="", email: str="") -> NamedTuple:
+    def create(self, login: str, password: str, is_restricted: Optional[bool]=False, name: Optional[str]="", email: Optional[str]="") -> NamedTuple:
         """
         Creates new User with given login and password.
 
@@ -459,7 +458,7 @@ class UserApi(ModuleApiBase):
         response = self._api.post('members.remove', {ApiField.ID: user_id,
                                                      ApiField.TEAM_ID: team_id})
 
-    def update(self, id: int, password: str=None, name: str=None) -> NamedTuple:
+    def update(self, id: int, password: Optional[str]=None, name: Optional[str]=None) -> NamedTuple:
         """
         Updates User info.
 
@@ -594,7 +593,7 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id: int, user_id: int, progress_cb=None) -> pd.DataFrame:
+    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Progress]=None) -> pd.DataFrame:
         """
         Get User activity data.
 
@@ -633,7 +632,7 @@ class UserApi(ModuleApiBase):
         df = pd.DataFrame(activity)
         return df
 
-    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> dict:
+    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> Dict[str, int]:
         """
         Invite User to Team with given role by login.
 

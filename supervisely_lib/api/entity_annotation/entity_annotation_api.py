@@ -2,6 +2,7 @@
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
+from typing import List
 
 
 class EntityAnnotationAPI(ModuleApi):
@@ -19,7 +20,7 @@ class EntityAnnotationAPI(ModuleApi):
         """
         return self.download_bulk(dataset_id, [entity_id])[0]
 
-    def download_bulk(self, dataset_id, entity_ids):
+    def download_bulk(self, dataset_id: int, entity_ids: List[int]):
         """
         :param dataset_id: int
         :param entity_ids: list of integers

@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Dict, Optional
 from supervisely_lib.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
@@ -59,7 +58,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         """
         return self._get_info_by_id(id, 'objects.info')
 
-    def get_list(self, dataset_id: int, filters: List[dict]=None) -> List[NamedTuple]:
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]]=None) -> List[NamedTuple]:
         """
         Get list of information about all video Objects for a given dataset ID.
 

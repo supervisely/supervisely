@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import urllib
-
-from typing import List
-from typing import NamedTuple
-
+from typing import List, NamedTuple, Optional, Dict
 from supervisely_lib.api.module_api import ApiField, ModuleApi, UpdateableModule, RemoveableModuleApi
 
 
@@ -75,7 +72,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, project_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         List of Datasets in the given Project.
 
@@ -144,7 +141,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         return self._get_info_by_id(id, 'datasets.info')
 
-    def create(self, project_id: int, name: str, description: str = "", change_name_if_conflict: bool = False) -> NamedTuple:
+    def create(self, project_id: int, name: str, description: Optional[str] = "", change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
         """
         Create Dataset with given name in the given Project.
 
@@ -182,7 +179,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                                                    ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())
 
-    def get_or_create(self, project_id: int, name: str, description: str = "") -> NamedTuple:
+    def get_or_create(self, project_id: int, name: str, description: Optional[str] = "") -> NamedTuple:
         """
         Checks if Dataset with given name already exists in the Project, if not creates Dataset with the given name.
 
@@ -226,7 +223,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     def _remove_api_method_name(self):
         return 'datasets.remove'
 
-    def copy_batch(self, dst_project_id: int, ids: List[int], new_names: List[str] = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
+    def copy_batch(self, dst_project_id: int, ids: List[int], new_names: Optional[List[str]] = None,
+                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[NamedTuple]:
         """
         Copy given Datasets to the destination Project by IDs.
 
@@ -279,7 +277,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_datasets.append(new_dataset)
         return new_datasets
 
-    def copy(self, dst_project_id: int, id: int, new_name: str = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
+    def copy(self, dst_project_id: int, id: int, new_name: Optional[str] = None, change_name_if_conflict: Optional[bool] = False,
+             with_annotations: Optional[bool] = False) -> NamedTuple:
         """
         Copies given Dataset in destination Project by ID.
 
@@ -316,7 +315,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             return None
         return new_datasets[0]
 
-    def move_batch(self, dst_project_id: int, ids: List[int], new_names: List[str] = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> List[NamedTuple]:
+    def move_batch(self, dst_project_id: int, ids: List[int], new_names: Optional[List[str]] = None,
+                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[NamedTuple]:
         """
         Moves given Datasets to the destination Project by IDs.
 
@@ -356,7 +356,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self.remove_batch(ids)
         return new_datasets
 
-    def move(self, dst_project_id: int, id: int, new_name: str = None, change_name_if_conflict: bool = False, with_annotations: bool = False) -> NamedTuple:
+    def move(self, dst_project_id: int, id: int, new_name: Optional[str] = None, change_name_if_conflict: Optional[bool] = False,
+             with_annotations: Optional[bool] = False) -> NamedTuple:
         """
         Moves given Dataset in destination Project by ID.
 

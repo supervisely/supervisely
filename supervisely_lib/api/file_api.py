@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing import List
+from typing import NamedTuple, List, Dict, Optional
 
 import os
 import shutil
@@ -88,7 +87,7 @@ class FileApi(ModuleApiBase):
         """
         return 'FileInfo'
 
-    def list(self, team_id: int, path: str) -> List[dict]:
+    def list(self, team_id: int, path: str) -> List[Dict]:
         """
         List of files in the Team Files.
 
@@ -151,12 +150,64 @@ class FileApi(ModuleApiBase):
         response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
         return response.json()
 
-    def list2(self, team_id, path):
+    def list2(self, team_id: int, path: str) -> List[NamedTuple]:
+        """
+        List of files in the Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to File or Directory.
+        :type path: str
+        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 9
+            file_path = "/My_App_Test/"
+            files = api.file.list2(team_id, file_path)
+
+            print(files)
+            # Output: [
+            # FileInfo(team_id=9, id=18421, user_id=8, name='5071_3734_mot_video_002.tar.gz', hash='+0nrNoDjBxxJA...
+            # FileInfo(team_id=9, id=18456, user_id=8, name='5164_4218_mot_video_bitmap.tar.gz', hash='fwtVI+iptY...
+            # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
+            # ]
+        """
         response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
         results = [self._convert_json_info(info_json) for info_json in response.json()]
         return results
 
-    def get_directory_size(self, team_id, path):
+    def get_directory_size(self, team_id: int, path: str) -> int:
+        """
+        Get directory size in the Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to Directory.
+        :type path: str
+        :return: Directory size in the Team Files
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 9
+            path = "/My_App_Test/"
+            size = api.file.get_directory_size(team_id, path)
+
+            print(size)
+            # Output: 3478687
+        """
         dir_size = 0
         file_infos = self.list2(team_id, path)
         for file_info in file_infos:
@@ -174,7 +225,8 @@ class FileApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def download(self, team_id: int, remote_path: str, local_save_path: str, cache: FileCache = None, progress_cb: Progress = None) -> None:
+    def download(self, team_id: int, remote_path: str, local_save_path: str, cache: Optional[FileCache] = None,
+                 progress_cb: Optional[Progress] = None) -> None:
         """
         Download File from Team Files.
 
@@ -222,7 +274,33 @@ class FileApi(ModuleApiBase):
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
 
-    def download_directory(self, team_id, remote_path, local_save_path, progress_cb=None):
+    def download_directory(self, team_id: int, remote_path: str, local_save_path: str, progress_cb: Optional[Progress]=None) -> None:
+        """
+        Download Directory from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to Directory in Team Files.
+        :type remote_path: str
+        :param local_save_path: Local save path.
+        :type local_save_path: str
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            path_to_dir = "/My_App_Test/ds1"
+            local_save_path = "/home/admin/Downloads/My_local_test"
+
+            api.file.download_directory(9, path_to_dir, local_save_path)
+        """
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
@@ -251,7 +329,7 @@ class FileApi(ModuleApiBase):
         resp = self._api.post("file-storage.upload?teamId={}".format(team_id), encoder)
         return resp.json()
 
-    def upload(self, team_id: int, src: str, dst: str, progress_cb: Progress = None) -> NamedTuple:
+    def upload(self, team_id: int, src: str, dst: str, progress_cb: Optional[Progress] = None) -> NamedTuple:
         """
         Upload File to Team Files.
 
@@ -280,7 +358,7 @@ class FileApi(ModuleApiBase):
         """
         return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
 
-    def upload_bulk(self, team_id: int, src_paths: List[str], dst_paths: List[str], progress_cb: Progress = None) -> List[NamedTuple]:
+    def upload_bulk(self, team_id: int, src_paths: List[str], dst_paths: List[str], progress_cb: Optional[Progress] = None) -> List[NamedTuple]:
         """
         Upload Files to Team Files.
 
@@ -588,7 +666,28 @@ class FileApi(ModuleApiBase):
         resp = self._api.post('file-storage.info', {ApiField.ID: id})
         return self._convert_json_info(resp.json())
 
-    def get_free_dir_name(self, team_id, dir_path):
+    def get_free_dir_name(self, team_id: int, dir_path: str) -> str:
+        """
+         Adds suffix to the end of the Directory name.
+
+         :param team_id: Team ID in Supervisely.
+         :type team_id: int
+         :param dir_path: Path to Directory in Team Files.
+         :type dir_path: str
+         :return: New Directory name with suffix at the end
+         :rtype: :class:`str`
+         :Usage example:
+
+          .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
+            print(new_dir_name)
+            # Output: /My_App_Test_001
+         """
         res_dir = dir_path.rstrip('/')
         suffix = 1
         while self.dir_exists(team_id, res_dir):
@@ -596,8 +695,36 @@ class FileApi(ModuleApiBase):
             suffix += 1
         return res_dir
 
-    def upload_directory(self, team_id, local_dir, remote_dir,
-                         change_name_if_conflict=True, progress_size_cb=None):
+    def upload_directory(self, team_id: int, local_dir: str, remote_dir: str,
+                         change_name_if_conflict: Optional[bool]=True, progress_size_cb: Optional[Progress] = None) -> str:
+        """
+        Upload Directory to Team Files from local path.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param local_dir: Path to local Directory.
+        :type local_dir: str
+        :param remote_dir: Path to Directory in Team Files.
+        :type remote_dir: str
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :param progress_size_cb: Function for tracking download progress.
+        :type progress_size_cb: Progress, optional
+        :return: Path to Directory in Team Files
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            path_to_dir = "/My_App_Test/ds1"
+            local_path = "/home/admin/Downloads/My_local_test"
+
+            api.file.upload_directory(9, local_path, path_to_dir)
+        """
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
                 res_remote_dir = self.get_free_dir_name(team_id, remote_dir)

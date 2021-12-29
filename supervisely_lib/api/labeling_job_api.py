@@ -1,12 +1,12 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import NamedTuple
+from typing import List, NamedTuple, Dict, Optional
 import time
 import pandas as pd
 from supervisely_lib.collection.str_enum import StrEnum
 from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
                                            WaitingTimeExceeded
+from supervisely_lib.task.progress import Progress
 
 
 class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
@@ -41,49 +41,49 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     @staticmethod
     def info_sequence():
         """
-                NamedTuple LabelingJobInfo information about Labeling Job.
+        NamedTuple LabelingJobInfo information about Labeling Job.
 
-                :Example:
+        :Example:
 
-                 .. code-block:: python
+         .. code-block:: python
 
-                     LabelingJobInfo(id=2,
-                                     name='Annotation Job (#1) (#1) (dataset_01)',
-                                     readme='',
-                                     description='',
-                                     team_id=4,
-                                     workspace_id=8,
-                                     workspace_name='First Workspace',
-                                     project_id=58,
-                                     project_name='tutorial_project',
-                                     dataset_id=54,
-                                     dataset_name='dataset_01',
-                                     created_by_id=4,
-                                     created_by_login='anna',
-                                     assigned_to_id=4,
-                                     assigned_to_login='anna',
-                                     reviewer_id=4,
-                                     reviewer_login='anna',
-                                     created_at='2020-04-08T15:10:12.618Z',
-                                     started_at='2020-04-08T15:10:19.833Z',
-                                     finished_at='2020-04-08T15:13:39.788Z',
-                                     status='completed',
-                                     disabled=False,
-                                     images_count=3,
-                                     finished_images_count=0,
-                                     rejected_images_count=1,
-                                     accepted_images_count=2,
-                                     progress_images_count=2,
-                                     classes_to_label=[],
-                                     tags_to_label=[],
-                                     images_range=(1, 5),
-                                     objects_limit_per_image=None,
-                                     tags_limit_per_image=None,
-                                     filter_images_by_tags=[],
-                                     include_images_with_tags=[],
-                                     exclude_images_with_tags=[],
-                                     entities=None)
-                """
+             LabelingJobInfo(id=2,
+                             name='Annotation Job (#1) (#1) (dataset_01)',
+                             readme='',
+                             description='',
+                             team_id=4,
+                             workspace_id=8,
+                             workspace_name='First Workspace',
+                             project_id=58,
+                             project_name='tutorial_project',
+                             dataset_id=54,
+                             dataset_name='dataset_01',
+                             created_by_id=4,
+                             created_by_login='anna',
+                             assigned_to_id=4,
+                             assigned_to_login='anna',
+                             reviewer_id=4,
+                             reviewer_login='anna',
+                             created_at='2020-04-08T15:10:12.618Z',
+                             started_at='2020-04-08T15:10:19.833Z',
+                             finished_at='2020-04-08T15:13:39.788Z',
+                             status='completed',
+                             disabled=False,
+                             images_count=3,
+                             finished_images_count=0,
+                             rejected_images_count=1,
+                             accepted_images_count=2,
+                             progress_images_count=2,
+                             classes_to_label=[],
+                             tags_to_label=[],
+                             images_range=(1, 5),
+                             objects_limit_per_image=None,
+                             tags_limit_per_image=None,
+                             filter_images_by_tags=[],
+                             include_images_with_tags=[],
+                             exclude_images_with_tags=[],
+                             entities=None)
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.README,
@@ -138,7 +138,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     def __init__(self, api):
         ModuleApi.__init__(self, api)
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
+    def _convert_json_info(self, info: Dict, skip_missing: Optional[bool]=True):
         if info is None:
             return None
         else:
@@ -196,16 +196,16 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                name : str,
                dataset_id: int,
                user_ids: List[int],
-               readme: str=None,
-               description: str=None,
-               classes_to_label: List[str]=None,
-               objects_limit_per_image: int=None,
-               tags_to_label: List[str]=None,
-               tags_limit_per_image: int=None,
-               include_images_with_tags: List[str]=None,
-               exclude_images_with_tags: List[str]=None,
-               images_range: List[int, int]=None,
-               reviewer_id: int=None) -> List[NamedTuple]:
+               readme: Optional[str]=None,
+               description: Optional[str]=None,
+               classes_to_label: Optional[List[str]]=None,
+               objects_limit_per_image: Optional[int]=None,
+               tags_to_label: Optional[List[str]]=None,
+               tags_limit_per_image: Optional[int]=None,
+               include_images_with_tags: Optional[List[str]]=None,
+               exclude_images_with_tags: Optional[List[str]]=None,
+               images_range: Optional[List[int, int]]=None,
+               reviewer_id: Optional[int]=None) -> List[NamedTuple]:
         """
         Creates Labeling Job and assigns given Users to it.
 
@@ -422,8 +422,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             created_jobs.append(self.get_info_by_id(job[ApiField.ID]))
         return created_jobs
 
-    def get_list(self, team_id: int, created_by_id: int=None, assigned_to_id: int=None, project_id: int=None, dataset_id: int=None,
-                 show_disabled: bool=False) -> List[NamedTuple]:
+    def get_list(self, team_id: int, created_by_id: Optional[int]=None, assigned_to_id: Optional[int]=None,
+                 project_id: Optional[int]=None, dataset_id: Optional[int]=None,
+                 show_disabled: Optional[bool]=False) -> List[NamedTuple]:
         """
         Get list of information about Labeling Job in the given Team.
 
@@ -693,7 +694,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         #there is no ERROR status for labeling job
         pass
 
-    def wait(self, id: int, target_status: str, wait_attempts: int=None, wait_attempt_timeout_sec: int=None) -> None:
+    def wait(self, id: int, target_status: str, wait_attempts: Optional[int]=None, wait_attempt_timeout_sec: Optional[int]=None) -> None:
         """
         Wait for a Labeling Job to change to the expected target status.
 
@@ -729,7 +730,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             time.sleep(effective_wait_timeout)
         raise WaitingTimeExceeded('Waiting time exceeded')
 
-    def get_stats(self, id: int) -> dict:
+    def get_stats(self, id: int) -> Dict:
         """
         Get stats of given Labeling Job ID.
 
@@ -912,7 +913,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         response = self._api.post('jobs.stats', {ApiField.ID: id})
         return response.json()
 
-    def get_activity(self, team_id: int, job_id: int, progress_cb=None) -> pd.DataFrame:
+    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Progress]=None) -> pd.DataFrame:
         """
         Get all activity for given Labeling Job by ID.
 

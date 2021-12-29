@@ -4,6 +4,7 @@ import os
 import json
 import urllib.parse
 import uuid
+from typing import List, NamedTuple, Dict, Optional
 
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase
 from supervisely_lib.collection.str_enum import StrEnum
@@ -35,7 +36,7 @@ class ReportApi(ModuleApiBase):
     #https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template
     #grid-template: "a a a" 40px "b c c" 40px "b c c" 40px / 1fr 1fr 1fr;
     #area -a or b or c
-    def create(self, team_id: int, name: str, widgets, layout=""):
+    def create(self, team_id: int, name: str, widgets, layout: Optional[str]=""):
         """
         Creates report in the given Team.
 
@@ -155,8 +156,8 @@ class ReportApi(ModuleApiBase):
         response = self._api.post(method, {ApiField.REPORT_ID: report_id, ApiField.WIDGET: data})
         return response.json()
 
-    def update_widget(self, report_id: int, widget_id: int, name: str = None, description: str = None, area=None,
-                      content=None, options=None):
+    def update_widget(self, report_id: int, widget_id: int, name: Optional[str] = None, description: Optional[str] = None,
+                      area=None, content=None, options=None):
         """
         Method description
 

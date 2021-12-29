@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple
-from typing import NamedTuple
+from typing import List, Tuple, NamedTuple, Dict, Optional
 from requests import Response
 
 import json
@@ -101,7 +100,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def info_tuple_name():
         return 'VideoInfo'
 
-    def url(self, dataset_id, video_id, video_frame=0):
+    def url(self, dataset_id: int, video_id: int, video_frame: Optional[int]=0) -> str:
         """
         :param dataset_id: int
         :param video_id: int
@@ -118,7 +117,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=True):
         return super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
-    def get_list(self, dataset_id: int, filters: List[dict]=None) -> List[NamedTuple]:
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]]=None) -> List[NamedTuple]:
         """
         Get list of information about all video annotations for a given dataset.
 
@@ -289,7 +288,7 @@ class VideoApi(RemoveableBulkModuleApi):
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id, dataset_id
 
-    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: int=None) -> NamedTuple:
+    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: Optional[int]=None) -> NamedTuple:
         """
         Upload Video from given hash to Dataset.
 
@@ -348,7 +347,8 @@ class VideoApi(RemoveableBulkModuleApi):
             meta = {"videoStreamIndex": stream_index}
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
-    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: List[dict]=None, progress_cb: Progress=None) -> List[NamedTuple]:
+    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]]=None,
+                      progress_cb: Optional[Progress]=None) -> List[NamedTuple]:
         """
         Upload Videos from given hashes to Dataset.
 
@@ -430,7 +430,7 @@ class VideoApi(RemoveableBulkModuleApi):
         response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id: int, path: str, progress_cb=None) -> None:
+    def download_path(self, id: int, path: str, progress_cb: Optional[Progress]=None) -> None:
         """
         Downloads Video from Dataset to local path by ID.
 
@@ -466,7 +466,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def download_range_by_id(self, id: int, frame_start: int, frame_end: int, is_stream: bool=True) -> Response:
+    def download_range_by_id(self, id: int, frame_start: int, frame_end: int, is_stream: Optional[bool]=True) -> Response:
         """
         Downloads Video with given ID between given start and end frames.
 
@@ -496,7 +496,7 @@ class VideoApi(RemoveableBulkModuleApi):
         path_original = self.get_info_by_id(id).path_original
         return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
 
-    def downalod_range_by_path(self, path_original: str, frame_start: int, frame_end: int, is_stream: bool=False) -> Response:
+    def downalod_range_by_path(self, path_original: str, frame_start: int, frame_end: int, is_stream: Optional[bool]=False) -> Response:
         """
         Downloads Video with given path in Supervisely between given start and end frames.
 
@@ -568,7 +568,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 fd.write(chunk)
         return save_path
 
-    def notify_progress(self, track_id, video_id, frame_start, frame_end, current, total):
+    def notify_progress(self, track_id: int, video_id: int, frame_start: int, frame_end: int, current: int, total: int):
         """
         :param track_id: int
         :param video_id: int
@@ -591,7 +591,7 @@ class VideoApi(RemoveableBulkModuleApi):
                                                                     })
         return response.json()[ApiField.STOPPED]
 
-    def notify_tracking_error(self, track_id, error, message):
+    def notify_tracking_error(self, track_id: int, error: str, message: str):
         """
         :param track_id: int
         :param error: str
@@ -662,7 +662,8 @@ class VideoApi(RemoveableBulkModuleApi):
             results.extend(response.json())
         return results
 
-    def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Progress=None, metas: List[dict]=None, infos=None, item_progress=None) -> List[NamedTuple]:
+    def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Progress]=None,
+                     metas: Optional[List[Dict]]=None, infos=None, item_progress=None) -> List[NamedTuple]:
         """
         Uploads Videos with given names from given local paths to Dataset.
 

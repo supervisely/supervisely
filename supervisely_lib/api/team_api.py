@@ -1,10 +1,10 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import NamedTuple
+from typing import NamedTuple, List, Dict, Optional
 
 from supervisely_lib.api.module_api import ApiField, ModuleNoParent, UpdateableModule
-from typing import List
 from supervisely_lib.sly_logger import logger
+from supervisely_lib.task.progress import Progress
 
 
 #@TODO - umar will add meta with review status and duration
@@ -130,7 +130,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         ModuleNoParent.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, filters: List[Dict[str, str]] = None) -> List[NamedTuple]:
         """
         List of all Teams.
 
@@ -220,7 +220,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         """
         return self._get_info_by_id(id, 'teams.info')
 
-    def create(self, name: str, description: str = "", change_name_if_conflict: bool = False) -> NamedTuple:
+    def create(self, name: str, description: Optional[str] = "", change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
         """
         Creates Team with given name.
 
@@ -257,8 +257,9 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         return 'teams.editInfo'
 
     def get_activity(self, team_id: int,
-                     filter_user_id=None, filter_project_id=None, filter_job_id=None, filter_actions: list=None,
-                     progress_cb=None, start_date=None, end_date=None) -> List[dict]:
+                     filter_user_id: Optional[int]=None, filter_project_id: Optional[int]=None, filter_job_id: Optional[int]=None,
+                     filter_actions: Optional[List]=None, progress_cb: Optional[Progress]=None, start_date: Optional[str]=None,
+                     end_date: Optional[str]=None) -> List[Dict]:
         """
         Get Team activity by ID.
 

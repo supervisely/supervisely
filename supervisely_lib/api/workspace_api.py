@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import NamedTuple
-from typing import List
+from typing import NamedTuple, List, Dict, Optional
 
 from supervisely_lib.api.module_api import ApiField, ModuleApi, UpdateableModule
 
@@ -62,7 +61,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, team_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         List of Workspaces in the given Team.
 
@@ -143,8 +142,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         """
         return self._get_info_by_id(id, 'workspaces.info')
 
-    def create(self, team_id: int, name: str, description: str = "",
-               change_name_if_conflict: bool = False) -> NamedTuple:
+    def create(self, team_id: int, name: str, description: Optional[str] = "",
+               change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
         """
         Create Workspace with given name in the given Team.
 

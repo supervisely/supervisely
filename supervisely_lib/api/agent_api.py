@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing import List
+from typing import NamedTuple, Optional, Dict, List
 from enum import Enum
 from supervisely_lib.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
@@ -75,7 +74,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         ModuleApi.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, team_id: int, filters: List[dict] = None) -> List[NamedTuple]:
+    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         List of all agents in the given Team.
 
