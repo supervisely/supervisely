@@ -1,6 +1,7 @@
 # coding: utf-8
 import json
 import pandas as pd
+from typing import Dict, Optional
 
 class JsonSerializable:
     def to_json(self):
@@ -19,7 +20,7 @@ class JsonSerializable:
         raise NotImplementedError()
 
 
-def load_json_file(filename: str) -> dict:
+def load_json_file(filename: str) -> Dict:
     """
     Decoding data from json file with given filename.
 
@@ -115,7 +116,7 @@ def load_json_file(filename: str) -> dict:
         return json.load(fin)
 
 
-def dump_json_file(data: dict, filename: str, indent: int=4) -> None:
+def dump_json_file(data: Dict, filename: str, indent: Optional[int]=4) -> None:
     """
     Write given data in json format in file with given name.
 
@@ -139,7 +140,7 @@ def dump_json_file(data: dict, filename: str, indent: int=4) -> None:
         json.dump(data, fout, indent=indent)
 
 
-def flatten_json(data: dict, sep: str=".") -> dict:
+def flatten_json(data: Dict, sep: Optional[str]=".") -> Dict:
     """
     Normalize semi-structured JSON data into a flat table.
 
@@ -147,14 +148,14 @@ def flatten_json(data: dict, sep: str=".") -> dict:
     :type data: dict
     :param sep: Nested records will generate names separated by sep.
     :type sep: str, optional
-    :returns: None
-    :rtype: :class:`NoneType`
+    :returns: Dict
+    :rtype: :class:`dict`
     """
     df = pd.json_normalize(data, sep=sep)
     return df.to_dict(orient='records')[0]
 
 
-def modify_keys(data: dict, prefix: str=None, suffix: str=None) -> dict:
+def modify_keys(data: Dict, prefix: Optional[str]=None, suffix: Optional[str]=None) -> Dict[str, str]:
     """
     Add prefix and suffix to keys of given dict.
 

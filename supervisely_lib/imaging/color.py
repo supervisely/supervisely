@@ -60,7 +60,7 @@ def _color_distance(first_color: list, second_color: list) -> float:
     return hue_distance
 
 
-def generate_rgb(exist_colors: list) -> List[int, int, int]:
+def generate_rgb(exist_colors: List[List[int, int, int]]) -> List[int, int, int]:
     """
     Generate new color which oppositely by exist colors.
 

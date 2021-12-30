@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List
+from typing import List, Dict, Optional, NamedTuple
 import random
 import numpy as np
 
@@ -346,28 +346,45 @@ class Dataset(KeyObject):
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.ann_dir, ann_path)
 
-    def get_img_info_path(self, item_name):
+    def get_img_info_path(self, item_name: str) -> str:
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.img_info_dir, ann_path)
 
-    def get_image_info(self, item_name):
+    def get_image_info(self, item_name: str) -> NamedTuple:
+        """
+        Information for Image with given name.
+
+        :param item_name: Image name.
+        :type item_name: str
+        :return: Image with information for the given Dataset
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely_lib.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            info = ds.get_image_info("IMG_0748.jpeg")
+        """
         img_info_path = self.get_img_info_path(item_name)
         image_info_dict = load_json_file(img_info_path)
         ImageInfo = namedtuple('ImageInfo', image_info_dict)
         info = ImageInfo(**image_info_dict)
         return info
 
-    def get_seg_path(self, item_name):
+    def get_seg_path(self, item_name: str) -> str:
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         seg_path = os.path.join(self.seg_dir, item_name + ".png")
         return seg_path
 
-    def add_item_file(self, item_name: str, item_path: str, ann: Annotation or str = None,
-                          _validate_item: bool = True, _use_hardlink: bool = False, img_info=None) -> None:
+    def add_item_file(self, item_name: str, item_path: str, ann: Optional[Annotation or str] = None,
+                          _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -401,7 +418,7 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name: str, img: np.ndarray, ann: Annotation = None, img_info=None) -> None:
+    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Annotation] = None, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -432,7 +449,7 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Annotation = None, img_info=None) -> None:
+    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Annotation] = None, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -654,7 +671,7 @@ class Dataset(KeyObject):
         dst_ann_path = self.get_ann_path(item_name)
         copy_file(ann_path, dst_ann_path)
 
-    def set_ann_dict(self, item_name: str, ann: dict) -> None:
+    def set_ann_dict(self, item_name: str, ann: Dict) -> None:
         """
         Saves given annotation with given name to dataset annotations dir in json format.
 
@@ -724,7 +741,25 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
-    def delete_item(self, item_name):
+    def delete_item(self, item_name: str) -> bool:
+        """
+        Delete image and annotation from Dataset.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :return: bool
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely_lib.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            result = dataset.delete_item("IMG_0748.jpeg")
+            # Output: True
+        """
         if self.item_exists(item_name):
             data_path, ann_path = self.get_item_paths(item_name)
             silent_remove(data_path)
@@ -753,7 +788,7 @@ class Project:
     class DatasetDict(KeyIndexedCollection):
         item_type = Dataset
 
-    def __init__(self, directory, mode: OpenMode):
+    def __init__(self, directory: str, mode: OpenMode):
         if type(mode) is not OpenMode:
             raise TypeError("Argument \'mode\' has type {!r}. Correct type is OpenMode".format(type(mode)))
 
@@ -995,7 +1030,8 @@ class Project:
         ds.add_item_file(item_name, item_paths.img_path,
                          ann=item_paths.ann_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
 
-    def copy_data(self, dst_directory: str, dst_name: str = None, _validate_item: bool = True, _use_hardlink: bool = False) -> Project:
+    def copy_data(self, dst_directory: str, dst_name: Optional[str] = None, _validate_item: Optional[bool] = True,
+                  _use_hardlink: Optional[bool] = False) -> Project:
         """
         Makes a copy of the Project.
 
@@ -1044,7 +1080,8 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None, progress_cb=None):
+    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False,
+                             target_classes: Optional[List[str]]=None, progress_cb: Optional[Progress]=None) -> None:
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -1126,7 +1163,7 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
+    def to_detection_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False) -> None:
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
                              f"argument (inplace=True) directly")
@@ -1164,7 +1201,25 @@ class Project:
             src_project.set_meta(det_meta)
 
     @staticmethod
-    def remove_classes_except(project_dir, classes_to_keep=None, inplace=False):
+    def remove_classes_except(project_dir: str, classes_to_keep: Optional[List[str]]=[], inplace: Optional[bool]=False) -> None:
+        """
+        Removes classes from Project with the exception of some classes.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param classes_to_keep: Classes to keep in project.
+        :type classes_to_keep: List[str], optional
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+             project.remove_classes_except(project_path, inplace=True)
+        """
         classes_to_remove = []
         project = Project(project_dir, OpenMode.READ)
         for obj_class in project.meta.obj_classes:
@@ -1173,7 +1228,26 @@ class Project:
         Project.remove_classes(project_dir, classes_to_remove, inplace)
 
     @staticmethod
-    def remove_classes(project_dir, classes_to_remove=None, inplace=False):
+    def remove_classes(project_dir: str, classes_to_remove: Optional[List[str]]=[], inplace: Optional[bool]=False) -> None:
+        """
+        Removes given classes from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param classes_to_remove: Classes to remove.
+        :type classes_to_remove: List[str], optional
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+             classes_to_remove = ['lemon']
+             project.remove_classes(project_path, classes_to_remove, inplace=True)
+        """
         if inplace is False:
             raise ValueError(f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly")
         project = Project(project_dir, OpenMode.READ)
@@ -1214,15 +1288,63 @@ class Project:
                 dataset.delete_item(item_name)
 
     @staticmethod
-    def remove_items_without_objects(project_dir, inplace=False):
+    def remove_items_without_objects(project_dir: str, inplace: Optional[bool]=False) -> None:
+        """
+        Remove items(images and annotations) without objects from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_objects(project_path)
+        """
         Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_tags(project_dir, inplace=False):
+    def remove_items_without_tags(project_dir: str, inplace: Optional[bool]=False) -> None:
+        """
+        Remove items(images and annotations) without tags from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_tags(project_path)
+        """
         Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_both_objects_and_tags(project_dir, inplace=False):
+    def remove_items_without_both_objects_and_tags(project_dir: str, inplace: Optional[bool]=False) -> None:
+        """
+        Remove items(images and annotations) without objects and tags from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_both_objects_and_tags(project_path)
+        """
         Project._remove_items(project_dir=project_dir, without_objects_and_tags=True, inplace=inplace)
 
     def get_item_paths(self, item_name) -> ItemPaths:

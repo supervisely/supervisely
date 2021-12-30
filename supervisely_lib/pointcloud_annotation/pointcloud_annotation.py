@@ -17,13 +17,16 @@ from supervisely_lib.video_annotation.constants import FIGURES
 from supervisely_lib.pointcloud_annotation.constants import POINTCLOUD_ID
 from supervisely_lib.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely_lib.pointcloud_annotation.pointcloud_object_collection import  PointcloudObjectCollection
+from supervisely_lib.project.project_meta import ProjectMeta
+from typing import Optional, List, Dict
 
 
 class PointcloudAnnotation(VideoAnnotation):
     """
     Class for creating and using PointcloudAnnotation
     """
-    def __init__(self, objects=None, figures=None, tags=None, description="", key=None):
+    def __init__(self, objects: Optional[VideoObjectCollection]=None, figures: Optional[List]=None, tags: Optional[VideoTagCollection]=None,
+                 description: Optional[str]="", key: Optional[uuid.UUID]=None):
         """
         :param objects: VideoObjectCollection
         :param figures: list of figures(Point, Cuboid, etc)
@@ -52,7 +55,7 @@ class PointcloudAnnotation(VideoAnnotation):
     def validate_figures_bounds(self):
         raise RuntimeError("Not supported for pointcloud")
 
-    def to_json(self, key_id_map: KeyIdMap=None):
+    def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> Dict:
         """
         The function to_json convert PointcloudAnnotation to json format
         :param key_id_map: KeyIdMap class object
@@ -74,7 +77,7 @@ class PointcloudAnnotation(VideoAnnotation):
         return res_json
 
     @classmethod
-    def from_json(cls, data, project_meta, key_id_map: KeyIdMap=None):
+    def from_json(cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap]=None):
         """
         :param data: input PointcloudAnnotation in json format
         :param project_meta: ProjectMeta class object
@@ -99,7 +102,8 @@ class PointcloudAnnotation(VideoAnnotation):
                    description=description,
                    key=item_key)
 
-    def clone(self, objects=None, figures=None, tags=None, description=None):
+    def clone(self, objects: Optional[VideoObjectCollection]=None, figures: Optional[List]=None,
+              tags: Optional[VideoTagCollection]=None, description: Optional[str]=None):
         """
         :param objects: VideoObjectCollection
         :param figures: list of figures

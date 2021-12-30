@@ -4,7 +4,7 @@ import os.path
 from pkg_resources import parse_version
 import base64
 import requests
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
@@ -154,7 +154,7 @@ def validate_format(path: str) -> None:
                 img_ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
 
 
-def read(path: str, remove_alpha_channel: bool=True) -> np.ndarray:
+def read(path: str, remove_alpha_channel: Optional[bool]=True) -> np.ndarray:
     """
     Loads an image from the specified file and returns it in RGB format.
 
@@ -191,7 +191,7 @@ def read(path: str, remove_alpha_channel: bool=True) -> np.ndarray:
             raise ValueError("image has {} channels. Please, contact support...".format(cnt_channels))
 
 
-def read_bytes(image_bytes: str, keep_alpha: bool=False) -> np.ndarray:
+def read_bytes(image_bytes: str, keep_alpha: Optional[bool]=False) -> np.ndarray:
     """
     Loads an byte image and returns it in RGB format.
 
@@ -226,7 +226,7 @@ def read_bytes(image_bytes: str, keep_alpha: bool=False) -> np.ndarray:
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def write(path: str, img: np.ndarray, remove_alpha_channel: bool=True) -> None:
+def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool]=True) -> None:
     """
     Saves the image to the specified file. It create directory from path if the directory for this path does not exist.
 
@@ -266,10 +266,10 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: bool=True) -> None:
 def draw_text_sequence(bitmap: np.ndarray,
                        texts: List[str],
                        anchor_point: Tuple[int, int],
-                       corner_snap: CornerAnchorMode = CornerAnchorMode.TOP_LEFT,
-                       col_space: int = 12,
-                       font: ImageFont.FreeTypeFont = None,
-                       fill_background: bool = True) -> None:
+                       corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
+                       col_space: Optional[int] = 12,
+                       font: Optional[ImageFont.FreeTypeFont] = None,
+                       fill_background: Optional[bool] = True) -> None:
     """
     Draws text labels on bitmap from left to right with `col_space` spacing between labels.
 
@@ -315,9 +315,9 @@ def draw_text_sequence(bitmap: np.ndarray,
 def draw_text(bitmap: np.ndarray,
               text: str,
               anchor_point: Tuple[int, int],
-              corner_snap: CornerAnchorMode=CornerAnchorMode.TOP_LEFT,
-              font: ImageFont.FreeTypeFont = None,
-              fill_background=True) -> tuple:
+              corner_snap: Optional[CornerAnchorMode]=CornerAnchorMode.TOP_LEFT,
+              font: Optional[ImageFont.FreeTypeFont] = None,
+              fill_background: Optional[bool]=True) -> tuple:
     """
     Draws given text on bitmap image.
 
@@ -526,8 +526,8 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
         return rect.get_cropped_numpy_slice(img)
 
 
-def restore_proportional_size(in_size: Tuple[int, int], out_size: Tuple[int, int] = None,
-                              frow: float = None, fcol: float = None, f: float = None) -> Tuple[int, int]:
+def restore_proportional_size(in_size: Tuple[int, int], out_size: Optional[Tuple[int, int]] = None,
+                              frow: Optional[float] = None, fcol: Optional[float] = None, f: Optional[float] = None) -> Tuple[int, int]:
     """
     Calculate new size of the image.
 
@@ -572,7 +572,7 @@ def restore_proportional_size(in_size: Tuple[int, int], out_size: Tuple[int, int
 
 
 #@TODO: reimplement, to be more convenient
-def resize(img: np.ndarray, out_size: Tuple[int, int]=None, frow: float=None, fcol: float=None) -> np.ndarray:
+def resize(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Optional[float]=None, fcol: Optional[float]=None) -> np.ndarray:
     """
     Resize the image to the specified size.
 
@@ -607,7 +607,7 @@ def resize(img: np.ndarray, out_size: Tuple[int, int]=None, frow: float=None, fc
     return cv2.resize(img, (result_width, result_height), interpolation=cv2.INTER_CUBIC)
 
 
-def resize_inter_nearest(img: np.ndarray, out_size: tuple=None, frow: float=None, fcol: float=None) -> np.ndarray:
+def resize_inter_nearest(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Optional[float]=None, fcol: Optional[float]=None) -> np.ndarray:
     """
     Resize image to match a certain size. Performs interpolation to up-size or down-size images.
 
@@ -731,7 +731,7 @@ def flipud(img: np.ndarray) -> np.ndarray:
     return np.flip(img, 0)
 
 
-def rotate(img: np.ndarray, degrees_angle: int, mode=RotateMode.KEEP_BLACK) -> np.ndarray:
+def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=RotateMode.KEEP_BLACK) -> np.ndarray:
     """
     Rotates current image.
 

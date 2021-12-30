@@ -1,14 +1,16 @@
 # coding: utf-8
 
 from supervisely_lib.video_annotation.video_figure import VideoFigure
+from typing import Optional
+from uuid import UUID
 
 
 class PointcloudFigure(VideoFigure):
     """
     Class for creating and using PointcloudFigure objects for videos
     """
-    def __init__(self, parent_object, geometry, frame_index=None, key=None,
-                 class_id=None, labeler_login=None, updated_at=None, created_at=None):
+    def __init__(self, parent_object, geometry, frame_index: Optional[int]=None, key: Optional[UUID]=None,
+                 class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None, created_at: Optional[str]=None):
         """
         :param parent_object:  VideoObject class object
         :param geometry: Geometry class object (cuboid_3d only)

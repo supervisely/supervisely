@@ -154,7 +154,7 @@ def rejected_items_count(job_info: NamedTuple) -> int:
     return job_info.rejected_images_count
 
 
-def is_on_labeling_desc():
+def is_on_labeling_desc() -> str:
     return 'LABELING IN PROGRESS', "the number of jobs with status IN_PROGRESS"
 
 
@@ -276,7 +276,7 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
     return result
 
 
-def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: list) -> pd.DataFrame:
+def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> pd.DataFrame:
     """
     Get statistics about Labeling Jobs items.
 
