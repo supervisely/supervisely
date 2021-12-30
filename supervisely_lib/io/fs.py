@@ -7,7 +7,7 @@ import tarfile
 import subprocess
 import requests
 from requests.structures import CaseInsensitiveDict
-from typing import List
+from typing import List, Optional
 from supervisely_lib._utils import get_bytes_hash, get_string_hash
 from supervisely_lib.io.fs_cache import FileCache
 from supervisely_lib.sly_logger import logger
@@ -100,7 +100,7 @@ def list_dir_recursively(dir: str) -> List[str]:
     return all_files
 
 
-def list_files_recursively(dir: str, valid_extensions: List[str] = None, filter_fn=None) -> List[str]:
+def list_files_recursively(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
 
@@ -131,7 +131,7 @@ def list_files_recursively(dir: str, valid_extensions: List[str] = None, filter_
             (filter_fn is None or filter_fn(file_path))]
 
 
-def list_files(dir: str, valid_extensions: List[str] = None, filter_fn=None) -> List[str]:
+def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
     """
     Returns list with file paths presented in given directory.
 
@@ -158,7 +158,7 @@ def list_files(dir: str, valid_extensions: List[str] = None, filter_fn=None) -> 
       (filter_fn is None or filter_fn(file_path))]
 
 
-def mkdir(dir: str, remove_content_if_exists: bool=False) -> None:
+def mkdir(dir: str, remove_content_if_exists: Optional[bool]=False) -> None:
     """
     Creates a leaf directory and all intermediate ones.
 
@@ -354,7 +354,7 @@ def get_subdirs(dir_path: str) -> list:
 
 
 # removes directory content recursively
-def clean_dir(dir_: str, ignore_errors: bool=True) -> None:
+def clean_dir(dir_: str, ignore_errors: Optional[bool]=True) -> None:
     """
     Recursively delete a directory tree, but save root directory.
 
@@ -581,8 +581,8 @@ def log_tree(dir_path: str, logger) -> None:
 
     :param dir_path: Target directory path.
     :type dir_path: str
-    :param dir_path: Logger to display data.
-    :type dir_path: str
+    :param logger: Logger to display data.
+    :type logger: logger
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -617,7 +617,7 @@ def touch(path: str) -> None:
         os.utime(path, None)
 
 
-def download(url: str, save_path: str, cache: FileCache = None, progress: Progress = None) -> str:
+def download(url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Progress] = None) -> str:
     """
     Load image from url to host by target path.
 
