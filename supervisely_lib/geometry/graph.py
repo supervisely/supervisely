@@ -2,7 +2,7 @@
 from __future__ import annotations
 import cv2
 from copy import deepcopy
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 from supervisely_lib.imaging.color import rgb2hex, hex2rgb
 from supervisely_lib.io.json import JsonSerializable
 
@@ -40,7 +40,7 @@ class Node(JsonSerializable):
         from supervisely_lib.geometry.graph import Node
         vertex = Node(sly.PointLocation(5, 5))
     """
-    def __init__(self, location: PointLocation, disabled: bool = True):
+    def __init__(self, location: PointLocation, disabled: Optional[bool] = True):
         self._location = location
         self._disabled = disabled
 
@@ -65,7 +65,7 @@ class Node(JsonSerializable):
         return self._disabled
 
     @classmethod
-    def from_json(cls, data: dict) -> Node:
+    def from_json(cls, data: Dict) -> Node:
         """
         Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -86,7 +86,7 @@ class Node(JsonSerializable):
         loc = data[LOC]
         return cls(location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False))
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -160,14 +160,15 @@ class GraphNodes(Geometry):
     def geometry_name():
         return 'graph'
 
-    def __init__(self, nodes: dict,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, nodes: Dict[str, Dict],
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._nodes = nodes
 
     @property
-    def nodes(self):
+    def nodes(self) -> Dict[str, Dict]:
         """
         Copy of GraphNodes nodes.
 
@@ -177,7 +178,7 @@ class GraphNodes(Geometry):
         return self._nodes.copy()
 
     @classmethod
-    def from_json(cls, data: dict) -> GraphNodes:
+    def from_json(cls, data: Dict[str, Dict]) -> GraphNodes:
         """
         Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -214,7 +215,7 @@ class GraphNodes(Geometry):
         return GraphNodes(nodes=nodes, sly_id=sly_id, class_id=class_id,
                           labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Dict]:
         """
         Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -513,7 +514,7 @@ class GraphNodes(Geometry):
         """
         return self
 
-    def validate(self, name, settings):
+    def validate(self, name: str, settings: Dict) -> None:
         """
         Checks the graph for correctness and compliance with the template
         """

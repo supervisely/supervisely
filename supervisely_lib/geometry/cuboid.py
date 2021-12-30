@@ -2,7 +2,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 from supervisely_lib.geometry.constants import FACES, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
 from supervisely_lib.geometry.point_location import points_to_row_col_list, row_col_list_to_points, PointLocation
@@ -137,7 +137,8 @@ class Cuboid(Geometry):
     def geometry_name():
         return 'cuboid'
 
-    def __init__(self, points: List[PointLocation], faces: List[CuboidFace], sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, points: List[PointLocation], faces: List[CuboidFace], sly_id: Optional[int] = None, class_id: Optional[int] = None,
+                 labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
@@ -176,7 +177,7 @@ class Cuboid(Geometry):
         """
         return self._faces.copy()
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Cuboid to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -218,7 +219,7 @@ class Cuboid(Geometry):
         return packed_obj
 
     @classmethod
-    def from_json(cls, data: dict) -> Cuboid:
+    def from_json(cls, data: Dict) -> Cuboid:
         """
         Convert a json dict to Cuboid. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
+from typing import List, Optional
 from supervisely_lib.video_annotation.video_figure import VideoFigure
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
@@ -11,7 +11,8 @@ class VideoFigureApi(FigureApi):
     """
     :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` for a single video.
     """
-    def create(self, video_id: int, object_id: int, frame_index: int, geometry_json: dict, geometry_type: str, track_id: int=None) -> int:
+    def create(self, video_id: int, object_id: int, frame_index: int, geometry_json: dict, geometry_type: str,
+               track_id: Optional[int]=None) -> int:
         """
         Create new VideoFigure for given frame in given video ID.
 

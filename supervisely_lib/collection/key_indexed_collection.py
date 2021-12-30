@@ -2,7 +2,7 @@
 from __future__ import annotations
 from prettytable import PrettyTable
 from supervisely_lib._utils import take_with_default
-from typing import List
+from typing import List, Dict, Optional, Any
 from collections import defaultdict
 
 
@@ -100,7 +100,7 @@ class KeyIndexedCollection:
     Field has to be overridden in child class. Before adding object to collection its type is compared with 
     ``item_type`` and ``TypeError`` exception is raised if it differs. Collection is immutable.
     """
-    def __init__(self, items: dict=None):
+    def __init__(self, items: Optional[Dict]=None):
         self._collection = {}
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -172,7 +172,7 @@ class KeyIndexedCollection:
         """
         return self.clone(items=[*self.items(), *items])
 
-    def get(self, key: str, default=None) -> KeyObject:
+    def get(self, key: str, default: Optional[Any]=None) -> KeyObject:
         """
         Get item from collection with given key(name).
 
@@ -239,7 +239,7 @@ class KeyIndexedCollection:
         """
         return list(self._collection.values())
 
-    def clone(self, items: List[KeyObject]=None) -> KeyIndexedCollection:
+    def clone(self, items: Optional[List[KeyObject]]=None) -> KeyIndexedCollection:
         """
         Makes a copy of KeyIndexedCollection with new fields, if fields are given, otherwise it will use fields of the original KeyIndexedCollection.
 
@@ -449,7 +449,7 @@ class KeyIndexedCollection:
             res_table.add_row(item.get_row_ptable())
         return res_table.get_string()
 
-    def to_json(self) -> List[dict]:
+    def to_json(self) -> List[Dict]:
         """
         Convert the KeyIndexedCollection to a json serializable list.
 
@@ -541,7 +541,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         #     }
         # ]
     """
-    def __init__(self, items: list=None):
+    def __init__(self, items: Optional[List]=None):
         self._collection = defaultdict(list)
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -551,7 +551,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
                 'Item type ({!r}) != {!r}'.format(type(item).__name__, MultiKeyIndexedCollection.item_type.__name__))
         dst_collection[item.key()].append(item)
 
-    def get(self, key: str, default=None) -> KeyObject:
+    def get(self, key: str, default: Optional[Any]=None) -> KeyObject:
         """
         Get item from collection with given key(name). If there are many values for the same key, the first value will be returned.
 
@@ -580,14 +580,14 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
             return None
         return result[0]
 
-    def get_all(self, key: str, default: list=[]) -> List[KeyObject]:
+    def get_all(self, key: str, default: Optional[List[Any]]=[]) -> List[KeyObject]:
         """
         Get item from collection with given key(name). If there are many values for the same key,all values will be returned by list.
 
         :param items: Name of KeyObject in collection.
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
-        :type default: optional
+        :type default: List, optional
         :return: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects or empty list
         :rtype: :class:`List[KeyObject]` or :class:`list`
 
