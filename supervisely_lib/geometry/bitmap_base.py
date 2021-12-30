@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Dict, Optional
 
 from supervisely_lib.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \
                                                LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
@@ -72,8 +72,9 @@ class BitmapBase(Geometry):
 
     :Usage example: Example of creating and using see in :class:`Bitmap<supervisely_lib.geometry.bitmap.Bitmap>`.
     """
-    def __init__(self, data: np.ndarray, origin: PointLocation = None, expected_data_dims: int=None,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None, expected_data_dims: Optional[int]=None,
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         if origin is None:
             origin = PointLocation(row=0, col=0)
@@ -105,7 +106,7 @@ class BitmapBase(Geometry):
     def data_2_base64(data: np.ndarray) -> str:
         raise NotImplementedError()
 
-    def to_json(self):
+    def to_json(self) -> Dict:
         """
         Convert the BitmapBase to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -145,7 +146,7 @@ class BitmapBase(Geometry):
         return res
 
     @classmethod
-    def from_json(cls, json_data: dict):
+    def from_json(cls, json_data: Dict) -> BitmapBase:
         """
         Convert a json dict to BitmapBase. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -271,7 +272,7 @@ class BitmapBase(Geometry):
         flipped_origin = PointLocation(row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col)
         return self.__class__(data=flipped_mask, origin=flipped_origin)
 
-    def scale(self, factor):
+    def scale(self, factor: float) -> BitmapBase:
         """
         Scale current Bitmap.
 
@@ -297,7 +298,7 @@ class BitmapBase(Geometry):
     def _resize_mask(mask, out_rows, out_cols):
         return resize_inter_nearest(mask.astype(np.uint8), (out_rows, out_cols)).astype(np.bool)
 
-    def to_bbox(self):
+    def to_bbox(self) -> Rectangle:
         """
         Create :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>` object from current Bitmap.
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely_lib.geometry.geometry import Geometry
@@ -41,8 +41,9 @@ class VectorGeometry(Geometry):
 
         figure = sly.Polygon(exterior, interior)
     """
-    def __init__(self, exterior: List[PointLocation], interior: list,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]],
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         if not (isinstance(exterior, list) and all(isinstance(p, PointLocation) for p in exterior)):
             raise TypeError('Argument "exterior" must be list of "PointLocation" objects!')
@@ -56,7 +57,7 @@ class VectorGeometry(Geometry):
         self._interior = deepcopy(interior)
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the VectorGeometry to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

@@ -1,8 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 from copy import deepcopy
-from typing import List
-from typing import Tuple
+from typing import List, Tuple, Dict, Optional
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.geometry import validation
@@ -64,7 +63,7 @@ class PointLocation(JsonSerializable):
         """
         return self._col
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the PointLocation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -97,7 +96,7 @@ class PointLocation(JsonSerializable):
         return packed_obj
 
     @classmethod
-    def from_json(cls, data: dict) -> PointLocation:
+    def from_json(cls, data: Dict) -> PointLocation:
         """
         Convert a json dict to PointLocation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -297,7 +296,7 @@ def _maybe_flip_row_col_order(coords, flip=False):
     return _flip_row_col_order(coords) if flip else coords
 
 
-def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: bool = False) -> list:
+def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Optional[bool] = False) -> List[List[int]]:
     """
     Convert list of PointLocation objects to list of coords.
 
@@ -321,7 +320,8 @@ def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: bool
     return _maybe_flip_row_col_order(coords=[[p.row, p.col] for p in points], flip=flip_row_col_order)
 
 
-def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: bool = False, do_round: bool = False) -> List[PointLocation]:
+def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: Optional[bool] = False,
+                           do_round: Optional[bool] = False) -> List[PointLocation]:
     """
     Convert list of coords to list of PointLocation objects.
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List
+from typing import List, Dict, Optional
 
 from shapely.geometry import mapping, LineString, Polygon as ShapelyPolygon
 from supervisely_lib.geometry.conversions import shapely_figure_to_coords_list
@@ -46,7 +46,8 @@ class Polyline(VectorGeometry):
         return 'line'
 
     def __init__(self, exterior: List[PointLocation],
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if len(exterior) < 2:
             raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
                              .format(EXTERIOR))
@@ -55,7 +56,7 @@ class Polyline(VectorGeometry):
                          created_at=created_at)
 
     @classmethod
-    def from_json(cls, data: dict) -> Polyline:
+    def from_json(cls, data: Dict) -> Polyline:
         """
         Convert a json dict to Polyline. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

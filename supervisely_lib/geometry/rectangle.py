@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 
 from supervisely_lib.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely_lib.geometry.geometry import Geometry
@@ -51,7 +51,8 @@ class Rectangle(Geometry):
         return 'rectangle'
 
     def __init__(self, top: int, left: int, bottom: int, right: int,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         if top > bottom:
             raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
@@ -64,7 +65,7 @@ class Rectangle(Geometry):
 
         self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -96,7 +97,7 @@ class Rectangle(Geometry):
         return packed_obj
 
     @classmethod
-    def from_json(cls, data: dict) -> Rectangle:
+    def from_json(cls, data: Dict) -> Rectangle:
         """
         Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

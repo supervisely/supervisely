@@ -2,7 +2,7 @@
 import random
 import numpy as np
 import imgaug.augmenters as iaa
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Optional
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.annotation.annotation import Annotation
 from supervisely_lib.geometry.image_rotator import ImageRotator
@@ -18,7 +18,7 @@ def _validate_image_annotation_shape(img: np.ndarray, ann: Annotation) -> None:
 
 
 # Flips
-def fliplr(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
+def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     """
     Flips an Image and Annotation around vertical axis.
 
@@ -55,7 +55,7 @@ def fliplr(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
     return res_img, res_ann
 
 
-def flipud(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
+def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     """
     Flips an Image and Annotation around horizontal axis.
 
@@ -93,8 +93,8 @@ def flipud(img: np.ndarray, ann: Annotation) -> (np.ndarray, Annotation):
 
 
 # Crops
-def crop(img: np.ndarray, ann: Annotation, top_pad: int = 0, left_pad: int = 0, bottom_pad: int = 0,
-         right_pad: int = 0) -> (np.ndarray, Annotation):
+def crop(img: np.ndarray, ann: Annotation, top_pad: Optional[int] = 0, left_pad: Optional[int] = 0, bottom_pad: Optional[int] = 0,
+         right_pad: Optional[int] = 0) -> Tuple[np.ndarray, Annotation]:
     """
     Crops an Image and Annotation from all sides with a given values.
 
@@ -146,8 +146,8 @@ def crop(img: np.ndarray, ann: Annotation, top_pad: int = 0, left_pad: int = 0, 
     return res_img, res_ann
 
 
-def crop_fraction(img: np.ndarray, ann: Annotation, top: float = 0, left: float = 0, bottom: float = 0,
-                  right: float = 0) -> (np.ndarray, Annotation):
+def crop_fraction(img: np.ndarray, ann: Annotation, top: Optional[float] = 0, left: Optional[float] = 0, bottom: Optional[float] = 0,
+                  right: Optional[float] = 0) -> Tuple[np.ndarray, Annotation]:
     """
     Crops an Image and Annotation from all sides with the given fraction values.
 
@@ -202,7 +202,7 @@ def crop_fraction(img: np.ndarray, ann: Annotation, top: float = 0, left: float 
                 right_pad=right_pixels)
 
 
-def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> (np.ndarray, Annotation):
+def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> Tuple[np.ndarray, Annotation]:
     """
     Crops an Image and Annotation at a random location.
 
@@ -256,8 +256,8 @@ def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> (n
 
 
 def random_crop_fraction(
-        img: np.ndarray, ann: Annotation, height_fraction_range: tuple, width_fraction_range: tuple) -> \
-        (np.ndarray, Annotation):
+        img: np.ndarray, ann: Annotation, height_fraction_range: Tuple, width_fraction_range: Tuple) -> \
+        Tuple[np.ndarray, Annotation]:
     """
     Crops an Image and Annotation at a random location with random size in a given interval.
 
@@ -307,20 +307,20 @@ def random_crop_fraction(
 
 
 def batch_random_crops_fraction(
-        img_ann_pairs: list, crops_per_image: int, height_fraction_range: tuple, width_fraction_range: tuple) -> list:
+        img_ann_pairs: List, crops_per_image: int, height_fraction_range: Tuple, width_fraction_range: Tuple) -> List:
     return [random_crop_fraction(img, ann, height_fraction_range, width_fraction_range)
             for img, ann in img_ann_pairs for _ in range(crops_per_image)]
 
 
 def flip_add_random_crops(
-        img: np.ndarray, ann: Annotation, crops_per_image: int, height_fraction_range: tuple, width_fraction_range: tuple) -> list:
+        img: np.ndarray, ann: Annotation, crops_per_image: int, height_fraction_range: Tuple, width_fraction_range: Tuple) -> List:
     full_size_items = [(img, ann), fliplr(img, ann)]
     crops = batch_random_crops_fraction(full_size_items, crops_per_image, height_fraction_range, width_fraction_range)
     return full_size_items + crops
 
 
 # TODO factor out / simplify.
-def _rect_from_bounds(padding_config: dict, img_h: int, img_w: int) -> Rectangle:
+def _rect_from_bounds(padding_config: Dict, img_h: int, img_w: int) -> Rectangle:
     def get_padding_pixels(raw_side, dim_name):
         side_padding_config = padding_config.get(dim_name)
         if side_padding_config is None:
@@ -346,8 +346,8 @@ def _rect_from_bounds(padding_config: dict, img_h: int, img_w: int) -> Rectangle
     return Rectangle(top=top, left=left, bottom=bottom, right=right)
 
 
-def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other_classes_in_crop: bool = True,
-                  padding_config: dict = None) -> List[Tuple[np.ndarray, Annotation]]:
+def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other_classes_in_crop: Optional[bool] = True,
+                  padding_config: Optional[Dict[str, str]] = None) -> List[Tuple[np.ndarray, Annotation]]:
     """
     Crops objects of specified classes from Image and Annotation with configurable padding.
 
@@ -423,7 +423,7 @@ def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other
 
 
 # Resize
-def resize(img: np.ndarray, ann: Annotation, size: tuple) -> (np.ndarray, Annotation):
+def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, Annotation]:
     """
     Resizes an input Image and Annotation to a given size.
 
@@ -473,8 +473,8 @@ def resize(img: np.ndarray, ann: Annotation, size: tuple) -> (np.ndarray, Annota
 
 
 # Resize
-def scale(img: np.ndarray, ann: Annotation, frow: float = None, fcol: float = None, f: float = None) \
-        -> (np.ndarray, Annotation):
+def scale(img: np.ndarray, ann: Annotation, frow: Optional[float] = None, fcol: Optional[float] = None, f: Optional[float] = None) \
+        -> Tuple[np.ndarray, Annotation]:
     """
     Scales an input Image and Annotation to a given size.
 
@@ -529,8 +529,8 @@ class RotationModes:
     CROP = 'crop'
 
 
-def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationModes.KEEP) ->\
-        (np.ndarray, Annotation):  # @TODO: add "preserve_size" mode
+def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: Optional[str]=RotationModes.KEEP) ->\
+        Tuple[np.ndarray, Annotation]:  # @TODO: add "preserve_size" mode
     """
     Rotates an Image and Annotation by random angle.
 
@@ -590,7 +590,7 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationM
     return res_img, res_ann
 
 
-def load_imgaug(json_data):
+def load_imgaug(json_data: Dict):
     def _get_function(category_name, aug_name):
         try:
             submodule = getattr(iaa, category_name)

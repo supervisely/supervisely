@@ -3,7 +3,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List
+from typing import List, Dict, Optional
 
 from shapely.geometry import mapping, Polygon as ShapelyPolygon
 
@@ -49,8 +49,9 @@ class Polygon(VectorGeometry):
     def geometry_name():
         return 'polygon'
 
-    def __init__(self, exterior: List[PointLocation], interior: list,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]],
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
             logger.warn('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
@@ -67,7 +68,7 @@ class Polygon(VectorGeometry):
                          updated_at=updated_at, created_at=created_at)
 
     @classmethod
-    def from_json(cls, data: dict) -> Polygon:
+    def from_json(cls, data: Dict) -> Polygon:
         """
         Convert a json dict to Polygon. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

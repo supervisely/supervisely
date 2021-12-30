@@ -797,10 +797,10 @@ class VideoApi(RemoveableBulkModuleApi):
                            "Please check if videos are in supported format and if ones aren't corrupted.")
 
     # @TODO: add case to documentation with detailed explanation
-    def upsert_info(self, hash, info):
+    def upsert_info(self, hash: str, info: Dict) -> Dict:
         return self.upsert_infos([hash], [info])
 
-    def upsert_infos(self, hashes, infos, links=None):
+    def upsert_infos(self, hashes: List[str], infos: List[Dict], links: Optional[List[str]]=None) -> Dict:
         payload = []
         if links is None:
             links = [None] * len(hashes)
@@ -813,6 +813,7 @@ class VideoApi(RemoveableBulkModuleApi):
         resp = self._api.post('videos.bulk.upsert_file_meta', payload)
         return resp.json()
 
-    def upload_links(self, dataset_id, names, hashes, links, infos, metas=None):
+    def upload_links(self, dataset_id: int, names: List[str], hashes: List[str], links: List[str], infos: List[Dict],
+                     metas: Optional[List[Dict]]=None) -> List[NamedTuple]:
         self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, metas)

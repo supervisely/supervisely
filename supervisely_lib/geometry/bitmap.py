@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import Tuple
+from typing import List, Tuple, Dict, Optional
 from supervisely_lib.geometry.image_rotator import ImageRotator
 
 import base64
@@ -105,8 +104,9 @@ class Bitmap(BitmapBase):
     def geometry_name():
         return 'bitmap'
 
-    def __init__(self, data: np.ndarray, origin: PointLocation = None,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None,
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 

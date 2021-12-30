@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import cv2
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.geometry import Geometry
@@ -40,13 +40,14 @@ class Point(Geometry):
         figure = sly.Point(row, col)
     """
     def __init__(self, row: int, col: int,
-                 sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None):
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._row = round(unwrap_if_numpy(row))
         self._col = round(unwrap_if_numpy(col))
 
     @property
-    def row(self):
+    def row(self) -> int:
         """
         Position of Point height.
 
@@ -78,7 +79,8 @@ class Point(Geometry):
         return self._col
 
     @classmethod
-    def from_point_location(cls, pt: PointLocation, sly_id: int = None, class_id: int = None, labeler_login: int = None, updated_at: str = None, created_at: str = None) -> Point:
+    def from_point_location(cls, pt: PointLocation, sly_id: Optional[int] = None, class_id: Optional[int] = None,
+                            labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None) -> Point:
         """
         Create Point from given :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` object.
 
@@ -302,7 +304,7 @@ class Point(Geometry):
         """
         return Rectangle(top=self.row, left=self.col, bottom=self.row, right=self.col)
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the Point to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -328,7 +330,7 @@ class Point(Geometry):
         return res
 
     @classmethod
-    def from_json(cls, data: dict) -> Point:
+    def from_json(cls, data: Dict) -> Point:
         """
         Convert a json dict to Point. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
