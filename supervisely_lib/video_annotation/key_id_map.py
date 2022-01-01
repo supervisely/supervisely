@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 import uuid
 from uuid import UUID
 from bidict import bidict
@@ -38,7 +38,7 @@ class KeyIdMap:
         self._data[FIGURES] = bidict()
         self._data[VIDEOS] = bidict()
 
-    def _add(self, key_type, key: uuid.UUID, id: int = None):
+    def _add(self, key_type, key: uuid.UUID, id: Optional[int] = None):
         """
         Add given data in self._data dictionary. Raise error if data type of any parameter is invalid
         :param key_type: str
@@ -343,7 +343,7 @@ class KeyIdMap:
         """
         return self._get_key_by_id(VIDEOS, id)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Dict]:
         """
         Convert the KeyIdMap to a dict(bidict values to dictionary with dict values).
 

@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.annotation.tag_collection import TagCollection
 from supervisely_lib.video_annotation.video_tag import VideoTag
@@ -153,7 +153,7 @@ class VideoTagCollection(TagCollection):
     """
     item_type = VideoTag
 
-    def to_json(self, key_id_map: KeyIdMap=None) -> List[dict]:
+    def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> List[Dict]:
         """
         Convert the VideoTagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -191,7 +191,7 @@ class VideoTagCollection(TagCollection):
         return [tag.to_json(key_id_map) for tag in self]
 
     @classmethod
-    def from_json(cls, data: List[dict], tag_meta_collection: TagMetaCollection, key_id_map: KeyIdMap=None) -> VideoTagCollection:
+    def from_json(cls, data: List[Dict], tag_meta_collection: TagMetaCollection, key_id_map: Optional[KeyIdMap]=None) -> VideoTagCollection:
         """
         Convert a list of json dicts to VideoTagCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

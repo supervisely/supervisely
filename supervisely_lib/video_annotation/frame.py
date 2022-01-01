@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, Dict, Optional, List
 from supervisely_lib._utils import take_with_default
 from supervisely_lib.video_annotation.constants import FIGURES, INDEX
 from supervisely_lib.video_annotation.video_figure import VideoFigure
@@ -54,7 +54,7 @@ class Frame(KeyObject):
         #     ]
         # }
     """
-    def __init__(self, index: int, figures: list=None):
+    def __init__(self, index: int, figures: Optional[List[VideoFigure]]=None):
         self._index = index
         self._figures = take_with_default(figures, [])
 
@@ -91,7 +91,7 @@ class Frame(KeyObject):
         """
         return self._figures.copy()
 
-    def validate_figures_bounds(self, img_size: Tuple[int, int]=None) -> None:
+    def validate_figures_bounds(self, img_size: Optional[Tuple[int, int]]=None) -> None:
         """
         Checks if image with given size contains a figure.
 
@@ -121,7 +121,7 @@ class Frame(KeyObject):
         for figure in self._figures:
             figure.validate_bounds(img_size, _auto_correct=False)
 
-    def to_json(self, key_id_map: KeyIdMap = None) -> dict:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
         Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -177,7 +177,7 @@ class Frame(KeyObject):
         return data_json
 
     @classmethod
-    def from_json(cls, data: dict, objects: VideoObjectCollection, frames_count: int=None, key_id_map: KeyIdMap=None) -> Frame:
+    def from_json(cls, data: Dict, objects: VideoObjectCollection, frames_count: Optional[int]=None, key_id_map: Optional[KeyIdMap]=None) -> Frame:
         """
         Convert a json dict to Frame. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -243,7 +243,7 @@ class Frame(KeyObject):
             figures.append(figure)
         return cls(index=index, figures=figures)
 
-    def clone(self, index: int = None, figures: list = None) -> Frame:
+    def clone(self, index: Optional[int] = None, figures: Optional[List[VideoFigure]] = None) -> Frame:
         """
         Makes a copy of Frame with new fields, if fields are given, otherwise it will use fields of the original Frame.
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, Dict, Optional, List
 import uuid
 from uuid import UUID
 
@@ -75,7 +75,9 @@ class VideoFigure:
         #     }
         # }
     """
-    def __init__(self, video_object: VideoObject, geometry: Geometry, frame_index: int, key: UUID=None, class_id: int=None, labeler_login: str=None, updated_at: str=None, created_at: str=None):
+    def __init__(self, video_object: VideoObject, geometry: Geometry, frame_index: int, key: Optional[UUID]=None,
+                 class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None,
+                 created_at: Optional[str]=None):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
         self._frame_index = frame_index
@@ -210,7 +212,7 @@ class VideoFigure:
                 raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
                                    .format(type(self._geometry), self.parent_object.obj_class.geometry_type))
 
-    def to_json(self, key_id_map: UUID=None, save_meta: bool=False) -> dict:
+    def to_json(self, key_id_map: Optional[UUID]=None, save_meta: Optional[bool]=False) -> Dict:
         """
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -278,7 +280,7 @@ class VideoFigure:
         return data_json
 
     @classmethod
-    def from_json(cls, data: dict, objects: VideoObjectCollection, frame_index: int, key_id_map: KeyIdMap = None) -> VideoFigure:
+    def from_json(cls, data: Dict, objects: VideoObjectCollection, frame_index: int, key_id_map: Optional[KeyIdMap] = None) -> VideoFigure:
         """
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -339,8 +341,9 @@ class VideoFigure:
         return cls(object, geometry, frame_index, key,
                    class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def clone(self, video_object: VideoObject=None, geometry: Geometry=None, frame_index: int=None, key: UUID=None,
-              class_id: int=None, labeler_login: str=None, updated_at: str=None, created_at: str=None) -> VideoFigure:
+    def clone(self, video_object: Optional[VideoObject]=None, geometry: Optional[Geometry]=None, frame_index: Optional[int]=None,
+              key: Optional[UUID]=None, class_id: Optional[int]=None, labeler_login: Optional[str]=None,
+              updated_at: Optional[str]=None, created_at: Optional[str]=None) -> VideoFigure:
         """
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
 
@@ -412,7 +415,7 @@ class VideoFigure:
                               created_at=take_with_default(created_at, self.created_at)
                               )
 
-    def validate_bounds(self, img_size: Tuple[int, int], _auto_correct: bool = False) -> None:
+    def validate_bounds(self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False) -> None:
         """
         Checks if given image with given size contains a figure.
 

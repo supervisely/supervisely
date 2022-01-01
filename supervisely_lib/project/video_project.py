@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 import os
+from typing import List, Optional, Tuple
 
 from supervisely_lib.io.fs import file_exists, touch
 from supervisely_lib.io.json import dump_json_file, load_json_file
@@ -18,6 +19,7 @@ from supervisely_lib.project.project import Dataset, Project, OpenMode
 from supervisely_lib.project.project import read_single_project as read_project_wrapper
 from supervisely_lib.project.project_type import ProjectType
 from supervisely_lib.video_annotation.video_annotation import VideoAnnotation
+from supervisely_lib.api.api import Api
 
 VideoItemPaths = namedtuple('VideoItemPaths', ['video_path', 'ann_path'])
 
@@ -68,7 +70,7 @@ class VideoDataset(Dataset):
             os.remove(item_path)
             raise
 
-    def set_ann(self, item_name: str, ann):
+    def set_ann(self, item_name: str, ann) -> None:
         """
         Save given videoannotation for given video to the appropriate folder
         :param item_name: str
@@ -79,7 +81,7 @@ class VideoDataset(Dataset):
         dst_ann_path = self.get_ann_path(item_name)
         dump_json_file(ann.to_json(), dst_ann_path)
 
-    def get_item_paths(self, item_name) -> VideoItemPaths:
+    def get_item_paths(self, item_name: str) -> VideoItemPaths:
         """
         :param item_name: str
         :return: namedtuple object containing paths to video and annotation from given path
@@ -97,7 +99,7 @@ class VideoProject(Project):
     class DatasetDict(KeyIndexedCollection):
         item_type = VideoDataset
 
-    def __init__(self, directory, mode: OpenMode):
+    def __init__(self, directory: str, mode: OpenMode):
         """
         :param directory: path to the directory where the project will be saved or where it will be loaded from
         :param mode: OpenMode class object which determines in what mode to work with the project (generate exception error if not so)
@@ -138,7 +140,7 @@ class VideoProject(Project):
     def key_id_map(self):
         return self._key_id_map
 
-    def set_key_id_map(self, new_map: KeyIdMap):
+    def set_key_id_map(self, new_map: KeyIdMap) -> None:
         """
         Save given KeyIdMap object to project dir in json format.
         :param new_map: KeyIdMap class object
@@ -153,7 +155,7 @@ class VideoProject(Project):
         return os.path.join(self.directory, 'key_id_map.json')
 
     @classmethod
-    def read_single(cls, dir):
+    def read_single(cls, dir: str):
         """
         Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
         :param dir: str
@@ -162,15 +164,25 @@ class VideoProject(Project):
         return read_project_wrapper(dir, cls)
 
 
-def download_video_project(api, project_id, dest_dir, dataset_ids=None, download_videos=True, log_progress=False):
+def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
+                           download_videos: Optional[bool]=True, log_progress: Optional[bool]=False) -> None:
     """
-    Download project with given id in destination directory
-    :param api: Api class object
-    :param project_id: int
-    :param dest_dir: str
-    :param dataset_ids: list of integers
-    :param download_videos: bool
-    :param log_progress: bool
+    Download project with given id in destination directory.
+
+    :param api: Api class object.
+    :type api: Api
+    :param project_id: Project ID in Supervisely.
+    :type project_id: int
+    :param dest_dir: Directory to download video project.
+    :type dest_dir: str
+    :param dataset_ids: Datasets IDs in Supervisely to download.
+    :type dataset_ids: List[int], optional
+    :param download_videos: Download videos from Supervisely video project in dest_dir or not.
+    :type download_videos: bool, optional
+    :param log_progress: Logging progress of download video project or not.
+    :type log_progress: bool, optional
+    :return: None
+    :rtype: :class:`NoneType`
     """
     LOG_BATCH_SIZE = 1
 
@@ -221,7 +233,23 @@ def download_video_project(api, project_id, dest_dir, dataset_ids=None, download
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
+def upload_video_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=True) -> Tuple[int, str]:
+    """
+    Upload video project from given directory in Supervisely.
+
+    :param dir: Directory with video project.
+    :type dir: str
+    :param api: Api class object.
+    :type api: Api
+    :param workspace_id: Workspace ID in Supervisely to upload video project.
+    :type workspace_id: int
+    :param project_name: Name of video project.
+    :type project_name: str
+    :param log_progress: Logging progress of download video project or not.
+    :type log_progress: bool, optional
+    :return: New video project ID in Supervisely and project name
+    :rtype: :class:`Tuple[int, str]`
+    """
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name
