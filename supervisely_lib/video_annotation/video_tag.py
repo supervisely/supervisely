@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import Tuple
+from typing import List, Tuple, Dict, Optional
 
 import uuid
 from supervisely_lib.annotation.tag import Tag, TagJsonFields
@@ -61,7 +60,9 @@ class VideoTag(Tag):
         tag_coat_color = VideoTag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: str=None, frame_range: Tuple[int, int]=None, key: KeyIdMap=None, sly_id: int=None, labeler_login: str=None, updated_at: str=None, created_at: str=None):
+    def __init__(self, meta: TagMeta, value: Optional[str]=None, frame_range: Optional[Tuple[int, int]]=None,
+                 key: Optional[KeyIdMap]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
+                 updated_at: Optional[str]=None, created_at: Optional[str]=None):
         super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         
         self._frame_range = None
@@ -91,7 +92,7 @@ class VideoTag(Tag):
     def key(self):
         return self._key
 
-    def to_json(self, key_id_map: KeyIdMap = None) -> dict:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
         Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -129,7 +130,7 @@ class VideoTag(Tag):
         return data_json
 
     @classmethod
-    def from_json(cls, data: dict, tag_meta_collection: TagMetaCollection, key_id_map: KeyIdMap = None) -> VideoTag:
+    def from_json(cls, data: Dict, tag_meta_collection: TagMetaCollection, key_id_map: Optional[KeyIdMap] = None) -> VideoTag:
         """
         Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -226,8 +227,9 @@ class VideoTag(Tag):
                self.value == other.value and \
                self.frame_range == other.frame_range
 
-    def clone(self, meta: TagMeta = None, value: str = None, frame_range: Tuple[int, int] = None, key: KeyIdMap = None,
-                    sly_id: int = None, labeler_login: str = None, updated_at: str = None, created_at: str = None) -> VideoTag:
+    def clone(self, meta: Optional[TagMeta] = None, value: Optional[str] = None, frame_range: Optional[Tuple[int, int]] = None,
+              key: Optional[KeyIdMap] = None, sly_id: Optional[int] = None, labeler_login: Optional[str] = None,
+              updated_at: Optional[str] = None, created_at: Optional[str] = None) -> VideoTag:
         """
         Makes a copy of VideoTag with new fields, if fields are given, otherwise it will use fields of the original VideoTag.
 

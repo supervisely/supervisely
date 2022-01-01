@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List
-from typing import Tuple
+from typing import List, Tuple, Dict, Optional
 from copy import deepcopy
 import uuid
 from uuid import UUID
@@ -134,7 +133,9 @@ class VideoAnnotation:
         #     "framesCount": 1
         # }
     """
-    def __init__(self, img_size: Tuple[int, int], frames_count: int, objects: VideoObjectCollection=None, frames: FrameCollection=None, tags: VideoTagCollection=None, description: str="", key: UUID=None):
+    def __init__(self, img_size: Tuple[int, int], frames_count: int, objects: Optional[VideoObjectCollection]=None,
+                 frames: Optional[FrameCollection]=None, tags: Optional[VideoTagCollection]=None, description: Optional[str]="",
+                 key: Optional[UUID]=None):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
@@ -387,7 +388,7 @@ class VideoAnnotation:
         for frame in self.frames:
             frame.validate_figures_bounds(self.img_size)
 
-    def to_json(self, key_id_map: KeyIdMap=None) -> dict:
+    def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> Dict:
         """
         Convert the VideoAnnotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -437,7 +438,7 @@ class VideoAnnotation:
         return res_json
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta, key_id_map: KeyIdMap=None) -> VideoAnnotation:
+    def from_json(cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap]=None) -> VideoAnnotation:
         """
         Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -493,7 +494,9 @@ class VideoAnnotation:
                    description=description,
                    key=video_key)
 
-    def clone(self, img_size: Tuple[int, int]=None, frames_count: int=None, objects: VideoObjectCollection=None, frames: FrameCollection=None, tags: VideoTagCollection=None, description: str=None) -> VideoAnnotation:
+    def clone(self, img_size: Optional[Tuple[int, int]]=None, frames_count: Optional[int]=None,
+              objects: Optional[VideoObjectCollection]=None, frames: Optional[FrameCollection]=None,
+              tags: Optional[VideoTagCollection]=None, description: Optional[str]=None) -> VideoAnnotation:
         """
         Makes a copy of VideoAnnotation with new fields, if fields are given, otherwise it will use fields of the original VideoAnnotation.
 

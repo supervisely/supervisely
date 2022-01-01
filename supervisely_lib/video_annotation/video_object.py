@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List
+from typing import List, Dict, Optional
 import uuid
 from supervisely_lib.annotation.label import LabelJsonFields
 from supervisely_lib.annotation.obj_class import ObjClass
@@ -47,7 +47,9 @@ class VideoObject(KeyObject):
         #     "tags": []
         # }
     """
-    def __init__(self, obj_class: ObjClass, tags: VideoTagCollection = None, key: KeyIdMap=None, class_id: int=None, labeler_login: str=None, updated_at: str=None, created_at: str=None):
+    def __init__(self, obj_class: ObjClass, tags: ObjClass[VideoTagCollection] = None, key: Optional[KeyIdMap]=None,
+                 class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None,
+                 created_at: Optional[str]=None):
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
@@ -213,7 +215,7 @@ class VideoObject(KeyObject):
         """
         return self.clone(tags=self._tags.add_items(tags))
 
-    def to_json(self, key_id_map: KeyIdMap = None) -> dict:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
         Convert the VideoObject to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -252,7 +254,7 @@ class VideoObject(KeyObject):
         return data_json
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta, key_id_map: KeyIdMap = None) -> VideoObject:
+    def from_json(cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> VideoObject:
         """
         Convert a json dict to VideoObject. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -301,7 +303,8 @@ class VideoObject(KeyObject):
                    tags=VideoTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
                    class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def clone(self, obj_class: ObjClass=None, tags: VideoTagCollection = None, key: KeyIdMap=None, class_id: int=None, labeler_login: str=None, updated_at: str=None, created_at: str=None) -> VideoObject:
+    def clone(self, obj_class: Optional[ObjClass]=None, tags: Optional[VideoTagCollection] = None, key: Optional[KeyIdMap]=None,
+              class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None, created_at: Optional[str]=None) -> VideoObject:
         """
         Makes a copy of VideoObject with new fields, if fields are given, otherwise it will use fields of the original VideoObject.
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import List
+from typing import List, Dict, Optional, Tuple
 from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.tag_meta import TagMeta
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
@@ -90,7 +90,8 @@ class ProjectMeta(JsonSerializable):
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
     """
-    def __init__(self, obj_classes: ObjClassCollection = None, tag_metas: TagMetaCollection = None, project_type: ProjectType = None):
+    def __init__(self, obj_classes: Optional[ObjClassCollection] = None, tag_metas: Optional[TagMetaCollection] = None,
+                 project_type: Optional[ProjectType] = None):
         self._obj_classes = ObjClassCollection() if obj_classes is None else obj_classes
         self._tag_metas = take_with_default(tag_metas, TagMetaCollection())
         self._project_type = project_type
@@ -186,7 +187,7 @@ class ProjectMeta(JsonSerializable):
         """
         return self._project_type
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         """
         Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -237,7 +238,7 @@ class ProjectMeta(JsonSerializable):
         return res
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Dict) -> ProjectMeta:
         """
         Convert a json dict to ProjectMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -363,7 +364,8 @@ class ProjectMeta(JsonSerializable):
         return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
                           tag_metas=self._tag_metas.merge(other._tag_metas))
 
-    def clone(self, obj_classes: ObjClassCollection = None, tag_metas: TagMetaCollection = None, project_type=None) -> ProjectMeta:
+    def clone(self, obj_classes: Optional[ObjClassCollection] = None, tag_metas: Optional[TagMetaCollection] = None,
+              project_type: Optional[str]=None) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
 
@@ -873,7 +875,7 @@ class ProjectMeta(JsonSerializable):
         return self._tag_metas.get(tag_name)
 
     @staticmethod
-    def merge_list(metas):
+    def merge_list(metas: List[ProjectMeta]) -> ProjectMeta:
         """
         Merge ProjectMetas from given list of ProjectMetas into single ProjectMeta object.
 
@@ -940,7 +942,67 @@ class ProjectMeta(JsonSerializable):
     def __ne__(self, other: ProjectMeta):
         return not self == other
 
-    def to_segmentation_task(self, keep_geometries=[Polygon, Bitmap]) -> (ProjectMeta, dict):
+    def to_segmentation_task(self, keep_geometries: Optional[List]=[Polygon, Bitmap]) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+        """
+        Convert project meta classes geometries with keep_geometries types to Bitmaps and create new ProjectMeta.
+
+        :param keep_geometries: List of geometries that can be converted.
+        :type keep_geometries: List, optional
+        :return: New project meta and dict correspondences of old classes to new
+        :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            meta = sly.ProjectMeta()
+            class_cat = sly.ObjClass('cat', sly.Polygon)
+            class_dog = sly.ObjClass('dog', sly.Bitmap)
+            meta = meta.add_obj_classes([class_cat, class_dog])
+            meta_json = meta.to_json()
+            print(json.dumps(meta_json, indent=4))
+            # Output: {
+            #     "classes": [
+            #         {
+            #             "title": "cat",
+            #             "shape": "polygon",
+            #             "color": "#208A0F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         },
+            #         {
+            #             "title": "dog",
+            #             "shape": "bitmap",
+            #             "color": "#8A570F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         }
+            #     ],
+            #     "tags": []
+            # }
+
+            res_meta, mapping = meta.to_segmentation_task()
+            res_meta_json = res_meta.to_json()
+            print(json.dumps(res_meta_json, indent=4))
+            # Output: {
+            #     "classes": [
+            #         {
+            #             "title": "cat",
+            #             "shape": "bitmap",
+            #             "color": "#208A0F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         },
+            #         {
+            #             "title": "dog",
+            #             "shape": "bitmap",
+            #             "color": "#8A570F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         }
+            #     ],
+            #     "tags": []
+            # }
+        """
         mapping = {}
         res_classes = []
         for obj_class in self.obj_classes:
@@ -958,7 +1020,67 @@ class ProjectMeta(JsonSerializable):
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
-    def to_detection_task(self, convert_classes=False) -> (ProjectMeta, dict):
+    def to_detection_task(self, convert_classes: Optional[bool]=False) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+        """
+        Convert project meta classes geometries to Rectangles or skip them and create new ProjectMeta.
+
+        :param convert_classes: Convert classes with no Rectangle type to Rectangle or skip them.
+        :type convert_classes: bool, optional
+        :return: New project meta and dict correspondences of old classes to new
+        :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            meta = sly.ProjectMeta()
+            class_cat = sly.ObjClass('cat', sly.Polygon)
+            class_dog = sly.ObjClass('dog', sly.Bitmap)
+            meta = meta.add_obj_classes([class_cat, class_dog])
+            meta_json = meta.to_json()
+            print(json.dumps(meta_json, indent=4))
+            # Output: {
+            #     "classes": [
+            #         {
+            #             "title": "cat",
+            #             "shape": "polygon",
+            #             "color": "#208A0F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         },
+            #         {
+            #             "title": "dog",
+            #             "shape": "bitmap",
+            #             "color": "#8A570F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         }
+            #     ],
+            #     "tags": []
+            # }
+
+            res_meta, mapping = meta.to_detection_task(convert_classes=True)
+            res_meta_json = res_meta.to_json()
+            print(json.dumps(res_meta_json, indent=4))
+            # Output: {
+            #     "classes": [
+            #         {
+            #             "title": "cat",
+            #             "shape": "rectangle",
+            #             "color": "#3A0F8A",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         },
+            #         {
+            #             "title": "dog",
+            #             "shape": "rectangle",
+            #             "color": "#8A310F",
+            #             "geometry_config": {},
+            #             "hotkey": ""
+            #         }
+            #     ],
+            #     "tags": []
+            # }
+        """
         mapping = {}
         res_classes = []
         for obj_class in self.obj_classes:

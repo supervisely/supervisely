@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Optional
 
 import os
 import skvideo.io
@@ -166,7 +166,7 @@ def _check_video_requires_processing(video_info, stream_info):
     return True
 
 
-def count_video_streams(all_streams: List[dict]) -> int:
+def count_video_streams(all_streams: List[Dict]) -> int:
     """
     Count number of video streams in video.
 
@@ -182,7 +182,7 @@ def count_video_streams(all_streams: List[dict]) -> int:
     return count
 
 
-def get_video_streams(all_streams: List[dict]) -> list:
+def get_video_streams(all_streams: List[Dict]) -> List:
     """
     Get list of video streams from given list of all streams.
 
@@ -198,7 +198,7 @@ def get_video_streams(all_streams: List[dict]) -> list:
     return video_streams
 
 
-def warn_video_requires_processing(file_name: str, logger=None) -> None:
+def warn_video_requires_processing(file_name: str, logger: Optional[default_logger]=None) -> None:
     """
     Create logger if it was not there and displays message about the need for transcoding.
 
@@ -235,7 +235,53 @@ def gen_video_stream_name(file_name: str, stream_index: int) -> str:
     return "{}_stream_{}_{}{}".format(get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name))
 
 
-def get_info(video_path, cpu_count=None):
+def get_info(video_path: str, cpu_count: Optional[int]=None) -> Dict:
+    """
+    Get information about video from given path.
+
+    :param video_path: Video file path.
+    :type video_path: str
+    :param cpu_count: CPU count.
+    :type cpu_count: int
+    :raises: :class:`ValueError` if no video streams found.
+    :return: Information about video
+    :rtype: :class:`Dict`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely_lib.video.video import get_info
+        video_info = get_info('/home/video/1.mp4')
+        print(json.dumps(video_info, indent=4))
+        # Output: {
+        #     "streams": [
+        #         {
+        #             "index": 0,
+        #             "width": 1920,
+        #             "height": 1080,
+        #             "duration": 16.666667,
+        #             "rotation": 0,
+        #             "codecName": "mpeg4",
+        #             "codecType": "video",
+        #             "startTime": 0,
+        #             "framesCount": 500,
+        #             "framesToTimecodes": [
+        #                 0.0,
+        #                 0.033333,
+        #                 0.066667,
+        #                 0.1,
+        #                   ...
+        #                 16.566667,
+        #                 16.6,
+        #                 16.633333
+        #             ]
+        #         }
+        #     ],
+        #     "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+        #     "duration": 16.667,
+        #     "size": "61572600"
+        # }
+    """
     import pathlib
     import subprocess, os, ast, math
     from subprocess import PIPE

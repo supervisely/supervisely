@@ -5,6 +5,7 @@ import math
 
 from supervisely_lib.sly_logger import logger, EventType
 from supervisely_lib._utils import sizeof_fmt
+from typing import List, Optional, Tuple
 
 # float progress of training, since zero
 def epoch_float(epoch, train_it, train_its):
@@ -58,7 +59,8 @@ class Progress:
         #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
         # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
     """
-    def __init__(self, message: str, total_cnt: int, ext_logger: logger = None, is_size: bool = False, need_info_log: bool = False, min_report_percent: int = 1):
+    def __init__(self, message: str, total_cnt: int, ext_logger: Optional[logger] = None, is_size: Optional[bool] = False,
+                 need_info_log: Optional[bool] = False, min_report_percent: Optional[int] = 1):
         self.is_size = is_size
         self.message = message
         self.total = total_cnt
@@ -95,7 +97,7 @@ class Progress:
             self.total_label = str(self.total if self.total > 0 else self.current)
             self.current_label = str(self.current)
 
-    def iter_done(self):
+    def iter_done(self) -> None:
         """
         Increments the current iteration counter by 1
         """
@@ -104,7 +106,7 @@ class Progress:
             self.total = self.current
         self._refresh_labels()
 
-    def iters_done(self, count: int):
+    def iters_done(self, count: int) -> None:
         """
         Increments the current iteration counter by given count
 
@@ -116,7 +118,7 @@ class Progress:
             self.total = self.current
         self._refresh_labels()
 
-    def report_progress(self):
+    def report_progress(self) -> None:
         """
         Logs a message with level INFO in logger. Message contain type of progress, subtask message, current and total number of iterations
 
@@ -126,7 +128,7 @@ class Progress:
         self.print_progress()
         self.reported_cnt += 1
 
-    def print_progress(self):
+    def print_progress(self) -> None:
         """
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         """
@@ -145,21 +147,21 @@ class Progress:
         if self.need_info_log is True:
             self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
 
-    def need_report(self):
+    def need_report(self) -> bool:
         if (self.current == self.total) \
                 or (self.current % self.report_every == 0) \
                 or ((self.reported_cnt - 1) < (self.current // self.report_every)):
             return True
         return False
 
-    def report_if_needed(self):
+    def report_if_needed(self) -> None:
         """
         The function determines whether the message should be logged depending on current number of iterations
         """
         if self.need_report():
             self.report_progress()
 
-    def iter_done_report(self):  # finish & report
+    def iter_done_report(self) -> None:  # finish & report
         """
         Increments the current iteration counter by 1 and logs a message depending on current number of iterations.
 
@@ -192,7 +194,7 @@ class Progress:
         self.iter_done()
         self.report_if_needed()
 
-    def iters_done_report(self, count: int):  # finish & report
+    def iters_done_report(self, count: int) -> None:  # finish & report
         """
         Increments the current iteration counter by given count and logs a message depending on current number of iterations.
 
@@ -227,7 +229,7 @@ class Progress:
         self.iters_done(count)
         self.report_if_needed()
 
-    def set_current_value(self, value: int, report: bool = True):
+    def set_current_value(self, value: int, report: Optional[bool] = True) -> None:
         """
         Increments the current iteration counter by this value minus the current value of the counter and logs a message depending on current number of iterations.
 
@@ -243,7 +245,7 @@ class Progress:
         else:
             self.iters_done(value - self.current)
 
-    def set(self, current: int, total: int, report: bool = True):
+    def set(self, current: int, total: int, report: Optional[bool] = True):
         """
         Sets counter current value and total value and logs a message depending on current number of iterations.
 

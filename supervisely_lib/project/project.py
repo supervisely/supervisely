@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple
+from typing import List, Dict, Optional, NamedTuple, Tuple
 import random
 import numpy as np
 
@@ -1351,7 +1351,28 @@ class Project:
         raise NotImplementedError("Method available only for dataset")
 
     @staticmethod
-    def get_train_val_splits_by_count(project_dir, train_count, val_count) -> (List[ItemInfo], List[ItemInfo]):
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val counts.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_count: Number of train items.
+        :type train_count: int
+        :param val_count: Number of val items.
+        :type val_count: int
+        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_count = 4
+            val_count = 2
+            train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
+        """
         def _list_items_for_splits(project) -> List[ItemInfo]:
             items = []
             for dataset in project.datasets:
@@ -1372,7 +1393,31 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_tag(project_dir, train_tag_name, val_tag_name, untagged="ignore"):
+    def get_train_val_splits_by_tag(project_dir: str, train_tag_name: str, val_tag_name: str,
+                                    untagged: Optional[str]="ignore") -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val tags names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_tag_name: Train tag name.
+        :type train_tag_name: str
+        :param val_tag_name: Val tag name.
+        :type val_tag_name: str
+        :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
+        :type untagged: str, optional
+        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_tag_name = 'train'
+            val_tag_name = 'val'
+            train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
+        """
         untagged_actions = ["ignore", "train", "val"]
         if untagged not in untagged_actions:
             raise ValueError(f"Unknown untagged action {untagged}. Should be one of {untagged_actions}")
@@ -1400,7 +1445,28 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_dataset(project_dir, train_datasets, val_datasets):
+    def get_train_val_splits_by_dataset(project_dir: str, train_datasets: List[str], val_datasets: List[str]) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val datasets names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_datasets: List of train datasets names.
+        :type train_datasets: List[str]
+        :param val_datasets: List of val datasets names.
+        :type val_datasets: List[str]
+        :raises: :class:`KeyError` if dataset name not found in project
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_datasets = ['ds1', 'ds2']
+            val_datasets = ['ds3', 'ds4']
+            train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
+        """
         def _add_items_to_list(project, datasets_names, items_list):
             for dataset_name in datasets_names:
                 dataset = project.datasets.get(dataset_name)
@@ -1521,7 +1587,8 @@ def _download_project(api, project_id, dest_dir, dataset_ids=None, log_progress=
                 ds_progress.iters_done_report(len(batch))
 
 
-def upload_project(dir: str, api: Api, workspace_id: int, project_name: str = None, log_progress: bool = True, progress_cb=None):
+def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str] = None, log_progress: Optional[bool] = True,
+                   progress_cb: Optional[Progress]=None) -> Tuple[int, str]:
     """
     Uploads project to Supervisely from the given directory.
 
@@ -1592,8 +1659,10 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: str = No
     return project.id, project.name
 
 
-def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: List[int] = None, log_progress: bool = False, batch_size: int = 10,
-                     cache: FileCache = None, progress_cb=None, only_image_tags=False, save_image_info=False) -> None:
+def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]] = None,
+                     log_progress: Optional[bool] = False, batch_size: Optional[int] = 10,
+                     cache: Optional[FileCache] = None, progress_cb: Optional[Progress]=None,
+                     only_image_tags: Optional[bool]=False, save_image_info: Optional[bool]=False) -> None:
     """
     Download project from Supervisely to the given directory.
 
