@@ -1,16 +1,17 @@
 # coding: utf-8
 
 import numpy as np
-
+from typing import List, Tuple, Optional, Dict
 from supervisely_lib.geometry.point_location import PointLocation
 from supervisely_lib.geometry.rectangle import Rectangle
 from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely_lib.geometry.polyline import Polyline
 from supervisely_lib.geometry.polygon import Polygon
+from supervisely_lib.geometry.geometry import Geometry
 
 
-def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None) -> list:
+def geometry_to_bitmap(geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None) -> List[Bitmap]:
     """
     Args:
         geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
@@ -39,7 +40,7 @@ def geometry_to_bitmap(geometry, radius: int = 0, crop_image_shape: tuple = None
     return [bitmap_geometry]
 
 
-def get_effective_nonoverlapping_masks(geometries, img_size=None):
+def get_effective_nonoverlapping_masks(geometries: List[Geometry], img_size: Optional[Tuple[int, int]]=None) -> Tuple[List[Bitmap], np.ndarray]:
     """
     Find nonoverlapping objects from given list of geometries
     :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
@@ -66,7 +67,7 @@ def get_effective_nonoverlapping_masks(geometries, img_size=None):
     return result_masks, canvas
 
 
-def deserialize_geometry(geometry_type_str, geometry_json):
+def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometry:
     """
     Get geometry from json format
     :param geometry_type_str: str
@@ -78,7 +79,7 @@ def deserialize_geometry(geometry_type_str, geometry_json):
     return geometry
 
 
-def geometry_to_polygon(geometry, approx_epsilon=None):
+def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int]=None) -> List[Geometry]:
     if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap):
         raise KeyError('Can not convert {} to {}'.format(geometry.geometry_name(), Polygon.__name__))
 

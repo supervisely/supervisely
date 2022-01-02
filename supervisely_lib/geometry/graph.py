@@ -542,7 +542,7 @@ class GraphNodes(Geometry):
         return result
 
     @staticmethod
-    def config_from_json(config):
+    def config_from_json(config: Dict) -> Dict:
         """
         Convert graph template from json format
         :param config: dictionary(graph template) in json format
@@ -551,7 +551,7 @@ class GraphNodes(Geometry):
         return GraphNodes._transform_config_colors(config, hex2rgb)
 
     @staticmethod
-    def config_to_json(config):
+    def config_to_json(config: Dict) -> Dict:
         """
         Convert graph template in json format
         :param config: dictionary(graph template)
@@ -560,7 +560,7 @@ class GraphNodes(Geometry):
         return GraphNodes._transform_config_colors(config, rgb2hex)
 
     @classmethod
-    def allowed_transforms(cls):
+    def allowed_transforms(cls) -> List:
         from supervisely_lib.geometry.any_geometry import AnyGeometry
         from supervisely_lib.geometry.rectangle import Rectangle
         return [AnyGeometry, Rectangle]
