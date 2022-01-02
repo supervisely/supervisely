@@ -37,7 +37,7 @@ def has_valid_ext(path: str) -> bool:
     return is_valid_ext(os.path.splitext(path)[1])
 
 
-def validate_ext(ext: str):
+def validate_ext(ext: str) -> None:
     """
     Raise error if given extention is not supported
     :param ext: str
@@ -47,6 +47,6 @@ def validate_ext(ext: str):
                                           .format(ext, ALLOWED_POINTCLOUD_EXTENSIONS))
 
 
-def validate_format(path):
+def validate_format(path: str) -> None:
     #@TODO: later
     validate_ext(path)
