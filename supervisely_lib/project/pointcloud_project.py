@@ -23,6 +23,8 @@ from supervisely_lib.pointcloud import pointcloud as sly_pointcloud
 from supervisely_lib.project.video_project import VideoDataset, VideoProject
 from supervisely_lib.io.json import dump_json_file
 from supervisely_lib.project.project_type import ProjectType
+from typing import List, Optional, Dict, Tuple
+from supervisely_lib.api.api import Api
 
 PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir', 'ann_path'])
 
@@ -48,17 +50,17 @@ class PointcloudDataset(VideoDataset):
             os.remove(item_path)
             raise
 
-    def get_related_images_path(self, item_name):
+    def get_related_images_path(self, item_name: str) -> str:
         item_name_temp = item_name.replace(".", "_")
         rimg_dir = os.path.join(self.directory, self.related_images_dir_name, item_name_temp)
         return rimg_dir
 
-    def get_item_paths(self, item_name) -> PointcloudItemPaths:
+    def get_item_paths(self, item_name: str) -> PointcloudItemPaths:
         return PointcloudItemPaths(pointcloud_path=self.get_img_path(item_name),
                                    related_images_dir=self.get_related_images_path(item_name),
                                    ann_path=self.get_ann_path(item_name))
 
-    def get_related_images(self, item_name):
+    def get_related_images(self, item_name: str) -> List[Tuple[str, Dict]]:
         results = []
         path = self.get_related_images_path(item_name)
         if dir_exists(path):
@@ -85,7 +87,8 @@ class PointcloudProject(VideoProject):
         return read_project_wrapper(dir, cls)
 
 
-def download_pointcloud_project(api, project_id, dest_dir, dataset_ids=None, download_items=True, log_progress=False):
+def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
+                                download_items: Optional[bool]=True, log_progress: Optional[bool]=False) -> None:
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -158,7 +161,7 @@ def download_pointcloud_project(api, project_id, dest_dir, dataset_ids=None, dow
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_pointcloud_project(directory, api, workspace_id, project_name=None, log_progress=False):
+def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=False) -> None:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:
         project_name = project_fs.name

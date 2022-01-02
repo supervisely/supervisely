@@ -5,7 +5,7 @@ import math
 
 from supervisely_lib.sly_logger import logger, EventType
 from supervisely_lib._utils import sizeof_fmt
-from typing import List, Optional, Tuple
+from typing import Optional
 
 # float progress of training, since zero
 def epoch_float(epoch, train_it, train_its):
@@ -245,7 +245,7 @@ class Progress:
         else:
             self.iters_done(value - self.current)
 
-    def set(self, current: int, total: int, report: Optional[bool] = True):
+    def set(self, current: int, total: int, report: Optional[bool] = True) -> None:
         """
         Sets counter current value and total value and logs a message depending on current number of iterations.
 
@@ -269,35 +269,35 @@ class Progress:
             self.report_if_needed()
 
 
-def report_agent_rpc_ready():
+def report_agent_rpc_ready() -> None:
     """
     Logs a message with level INFO on logger
     """
     logger.info('Ready to get events', extra={ 'event_type': EventType.TASK_DEPLOYED })
 
 
-def report_import_finished():
+def report_import_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
     logger.info('import finished', extra={'event_type': EventType.IMPORT_APPLIED})
 
 
-def report_inference_finished():
+def report_inference_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
     logger.info('model applied', extra={'event_type': EventType.MODEL_APPLIED})
 
 
-def report_dtl_finished():
+def report_dtl_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
     logger.info('DTL finished', extra={'event_type': EventType.DTL_APPLIED})
 
 
-def report_dtl_verification_finished(output):
+def report_dtl_verification_finished(output: str) -> None:
     """
     Logs a message with level INFO on logger
     :param output: str
@@ -322,7 +322,7 @@ def report_metrics_validation(epoch, metrics):
     _report_metrics('val', epoch, metrics)
 
 
-def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_data):
+def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_data) -> None:
     logger.info('checkpoint', extra={
         'event_type': EventType.CHECKPOINT,
         'id': checkpoint_idx,

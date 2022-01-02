@@ -553,7 +553,13 @@ class VideoAnnotation:
                                description=take_with_default(description, self.description))
 
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """
+        Check whether video annotation contains objects or tags, or not.
+
+        :returns: True if video annotation is empty, False otherwise.
+        :rtype: :class:`bool`
+        """
         if len(self.objects) == 0 and len(self.tags) == 0:
             return True
         else:

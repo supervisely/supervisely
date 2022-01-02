@@ -521,7 +521,7 @@ def images_summary(jobs: List[NamedTuple]) -> pd.DataFrame:
     return df
 
 
-def classes_summary(stats):
+def classes_summary(stats: List) -> pd.DataFrame:
     class_id_stats = {}
     for stat in stats:
         for class_stat in stat[constants.CLASSES_STATS]:
@@ -556,7 +556,7 @@ def classes_summary(stats):
     return df
 
 
-def tags_summary(stats):
+def tags_summary(stats: List) -> pd.DataFrame:
     tag_id_stats = {}
     for stat in stats:
         for tag_stat in stat["job"][constants.TAGS_STATS]:

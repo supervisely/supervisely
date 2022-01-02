@@ -327,7 +327,7 @@ class Api:
         except Exception as e:
             return "", ""
 
-    def pop_header(self, key):
+    def pop_header(self, key: str) -> str:
         if key not in self.headers:
             raise KeyError(f'Header {key!r} not found')
         return self.headers.pop(key)
