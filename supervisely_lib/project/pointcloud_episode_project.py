@@ -16,6 +16,9 @@ from supervisely_lib.project.project_meta import ProjectMeta
 from supervisely_lib.task.progress import Progress
 from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 from supervisely_lib.project.project_type import ProjectType
+from supervisely_lib.annotation.annotation import Annotation
+from supervisely_lib.api.api import Api
+from typing import Tuple, List, Dict, Optional
 
 PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir'])
 
@@ -25,17 +28,17 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     related_images_dir_name = 'related_images'
     annotation_class = PointcloudEpisodeAnnotation
 
-    def get_item_paths(self, item_name) -> PointcloudItemPaths:
+    def get_item_paths(self, item_name: str) -> PointcloudItemPaths:
         return PointcloudItemPaths(pointcloud_path=self.get_img_path(item_name),
                                    related_images_dir=self.get_related_images_path(item_name))
 
-    def get_ann_path(self):
+    def get_ann_path(self) -> str:
         return os.path.join(self.directory, "annotation.json")
 
-    def get_frame_pointcloud_map_path(self):
+    def get_frame_pointcloud_map_path(self) -> str:
         return os.path.join(self.directory, "frame_pointcloud_map.json")
 
-    def set_ann(self, ann):
+    def set_ann(self, ann: Annotation) -> None:
         if type(ann) is not self.annotation_class:
             raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path()
@@ -60,7 +63,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
         self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
 
-    def get_frame_idx(self, item_name):
+    def get_frame_idx(self, item_name: str) -> int:
         return int(self._item_to_ann[item_name])
 
 
@@ -75,11 +78,11 @@ class PointcloudEpisodeProject(PointcloudProject):
         return read_project_wrapper(dir, cls)
 
 
-def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=None,
-                                        download_pcd=True,
-                                        download_realated_images=True,
-                                        download_annotations=True,
-                                        log_progress=False, batch_size=10):
+def download_pointcloud_episode_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
+                                        download_pcd: Optional[bool]=True,
+                                        download_realated_images: Optional[bool]=True,
+                                        download_annotations: Optional[bool]=True,
+                                        log_progress: Optional[bool]=False, batch_size: Optional[int]=10) -> None:
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -144,7 +147,8 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_pointcloud_episode_project(directory, api, workspace_id, project_name=None, log_progress=False):
+def upload_pointcloud_episode_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None,
+                                      log_progress: Optional[bool]=False) -> Tuple[int, str]:
     project_fs = PointcloudEpisodeProject.read_single(directory)
     if project_name is None:
         project_name = project_fs.name

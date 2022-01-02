@@ -307,13 +307,14 @@ def random_crop_fraction(
 
 
 def batch_random_crops_fraction(
-        img_ann_pairs: List, crops_per_image: int, height_fraction_range: Tuple, width_fraction_range: Tuple) -> List:
+        img_ann_pairs: List[Tuple[np.ndarray, Annotation]], crops_per_image: int, height_fraction_range: Tuple,
+        width_fraction_range: Tuple) -> List[Tuple[np.ndarray, Annotation]]:
     return [random_crop_fraction(img, ann, height_fraction_range, width_fraction_range)
             for img, ann in img_ann_pairs for _ in range(crops_per_image)]
 
 
 def flip_add_random_crops(
-        img: np.ndarray, ann: Annotation, crops_per_image: int, height_fraction_range: Tuple, width_fraction_range: Tuple) -> List:
+        img: np.ndarray, ann: Annotation, crops_per_image: int, height_fraction_range: Tuple, width_fraction_range: Tuple) -> List[Tuple[np.ndarray, Annotation]]:
     full_size_items = [(img, ann), fliplr(img, ann)]
     crops = batch_random_crops_fraction(full_size_items, crops_per_image, height_fraction_range, width_fraction_range)
     return full_size_items + crops
@@ -590,7 +591,7 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: Optional[str]
     return res_img, res_ann
 
 
-def load_imgaug(json_data: Dict):
+def load_imgaug(json_data: Dict) -> iaa.Sequential:
     def _get_function(category_name, aug_name):
         try:
             submodule = getattr(iaa, category_name)

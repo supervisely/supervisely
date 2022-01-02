@@ -8,6 +8,7 @@ from supervisely_lib.io.json import JsonSerializable
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.imaging.color import rgb2hex, hex2rgb
 from supervisely_lib import logger
+from supervisely_lib.annotation.renamer import Renamer
 
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
@@ -274,7 +275,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         return class_colors_notify
 
 
-def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer, skip_missing=False) -> ObjClassCollection:
+def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer: Renamer, skip_missing: Optional[bool]=False) -> ObjClassCollection:
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)
