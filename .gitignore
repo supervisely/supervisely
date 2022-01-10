@@ -47,4 +47,4 @@ ecosystem/import/*
 
 venv
 /docs/build/*
-/docs/source/rst_templates/guides
+/docs/source/rst_templates/guides/*
