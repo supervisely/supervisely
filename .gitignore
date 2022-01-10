@@ -45,22 +45,5 @@ ecosystem/projects/*
 ecosystem/import/*
 !ecosystem/import/init.sh
 
-internal/tests/flt_format_insurance/*
-
-ecosystem/yolov5_collection/*
-!ecosystem/yolov5_collection/init.sh
-ecosystem/training_data/*
-!ecosystem/training_data/init.sh
-ecosystem/collections/*
-!ecosystem/collections/init.sh
-ecosystem/yolov5-apps-collection
-ecosystem/backup/*
-env/*
-.stfolder
 venv
-
 /docs/build/*
-/docs/source/debug/
-/docs/source/repo
-
-alex_test.py
