@@ -1,6 +1,5 @@
-FROM sphinxdoc/sphinx
+FROM docker.deepsystems.io/supervisely/five/base-py:6
 
-RUN apt install curl
 RUN curl -L -o panda.deb https://github.com/jgm/pandoc/releases/download/2.12/pandoc-2.12-1-amd64.deb && \
     dpkg -i panda.deb && \
     rm panda.deb
