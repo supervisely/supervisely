@@ -2,7 +2,7 @@
 
 from supervisely_lib.api.module_api import ApiField
 from supervisely_lib.api.entity_annotation.tag_api import TagApi
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 class VideoTagApi(TagApi):
@@ -53,7 +53,7 @@ class VideoTagApi(TagApi):
         """
         self._api.post('videos.tags.update', {ApiField.ID: tag_id, ApiField.FRAME_RANGE: frame_range})
 
-    def update_value(self, tag_id: int, tag_value: str or int) -> None:
+    def update_value(self, tag_id: int, tag_value: Union[str, int]) -> None:
         """
         Update VideoTag value.
 
@@ -75,7 +75,7 @@ class VideoTagApi(TagApi):
         """
         self._api.post('videos.tags.update-value', {ApiField.ID: tag_id, ApiField.VALUE: tag_value})
 
-    def add_tag(self, project_meta_tag_id: int, video_id: int, value: Optional[str or int]=None, frame_range: Optional[List[int]]=None) -> None:
+    def add_tag(self, project_meta_tag_id: int, video_id: int, value: Optional[Union[str, int]]=None, frame_range: Optional[List[int]]=None) -> None:
         """
         Add VideoTag to video.
 

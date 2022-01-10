@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional
+from typing import NamedTuple, List, Dict, Optional, Union
 
 import io
 import re
@@ -1465,7 +1465,7 @@ class ImageApi(RemoveableBulkModuleApi):
         response = self._api.post('images.editInfo', {ApiField.ID: id, ApiField.META: meta})
         return response.json()
 
-    def add_tag(self, image_id: int, tag_id: int, value: Optional[str, int]=None) -> None:
+    def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]]=None) -> None:
         """
         Add tag with given ID to Image by ID.
 
@@ -1497,7 +1497,7 @@ class ImageApi(RemoveableBulkModuleApi):
         # return resp.json()
         self.add_tag_batch([image_id], tag_id, value)
 
-    def add_tag_batch(self, image_ids: List[int], tag_id: int, value: Optional[str, int]=None) -> None:
+    def add_tag_batch(self, image_ids: List[int], tag_id: int, value: Optional[Union[str, int]]=None) -> None:
         """
         Add tag with given ID to Images by IDs.
 
