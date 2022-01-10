@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import itertools
 import numpy as np
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Union
 import operator
 import cv2
 from copy import deepcopy

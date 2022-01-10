@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 
 import uuid
 from supervisely_lib.annotation.tag import Tag, TagJsonFields
@@ -18,7 +18,7 @@ class VideoTag(Tag):
     :param meta: General information about Video Tag.
     :type meta: TagMeta
     :param value: Video Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
-    :type value: str or int or None, optional
+    :type value: str or int or float or None, optional
     :param frame_range: Video Tag frame range.
     :type frame_range: Tuple[int, int] or List[int, int], optional
     :param key: KeyIdMap object.
@@ -60,7 +60,7 @@ class VideoTag(Tag):
         tag_coat_color = VideoTag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: Optional[str]=None, frame_range: Optional[Tuple[int, int]]=None,
+    def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]]=None, frame_range: Optional[Tuple[int, int]]=None,
                  key: Optional[KeyIdMap]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
                  updated_at: Optional[str]=None, created_at: Optional[str]=None):
         super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
@@ -227,7 +227,7 @@ class VideoTag(Tag):
                self.value == other.value and \
                self.frame_range == other.frame_range
 
-    def clone(self, meta: Optional[TagMeta] = None, value: Optional[str] = None, frame_range: Optional[Tuple[int, int]] = None,
+    def clone(self, meta: Optional[TagMeta] = None, value: Optional[Union[str, int, float]] = None, frame_range: Optional[Tuple[int, int]] = None,
               key: Optional[KeyIdMap] = None, sly_id: Optional[int] = None, labeler_login: Optional[str] = None,
               updated_at: Optional[str] = None, created_at: Optional[str] = None) -> VideoTag:
         """
@@ -236,7 +236,7 @@ class VideoTag(Tag):
         :param meta: General information about VideoTag.
         :type meta: TagMeta, optional
         :param value: VideoTag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
-        :type value: str or int or None, optional
+        :type value: str or int or float or None, optional
         :param frame_range: VideoTag frame range.
         :type frame_range: Tuple[int, int] or List[int, int], optional
         :param key: KeyIdMap object.

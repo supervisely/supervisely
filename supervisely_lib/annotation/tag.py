@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from supervisely_lib.annotation.tag_meta import TagValueType, TagMeta
 from supervisely_lib.annotation.tag_meta_collection import TagMetaCollection
 from supervisely_lib.collection.key_indexed_collection import KeyObject
@@ -66,7 +66,7 @@ class Tag(KeyObject):
         tag_coat_color = sly.Tag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: Optional[str] or Optional[int] or Optional[float] = None, sly_id: Optional[int] = None,
+    def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]] = None, sly_id: Optional[int] = None,
                  labeler_login: Optional[str] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if meta is None:
             raise ValueError('TagMeta is None')
@@ -322,7 +322,7 @@ class Tag(KeyObject):
         """
         return not self == other
 
-    def clone(self, meta: Optional[TagMeta] = None, value: Optional[str] or Optional[int] or Optional[float]= None,
+    def clone(self, meta: Optional[TagMeta] = None, value: Optional[Union[str, int, float]]= None,
               sly_id: Optional[int] = None, labeler_login: Optional[str] = None, updated_at: Optional[str] = None,
               created_at: Optional[str] = None) -> Tag:
         """

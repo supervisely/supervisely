@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union
 import random
 import numpy as np
 
@@ -383,7 +383,7 @@ class Dataset(KeyObject):
         seg_path = os.path.join(self.seg_dir, item_name + ".png")
         return seg_path
 
-    def add_item_file(self, item_name: str, item_path: str, ann: Optional[Annotation or str] = None,
+    def add_item_file(self, item_name: str, item_path: str, ann: Optional[Union[Annotation, str]] = None,
                           _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
@@ -418,7 +418,7 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Annotation] = None, img_info: Optional[NamedTuple]=None) -> None:
+    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Union[Annotation, str]] = None, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -449,7 +449,7 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Annotation] = None, img_info: Optional[NamedTuple]=None) -> None:
+    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Union[Annotation, str]] = None, img_info: Optional[NamedTuple]=None) -> None:
         """
         Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
