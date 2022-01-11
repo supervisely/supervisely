@@ -61,5 +61,8 @@ class Chart:
         return {"field": f"{self._v_model}.series[{index}].data", "payload": [[x, y]], "append": True}
 
     def append(self, x, y, series_name=None):
+        if series_name is None:
+            series_name = self._series[0]['name']
+
         field = self.get_field(x, y, series_name)
         self._api.app.set_fields(self._task_id, [field])

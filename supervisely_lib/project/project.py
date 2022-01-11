@@ -7,6 +7,7 @@ from enum import Enum
 from typing import List
 import random
 
+import supervisely_lib
 from supervisely_lib.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
@@ -23,7 +24,6 @@ from supervisely_lib.api.api import Api
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.fs_cache import FileCache
 from supervisely_lib.geometry.bitmap import Bitmap
-
 
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
@@ -62,7 +62,7 @@ class Dataset(KeyObject):
             raise TypeError("Argument \'mode\' has type {!r}. Correct type is OpenMode".format(type(mode)))
 
         self._directory = directory
-        self._item_to_ann = {} # item file name -> annotation file name
+        self._item_to_ann = {}  # item file name -> annotation file name
 
         project_dir, ds_name = os.path.split(directory.rstrip('/'))
         self._project_dir = project_dir
@@ -433,13 +433,13 @@ class Dataset(KeyObject):
         return False
 
 
-
 class Project:
     '''
     This is a class for creating and using Project objects. You can think of a Project as a superfolder with data and
     meta information.
     '''
     dataset_class = Dataset
+
     class DatasetDict(KeyIndexedCollection):
         item_type = Dataset
 
@@ -593,9 +593,9 @@ class Project:
         :param project_dir: str
         :return: str, str
         '''
-        #alternative implementation
-        #temp_parent_dir = os.path.dirname(parent_dir)
-        #temp_name = os.path.basename(parent_dir)
+        # alternative implementation
+        # temp_parent_dir = os.path.dirname(parent_dir)
+        # temp_name = os.path.basename(parent_dir)
 
         parent_dir, pr_name = os.path.split(project_dir.rstrip('/'))
         if not pr_name:
@@ -603,7 +603,8 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None, progress_cb=None):
+    def update_project_meta_for_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False,
+                                                  target_classes=None, add_bg_class=True):
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -632,30 +633,48 @@ class Project:
                 dst_meta.obj_classes.get(class_name) for class_name in target_classes
             ]))
 
-        if dst_meta.obj_classes.get(_bg_class_name) is None:
+        if dst_meta.obj_classes.get(_bg_class_name) is None and add_bg_class:
             dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
         if inplace is False:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
+            return dst_project
 
-        # # save palette
-        # palette = {
-        #     "names": [],
-        #     "colors": []
-        # }
-        # for obj_class in dst_meta.obj_classes:
-        #     palette["colors"].extend(obj_class.color)
-        #     palette["names"].append(obj_class.name)
-        #
-        # palette_dir = None
-        # if inplace is True:
-        #     palette_dir = src_project.directory
-        # else:
-        #     palette_dir = dst_project.directory
-        # palette_path = os.path.join(palette_dir, "palette.json")
-        # dump_json_file(palette, palette_path)
+        else:
+            return src_project
 
+    @staticmethod
+    def _to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, add_bg_class, progress_cb):
+        for src_dataset in src_project.datasets:
+            if inplace is False:
+                dst_dataset = dst_project.create_dataset(src_dataset.name)
+
+            for item_name in src_dataset:
+                img_path, ann_path = src_dataset.get_item_paths(item_name)
+                ann = Annotation.load_json_file(ann_path, src_project.meta)
+
+                instance_seg_annotations = ann.to_segmentation_task(segmentation_type='instance', add_bg_class=add_bg_class)
+
+                if inplace is False:
+                    dst_dataset.add_item_file(item_name, img_path, instance_seg_annotations)
+                    seg_path = dst_dataset.get_seg_path(item_name)
+                else:
+                    # replace existing annotation
+                    src_dataset.set_ann(item_name, instance_seg_annotations)
+                    seg_path = src_dataset.get_seg_path(item_name)
+
+                # save rendered segmentation
+                # seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
+                instance_seg_annotations.to_indexed_color_mask(seg_path)
+                if progress_cb is not None:
+                    progress_cb(1)
+
+        if inplace is True:
+            src_project.set_meta(dst_meta)
+
+    @staticmethod
+    def _to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -676,13 +695,35 @@ class Project:
                     seg_path = src_dataset.get_seg_path(item_name)
 
                 # save rendered segmentation
-                #seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
+                # seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
                 seg_ann.to_indexed_color_mask(seg_path)
                 if progress_cb is not None:
                     progress_cb(1)
 
         if inplace is True:
             src_project.set_meta(dst_meta)
+
+    @staticmethod
+    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                             progress_cb=None, segmentation_type='semantic', add_bg_class=True):
+
+        src_project = Project(src_project_dir, OpenMode.READ)
+        dst_meta, dst_mapping = src_project.meta.to_segmentation_task(add_bg_class=add_bg_class)
+
+        dst_project = Project.update_project_meta_for_segmentation_task(
+            src_project_dir=src_project_dir,
+            dst_project_dir=dst_project_dir,
+            inplace=inplace,
+            target_classes=target_classes,
+            add_bg_class=add_bg_class)
+
+        if segmentation_type == 'semantic':
+            supervisely_lib.Project._to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace,
+                                                              progress_cb)
+
+        else:
+            Project._to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, add_bg_class,
+                                                   progress_cb)
 
     @staticmethod
     def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
@@ -754,11 +795,13 @@ class Project:
         project.set_meta(new_meta)
 
     @staticmethod
-    def _remove_items(project_dir, without_objects=False, without_tags=False, without_objects_and_tags=False, inplace=False):
+    def _remove_items(project_dir, without_objects=False, without_tags=False, without_objects_and_tags=False,
+                      inplace=False):
         if inplace is False:
             raise ValueError(f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly")
         if without_objects is False and without_tags is False and without_objects_and_tags is False:
-            raise ValueError("One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined")
+            raise ValueError(
+                "One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined")
         project = Project(project_dir, OpenMode.READ)
         for dataset in project.datasets:
             items_to_delete = []
@@ -766,8 +809,8 @@ class Project:
                 img_path, ann_path = dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, project.meta)
                 if (without_objects and len(ann.labels) == 0) or \
-                   (without_tags and len(ann.img_tags) == 0) or \
-                   (without_objects_and_tags and ann.is_empty()):
+                        (without_tags and len(ann.img_tags) == 0) or \
+                        (without_objects_and_tags and ann.is_empty()):
                     items_to_delete.append(item_name)
             for item_name in items_to_delete:
                 dataset.delete_item(item_name)
@@ -854,7 +897,6 @@ class Project:
         val_items = []
         _add_items_to_list(project, val_datasets, val_items)
         return train_items, val_items
-
 
     # @staticmethod
     # def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
@@ -975,7 +1017,8 @@ def upload_project(dir, api, workspace_id, project_name=None, log_progress=True,
         image_ids = [img_info.id for img_info in img_infos]
 
         if log_progress and progress_cb is None:
-            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
+            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name),
+                                   total_cnt=len(img_paths))
             progress_cb = ds_progress.iters_done_report
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
 
@@ -1042,7 +1085,7 @@ def _maybe_append_image_extension(name, ext):
     return result
 
 
-def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None, project_meta: ProjectMeta=None,
+def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None, project_meta: ProjectMeta = None,
                       only_image_tags=False, save_image_info=False):
     images = api.image.get_list(dataset_id)
     images_to_download = images
