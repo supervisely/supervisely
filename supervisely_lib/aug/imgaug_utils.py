@@ -144,20 +144,30 @@ def _apply(augs: iaa.Sequential, img, boxes=None, masks=None):
     return res[0][0], res[1], res[2]
 
 
-def apply(augs, meta: ProjectMeta, img, ann: Annotation):
+def apply(augs, meta: ProjectMeta, img, ann: Annotation, segmentation_type='semantic'):
     # @TODO: save object tags
 
     # works for rectangles
+
     det_meta, det_mapping = meta.to_detection_task(convert_classes=False)
     det_ann = ann.to_detection_task(det_mapping)
     ia_boxes = det_ann.bboxes_to_imgaug()
 
     # works for polygons and bitmaps
+
     seg_meta, seg_mapping = meta.to_segmentation_task()
-    seg_ann = ann.to_nonoverlapping_masks(seg_mapping)
-    seg_ann = seg_ann.to_segmentation_task()
-    class_to_index = {obj_class.name: idx for idx, obj_class in enumerate(seg_meta.obj_classes, start=1)}
-    index_to_class = {v: k for k, v in class_to_index.items()}
+    if segmentation_type == 'semantic':
+        seg_ann = ann.to_nonoverlapping_masks(seg_mapping)
+        seg_ann = seg_ann.to_segmentation_task(segmentation_type='semantic')
+        class_to_index = {obj_class.name: idx for idx, obj_class in enumerate(seg_meta.obj_classes, start=1)}
+        index_to_class = {v: k for k, v in class_to_index.items()}
+
+    else:  # segmentation_type == 'instance'
+        seg_ann = ann.to_segmentation_task(segmentation_type='instance')
+
+        class_to_index = None
+        index_to_class = {idx: label.obj_class.name for idx, label in enumerate(seg_ann.labels, start=1)}
+
     ia_masks = seg_ann.masks_to_imgaug(class_to_index)
 
     res_meta = det_meta.merge(seg_meta)  # TagMetas should be preserved

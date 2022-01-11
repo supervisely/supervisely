@@ -243,7 +243,7 @@ class ProjectMeta(JsonSerializable):
     def __ne__(self, other: ProjectMeta):
         return not self == other
 
-    def to_segmentation_task(self, keep_geometries=[Polygon, Bitmap]) -> (ProjectMeta, dict):
+    def to_segmentation_task(self, keep_geometries=[Polygon, Bitmap], add_bg_class=True) -> (ProjectMeta, dict):
         mapping = {}
         res_classes = []
         for obj_class in self.obj_classes:
@@ -258,6 +258,12 @@ class ProjectMeta(JsonSerializable):
                     res_classes.append(new_class)
             else:
                 mapping[obj_class] = None
+
+        _bg_class_name = "__bg__"  # add background class
+        if _bg_class_name not in [res_class.name for res_class in res_classes] and add_bg_class:
+            bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
+            res_classes.append(bg_obj_class)
+
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
