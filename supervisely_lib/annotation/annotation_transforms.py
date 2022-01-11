@@ -194,7 +194,7 @@ def find_contours(ann: Annotation, classes_mapping: dict) -> Annotation:  # @TOD
     return ann.transform_labels(to_contours)
 
 
-def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: collections.Mapping) -> list:
+def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: dict) -> list:
     """
     Extract multiclass instances from grayscale mask and save it to labels list.
     Args:

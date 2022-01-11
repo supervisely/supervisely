@@ -12,11 +12,8 @@ sphinx-copybutton \
 m2r2 \
 nbsphinx
 RUN pip install python-json-logger
-RUN pip install numpy
-RUN pip install pandas
-RUN pip install opencv-python
-RUN pip install supervisely
 RUN apt-get install libgl1 -y
+RUN pip install supervisely
 
 
 COPY entrypoint.sh /app/
