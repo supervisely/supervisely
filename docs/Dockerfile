@@ -11,7 +11,6 @@ sphinx-rtd-theme \
 sphinx-copybutton \
 m2r2 \
 nbsphinx
-RUN pip install python-json-logger
 RUN apt-get install libgl1 -y
 RUN pip install supervisely
 
