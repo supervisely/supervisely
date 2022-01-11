@@ -1,7 +1,7 @@
 version: '2.4'
 services:
   sphinx-docs:
-    image: docker.deepsystems.io/supervisely/py/sphinx-docs:latest
+    image: ferrum848/alex_sphinxdoc
     runtime: runc
     build: .
     volumes:
@@ -11,7 +11,7 @@ services:
     - ../supervisely_lib:/app/source/repo/supervisely_lib:ro
 
   cleanbuild:
-    image: docker.deepsystems.io/supervisely/py/sphinx-docs:latest
+    image: ferrum848/alex_sphinxdoc
     runtime: runc
     command: find "/app/build" -mindepth 1 -delete
     volumes:
