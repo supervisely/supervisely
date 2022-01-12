@@ -627,48 +627,38 @@ class Annotation:
 
         return bitwised_mask_or, updated_label
 
-    def to_segmentation_task(self, segmentation_type='semantic', add_bg_class=True):
-        if segmentation_type == 'semantic':
-            class_mask = {}
-            for label in self.labels:
-                if label.obj_class not in class_mask:
-                    class_mask[label.obj_class] = np.zeros(self.img_size, np.uint8)
-                label.draw(class_mask[label.obj_class], color=255)
-            new_labels = []
-            for obj_class, white_mask in class_mask.items():
-                mask = white_mask == 255
-                bitmap = Bitmap(data=mask)
-                new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
-            return self.clone(labels=new_labels)
+    def to_segmentation_task(self):
+        class_mask = {}
+        for label in self.labels:
+            if label.obj_class not in class_mask:
+                class_mask[label.obj_class] = np.zeros(self.img_size, np.uint8)
+            label.draw(class_mask[label.obj_class], color=255)
+        new_labels = []
+        for obj_class, white_mask in class_mask.items():
+            mask = white_mask == 255
+            bitmap = Bitmap(data=mask)
+            new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
+        return self.clone(labels=new_labels)
 
-        elif segmentation_type == 'instance':
-            for index, label in enumerate(self.labels):  # 1 — all labels to Bitmap
-                self.labels[index] = label.geometry.convert(Bitmap)
+    def to_semantic_segmentation_task(self):
+        self.to_segmentation_task()
 
-            height, width = self.img_size  # 2 — create new unoccluded labels iteratively
-            used_pixels = np.zeros((height, width), dtype=bool)  # size is (h, w)
+    def to_instance_segmentation_task(self):
+        for index, label in enumerate(self.labels):  # 1 — all labels to Bitmap
+            self.labels[index] = label.geometry.convert(Bitmap)
 
-            updated_labels = []
-            for index, label in enumerate(self.labels):  # 3 — update labels by unoccluded masks
+        height, width = self.img_size  # 2 — create new unoccluded labels iteratively
+        used_pixels = np.zeros((height, width), dtype=bool)  # size is (h, w)
 
-                used_pixels, updated_label = self._get_unoccluded_mask(used_pixels, label)
-                if updated_label.area > 0:
-                    updated_labels.append(updated_label)
+        updated_labels = []
+        for index, label in enumerate(self.labels):  # 3 — update labels by unoccluded masks
 
-            # 4 — add background
-            if add_bg_class:
-                _bg_class_name = "__bg__"
-                if _bg_class_name not in [res_class.obj_class.name for res_class in self.labels]:
-                    updated_label_class = supervisely_lib.ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
-                    bg_pixels = np.invert(used_pixels)
-                    bg_label = Label(Bitmap(bg_pixels), updated_label_class)
-                    updated_labels.append(bg_label)
+            used_pixels, updated_label = self._get_unoccluded_mask(used_pixels, label)
+            if updated_label.area > 0:
+                updated_labels.append(updated_label)
 
-            return Annotation(img_size=(height, width), labels=updated_labels)
+        return Annotation(img_size=(height, width), labels=updated_labels)
 
-        else:
-            raise ValueError('Annotations type not matched!\n'
-                             'Use semantic or instance segmentation type')
 
     def to_detection_task(self, mapping):
         aux_mapping = mapping.copy()
