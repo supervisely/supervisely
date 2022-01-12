@@ -10,6 +10,7 @@ import cv2
 from copy import deepcopy
 from PIL import Image
 
+import supervisely_lib
 from supervisely_lib import logger
 from supervisely_lib.annotation.label import Label
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
@@ -607,6 +608,25 @@ class Annotation:
         ensure_base_path(mask_path)
         im.save(mask_path)
 
+    def _get_unoccluded_mask(self, used_pixels, label):
+        mask_in_images_coordinates = np.zeros(used_pixels.shape, dtype=bool)
+
+        row, column = label.geometry.origin.row, label.geometry.origin.col  # move mask to image space
+        existence_mask = label.geometry.data
+        mask_in_images_coordinates[row: row + existence_mask.shape[0], column: column + existence_mask.shape[1]] = \
+            existence_mask
+
+        bitwised_mask_or = np.bitwise_or(used_pixels, mask_in_images_coordinates)  # update used_pixels
+
+        bitwised_mask_and = np.bitwise_and(used_pixels, mask_in_images_coordinates)  # get intersected pixels to delete
+        indexes_of_intersection = bitwised_mask_and == True
+        mask_in_images_coordinates[indexes_of_intersection] = False  # remove intersected part
+
+        updated_label_class = supervisely_lib.ObjClass(label.obj_class.name, Bitmap, label.obj_class.color)  # create new object
+        updated_label = Label(Bitmap(mask_in_images_coordinates), updated_label_class)
+
+        return bitwised_mask_or, updated_label
+
     def to_segmentation_task(self):
         class_mask = {}
         for label in self.labels:
@@ -619,6 +639,26 @@ class Annotation:
             bitmap = Bitmap(data=mask)
             new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
         return self.clone(labels=new_labels)
+
+    def to_semantic_segmentation_task(self):
+        self.to_segmentation_task()
+
+    def to_instance_segmentation_task(self):
+        for index, label in enumerate(self.labels):  # 1 — all labels to Bitmap
+            self.labels[index] = label.geometry.convert(Bitmap)
+
+        height, width = self.img_size  # 2 — create new unoccluded labels iteratively
+        used_pixels = np.zeros((height, width), dtype=bool)  # size is (h, w)
+
+        updated_labels = []
+        for index, label in enumerate(self.labels):  # 3 — update labels by unoccluded masks
+
+            used_pixels, updated_label = self._get_unoccluded_mask(used_pixels, label)
+            if updated_label.area > 0:
+                updated_labels.append(updated_label)
+
+        return Annotation(img_size=(height, width), labels=updated_labels)
+
 
     def to_detection_task(self, mapping):
         aux_mapping = mapping.copy()
@@ -658,15 +698,19 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def masks_to_imgaug(self, class_to_index) -> SegmentationMapsOnImage:
+    def masks_to_imgaug(self, class_to_index=None) -> SegmentationMapsOnImage:
         h = self.img_size[0]
         w = self.img_size[1]
         mask = np.zeros((h, w, 1), dtype=np.int32)
 
-        for label in self.labels:
+        for index, label in enumerate(self.labels, start=1):
             label: Label
             if type(label.geometry) == Bitmap:
-                label.draw(mask, class_to_index[label.obj_class.name])
+                if class_to_index is not None:
+                    label.draw(mask, class_to_index[label.obj_class.name])
+                else:
+                    label.draw(mask, index)
+
 
         segmaps = None
         if np.any(mask):
