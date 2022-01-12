@@ -604,7 +604,7 @@ class Project:
 
     @staticmethod
     def update_project_meta_for_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False,
-                                                  target_classes=None, add_bg_class=True):
+                                                  target_classes=None):
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -633,7 +633,7 @@ class Project:
                 dst_meta.obj_classes.get(class_name) for class_name in target_classes
             ]))
 
-        if dst_meta.obj_classes.get(_bg_class_name) is None and add_bg_class:
+        if dst_meta.obj_classes.get(_bg_class_name) is None:
             dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
         if inplace is False:
@@ -645,7 +645,7 @@ class Project:
             return src_project
 
     @staticmethod
-    def _to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, add_bg_class, progress_cb):
+    def _to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -654,7 +654,7 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                instance_seg_annotations = ann.to_segmentation_task(segmentation_type='instance', add_bg_class=add_bg_class)
+                instance_seg_annotations = ann.to_instance_segmentation_task()
 
                 if inplace is False:
                     dst_dataset.add_item_file(item_name, img_path, instance_seg_annotations)
@@ -704,26 +704,39 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None, segmentation_type='semantic', add_bg_class=True):
-
+    def meta_to_segmentation_task(src_project_dir, dst_project_dir, inplace, target_classes):
         src_project = Project(src_project_dir, OpenMode.READ)
-        dst_meta, dst_mapping = src_project.meta.to_segmentation_task(add_bg_class=add_bg_class)
+        dst_meta, dst_mapping = src_project.meta.to_segmentation_task()
 
         dst_project = Project.update_project_meta_for_segmentation_task(
             src_project_dir=src_project_dir,
             dst_project_dir=dst_project_dir,
             inplace=inplace,
-            target_classes=target_classes,
-            add_bg_class=add_bg_class)
+            target_classes=target_classes)
 
-        if segmentation_type == 'semantic':
-            supervisely_lib.Project._to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace,
-                                                              progress_cb)
+        return src_project, dst_project, dst_meta, dst_mapping
 
-        else:
-            Project._to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, add_bg_class,
-                                                   progress_cb)
+    @staticmethod
+    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                             progress_cb=None):
+        src_project, dst_project, dst_meta, dst_mapping = Project.meta_to_segmentation_task(src_project_dir,
+                                                                                            dst_project_dir,
+                                                                                            inplace, target_classes)
+
+        Project._to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
+
+    @staticmethod
+    def to_semantic_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                                      progress_cb=None):
+        Project.to_segmentation_task(src_project_dir, dst_project_dir, inplace, target_classes, progress_cb)
+
+    @staticmethod
+    def to_instance_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                                      progress_cb=None):
+        src_project, dst_project, dst_meta, dst_mapping = Project.meta_to_segmentation_task(src_project_dir,
+                                                                                            dst_project_dir,
+                                                                                            inplace, target_classes)
+        Project._to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
 
     @staticmethod
     def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
@@ -898,14 +911,15 @@ class Project:
         _add_items_to_list(project, val_datasets, val_items)
         return train_items, val_items
 
-    # @staticmethod
-    # def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
-    #     pass
-    #
-    # @staticmethod
-    # def get_train_val_splits_by_portion(project_dir, train_portion, val_portion):
-    #     pass
-    #
+
+# @staticmethod
+# def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
+#     pass
+#
+# @staticmethod
+# def get_train_val_splits_by_portion(project_dir, train_portion, val_portion):
+#     pass
+#
 
 
 def read_single_project(dir, project_class=Project):
