@@ -674,7 +674,7 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def _to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
+    def _to_semantic_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -723,7 +723,7 @@ class Project:
                                                                                             dst_project_dir,
                                                                                             inplace, target_classes)
 
-        Project._to_semantic_segmentation(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
+        Project._to_semantic_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
 
     @staticmethod
     def to_semantic_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
