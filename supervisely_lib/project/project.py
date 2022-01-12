@@ -635,7 +635,7 @@ class Project:
         if dst_meta.obj_classes.get(_bg_class_name) is None:
             dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
-        if inplace is False and dst_project_dir is not None:
+        if inplace is False:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
             return dst_project
@@ -870,16 +870,6 @@ class Project:
         val_items = []
         _add_items_to_list(project, val_datasets, val_items)
         return train_items, val_items
-
-
-# @staticmethod
-# def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
-#     pass
-#
-# @staticmethod
-# def get_train_val_splits_by_portion(project_dir, train_portion, val_portion):
-#     pass
-#
 
 
 def read_single_project(dir, project_class=Project):
