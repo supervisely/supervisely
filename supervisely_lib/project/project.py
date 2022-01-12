@@ -7,7 +7,6 @@ from enum import Enum
 from typing import List
 import random
 
-import supervisely_lib
 from supervisely_lib.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely_lib.annotation.obj_class import ObjClass
 from supervisely_lib.annotation.obj_class_collection import ObjClassCollection
@@ -603,8 +602,8 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def update_project_meta_for_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False,
-                                                  target_classes=None):
+    def update_project_meta_for_segmentation_task(src_project_dir, dst_project_dir=None,
+                                                  inplace=False, target_classes=None):
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -636,7 +635,7 @@ class Project:
         if dst_meta.obj_classes.get(_bg_class_name) is None:
             dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
-        if inplace is False:
+        if inplace is False and dst_project_dir is not None:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
             return dst_project
@@ -645,36 +644,7 @@ class Project:
             return src_project
 
     @staticmethod
-    def _to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
-        for src_dataset in src_project.datasets:
-            if inplace is False:
-                dst_dataset = dst_project.create_dataset(src_dataset.name)
-
-            for item_name in src_dataset:
-                img_path, ann_path = src_dataset.get_item_paths(item_name)
-                ann = Annotation.load_json_file(ann_path, src_project.meta)
-
-                instance_seg_annotations = ann.to_instance_segmentation_task()
-
-                if inplace is False:
-                    dst_dataset.add_item_file(item_name, img_path, instance_seg_annotations)
-                    seg_path = dst_dataset.get_seg_path(item_name)
-                else:
-                    # replace existing annotation
-                    src_dataset.set_ann(item_name, instance_seg_annotations)
-                    seg_path = src_dataset.get_seg_path(item_name)
-
-                # save rendered segmentation
-                # seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
-                instance_seg_annotations.to_indexed_color_mask(seg_path)
-                if progress_cb is not None:
-                    progress_cb(1)
-
-        if inplace is True:
-            src_project.set_meta(dst_meta)
-
-    @staticmethod
-    def _to_semantic_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb):
+    def _to_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb, seg_type='semantic'):
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -683,7 +653,9 @@ class Project:
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
-                seg_ann = seg_ann.to_segmentation_task()
+
+                if seg_type == 'semantic':
+                    seg_ann = seg_ann.to_segmentation_task()
 
                 seg_path = None
                 if inplace is False:
@@ -718,25 +690,13 @@ class Project:
 
     @staticmethod
     def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None):
+                             progress_cb=None, seg_type='semantic'):
         src_project, dst_project, dst_meta, dst_mapping = Project.meta_to_segmentation_task(src_project_dir,
                                                                                             dst_project_dir,
                                                                                             inplace, target_classes)
 
-        Project._to_semantic_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
-
-    @staticmethod
-    def to_semantic_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                                      progress_cb=None):
-        Project.to_segmentation_task(src_project_dir, dst_project_dir, inplace, target_classes, progress_cb)
-
-    @staticmethod
-    def to_instance_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                                      progress_cb=None):
-        src_project, dst_project, dst_meta, dst_mapping = Project.meta_to_segmentation_task(src_project_dir,
-                                                                                            dst_project_dir,
-                                                                                            inplace, target_classes)
-        Project._to_instance_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb)
+        Project._to_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb,
+                                      seg_type=seg_type)
 
     @staticmethod
     def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
