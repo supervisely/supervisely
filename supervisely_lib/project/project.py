@@ -602,8 +602,9 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def update_project_meta_for_segmentation_task(src_project_dir, dst_project_dir=None,
-                                                  inplace=False, target_classes=None):
+    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                             progress_cb=None, segmentation_type='semantic'):
+
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -638,13 +639,7 @@ class Project:
         if inplace is False:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
-            return dst_project
 
-        else:
-            return src_project
-
-    @staticmethod
-    def _to_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb, seg_type='semantic'):
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -654,8 +649,12 @@ class Project:
 
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
 
-                if seg_type == 'semantic':
+                if segmentation_type == 'semantic':
                     seg_ann = seg_ann.to_segmentation_task()
+                elif segmentation_type == 'instance':
+                    pass
+                elif segmentation_type == 'panoptic':
+                    raise NotImplementedError
 
                 seg_path = None
                 if inplace is False:
@@ -674,29 +673,6 @@ class Project:
 
         if inplace is True:
             src_project.set_meta(dst_meta)
-
-    @staticmethod
-    def meta_to_segmentation_task(src_project_dir, dst_project_dir, inplace, target_classes):
-        src_project = Project(src_project_dir, OpenMode.READ)
-        dst_meta, dst_mapping = src_project.meta.to_segmentation_task()
-
-        dst_project = Project.update_project_meta_for_segmentation_task(
-            src_project_dir=src_project_dir,
-            dst_project_dir=dst_project_dir,
-            inplace=inplace,
-            target_classes=target_classes)
-
-        return src_project, dst_project, dst_meta, dst_mapping
-
-    @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None, seg_type='semantic'):
-        src_project, dst_project, dst_meta, dst_mapping = Project.meta_to_segmentation_task(src_project_dir,
-                                                                                            dst_project_dir,
-                                                                                            inplace, target_classes)
-
-        Project._to_segmentation_task(src_project, dst_project, dst_mapping, dst_meta, inplace, progress_cb,
-                                      seg_type=seg_type)
 
     @staticmethod
     def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
