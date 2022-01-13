@@ -603,7 +603,7 @@ class Project:
 
     @staticmethod
     def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None, seg_type='semantic'):
+                             progress_cb=None, segmentation_type='semantic'):
 
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
@@ -649,11 +649,11 @@ class Project:
 
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
 
-                if seg_type == 'semantic':
+                if segmentation_type == 'semantic':
                     seg_ann = seg_ann.to_segmentation_task()
-                elif seg_type == 'instance':
+                elif segmentation_type == 'instance':
                     pass
-                elif seg_type == 'panoptic':
+                elif segmentation_type == 'panoptic':
                     raise NotImplementedError
 
                 seg_path = None
