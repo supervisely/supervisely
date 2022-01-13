@@ -5,4 +5,4 @@ Project
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: key, img_dir, validate
+   :exclude-members: key, img_dir, validate, img_info_dir, seg_dir
