@@ -198,9 +198,9 @@ class Annotation:
 
          .. code-block:: python
 
-            ann = sly.Annotation((500, 700), img_description='empty annotation')
+            ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
             print(ann.img_description)
-            # Output: empty annotation
+            # Output: Annotation for this image is empty
         """
         return self._img_description
 

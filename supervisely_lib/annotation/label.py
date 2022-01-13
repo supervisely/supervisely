@@ -98,6 +98,25 @@ class LabelBase:
         return self._obj_class
 
     @property
+    def description(self) -> str:
+        """
+        Description of the current Label.
+
+        :return: Description
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            class_dog = sly.ObjClass('dog', sly.Rectangle)
+            label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog, description="Insert Label description here")
+
+            print(label_dog.description)
+            # Output: 'Insert Label description here'
+        """
+        return self._description
+
+    @property
     def geometry(self) -> Geometry:
         """
         Geometry of the current Label.
@@ -130,25 +149,7 @@ class LabelBase:
             # }
         """
         return self._geometry
-      
-    @property
-    def description(self) -> str:
-        """
-        Description of the current Label.
 
-        :return: Description
-        :rtype: :class:`str`
-        :Usage example:
-
-         .. code-block:: python
-
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog, description="Insert Label description here")
-
-            print(label_dog.description)
-            # Output: 'Insert Label description here'
-        """
-        return self._description
 
     @property
     def tags(self) -> TagCollection:
