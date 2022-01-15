@@ -218,7 +218,12 @@ class TaskApp(TaskDockerized):
         sly.docker_utils.docker_pull_if_needed(self._docker_api, self.docker_image_name, constants.PULL_POLICY(), self.logger)
         self.sync_pip_cache()
         if self._container is None:
-            self.spawn_container(add_labels=add_labels)
+            add_envs = None
+            if constants.DOCKER_NET() is not None:
+                add_envs = {
+                    'VIRTUAL_HOST': f'task-{self.info["task_id"]}.supervisely.local'
+                }
+            self.spawn_container(add_envs=add_envs, add_labels=add_labels)
             self.logger.info("Double check pip cache for old agents")
             self.install_pip_requirements(container_id=self._container.id)
             self.logger.info("pip second install for old agents is finished")

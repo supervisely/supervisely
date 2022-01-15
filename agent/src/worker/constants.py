@@ -60,6 +60,8 @@ _PULL_POLICY_DICT = {
     str(PullPolicy.NEVER): PullPolicy.NEVER
 }
 
+_DOCKER_NET = 'DOCKER_NET'
+
 _OPTIONAL_DEFAULTS = {
     _WITH_LOCAL_STORAGE: 'true',
     _UPLOAD_RESULT_IMAGES: 'true',
@@ -84,6 +86,7 @@ _OPTIONAL_DEFAULTS = {
     _REQUESTS_CA_BUNDLE: None,
     _HOST_REQUESTS_CA_BUNDLE: None,
     _SHM_SIZE: "5G",
+    _DOCKER_NET: None,  # or string value 'supervisely-vpn'
 }
 
 
@@ -342,6 +345,10 @@ def HOST_REQUESTS_CA_BUNDLE():
 
 def SHM_SIZE():
     return read_optional_setting(_SHM_SIZE)
+
+
+def DOCKER_NET():
+    return read_optional_setting(_DOCKER_NET)
 
 
 def init_constants():
