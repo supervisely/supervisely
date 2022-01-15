@@ -315,6 +315,9 @@ class TaskApp(TaskDockerized):
             'LOGLEVEL': str(self.app_info.get('logLevel', 'INFO')),
             'PYTHONUNBUFFERED': 1
         }
+
+        if constants.DOCKER_NET() is not None:
+            envs['VIRTUAL_HOST'] = f'task-{self.info["task_id"]}.supervisely.local'
         return envs
 
     def process_logs(self):
