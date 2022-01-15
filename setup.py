@@ -19,7 +19,7 @@ version = response.json()["tag_name"]
 setup(
     name="supervisely",
     version=version,
-    packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*']),
+    packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*', 'supervisely', 'supervisely.*']),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
     long_description_content_type='text/markdown',
