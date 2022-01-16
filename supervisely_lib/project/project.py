@@ -1079,8 +1079,9 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None, segmentation_type='semantic'):
+    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False,
+                             target_classes: Optional[List[str]]=None, progress_cb: Optional[Progress]=None,
+                             segmentation_type: Optional[str]='semantic') -> None:
 
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
