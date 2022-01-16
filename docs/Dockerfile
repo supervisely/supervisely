@@ -14,6 +14,7 @@ nbsphinx
 RUN apt-get install libgl1 -y
 RUN pip install supervisely
 
+RUN pip install furo
 
 COPY entrypoint.sh /app/
 
