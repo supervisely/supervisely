@@ -58,6 +58,8 @@ class FigureApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             figure_id = 588801373
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -118,6 +120,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

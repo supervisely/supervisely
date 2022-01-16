@@ -22,6 +22,8 @@ class AnnotationApi(ModuleApi):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -81,9 +83,12 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
+
             dataset_id = 254737
             ann_infos = api.annotation.get_list(dataset_id)
             print(json.dumps(ann_infos[0], indent=4))
@@ -137,6 +142,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -182,6 +189,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -225,6 +234,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -251,6 +262,8 @@ class AnnotationApi(ModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -280,6 +293,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -306,6 +321,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -329,6 +346,8 @@ class AnnotationApi(ModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -355,6 +374,8 @@ class AnnotationApi(ModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -413,6 +434,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -455,6 +478,8 @@ class AnnotationApi(ModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -480,6 +505,8 @@ class AnnotationApi(ModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

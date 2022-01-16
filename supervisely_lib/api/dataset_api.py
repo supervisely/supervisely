@@ -17,6 +17,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -86,6 +88,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             project_id = 1951
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -131,6 +135,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             dataset_id = 384126
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -158,6 +164,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             project_id = 116482
 
@@ -194,6 +202,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             project_id = 116482
 
@@ -244,6 +254,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -298,6 +310,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -336,6 +350,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -376,6 +392,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

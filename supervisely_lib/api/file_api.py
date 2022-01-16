@@ -27,6 +27,8 @@ class FileApi(ModuleApiBase):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -101,6 +103,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -164,6 +168,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -196,6 +202,8 @@ class FileApi(ModuleApiBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -246,6 +254,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -291,6 +301,8 @@ class FileApi(ModuleApiBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -347,6 +359,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -375,6 +389,8 @@ class FileApi(ModuleApiBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -435,6 +451,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -457,6 +475,8 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -478,6 +498,8 @@ class FileApi(ModuleApiBase):
          :Usage example:
 
           .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -506,6 +528,8 @@ class FileApi(ModuleApiBase):
 
           .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -531,6 +555,8 @@ class FileApi(ModuleApiBase):
          :Usage example:
 
           .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -572,6 +598,8 @@ class FileApi(ModuleApiBase):
 
           .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -596,6 +624,8 @@ class FileApi(ModuleApiBase):
          :Usage example:
 
           .. code-block:: python
+
+             import supervisely as sly
 
              os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
              os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -642,6 +672,8 @@ class FileApi(ModuleApiBase):
 
           .. code-block:: python
 
+             import supervisely as sly
+
              os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
              os.environ['API_TOKEN'] = 'Your Supervisely API Token'
              api = sly.Api.from_env()
@@ -680,6 +712,8 @@ class FileApi(ModuleApiBase):
 
           .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -715,6 +749,8 @@ class FileApi(ModuleApiBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

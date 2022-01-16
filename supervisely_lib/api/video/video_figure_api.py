@@ -34,6 +34,8 @@ class VideoFigureApi(FigureApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -68,6 +70,8 @@ class VideoFigureApi(FigureApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
