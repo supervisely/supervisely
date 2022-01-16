@@ -20,6 +20,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create ObjClass (see class ObjClass for more information)
         class_lemon = sly.ObjClass('lemon', sly.Rectangle)
         class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
@@ -167,6 +169,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             class_lemon = sly.ObjClass('lemon', sly.Rectangle)
             class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
 
@@ -207,6 +211,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             data = [
                  {
                       "title": "lemon",
@@ -238,6 +244,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Let's create 2 ObjClasses with the same color
             class_lemon = sly.ObjClass('lemon', sly.Rectangle, [0, 0, 0])

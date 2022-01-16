@@ -66,6 +66,8 @@ class Annotation:
      .. code-block:: python
 
         # Simple Annotation example
+        import supervisely as sly
+
         height, width = 500, 700
         ann = sly.Annotation((height, width))
 
@@ -242,6 +244,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             ann = sly.Annotation((500, 700))
             ann_json = ann.to_json()
 
@@ -299,6 +303,8 @@ class Annotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
 
@@ -364,6 +370,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             team_name = 'Vehicle Detection'
             workspace_name = 'Cities'
             project_name =  'London'
@@ -402,6 +414,8 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             ann = sly.Annotation((300, 400))
 
@@ -448,6 +462,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             ann = sly.Annotation((300, 600))
 
             # Create Label
@@ -471,6 +487,8 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             ann = sly.Annotation((300, 600))
 
@@ -502,6 +520,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             ann = sly.Annotation((300, 600))
 
             # Create Labels
@@ -522,7 +542,7 @@ class Annotation:
                     # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
                     new_ann = ann.delete_label(label)
 
-            print(len(ann.labels))
+            print(len(new_ann.labels))
             # Output: 1
         """
         retained_labels = [_label for _label in self._labels if _label != label]
@@ -562,6 +582,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             ann = sly.Annotation((300, 600))
 
             # Create Tag
@@ -586,6 +608,8 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             ann = sly.Annotation((300, 600))
 
@@ -615,7 +639,9 @@ class Annotation:
 
          .. code-block:: python
 
-            ann = sly.Annotation((300, 600), tag_collection)
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
 
             # Create Tags
             meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
@@ -624,9 +650,12 @@ class Annotation:
             tag_message = sly.Tag(meta_message, 'Hello')
             tag_alert = sly.Tag(meta_alert)
 
+            # Add Tags to Annotation
+            tags_ann = ann.add_tags([tag_message, tag_alert])
+
             # Delete Tags from Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.delete_tags_by_name(['Message', 'Alert'])
+            new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
         """
         retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
         return self.clone(img_tags=TagCollection(items=retained_tags))
@@ -644,18 +673,19 @@ class Annotation:
 
          .. code-block:: python
 
-            ann = sly.Annotation((300, 600), tag_collection)
+            import supervisely as sly
 
-            # Create Tags
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+            ann = sly.Annotation((300, 600))
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+            # Create Tag
+            meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
+            tag_alert = sly.Tag(meta_alert, 'Hello')
+
+            tag_ann = ann.add_tag(tag_alert)
 
             # Delete Tag from Annotation
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.delete_tag_by_name('Alert')
+            new_ann = tag_ann.delete_tag_by_name('Alert')
         """
         return self.delete_tags_by_name([tag_name])
 
@@ -671,6 +701,8 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             ann = sly.Annotation((300, 600))
 
@@ -702,6 +734,8 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             ann = sly.Annotation((300, 600))
 
@@ -756,6 +790,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -805,6 +845,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image and annotation from API
             project_id = 888
@@ -857,7 +903,13 @@ class Annotation:
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -910,6 +962,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -961,6 +1019,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -1011,6 +1075,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -1059,6 +1129,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image and annotation from API
             project_id = 888
@@ -1126,6 +1202,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -1174,6 +1256,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -1215,6 +1303,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
             ann = sly.Annotation.from_img_path(img_path)
         """
@@ -1240,6 +1330,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image and annotation from API
             project_id = 888
@@ -1324,6 +1420,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create object classes
             class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
             class_lemon = sly.ObjClass('lemon', sly.Rectangle)
@@ -1337,7 +1435,7 @@ class Annotation:
             height, width = 300, 400
             ann = sly.Annotation((height, width), labels_arr)
 
-            stat_class = ann.stat_class_count()
+            stat_class = ann.stat_class_count(['lemon', 'kiwi'])
 
             # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
         """
@@ -1364,6 +1462,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image and annotation from API
             project_id = 888
@@ -1411,6 +1515,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image and annotation from API
             project_id = 888
@@ -1463,6 +1573,12 @@ class Annotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # To get Label ID you must first access ProjectMeta
             PROJECT_ID = 999
@@ -1519,6 +1635,8 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create annotation
             meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
             tag_lemon = sly.Tag(meta_lemon, 'lemon')
@@ -1573,6 +1691,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 888
             image_id = 555555
@@ -1611,7 +1735,15 @@ class Annotation:
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
-        # Get image annotation from API
+        .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image annotation from API
             project_id = 7548
             image_id = 2254937
             meta_json = api.project.get_meta(project_id)
@@ -1844,6 +1976,12 @@ class Annotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image annotation from API
             project_id = 7473
             image_id = 2223200
@@ -1982,6 +2120,12 @@ class Annotation:
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image annotation from API
             project_id = 7548
@@ -2355,6 +2499,12 @@ class Annotation:
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get image annotation from API
             project_id = 7473

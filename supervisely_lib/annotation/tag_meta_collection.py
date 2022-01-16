@@ -17,6 +17,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create TagMetas
         meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
 
@@ -170,6 +172,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             tag_metas = tag_metas.to_json()
             # Output:
             # [
@@ -206,6 +210,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             data = [
                 {

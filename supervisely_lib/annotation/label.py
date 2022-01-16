@@ -41,6 +41,8 @@ class LabelBase:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Simple Label example
         class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
         figure = sly.Rectangle(0, 0, 300, 300)
@@ -189,6 +191,11 @@ class LabelBase:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+            tag_dog = sly.Tag(meta_dog, 'Woof')
+            class_dog = sly.ObjClass('dog', sly.Rectangle)
             label_dog = sly.Label(sly.Rectangle(100, 100, 700, 900), class_dog, sly.TagCollection([tag_dog]), description='Insert Label description here')
 
             label_dog_json = label_dog.to_json()
@@ -234,6 +241,12 @@ class LabelBase:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             meta = api.project.get_meta(PROJECT_ID)
 
@@ -282,6 +295,8 @@ class LabelBase:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create label
             class_dog = sly.ObjClass('dog', sly.Rectangle)
             label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
@@ -308,6 +323,8 @@ class LabelBase:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create label
             class_dog = sly.ObjClass('dog', sly.Rectangle)
             label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
@@ -323,7 +340,7 @@ class LabelBase:
 
             # Add Tags
             # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
-            new_label = label.add_tags(tags_arr)
+            new_label = label_dog.add_tags(tags_arr)
         """
         return self.clone(tags=self._tags.add_items(tags))
 
@@ -345,6 +362,9 @@ class LabelBase:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
+            import numpy as np
 
             # Original Label
             class_dog = sly.ObjClass('dog', sly.Rectangle)
@@ -460,6 +480,12 @@ class LabelBase:
 
          .. code-block:: python
 
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
             # Get image and annotation from API
             project_id = 117139
             image_id = 194190568
@@ -572,13 +598,15 @@ class LabelBase:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create label
             class_dog = sly.ObjClass('dog', sly.Rectangle)
             label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
 
             figure_area = label_dog.area
             print(figure_area)
-            # Output: 300000.0
+            # Output: 301101.0
         """
         return self.geometry.area
 
@@ -594,6 +622,8 @@ class LabelBase:
 
          .. code-block:: python
 
+           import supervisely as sly
+
            # Create label
             class_dog = sly.ObjClass('dog', sly.Rectangle)
             label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
@@ -602,8 +632,6 @@ class LabelBase:
             # {'geometryType': 'rectangle'}
 
             label_cat = sly.ObjClass('cat', sly.Bitmap)
-            print(label_cat.geometry.to_json())
-            # {'geometryType': 'bitmap'})
 
             convert_label = label_dog.convert(label_cat)
             for label_bitmap in convert_label:

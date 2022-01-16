@@ -39,6 +39,8 @@ class Tag(KeyObject):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Let's create 3 Tags with different values
         # First we need to initialize a TagMeta
         meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
@@ -158,9 +160,11 @@ class Tag(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Tag with all fields filled in
             meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta=my_tag_meta, value="Husky", sly_id=38456, labeler_login="admin",
+            tag_dog = sly.Tag(meta=meta_dog, value="Husky", sly_id=38456, labeler_login="admin",
                               updated_at="2021-01-22T19:37:50.158Z", created_at="2021-01-22T18:00:00.000Z")
 
             tag_dog_json = tag_dog.to_json()
@@ -210,6 +214,8 @@ class Tag(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
             tag_metas = sly.TagMetaCollection([meta_dog])
 
@@ -250,8 +256,10 @@ class Tag(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(tag_meta_dog, value="Husky")
+            tag_dog = sly.Tag(meta_dog, value="Husky")
 
             print(tag_dog.get_compact_str())
             # Output: 'dog:Husky'
@@ -271,6 +279,8 @@ class Tag(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Let's create 2 identical Tags
             meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
@@ -302,6 +312,8 @@ class Tag(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Let's create 2 identical Tags
             meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
@@ -344,6 +356,8 @@ class Tag(KeyObject):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             #Original Tag
             weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
