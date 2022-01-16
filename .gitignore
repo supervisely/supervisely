@@ -47,3 +47,5 @@ ecosystem/import/*
 
 venv
 /docs/build/*
+.venv
+.idea
