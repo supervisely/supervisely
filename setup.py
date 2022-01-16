@@ -26,7 +26,7 @@ setup(
     url="https://github.com/supervisely/supervisely",
     install_requires=[
         "flask-restful>=0.3.7",
-        "grpcio>=1.32.0",
+        "grpcio==1.34.1",
         "jsonschema>=2.6.0,<3.0.0",
         "matplotlib>=3.3.2",
         "numpy>=1.19",
@@ -50,7 +50,7 @@ setup(
         "bidict>=0.21.2",
         "sk-video>=1.1.10",
         "plotly>=4.11.0",
-        "docker>=4.4.1",
+        "docker==5.0.3",
         "psutil>=5.4.5",
         "imgaug==0.4.0",
         "imagecorruptions==1.1.2",
