@@ -25,7 +25,6 @@ from supervisely_lib.sly_logger import logger
 from supervisely_lib.io.fs_cache import FileCache
 from supervisely_lib.geometry.bitmap import Bitmap
 
-
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
 ItemInfo = namedtuple('ItemInfo', ['dataset_name', 'name', 'img_path', 'ann_path'])
@@ -72,7 +71,7 @@ class Dataset(KeyObject):
             raise TypeError("Argument \'mode\' has type {!r}. Correct type is OpenMode".format(type(mode)))
 
         self._directory = directory
-        self._item_to_ann = {} # item file name -> annotation file name
+        self._item_to_ann = {}  # item file name -> annotation file name
 
         project_dir, ds_name = os.path.split(directory.rstrip('/'))
         self._project_dir = project_dir
@@ -769,7 +768,6 @@ class Dataset(KeyObject):
         return False
 
 
-
 class Project:
     """
     Project is a parent directory for dataset. :class:`Project<Project>` object is immutable.
@@ -785,6 +783,7 @@ class Project:
          project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
     """
     dataset_class = Dataset
+
     class DatasetDict(KeyIndexedCollection):
         item_type = Dataset
 
@@ -1080,8 +1079,9 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False,
-                             target_classes: Optional[List[str]]=None, progress_cb: Optional[Progress]=None) -> None:
+    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
+                             progress_cb=None, segmentation_type='semantic'):
+
         _bg_class_name = "__bg__"
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -1117,23 +1117,6 @@ class Project:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
 
-        # # save palette
-        # palette = {
-        #     "names": [],
-        #     "colors": []
-        # }
-        # for obj_class in dst_meta.obj_classes:
-        #     palette["colors"].extend(obj_class.color)
-        #     palette["names"].append(obj_class.name)
-        #
-        # palette_dir = None
-        # if inplace is True:
-        #     palette_dir = src_project.directory
-        # else:
-        #     palette_dir = dst_project.directory
-        # palette_path = os.path.join(palette_dir, "palette.json")
-        # dump_json_file(palette, palette_path)
-
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
@@ -1142,7 +1125,13 @@ class Project:
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
-                seg_ann = seg_ann.to_segmentation_task()
+
+                if segmentation_type == 'semantic':
+                    seg_ann = seg_ann.to_segmentation_task()
+                elif segmentation_type == 'instance':
+                    pass
+                elif segmentation_type == 'panoptic':
+                    raise NotImplementedError
 
                 seg_path = None
                 if inplace is False:
@@ -1154,7 +1143,7 @@ class Project:
                     seg_path = src_dataset.get_seg_path(item_name)
 
                 # save rendered segmentation
-                #seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
+                # seg_ann.to_indexed_color_mask(seg_path, palette=palette["colors"], colors=len(palette["names"]))
                 seg_ann.to_indexed_color_mask(seg_path)
                 if progress_cb is not None:
                     progress_cb(1)
@@ -1269,11 +1258,13 @@ class Project:
         project.set_meta(new_meta)
 
     @staticmethod
-    def _remove_items(project_dir, without_objects=False, without_tags=False, without_objects_and_tags=False, inplace=False):
+    def _remove_items(project_dir, without_objects=False, without_tags=False, without_objects_and_tags=False,
+                      inplace=False):
         if inplace is False:
             raise ValueError(f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly")
         if without_objects is False and without_tags is False and without_objects_and_tags is False:
-            raise ValueError("One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined")
+            raise ValueError(
+                "One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined")
         project = Project(project_dir, OpenMode.READ)
         for dataset in project.datasets:
             items_to_delete = []
@@ -1281,8 +1272,8 @@ class Project:
                 img_path, ann_path = dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, project.meta)
                 if (without_objects and len(ann.labels) == 0) or \
-                   (without_tags and len(ann.img_tags) == 0) or \
-                   (without_objects_and_tags and ann.is_empty()):
+                        (without_tags and len(ann.img_tags) == 0) or \
+                        (without_objects_and_tags and ann.is_empty()):
                     items_to_delete.append(item_name)
             for item_name in items_to_delete:
                 dataset.delete_item(item_name)
@@ -1485,16 +1476,6 @@ class Project:
         return train_items, val_items
 
 
-    # @staticmethod
-    # def get_train_val_splits_by_dataset(self, project_dir, train_datasets, val_datasets):
-    #     pass
-    #
-    # @staticmethod
-    # def get_train_val_splits_by_portion(project_dir, train_portion, val_portion):
-    #     pass
-    #
-
-
 def read_single_project(dir: str, project_class: Project) -> Project:
     """
     Read project from given directory.
@@ -1652,7 +1633,8 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional
         image_ids = [img_info.id for img_info in img_infos]
 
         if log_progress and progress_cb is None:
-            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(img_paths))
+            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name),
+                                   total_cnt=len(img_paths))
             progress_cb = ds_progress.iters_done_report
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
 
@@ -1765,7 +1747,7 @@ def _maybe_append_image_extension(name, ext):
     return result
 
 
-def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None, project_meta: ProjectMeta=None,
+def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=None, project_meta: ProjectMeta = None,
                       only_image_tags=False, save_image_info=False):
     images = api.image.get_list(dataset_id)
     images_to_download = images

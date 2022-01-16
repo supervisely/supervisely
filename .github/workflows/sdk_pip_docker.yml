@@ -35,7 +35,7 @@ jobs:
     - name: Delay for PyPI publish
       uses: jakejarvis/wait-action@master
       with:
-        time: '120s'
+        time: '240s'
 
     - name: Build and Push Docker Image
       uses: mr-smithers-excellent/docker-build-push@v5

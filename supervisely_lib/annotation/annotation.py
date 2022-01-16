@@ -1798,9 +1798,11 @@ class Annotation:
         #(unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
+
             dest_class = mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
+
             mask = common_img == idx
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
@@ -2247,10 +2249,14 @@ class Annotation:
         w = self.img_size[1]
         mask = np.zeros((h, w, 1), dtype=np.int32)
 
-        for label in self.labels:
+        for index, label in enumerate(self.labels, start=1):
             label: Label
             if type(label.geometry) == Bitmap:
-                label.draw(mask, class_to_index[label.obj_class.name])
+                if class_to_index is not None:
+                    label.draw(mask, class_to_index[label.obj_class.name])
+                else:
+                    label.draw(mask, index)
+
 
         segmaps = None
         if np.any(mask):
