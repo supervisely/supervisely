@@ -23,6 +23,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -75,6 +77,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             workspace_id = 23821
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -125,6 +129,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             task_id = 121230
 
@@ -178,6 +184,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             task_id = 121230
 
@@ -265,6 +273,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             task_id = 121230
 

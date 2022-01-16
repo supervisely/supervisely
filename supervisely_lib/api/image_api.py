@@ -30,6 +30,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -115,6 +117,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -177,6 +181,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -199,6 +205,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -237,6 +245,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -260,6 +270,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -306,6 +318,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -362,6 +376,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -400,6 +416,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -425,6 +443,8 @@ class ImageApi(RemoveableBulkModuleApi):
             # Helpful method when your uploading was interrupted
             # You can check what images has been successfully uploaded by their hashes and what not
             # And continue uploading the rest of the images from that point
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -468,6 +488,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block::
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -553,6 +575,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -619,6 +643,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -649,6 +675,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -696,6 +724,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -729,6 +759,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -759,6 +791,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -817,6 +851,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -859,6 +895,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -916,6 +954,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1072,6 +1112,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1145,6 +1187,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1186,6 +1230,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1215,6 +1261,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1246,6 +1294,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1300,6 +1350,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1340,6 +1392,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1378,6 +1432,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1406,6 +1462,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1439,6 +1497,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1481,6 +1541,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -1512,6 +1574,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

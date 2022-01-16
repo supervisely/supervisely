@@ -33,6 +33,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -111,6 +113,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             workspace_id = 58
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -186,6 +190,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             project_id = 1951
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -231,6 +237,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -292,6 +300,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -343,6 +353,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             workspace_id = 8
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -390,6 +402,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             lemons_proj_id = 1951
             kiwis_proj_id = 1952
 
@@ -417,6 +431,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             project_id = 454
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -441,6 +457,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             project_id = 454
 
@@ -471,6 +489,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -504,6 +524,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             project_id = 1951
 
@@ -546,6 +568,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             project_id = 1951
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -568,6 +592,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             project_id = 1951
 
@@ -596,6 +622,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             project_id = 1951
             custom_data = {1:2}
 
@@ -623,6 +651,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

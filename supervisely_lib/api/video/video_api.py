@@ -34,6 +34,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -132,6 +134,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -229,6 +233,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             video_id = 198702499
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -276,6 +282,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             video_id = 198702499
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -305,6 +313,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -367,6 +377,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -446,6 +458,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -484,6 +498,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -513,6 +529,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -548,6 +566,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -627,6 +647,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Helpful method when your uploading was interrupted
             # You can check what videos has been successfully uploaded by their hashes and what not
             # And continue uploading the rest of the videos from that point
@@ -683,6 +705,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

@@ -52,9 +52,6 @@ class ObjectApi(RemoveableBulkModuleApi):
         :type id: int
         :return: Information about Object. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
-        :Usage example:
-
-         .. code-block:: python
         """
         return self._get_info_by_id(id, 'objects.info')
 
@@ -72,6 +69,8 @@ class ObjectApi(RemoveableBulkModuleApi):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

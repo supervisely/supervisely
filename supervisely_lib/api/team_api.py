@@ -84,6 +84,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -94,7 +96,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
-        team_info = api.worksapce.get_info_by_id(team_id) # api usage example
+        team_info = api.team.get_info_by_id(team_id) # api usage example
     """
     @staticmethod
     def info_sequence():
@@ -141,6 +143,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             team_id = 8
 
@@ -195,6 +199,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -235,6 +241,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -285,7 +293,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
          .. code-block:: python
 
-            from supervisely_lib.api.team_api import ActivityAction as aa
+            import supervisely as sly
+            from supervisely.api.team_api import ActivityAction as aa
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'

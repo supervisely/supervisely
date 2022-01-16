@@ -15,6 +15,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
         token = 'Your Supervisely API Token'
@@ -25,7 +27,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
-        workspace_info = api.worksapce.get_info_by_id(workspace_id) # api usage example
+        workspace_info = api.workspace.get_info_by_id(workspace_id) # api usage example
     """
     @staticmethod
     def info_sequence():
@@ -74,6 +76,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -127,6 +131,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
@@ -160,6 +166,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
