@@ -42,6 +42,8 @@ class ObjClass(KeyObject, JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Simple ObjClass example
         class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 
@@ -169,6 +171,8 @@ class ObjClass(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             class_lemon = sly.ObjClass('lemon', sly.Rectangle)
             lemon_json = class_lemon.to_json()
 
@@ -206,6 +210,8 @@ class ObjClass(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             data = {
                 "title": "lemon",
                 "shape": "rectangle",
@@ -236,6 +242,8 @@ class ObjClass(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Let's create 2 identical ObjClasses and 1 different ObjClass and compare them to each other
             class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
             class_lemon_2 = sly.ObjClass('Lemon', sly.Rectangle)
@@ -263,6 +271,8 @@ class ObjClass(KeyObject, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Let's create 2 identical ObjClasses
             class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
@@ -317,6 +327,8 @@ class ObjClass(KeyObject, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 

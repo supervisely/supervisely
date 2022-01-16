@@ -15,6 +15,8 @@ class TagCollection(MultiKeyIndexedCollection):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create TagMetas (see class TagMeta for additional information about creating TagMetas)
         meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
 
@@ -140,6 +142,8 @@ class TagCollection(MultiKeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
 
             seasons = ["Winter", "Spring", "Summer", "Autumn"]
@@ -179,6 +183,8 @@ class TagCollection(MultiKeyIndexedCollection):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Initialize TagMetaCollection
 

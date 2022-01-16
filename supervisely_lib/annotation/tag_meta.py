@@ -68,6 +68,8 @@ class TagMeta(KeyObject, JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # TagMeta
         meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
 
@@ -283,6 +285,8 @@ class TagMeta(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             colors = ["brown", "white", "black", "red", "blue", "yellow", "grey"]
             meta_color = sly.TagMeta('Color',
                                     sly.TagValueType.ONEOF_STRING,
@@ -347,6 +351,8 @@ class TagMeta(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             data = {
                 "name":"Color",
                 "value_type":"oneof_string",
@@ -359,7 +365,7 @@ class TagMeta(KeyObject, JsonSerializable):
                     "blue",
                     "yellow",
                     "grey"
-                ]
+                ],
                 "hotkey":"M",
                 "applicable_type":"all",
                 "classes":[
@@ -403,6 +409,8 @@ class TagMeta(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             #In order to add possible values, you must first initialize a variable where all possible values will be stored if it doesnt exist already
             colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
             meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, applicable_classes=["dog", "cat"])
@@ -436,6 +444,8 @@ class TagMeta(KeyObject, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Initialize TagMeta
             meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
@@ -479,6 +489,8 @@ class TagMeta(KeyObject, JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Let's create 2 identical TagMetas
             meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
             meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
@@ -509,6 +521,8 @@ class TagMeta(KeyObject, JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             # Let's create 2 identical TagMetas
             meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
@@ -558,6 +572,8 @@ class TagMeta(KeyObject, JsonSerializable):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             #Original TagMeta
             meta_dog_breed = sly.TagMeta('breed', sly.TagValueType.NONE)
