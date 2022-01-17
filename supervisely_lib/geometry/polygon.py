@@ -41,6 +41,8 @@ class Polygon(VectorGeometry):
 
      .. code-block:: python
 
+            import supervisely as sly
+
             exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
             interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
             figure = sly.Polygon(exterior, interior)
@@ -79,6 +81,8 @@ class Polygon(VectorGeometry):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             figure_json =  {
                 "points": {
@@ -121,6 +125,8 @@ class Polygon(VectorGeometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """

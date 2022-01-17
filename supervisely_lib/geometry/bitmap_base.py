@@ -116,6 +116,8 @@ class BitmapBase(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             mask = np.array([[0, 0, 0, 0, 0],
                              [0, 1, 1, 1, 0],
                              [0, 1, 0, 1, 0],
@@ -157,6 +159,8 @@ class BitmapBase(Geometry):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             figure_json = {
                 "bitmap": {

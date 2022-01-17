@@ -64,6 +64,8 @@ class Bitmap(BitmapBase):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create simple bitmap
         mask = np.array([[0, 0, 0, 0, 0],
                          [0, 1, 1, 1, 0],
@@ -139,11 +141,13 @@ class Bitmap(BitmapBase):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
             height, width = ann.img_size
             rotator = ImageRotator((height, width), 25)
             # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            rotate_figure = figure.rotate(ImageRotator(rotator)
+            rotate_figure = figure.rotate(rotator)
         """
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
         self.draw(full_img_mask, 1)
@@ -246,6 +250,8 @@ class Bitmap(BitmapBase):
 
          .. code-block:: python
 
+              import supervisely as sly
+
               encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
               figure_data = sly.Bitmap.base64_2_data(encoded_string)
               print(figure_data)
@@ -277,6 +283,12 @@ class Bitmap(BitmapBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
             # Get annotation from API
             meta_json = api.project.get_meta(PROJECT_ID)
@@ -389,6 +401,8 @@ class Bitmap(BitmapBase):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             mask = np.array([[0, 0, 0, 0, 0],
                             [0, 1, 1, 1, 0],
