@@ -37,7 +37,9 @@ class Node(JsonSerializable):
 
      .. code-block:: python
 
-        from supervisely_lib.geometry.graph import Node
+        import supervisely as sly
+        from supervisely.geometry.graph import Node
+
         vertex = Node(sly.PointLocation(5, 5))
     """
     def __init__(self, location: PointLocation, disabled: Optional[bool] = True):
@@ -96,7 +98,9 @@ class Node(JsonSerializable):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.graph import Node
+            import supervisely as sly
+            from supervisely.geometry.graph import Node
+
             vertex = Node(sly.PointLocation(5, 5))
             vertex_json = vertex.to_json()
             print(vertex_json)
@@ -149,7 +153,9 @@ class GraphNodes(Geometry):
 
      .. code-block:: python
 
+        import supervisely as sly
         from supervisely_lib.geometry.graph import Node, GraphNodes
+
         vertex_1 = Node(sly.PointLocation(5, 5))
         vertex_2 = Node(sly.PointLocation(100, 100))
         vertex_3 = Node(sly.PointLocation(200, 250))
@@ -203,7 +209,7 @@ class GraphNodes(Geometry):
                     }
                 }
             }
-            from supervisely_lib.geometry.graph import GraphNodes
+            from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
         nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data['nodes'].items()}
@@ -225,7 +231,9 @@ class GraphNodes(Geometry):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.graph import Node, GraphNodes
+            import supervisely as sly
+            from supervisely.geometry.graph import Node, GraphNodes
+
             vertex_1 = Node(sly.PointLocation(5, 5))
             vertex_2 = Node(sly.PointLocation(100, 100))
             vertex_3 = Node(sly.PointLocation(200, 250))
@@ -265,6 +273,8 @@ class GraphNodes(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
         """
         is_all_nodes_inside = all(rect.contains_point_location(node.location) for node in self._nodes.values())
@@ -282,6 +292,8 @@ class GraphNodes(Geometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             rel_crop_figures = figure.relative_crop(sly.Rectangle(0, 0, 300, 350))
         """
@@ -376,7 +388,8 @@ class GraphNodes(Geometry):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            from supervisely.geometry.image_rotator import ImageRotator
+
             # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)

@@ -40,6 +40,8 @@ class Rectangle(Geometry):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         top = 100
         left = 100
         bottom = 700
@@ -109,6 +111,8 @@ class Rectangle(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             figure_json = {
                 "points": {
                     "exterior": [
@@ -147,6 +151,8 @@ class Rectangle(Geometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
         """
@@ -199,7 +205,8 @@ class Rectangle(Geometry):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            from supervisely.geometry.image_rotator import ImageRotator
+
             # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)
@@ -362,6 +369,8 @@ class Rectangle(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             np_array = np.zeros((300, 400))
             figure_from_np = sly.Rectangle.from_array(np_array)
         """
@@ -382,6 +391,8 @@ class Rectangle(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
@@ -400,6 +411,8 @@ class Rectangle(Geometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
             figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
@@ -542,6 +555,8 @@ class Rectangle(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             rect = sly.Rectangle(200, 250, 400, 500))
             print(figure.contains(rect))
             # Output: True
@@ -563,6 +578,8 @@ class Rectangle(Geometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             pt = sly.PointLocation(250, 300))
             print(figure.contains_point_location(pt))
@@ -619,6 +636,8 @@ class Rectangle(Geometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             rect = sly.Rectangle(90, 90, 400, 500)
             print(figure.intersects_with(rect))

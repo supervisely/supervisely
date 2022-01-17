@@ -38,6 +38,8 @@ class Polyline(VectorGeometry):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
         figure = sly.Polyline(exterior)
     """
@@ -67,6 +69,8 @@ class Polyline(VectorGeometry):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             figure_json = {
                 "points": {
@@ -101,6 +105,8 @@ class Polyline(VectorGeometry):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
         """

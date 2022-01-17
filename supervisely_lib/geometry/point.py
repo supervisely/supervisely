@@ -35,6 +35,8 @@ class Point(Geometry):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         row = 100
         col = 200
         figure = sly.Point(row, col)
@@ -102,6 +104,8 @@ class Point(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             figure_loc = sly.PointLocation(100, 200)
             figure = sly.Point.from_point_location(figure_loc)
         """
@@ -140,6 +144,8 @@ class Point(Geometry):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """
         return [self.clone()] if rect.contains_point_location(self.point_location) else []
@@ -157,7 +163,9 @@ class Point(Geometry):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
             # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)
@@ -341,6 +349,8 @@ class Point(Geometry):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             figure_json = {
                 "points": {

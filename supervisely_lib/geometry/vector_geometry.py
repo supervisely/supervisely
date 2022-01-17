@@ -36,6 +36,8 @@ class VectorGeometry(Geometry):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
         interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
 
@@ -246,7 +248,8 @@ class VectorGeometry(Geometry):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            from supervisely.geometry.image_rotator import ImageRotator
+
             # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)

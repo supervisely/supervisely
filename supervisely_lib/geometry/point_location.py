@@ -23,6 +23,8 @@ class PointLocation(JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         row = 100
         col = 200
         loc = sly.PointLocation(row, col)
@@ -107,6 +109,8 @@ class PointLocation(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             loc_json = {
                 "points": {
@@ -198,7 +202,8 @@ class PointLocation(JsonSerializable):
 
          .. code-block:: python
 
-            from supervisely_lib.geometry.image_rotator import ImageRotator
+            from supervisely.geometry.image_rotator import ImageRotator
+
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)
@@ -310,6 +315,8 @@ def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Opti
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             loc_1 = sly.PointLocation(100, 200)
             loc_2 = sly.PointLocation(300, 400)

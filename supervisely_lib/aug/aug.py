@@ -33,7 +33,12 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import fliplr
+        import supervisely as sly
+        from supervisely.aug.aug import fliplr
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -70,7 +75,12 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import flipud
+        import supervisely as sly
+        from supervisely.aug.aug import flipud
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -117,7 +127,12 @@ def crop(img: np.ndarray, ann: Annotation, top_pad: Optional[int] = 0, left_pad:
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import crop
+        import supervisely as sly
+        from supervisely.aug.aug import crop
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -170,7 +185,12 @@ def crop_fraction(img: np.ndarray, ann: Annotation, top: Optional[float] = 0, le
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import crop_fraction
+        import supervisely as sly
+        from supervisely.aug.aug import crop_fraction
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -221,7 +241,12 @@ def random_crop(img: np.ndarray, ann: Annotation, height: int, width: int) -> Tu
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import random_crop
+        import supervisely as sly
+        from supervisely.aug.aug import random_crop
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -276,7 +301,12 @@ def random_crop_fraction(
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import random_crop_fraction
+        import supervisely as sly
+        from supervisely.aug.aug import random_crop_fraction
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -370,7 +400,12 @@ def instance_crop(img: np.ndarray, ann: Annotation, class_title: str, save_other
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import instance_crop
+        import supervisely as sly
+        from supervisely.aug.aug import instance_crop
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -442,7 +477,12 @@ def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, A
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import resize
+        import supervisely as sly
+        from supervisely.aug.aug import resize
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -497,7 +537,12 @@ def scale(img: np.ndarray, ann: Annotation, frow: Optional[float] = None, fcol: 
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import scale
+        import supervisely as sly
+        from supervisely.aug.aug import scale
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501
@@ -551,7 +596,12 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: Optional[str]
 
      .. code-block:: python
 
-        from supervisely_lib.aug.aug import rotate
+        import supervisely as sly
+        from supervisely.aug.aug import rotate
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         # Download image and annotation from API
         project_id = 116501

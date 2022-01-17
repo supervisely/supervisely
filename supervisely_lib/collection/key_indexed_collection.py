@@ -33,6 +33,8 @@ class KeyIndexedCollection:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
         item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
         collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -140,6 +142,8 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -162,13 +166,15 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
             # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
             item_dog = sly.ObjClass('dog', sly.Rectangle)
             item_mouse = sly.ObjClass('mouse', sly.Bitmap)
-            new_collection = collection.add([item_dog, item_mouse])
+            new_collection = collection.add_items([item_dog, item_mouse])
         """
         return self.clone(items=[*self.items(), *items])
 
@@ -186,6 +192,8 @@ class KeyIndexedCollection:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -228,6 +236,8 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -252,6 +262,8 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -270,6 +282,8 @@ class KeyIndexedCollection:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -290,6 +304,8 @@ class KeyIndexedCollection:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -313,6 +329,8 @@ class KeyIndexedCollection:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -358,6 +376,8 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -395,6 +415,8 @@ class KeyIndexedCollection:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -460,6 +482,8 @@ class KeyIndexedCollection:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
@@ -508,6 +532,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
         item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -566,6 +592,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             other_cat = sly.ObjClass('cat', sly.Rectangle)
@@ -594,6 +622,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -629,6 +659,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
             other_cat = sly.ObjClass('cat', sly.Rectangle)
@@ -657,6 +689,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -701,6 +735,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
@@ -771,6 +807,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
             item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)

@@ -117,6 +117,8 @@ class ImageRotator:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             point = sly.PointLocation(100, 200)
             height, width = 300, 400
             rotator = ImageRotator((height, width), 25)
