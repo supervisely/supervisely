@@ -32,7 +32,7 @@ def load_json_file(filename: str) -> Dict:
 
      .. code-block:: python
 
-        from supervisely_lib.io.json import load_json_file
+        from supervisely.io.json import load_json_file
         json_example = load_json_file('/home/admin/work/projects/examples/ann.json')
         print(json_example)
         # Output: {
@@ -132,7 +132,7 @@ def dump_json_file(data: Dict, filename: str, indent: Optional[int]=4) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.json import dump_json_file
+        from supervisely.io.json import dump_json_file
         data = {1: 'example'}
         dump_json_file(data, '/home/admin/work/projects/examples/1.json')
     """
@@ -171,7 +171,7 @@ def modify_keys(data: Dict, prefix: Optional[str]=None, suffix: Optional[str]=No
 
      .. code-block:: python
 
-        from supervisely_lib.io.json import modify_keys
+        from supervisely.io.json import modify_keys
         data = {'1': 'example', '3': 4}
         new_data = modify_keys(data, prefix='pr_', suffix='_su')
         print(new_data)

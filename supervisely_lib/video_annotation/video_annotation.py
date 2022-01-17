@@ -39,6 +39,8 @@ class VideoAnnotation:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Simple VideoAnnotation example
         height, width = 500, 700
         frames_count = 10
@@ -160,6 +162,8 @@ class VideoAnnotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             height, width = 500, 700
             frames_count = 1
             video_ann = sly.VideoAnnotation((height, width), frames_count)
@@ -179,6 +183,8 @@ class VideoAnnotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             height, width = 500, 700
             frames_count = 15
             video_ann = sly.VideoAnnotation((height, width), frames_count)
@@ -197,6 +203,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 500, 700
             frames_count = 1
@@ -226,6 +234,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 500, 700
             frames_count = 1
@@ -281,6 +291,8 @@ class VideoAnnotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             height, width = 500, 700
             frames_count = 1
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
@@ -307,6 +319,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 500, 700
             frames_count = 1
@@ -350,6 +364,8 @@ class VideoAnnotation:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             height, width = 500, 700
             frames_count = 1
             descr = 'example'
@@ -369,6 +385,8 @@ class VideoAnnotation:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 50, 700
             frames_count = 1
@@ -399,6 +417,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 500, 700
             frames_count = 10
@@ -454,6 +474,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             video_ann_json = {
                 "size": {
@@ -516,6 +538,8 @@ class VideoAnnotation:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             height, width = 500, 700
             frames_count = 1

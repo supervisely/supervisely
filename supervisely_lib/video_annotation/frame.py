@@ -20,6 +20,8 @@ class Frame(KeyObject):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         frame_index = 7
         geometry = sly.Rectangle(0, 0, 100, 100)
         class_car = sly.ObjClass('car', sly.Rectangle)
@@ -105,6 +107,8 @@ class Frame(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             frame_index = 7
             geometry = sly.Rectangle(0, 0, 100, 100)
             class_car = sly.ObjClass('car', sly.Rectangle)
@@ -133,6 +137,8 @@ class Frame(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             frame_index = 7
             geometry = sly.Rectangle(0, 0, 100, 100)
@@ -197,36 +203,18 @@ class Frame(KeyObject):
 
          .. code-block:: python
 
-            frame_json = {
-                "index": 7,
-                "figures": [
-                    {
-                        "key": "22eef4321cc04e5190f39bd7fe5a5648",
-                        "objectKey": "05088eb5d6fc481caa98972c6e3189ff",
-                        "geometryType": "rectangle",
-                        "geometry": {
-                            "points": {
-                                "exterior": [
-                                    [
-                                        0,
-                                        0
-                                    ],
-                                    [
-                                        100,
-                                        100
-                                    ]
-                                ],
-                                "interior": []
-                            }
-                        }
-                    }
-                ]
-            }
+            import supervisely as sly
 
+            frame_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
             class_car = sly.ObjClass('car', sly.Rectangle)
             object_car = sly.VideoObject(class_car)
-            video_obj_coll = sly.VideoObjectCollection([object_car])
+            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
 
+            frame = sly.Frame(frame_index, figures=[figure_car])
+            frame_json = frame.to_json()
+
+            video_obj_coll = sly.VideoObjectCollection([object_car])
             frame_car = sly.Frame.from_json(frame_json, video_obj_coll)
         """
         index = data[INDEX]
@@ -257,6 +245,8 @@ class Frame(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             frame_index = 7
             geometry = sly.Rectangle(0, 0, 100, 100)

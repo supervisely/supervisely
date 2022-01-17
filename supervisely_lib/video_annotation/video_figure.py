@@ -47,6 +47,8 @@ class VideoFigure:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         obj_class_car = sly.ObjClass('car', sly.Rectangle)
         video_obj_car = sly.VideoObject(obj_class_car)
         fr_index = 7
@@ -227,6 +229,8 @@ class VideoFigure:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
             fr_index = 7
@@ -300,6 +304,8 @@ class VideoFigure:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create VideoFigure from json we use data from example to_json(see above)
             new_video_figure = sly.VideoFigure.from_json(video_figure_json, sly.VideoObjectCollection([video_obj_car]), fr_index)
         """
@@ -370,6 +376,8 @@ class VideoFigure:
 
          .. code-block:: python
 
+            import supervisely as sly
+
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
             fr_index = 7
@@ -430,6 +438,8 @@ class VideoFigure:
         :Usage Example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)

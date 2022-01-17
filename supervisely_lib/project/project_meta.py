@@ -52,6 +52,8 @@ class ProjectMeta(JsonSerializable):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         #Empty ProjectMeta example
         meta = sly.ProjectMeta()
         print(meta)
@@ -107,11 +109,13 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             lemon = sly.ObjClass('lemon', sly.Rectangle)
             kiwi = sly.ObjClass('kiwi', sly.Polygon)
             objects = sly.ObjClassCollection([lemon, kiwi])
 
-            meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
+            meta = sly.ProjectMeta(obj_classes=objects, project_type=sly.ProjectType.IMAGES)
 
             meta_classes = meta.obj_classes
             print(meta_classes.to_json())
@@ -149,6 +153,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
             tags = sly.TagMetaCollection([tag_fruit])
 
@@ -179,6 +185,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
 
@@ -250,6 +258,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta_json = {
                 "classes": [
                     {
@@ -308,6 +318,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta_1 = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
@@ -381,6 +393,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
             collection_cat = sly.ObjClassCollection([class_cat])
@@ -428,6 +442,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
             # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
@@ -460,6 +476,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
@@ -502,6 +520,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
             # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
@@ -535,6 +555,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
@@ -593,6 +615,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
             # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
@@ -634,6 +658,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
@@ -686,6 +712,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
             # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
@@ -728,6 +756,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
@@ -782,6 +812,8 @@ class ProjectMeta(JsonSerializable):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
             class_dog = sly.ObjClass('dog', sly.Bitmap)
@@ -832,6 +864,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
@@ -886,6 +920,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
 
@@ -953,6 +989,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Polygon)
@@ -1031,6 +1069,8 @@ class ProjectMeta(JsonSerializable):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Polygon)

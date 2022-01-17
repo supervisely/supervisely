@@ -15,8 +15,9 @@ class VideoTagCollection(TagCollection):
 
      .. code-block:: python
 
-        from supervisely_lib.video_annotation.video_tag import VideoTag
-        from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+        import supervisely as sly
+        from supervisely.video_annotation.video_tag import VideoTag
+        from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
         # Create two VideoTags for collection
         meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
@@ -165,8 +166,9 @@ class VideoTagCollection(TagCollection):
 
          .. code-block:: python
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
-            from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
             car_tag = VideoTag(meta_car, value='acura')
@@ -207,6 +209,9 @@ class VideoTagCollection(TagCollection):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
             tags_json = [
                 {

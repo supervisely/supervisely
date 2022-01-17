@@ -29,6 +29,8 @@ def random_rgb() -> List[int, int, int]:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         color = sly.color.random_rgb()
         print(color)
         # Output: [138, 15, 123]
@@ -72,6 +74,8 @@ def generate_rgb(exist_colors: List[List[int, int, int]]) -> List[int, int, int]
 
      .. code-block:: python
 
+        import supervisely as sly
+
         exist_colors = [[0, 0, 0], [128, 64, 255]]
         color = sly.color.generate_rgb(exist_colors)
         print(color)
@@ -102,6 +106,8 @@ def rgb2hex(color: List[int, int, int]) -> str:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         hex_color = sly.color.rgb2hex([128, 64, 255])
         print(hex_color)
         # Output: #8040FF
@@ -131,6 +137,8 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         hex_color = '#8040FF'
         color = sly.color.hex2rgb(hex_color)

@@ -26,6 +26,8 @@ def get_file_name(path: str) -> str:
 
      .. code-block::
 
+        import supervisely as sly
+
         file_name = sly.fs.get_file_name("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
 
         print(file_name)
@@ -45,6 +47,8 @@ def get_file_ext(path: str) -> str:
     :Usage example:
 
      .. code-block::
+
+        import supervisely as sly
 
         file_ext = sly.fs.get_file_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
 
@@ -66,6 +70,8 @@ def get_file_name_with_ext(path: str) -> str:
 
      .. code-block::
 
+        import supervisely as sly
+
         file_name_ext = sly.fs.get_file_name_with_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
 
         print(file_name_ext)
@@ -85,6 +91,8 @@ def list_dir_recursively(dir: str) -> List[str]:
     :Usage example:
 
      .. code-block::
+
+        import supervisely as sly
 
         list_dir = sly.fs.list_dir_recursively("/home/admin/work/projects/lemons_annotated/")
 
@@ -115,6 +123,8 @@ def list_files_recursively(dir: str, valid_extensions: Optional[List[str]] = Non
      :Usage example:
 
       .. code-block:: python
+
+         import supervisely as sly
 
          list_files = sly.fs.list_files_recursively("/home/admin/work/projects/lemons_annotated/ds1/img/")
 
@@ -147,6 +157,8 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
 
      .. code-block:: python
 
+         import supervisely as sly
+
          list_files = sly.fs.list_files("/home/admin/work/projects/lemons_annotated/ds1/img/")
 
          print(list_files)
@@ -172,7 +184,7 @@ def mkdir(dir: str, remove_content_if_exists: Optional[bool]=False) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import mkdir
+        from supervisely.io.fs import mkdir
         mkdir('/home/admin/work/projects/example')
     """
     if dir_exists(dir) and remove_content_if_exists is True:
@@ -194,7 +206,7 @@ def ensure_base_path(path: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import ensure_base_path
+        from supervisely.io.fs import ensure_base_path
         ensure_base_path('/home/admin/work/projects/example')
     """
     dst_dir = os.path.split(path)[0]
@@ -216,7 +228,7 @@ def copy_file(src: str, dst: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import copy_file
+        from supervisely.io.fs import copy_file
         copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
     """
     ensure_base_path(dst)
@@ -239,7 +251,7 @@ def hardlink_or_copy_file(src: str, dst: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import hardlink_or_copy_file
+        from supervisely.io.fs import hardlink_or_copy_file
         hardlink_or_copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/link.txt')
     """
     try:
@@ -262,7 +274,7 @@ def hardlink_or_copy_tree(src: str, dst: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import hardlink_or_copy_tree
+        from supervisely.io.fs import hardlink_or_copy_tree
         hardlink_or_copy_tree('/home/admin/work/projects/examples', '/home/admin/work/tests/links')
     """
     mkdir(dst)
@@ -286,7 +298,7 @@ def dir_exists(dir: str) -> bool:
 
      .. code-block:: python
 
-          from supervisely_lib.io.fs import dir_exists
+          from supervisely.io.fs import dir_exists
           dir_exists('/home/admin/work/projects/examples') # True
           dir_exists('/home/admin/work/not_exist_dir') # False
     """
@@ -305,7 +317,7 @@ def dir_empty(dir: str) -> bool:
 
      .. code-block:: python
 
-          from supervisely_lib.io.fs import dir_empty
+          from supervisely.io.fs import dir_empty
           dir_empty('/home/admin/work/projects/examples') # False
     """
     if dir_exists(dir) and len(list_files_recursively(dir)) > 0:
@@ -325,7 +337,7 @@ def file_exists(path: str) -> bool:
 
      .. code-block:: python
 
-          from supervisely_lib.io.fs import file_exists
+          from supervisely.io.fs import file_exists
           file_exists('/home/admin/work/projects/examples/1.jpeg') # True
           file_exists('/home/admin/work/projects/examples/not_exist_file.jpeg') # False
     """
@@ -344,7 +356,7 @@ def get_subdirs(dir_path: str) -> list:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import get_subdirs
+        from supervisely.io.fs import get_subdirs
         subdirs = get_subdirs('/home/admin/work/projects/examples')
         print(subdirs)
         # Output: ['tests', 'users', 'ds1']
@@ -368,7 +380,7 @@ def clean_dir(dir_: str, ignore_errors: Optional[bool]=True) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import clean_dir
+        from supervisely.io.fs import clean_dir
         clean_dir('/home/admin/work/projects/examples')
     """
     # old implementation
@@ -400,7 +412,7 @@ def remove_dir(dir_: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import remove_dir
+        from supervisely.io.fs import remove_dir
         remove_dir('/home/admin/work/projects/examples')
     """
     shutil.rmtree(dir_, ignore_errors=True)
@@ -418,7 +430,7 @@ def silent_remove(file_path: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import silent_remove
+        from supervisely.io.fs import silent_remove
         silent_remove('/home/admin/work/projects/examples/1.jpeg')
     """
     try:
@@ -440,7 +452,7 @@ def get_file_size(path: str) -> int:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import get_file_size
+        from supervisely.io.fs import get_file_size
         file_size = get_file_size('/home/admin/work/projects/examples/1.jpeg') # 161665
     """
     return os.path.getsize(path)
@@ -458,7 +470,7 @@ def get_directory_size(dir_path: str) -> int:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import get_directory_size
+        from supervisely.io.fs import get_directory_size
         dir_size = get_directory_size('/home/admin/work/projects/examples') # 8574563
     """
     total_size = 0
@@ -483,7 +495,7 @@ def archive_directory(dir_: str, tar_path: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import archive_directory
+        from supervisely.io.fs import archive_directory
         archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
     """
     with tarfile.open(tar_path, 'w', encoding='utf-8') as tar:
@@ -502,7 +514,7 @@ def get_file_hash(path: str) -> str:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import get_file_hash
+        from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
     return get_bytes_hash(open(path, 'rb').read())
@@ -520,7 +532,7 @@ def tree(dir_path: str) -> str:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import tree
+        from supervisely.io.fs import tree
         dir_tree = tree('/home/admin/work/projects/examples')
         print(dir_tree)
         # Output: /home/admin/work/projects/examples
@@ -589,7 +601,7 @@ def log_tree(dir_path: str, logger) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import log_tree
+        from supervisely.io.fs import log_tree
         logger = sly.logger
         log_tree('/home/admin/work/projects/examples', logger)
     """
@@ -609,7 +621,7 @@ def touch(path: str) -> None:
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import touch
+        from supervisely.io.fs import touch
         touch('/home/admin/work/projects/examples/1.jpeg')
     """
     ensure_base_path(path)
@@ -635,7 +647,7 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
 
      .. code-block:: python
 
-        from supervisely_lib.io.fs import download
+        from supervisely.io.fs import download
         img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
         im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg')
         print(im_path)

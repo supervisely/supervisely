@@ -35,7 +35,8 @@ class VideoTag(Tag):
 
      .. code-block:: python
 
-        from supervisely_lib.video_annotation.video_tag import VideoTag
+        import supervisely as sly
+        from supervisely.video_annotation.video_tag import VideoTag
 
         meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
         # Now we can create a VideoTag using our TagMeta
@@ -104,7 +105,8 @@ class VideoTag(Tag):
 
          .. code-block:: python
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
             meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
             tag_dog = VideoTag(meta_dog)
             tag_dog_json = tag_dog.to_json()
@@ -146,6 +148,8 @@ class VideoTag(Tag):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             tag_cat_json = {
                 "name": "cat",
                 "value": "Fluffy",
@@ -155,7 +159,7 @@ class VideoTag(Tag):
                 ]
             }
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
             meta_collection = sly.TagMetaCollection([meta_cat])
             tag_cat = VideoTag.from_json(tag_cat_json, meta_collection)
@@ -180,7 +184,8 @@ class VideoTag(Tag):
 
          .. code-block:: python
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
             meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
             tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
             compact_tag_cat = tag_cat.get_compact_str()
@@ -203,7 +208,8 @@ class VideoTag(Tag):
 
          .. code-block:: python
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
 
             # Let's create 2 identical Tags
             meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
@@ -253,7 +259,8 @@ class VideoTag(Tag):
 
          .. code-block:: python
 
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
 
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
             car_tag = VideoTag(meta_car, value='acura', frame_range=(7, 9))
