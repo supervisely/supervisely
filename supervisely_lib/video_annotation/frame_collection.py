@@ -15,6 +15,8 @@ class FrameCollection(KeyIndexedCollection):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create two frames for collection
         fr_index_1 = 7
         frame_1 = sly.Frame(fr_index_1)
@@ -157,6 +159,8 @@ class FrameCollection(KeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             frame_1 = sly.Frame(7)
             frame_2 = sly.Frame(10)
 
@@ -197,6 +201,8 @@ class FrameCollection(KeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             fr_collection_json = [
                 {
                     "index": 7,
@@ -228,6 +234,8 @@ class FrameCollection(KeyIndexedCollection):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             fr_index_1 = 7
             geometry = sly.Rectangle(0, 0, 100, 100)
@@ -263,6 +271,9 @@ class FrameCollection(KeyIndexedCollection):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video_annotation.key_id_map import KeyIdMap
 
             key_id_map = KeyIdMap()
 

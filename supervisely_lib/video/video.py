@@ -42,6 +42,8 @@ def is_valid_ext(ext: str) -> bool:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         sly.video.is_valid_ext(".mp4")  # True
         sly.video.is_valid_ext(".jpeg") # False
     """
@@ -60,7 +62,9 @@ def has_valid_ext(path: str) -> bool:
 
      .. code-block:: python
 
-        video_path = "/home/admin/work//videos/Cars/ds0/video/6x.mp4"
+        import supervisely as sly
+
+        video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
         sly.video.has_valid_ext(video_path) # True
     """
     return is_valid_ext(os.path.splitext(path)[1])
@@ -78,6 +82,8 @@ def validate_ext(ext: str):
     :Usage example:
 
      .. code-block:: python
+
+       import supervisely as sly
 
         sly.video.validate_ext(".jpeg")
         # Unsupported video extension: .jpeg.
@@ -99,6 +105,8 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
         video_info = sly.video.get_image_size_and_frames_count(video_path)
@@ -127,6 +135,8 @@ def validate_format(path: str) -> None:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         video_path = "/home/paul/work/sphinx-docs/supervisely_py/docs/source/debug/video/Prius_360/ds0/video/video.jpg"
         sly.video.validate_format(video_path)
@@ -250,7 +260,7 @@ def get_info(video_path: str, cpu_count: Optional[int]=None) -> Dict:
 
      .. code-block:: python
 
-        from supervisely_lib.video.video import get_info
+        from supervisely.video.video import get_info
         video_info = get_info('/home/video/1.mp4')
         print(json.dumps(video_info, indent=4))
         # Output: {

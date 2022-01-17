@@ -15,6 +15,8 @@ class VideoObjectCollection(KeyIndexedCollection):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         # Create two VideoObjects for collection
         class_car = sly.ObjClass('car', sly.Rectangle)
         obj_car = sly.VideoObject(class_car)
@@ -169,6 +171,8 @@ class VideoObjectCollection(KeyIndexedCollection):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             class_car = sly.ObjClass('car', sly.Rectangle)
             obj_car = sly.VideoObject(class_car)
             class_bus = sly.ObjClass('bus', sly.Rectangle)
@@ -208,6 +212,8 @@ class VideoObjectCollection(KeyIndexedCollection):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             obj_collection_json = [
                 {

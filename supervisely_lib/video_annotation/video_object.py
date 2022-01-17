@@ -37,6 +37,8 @@ class VideoObject(KeyObject):
 
      .. code-block:: python
 
+        import supervisely as sly
+
         obj_class_car = sly.ObjClass('car', sly.Rectangle)
         video_obj_car = sly.VideoObject(obj_class_car)
         video_obj_car_json = video_obj_car.to_json()
@@ -77,6 +79,8 @@ class VideoObject(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
             obj_car_json = video_obj_car.obj_class.to_json()
@@ -105,11 +109,13 @@ class VideoObject(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create VideoTagCollection
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             car_tag = VideoTag(meta_car, value='acura')
-            from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
             video_tags = VideoTagCollection([car_tag])
 
             # Create VideoObject
@@ -142,13 +148,15 @@ class VideoObject(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create VideoObject
             obj_class_car = sly.ObjClass('car', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
 
             # Create VideoTag
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             car_tag = VideoTag(meta_car, value='acura')
 
             # Add VideoTag
@@ -181,12 +189,14 @@ class VideoObject(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             # Create VideoObject
             obj_class_vehicle = sly.ObjClass('vehicle', sly.Rectangle)
             video_obj_vehicle = sly.VideoObject(obj_class_vehicle)
 
             # Create VideoTags
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
             car_tag = VideoTag(meta_car, value='acura')
             meta_bus = sly.TagMeta('bus_tag', sly.TagValueType.ANY_STRING)
@@ -227,6 +237,8 @@ class VideoObject(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
@@ -271,6 +283,8 @@ class VideoObject(KeyObject):
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             obj_car_json = {
                 "classTitle": "vehicle",
@@ -329,6 +343,8 @@ class VideoObject(KeyObject):
 
          .. code-block:: python
 
+            import supervisely as sly
+
             obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
             video_obj_car = sly.VideoObject(obj_class_car)
 
@@ -336,10 +352,10 @@ class VideoObject(KeyObject):
             obj_class_bus = sly.ObjClass('bus', sly.Rectangle)
 
             # New VideoTagCollection to clone
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
             car_tag = VideoTag(meta_car, value='acura')
-            from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
             tags = VideoTagCollection([car_tag])
             # Clone
             new_obj_vehicle = video_obj_car.clone(obj_class=obj_class_bus, tags=tags)

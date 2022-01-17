@@ -32,7 +32,12 @@ class Progress:
 
      .. code-block:: python
 
-        from supervisely_lib.sly_logger import logger
+        import supervisely as sly
+        from supervisely.sly_logger import logger
+
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
 
         progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
         api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
@@ -156,7 +161,7 @@ class Progress:
 
     def report_if_needed(self) -> None:
         """
-        The function determines whether the message should be logged depending on current number of iterations
+        Determines whether the message should be logged depending on current number of iterations
         """
         if self.need_report():
             self.report_progress()
@@ -170,6 +175,8 @@ class Progress:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             progress = sly.Progress("Processing:", len(img_infos))
             for img_info in img_infos:
@@ -205,6 +212,8 @@ class Progress:
         :Usage example:
 
          .. code-block:: python
+
+            import supervisely as sly
 
             progress = sly.Progress("Processing:", len(img_infos))
             for img_info in img_infos:

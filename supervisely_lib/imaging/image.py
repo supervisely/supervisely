@@ -63,6 +63,8 @@ def is_valid_ext(ext: str) -> bool:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         sly.image.is_valid_ext('.png') # True
         sly.image.is_valid_ext('.py') # False
     """
@@ -82,6 +84,8 @@ def has_valid_ext(path: str) -> bool:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         sly.image.has_valid_ext('/home/admin/work/docs/new_image.jpeg') # True
         sly.image.has_valid_ext('/home/admin/work/docs/016_img.py') # False
     """
@@ -99,6 +103,8 @@ def validate_ext(path: str) -> None:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         print(sly.image.validate_ext('/home/admin/work/docs/new_image.jpeg'))
         # Output: None
@@ -128,6 +134,8 @@ def validate_format(path: str) -> None:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         print(sly.image.validate_format('/home/admin/work/docs/new_image.jpeg'))
         # Output: None
@@ -168,6 +176,8 @@ def read(path: str, remove_alpha_channel: Optional[bool]=True) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         im = sly.image.read('/home/admin/work/docs/image.jpeg')
     """
     validate_format(path)
@@ -205,6 +215,8 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool]=False) -> np.ndarray
 
      .. code-block:: python
 
+        import supervisely as sly
+
         im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\...\xd9'
         im = sly.image.read_bytes(im_bytes)
     """
@@ -241,6 +253,8 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool]=True)
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         path = '/home/admin/work/docs/new_image.jpeg'
         sly.image.write(path, image_np)
@@ -293,6 +307,8 @@ def draw_text_sequence(bitmap: np.ndarray,
 
      .. code-block:: python
 
+        import supervisely as sly
+
         sly.image.draw_text_sequence(image, ['some_text', 'another_text'], (10, 10))
 
     .. list-table::
@@ -338,6 +354,8 @@ def draw_text(bitmap: np.ndarray,
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         sly.image.draw_text(image, 'your text', (100, 50))
 
@@ -402,6 +420,8 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         bytes = sly.image.write_bytes(image_np, 'jpeg')
         print(type(bytes))
         # Output: <class 'bytes'>
@@ -434,6 +454,8 @@ def get_hash(img: np.ndarray, ext: str) -> str:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         hash = sly.image.get_hash(im, 'jpeg')
         print(hash)
         # Output: fTec3RD7Zxg0aYc0ooa5phPfBrzDe01urlFsgi5IzIQ=
@@ -455,6 +477,8 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         # If size of rectangle is more then image shape raise ValueError:
         try:
@@ -495,6 +519,8 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         crop_with_padding_image = sly.image.crop_with_padding(image_np, sly.Rectangle(0, 0, 1000, 1200))
 
@@ -591,6 +617,8 @@ def resize(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Opti
 
      .. code-block:: python
 
+        import supervisely as sly
+
         resize_image = sly.image.resize(image_np, (300, 500))
 
     .. list-table::
@@ -626,6 +654,8 @@ def resize_inter_nearest(img: np.ndarray, out_size: Optional[Tuple[int, int]]=No
 
      .. code-block:: python
 
+        import supervisely as sly
+
         resize_image_nearest = sly.image.resize_inter_nearest(image_np, (300, 700))
 
     .. list-table::
@@ -660,6 +690,8 @@ def scale(img: np.ndarray, factor: float) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         scale_image = sly.image.scale(image_np, 0.3)
 
     .. list-table::
@@ -688,6 +720,8 @@ def fliplr(img: np.ndarray) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         fliplr_image = sly.image.fliplr(image_np)
 
     .. list-table::
@@ -715,6 +749,8 @@ def flipud(img: np.ndarray) -> np.ndarray:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         flipud_image = sly.image.flipud(image_np)
 
@@ -748,7 +784,9 @@ def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=Rotat
 
      .. code-block:: python
 
+        import supervisely as sly
         from supervisely_lib.imaging.image import RotateMode
+
         # keep_black mode
         rotate_im_keep_black = sly.image.rotate(image_np, 45)
         # crop_black mode
@@ -815,6 +853,8 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
 
      .. code-block:: python
 
+        import supervisely as sly
+
         rand_contrast_im = sly.image.random_contrast(image_np, 1.1, 1.8)
 
     .. list-table::
@@ -853,6 +893,8 @@ def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -
 
      .. code-block:: python
 
+        import supervisely as sly
+
         rand_brightness_im = sly.image.random_brightness(image_np, 1.5, 8.5)
 
     .. list-table::
@@ -889,6 +931,8 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         random_noise_im = sly.image.random_noise(image_np, 25, 19)
 
     .. list-table::
@@ -924,6 +968,8 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
 
      .. code-block:: python
 
+        import supervisely as sly
+
         random_color_scale_im = sly.image.random_color_scale(image_np, 0.5, 0.9)
 
     .. list-table::
@@ -958,6 +1004,8 @@ def blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         blur_im = sly.image.blur(image_np, 7)
 
     .. list-table::
@@ -987,6 +1035,8 @@ def median_blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         median_blur_im = sly.image.median_blur(image_np, 5)
 
@@ -1019,6 +1069,8 @@ def gaussian_blur(image: np.ndarray, sigma_min: float, sigma_max: float) -> np.n
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         gaussian_blur_im = sly.image.gaussian_blur(image_np, 3.3, 7.5)
 
@@ -1065,6 +1117,8 @@ def np_image_to_data_url(img: np.ndarray) -> str:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         data_url = sly.image.np_image_to_data_url(im)
         print(data_url)
         # Output: 'data:image/png;base64,iVBORw0K...'
@@ -1088,6 +1142,8 @@ def data_url_to_numpy(data_url: str) -> np.ndarray:
 
      .. code-block:: python
 
+        import supervisely as sly
+
         image_np = sly.image.data_url_to_numpy(data_url)
     """
     img_base64 = data_url[len('data:image/png;base64,'):]
@@ -1108,6 +1164,8 @@ def np_image_to_data_url_backup_rgb(img: np.ndarray)-> str:
     :Usage example:
 
      .. code-block:: python
+
+        import supervisely as sly
 
         data_url = sly.image.np_image_to_data_url_backup_rgb(im)
         print(data_url)
