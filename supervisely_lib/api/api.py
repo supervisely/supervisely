@@ -277,10 +277,9 @@ class Api:
     @staticmethod
     def _raise_for_status(response):
         """
-        Raise error and show message with code of mistake if given response can not connect to server.
+        Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
         """
-        """Raises stored :class:`HTTPError`, if one occurred."""
         http_error_msg = ''
         if isinstance(response.reason, bytes):
             try:
