@@ -6,6 +6,12 @@
 Supervisely SDK for Python
 ==========================
 
+.. image:: _static/images/logo-dark-custom-row.png
+   :width: 100%
+   :alt: supervisely
+   :align: center
+
+
 Welcome to the Supervisely SDK for Python documentation for `Supervisely <https://www.supervise.ly>`_, the leading platform for entire computer vision lifecycle.
 This SDK aims to make it as easy as possible to develop new apps and plugins for the Supervisely platform.
 The SDK is a product of our experience developing new features for Supervisely
