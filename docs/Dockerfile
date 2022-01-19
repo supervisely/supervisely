@@ -14,7 +14,7 @@ nbsphinx
 RUN apt-get install libgl1 -y
 RUN pip install supervisely
 
-RUN pip install furo
+RUN pip install sphinx-material
 
 COPY entrypoint.sh /app/
 
