@@ -25,7 +25,6 @@ remote.sh
 *.pth
 docs/_build
 *log_*.txt
-docs/_build/*
 
 internal/tests/flt_format_insurance/*
 */internal/*
@@ -46,6 +45,5 @@ ecosystem/import/*
 !ecosystem/import/init.sh
 
 venv
-/docs/build/*
-.venv
-.idea
+docs/build
+
