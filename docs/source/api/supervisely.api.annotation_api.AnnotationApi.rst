@@ -1,0 +1,49 @@
+﻿supervisely.api.annotation\_api.AnnotationApi
+=============================================
+
+.. currentmodule:: supervisely.api.annotation_api
+
+.. autoclass:: AnnotationApi
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AnnotationApi.__init__
+      ~AnnotationApi.append_labels
+      ~AnnotationApi.copy
+      ~AnnotationApi.copy_batch
+      ~AnnotationApi.copy_batch_by_ids
+      ~AnnotationApi.download
+      ~AnnotationApi.download_batch
+      ~AnnotationApi.exists
+      ~AnnotationApi.get_free_name
+      ~AnnotationApi.get_info_by_id
+      ~AnnotationApi.get_info_by_name
+      ~AnnotationApi.get_list
+      ~AnnotationApi.get_list_all_pages
+      ~AnnotationApi.info_sequence
+      ~AnnotationApi.info_tuple_name
+      ~AnnotationApi.upload_ann
+      ~AnnotationApi.upload_anns
+      ~AnnotationApi.upload_json
+      ~AnnotationApi.upload_jsons
+      ~AnnotationApi.upload_path
+      ~AnnotationApi.upload_paths
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AnnotationApi.MAX_WAIT_ATTEMPTS
+      ~AnnotationApi.WAIT_ATTEMPT_TIMEOUT_SEC
+   
+   

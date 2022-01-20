@@ -11,17 +11,16 @@ Annotation
 .. autosummary::
     :toctree: api
     :nosignatures:
-    :template: classtemplate.rst
+    :template: autosummary/module.rst
 
-    supervisely.annotation.annotation.Annotation
-    supervisely.annotation.label.Label
-    supervisely.annotation.label.LabelBase
-    supervisely.annotation.obj_class.ObjClass
-    supervisely.annotation.obj_class_collection.ObjClassCollection
-    supervisely.annotation.tag.Tag
-    supervisely.annotation.tag_collection.TagCollection
-    supervisely.annotation.tag_meta.TagMeta
-    supervisely.annotation.tag_meta_collection.TagMetaCollection
+    annotation
+    label
+    obj_class
+    obj_class_collection
+    tag
+    tag_collection
+    tag_meta
+    tag_meta_collection
 
 API
 ---
@@ -33,32 +32,32 @@ API
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-    supervisely.api.api.API
-    supervisely.api.agent_api.AgentApi
-    supervisely.api.annotation_api.AnnotationApi
-    supervisely.api.app_api.AppApi
-    supervisely.api.dataset_api.DatasetApi
-    supervisely.api.file_api.FileApi
-    supervisely.api.annotation_tool_api.ImageAnnotationToolApi
-    supervisely.api.image_api.ImageApi
-    supervisely.api.import_storage_api.ImportStorageApi
-    supervisely.api.labeling_job_api.LabelingJobApi
-    supervisely.api.module_api.ModuleApi
-    supervisely.api.neural_network_api.NeuralNetworkApi
-    supervisely.api.object_class_api.ObjectClassApi
-    supervisely.api.plugin_api.PluginApi
-    supervisely.api.project_api.ProjectApi
-    supervisely.api.project_class_api.ProjectClassApi
-    supervisely.api.role_api.RoleApi
-    supervisely.api.task_api.TaskApi
-    supervisely.api.team_api.TeamApi
-    supervisely.api.user_api.UserApi
-    supervisely.api.workspace_api.WorkspaceApi
-    supervisely.api.entity_annotation_api.EntityAnnotationApi
-    supervisely.api.pointcloud_api.PointcloudApi
-    supervisely.api.video_api.VideoApi
-    sdcsdwer
+    api
+    agent_api
+    annotation_api
+    app_api
+    dataset_api
+    file_api.
+    annotation_tool_api
+    image_api
+    import_storage_api
+    labeling_job_api
+    module_api
+    neural_network_api
+    object_class_api
+    plugin_api
+    project_api
+    project_class_api
+    role_api
+    task_api
+    team_api
+    user_api
+    workspace_api
+    entity_annotation_api
+    pointcloud_api
+    video_api
 
 
 Augmentation
@@ -66,26 +65,26 @@ Augmentation
 **Augmentation**
 - Data augmentations to create more data variety for neural networks training.
 
-.. currentmodule:: supervisely.aug.aug
+.. currentmodule:: supervisely.aug
 
 .. autosummary::
     :toctree: api
     :nosignatures:
-    :template: classtemplate.rst
+    :template: autosummary/module.rst
 
-    Augmentation
+    aug
 
 Collection
 ----------
 
-.. currentmodule:: supervisely.collection.key_indexed_collection
+.. currentmodule:: supervisely.collection
 
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-    KeyObject
-    KeyIndexedCollection
+    key_indexed_collection
 
 Decorators
 ----------
@@ -95,32 +94,34 @@ Decorators
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-    Profile
+    profile
 
 Geometry
 --------
 **Geometry**
 - All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
 
-.. currentmodule:: supervisely_lib.geometry
+.. currentmodule:: supervisely.geometry
 
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Any Geometry
-   Bitmap
-   Bitmap_base
-   Cuboid
-   Point
-   Point_location
-   Polygon
-   Polyline
-   Rectangle
-   Rotator
-   Vector Geometry
-   Graph
+    any_geometry
+    bitmap
+    bitmap_base
+    cuboid
+    point
+    point_location
+    polygon
+    polyline
+    rectangle
+    rotator
+    vector_geometry
+    graph
 
 Imaging
 -------
@@ -132,10 +133,11 @@ Imaging
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Font
-   Color
-   Image
+    font
+    color
+    image
 
 IO
 --
@@ -147,9 +149,10 @@ IO
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Fs
-   Json
+    fs
+    json
 
 Labeling Jobs
 -------------
@@ -159,19 +162,22 @@ Labeling Jobs
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Utilities
+    utils
+
 
 Pointcloud
 ----------
 
-.. currentmodule:: supervisely.pointcloud.pointcloud
+.. currentmodule:: supervisely.pointcloud
 
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-    Pointcloud
+    pointcloud
 
 Pointcloud Annotation
 ---------------------
@@ -181,12 +187,12 @@ Pointcloud Annotation
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Constants
-   Pointcloud Annotation
-   Pointcloud Figure
-   Pointcloud Object
-   Pointcloud Object Collection
+   pointcloud_annotation
+   pointcloud_figure
+   pointcloud_object
+   pointcloud_object_Collection
 
 Project
 -------
@@ -198,12 +204,13 @@ Project
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Project
-   Pointcloud Project
-   ProjectMeta
-   ProjectType
-   Video Project
+   project
+   pointcloud-project
+   project_meta
+   project_type
+   video_project
 
 Task
 ----
@@ -215,30 +222,33 @@ Task
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Progress
+   progress
 
 User
 ----
 
-.. currentmodule:: supervisely.user.user
+.. currentmodule:: supervisely.user
 
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   User
+   user
 
 Video
 -----
 
-.. currentmodule:: supervisely.video.video
+.. currentmodule:: supervisely.video
 
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Video
+   video
 
 Video Annotation
 ----------------
@@ -248,13 +258,14 @@ Video Annotation
 .. autosummary::
     :toctree: api
     :nosignatures:
+    :template: autosummary/module.rst
 
-   Frame
-   Frame Collection
-   Key ID Map
-   Video Annotation
-   Video Figure
-   Video Object
-   Video Object Collection
-   Video Tag
-   Video Tag Collection
+   frame
+   frame_collection
+   key_id_ap
+   video_annotation
+   video_figure
+   video_object
+   video_object_collection
+   video_tag
+   video_tag_collection

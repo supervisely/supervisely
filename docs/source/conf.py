@@ -49,7 +49,16 @@ extensions = [
 jupyter_generate_html = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+html_js_files = [
+    'js/termynal.js',
+]
+html_css_files = [
+    'css/termynal.css',
+]
 
+html_sidebars = {
+    "**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]
+}
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
@@ -99,7 +108,7 @@ html_theme_options = {
     'css_minify': True,
 
     "nav_links": [
-        {"href": "index", "internal": True, "title": "Material"},
+        {"href": "index", "internal": True, "title": "Home"},
         {
             "href": "https://supervise.ly/",
             "internal": False,
@@ -117,6 +126,16 @@ html_theme_options = {
     },
     "table_classes": ["plain"],
 }
+
+# If true, the current module name will be prepended to all description
+# unit titles (such as .. function::).
+add_module_names = True
+
+# If false, no module index is generated.
+html_domain_indices = True
+
+# Disable typehints
+autodoc_typehints = "none"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -139,17 +158,13 @@ autodoc_member_order = 'groupwise'
 autosummary_generate = True
 
 autoclass_content = "class"
-autodoc_class_signature = 'mixed'
-
+autodoc_class_signature = 'separated'
 
 autodoc_default_options = {
     "members": True,
     "methods": True,
-    "special-members": "__call__",
-    "exclude-members": "_abc_impl",
-    "show-inheritance": True,
+    "exclude-members": "__init__",
+    "show-inheritance": False,
 }
 
 autosectionlabel_prefix_document = True
-
-

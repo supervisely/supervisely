@@ -36,6 +36,9 @@ ANN_EXT = '.json'
 
 
 class AnnotationJsonFields:
+    """
+    Json fields for :class:`Annotation<Annotation>`
+    """
     IMG_DESCRIPTION = 'description'
     IMG_SIZE = 'size'
     IMG_SIZE_WIDTH = 'width'
