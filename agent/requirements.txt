@@ -1,8 +1,0 @@
-supervisely==6.4.0
-hurry.filesize==0.9
-scandir==1.7
-grpcio-tools==1.34.1
-py3exiv2==0.9.3
-packaging==21.3
-version-parser==1.0.1
-
