@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath('./repo'))
 
 # project = 'Supervisely SDK for Python'
 project = 'Supervisely'
-copyright = '2021, Supervisely Team'
+copyright = '2022, Supervisely Team'
 author = 'Supervisely Team'
 
 # -- General configuration ---------------------------------------------------
@@ -41,6 +41,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
+    "sphinx.ext.autosectionlabel",
     'sphinx_copybutton',
     'm2r2',
     'nbsphinx'
@@ -57,7 +58,7 @@ html_css_files = [
 ]
 
 html_sidebars = {
-    "**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]
+    "**": ['fulltoc.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html", "localtoc.html"]
 }
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -66,7 +67,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/images/sly-top-logo.png'
+html_logo = '_static/images/sly-top-logo-white.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -88,8 +89,7 @@ html_theme_options = {
     # 'base_url': 'https://github.com/supervisely/supervisely',
 
     # Set the color and the accent color
-    'theme_color': 'ffffff',
-    'color_primary': 'blue',
+    'color_primary': 'pink',
     'color_accent': 'light-blue',
 
     # Set the repo location to get a badge with stats
@@ -108,23 +108,37 @@ html_theme_options = {
     'css_minify': True,
 
     "nav_links": [
-        {"href": "index", "internal": True, "title": "Home"},
+        # {"href": "index", "internal": True, "title": "Home"},
         {
-            "href": "https://supervise.ly/",
+            "href": "https://supervise.ly",
             "internal": False,
             "title": "Supervisely Platform",
         },
+        {
+            "href": "https://github.com/supervisely-ecosystem",
+            "internal": False,
+            "title": "Ecosystem",
+        },
+        {
+            "href": "https://docs.supervise.ly",
+            "internal": False,
+            "title": "UI Documentation",
+        },
+        {
+            "href": "https://www.youtube.com/c/Supervisely/videos",
+            "internal": False,
+            "title": "YouTube",
+        },
     ],
 
-    "version_dropdown": True,
+                                 "version_dropdown": True,
     "version_json": "_static/versions.json",
     "version_info": {
         "Release": "https://bashtage.github.io/sphinx-material/",
         "Development": "https://bashtage.github.io/sphinx-material/devel/",
         "Release (rel)": "/sphinx-material/",
         "Development (rel)": "/sphinx-material/devel/",
-    },
-    "table_classes": ["plain"],
+    }
 }
 
 # If true, the current module name will be prepended to all description

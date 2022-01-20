@@ -1,6 +1,10 @@
 API References
 ==============
 
+.. toctree::
+
+   Public REST API              <https://api.docs.supervise.ly/>
+
 Annotation
 ----------
 **Annnotation**
