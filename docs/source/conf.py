@@ -62,7 +62,7 @@ html_logo = '_static/images/sly-top-logo.png'
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = '_static/images/favicon.png'  # need fix later
+html_favicon = '_static/images/favicon.ico'  # need fix later
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -133,4 +133,23 @@ source_suffix = {
 }
 # docs order
 # disable for alphabetical order, enable for order from source .py files
-autodoc_member_order = 'bysource'
+autodoc_member_order = 'groupwise'
+# autodoc_member_order = 'bysource'
+
+autosummary_generate = True
+
+autoclass_content = "class"
+autodoc_class_signature = 'mixed'
+
+
+autodoc_default_options = {
+    "members": True,
+    "methods": True,
+    "special-members": "__call__",
+    "exclude-members": "_abc_impl",
+    "show-inheritance": True,
+}
+
+autosectionlabel_prefix_document = True
+
+
