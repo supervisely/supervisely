@@ -44,6 +44,5 @@ ecosystem/projects/*
 !ecosystem/projects/init.sh
 ecosystem/import/*
 !ecosystem/import/init.sh
-
 .venv
 .idea
