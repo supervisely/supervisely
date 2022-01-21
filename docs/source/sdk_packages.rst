@@ -133,7 +133,7 @@ Imaging
 **Imaging**
 - Our wrappers for working with images. IO, transformations, text rendering, color conversions.
 
-.. currentmodule:: supervisely_lib.imaging
+.. currentmodule:: supervisely.imaging
 
 .. autosummary::
     :toctree: api
