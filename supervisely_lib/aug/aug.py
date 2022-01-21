@@ -1,4 +1,6 @@
 # coding: utf-8
+"""augmentations for images and annotations"""
+
 import random
 import numpy as np
 import imgaug.augmenters as iaa

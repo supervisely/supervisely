@@ -1,4 +1,6 @@
 # coding: utf-8
+"""get list of plugins for supervisely team"""
+
 from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional
 

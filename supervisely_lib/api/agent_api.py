@@ -1,4 +1,5 @@
 # coding: utf-8
+"""api for working with agent"""
 
 from __future__ import annotations
 

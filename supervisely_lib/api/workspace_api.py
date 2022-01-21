@@ -1,4 +1,6 @@
 # coding: utf-8
+"""list/create supervisely workspaces"""
+
 from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional
 

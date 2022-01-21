@@ -6,15 +6,13 @@ RUN curl -L -o panda.deb https://github.com/jgm/pandoc/releases/download/2.12/pa
     dpkg -i panda.deb && \
     rm panda.deb
 
-RUN pip install sphinx \
-sphinx-rtd-theme \
-sphinx-copybutton \
-m2r2 \
-nbsphinx
+RUN pip install sphinx==4.4.0 \
+sphinx-material==0.0.35 \
+sphinx-copybutton==0.4.0 \
+m2r2==0.3.2 \
+nbsphinx==0.8.8
 RUN apt-get install libgl1 -y
 RUN pip install supervisely
-
-RUN pip install sphinx-material
 
 COPY entrypoint.sh /app/
 

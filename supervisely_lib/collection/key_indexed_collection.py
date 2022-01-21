@@ -1,4 +1,6 @@
 # coding: utf-8
+"""base class for :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances"""
+
 from __future__ import annotations
 from prettytable import PrettyTable
 from supervisely_lib._utils import take_with_default

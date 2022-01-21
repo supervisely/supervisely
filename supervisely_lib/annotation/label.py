@@ -1,4 +1,5 @@
 # coding: utf-8
+"""labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
 
 from __future__ import annotations
 from typing import List, Optional, Tuple, Dict

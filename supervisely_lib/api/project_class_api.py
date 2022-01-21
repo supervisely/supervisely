@@ -1,4 +1,5 @@
 # coding: utf-8
+"""list available classes in supervisely project"""
 
 from supervisely_lib.api.module_api import ModuleApi
 from supervisely_lib.api.module_api import ApiField

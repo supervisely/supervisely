@@ -1,4 +1,5 @@
 # coding: utf-8
+"""create/download/update :class:`Dataset<supervisely.project.project.Dataset>`"""
 
 from __future__ import annotations
 

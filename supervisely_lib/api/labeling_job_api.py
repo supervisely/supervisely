@@ -1,4 +1,6 @@
 # coding: utf-8
+"""create or manipulate already existing labeling jobs"""
+
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional
 import time

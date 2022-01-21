@@ -50,15 +50,14 @@ extensions = [
 jupyter_generate_html = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
-html_js_files = [
-    'js/termynal.js',
-]
+html_static_path = ['_static']
+
 html_css_files = [
-    'css/termynal.css',
+    'css/custom.css',
 ]
 
 html_sidebars = {
-    "**": ['fulltoc.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html", "localtoc.html"]
+    "**": ['fulltoc.html', 'sourcelink.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html", "localtoc.html"]
 }
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -78,6 +77,7 @@ html_favicon = '_static/images/favicon.ico'  # need fix later
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
+html_show_sourcelink = True
 html_theme = 'sphinx_material'
 html_theme_options = {
 
@@ -154,7 +154,6 @@ autodoc_typehints = "none"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
 
 # source_suffix
 # The file extensions of source files. Sphinx considers the files with this suffix as sources.

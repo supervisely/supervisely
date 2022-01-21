@@ -1,4 +1,5 @@
 # coding: utf-8
+"""collection with :class:`Tag<supervisely.annotation.tag.Tag>` instances"""
 
 from __future__ import annotations
 from typing import List, Optional, Dict

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""create/download/update :class:`Project<supervisely.project.project.Project>`"""
+
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional
 from pandas.core.frame import DataFrame

@@ -1,7 +1,7 @@
 version: '2.4'
 services:
   sphinx-docs:
-    image: alex_sphinxdoc
+    image: supervisely-sphinx-rtd
     runtime: runc
     build: .
     volumes:
@@ -11,7 +11,7 @@ services:
     - ../supervisely_lib:/app/source/repo/supervisely_lib:ro
 
   cleanbuild:
-    image: alex_sphinxdoc
+    image: supervisely-sphinx-rtd
     runtime: runc
     command: find "/app/build" -mindepth 1 -delete
     volumes:

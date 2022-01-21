@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Dict, Optional
 from enum import IntEnum
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase
-
+"""list all user roles that are available on private supervisely instance"""
 
 class RoleApi(ModuleApiBase):
     """

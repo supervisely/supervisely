@@ -1,4 +1,5 @@
 # coding: utf-8
+"""download/upload/manipulate files from/to Supervisely team files"""
 
 from __future__ import annotations
 

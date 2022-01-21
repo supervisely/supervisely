@@ -1,0 +1,76 @@
+/*class container*/
+
+
+dl.py.class dt.sig.sig-object.py {
+    border-left: none;
+    border-top: 3px solid deeppink;
+    padding-left: 10px;
+    position: relative;
+    background: #f3f4f7;
+    border-left: 3px solid deeppink;
+    word-wrap: break-word;
+    padding-right: 100px;
+}
+
+/*method container*/
+dd dl.py.method dt.sig.sig-object.py {
+    border-left: none;
+    border-top: none;
+    padding-left: 10px;
+    position: relative;
+    background: #f3f4f7;
+    border-left: 3px solid deeppink;
+    word-wrap: break-word;
+    padding-right: 100px;
+}
+
+/*function container*/
+dd dl.py.function dt.sig.sig-object.py {
+    border-left: none;
+    border-top: none;
+    padding-left: 10px;
+    position: relative;
+    background: #f3f4f7;
+    border-left: 3px solid deeppink;
+    word-wrap: break-word;
+    padding-right: 100px;
+}
+
+/*property container*/
+dd dl.py.property dt.sig.sig-object.py {
+    border-left: none;
+    border-top: none;
+    padding-left: 10px;
+    position: relative;
+    background: #f3f4f7;
+    border-left: 3px solid deeppink;
+    word-wrap: break-word;
+    padding-right: 100px;
+}
+
+/*left side of container*/
+em.property span.pre {
+    font-weight: bold;
+    color: sandybrown;
+    /*text-transform: uppercase;*/
+}
+
+.viewcode-link {
+    right: 20px;
+    position: absolute;
+}
+
+
+.sig-prename.descclassname {
+    display: none;
+}
+
+
+.sig-name.descname {
+    font-weight: bold;
+    color: black;
+}
+
+/*ul.simple li p strong {*/
+/*    color: darkred;*/
+/*}*/

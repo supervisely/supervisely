@@ -1,4 +1,5 @@
 # coding: utf-8
+"""api connection to the server which allows user to communicate with Supervisely"""
 
 from __future__ import annotations
 import os

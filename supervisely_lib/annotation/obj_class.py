@@ -1,4 +1,5 @@
 # coding: utf-8
+"""general information about :class:`Label<supervisely.annotation.label.LabelBase>`"""
 
 from __future__ import annotations
 from copy import deepcopy

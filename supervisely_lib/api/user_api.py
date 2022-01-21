@@ -1,4 +1,6 @@
 # coding: utf-8
+"""create and manipulate already existing users in your team"""
+
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional
 
@@ -10,7 +12,7 @@ from supervisely_lib.api.module_api import ApiField, ModuleApiBase, _get_single_
 
 class UserApi(ModuleApiBase):
     """
-    API for working with :class:`Users<supervisely_lib.user.user.UserRoleName>`. :class:`UserApi<UserApi>` object is immutable.
+    API for working with :class:`Users<supervisely.user.user.UserRoleName>`. :class:`UserApi<UserApi>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api

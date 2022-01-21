@@ -1,4 +1,6 @@
 # coding: utf-8
+"""api for working with tasks"""
+
 from typing import List, NamedTuple, Dict, Optional
 import os
 import time

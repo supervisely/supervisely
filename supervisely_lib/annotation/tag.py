@@ -1,4 +1,5 @@
 # coding: utf-8
+"""tag can be attached to whole image and/or to individual :class:`Label<supervisely.annotation.label.LabelBase>`"""
 
 from __future__ import annotations
 from typing import List, Optional, Dict, Union

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""list/create teams and monitor their activity"""
+
 from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional
 

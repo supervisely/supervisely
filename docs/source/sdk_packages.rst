@@ -18,6 +18,7 @@ Annotation
     :template: autosummary/module.rst
 
     annotation
+    annotation_params
     label
     obj_class
     obj_class_collection

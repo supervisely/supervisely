@@ -1,4 +1,5 @@
 # coding: utf-8
+"""download/upload/edit :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
 
 from __future__ import annotations
 

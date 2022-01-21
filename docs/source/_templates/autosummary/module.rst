@@ -28,6 +28,20 @@
 {% endif %}
 {% endblock %}
 
+{% block methods %}
+{% if methods %}
+.. rubric:: Methods
+
+.. autosummary::
+    :nosignatures:
+
+{% for item in methods %}
+    {{ item }}
+{%- endfor %}
+{% endif %}
+{% endblock %}
+
+
 {% block exceptions %}
 {% if exceptions %}
 .. rubric:: Exceptions

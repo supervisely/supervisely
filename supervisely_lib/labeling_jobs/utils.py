@@ -1,4 +1,6 @@
 # coding: utf-8
+"""utilities used for labeling jobs"""
+
 from __future__ import annotations
 from typing import List, Tuple, NamedTuple
 import pandas as pd

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""get list of :class:`objects<supervisely.annotation.obj_class.ObjClass>` from supervisely project"""
+
 from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional
 
@@ -9,7 +11,7 @@ from supervisely_lib.video_annotation.key_id_map import KeyIdMap
 
 class ObjectClassApi(ModuleApi):
     """
-    API for working with :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>`. :class:`ObjectClassApi<ObjectClassApi>` object is immutable.
+    API for working with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`. :class:`ObjectClassApi<ObjectClassApi>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api

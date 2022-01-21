@@ -1,4 +1,5 @@
 # coding: utf-8
+"""download/upload/manipulate neural networks"""
 
 import os
 import tarfile

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""annotation for a single image"""
+
 from __future__ import annotations
 
 import json
@@ -37,7 +39,7 @@ ANN_EXT = '.json'
 
 class AnnotationJsonFields:
     """
-    Json fields for :class:`Annotation<Annotation>`
+    Json fields for :class:`Annotation<supervisely.annotation.annotation.Annotation>`
     """
     IMG_DESCRIPTION = 'description'
     IMG_SIZE = 'size'
