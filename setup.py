@@ -33,7 +33,7 @@ setup(
         "opencv-python>=3.4.10.35,<4.0.0",
         "pandas>=1.1.3",
         "pascal-voc-writer>=0.1.4",
-        "PTable>=0.9.2",
+        "PTable==0.9.2",
         "pillow>=5.4.1",
         "protobuf>=3.14.0",
         # Higher python-json-logger versions are incompatible with
