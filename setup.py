@@ -29,7 +29,7 @@ setup(
         "grpcio==1.34.1",
         "jsonschema==2.6.0,<3.0.0",
         "matplotlib==3.3.2",
-        "numpy==1.19",
+        "numpy==1.21.0",
         "opencv-python==3.4.10.35,<4.0.0",
         "pandas==1.1.3",
         "pascal-voc-writer==0.1.4",
