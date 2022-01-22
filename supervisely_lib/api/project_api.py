@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from enum import Enum
-import pandas as pd
 import urllib
 from collections import defaultdict
 
@@ -181,6 +180,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return new_dst_meta_json
 
     def get_activity(self, id, progress_cb=None):
+        import pandas as pd
         proj_info = self.get_info_by_id(id)
         workspace_info = self._api.workspace.get_info_by_id(proj_info.workspace_id)
         activity = self._api.team.get_activity(workspace_info.team_id, filter_project_id=id, progress_cb=progress_cb)

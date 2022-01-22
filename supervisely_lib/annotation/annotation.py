@@ -24,9 +24,6 @@ from supervisely_lib.geometry.bitmap import Bitmap
 from supervisely_lib.geometry.polygon import Polygon
 from supervisely_lib.io.fs import ensure_base_path
 
-# for imgaug
-from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 ANN_EXT = '.json'
 
@@ -660,7 +657,8 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def masks_to_imgaug(self, class_to_index=None) -> SegmentationMapsOnImage:
+    def masks_to_imgaug(self, class_to_index=None):
+        from imgaug.augmentables.segmaps import SegmentationMapsOnImage
         h = self.img_size[0]
         w = self.img_size[1]
         mask = np.zeros((h, w, 1), dtype=np.int32)
@@ -680,6 +678,7 @@ class Annotation:
         return segmaps
 
     def bboxes_to_imgaug(self):
+        from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
         boxes = []
         for label in self.labels:
             if type(label.geometry) == Rectangle:

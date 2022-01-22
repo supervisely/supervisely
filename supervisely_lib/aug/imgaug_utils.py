@@ -1,14 +1,8 @@
 import inspect
-import imgaug.augmenters as iaa
 from collections import OrderedDict
 from supervisely_lib.sly_logger import logger
 from supervisely_lib.annotation.annotation import Annotation
 from supervisely_lib.project.project_meta import ProjectMeta
-
-
-#import supervisely_lib as sly
-from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 import numpy as np
 
 
@@ -89,6 +83,7 @@ def get_default_params_by_name(category_name, aug_name):
 
 
 def get_function(category_name, aug_name):
+    import imgaug.augmenters as iaa
     try:
         submodule = getattr(iaa, category_name)
         aug_f = getattr(submodule, aug_name)
@@ -100,6 +95,7 @@ def get_function(category_name, aug_name):
 
 
 def build_pipeline(aug_infos, random_order=False):
+    import imgaug.augmenters as iaa
     pipeline = []
     for aug_info in aug_infos:
         category_name = aug_info["category"]
@@ -138,7 +134,9 @@ def remove_unexpected_arguments(category_name, aug_name, params):
     return res
 
 
-def _apply(augs: iaa.Sequential, img, boxes=None, masks=None):
+def _apply(augs, img, boxes=None, masks=None):
+    import imgaug.augmenters as iaa
+    augs: iaa.Sequential
     res = augs(images=[img], bounding_boxes=boxes, segmentation_maps=masks)
     #return image, boxes, masks
     return res[0][0], res[1], res[2]
@@ -185,6 +183,7 @@ def apply_to_image(augs, img):
 
 
 def apply_to_image_and_mask(augs, img, mask):
+    from imgaug.augmentables.segmaps import SegmentationMapsOnImage
     segmaps = SegmentationMapsOnImage(mask, shape=img.shape[:2])
     res_img, _, res_segmaps = _apply(augs, img, masks=segmaps)
     res_mask = res_segmaps.get_arr()

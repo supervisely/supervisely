@@ -1,7 +1,5 @@
 # coding: utf-8
 from collections import namedtuple
-import pandas as pd
-
 from supervisely_lib.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
 
@@ -203,6 +201,7 @@ class UserApi(ModuleApiBase):
         :param progress_cb: fn
         :return: pandas dataframe (table with activity data of given user)
         '''
+        import pandas as pd
         activity = self._api.team.get_activity(team_id, filter_user_id=user_id, progress_cb=progress_cb)
         df = pd.DataFrame(activity)
         return df

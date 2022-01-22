@@ -2,7 +2,6 @@
 from enum import Enum
 import json
 from supervisely_lib.task.progress import Progress
-from docker.errors import DockerException, ImageNotFound
 
 
 class PullPolicy(Enum):
@@ -39,6 +38,7 @@ def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progres
 
 
 def _docker_pull(docker_api, docker_image_name, logger, raise_exception=True):
+    from docker.errors import DockerException
     logger.info('Docker image will be pulled', extra={'image_name': docker_image_name})
     progress_dummy = Progress('Pulling image...', 1, ext_logger=logger)
     progress_dummy.iter_done_report()
@@ -55,7 +55,7 @@ def _docker_pull(docker_api, docker_image_name, logger, raise_exception=True):
 
 def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception=True):
     logger.info('Docker image will be pulled', extra={'image_name': docker_image_name})
-
+    from docker.errors import DockerException
     try:
         layers_total = {}
         layers_current = {}
@@ -86,6 +86,7 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
 
 
 def _docker_image_exists(docker_api, docker_image_name):
+    from docker.errors import ImageNotFound
     try:
         docker_img = docker_api.images.get(docker_image_name)
     except ImageNotFound:

@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import pascal_voc_writer
 from collections import defaultdict
 
 from supervisely_lib.io import fs as fs_utils
@@ -27,7 +26,8 @@ def save_images_lists(path, tags_to_lists):
 
 
 def save_project_as_pascal_voc_detection(save_path, project: Project):
-
+    import pascal_voc_writer
+    
     # Create root pascal 'datasets' folders
     for dataset in project.datasets:
         pascal_dataset_path = os.path.join(save_path, dataset.name)

@@ -1,6 +1,4 @@
 # coding: utf-8
-
-import pandas as pd
 import urllib.parse
 
 from supervisely_lib.api.labeling_job_api import LabelingJobApi
@@ -148,6 +146,7 @@ def get_job_url(server_address, job):
 
 
 def jobs_stats(server_address, jobs, stats):
+    import pandas as pd
     col_job_id = []
     col_job_name = []  # link here
     col_job_status = []
@@ -186,6 +185,7 @@ def jobs_stats(server_address, jobs, stats):
 
 
 def jobs_summary(jobs):
+    import pandas as pd
     count_total = len(jobs)
 
     count_completed = 0
@@ -258,6 +258,7 @@ def jobs_summary(jobs):
 
 
 def images_summary(jobs):
+    import pandas as pd
     count_total_items = 0
     count_labeled_items = 0
     count_reviewed_items = 0
@@ -299,6 +300,7 @@ def images_summary(jobs):
 
 
 def classes_summary(stats):
+    import pandas as pd
     class_id_stats = {}
     for stat in stats:
         for class_stat in stat[constants.CLASSES_STATS]:
@@ -334,6 +336,7 @@ def classes_summary(stats):
 
 
 def tags_summary(stats):
+    import pandas as pd
     tag_id_stats = {}
     for stat in stats:
         for tag_stat in stat["job"][constants.TAGS_STATS]:

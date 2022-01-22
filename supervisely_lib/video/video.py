@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import skvideo.io
 from supervisely_lib import logger as default_logger
 from supervisely_lib.io.fs import get_file_name, get_file_ext
 from supervisely_lib._utils import rand_str
@@ -61,6 +60,7 @@ def get_image_size_and_frames_count(path):
     :param path: str
     :return: tuple of integers, int
     '''
+    import skvideo.io
     vreader = skvideo.io.FFmpegReader(path)
     vlength = vreader.getShape()[0]
     img_height = vreader.getShape()[1]

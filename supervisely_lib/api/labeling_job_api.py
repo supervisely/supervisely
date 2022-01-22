@@ -1,6 +1,5 @@
 # coding: utf-8
 import time
-import pandas as pd
 from supervisely_lib.collection.str_enum import StrEnum
 from supervisely_lib.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
                                            WaitingTimeExceeded
@@ -298,6 +297,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         :type team_id: int
         :return: pandas dataframe
         '''
+        import pandas as pd
         activity = self._api.team.get_activity(team_id, filter_job_id=job_id, progress_cb=progress_cb)
         df = pd.DataFrame(activity)
         return df
