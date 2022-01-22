@@ -27,7 +27,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "numpy>=1.19",
-        "opencv-python>=3.4.10.35",
+        "opencv-python>=4.5.5.62",
         "PTable>=0.9.2",
         "pillow>=5.4.1",
         "protobuf>=3.14.0",
