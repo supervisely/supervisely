@@ -1,6 +1,6 @@
 # coding: utf-8
 import json
-import pandas as pd
+
 
 class JsonSerializable:
     def to_json(self):
@@ -41,6 +41,7 @@ def dump_json_file(data, filename, indent=4):
 
 
 def flatten_json(data, sep="."):
+    import pandas as pd
     df = pd.json_normalize(data, sep=sep)
     return df.to_dict(orient='records')[0]
 

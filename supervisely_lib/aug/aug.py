@@ -1,7 +1,6 @@
 # coding: utf-8
 import random
 import numpy as np
-import imgaug.augmenters as iaa
 
 from supervisely_lib.imaging import image as sly_image
 from supervisely_lib.annotation.annotation import Annotation
@@ -324,6 +323,7 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: str=RotationM
 
 
 def load_imgaug(json_data):
+    import imgaug.augmenters as iaa
     def _get_function(category_name, aug_name):
         try:
             submodule = getattr(iaa, category_name)

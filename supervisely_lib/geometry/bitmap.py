@@ -8,7 +8,6 @@ import numpy as np
 from distutils.version import StrictVersion
 
 from PIL import Image
-from skimage import morphology as skimage_morphology
 
 from supervisely_lib.geometry.bitmap_base import BitmapBase, resize_origin_and_bitmap
 from supervisely_lib.geometry.point_location import PointLocation, row_col_list_to_points
@@ -173,6 +172,7 @@ class Bitmap(BitmapBase):
         :param method_id: method to convert binary image(numpy array)
         :return: Bitmap class object
         '''
+        from skimage import morphology as skimage_morphology
         if method_id == SkeletonizeMethod.SKELETONIZE:
             method = skimage_morphology.skeletonize
         elif method_id == SkeletonizeMethod.MEDIAL_AXIS:

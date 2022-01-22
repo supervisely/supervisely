@@ -10,7 +10,6 @@ import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
-import skimage.transform
 
 from supervisely_lib.io.fs import ensure_base_path, get_file_ext
 from supervisely_lib.geometry.rectangle import Rectangle
@@ -406,6 +405,7 @@ def resize_inter_nearest(img: np.ndarray, out_size: tuple=None, frow: float=None
     :param fcol: height of output image
     :return: resized image
     '''
+    import skimage.transform
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     resize_kv_args = dict(order=0, preserve_range=True, mode='constant')
     if parse_version(skimage.__version__) >= parse_version('0.14.0'):
@@ -443,7 +443,6 @@ def rotate(img: np.ndarray, degrees_angle: float, mode=RotateMode.KEEP_BLACK) ->
     :param mode: one of RotateMode enum values
     :return: rotated and processed image
     """
-
     rotator = ImageRotator(imsize=img.shape[:2], angle_degrees_ccw=degrees_angle)
     if mode == RotateMode.KEEP_BLACK:
         return rotator.rotate_img(img, use_inter_nearest=False)  # @TODO: order = ???
@@ -452,6 +451,7 @@ def rotate(img: np.ndarray, degrees_angle: float, mode=RotateMode.KEEP_BLACK) ->
         return rotator.inner_crop.get_cropped_numpy_slice(img_rotated)
     elif mode == RotateMode.SAVE_ORIGINAL_SIZE:
         # TODO Implement this in rotator instead.
+        import skimage.transform
         return skimage.transform.rotate(img, degrees_angle, resize=False)
     else:
         raise NotImplementedError('Rotate mode "{0}" not supported!'.format(str(mode)))

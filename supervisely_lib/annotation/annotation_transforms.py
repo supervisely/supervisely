@@ -3,10 +3,6 @@
 import collections
 import operator
 import numpy as np
-
-from skimage import measure
-from scipy import ndimage
-
 from typing import List, Callable
 
 from supervisely_lib.annotation.annotation import Annotation
@@ -203,6 +199,9 @@ def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: collection
     Returns:
         list of labels with bitmap geometry
     """
+    from skimage import measure
+    from scipy import ndimage
+    
     zero_offset = 1 if 0 in color_id_to_obj_class else 0
     if zero_offset > 0:
         mask = mask + zero_offset

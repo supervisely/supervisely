@@ -1,10 +1,7 @@
 # coding: utf-8
 
 import os
-
-import matplotlib.font_manager as fontman
 from PIL import ImageFont
-
 from supervisely_lib.io.fs import get_file_ext, file_exists
 
 
@@ -23,6 +20,7 @@ def _get_font_path_by_name(font_file_name: str) -> str:
         full path of requested by name font or None if file not found in system paths
 
     """
+    import matplotlib.font_manager as fontman
     fonts_paths_list = fontman.findSystemFonts()
     for path in fonts_paths_list:
         if os.path.basename(path) == font_file_name:
