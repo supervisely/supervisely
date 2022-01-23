@@ -59,9 +59,10 @@ class Dataset(KeyObject):
 
      .. code-block:: python
 
-         from supervisely_lib.project.project import Dataset
+         from supervisely.project.project import Dataset
+         from supervisely.project.project import OpenMode
          dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-         ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+         ds = Dataset(dataset_path, OpenMode.READ)
     """
     item_dir_name = 'img'
     annotation_class = Annotation
@@ -780,7 +781,9 @@ class Project:
 
      .. code-block:: python
 
-         project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+         from supervisely.project.project import Project
+         from supervisely.project.project import OpenMode
+         project = Project("/home/admin/work/supervisely/projects/lemons_annotated", OpenMode.READ)
     """
     dataset_class = Dataset
 

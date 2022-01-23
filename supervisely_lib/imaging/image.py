@@ -785,14 +785,14 @@ def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=Rotat
      .. code-block:: python
 
         import supervisely as sly
-        from supervisely_lib.imaging.image import RotateMode
+        from supervisely.imaging.image import RotateMode
 
         # keep_black mode
-        rotate_im_keep_black = sly.image.rotate(image_np, 45)
+        rotate_im_keep_black = sly.imaging.image.rotate(image_np, 45)
         # crop_black mode
-        rotate_im_crop_black = sly.image.rotate(image_np, 45, RotateMode.CROP_BLACK)
+        rotate_im_crop_black = sly.imaging.image.rotate(image_np, 45, RotateMode.CROP_BLACK)
         # origin_size mode
-        rotate_im_origin_size = sly.image.rotate(image_np, 45, RotateMode.SAVE_ORIGINAL_SIZE) * 255
+        rotate_im_origin_size = sly.imaging.image.rotate(image_np, 45, RotateMode.SAVE_ORIGINAL_SIZE) * 255
 
     .. list-table::
 
