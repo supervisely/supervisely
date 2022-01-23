@@ -951,7 +951,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            activity = api.labeling_job.get_activity(3)
+            activity = api.labeling_job.get_activity(team_id, 3)
             print(activity)
             # Output:
             #   userId         action  ... tagId                 meta
