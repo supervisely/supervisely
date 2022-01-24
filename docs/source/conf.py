@@ -52,20 +52,30 @@ extensions = [
 
 # Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3/", None),
+    "python": ("https://docs.python.org/3.8/", None),
 }
 
 templates_path = ['_templates']
 html_static_path = ['_static']
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
-autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
-html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
+autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
+html_show_sourcelink = True  # Remove 'view source code' from top of page (for html, not python)
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
 nbsphinx_allow_errors = True  # Continue through Jupyter errors
-#autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
-add_module_names = False # Remove namespaces from class/method signatures
+# add_module_names = True  # Remove namespaces from class/method signatures
+autodoc_member_order = 'groupwise'
+# autodoc_member_order = 'bysource'
+
+autodoc_class_signature = 'separated'
+autodoc_default_options = {
+    "members": True,
+    "methods": True,
+    "exclude-members": "__init__",
+    "show-inheritance": True,
+}
+
 
 jupyter_generate_html = True
 # Add any paths that contain templates here, relative to this directory.
@@ -77,7 +87,7 @@ html_css_files = [
 
 html_sidebars = {
     "**": ['fulltoc.html', 'sourcelink.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html",
-           "localtoc.html"]
+           "localtoc.html", "navigation.html"]
 }
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -184,17 +194,3 @@ source_suffix = {
 }
 # docs order
 # disable for alphabetical order, enable for order from source .py files
-autodoc_member_order = 'groupwise'
-# autodoc_member_order = 'bysource'
-
-autosummary_generate = True
-autoclass_content = "class"
-autodoc_class_signature = 'separated'
-autodoc_default_options = {
-    "members": True,
-    "methods": True,
-    "exclude-members": "__init__",
-    "show-inheritance": False,
-}
-
-autosectionlabel_prefix_document = False

@@ -82,3 +82,50 @@ em.property span.pre {
     font-weight: bold;
     color: black;
 }
+
+
+/*display headerlink*/
+h1 > a.headerlink,
+h2 > a.headerlink,
+h3 > a.headerlink,
+h4 > a.headerlink,
+h5 > a.headerlink,
+dl.py > dt.sig.sig-object.py a.headerlink {
+    /* Example: color: dimgrey !important; */
+    color: dimgrey !important;
+    display: initial !important;
+    transition: initial !important;
+}
+
+h1 > a.headerlink:hover,
+h2 > a.headerlink:hover,
+h3 > a.headerlink:hover,
+h4 > a.headerlink:hover,
+h5 > a.headerlink:hover,
+dl.py > dt.sig.sig-object.py a.headerlink:hover {
+    /* Example: color: black !important; */
+    color: dimgrey !important;
+}
+
+h1:hover > a.headerlink,
+h2:hover > a.headerlink,
+h3:hover > a.headerlink,
+h4:hover > a.headerlink,
+h5:hover > a.headerlink,
+dl.py > dt.sig.sig-object.py:hover a.headerlink {
+    opacity: initial !important;
+}
+
+
+/*collapse code block*/
+/*div[class^='highlight'] pre {*/
+/*    white-space: pre;*/
+/*    margin: 0;*/
+/*    padding: 12px 12px;*/
+/*    font-family: Consolas,"Andale Mono WT","Andale Mono","Lucida Console","Lucida Sans Typewriter","DejaVu Sans Mono","Bitstream Vera Sans Mono","Liberation Mono","Nimbus Mono L",Monaco,"Courier New",Courier,monospace;*/
+/*    font-size: 14px;*/
+/*    line-height: 1.5;*/
+/*    display: block;*/
+/*    overflow: auto;*/
+/*    color: #404040;*/
+/*}*/

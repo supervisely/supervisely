@@ -84,7 +84,7 @@ class VideoTag(Tag):
         :rtype: :class:`List[int, int]`
         :Usage example:
 
-         .. code-block:: pyhton
+         .. code-block:: python
 
             cat_range = tag_cat.frame_range # [5, 10]
         """

@@ -18,7 +18,6 @@ Annotation
     :template: autosummary/custom-module-template.rst
 
     annotation
-    annotation_params
     label
     obj_class
     obj_class_collection
@@ -45,7 +44,7 @@ API
     app_api
     dataset_api
     file_api.
-    annotation_tool_api
+    image_annotation_tool_api
     image_api
     import_storage_api
     labeling_job_api
@@ -60,9 +59,6 @@ API
     team_api
     user_api
     workspace_api
-    entity_annotation_api
-    pointcloud_api
-    video_api
 
 
 Augmentation
