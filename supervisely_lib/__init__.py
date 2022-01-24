@@ -107,3 +107,5 @@ from supervisely_lib.user.user import UserRoleName
 from supervisely_lib.io import github_utils as git
 
 from supervisely_lib.aug import imgaug_utils
+
+from supervisely_lib.fastapi.websocket import WebsocketManager

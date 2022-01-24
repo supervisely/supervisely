@@ -1,13 +1,13 @@
 # https://fastapi.tiangolo.com/advanced/websockets/#handling-disconnections-and-multiple-clients
 # https://github.com/tiangolo/fastapi/issues/2639
 from typing import List
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect, APIRouter
 
 
 class WebsocketManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-
+        
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
@@ -21,4 +21,12 @@ class WebsocketManager:
     async def broadcast(self, state: dict): 
         for connection in self.active_connections:
             await connection.send_json(state)
+
+    async def endpoint(self, websocket: WebSocket):
+        await self.connect(websocket)
+        try:
+            while True:
+                data = await websocket.receive_text()
+        except WebSocketDisconnect:
+            self.disconnect(websocket)
 
