@@ -1,7 +1,7 @@
 # https://fastapi.tiangolo.com/advanced/websockets/#handling-disconnections-and-multiple-clients
 # https://github.com/tiangolo/fastapi/issues/2639
 from typing import List
-from fastapi import WebSocket, WebSocketDisconnect, APIRouter
+from fastapi import WebSocket, WebSocketDisconnect
 
 
 class WebsocketManager:
