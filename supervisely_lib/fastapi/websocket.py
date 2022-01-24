@@ -1,5 +1,7 @@
 # https://fastapi.tiangolo.com/advanced/websockets/#handling-disconnections-and-multiple-clients
 # https://github.com/tiangolo/fastapi/issues/2639
+# https://github.com/tiangolo/fastapi/issues/1501#issuecomment-638219871
+
 from typing import List
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -29,4 +31,6 @@ class WebsocketManager:
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
             self.disconnect(websocket)
+
+
 
