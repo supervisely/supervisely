@@ -46,5 +46,7 @@ ecosystem/import/*
 !ecosystem/import/init.sh
 .venv
 venv
+
 docs/build
+docs/source/rst_templates/api
 
