@@ -2,7 +2,7 @@
 from copy import deepcopy
 import json
 
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.imaging.image import read as sly_image_read

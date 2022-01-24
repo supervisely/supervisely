@@ -3,7 +3,7 @@
 from copy import deepcopy
 import os
 
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.imaging import image as sly_image
 from supervisely.io.json import load_json_file

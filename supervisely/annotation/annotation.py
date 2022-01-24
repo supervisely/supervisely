@@ -10,7 +10,7 @@ import cv2
 from copy import deepcopy
 from PIL import Image
 
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_collection import TagCollection

@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 from supervisely.io.json import JsonSerializable
 from supervisely.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
-from supervisely_lib import logger
+from supervisely import logger
 
 
 # @TODO: use properties instead of field if it makes sense

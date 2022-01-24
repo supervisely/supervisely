@@ -1,7 +1,7 @@
 # coding: utf-8
 import json
 
-from supervisely_lib import Bitmap, logger, ObjClassCollection, ObjClass
+from supervisely import Bitmap, logger, ObjClassCollection, ObjClass
 from supervisely.io import fs
 
 

@@ -9,7 +9,7 @@ from supervisely.geometry.point_location import row_col_list_to_points
 from supervisely.geometry.vector_geometry import VectorGeometry
 from supervisely.geometry.constants import EXTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely.geometry import validation
-from supervisely_lib import logger
+from supervisely import logger
 
 
 class Polyline(VectorGeometry):

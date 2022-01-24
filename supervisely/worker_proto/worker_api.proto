@@ -220,4 +220,4 @@ message Task {
 }
 
 // @TODO: set as build step (+into Dockerfile), gitignore generated files
-// python -m grpc_tools.protoc -I/workdir/supervisely_lib/worker_proto --python_out=/workdir/supervisely_lib/worker_proto --grpc_python_out=/workdir/supervisely_lib/worker_proto /workdir/supervisely_lib/worker_proto/worker_api.proto
+// python -m grpc_tools.protoc -I/workdir/supervisely/worker_proto --python_out=/workdir/supervisely/worker_proto --grpc_python_out=/workdir/supervisely/worker_proto /workdir/supervisely/worker_proto/worker_api.proto

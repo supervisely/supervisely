@@ -31,7 +31,7 @@ class VideoTagApi(TagApi):
 
 
 """
-    import supervisely_lib as sly
+    import supervisely as sly
 
     app = sly.AppService()
     api = app.public_api

@@ -13,7 +13,7 @@ TEMPLATE = "template"
 from supervisely.io.fs import ensure_base_path
 from supervisely.task.progress import Progress
 from supervisely._utils import sizeof_fmt
-from supervisely_lib import logger
+from supervisely import logger
 
 
 class AppApi(TaskApi):

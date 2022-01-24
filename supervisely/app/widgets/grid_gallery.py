@@ -1,5 +1,5 @@
 from typing import Union
-import supervisely_lib as sly
+import supervisely as sly
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.api import Api
 from supervisely.annotation.annotation import Annotation

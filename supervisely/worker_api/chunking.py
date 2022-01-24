@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import math
-import supervisely_lib as sly
+import supervisely as sly
 
 
 class ChunkSplitter:

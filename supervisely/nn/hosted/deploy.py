@@ -1,7 +1,7 @@
 # coding: utf-8
 from copy import deepcopy
 
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.function_wrapper import function_wrapper
 from supervisely.io.json import load_json_file
 from supervisely.nn.config import update_recursively

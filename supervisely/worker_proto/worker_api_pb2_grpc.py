@@ -5,7 +5,7 @@ import worker_api_pb2 as worker__api__pb2
 
 
 class GeneralAPIStub(object):
-  """package supervisely_lib;
+  """package supervisely;
 
   """
 
@@ -203,7 +203,7 @@ class GeneralAPIStub(object):
 
 
 class GeneralAPIServicer(object):
-  """package supervisely_lib;
+  """package supervisely;
 
   """
 

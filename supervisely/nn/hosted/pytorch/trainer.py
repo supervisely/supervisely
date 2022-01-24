@@ -1,4 +1,4 @@
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.nn.dataset import ensure_samples_nonempty
 from supervisely.nn.hosted.class_indexing import CONTINUE_TRAINING, TRANSFER_LEARNING
 from supervisely.nn.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG, HEAD_LAYER

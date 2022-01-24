@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import os
-from supervisely_lib import logger as default_logger
+from supervisely import logger as default_logger
 from supervisely.io.fs import get_file_name, get_file_ext
 from supervisely._utils import rand_str
 

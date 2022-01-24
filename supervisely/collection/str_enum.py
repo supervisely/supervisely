@@ -22,7 +22,7 @@ class StrEnum(Enum):
     
     How to use of StrEnum::
     
-        >>> import supervisely_lib as sly
+        >>> import supervisely as sly
         >>> class MyStrEnum(sly.StrEnum):
         ONE = "one"
         TWO = "two"

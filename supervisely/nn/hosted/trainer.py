@@ -5,7 +5,7 @@ import os.path
 import json
 from copy import deepcopy
 
-from supervisely_lib import logger
+from supervisely import logger
 from supervisely.io import fs as sly_fs
 from supervisely.nn.config import update_recursively
 from supervisely.nn.dataset import samples_by_tags
