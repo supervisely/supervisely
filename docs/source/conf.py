@@ -57,7 +57,8 @@ html_css_files = [
 ]
 
 html_sidebars = {
-    "**": ['fulltoc.html', 'sourcelink.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html", "localtoc.html"]
+    "**": ['fulltoc.html', 'sourcelink.html', 'relations.html', 'searchbox.html', "logo-text.html", "globaltoc.html",
+           "localtoc.html"]
 }
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -104,8 +105,8 @@ html_theme_options = {
     'globaltoc_includehidden': True,
 
     'html_prettify': False,
-    'html_minify': True,
-    'css_minify': True,
+    'html_minify': False,
+    'css_minify': False,
 
     "nav_links": [
         # {"href": "index", "internal": True, "title": "Home"},
@@ -131,7 +132,7 @@ html_theme_options = {
         },
     ],
 
-                                 "version_dropdown": True,
+    "version_dropdown": True,
     "version_json": "_static/versions.json",
     "version_info": {
         "Release": "https://bashtage.github.io/sphinx-material/",
@@ -143,10 +144,10 @@ html_theme_options = {
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-add_module_names = True
+add_module_names = False
 
 # If false, no module index is generated.
-html_domain_indices = True
+html_domain_indices = False
 
 # Disable typehints
 autodoc_typehints = "none"
@@ -169,10 +170,8 @@ autodoc_member_order = 'groupwise'
 # autodoc_member_order = 'bysource'
 
 autosummary_generate = True
-
 autoclass_content = "class"
 autodoc_class_signature = 'separated'
-
 autodoc_default_options = {
     "members": True,
     "methods": True,
@@ -180,4 +179,4 @@ autodoc_default_options = {
     "show-inheritance": False,
 }
 
-autosectionlabel_prefix_document = True
+autosectionlabel_prefix_document = False

@@ -1,0 +1,5 @@
+sphinx==4.4.0
+sphinx-material==0.0.35
+sphinx-copybutton==0.4.0
+m2r2==0.3.2
+nbsphinx==0.8.8
