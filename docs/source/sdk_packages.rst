@@ -15,7 +15,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     annotation
     annotation_params
@@ -37,7 +37,7 @@ API
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     api
     agent_api
@@ -75,7 +75,7 @@ Augmentation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     aug
 
@@ -87,7 +87,7 @@ Collection
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     key_indexed_collection
 
@@ -99,7 +99,7 @@ Decorators
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     profile
 
@@ -113,7 +113,7 @@ Geometry
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     any_geometry
     bitmap
@@ -138,7 +138,7 @@ Imaging
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     font
     color
@@ -154,7 +154,7 @@ IO
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     fs
     json
@@ -167,7 +167,7 @@ Labeling Jobs
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     utils
 
@@ -180,7 +180,7 @@ Pointcloud
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
     pointcloud
 
@@ -192,7 +192,7 @@ Pointcloud Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    pointcloud_annotation
    pointcloud_figure
@@ -209,7 +209,7 @@ Project
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    project
    pointcloud-project
@@ -227,7 +227,7 @@ Task
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    progress
 
@@ -239,7 +239,7 @@ User
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    user
 
@@ -251,7 +251,7 @@ Video
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    video
 
@@ -263,7 +263,7 @@ Video Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/module.rst
+    :template: autosummary/custom-module-template.rst
 
    frame
    frame_collection
