@@ -36,27 +36,3 @@ class WebsocketManager:
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
             self.disconnect(websocket)
-
-
-class WebsocketMiddleware:
-    def __init__(
-        self, app: ASGIApp, ws_manager: WebsocketManager, path: str = "/ws"
-    ) -> None:
-        self.app = app
-        self.ws_manager = ws_manager
-        self.path = path
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "ws" and scope["path"] == self.path:
-            print(123)
-            # if scope["path"] == self.path:
-            #     scope["app"].state.STOPPED = True
-            #     self.shutdown()
-            # if hasattr(scope["app"].state, 'STOPPED'):
-            #     stopped = scope["app"].state.STOPPED
-            #     if stopped:
-            #         # PlainTextResponse("Invalid host header", status_code=400)
-            #         response = Response(content="Server is being shut down", status_code=403)
-            #         return await response(scope, receive, send) 
-        
-        await self.app(scope, receive, send)
