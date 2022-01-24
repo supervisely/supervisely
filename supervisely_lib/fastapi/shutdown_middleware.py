@@ -17,24 +17,17 @@ class ShutdownMiddleware:
         if scope["type"] == "http":
             if scope["path"] == self.path:
                 scope["app"].state.STOPPED = True
-                await asyncio.sleep(20)
                 self.shutdown()
             if hasattr(scope["app"].state, 'STOPPED'):
                 stopped = scope["app"].state.STOPPED
                 if stopped:
+                    # PlainTextResponse("Invalid host header", status_code=400)
                     response = Response(content="Server is being shut down", status_code=403)
-                    await response(scope, receive, send) 
+                    return await response(scope, receive, send) 
+        
         await self.app(scope, receive, send)
 
     def shutdown(self):
         # https://github.com/tiangolo/fastapi/issues/1509
         current_process = psutil.Process(os.getpid())
         current_process.send_signal(signal.SIGINT) # emit ctrl + c
-
-# async def graceful_shutdown(app: FastAPI):
-#     app.state.STOPPED = True
-#     await asyncio.sleep(10)
-
-#     # https://github.com/tiangolo/fastapi/issues/1509
-#     current_process = psutil.Process(os.getpid())
-#     current_process.send_signal(signal.SIGINT) # emit ctrl + c

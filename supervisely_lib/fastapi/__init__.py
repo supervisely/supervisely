@@ -1,3 +1,2 @@
-from supervisely_lib.fastapi.websocket import WebsocketManager
-# from supervisely_lib.fastapi.utils import graceful_shutdown, ShutdownMiddlewareCallable
+from supervisely_lib.fastapi.websocket import WebsocketManager, WebsocketMiddleware
 from supervisely_lib.fastapi.shutdown_middleware import ShutdownMiddleware
