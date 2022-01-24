@@ -2,11 +2,6 @@
 # https://github.com/tiangolo/fastapi/issues/2639
 # https://github.com/tiangolo/fastapi/issues/1501#issuecomment-638219871
 
-import os
-import signal
-import psutil
-from starlette.types import ASGIApp, Receive, Scope, Send
-from fastapi import Response
 from typing import List
 from fastapi import WebSocket, WebSocketDisconnect
 

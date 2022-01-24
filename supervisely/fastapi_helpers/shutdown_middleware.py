@@ -1,33 +1,27 @@
 import os
 import signal
 import psutil
-import asyncio
+import time
 from starlette.types import ASGIApp, Receive, Scope, Send
-from fastapi import Response
+from fastapi import Response, Request
 
 
 class ShutdownMiddleware:
     def __init__(
-        self, app: ASGIApp, path: str = "/shutdown"
+        self, app: ASGIApp
     ) -> None:
         self.app = app
-        self.path = path
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
-            if scope["path"] == self.path:
-                scope["app"].state.STOPPED = True
-                self.shutdown()
-            if hasattr(scope["app"].state, 'STOPPED'):
-                stopped = scope["app"].state.STOPPED
-                if stopped:
-                    # PlainTextResponse("Invalid host header", status_code=400)
-                    response = Response(content="Server is being shut down", status_code=403)
-                    return await response(scope, receive, send) 
-        
+            if hasattr(scope["app"].state, 'STOPPED') and scope["app"].state.STOPPED:
+                response = Response(content="Server is being shut down", status_code=403)
+                return await response(scope, receive, send) 
         await self.app(scope, receive, send)
 
-    def shutdown(self):
-        # https://github.com/tiangolo/fastapi/issues/1509
-        current_process = psutil.Process(os.getpid())
-        current_process.send_signal(signal.SIGINT) # emit ctrl + c
+
+def shutdown_fastapi(request: Request):
+    request.app.state.STOPPED = True
+    # time.sleep(10)
+    current_process = psutil.Process(os.getpid())
+    current_process.send_signal(signal.SIGINT) # emit ctrl + c
