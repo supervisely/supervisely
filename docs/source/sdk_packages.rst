@@ -13,7 +13,7 @@ Annotation
 .. currentmodule:: supervisely.annotation
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -35,7 +35,7 @@ API
 .. currentmodule:: supervisely.api
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -73,7 +73,7 @@ Augmentation
 .. currentmodule:: supervisely.aug
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -85,7 +85,7 @@ Collection
 .. currentmodule:: supervisely.collection
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -97,7 +97,7 @@ Decorators
 .. currentmodule:: supervisely.decorators
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -111,7 +111,7 @@ Geometry
 .. currentmodule:: supervisely.geometry
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -136,7 +136,7 @@ Imaging
 .. currentmodule:: supervisely.imaging
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -152,7 +152,7 @@ IO
 .. currentmodule:: supervisely.io
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -165,7 +165,7 @@ Labeling Jobs
 .. currentmodule:: supervisely.labeling_jobs
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -178,7 +178,7 @@ Pointcloud
 .. currentmodule:: supervisely.pointcloud
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -190,7 +190,7 @@ Pointcloud Annotation
 .. currentmodule:: supervisely.pointcloud_annotation
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -207,7 +207,7 @@ Project
 .. currentmodule:: supervisely.project
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -225,7 +225,7 @@ Task
 .. currentmodule:: supervisely.task
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -237,7 +237,7 @@ User
 .. currentmodule:: supervisely.user
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -249,7 +249,7 @@ Video
 .. currentmodule:: supervisely.video
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 
@@ -261,7 +261,7 @@ Video Annotation
 .. currentmodule:: supervisely.video_annotation
 
 .. autosummary::
-    :toctree: api
+    :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/module.rst
 

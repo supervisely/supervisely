@@ -14,43 +14,63 @@
 import os
 import sys
 
+# -- docker-compose up sphinx-docs --
+# sys.path.insert(0, os.path.abspath('./repo'))
+
+# -- local build --
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('..'))
+
+
+# -- readthedocs build --
 # PATH_HERE = os.path.abspath(os.path.dirname(__file__))
 # PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
 # sys.path.insert(0, os.path.abspath(PATH_ROOT))
-sys.path.insert(0, os.path.abspath('./repo'))
-# sys.path.insert(0, os.path.abspath('../../supervisely_lib'))
 # sys.path.insert(0, '/app')
 
 
 # -- Project information -----------------------------------------------------
-
 # project = 'Supervisely SDK for Python'
 project = 'Supervisely'
 copyright = '2022, Supervisely Team'
 author = 'Supervisely Team'
 
 # -- General configuration ---------------------------------------------------
-
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
 extensions = [
-    'sphinx.ext.duration',
-    'sphinx.ext.doctest',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    "sphinx.ext.autosectionlabel",
+    'sphinx.ext.viewcode',
     'sphinx_copybutton',
+    # 'sphinx_autodoc_typehints',
     'm2r2',
-    'nbsphinx'
+    'nbsphinx',
+
+    'sphinx.ext.duration',
+    'sphinx.ext.doctest',
+    "sphinx.ext.autosectionlabel"
 ]
+
+# Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3/", None),
+}
+
+templates_path = ['_templates']
+html_static_path = ['_static']
+
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
+html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
+autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
+#autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
+add_module_names = False # Remove namespaces from class/method signatures
 
 jupyter_generate_html = True
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
-html_static_path = ['_static']
+
 
 html_css_files = [
     'css/custom.css',
@@ -78,7 +98,6 @@ html_favicon = '_static/images/favicon.ico'  # need fix later
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_show_sourcelink = True
 html_theme = 'sphinx_material'
 html_theme_options = {
 
