@@ -6,25 +6,17 @@
 Supervisely SDK for Python
 ==========================
 
-.. image:: _static/images/logo-dark-custom-row.png
-   :width: 100%
-   :alt: supervisely
-   :align: center
-
-
-.. raw:: html
-
-   <p align="center">
-     <a href="https://github.com/supervisely/supervisely"> <img src="https://img.shields.io/uptimerobot/status/m778791913-8b2f81d0f1c83da85158e2a5.svg"> </a>
-     <a href="https://github.com/supervisely/supervisely"> <img src="https://img.shields.io/uptimerobot/ratio/m778791913-8b2f81d0f1c83da85158e2a5.svg"> </a>
-     <a href="https://github.com/supervisely/supervisely"> <img src="https://img.shields.io/github/repo-size/supervisely/supervisely.svg"> </a>
-     <a href="https://github.com/supervisely/supervisely"> <img src="https://img.shields.io/github/languages/top/supervisely/supervisely.svg"> </a>
-     <a href="https://github.com/supervisely/supervisely"> <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"> </a>
-   </p>
-
-
 .. mdinclude:: ../../README.md
 
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   rst_templates/installation/installation
+   sdk_packages
+   rst_templates/tutorials/tutorials
+   rst_templates/troubleshooting/troubleshooting
 
 .. toctree::
    :caption: Source Code

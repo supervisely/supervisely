@@ -1,9 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/bFuEQ4K.png" width="250"></a>
   <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/B276eMS.png"></a>
-  <br>
-  Supervisely
   <br>
 </h1>
 
@@ -14,7 +11,7 @@ Supervisely</a>.</h4>
   <a href="https://ecosystem.supervise.ly" target="_blank"> <img src="https://img.shields.io/badge/supervisely-ecosystem-brightgreen" alt="Ecosystem"> </a>
   <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack" alt="Slack"> </a>
   <a href="https://supervisely.readthedocs.io/en/latest/" target="_blank"> <img src="https://readthedocs.org/projects/supervisely/badge/?version=latest" alt="ReadTheDocs"> </a>
-  <a href="https://hub.docker.com/r/supervisely/base-py-sdk" target="_blank"> <img src="https://img.shields.io/docker/pulls/supervisely/supervisely.svg" alt="Docker pulls"> </a>
+  <a href="~~https://hub.docker.com/r/supervisely/base-py-sdk/~~" target="_blank"> <img src="https://img.shields.io/docker/pulls/supervisely/supervisely.svg" alt="Docker pulls"> </a>
   <a href="https://github.com/supervisely/supervisely" target="_blank"> <img src="https://img.shields.io/github/repo-size/supervisely/supervisely.svg" alt="Repository size"> </a>
   <a href="https://pypi.org/project/supervisely" target="_blank"> <img src="https://img.shields.io/pypi/v/supervisely?color=%2334D058&label=pypi%20package" alt="Package version"> </a>
   <a href="https://github.com/supervisely/supervisely/pulls" target="_blank"> <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="Pull requests"> </a>
@@ -111,7 +108,7 @@ Key features:
 * Common functionality for developing Supervisely plugins, so that you only need to focus on the core of your custom
   logic, and not on low level interactions with the platform.
 
-#### Installation:
+#### Installation
 
 ```
 pip install supervisely
