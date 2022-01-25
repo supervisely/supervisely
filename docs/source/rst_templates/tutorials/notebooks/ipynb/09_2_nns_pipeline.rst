@@ -4,4 +4,4 @@ Python SDK Tutorial №9.2: Custom NN Multi GPU Detection and Segmentation Pipel
 .. toctree::
    :maxdepth: 3
 
-   09_2_nns_pipeline.nblink
+   nblinks/09_2_nns_pipeline.nblink
