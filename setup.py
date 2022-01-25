@@ -49,6 +49,14 @@ setup(
             "sk-video>=1.1.10",
             "pandas>=1.1.3",
         ],
+        'docs': [
+            "sphinx==4.4.0",
+            "sphinx-material==0.0.35",
+            "sphinx-copybutton==0.4.0",
+            "sphinx-autodoc-typehints==1.15.3",
+            "m2r2==0.3.2",
+            "nbsphinx==0.8.8,",
+        ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
             "plotly>=4.11.0",
