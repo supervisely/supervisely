@@ -4,4 +4,4 @@ Python SDK Tutorial №6: Inference Modes: Full Image / Sliding Window / ROI / B
 .. toctree::
    :maxdepth: 3
 
-   ../../../repo/help/jupyterlab_scripts/src/tutorials/06_inference_modes/inference_modes
+   06_inference_modes.nblink
