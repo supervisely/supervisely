@@ -1,7 +1,5 @@
 <h1 align="center">
-  <br>
   <a href="https://supervise.ly"><img alt="Supervisely" title="Supervisely" src="https://i.imgur.com/B276eMS.png"></a>
-  <br>
 </h1>
 
 <h4 align="center">AI for everyone! Neural networks, tools and Python SDK we use with <a href="https://supervise.ly">
