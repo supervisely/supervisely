@@ -32,6 +32,12 @@ python development.
 
 **Feel free to ask questions in** `Slack <https://supervisely.slack.com/>`_.
 
+README FILE
+===========
+
+.. mdinclude:: ../../README.md
+
+
 Quick Start
 -----------
 
