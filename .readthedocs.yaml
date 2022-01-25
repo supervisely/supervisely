@@ -9,6 +9,7 @@ python:
     - method: pip
       path: .
       extra_requirements:
+        - extras
         - docs
     - method: setuptools
       path: .
