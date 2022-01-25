@@ -56,6 +56,7 @@ setup(
             "sphinx-autodoc-typehints==1.15.3",
             "m2r2==0.3.2",
             "nbsphinx==0.8.8",
+            "nbsphinx-link==1.3.0",
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
