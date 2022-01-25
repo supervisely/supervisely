@@ -14,3 +14,5 @@ python:
   install:
     - method: setuptools
       path: .
+
+    - requirements: docs/doc-requirements.txt

@@ -36,12 +36,6 @@ setup(
         "requests-toolbelt>=0.9.1",
         "Shapely>=1.7.1",
         "bidict>=0.21.2",
-        "sphinx==4.4.0",
-        "sphinx-material==0.0.35",
-        "sphinx-copybutton==0.4.0",
-        "sphinx-autodoc-typehints==1.15.3",
-        "m2r2==0.3.2",
-        "nbsphinx==0.8.8",
     ],
     extras_require={
         'extras': [
