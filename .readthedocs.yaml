@@ -4,7 +4,13 @@ version: 2
 sphinx:
   configuration: docs/source/conf.py
 
-# Explicitly set Python requirements
+## Explicitly set Python requirements
+#python:
+#  install:
+#    - requirements: docs/doc-requirements.txt
+
 python:
+  version: 3.8
   install:
-    - requirements: docs/doc-requirements.txt
+    - method: setuptools
+      path: .
