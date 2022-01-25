@@ -1,22 +1,15 @@
-1) Build documentation from docker
+Build documentation guide for debug puproses
 
-- check that correct path to the library folder is specified (./repo)
-- run 'docker-compose up' from 'docs' folder.
-- in 'docs' should appear 'build' folder with documentation
-- optional, open in browser 'index.html' from 'build' folder
+**all commands must be executed from the `docs` folder**
 
+- install `doc-requirements.txt`
+- then run one of the following commands to build documentation      
+  - run `./build_html.sh`
+  - run `sphinx-build source/ build/` 
+  - `make html`
 
-2) Build documentation locally
-- check that correct path to the library folder is specified (../../supervisely_lib)
-- install sphinx and additions which use in documentation:
-   - pip install sphinx==3.4.3
-   - pip install sphinx-material==0.3.5
-   - pip install sphinx-copybutton==0.3.1
-   - pip install m2r2==0.2.7
-   - pip install nbsphinx==0.8.1
-      
-- run "./build_html.sh" or "sphinx-build source/ build/" from 'docs' folder
-- in 'docs' should appear 'build' folder with documentation
-- optional, open in browser 'index.html' from 'build' folder
+after building the documentation the `build` folder should appear
 
-3) venv tbd
+if run into some errors or you documentation is not updated try to use:
+- `make clean` and then run one of the building commands from above
+- also try to refresh page with `shift + f5`
