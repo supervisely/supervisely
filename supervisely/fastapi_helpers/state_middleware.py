@@ -22,7 +22,9 @@ class StateMiddleware:
                 return await response(scope, receive, send) 
             else:
                 request = Request(scope, receive, send)
+                #TODO: if json body
                 request_json = await request.json()
-                self.state.clear()
-                self.state.update(request_json["state"])
+                if "state" in request_json:
+                    self.state.clear()
+                    self.state.update(request_json["state"])
         await self.app(scope, receive, send)
