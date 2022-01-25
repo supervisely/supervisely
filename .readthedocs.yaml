@@ -3,3 +3,8 @@ version: 2
 # Build from the docs/source/ directory with Sphinx
 sphinx:
   configuration: docs/source/conf.py
+
+# Explicitly set Python requirements
+python:
+  install:
+    - requirements: docs/doc-requirements.txt

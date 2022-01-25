@@ -61,10 +61,10 @@ html_static_path = ['_static']
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = True  # Remove 'view source code' from top of page (for html, not python)
-autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+autodoc_inherit_docstrings = False  # If no docstring, inherit from base class
 set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
 nbsphinx_allow_errors = True  # Continue through Jupyter errors
-# add_module_names = True  # Remove namespaces from class/method signatures
+add_module_names = False  # Remove namespaces from class/method signatures
 autodoc_member_order = 'groupwise'
 # autodoc_member_order = 'bysource'
 
@@ -133,8 +133,8 @@ html_theme_options = {
     'globaltoc_includehidden': True,
 
     'html_prettify': False,
-    'html_minify': False,
-    'css_minify': False,
+    'html_minify': True,
+    'css_minify': True,
 
     "nav_links": [
         # {"href": "index", "internal": True, "title": "Home"},
