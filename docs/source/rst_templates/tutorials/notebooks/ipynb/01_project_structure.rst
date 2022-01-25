@@ -5,5 +5,3 @@ Python SDK Tutorial №1: Project Structure
    :maxdepth: 3
 
    ../../../../../../help/jupyterlab_scripts/src/tutorials/01_project_structure/project.ipynb
-   ../../../../../help/jupyterlab_scripts/src/tutorials/01_project_structure/project.ipynb
-   ../../../../help/jupyterlab_scripts/src/tutorials/01_project_structure/project.ipynb
