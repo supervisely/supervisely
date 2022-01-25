@@ -7,7 +7,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 
 class WebsocketManager:
-    def __init__(self):
+    def __init__(self, path="/sly-app-ws"):
+        self.path=path
         self.active_connections: List[WebSocket] = []
         
     async def connect(self, websocket: WebSocket):
