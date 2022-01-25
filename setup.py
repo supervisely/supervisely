@@ -55,7 +55,7 @@ setup(
             "sphinx-copybutton==0.4.0",
             "sphinx-autodoc-typehints==1.15.3",
             "m2r2==0.3.2",
-            "nbsphinx==0.8.8,",
+            "nbsphinx==0.8.8",
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
@@ -64,7 +64,7 @@ setup(
             "python-dotenv==0.19.2"
         ],
         # legacy dependencies
-        'plugins':[
+        'plugins': [
             "jsonschema>=2.6.0,<3.0.0",
         ],
         'sdk-nn-plugins': [
