@@ -1,17 +1,11 @@
 version: 2
 
-# Build from the docs/source/ directory with Sphinx
-sphinx:
-  configuration: docs/source/conf.py
-
-## Explicitly set Python requirements
-#python:
-#  install:
-#    - requirements: docs/doc-requirements.txt
-
 python:
-  version: 3.8
+  version: "3.8"
   install:
-    - method: setuptools
+    - method: pip
       path: .
-      requirements: docs/doc-requirements.txt
+      extra_requirements:
+        - docs
+    - method: setuptools
+      path: supervisely

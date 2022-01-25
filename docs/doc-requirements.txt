@@ -4,5 +4,3 @@ sphinx-copybutton==0.4.0
 sphinx-autodoc-typehints==1.15.3
 m2r2==0.3.2
 nbsphinx==0.8.8
-# python-json-logger==2.0.2
-# numpy
