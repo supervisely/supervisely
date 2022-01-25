@@ -1,5 +1,8 @@
 Custom Plugin
 =============
 
-.. mdinclude:: ../../../../../../help/tutorials/01_create_new_plugin/how_to_create_plugin.md
+.. toctree::
+   :maxdepth: 1
+
+   md_includes/md_custom_plugin
 

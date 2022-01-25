@@ -1,5 +1,8 @@
 How to Debug Custom NN Plugin
 =============================
 
-.. mdinclude:: ../../../../../../help/tutorials/05_develop_nn_plugin/develop_plugin.md
+.. toctree::
+   :maxdepth: 1
+
+   md_includes/md_debug_nn_plugin
 

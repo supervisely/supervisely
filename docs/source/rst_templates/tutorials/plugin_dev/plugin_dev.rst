@@ -2,6 +2,7 @@ Plugin Development
 =======================
 
 .. toctree::
+   :maxdepth: 1
 
    Custom Plugin Basics                                   <plugin_tutorials/custom_plugin>
    Custom NN Plugin Basics                                <plugin_tutorials/custom_nn_plugin>

@@ -1,5 +1,7 @@
 Different Ways to Deploy NN
 ===========================
 
-.. mdinclude:: ../../../../../../help/tutorials/04_deploy_neural_net_as_api/deploy-model.md
+.. toctree::
+   :maxdepth: 1
 
+   md_includes/md_ways_to_deploy_nn
