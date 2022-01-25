@@ -26,4 +26,3 @@ class StateMiddleware:
                 self.state.clear()
                 self.state.update(current_state)
         await self.app(scope, receive, send)
-
