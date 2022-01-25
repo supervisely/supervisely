@@ -28,9 +28,7 @@ Supervisely</a>.</h4>
   <a href="#resources">Resources</a>
 </p>
 
-<div align="center">
-    ![screenshot](https://i.imgur.com/5dzQrrA.gif)
-</div>
+![screenshot](https://i.imgur.com/5dzQrrA.gif)
 
 ## Introduction
 
@@ -51,7 +49,9 @@ the specific tasks to run, and keeps track of progress, successes and failures o
 agent on worker machine you bring up a virtual computing claster that your team can run their tasks on from the
 Supervisely web instance.
 
-![screenshot](https://i.imgur.com/5dzQrrA.gif)
+<p align="center">
+<img src="https://gblobscdn.gitbook.com/assets%2F-M4BHwRbuyIoH-xoF3Gv%2F-M5JQKcQ0OcHshO-q9Kz%2F-M5JQLtrAGKs7RWLDVdA%2Fagent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
+</p>
 
 Check out [explanation](https://github.com/supervisely/supervisely/tree/master/agent) on how agent works
 and [documentation](https://docs.supervise.ly/customization/agents) on how to deploy a new agent.
