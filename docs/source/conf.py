@@ -17,6 +17,9 @@ import sys
 PATH_HERE = os.path.abspath(os.path.dirname(__file__))
 PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
 sys.path.insert(0, os.path.abspath(PATH_ROOT))
+sys.path.insert(0, os.path.abspath('../../help'))
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../../'))
 
 # -- Project information -----------------------------------------------------
 project = 'Supervisely'
@@ -33,6 +36,7 @@ extensions = [
     'sphinx_autodoc_typehints',
     'm2r2',
     'nbsphinx',
+    'nbsphinx_link',
 
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
