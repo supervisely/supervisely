@@ -18,14 +18,14 @@ import sys
 # sys.path.insert(0, os.path.abspath('./repo'))
 
 # -- local build --
-# sys.path.insert(0, os.path.abspath('../..'))
-# sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- readthedocs build --
-PATH_HERE = os.path.abspath(os.path.dirname(__file__))
-PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
-sys.path.insert(0, os.path.abspath(PATH_ROOT))
+# PATH_HERE = os.path.abspath(os.path.dirname(__file__))
+# PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
+# sys.path.insert(0, os.path.abspath(PATH_ROOT))
 
 
 # -- Project information -----------------------------------------------------
