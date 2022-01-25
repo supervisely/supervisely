@@ -18,7 +18,6 @@ PATH_HERE = os.path.abspath(os.path.dirname(__file__))
 PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
 sys.path.insert(0, os.path.abspath(PATH_ROOT))
 
-
 # -- Project information -----------------------------------------------------
 project = 'Supervisely'
 copyright = '2022, Supervisely Team'
@@ -65,7 +64,6 @@ autodoc_default_options = {
     "exclude-members": "__init__",
     "show-inheritance": True,
 }
-
 
 jupyter_generate_html = True
 # Add any paths that contain templates here, relative to this directory.
