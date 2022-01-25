@@ -160,19 +160,11 @@ html_theme_options = {
     }
 }
 
-# If true, the current module name will be prepended to all description
-# unit titles (such as .. function::).
-add_module_names = False
-
 # If false, no module index is generated.
 html_domain_indices = False
 
 # Disable typehints
 autodoc_typehints = "none"
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
 
 # source_suffix
 # The file extensions of source files. Sphinx considers the files with this suffix as sources.
@@ -182,5 +174,3 @@ source_suffix = {
     '.txt': 'restructuredtext',
     '.md': 'markdown'
 }
-# docs order
-# disable for alphabetical order, enable for order from source .py files
