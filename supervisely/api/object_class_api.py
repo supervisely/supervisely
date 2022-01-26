@@ -132,7 +132,7 @@ class ObjectClassApi(ModuleApi):
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
         :return: Dictionary Key ID Map {'key': id}
-        :rtype: :class:`KeyIdMap<supervisely_lib.video_annotation.key_id_map.KeyIdMap>`
+        :rtype: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`
         :Usage example:
 
         .. code-block:: python

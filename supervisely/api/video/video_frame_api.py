@@ -11,7 +11,7 @@ from supervisely.imaging.image import read_bytes
 
 class VideoFrameAPI(ModuleApi):
     """
-    :class:`Frame<supervisely_lib.video_annotation.frame.Frame>` for a single video. :class:`VideoFrameAPI<VideoFrameAPI>` object is immutable.
+    :class:`Frame<supervisely.video_annotation.frame.Frame>` for a single video. :class:`VideoFrameAPI<VideoFrameAPI>` object is immutable.
     """
     def _download(self, video_id, frame_index):
         """

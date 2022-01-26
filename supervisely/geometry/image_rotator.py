@@ -112,7 +112,7 @@ class ImageRotator:
         :param point: PointLocation object.
         :type point: PointLocation
         :return: PointLocation object
-        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
         :Usage example:
 
          .. code-block:: python

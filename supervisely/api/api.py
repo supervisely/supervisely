@@ -141,7 +141,7 @@ class Api:
         :param ignore_task_id:
         :type ignore_task_id: bool
         :return: Api object
-        :rtype: :class:`Api<supervisely_lib.api.api.Api>`
+        :rtype: :class:`Api<supervisely.api.api.Api>`
 
         :Usage example:
 

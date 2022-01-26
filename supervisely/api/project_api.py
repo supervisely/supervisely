@@ -30,7 +30,7 @@ class ExpectedProjectTypeMismatch(Exception):
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """
-    API for working with :class:`Project<supervisely_lib.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
+    API for working with :class:`Project<supervisely.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
 
     :param api: API connection to the server
     :type api: Api

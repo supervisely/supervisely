@@ -17,15 +17,15 @@ from supervisely.geometry.rectangle import Rectangle
 
 class VectorGeometry(Geometry):
     """
-    VectorGeometry is a base class of geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
+    VectorGeometry is a base class of geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
 
     :param exterior: List of PointLocation objects, the object contour is defined with these points.
     :type exterior: List[PointLocation]
-    :param interior: List of PointLocation objects, the object holes is defined with these points (used for :class:`Polygon<supervisely_lib.geometry.polygon.Polygon>`).
+    :param interior: List of PointLocation objects, the object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
     :type interior: List[List[PointLocation]]
     :param sly_id: VectorGeometry ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VectorGeometry.
     :type labeler_login: str, optional
@@ -108,7 +108,7 @@ class VectorGeometry(Geometry):
         VectorGeometry exterior points.
 
         :return: VectorGeometry exterior points
-        :rtype: :class:`List[PointLocation]<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
         :Usage example:
 
          .. code-block:: python
@@ -143,7 +143,7 @@ class VectorGeometry(Geometry):
         VectorGeometry interior points.
 
         :return: VectorGeometry interior points
-        :rtype: :class:`List[List[PointLocation]]<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`List[List[PointLocation]]<supervisely.geometry.point_location.PointLocation>`
         :Usage example:
 
          .. code-block:: python
@@ -304,7 +304,7 @@ class VectorGeometry(Geometry):
         Creates Rectangle object from current VectorGeometry.
 
         :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`
+        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
 

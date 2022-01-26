@@ -32,7 +32,7 @@ ItemInfo = namedtuple('ItemInfo', ['dataset_name', 'name', 'img_path', 'ann_path
 
 class OpenMode(Enum):
     """
-    Defines the mode of using the :class:`Project<supervisely_lib.project.project.Project>` and :class:`Dataset<supervisely_lib.project.project.Dataset>`.
+    Defines the mode of using the :class:`Project<supervisely.project.project.Project>` and :class:`Dataset<supervisely.project.project.Dataset>`.
     """
     READ = 1
     CREATE = 2
@@ -59,9 +59,9 @@ class Dataset(KeyObject):
 
      .. code-block:: python
 
-         from supervisely_lib.project.project import Dataset
-         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-         ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+         from supervisely.project.project import Dataset, OpenMode
+         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds"
+         ds = Dataset(dataset_path, OpenMode.READ)
     """
     item_dir_name = 'img'
     annotation_class = Annotation
@@ -93,7 +93,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
             print(dataset.name)
@@ -116,7 +116,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -136,7 +136,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -156,7 +156,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -177,7 +177,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -255,7 +255,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -277,7 +277,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -302,7 +302,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -330,7 +330,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -363,7 +363,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -406,7 +406,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -436,7 +436,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -467,7 +467,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -555,7 +555,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -630,7 +630,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -658,7 +658,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -685,7 +685,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -719,7 +719,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -752,7 +752,7 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely_lib.project.project import Dataset
+            from supervisely.project.project import Dataset
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
             ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -780,7 +780,9 @@ class Project:
 
      .. code-block:: python
 
-         project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+         from supervisely.project.project import Project
+         project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+         project = Project(project_path, OpenMode.READ)
     """
     dataset_class = Dataset
 

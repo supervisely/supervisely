@@ -19,15 +19,15 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 class VideoObject(KeyObject):
     """
-    VideoObject object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoObject<VideoObject>` object is immutable.
+    VideoObject object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoObject<VideoObject>` object is immutable.
 
-    :param obj_class: VideoObject :class:`class<supervisely_lib.annotation.obj_class.ObjClass>`.
+    :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
     :type obj_class: ObjClass
-    :param tags: VideoObject :class:`tags<supervisely_lib.video_annotation.video_tag_collection.VideoTagCollection>`.
+    :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
     :type tags: VideoTagCollection, optional
     :param key: KeyIdMap object.
     :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which VideoObject belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VideoObject.
     :type labeler_login: str, optional
@@ -76,7 +76,7 @@ class VideoObject(KeyObject):
         ObjClass of the current VideoObject.
 
         :return: ObjClass object
-        :rtype: :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>`
+        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
         :Usage example:
 
          .. code-block:: python
@@ -106,7 +106,7 @@ class VideoObject(KeyObject):
         VideoTagCollection of the current VideoObject.
 
         :return: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection<supervisely_lib.video_annotation.video_tag_collection.VideoTagCollection>`
+        :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
         :Usage example:
 
          .. code-block:: python
@@ -274,7 +274,7 @@ class VideoObject(KeyObject):
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -324,13 +324,13 @@ class VideoObject(KeyObject):
         """
         Makes a copy of VideoObject with new fields, if fields are given, otherwise it will use fields of the original VideoObject.
 
-        :param obj_class: VideoObject :class:`class<supervisely_lib.annotation.obj_class.ObjClass>`.
+        :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
         :type obj_class: ObjClass, optional
-        :param tags: VideoObject :class:`tags<supervisely_lib.video_annotation.video_tag_collection.VideoTagCollection>`.
+        :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
         :type tags: VideoTagCollection, optional
         :param key: KeyIdMap object.
         :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which VideoObject belongs.
+        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoObject.
         :type labeler_login: str, optional

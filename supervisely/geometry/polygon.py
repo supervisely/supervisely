@@ -21,15 +21,15 @@ from supervisely.sly_logger import logger
 
 class Polygon(VectorGeometry):
     """
-    Polygon geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
+    Polygon geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
 
-    :param exterior: List of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects, the object contour is defined with these points.
+    :param exterior: List of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects, the object contour is defined with these points.
     :type exterior: List[PointLocation]
-    :param interior: List of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects, the object holes is defined with these points.
+    :param interior: List of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects, the object holes is defined with these points.
     :type interior: List[List[PointLocation]]
     :param sly_id: Polygon ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Polygon belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polygon belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polygon.
     :type labeler_login: str, optional

@@ -26,11 +26,11 @@ class ObjClassJsonFields:
 
 class ObjClass(KeyObject, JsonSerializable):
     """
-    General information about :class:`Label<supervisely_lib.annotation.label.LabelBase>`. :class:`ObjClass` object is immutable.
+    General information about :class:`Label<supervisely.annotation.label.LabelBase>`. :class:`ObjClass` object is immutable.
 
     :param name: Class name.
     :type name: str
-    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely_lib.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely_lib.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely_lib.geometry.graph.GraphNodes>`, :class:`Point<supervisely_lib.geometry.point.Point>`, :class:`Polygon<supervisely_lib.geometry.polygon.Polygon>`, :class:`Polyline<supervisely_lib.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`.
+    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
     :type geometry_type: type
     :param color: :class:`[R, G, B]`, generates random color by default.
     :type color: List[int, int, int], optional
@@ -101,11 +101,11 @@ class ObjClass(KeyObject, JsonSerializable):
 
             class_lemon = sly.ObjClass('lemon', sly.Rectangle)
             print(class_lemon.geometry_type)
-            # Output: <class 'supervisely_lib.geometry.rectangle.Rectangle'>
+            # Output: <class 'supervisely.geometry.rectangle.Rectangle'>
 
             class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
             print(class_kiwi.geometry_type)
-            # Output: <class 'supervisely_lib.geometry.bitmap.Bitmap'>
+            # Output: <class 'supervisely.geometry.bitmap.Bitmap'>
         """
         return self._geometry_type
 
@@ -315,7 +315,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param name: Class name.
         :type name: str
-        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely_lib.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely_lib.geometry.cuboid.Cuboid>`, :class:`Point<supervisely_lib.geometry.point.Point>`, :class:`Polygon<supervisely_lib.geometry.polygon.Polygon>`, :class:`Polyline<supervisely_lib.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`.
+        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
         :type geometry_type: type
         :param color: :class:`[R, G, B]`, generates random color by default.
         :type color: List[int, int, int], optional

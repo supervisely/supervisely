@@ -119,7 +119,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>` for VideoAnnotations.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional

@@ -26,11 +26,11 @@ class OutOfImageBoundsExtension(Exception):
 
 class VideoFigure:
     """
-    VideoFigure object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoFigure<VideoFigure>` object is immutable.
+    VideoFigure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoFigure<VideoFigure>` object is immutable.
 
     :param video_object: VideoObject object.
     :type video_object: VideoObject
-    :param geometry: Label :class:`geometry<supervisely_lib.geometry.geometry.Geometry>`.
+    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
     :type geometry: Geometry
     :param frame_index: Index of Frame to which VideoFigure belongs.
     :type frame_index: int
@@ -155,7 +155,7 @@ class VideoFigure:
         Geometry of the current VideoFigure.
 
         :return: Geometry object
-        :rtype: :class:`Geometry<supervisely_lib.geometry>`
+        :rtype: :class:`Geometry<supervisely.geometry>`
         :Usage example:
 
          .. code-block:: python
@@ -356,13 +356,13 @@ class VideoFigure:
 
         :param video_object: VideoObject object.
         :type video_object: VideoObject, optional
-        :param geometry: Label :class:`geometry<supervisely_lib.geometry.geometry.Geometry>`.
+        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
         :type geometry: Geometry, optional
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which VideoFigure belongs.
+        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoFigure belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoFigure.
         :type labeler_login: str, optional
@@ -432,7 +432,7 @@ class VideoFigure:
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises: :class:`OutOfImageBoundsExtension<supervisely_lib.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
+        :raises: :class:`OutOfImageBoundsExtension<supervisely.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
         :return: None
         :rtype: :class:`NoneType`
 

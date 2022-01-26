@@ -21,13 +21,13 @@ from supervisely import logger
 
 class Polyline(VectorGeometry):
     """
-    Polyline geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
+    Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
 
     :param exterior: List of PointLocation objects, the Polyline is defined with these points.
     :type exterior: List[PointLocation]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Polyline belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polyline.
     :type labeler_login: str, optional

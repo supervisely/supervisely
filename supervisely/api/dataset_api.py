@@ -11,7 +11,7 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule, Re
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
     """
-    API for working with :class:`Dataset<supervisely_lib.project.project.Dataset>`. :class:`DatasetApi<DatasetApi>` object is immutable.
+    API for working with :class:`Dataset<supervisely.project.project.Dataset>`. :class:`DatasetApi<DatasetApi>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api

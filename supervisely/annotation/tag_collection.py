@@ -12,7 +12,7 @@ from supervisely.annotation.tag import Tag
 
 class TagCollection(MultiKeyIndexedCollection):
     """
-    Collection with :class:`Tag<supervisely_lib.annotation.tag.Tag>` instances. :class:`TagCollection<TagCollection>` object is immutable.
+    Collection with :class:`Tag<supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<TagCollection>` object is immutable.
 
     :Usage example:
 

@@ -23,7 +23,7 @@ from supervisely._utils import batched, generate_free_name
 
 class ImageApi(RemoveableBulkModuleApi):
     """
-    API for working with :class:`Image<supervisely_lib.imaging.image>`. :class:`ImageApi<ImageApi>` object is immutable.
+    API for working with :class:`Image<supervisely.imaging.image>`. :class:`ImageApi<ImageApi>` object is immutable.
 
     :param api: API connection to the server
     :type api: Api

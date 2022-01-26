@@ -26,7 +26,7 @@ from supervisely.task.progress import Progress
 
 class VideoApi(RemoveableBulkModuleApi):
     """
-    API for working with :class:`Video<supervisely_lib.video.video>`. :class:`VideoApi<VideoApi>` object is immutable.
+    API for working with :class:`Video<supervisely.video.video>`. :class:`VideoApi<VideoApi>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api

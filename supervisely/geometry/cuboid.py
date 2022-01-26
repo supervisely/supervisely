@@ -17,7 +17,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 class CuboidFace:
     """
-    CuboidFace for a single :class:`Cuboid<supervisely_lib.geometry.cuboid.Cuboid>`.
+    CuboidFace for a single :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`.
 
     :param a: Node of the CuboidFace.
     :type a: int
@@ -111,15 +111,15 @@ class CuboidFace:
 
 class Cuboid(Geometry):
     """
-    Cuboid geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Cuboid<Cuboid>` class object is immutable.
+    Cuboid geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid<Cuboid>` class object is immutable.
 
-    :param points: List or tuple of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects.
+    :param points: List or tuple of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
     :type points: List[PointLocation] or Tuple[PointLocation]
     :param faces: List or tuple of :class:`CuboidFace<CuboidFace>` objects.
     :type faces: List[CuboidFace] or Tuple[CuboidFace]
     :param sly_id: Cuboid ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID for :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which belongs Cuboid.
+    :param class_id: ID for :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which belongs Cuboid.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Cuboid.
     :type labeler_login: str, optional
@@ -168,7 +168,7 @@ class Cuboid(Geometry):
     @property
     def points(self) -> List[PointLocation]:
         """
-        List of :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` objects.
+        List of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
 
         :return: Cuboid nodes
         :rtype: :class:`List[PointLocation]`
@@ -494,7 +494,7 @@ class Cuboid(Geometry):
         Create Rectangle object from current Cuboid.
 
         :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`
+        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
 

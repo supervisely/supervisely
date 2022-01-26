@@ -56,7 +56,7 @@ class Node(JsonSerializable):
         Location of Node.
 
         :return: PointLocation object
-        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
         """
         return self._location
 
@@ -138,13 +138,13 @@ def _maybe_transform_colors(elements, process_fn):
 
 class GraphNodes(Geometry):
     """
-    GraphNodes geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
+    GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
     :param nodes: Dict containing nodes of graph.
     :type nodes: dict
     :param sly_id: GraphNodes ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which GraphNodes belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which GraphNodes belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created GraphNodes.
     :type labeler_login: str, optional
@@ -158,7 +158,7 @@ class GraphNodes(Geometry):
      .. code-block:: python
 
         import supervisely as sly
-        from supervisely_lib.geometry.graph import Node, GraphNodes
+        from supervisely.geometry.graph import Node, GraphNodes
 
         vertex_1 = Node(sly.PointLocation(5, 5))
         vertex_2 = Node(sly.PointLocation(100, 100))
@@ -504,7 +504,7 @@ class GraphNodes(Geometry):
         Create Rectangle object from current GraphNodes.
 
         :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`
+        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
 

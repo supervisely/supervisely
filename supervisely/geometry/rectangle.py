@@ -16,7 +16,7 @@ from supervisely.geometry import validation
 
 class Rectangle(Geometry):
     """
-    Rectangle geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
+    Rectangle geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
 
     :param top: Minimal vertical value of Rectangle object.
     :type top: int or float
@@ -28,7 +28,7 @@ class Rectangle(Geometry):
     :type right: int or float
     :param sly_id: Rectangle ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Rectangle belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Rectangle belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Rectangle.
     :type labeler_login: str, optional
@@ -176,7 +176,7 @@ class Rectangle(Geometry):
         Get list of Rectangle corners.
 
         :return: List of PointLocation objects
-        :rtype: :class:`List[PointLocation]<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
 
@@ -405,7 +405,7 @@ class Rectangle(Geometry):
         """
         Create Rectangle from given geometry objects.
 
-        :param geometries: List of geometry type objects: :class:`Bitmap<supervisely_lib.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely_lib.geometry.cuboid.Cuboid>`, :class:`Point<supervisely_lib.geometry.point.Point>`, :class:`Polygon<supervisely_lib.geometry.polygon.Polygon>`, :class:`Polyline<supervisely_lib.geometry.polyline.Polyline>`, :class:`Rectangle<Rectangle>`, :class:`Graph<supervisely_lib.geometry.graph.GraphNodes>`.
+        :param geometries: List of geometry type objects: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<Rectangle>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`.
         :type geometries: List[Geometry]
         :return: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
@@ -500,7 +500,7 @@ class Rectangle(Geometry):
         Center of Rectangle.
 
         :return: PointLocation object
-        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
 

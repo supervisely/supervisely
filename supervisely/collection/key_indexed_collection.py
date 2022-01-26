@@ -29,12 +29,12 @@ class KeyObject:
 
 class KeyIndexedCollection:
     """
-    Base class for :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` instances.
-    It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`KeyObject <supervisely_lib.collection.key_indexed_collection.KeyObject>`.
+    Base class for :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances.
+    It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`KeyObject <supervisely.collection.key_indexed_collection.KeyObject>`.
 
-    :param items: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+    :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
     :type items: list, optional
-    :raises: :class:`DuplicateKeyError<supervisely_lib.collection.key_indexed_collection.DuplicateKeyError>`, when trying to add object with already existing key
+    :raises: :class:`DuplicateKeyError<supervisely.collection.key_indexed_collection.DuplicateKeyError>`, when trying to add object with already existing key
 
     :Usage example:
 
@@ -69,7 +69,7 @@ class KeyIndexedCollection:
         dublicate_item = sly.ObjClass('cat', sly.Rectangle)
         new_collection = collection.add(dublicate_item)
         # Output:
-        # supervisely_lib.collection.key_indexed_collection.DuplicateKeyError: "Key 'cat' already exists"
+        # supervisely.collection.key_indexed_collection.DuplicateKeyError: "Key 'cat' already exists"
 
         # Add item with a key that not exist in the collection
         item_dog = sly.ObjClass('dog', sly.Rectangle)
@@ -105,7 +105,7 @@ class KeyIndexedCollection:
     item_type = KeyObject
     """
     The type of items that can be storred in collection. Defaul value is 
-    :class:`KeyObject <supervisely_lib.collection.key_indexed_collection.KeyObject>`. 
+    :class:`KeyObject <supervisely.collection.key_indexed_collection.KeyObject>`. 
     Field has to be overridden in child class. Before adding object to collection its type is compared with 
     ``item_type`` and ``TypeError`` exception is raised if it differs. Collection is immutable.
     """
@@ -140,7 +140,7 @@ class KeyIndexedCollection:
         """
         Add given item to collection.
 
-        :param item: :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>`  or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` object.
+        :param item: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object.
         :type item: KeyObject
         :return: New instance of KeyIndexedCollection
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
@@ -164,7 +164,7 @@ class KeyIndexedCollection:
         """
         Add items from given list to collection.
 
-        :param items: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+        :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type items:  List[KeyObject]
         :return: New instance of KeyIndexedCollection
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
@@ -193,7 +193,7 @@ class KeyIndexedCollection:
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: optional
-        :return: :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` object
+        :return: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object
         :rtype: :class:`KeyObject<KeyObject>`
 
         :Usage Example:
@@ -236,7 +236,7 @@ class KeyIndexedCollection:
         """
         Get list of all items in collection.
 
-        :return: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects
+        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects
         :rtype: :class:`List[KeyObject]`
 
         :Usage Example:
@@ -251,8 +251,8 @@ class KeyIndexedCollection:
             items = collection.items()
             print(items)
             # Output:
-            # [<supervisely_lib.annotation.tag_meta.TagMeta object at 0x7fd08eae4340>,
-            #  <supervisely_lib.annotation.tag_meta.TagMeta object at 0x7fd08eae4370>]
+            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4340>,
+            #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4370>]
         """
         return list(self._collection.values())
 
@@ -260,7 +260,7 @@ class KeyIndexedCollection:
         """
         Makes a copy of KeyIndexedCollection with new fields, if fields are given, otherwise it will use fields of the original KeyIndexedCollection.
 
-        :param items: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+        :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type items:  List[KeyObject], optional
         :return: New instance of KeyIndexedCollection
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
@@ -327,7 +327,7 @@ class KeyIndexedCollection:
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type key:  List[KeyObject]
         :raises: :class:`ValueError` if find items with same keys(item names)
         :return: KeyIndexedCollection object
@@ -374,7 +374,7 @@ class KeyIndexedCollection:
         """
         Find difference between collection and given list of instances.
 
-        :param key: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type key:  List[KeyObject]
         :return: KeyIndexedCollection object
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
@@ -531,9 +531,9 @@ class KeyIndexedCollection:
 
 class MultiKeyIndexedCollection(KeyIndexedCollection):
     """
-    Base class for :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
+    Base class for :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
 
-    :param items: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+    :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
     :type items: list, optional
 
     :Usage example:
@@ -592,7 +592,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: optional
-        :return: :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` object
+        :return: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object
         :rtype: :class:`KeyObject<KeyObject>`
 
         :Usage Example:
@@ -623,7 +623,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: List, optional
-        :return: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects or empty list
+        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects or empty list
         :rtype: :class:`List[KeyObject]` or :class:`list`
 
         :Usage Example:
@@ -639,7 +639,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
             items = collection.get('cat')
             print(items)
             # Output:
-            # [<supervisely_lib.annotation.tag_meta.TagMeta object at 0x7f0278662340>, <supervisely_lib.annotation.obj_class.ObjClass object at 0x7f02786623a0>]
+            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7f0278662340>, <supervisely.annotation.obj_class.ObjClass object at 0x7f02786623a0>]
         """
         return self._collection.get(key, default)
 
@@ -659,7 +659,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Get list of all items in collection.
 
-        :return: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects
+        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects
         :rtype: :class:`List[KeyObject]`
 
         :Usage Example:
@@ -674,9 +674,9 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
             collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
             print(collection.items())
             # Output:
-            # [<supervisely_lib.annotation.tag_meta.TagMeta object at 0x7fdbd28ce340>,
-            #  <supervisely_lib.annotation.obj_class.ObjClass object at 0x7fdbd28ce3a0>,
-            #  <supervisely_lib.annotation.tag_meta.TagMeta object at 0x7fdbd28ce370>]
+            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce340>,
+            #  <supervisely.annotation.obj_class.ObjClass object at 0x7fdbd28ce3a0>,
+            #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce370>]
         """
         res = []
         for tag_list in self._collection.values():
@@ -687,7 +687,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>` objects.
+        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type key:  List[KeyObject]
         :raises: :class:`ValueError` if find items with same keys(item names)
         :return: MultiKeyIndexedCollection object
