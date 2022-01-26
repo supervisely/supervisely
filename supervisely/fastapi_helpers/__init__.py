@@ -3,3 +3,4 @@ from supervisely.fastapi_helpers.shutdown_middleware import ShutdownMiddleware, 
 from supervisely.fastapi_helpers.state_middleware import StateMiddleware
 from supervisely.fastapi_helpers.data_middleware import DataMiddleware
 from supervisely.fastapi_helpers.templating import Jinja2Templates
+from supervisely.fastapi_helpers.patchable_json import PatchableJson

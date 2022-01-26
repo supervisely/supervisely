@@ -3,13 +3,18 @@
 # https://github.com/tiangolo/fastapi/issues/1501#issuecomment-638219871
 
 from typing import List
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 
 class WebsocketManager:
-    def __init__(self, path="/sly-app-ws"):
+    
+    def __init__(self, app: FastAPI, path="/sly-app-ws"):
+        self._app=app
         self.path=path
         self.active_connections: List[WebSocket] = []
+        if not hasattr(self._app.state, 'SLY_WS'):
+            setattr(self._ap.state, "SLY_WS", True)
+        
         
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -17,9 +22,6 @@ class WebsocketManager:
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
 
     async def broadcast(self, state: dict): 
         for connection in self.active_connections:
