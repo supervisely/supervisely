@@ -2,12 +2,12 @@
 import enum
 import jsonpatch
 from fastapi import FastAPI
-# from fastapi import Request
+from fastapi import Request
 from supervisely.fastapi_helpers.singleton import Singleton
 from supervisely.fastapi_helpers.websocket import WebsocketManager
 
 
-class Field(enum.Enum):
+class Field(str, enum.Enum):
     STATE = 'state'
     DATA = 'data'
 
@@ -32,9 +32,17 @@ class PatchableJson(dict):
         self._ws.broadcast({self._field: patch})
 
 
-class StateJson(PatchableJson, metaclass=Singleton):
+class StateJson(PatchableJson): #, metaclass=Singleton):
     def __init__(self, app: FastAPI, *args, **kwargs):
         super().__init__(app, Field.STATE, *args, **kwargs)
+    
+    @classmethod
+    async def from_request(cls, request: Request):
+        content = await request.json()
+        state = content.get(Field.STATE, {})
+        return cls(state)
+        
+    
 
 
 class DataJson(PatchableJson, metaclass=Singleton):

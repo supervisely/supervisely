@@ -20,7 +20,7 @@ class ShutdownMiddleware:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         if scope["path"] == self.path and not hasattr(scope["app"].state, 'STOPPED'):
-            await JSONResponse(content="app will be shutdown")(scope, receive, send) 
+            await JSONResponse(content="Server will be shutdown")(scope, receive, send) 
             return shutdown(scope["app"])
         elif hasattr(scope["app"].state, 'STOPPED') and scope["app"].state.STOPPED:
             response = JSONResponse(content="Server is being shut down", status_code=403)
