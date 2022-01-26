@@ -8,7 +8,7 @@ import urllib.parse
 
 from supervisely.api.labeling_job_api import LabelingJobApi
 Status = LabelingJobApi.Status
-import supervisely.labeling_jobs.constants as constants
+from supervisely.labeling_jobs import constants as constants
 from supervisely.api.module_api import ApiField
 
 
