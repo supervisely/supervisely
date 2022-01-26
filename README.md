@@ -51,7 +51,7 @@ Supervisely web instance.
 <img src="https://gblobscdn.gitbook.com/assets%2F-M4BHwRbuyIoH-xoF3Gv%2F-M5JQKcQ0OcHshO-q9Kz%2F-M5JQLtrAGKs7RWLDVdA%2Fagent-diagramm.png" alt="Deploying agent to Supervisely" width="400" />
 </p>
 
-Check out [explanation](https://github.com/supervisely/supervisely/tree/master/agent) on how agent works
+Check out [explanation](https://github.com/supervisely/agent) on how agent works
 and [documentation](https://docs.supervise.ly/customization/agents) on how to deploy a new agent.
 
 ## Neural Networks
