@@ -469,7 +469,7 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :param rect: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>` object for crop.
+    :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
     :type rect: Rectangle
     :return: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
@@ -511,7 +511,7 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :param rect: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>` object for crop.
+    :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
     :type rect: Rectangle
     :return: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
@@ -785,14 +785,13 @@ def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=Rotat
      .. code-block:: python
 
         import supervisely as sly
-        from supervisely_lib.imaging.image import RotateMode
 
         # keep_black mode
         rotate_im_keep_black = sly.image.rotate(image_np, 45)
         # crop_black mode
-        rotate_im_crop_black = sly.image.rotate(image_np, 45, RotateMode.CROP_BLACK)
+        rotate_im_crop_black = sly.image.rotate(image_np, 45, sly.image.RotateMode.CROP_BLACK)
         # origin_size mode
-        rotate_im_origin_size = sly.image.rotate(image_np, 45, RotateMode.SAVE_ORIGINAL_SIZE) * 255
+        rotate_im_origin_size = sly.image.rotate(image_np, 45, sly.image.RotateMode.SAVE_ORIGINAL_SIZE) * 255
 
     .. list-table::
 
