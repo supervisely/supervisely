@@ -1,6 +1,7 @@
 
 import enum
 import jsonpatch
+import asyncio
 from fastapi import FastAPI
 from fastapi import Request
 from supervisely.fastapi_helpers.singleton import Singleton
@@ -22,30 +23,41 @@ class PatchableJson(dict):
         self._ws = WebsocketManager(app)
         self._field = field
         self._last = dict(self)
+        self._lock = asyncio.Lock()
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
         return patch
 
-    def _apply_patch(self, patch):
-        patch.apply(self._last, in_place=True)
+    async def _apply_patch(self, patch):
+        async with self._lock:
+            patch.apply(self._last, in_place=True)
 
-    def synchronize_changes(self):
+    async def synchronize_changes(self):
         patch = self._get_patch()
-        self._apply_patch(patch)
-        self._ws.broadcast({self._field: patch})
+        await self._apply_patch(patch)
+        await self._ws.broadcast({self._field: patch})
 
 
-class StateJson(PatchableJson): #, metaclass=Singleton):
+class LastStateJson(PatchableJson, metaclass=Singleton):
+    def __init__(self, app: FastAPI, *args, **kwargs):
+        super().__init__(app, Field.STATE, *args, **kwargs)
+
+
+class StateJson(PatchableJson):
     def __init__(self, app: FastAPI, *args, **kwargs):
         super().__init__(app, Field.STATE, *args, **kwargs)
     
+    def _apply_patch(self, patch):
+        super()._apply_patch(patch)
+        LastStateJson()._apply_patch(patch)
+
     @classmethod
     async def from_request(cls, request: Request):
         content = await request.json()
         state = content.get(Field.STATE, {})
         return cls(cls._app, state)
-        
+
 
 class DataJson(PatchableJson, metaclass=Singleton):
     def __init__(self, app: FastAPI, *args, **kwargs):
