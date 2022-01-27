@@ -13,11 +13,15 @@ class Field(str, enum.Enum):
 
 
 class PatchableJson(dict):
+    _app = None
+
     def __init__(self, app: FastAPI, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self._app is None:
+            self._app = app
         self._ws = WebsocketManager(app)
         self._field = field
-        self._last = {}
+        self._last = dict(self)
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
@@ -40,10 +44,8 @@ class StateJson(PatchableJson): #, metaclass=Singleton):
     async def from_request(cls, request: Request):
         content = await request.json()
         state = content.get(Field.STATE, {})
-        return cls(state)
+        return cls(cls._app, state)
         
-    
-
 
 class DataJson(PatchableJson, metaclass=Singleton):
     def __init__(self, app: FastAPI, *args, **kwargs):
