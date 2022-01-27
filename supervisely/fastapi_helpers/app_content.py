@@ -50,6 +50,21 @@ class PatchableJson(dict):
 class LastStateJson(PatchableJson, metaclass=Singleton):
     def __init__(self, app: FastAPI, *args, **kwargs):
         super().__init__(app, Field.STATE, *args, **kwargs)
+    
+    @classmethod
+    async def from_request(cls, request: Request):
+        content = await request.json()
+        d = content.get(cls._field, {})
+        last_state = cls(cls._app)
+        async with last_state._lock:
+            last_state.clear()
+            last_state.update(d)
+        return last_state
+
+
+class ContextJson(PatchableJson):
+    def __init__(self, app: FastAPI, *args, **kwargs):
+        super().__init__(app, Field.CONTEXT, *args, **kwargs)
 
 
 class StateJson(PatchableJson):
@@ -69,14 +84,4 @@ class DataJson(PatchableJson, metaclass=Singleton):
     async def from_request(cls, request: Request):
         raise RuntimeError(f"""Request from Supervisely App never contains \"{cls._field}\" field. Every request from app contains by default current state and context""")
 
-
-class ContextJson(PatchableJson):
-    def __init__(self, app: FastAPI, *args, **kwargs):
-        super().__init__(app, Field.CONTEXT, *args, **kwargs)
-
-    @classmethod
-    async def from_request(cls, request: Request):
-        content = await request.json()
-        state = content.get(Field.STATE, {})
-        return cls(cls._app, state)
 
