@@ -59,7 +59,8 @@ class LastStateJson(PatchableJson, metaclass=Singleton):
         return last_state
     
     @classmethod
-    async def update(cls, request: Request):
+    async def replace(cls, request: Request): 
+        # update method already exists in dict
         await cls.from_request(request)
 
 

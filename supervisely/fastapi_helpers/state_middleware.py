@@ -16,11 +16,14 @@ class StateMiddleware:
         LastStateJson()
         
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] != "http" or scope["method"] == "GET":
             return await self.app(scope, receive, send)
         
         request = Request(scope, receive, send)
-        await LastStateJson.update(request)
+        await LastStateJson.replace(request)
+
+        request = Request(scope, receive, send)
+        await LastStateJson.replace(request)
 
         if scope["path"] == self.path:
             last_state = LastStateJson()

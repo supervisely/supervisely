@@ -17,7 +17,7 @@ class ShutdownMiddleware:
         self.path = path
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] != "http" or scope["method"] == "GET":
             return await self.app(scope, receive, send)
         if scope["path"] == self.path and not hasattr(scope["app"].state, 'STOPPED'):
             await JSONResponse(content="Server will be shutdown")(scope, receive, send) 
