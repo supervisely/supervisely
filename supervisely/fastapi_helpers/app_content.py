@@ -61,7 +61,7 @@ class LastStateJson(PatchableJson, metaclass=Singleton):
     @classmethod
     async def replace(cls, request: Request): 
         # update method already exists in dict
-        await cls.from_request(request)
+        return await cls.from_request(request)
 
 
 class ContextJson(PatchableJson):
