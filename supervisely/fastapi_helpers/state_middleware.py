@@ -2,6 +2,7 @@ from urllib.request import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from supervisely.fastapi_helpers.app_content import LastStateJson
 
 
 class StateMiddleware:
@@ -12,19 +13,18 @@ class StateMiddleware:
     ) -> None:
         self.app = app
         self.path = path
+        LastStateJson()
         
-
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
+        
+        request = Request(scope, receive, send)
+        await LastStateJson.update(request)
+
         if scope["path"] == self.path:
-            response = JSONResponse(content=self.state)
+            last_state = LastStateJson()
+            response = JSONResponse(content={last_state._field: dict(last_state)})
             return await response(scope, receive, send) 
-        else:
-            request = Request(scope, receive, send)
-            #TODO: if json body
-            request_json = await request.json()
-            if "state" in request_json:
-                self.state.clear()
-                self.state.update(request_json["state"])
-            return await self.app(scope, receive, send)
+        
+        return await self.app(scope, receive, send)

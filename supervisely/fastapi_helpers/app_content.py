@@ -15,17 +15,13 @@ class Field(str, enum.Enum):
 
 
 class PatchableJson(dict):
-    _app = None
-    _field = None
-    
-    def __init__(self, app: FastAPI, field: Field, *args, **kwargs):
+    def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if PatchableJson._app is None:
-            PatchableJson._app = app
         PatchableJson._field = field
-        self._ws = WebsocketManager(app)
+        self._ws = WebsocketManager()
         self._last = dict(self)
         self._lock = asyncio.Lock()
+        self._field = field
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
@@ -44,32 +40,37 @@ class PatchableJson(dict):
     async def from_request(cls, request: Request):
         content = await request.json()
         d = content.get(cls._field, {})
-        return cls(cls._app, d)
+        return cls(cls._field, d)
 
 
 class LastStateJson(PatchableJson, metaclass=Singleton):
-    def __init__(self, app: FastAPI, *args, **kwargs):
-        super().__init__(app, Field.STATE, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(Field.STATE, *args, **kwargs)
     
     @classmethod
     async def from_request(cls, request: Request):
         content = await request.json()
-        d = content.get(cls._field, {})
-        last_state = cls(cls._app)
-        async with last_state._lock:
-            last_state.clear()
-            last_state.update(d)
+        d = content.get(cls._field)
+        last_state = cls()
+        if d is not None:
+            async with last_state._lock:
+                last_state.clear()
+                last_state.update(d)
         return last_state
+    
+    @classmethod
+    async def update(cls, request: Request):
+        await cls.from_request(request)
 
 
 class ContextJson(PatchableJson):
-    def __init__(self, app: FastAPI, *args, **kwargs):
-        super().__init__(app, Field.CONTEXT, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(Field.CONTEXT, *args, **kwargs)
 
 
 class StateJson(PatchableJson):
-    def __init__(self, app: FastAPI, *args, **kwargs):
-        super().__init__(app, Field.STATE, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(Field.STATE, *args, **kwargs)
     
     def _apply_patch(self, patch):
         super()._apply_patch(patch)
@@ -77,8 +78,8 @@ class StateJson(PatchableJson):
 
 
 class DataJson(PatchableJson, metaclass=Singleton):
-    def __init__(self, app: FastAPI, *args, **kwargs):
-        super().__init__(app, Field.DATA, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(Field.DATA, *args, **kwargs)
     
     @classmethod
     async def from_request(cls, request: Request):
