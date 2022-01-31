@@ -17,7 +17,7 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 class Point(Geometry):
     """
-    Point geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
+    Point geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
 
     :param row: Position of Point on height.
     :type row: int or float
@@ -25,7 +25,7 @@ class Point(Geometry):
     :type col: int or float
     :param sly_id: Point ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Point belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Point.
     :type labeler_login: str, optional
@@ -87,13 +87,13 @@ class Point(Geometry):
     def from_point_location(cls, pt: PointLocation, sly_id: Optional[int] = None, class_id: Optional[int] = None,
                             labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None) -> Point:
         """
-        Create Point from given :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>` object.
+        Create Point from given :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object.
 
         :param pt: PointLocation object.
         :type pt: PointLocation
         :param sly_id: Point ID in Supervisely server.
         :type sly_id: int, optional
-        :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Point belongs.
+        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created Point.
         :type labeler_login: str, optional
@@ -121,7 +121,7 @@ class Point(Geometry):
         Create PointLocation object from Point.
 
         :return: PointLocation object
-        :rtype: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`
+        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
         :Usage example:
 
          .. code-block:: python
@@ -305,7 +305,7 @@ class Point(Geometry):
         Create Rectangle object from current Point.
 
         :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely_lib.geometry.rectangle.Rectangle>`
+        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
 

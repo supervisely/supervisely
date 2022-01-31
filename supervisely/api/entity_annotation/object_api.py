@@ -8,7 +8,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class ObjectApi(RemoveableBulkModuleApi):
     """
-    Object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`.
+    Object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
     @staticmethod
     def info_sequence():

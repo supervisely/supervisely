@@ -1,8 +1,8 @@
 # coding: utf-8
 from __future__ import annotations
 from typing import List, Dict, Optional
-from supervisely_lib.project.project_meta import ProjectMeta
-from supervisely_lib.task.progress import Progress
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import Progress
 import json
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -119,7 +119,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>` for VideoAnnotations.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional

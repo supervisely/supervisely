@@ -76,9 +76,9 @@ class VideoAnnotation:
         frames = sly.FrameCollection([frame])
         # VideoTagCollection
         meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-        from supervisely_lib.video_annotation.video_tag import VideoTag
+        from supervisely.video_annotation.video_tag import VideoTag
         vid_tag = VideoTag(meta_car, value='acura')
-        from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+        from supervisely.video_annotation.video_tag_collection import VideoTagCollection
         video_tags = VideoTagCollection([vid_tag])
         # Description
         descr = 'car example'
@@ -287,7 +287,7 @@ class VideoAnnotation:
         VideoAnnotation figures.
 
         :return: List of VideoFigures from all frames in VideoAnnotation
-        :rtype: :class:`List[VideoFigure]<supervisely_lib.video_annotation.video_figure.VideoFigure>`
+        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
         :Usage example:
 
          .. code-block:: python
@@ -334,9 +334,9 @@ class VideoAnnotation:
             frame = sly.Frame(fr_index, figures=[video_figure_car])
             frames = sly.FrameCollection([frame])
             meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely_lib.video_annotation.video_tag import VideoTag
+            from supervisely.video_annotation.video_tag import VideoTag
             vid_tag = VideoTag(meta_car, value='acura')
-            from supervisely_lib.video_annotation.video_tag_collection import VideoTagCollection
+            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
             tags = VideoTagCollection([vid_tag])
 
             video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, tags)
@@ -379,7 +379,7 @@ class VideoAnnotation:
         """
         Checks if image contains figures from all frames in collection.
 
-        :raises: :class:`OutOfImageBoundsExtension<supervisely_lib.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
+        :raises: :class:`OutOfImageBoundsExtension<supervisely.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
         :return: None
         :rtype: :class:`NoneType`
 
@@ -465,7 +465,7 @@ class VideoAnnotation:
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional

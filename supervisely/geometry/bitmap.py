@@ -45,15 +45,15 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 class Bitmap(BitmapBase):
     """
-    Bitmap geometry for a single :class:`Label<supervisely_lib.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
+    Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
 
     :param data: Bitmap mask data.
     :type data: np.ndarray
-    :param origin: :class:`PointLocation<supervisely_lib.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
+    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
     :type origin: PointLocation, optional
     :param sly_id: Bitmap ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Bitmap.
     :type labeler_login: str, optional
@@ -134,7 +134,7 @@ class Bitmap(BitmapBase):
         """
         Rotates current Bitmap.
 
-        :param rotator: :class:`ImageRotator<supervisely_lib.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
+        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
         :type rotator: ImageRotator
         :return: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
@@ -165,7 +165,7 @@ class Bitmap(BitmapBase):
         :param rect: Rectangle object for cropping.
         :type rect: Rectangle
         :return: List of Bitmaps
-        :rtype: :class:`List[Bitmap]<supervisely_lib.geometry.bitmap.Bitmap>`
+        :rtype: :class:`List[Bitmap]<supervisely.geometry.bitmap.Bitmap>`
 
         :Usage Example:
 
@@ -349,7 +349,7 @@ class Bitmap(BitmapBase):
         Get list of contours in Bitmap.
 
         :return: List of Polygon objects
-        :rtype: :class:`List[Polygon]<supervisely_lib.geometry.polygon.Polygon>`
+        :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
         :Usage example:
 
          .. code-block:: python

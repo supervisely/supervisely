@@ -600,7 +600,7 @@ class UserApi(ModuleApiBase):
         :type user_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :return: Information about Team :class:`Role<supervisely_lib.api.role_api.RoleApi
+        :return: Information about Team :class:`Role<supervisely.api.role_api.RoleApi
         :rtype: :class:`NamedTuple`
         :Usage example:
 

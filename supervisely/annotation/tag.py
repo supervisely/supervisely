@@ -89,10 +89,10 @@ class Tag(KeyObject):
     @property
     def meta(self) -> TagMeta:
         """
-        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<supervisely_lib.annotation.tag_meta.TagValueType>` to make sure that value is valid.
+        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
 
         :return: TagMeta object
-        :rtype: :class:`TagMeta<supervisely_lib.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
         :Usage example:
 
          .. code-block:: python
@@ -109,7 +109,7 @@ class Tag(KeyObject):
     @property
     def value(self) -> str or int or float:
         """
-        Tag value. Return type depends on :class:`TagValueType<supervisely_lib.annotation.tag_meta.TagValueType>`.
+        Tag value. Return type depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>`.
 
         :return: Tag value
         :rtype: :class:`str`, :class:`int` or :class:`float` or :class:`None`

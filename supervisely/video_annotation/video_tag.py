@@ -16,7 +16,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class VideoTag(Tag):
     """
-    VideoTag object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoTag<VideoTag>` object is immutable.
+    VideoTag object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoTag<VideoTag>` object is immutable.
 
     :param meta: General information about Video Tag.
     :type meta: TagMeta
@@ -141,7 +141,7 @@ class VideoTag(Tag):
 
         :param data: VideoTag in json format as a dict.
         :type data: dict
-        :param tag_meta_collection: :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>` object.
+        :param tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` object.
         :type tag_meta_collection: TagMetaCollection
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional

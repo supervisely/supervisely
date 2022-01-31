@@ -16,7 +16,7 @@ from supervisely.imaging.color import rgb2hex, hex2rgb
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection with :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<ObjClassCollection>` object is immutable.
+    Collection with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<ObjClassCollection>` object is immutable.
 
     :raises: :class:`DuplicateKeyError` if instance with given name already exist
     :Usage example:

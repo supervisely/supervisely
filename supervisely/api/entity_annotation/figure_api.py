@@ -11,7 +11,7 @@ from supervisely._utils import batched
 
 class FigureApi(RemoveableBulkModuleApi):
     """
-    Figure object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`.
+    Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
     @staticmethod
     def info_sequence():

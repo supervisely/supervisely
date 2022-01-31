@@ -10,7 +10,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class VideoObjectCollection(KeyIndexedCollection):
     """
-    Collection with :class:`VideoObject<supervisely_lib.video_annotation.video_object.VideoObject>` instances. :class:`VideoObjectCollection<VideoObjectCollection>` object is immutable.
+    Collection with :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` instances. :class:`VideoObjectCollection<VideoObjectCollection>` object is immutable.
 
     :Usage example:
 
@@ -203,7 +203,7 @@ class VideoObjectCollection(KeyIndexedCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional

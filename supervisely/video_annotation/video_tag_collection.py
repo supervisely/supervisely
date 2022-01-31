@@ -13,7 +13,7 @@ from supervisely.video_annotation.video_tag import VideoTag
 
 class VideoTagCollection(TagCollection):
     """
-    Collection with :class:`VideoTag<supervisely_lib.video_annotation.video_tag.VideoTag>` instances. :class:`VideoTagCollection<VideoTagCollection>` object is immutable.
+    Collection with :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` instances. :class:`VideoTagCollection<VideoTagCollection>` object is immutable.
 
     :Usage example:
 

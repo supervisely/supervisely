@@ -14,7 +14,7 @@ from supervisely.annotation.tag_meta import TagMeta
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection with :class:`TagMeta<supervisely_lib.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<TagMetaCollection>` object is immutable.
+    Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<TagMetaCollection>` object is immutable.
 
     :raises: :class:`DuplicateKeyError`, if instance with given name already exists
     :Usage example:

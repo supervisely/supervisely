@@ -49,7 +49,7 @@ SUPPORTED_APPLICABLE_TO = [TagApplicableTo.ALL, TagApplicableTo.IMAGES_ONLY, Tag
 
 class TagMeta(KeyObject, JsonSerializable):
     """
-    General information about :class:`Tag<supervisely_lib.annotation.tag>`. :class:`TagMeta<TagMeta>` object is immutable.
+    General information about :class:`Tag<supervisely.annotation.tag>`. :class:`TagMeta<TagMeta>` object is immutable.
 
     :param name: Tag name.
     :type name: str

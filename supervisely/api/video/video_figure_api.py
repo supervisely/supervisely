@@ -12,7 +12,7 @@ from supervisely.api.entity_annotation.figure_api import FigureApi
 
 class VideoFigureApi(FigureApi):
     """
-    :class:`VideoFigure<supervisely_lib.video_annotation.video_figure.VideoFigure>` for a single video.
+    :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` for a single video.
     """
     def create(self, video_id: int, object_id: int, frame_index: int, geometry_json: dict, geometry_type: str,
                track_id: Optional[int]=None) -> int:

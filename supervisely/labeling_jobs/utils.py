@@ -264,7 +264,7 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
         api = sly.Api.from_env()
         job_info = api.labeling_job.get_info_by_id(2)
 
-        from supervisely_lib.labeling_jobs.utils import get_job_url
+        from supervisely.labeling_jobs.utils import get_job_url
         job_url = get_job_url(address, job_info)
         print(job_url)
         # Output: https://app.supervise.ly/app/images/4/8/58/54?jobId=2
@@ -302,7 +302,7 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> pd.D
         job_info2 = api.labeling_job.get_info_by_id(3)
         address = https://app.supervise.ly
 
-        from supervisely_lib.labeling_jobs.utils import jobs_stats
+        from supervisely.labeling_jobs.utils import jobs_stats
         result = jobs_stats(address, [job_info1, job_info2], [1, 2])
         print(result)
         # Output:
@@ -366,7 +366,7 @@ def jobs_summary(jobs: List[NamedTuple]) -> pd.DataFrame:
         job_info1 = api.labeling_job.get_info_by_id(2)
         job_info2 = api.labeling_job.get_info_by_id(3)
 
-        from supervisely_lib.labeling_jobs.utils import jobs_summary
+        from supervisely.labeling_jobs.utils import jobs_summary
         result = jobs_summary([job_info1, job_info2])
         print(result)
         # Output:
@@ -472,7 +472,7 @@ def images_summary(jobs: List[NamedTuple]) -> pd.DataFrame:
         job_info1 = api.labeling_job.get_info_by_id(2)
         job_info2 = api.labeling_job.get_info_by_id(3)
 
-        from supervisely_lib.labeling_jobs.utils import images_summary
+        from supervisely.labeling_jobs.utils import images_summary
         result = images_summary([job_info1, job_info2])
         print(result)
         # Output:

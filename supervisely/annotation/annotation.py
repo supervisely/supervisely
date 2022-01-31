@@ -163,7 +163,7 @@ class Annotation:
         Labels on annotation.
 
         :return: Copy of list with image labels
-        :rtype: :class:`List[Label]<supervisely_lib.annotation.label.Label>`
+        :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
         :Usage example:
 
          .. code-block:: python
@@ -222,7 +222,7 @@ class Annotation:
         Image tags.
 
         :return: TagCollection object
-        :rtype: :class:`TagCollection<supervisely_lib.annotation.tag_collection.TagCollection>`
+        :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
         :Usage example:
 
          .. code-block:: python
@@ -305,7 +305,7 @@ class Annotation:
 
         :param data: Annotation in json format as a dict.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely_lib.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
         :return: Annotation object
         :rtype: :class:`Annotation<Annotation>`
@@ -1578,7 +1578,7 @@ class Annotation:
         :param sly_id: Label ID from Supervisely server.
         :type sly_id: int
         :return: Label or None
-        :rtype: :class:`Label<supervisely_lib.annotation.label.Label>` or :class:`NoneType`
+        :rtype: :class:`Label<supervisely.annotation.label.Label>` or :class:`NoneType`
 
         :Usage Example:
 

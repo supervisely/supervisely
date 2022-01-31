@@ -13,7 +13,7 @@ from supervisely.api.module_api import ApiField
 
 class FrameCollection(KeyIndexedCollection):
     """
-    Collection with :class:`Frame<supervisely_lib.video_annotation.frame.Frame>` instances. :class:`FrameCollection<FrameCollection>` object is immutable.
+    Collection with :class:`Frame<supervisely.video_annotation.frame.Frame>` instances. :class:`FrameCollection<FrameCollection>` object is immutable.
 
     :Usage example:
 
@@ -233,7 +233,7 @@ class FrameCollection(KeyIndexedCollection):
         Get figures from all frames in collection.
 
         :return: List of figures from all frames in collection
-        :rtype: :class:`List[VideoFigure]<supervisely_lib.video_annotation.video_figure.VideoFigure>`
+        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
 
         :Usage example:
 

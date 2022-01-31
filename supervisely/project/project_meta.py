@@ -108,7 +108,7 @@ class ProjectMeta(JsonSerializable):
         Collection of ObjClasses in ProjectMeta.
 
         :return: ObjClassCollection object
-        :rtype: :class:`ObjClassCollection<supervisely_lib.annotation.obj_class_collection.ObjClassCollection>`
+        :rtype: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`
         :Usage example:
 
          .. code-block:: python
@@ -152,7 +152,7 @@ class ProjectMeta(JsonSerializable):
         Collection of TagMetas in ProjectMeta.
 
         :return: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<supervisely_lib.annotation.tag_meta_collection.TagMetaCollection>`
+        :rtype: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
         :Usage example:
 
          .. code-block:: python
@@ -182,7 +182,7 @@ class ProjectMeta(JsonSerializable):
     @property
     def project_type(self):
         """
-        Type of project. See possible value types in :class:`ProjectType<supervisely_lib.project.project_type.ProjectType>`.
+        Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
         :return: Project type
         :rtype: :class:`str`
@@ -811,7 +811,7 @@ class ProjectMeta(JsonSerializable):
         :param obj_class_name: ObjClass name.
         :type obj_class_name: str
         :return: ObjClass object
-        :rtype: :class:`ObjClass<supervisely_lib.annotation.obj_class.ObjClass>`
+        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
         :Usage example:
 
          .. code-block:: python
@@ -864,7 +864,7 @@ class ProjectMeta(JsonSerializable):
         :param tag_name: TagMeta name.
         :type tag_name: str
         :return: TagMeta object.
-        :rtype: :class:`TagMeta<supervisely_lib.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
         :Usage example:
 
          .. code-block:: python

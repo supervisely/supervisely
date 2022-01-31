@@ -336,7 +336,7 @@ class AnnotationApi(ModuleApi):
 
     def upload_ann(self, img_id: int, ann: Annotation) -> None:
         """
-        Loads an :class:`Annotation<supervisely_lib.annotation.annotation.Annotation>` to a given image ID in the API.
+        Loads an :class:`Annotation<supervisely.annotation.annotation.Annotation>` to a given image ID in the API.
 
         :param img_id: Image ID in Supervisely.
         :type img_id: int
@@ -362,7 +362,7 @@ class AnnotationApi(ModuleApi):
 
     def upload_anns(self, img_ids: List[int], anns: List[Annotation], progress_cb: Optional[Progress] = None) -> None:
         """
-        Loads an :class:`Annotations<supervisely_lib.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
+        Loads an :class:`Annotations<supervisely.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
 
         :param img_ids: Image ID in Supervisely.
         :type img_ids: List[int]

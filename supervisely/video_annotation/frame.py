@@ -14,11 +14,11 @@ from supervisely.collection.key_indexed_collection import KeyObject
 
 class Frame(KeyObject):
     """
-    Frame object for :class:`VideoAnnotation<supervisely_lib.video_annotation.video_annotation.VideoAnnotation>`. :class:`Frame<Frame>` object is immutable.
+    Frame object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`Frame<Frame>` object is immutable.
 
     :param index: Index of the Frame.
     :type index: int
-    :param figures: List of :class:`VideoFigures<supervisely_lib.video_annotation.video_figure.VideoFigure>`.
+    :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
     :type figures: list, optional
     :Usage example:
 
@@ -88,7 +88,7 @@ class Frame(KeyObject):
         Frame figures.
 
         :return: List of figures on Frame.
-        :rtype: :class:`List[VideoFigure]<supervisely_lib.video_annotation.video_figure.VideoFigure>`
+        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
         :Usage example:
 
          .. code-block:: python
@@ -103,7 +103,7 @@ class Frame(KeyObject):
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
-        :raises: :class:`OutOfImageBoundsExtension<supervisely_lib.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
+        :raises: :class:`OutOfImageBoundsExtension<supervisely.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
         :return: None
         :rtype: :class:`NoneType`
 
@@ -241,7 +241,7 @@ class Frame(KeyObject):
 
         :param index: Index of the Frame.
         :type index: int, optional
-        :param figures: List of :class:`VideoFigures<supervisely_lib.video_annotation.video_figure.VideoFigure>`.
+        :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
         :type figures: list, optional
         :return: Frame object
         :rtype: :class:`Frame`

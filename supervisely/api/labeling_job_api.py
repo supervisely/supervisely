@@ -738,7 +738,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             api = sly.Api.from_env()
 
             api.labeling_job.wait(4, 'completed', wait_attempts=2, wait_attempt_timeout_sec=1)
-            # supervisely_lib.api.module_api.WaitingTimeExceeded: Waiting time exceeded
+            # supervisely.api.module_api.WaitingTimeExceeded: Waiting time exceeded
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
