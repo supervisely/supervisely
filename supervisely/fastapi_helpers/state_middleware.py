@@ -24,6 +24,6 @@ class StateMiddleware(BaseHTTPMiddleware):
             response = JSONResponse(content=dict(last_state))
             return response
         
-        last_state.replace(request)
+        await last_state.replace(request)
         response = await call_next(request)
         return response
