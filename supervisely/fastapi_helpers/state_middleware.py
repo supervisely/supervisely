@@ -22,6 +22,12 @@ class StateMiddleware(BaseHTTPMiddleware):
         if request.url.path == self.path:
             response = JSONResponse(content=dict(last_state))
             return response
-        await last_state.replace(request)
+        
+        # print(call_next)
+        # https://github.com/tiangolo/fastapi/issues/394#issuecomment-513051977
+        # content = await request.json() #@TODO: (debug) bug here
+        # print(call_next)
+        # await last_state.replace(request) #@TODO: bug here
         response = await call_next(request)
+        
         return response

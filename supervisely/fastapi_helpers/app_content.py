@@ -54,11 +54,14 @@ class LastStateJson(_PatchableJson, metaclass=Singleton):
     
     @classmethod
     async def from_request(cls, request: Request):
-        try:
-            # for '/' endpoint
-            content = await request.json()
-        except ValueError:
-            return cls()
+        content = {}
+        # try:
+        #     # for '/' endpoint
+            # content = await request.json()
+        # except ValueError:
+        #     return cls()
+
+        # content = await request.json()
 
         d = content.get(cls._field)
         last_state = cls()
