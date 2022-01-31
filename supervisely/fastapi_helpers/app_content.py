@@ -23,6 +23,11 @@ class PatchableJson(dict):
         self._lock = asyncio.Lock()
         self._field = field
 
+    def get_changes(self, patch=None):
+        if patch is None:
+            patch = self._get_patch()
+        return {self._field: patch}
+
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
         return patch
@@ -34,7 +39,7 @@ class PatchableJson(dict):
     async def synchronize_changes(self):
         patch = self._get_patch()
         await self._apply_patch(patch)
-        await self._ws.broadcast({self._field: patch})
+        await self._ws.broadcast(self.get_changes(patch))
 
     @classmethod
     async def from_request(cls, request: Request):
