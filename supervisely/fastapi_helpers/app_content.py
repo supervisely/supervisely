@@ -14,10 +14,10 @@ class Field(str, enum.Enum):
     CONTEXT = 'context'
 
 
-class PatchableJson(dict):
+class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        PatchableJson._field = field
+        _PatchableJson._field = field
         self._ws = WebsocketManager()
         self._last = dict(self)
         self._lock = asyncio.Lock()
@@ -45,10 +45,10 @@ class PatchableJson(dict):
     async def from_request(cls, request: Request):
         content = await request.json()
         d = content.get(cls._field, {})
-        return cls(cls._field, d)
+        return cls(d)
 
 
-class LastStateJson(PatchableJson, metaclass=Singleton):
+class LastStateJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.STATE, *args, **kwargs)
     
@@ -69,21 +69,21 @@ class LastStateJson(PatchableJson, metaclass=Singleton):
         return await cls.from_request(request)
 
 
-class ContextJson(PatchableJson):
+class ContextJson(_PatchableJson):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.CONTEXT, *args, **kwargs)
 
 
-class StateJson(PatchableJson):
+class StateJson(_PatchableJson):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.STATE, *args, **kwargs)
     
-    def _apply_patch(self, patch):
-        super()._apply_patch(patch)
-        LastStateJson()._apply_patch(patch)
+    async def _apply_patch(self, patch):
+        await super()._apply_patch(patch)
+        await LastStateJson()._apply_patch(patch)
 
 
-class DataJson(PatchableJson, metaclass=Singleton):
+class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
     
