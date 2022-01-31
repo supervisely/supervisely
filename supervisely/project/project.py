@@ -1479,7 +1479,7 @@ class Project:
         return train_items, val_items
 
 
-def read_single_project(dir: str, project_class: Project) -> Project:
+def read_single_project(dir: str, project_class: Optional[Project]=Project) -> Project:
     """
     Read project from given directory.
 

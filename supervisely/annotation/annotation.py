@@ -1954,7 +1954,8 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def to_indexed_color_mask(self, mask_path: str, palette: Optional[Image.ADAPTIVE], colors: Optional[int]=256) -> None:
+    def to_indexed_color_mask(self, mask_path: str, palette: Optional[Image.ADAPTIVE]=Image.ADAPTIVE,
+                              colors: Optional[int]=256) -> None:
         """
         Draw current Annotation on image and save it in PIL format.
 
