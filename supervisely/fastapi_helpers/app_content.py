@@ -17,7 +17,6 @@ class Field(str, enum.Enum):
 class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        _PatchableJson._field = field
         self._ws = WebsocketManager()
         self._last = dict(self)
         self._lock = asyncio.Lock()
@@ -63,8 +62,8 @@ class LastStateJson(_PatchableJson, metaclass=Singleton):
 
         # content = await request.json()
 
-        d = content.get(cls._field)
         last_state = cls()
+        d = content.get(last_state._field)
         if d is not None:
             async with last_state._lock:
                 last_state.clear()
@@ -89,6 +88,12 @@ class StateJson(_PatchableJson):
     async def _apply_patch(self, patch):
         await super()._apply_patch(patch)
         await LastStateJson()._apply_patch(patch)
+
+    @classmethod
+    async def from_request(cls, request: Request):
+        state_json = await super().from_request(request)
+        LastStateJson.replace(request)
+        return state_json
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
