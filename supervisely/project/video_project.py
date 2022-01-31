@@ -230,7 +230,8 @@ def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids
                                          ann=VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
                                          _validate_item=False)
 
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 

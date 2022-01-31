@@ -57,7 +57,7 @@ class VideoObject(KeyObject):
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
-
+        self.class_id = class_id
         self._obj_class = obj_class
         self._key = take_with_default(key, uuid.uuid4())
         self._tags = take_with_default(tags, VideoTagCollection())
