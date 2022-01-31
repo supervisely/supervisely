@@ -19,11 +19,9 @@ class StateMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         last_state = LastStateJson()
-
         if request.url.path == self.path:
             response = JSONResponse(content=dict(last_state))
             return response
-        
         await last_state.replace(request)
         response = await call_next(request)
         return response
