@@ -1,5 +1,6 @@
 
 import enum
+import json
 import jsonpatch
 import asyncio
 from fastapi import FastAPI
@@ -20,12 +21,12 @@ class _PatchableJson(dict):
         self._ws = WebsocketManager()
         self._last = dict(self)
         self._lock = asyncio.Lock()
-        self._field = field
+        self._field = field.value
 
     def get_changes(self, patch=None):
         if patch is None:
             patch = self._get_patch()
-        return {self._field: patch}
+        return {self._field: json.loads(patch.to_string())}
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
@@ -41,10 +42,14 @@ class _PatchableJson(dict):
         await self._ws.broadcast(self.get_changes(patch))
 
     @classmethod
-    async def from_request(cls, request: Request):
+    async def _from_request(cls, field, request: Request):
         content = await request.json()
-        d = content.get(cls._field, {})
+        d = content.get(field, {})
         return cls(d)
+    
+    @classmethod
+    async def from_request(cls, request: Request):
+        raise NotImplementedError()
 
 
 class LastStateJson(_PatchableJson, metaclass=Singleton):
@@ -73,6 +78,10 @@ class LastStateJson(_PatchableJson, metaclass=Singleton):
 class ContextJson(_PatchableJson):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.CONTEXT, *args, **kwargs)
+    
+    @classmethod
+    async def from_request(cls, request: Request):
+        return await cls._from_request(Field.CONTEXT, request)
 
 
 class StateJson(_PatchableJson):
@@ -85,8 +94,8 @@ class StateJson(_PatchableJson):
 
     @classmethod
     async def from_request(cls, request: Request):
-        state_json = await super().from_request(request)
-        LastStateJson().replace(state_json)
+        state_json = await cls._from_request(Field.STATE, request)
+        await LastStateJson().replace(state_json)
         return state_json
 
 

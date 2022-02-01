@@ -12,6 +12,7 @@ from supervisely.fastapi_helpers import WebsocketManager
 
 def get_subapp() -> FastAPI:
     app = FastAPI()
+    WebsocketManager().set_app(app)
 
     @app.post("/data")
     async def send_data(request: Request):
