@@ -53,15 +53,7 @@ class LastStateJson(_PatchableJson, metaclass=Singleton):
     
     @classmethod
     async def from_request(cls, request: Request):
-        content = {}
-        # try:
-        #     # for '/' endpoint
-            # content = await request.json()
-        # except ValueError:
-        #     return cls()
-
-        # content = await request.json()
-
+        content = await request.json()
         last_state = cls()
         d = content.get(last_state._field)
         if d is not None:
@@ -70,10 +62,12 @@ class LastStateJson(_PatchableJson, metaclass=Singleton):
                 last_state.update(d)
         return last_state
     
-    @classmethod
-    async def replace(cls, request: Request): 
+    async def replace(self, d: dict): 
         # update method already exists in dict
-        return await cls.from_request(request)
+        if d is not None:  
+            async with self._lock:
+                self.clear()
+                self.update(d)
 
 
 class ContextJson(_PatchableJson):
@@ -92,7 +86,7 @@ class StateJson(_PatchableJson):
     @classmethod
     async def from_request(cls, request: Request):
         state_json = await super().from_request(request)
-        LastStateJson.replace(request)
+        LastStateJson().replace(state_json)
         return state_json
 
 
