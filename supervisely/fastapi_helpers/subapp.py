@@ -27,7 +27,7 @@ def get_subapp() -> FastAPI:
         return response
 
     @app.post("/shutdown")
-    async def shutdown(request: Request):
+    async def shutdown_endpoint(request: Request):
         shutdown()
 
     @app.websocket("/ws")
