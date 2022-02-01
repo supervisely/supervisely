@@ -49,7 +49,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 ApiField.CREATED_AT,
                 ApiField.UPDATED_AT,
                 ApiField.TAGS,
-                ApiField.FILE_META]
+                ApiField.FILE_META,
+                ApiField.CUSTOM_DATA]
 
     @staticmethod
     def info_tuple_name():
@@ -379,3 +380,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def upload_links(self, dataset_id, names, hashes, links, infos, metas=None):
         self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, metas)
+
+    def update_custom_data(self, id: int, data: dict):
+        resp = self._api.post('videos.custom-data.set', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
+        return resp.json()
