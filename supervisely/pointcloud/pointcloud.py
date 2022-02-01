@@ -48,5 +48,5 @@ def validate_ext(ext: str):
 
 
 def validate_format(path):
-    #@TODO: later
-    validate_ext(path)
+    _, ext = os.path.splitext(path)
+    validate_ext(ext)

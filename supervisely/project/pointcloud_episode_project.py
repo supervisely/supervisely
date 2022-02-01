@@ -157,8 +157,12 @@ def upload_pointcloud_episode_project(directory, api, workspace_id, project_name
 
     uploaded_objects = KeyIdMap()
     for dataset_fs in project_fs.datasets:
-        ann_json = load_json_file(dataset_fs.get_ann_path())
-        episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_fs.meta)
+        ann_json_path = dataset_fs.get_ann_path()
+        if os.path.isfile(ann_json_path):
+            ann_json = load_json_file(ann_json_path)
+            episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_fs.meta)
+        else:
+            episode_annotation = PointcloudEpisodeAnnotation()
 
         dataset = api.dataset.create(project.id,
                                      dataset_fs.name,
