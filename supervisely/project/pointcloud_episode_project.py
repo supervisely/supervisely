@@ -54,9 +54,15 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         if not dir_exists(self.item_dir):
             raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
 
-        item_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
-        item_names = [os.path.basename(path) for path in item_paths]
-        self._frame_to_pc_map = load_json_file(self.get_frame_pointcloud_map_path())
+        item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
+        item_names = sorted([os.path.basename(path) for path in item_paths])
+
+        map_file_path = self.get_frame_pointcloud_map_path()
+        if os.path.isfile(map_file_path):
+            self._frame_to_pc_map = load_json_file(map_file_path)
+        else:
+            self._frame_to_pc_map = {frame_index: item_names[frame_index] for frame_index in range(len(item_names))}
+
         self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
         self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
 
