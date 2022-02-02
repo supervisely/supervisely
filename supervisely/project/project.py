@@ -858,8 +858,8 @@ def read_single_project(dir, project_class=Project):
     try:
         project_fs = project_class(dir, OpenMode.READ)
         return project_fs
-    except Exception as e:
-        logger.warning("While opening project exception has occurred", exc_info=1)
+    except Exception:
+        pass
 
     projects_in_dir = get_subdirs(dir)
     if len(projects_in_dir) != 1:
