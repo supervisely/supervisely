@@ -145,70 +145,92 @@ def download_pointcloud_episode_project(api, project_id, dest_dir, dataset_ids=N
 
 
 def upload_pointcloud_episode_project(directory, api, workspace_id, project_name=None, log_progress=False):
-    project_fs = PointcloudEpisodeProject.read_single(directory)
-    if project_name is None:
-        project_name = project_fs.name
+    # STEP 0 — create project remotely
+    project_locally = PointcloudEpisodeProject.read_single(directory)
+    project_name = project_locally.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
-    project = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    project_remotely = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES)
+    api.project.update_meta(project_remotely.id, project_locally.meta.to_json())
 
     uploaded_objects = KeyIdMap()
-    for dataset_fs in project_fs.datasets:
-        ann_json_path = dataset_fs.get_ann_path()
+    for dataset_locally in project_locally.datasets:
+        ann_json_path = dataset_locally.get_ann_path()
+
         if os.path.isfile(ann_json_path):
             ann_json = load_json_file(ann_json_path)
-            episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_fs.meta)
+            episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_locally.meta)
         else:
             episode_annotation = PointcloudEpisodeAnnotation()
 
-        dataset = api.dataset.create(project.id,
-                                     dataset_fs.name,
-                                     description=episode_annotation.description,
-                                     change_name_if_conflict=True)
+        dataset_remotely = api.dataset.create(project_remotely.id,
+                                              dataset_locally.name,
+                                              description=episode_annotation.description,
+                                              change_name_if_conflict=True)
 
-        frame_to_pointcloud_ids = {}
-        ds_progress = None
-        if log_progress:
-            ds_progress = Progress('Uploading dataset: {!r}'.format(dataset.name), total_cnt=len(dataset_fs))
+        # STEP 1 — upload episodes
+        items_infos = {
+            'names': [],
+            'paths': [],
+            'metas': []
+        }
 
-        for item_name in dataset_fs:
-            item_path, related_images_dir = dataset_fs.get_item_paths(item_name)
-            related_items = dataset_fs.get_related_images(item_name)
+        for item_name in dataset_locally:
+            item_path, related_images_dir = dataset_locally.get_item_paths(item_name)
+            frame_idx = dataset_locally.get_frame_idx(item_name)
 
-            item_meta = {}
-            try:
-                _, meta = related_items[0]
-                timestamp = meta[ApiField.META]['timestamp']
-                item_meta["timestamp"] = timestamp
-            except (KeyError, IndexError):
-                pass
+            item_meta = {
+                "frame": frame_idx
+            }
 
-            frame_idx = dataset_fs.get_frame_idx(item_name)
-            item_meta["frame"] = frame_idx
-            pointcloud = api.pointcloud_episode.upload_path(dataset.id, item_name, item_path, item_meta)
+            items_infos['names'].append(item_name)
+            items_infos['paths'].append(item_path)
+            items_infos['metas'].append(item_meta)
 
-            if len(related_items) != 0:
-                img_infos = []
-                for img_path, meta_json in related_items:
-                    img = api.pointcloud_episode.upload_related_image(img_path)[0]
-                    img_infos.append({ApiField.ENTITY_ID: pointcloud.id,
-                                      ApiField.NAME: meta_json[ApiField.NAME],
-                                      ApiField.HASH: img,
-                                      ApiField.META: meta_json[ApiField.META]})
+        ds_progress = Progress('Uploading dataset: {!r}'.format(dataset_remotely.name),
+                               total_cnt=len(dataset_locally)) if log_progress else None
+        pcl_infos = api.pointcloud_episode.upload_paths(dataset_remotely.id,
+                                                        names=items_infos['names'],
+                                                        paths=items_infos['paths'],
+                                                        metas=items_infos['metas'],
+                                                        progress_cb=ds_progress.iters_done_report if log_progress else None)
 
-                api.pointcloud_episode.add_related_images(img_infos)
-
-            frame_to_pointcloud_ids[frame_idx] = pointcloud.id
-
-            if log_progress:
-                ds_progress.iters_done_report(1)
-
-        api.pointcloud_episode.annotation.append(dataset.id,
+        # STEP 2 — upload annotations
+        frame_to_pcl_ids = {pcl_info.frame: pcl_info.id for pcl_info in pcl_infos}
+        api.pointcloud_episode.annotation.append(dataset_remotely.id,
                                                  episode_annotation,
-                                                 frame_to_pointcloud_ids,
+                                                 frame_to_pcl_ids,
                                                  uploaded_objects)
 
-    return project.id, project.name
+        # STEP 3 — upload photo context
+        img_infos = {
+            'img_paths': [],
+            'img_metas': []
+        }
+
+        # STEP 3.1 — upload images
+        for pcl_info in pcl_infos:
+            related_items = dataset_locally.get_related_images(pcl_info.name)
+            images_paths_for_frame = [img_path for img_path, _ in related_items]
+
+            img_infos['img_paths'].extend(images_paths_for_frame)
+
+        images_hashes = api.pointcloud_episode.upload_related_images(img_infos['img_paths'])
+
+        # STEP 3.2 — upload images metas
+        images_hashes_iterator = images_hashes.__iter__()
+        for pcl_info in pcl_infos:
+            related_items = dataset_locally.get_related_images(pcl_info.name)
+
+            for _, meta_json in related_items:
+                img_hash = next(images_hashes_iterator)
+                img_infos['img_metas'].append({ApiField.ENTITY_ID: pcl_info.id,
+                                               ApiField.NAME: meta_json[ApiField.NAME],
+                                               ApiField.HASH: img_hash,
+                                               ApiField.META: meta_json[ApiField.META]})
+
+        api.pointcloud_episode.add_related_images(img_infos['img_metas'])
+
+    return project_remotely.id, project_remotely.name
