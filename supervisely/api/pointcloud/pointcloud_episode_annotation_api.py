@@ -31,6 +31,9 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         pointcloud_ids = []
         for i, frame in enumerate(ann.frames):
             for fig in frame.figures:
+                if frame_to_pointcloud_ids.get(i) is None:  # skip unmapped frames
+                    continue
+
                 figures.append(fig)
                 pointcloud_ids.append(frame_to_pointcloud_ids[i])
 
