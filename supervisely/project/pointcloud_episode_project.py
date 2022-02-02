@@ -195,7 +195,7 @@ def upload_pointcloud_episode_project(directory, api, workspace_id, project_name
             items_infos['paths'].append(item_path)
             items_infos['metas'].append(item_meta)
 
-        ds_progress = Progress('Uploading dataset: {!r}'.format(dataset_remotely.name),
+        ds_progress = Progress('Uploading pointclouds: {!r}'.format(dataset_remotely.name),
                                total_cnt=len(dataset_locally)) if log_progress else None
         pcl_infos = api.pointcloud_episode.upload_paths(dataset_remotely.id,
                                                         names=items_infos['names'],
@@ -223,7 +223,11 @@ def upload_pointcloud_episode_project(directory, api, workspace_id, project_name
 
             img_infos['img_paths'].extend(images_paths_for_frame)
 
-        images_hashes = api.pointcloud_episode.upload_related_images(img_infos['img_paths'])
+        img_progress = Progress('Uploading photo context: {!r}'.format(dataset_remotely.name),
+                                total_cnt=len(img_infos['img_paths'])) if log_progress else None
+
+        images_hashes = api.pointcloud_episode.upload_related_images(img_infos['img_paths'],
+                                                                     progress_cb=img_progress.iters_done_report if log_progress else None)
 
         # STEP 3.2 — upload images metas
         images_hashes_iterator = images_hashes.__iter__()
