@@ -49,6 +49,15 @@ setup(
             "sk-video>=1.1.10",
             "pandas>=1.1.3",
         ],
+        'apps': [
+            "uvicorn==0.17.0",
+            "fastapi==0.71.0",
+            "websockets==10.1",
+            "jinja2==3.0.3",
+            "psutil==5.9.0",
+            "jsonpatch==1.32",
+            "python-dotenv==0.19.2"  
+        ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
             "plotly>=4.11.0",
