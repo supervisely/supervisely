@@ -1500,7 +1500,7 @@ def read_single_project(dir: str, project_class: Optional[Project]=Project) -> P
     try:
         project_fs = project_class(dir, OpenMode.READ)
         return project_fs
-    except Exception as e:
+    except Exception:
         pass
 
     projects_in_dir = get_subdirs(dir)

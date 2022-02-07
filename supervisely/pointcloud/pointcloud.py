@@ -47,6 +47,6 @@ def validate_ext(ext: str) -> None:
                                           .format(ext, ALLOWED_POINTCLOUD_EXTENSIONS))
 
 
-def validate_format(path: str) -> None:
-    #@TODO: later
-    validate_ext(path)
+def validate_format(path):
+    _, ext = os.path.splitext(path)
+    validate_ext(ext)
