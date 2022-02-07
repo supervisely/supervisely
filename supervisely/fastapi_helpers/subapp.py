@@ -8,9 +8,11 @@ from fastapi.responses import JSONResponse
 
 from supervisely.fastapi_helpers import DataJson, LastStateJson
 from supervisely.fastapi_helpers import WebsocketManager
+from supervisely.io.fs import mkdir, dir_exists
+from supervisely import logger
 
 
-def get_subapp() -> FastAPI:
+def create_supervisely_app() -> FastAPI:
     app = FastAPI()
     WebsocketManager().set_app(app)
 
@@ -45,3 +47,19 @@ def get_subapp() -> FastAPI:
 def shutdown():
     current_process = psutil.Process(os.getpid())
     current_process.send_signal(signal.SIGINT) # emit ctrl + c
+
+
+def get_app_data_dir():
+    key = 'SLY_APP_DATA_DIR'
+    dir = None
+    
+    try:
+        dir = os.environ[key]
+    except KeyError as e:
+        raise KeyError(f"Environment variable {key} is not defined")
+    
+    if dir_exists(dir) is False:
+        logger.warn(f"App data directory {dir} doesn't exist. Will be made automatically.")
+        mkdir(dir)
+    
+    return dir
