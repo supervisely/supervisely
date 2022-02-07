@@ -5,25 +5,28 @@ import psutil
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-import supervisely as sly
+# import supervisely as sly
+
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 
 
 def create() -> FastAPI:
+    from supervisely.app import DataJson, LastStateJson
+    
     app = FastAPI()
     WebsocketManager().set_app(app)
 
     @app.post("/data")
     async def send_data(request: Request):
-        data = sly.app.DataJson()
+        data = DataJson()
         response = JSONResponse(content=dict(data))
         return response
 
     @app.post("/state")
     async def send_state(request: Request):
-        state = sly.app.LastStateJson()
+        state = LastStateJson()
         response = JSONResponse(content=dict(state))
         return response
 

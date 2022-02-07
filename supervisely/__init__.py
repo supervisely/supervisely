@@ -97,8 +97,7 @@ from supervisely.project.pointcloud_episode_project import PointcloudEpisodeData
 
 from supervisely.pyscripts_utils import utils as ps
 from supervisely.io import docker_utils
-import supervisely.app
-import supervisely.app.fastapi
+import supervisely.app as app
 # from supervisely.app.v1.app_service import AppService
 # import supervisely.app.v
 
