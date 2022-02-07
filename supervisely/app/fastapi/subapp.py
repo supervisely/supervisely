@@ -2,15 +2,19 @@ import os
 import signal
 import psutil
 
-# https://fastapi.tiangolo.com/advanced/sub-applications/
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from supervisely.fastapi_helpers import DataJson, LastStateJson
-from supervisely.fastapi_helpers import WebsocketManager
+# import supervisely as sly
+
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.io.fs import mkdir, dir_exists
+from supervisely.sly_logger import logger
 
 
-def get_subapp() -> FastAPI:
+def create() -> FastAPI:
+    from supervisely.app import DataJson, LastStateJson
+    
     app = FastAPI()
     WebsocketManager().set_app(app)
 
@@ -45,3 +49,6 @@ def get_subapp() -> FastAPI:
 def shutdown():
     current_process = psutil.Process(os.getpid())
     current_process.send_signal(signal.SIGINT) # emit ctrl + c
+
+
+
