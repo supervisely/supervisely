@@ -1,12 +1,13 @@
-
+import os
 import enum
 import json
 import jsonpatch
 import asyncio
-from fastapi import FastAPI
 from fastapi import Request
-from supervisely.fastapi_helpers.singleton import Singleton
-from supervisely.fastapi_helpers.websocket import WebsocketManager
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.io.fs import dir_exists, mkdir
+from supervisely.sly_logger import logger
+from supervisely.app.singleton import Singleton
 
 
 class Field(str, enum.Enum):
@@ -14,6 +15,21 @@ class Field(str, enum.Enum):
     DATA = 'data'
     CONTEXT = 'context'
 
+
+def get_data_dir():
+    key = 'SLY_APP_DATA_DIR'
+    dir = None
+    
+    try:
+        dir = os.environ[key]
+    except KeyError as e:
+        raise KeyError(f"Environment variable {key} is not defined")
+    
+    if dir_exists(dir) is False:
+        logger.warn(f"App data directory {dir} doesn't exist. Will be made automatically.")
+        mkdir(dir)
+    return dir
+    
 
 class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):

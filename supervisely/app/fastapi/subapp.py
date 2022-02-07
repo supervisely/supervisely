@@ -2,29 +2,28 @@ import os
 import signal
 import psutil
 
-# https://fastapi.tiangolo.com/advanced/sub-applications/
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from supervisely.fastapi_helpers import DataJson, LastStateJson
-from supervisely.fastapi_helpers import WebsocketManager
+import supervisely as sly
+from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
-from supervisely import logger
+from supervisely.sly_logger import logger
 
 
-def create_supervisely_app() -> FastAPI:
+def create() -> FastAPI:
     app = FastAPI()
     WebsocketManager().set_app(app)
 
     @app.post("/data")
     async def send_data(request: Request):
-        data = DataJson()
+        data = sly.app.DataJson()
         response = JSONResponse(content=dict(data))
         return response
 
     @app.post("/state")
     async def send_state(request: Request):
-        state = LastStateJson()
+        state = sly.app.LastStateJson()
         response = JSONResponse(content=dict(state))
         return response
 
@@ -49,17 +48,4 @@ def shutdown():
     current_process.send_signal(signal.SIGINT) # emit ctrl + c
 
 
-def get_app_data_dir():
-    key = 'SLY_APP_DATA_DIR'
-    dir = None
-    
-    try:
-        dir = os.environ[key]
-    except KeyError as e:
-        raise KeyError(f"Environment variable {key} is not defined")
-    
-    if dir_exists(dir) is False:
-        logger.warn(f"App data directory {dir} doesn't exist. Will be made automatically.")
-        mkdir(dir)
-    
-    return dir
+
