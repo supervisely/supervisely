@@ -17,7 +17,7 @@ from supervisely.function_wrapper import function_wrapper
 from supervisely._utils import take_with_default
 from supervisely.sly_logger import logger as default_logger
 from supervisely.sly_logger import EventType
-from supervisely.app.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
+from supervisely.app.v1.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
 from supervisely.api.api import Api
 from supervisely.io.fs import file_exists, mkdir, list_files, get_file_name_with_ext
 from supervisely.io.json import load_json_file
