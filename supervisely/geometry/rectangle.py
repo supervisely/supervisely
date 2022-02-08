@@ -29,11 +29,11 @@ class Rectangle(Geometry):
             right: maximal horizontal value
         """
 
-        if top > bottom:
-            raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
+        if top >= bottom:
+            raise ValueError('Rectangle "top" argument must have less value then "bottom"!')
 
-        if left > right:
-            raise ValueError('Rectangle "left" argument must have less or equal value then "right"!')
+        if left >= right:
+            raise ValueError('Rectangle "left" argument must have less value then "right"!')
 
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
                          created_at=created_at)
@@ -186,7 +186,7 @@ class Rectangle(Geometry):
         :param arr: numpy array
         :return: Rectangle class object
         '''
-        return cls(top=0, left=0, bottom=arr.shape[0] - 1, right=arr.shape[1] - 1)
+        return cls(top=0, left=0, bottom=arr.shape[0], right=arr.shape[1])
 
     # TODO re-evaluate whether we need this, looks trivial.
     @classmethod
@@ -196,7 +196,7 @@ class Rectangle(Geometry):
         :param size: tuple of integers
         :return: Rectangle class object
         '''
-        return cls(0, 0, size[0] - 1, size[1] - 1)
+        return cls(0, 0, size[0], size[1])
 
     @classmethod
     def from_geometries_list(cls, geometries):
@@ -240,14 +240,14 @@ class Rectangle(Geometry):
         '''
         :return: width of rectangle(int)
         '''
-        return self.right - self.left + 1
+        return self.right - self.left
 
     @property
     def height(self):
         '''
         :return: height of rectangle(int)
         '''
-        return self.bottom - self.top + 1
+        return self.bottom - self.top
 
     def contains(self, rect):
         '''
@@ -280,7 +280,7 @@ class Rectangle(Geometry):
         :param data: numpy array
         :return: numpy array
         '''
-        return data[self.top:(self.bottom+1), self.left:(self.right+1), ...]
+        return data[self.top:self.bottom, self.left:self.right, ...]
 
     def intersects_with(self, rect):
         if self.left > rect.right or self.right < rect.left:
