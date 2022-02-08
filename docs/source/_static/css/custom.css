@@ -1,5 +1,9 @@
 /*class container*/
 
+dt:target {
+    margin-top: 0.0rem;
+    padding-top: 0.0rem
+}
 
 dl.py.class dt.sig.sig-object.py {
     border-left: none;

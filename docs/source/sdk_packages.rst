@@ -44,7 +44,7 @@ API
     annotation_api
     app_api
     dataset_api
-    file_api.
+    file_api
     image_annotation_tool_api
     image_api
     import_storage_api
