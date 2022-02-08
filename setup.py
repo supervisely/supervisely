@@ -26,6 +26,8 @@ setup(
     url="https://github.com/supervisely/supervisely",
     include_package_data=True,
     install_requires=[
+        "fastapi==0.73.0",
+        "jsonpatch==1.32",
         "numpy>=1.19",
         "opencv-python>=4.5.5.62",
         "PTable>=0.9.2",
