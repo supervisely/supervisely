@@ -1,1 +1,2 @@
 include supervisely/video/get_video_info.sh
+include supervisely/app/widgets/radio_table/radio_table.html
