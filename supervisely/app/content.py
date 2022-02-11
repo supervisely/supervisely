@@ -1,3 +1,4 @@
+import copy
 import os
 import enum
 import json
@@ -37,7 +38,7 @@ class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
-        self._last = dict(self)
+        self._last = copy.deepcopy(self)
         self._lock = asyncio.Lock()
         self._field = field.value
 
@@ -53,7 +54,8 @@ class _PatchableJson(dict):
     async def _apply_patch(self, patch):
         async with self._lock:
             patch.apply(self._last, in_place=True)
-
+            self._last = copy.deepcopy(self._last)
+            
     async def synchronize_changes(self):
         patch = self._get_patch()
         await self._apply_patch(patch)
