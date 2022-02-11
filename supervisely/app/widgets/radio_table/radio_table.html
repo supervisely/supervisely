@@ -6,3 +6,34 @@
   <div>table content:</div>
   <pre>{{{widget.content}}}</pre>
 </div>
+<div>123</div>
+<div>123</div>
+<div>123</div>
+<table class="beautiful-table">
+  <thead>
+    <tr>
+      <th v-for="row in data.{{{widget.data_field}}}">
+        <div v-html="row['title']"></div>
+        <div style="color: #7f858e; font-weight: normal; font-size: 12px">
+          {{row["subtitle"]}}
+        </div>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-for="model in data.models">
+      <td v-for="column in data.modelColumns">
+        <div v-if="column.key === 'Model'">
+          <el-radio
+            class="radio"
+            v-model="state.selectedModel"
+            :label="model[column.key]"
+          >
+            {{model[column.key]}}
+          </el-radio>
+        </div>
+        <div v-else>{{model[column.key]}}</div>
+      </td>
+    </tr>
+  </tbody>
+</table>

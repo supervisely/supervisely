@@ -10,10 +10,24 @@ from supervisely.app.jinja2 import create_env
 
 
 class RadioTable:
-    def __init__(self, state_field: str, data_field: str, content: List[Dict] = None):
+    def __init__(
+        self,
+        state_field: str,
+        data_field: str,
+        radio_key: str,
+        columns: List[str],
+        rows: List[Dict],
+        subtitles: dict = {},
+    ):
         self.state_field = state_field
         self.data_field = data_field
-        self.content = content
+        self.rows = rows
+        self._columns = None
+        self._subtitles = subtitles
+
+        # for row in content:
+        #     for k in row.keys():
+        #         if
 
     def to_html(self):
         current_dir = Path(__file__).parent.absolute()
