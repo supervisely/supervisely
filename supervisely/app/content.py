@@ -38,7 +38,7 @@ class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
-        self._last = copy.deepcopy(self)
+        self._last = copy.deepcopy(dict(self))
         self._lock = asyncio.Lock()
         self._field = field.value
 
