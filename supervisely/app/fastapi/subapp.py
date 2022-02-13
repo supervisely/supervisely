@@ -60,7 +60,7 @@ def enable_hot_reload_on_debug(app: FastAPI, templates: Jinja2Templates):
         import arel
 
         hot_reload = arel.HotReload(paths=[arel.Path(".")])
-        app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
+        app.add_websocket_route("/hot-reload", route=hot_reload, name="sly-hot-reload")
         app.add_event_handler("startup", hot_reload.startup)
         app.add_event_handler("shutdown", hot_reload.shutdown)
         templates.env.globals["DEBUG"] = "1"
