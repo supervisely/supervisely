@@ -11,6 +11,8 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 
+# "--reload-include", "*.py,*.html"
+
 
 def create() -> FastAPI:
     from supervisely.app import DataJson, LastStateJson
