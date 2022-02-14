@@ -1,38 +1,43 @@
-<div>My super table title</div>
-<div>My super table description</div>
-<div>State name: {{{widget.state_field}}}</div>
-<div>Data name: {{{widget.data_field}}}</div>
-<div>
-  <div>table content:</div>
-  <pre>{{{widget.content}}}</pre>
-</div>
-<div>123</div>
-<div>123</div>
-<div>123</div>
+<sly-style>
+  <!-- <style> -->
+  .beautiful-table { border-collapse: collapse; } .beautiful-table
+  tr:nth-child(2n) { background-color: #f6f8fa; } .beautiful-table td,
+  .beautiful-table th { border: 1px solid #dfe2e5; padding: 6px 13px;
+  text-align: center; line-height: 20px; }
+  <!-- </style> -->
+</sly-style>
+
 <table class="beautiful-table">
   <thead>
     <tr>
-      <th v-for="row in data.{{{widget.data_field}}}">
-        <div v-html="row['title']"></div>
-        <div style="color: #7f858e; font-weight: normal; font-size: 12px">
-          {{row["subtitle"]}}
+      <th v-for="col in data.{{{widget.widget_id}}}['header']">
+        <div v-html="col['title']"></div>
+        <div
+          v-if="col['subtitle']"
+          style="color: #7f858e; font-weight: normal; font-size: 12px"
+        >
+          {{col['subtitle']}}
         </div>
       </th>
     </tr>
   </thead>
   <tbody>
-    <tr v-for="model in data.models">
-      <td v-for="column in data.modelColumns">
-        <div v-if="column.key === 'Model'">
+    <tr v-for="row in data.{{{widget.widget_id}}}.rows">
+      <td v-for="val, idx in row">
+        <div v-if="idx === 0">
           <el-radio
             class="radio"
-            v-model="state.selectedModel"
-            :label="model[column.key]"
+            v-model="state.{{{widget.widget_id}}}.selectedRow"
+            :label="val"
           >
-            {{model[column.key]}}
+            <!-- <div v-html="val"></div> -->
+            {{val}}
           </el-radio>
         </div>
-        <div v-else>{{model[column.key]}}</div>
+        <div v-else>
+          <div v-html="val"></div>
+          <!-- {{val}} -->
+        </div>
       </td>
     </tr>
   </tbody>
