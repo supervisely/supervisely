@@ -24,7 +24,7 @@
   <tbody>
     <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rows">
       <td v-for="val, vidx in row">
-        <div v-if="vidx === 0">
+        <div v-if="vidx === 0" style="text-align: left">
           <el-radio
             class="radio"
             v-model="state.{{{widget.widget_id}}}.selectedRow"
