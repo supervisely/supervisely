@@ -30,6 +30,10 @@ def create() -> FastAPI:
     async def send_state(request: Request):
         state = LastStateJson()
         response = JSONResponse(content=dict(state))
+
+        gettrace = getattr(sys, "gettrace", None)
+        if gettrace is not None and gettrace():
+            response.headers["x-debug-mode"] = "1"
         return response
 
     @app.post("/shutdown")
