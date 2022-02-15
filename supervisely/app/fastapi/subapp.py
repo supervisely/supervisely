@@ -61,7 +61,7 @@ def enable_hot_reload_on_debug(app: FastAPI, templates: Jinja2Templates):
     gettrace = getattr(sys, "gettrace", None)
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
-    elif gettrace() and templates is not None:
+    elif gettrace():
         print("In debug mode ...")
         import arel
 
