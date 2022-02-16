@@ -15,7 +15,7 @@ from supervisely.sly_logger import logger
 
 
 def create() -> FastAPI:
-    from supervisely.app import DataJson, LastStateJson
+    from supervisely.app import DataJson, StateJson
 
     app = FastAPI()
     WebsocketManager().set_app(app)
@@ -28,7 +28,7 @@ def create() -> FastAPI:
 
     @app.post("/state")
     async def send_state(request: Request):
-        state = LastStateJson()
+        state = StateJson()
         response = JSONResponse(content=dict(state))
 
         gettrace = getattr(sys, "gettrace", None)
