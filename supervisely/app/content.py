@@ -112,7 +112,7 @@ class StateJson(_PatchableJson):
 
     async def _apply_patch(self, patch):
         await super()._apply_patch(patch)
-        await LastStateJson()._apply_patch(patch)
+        await LastStateJson().replace(self)  # @TODO: replace with _apply_patch method
 
     @classmethod
     async def from_request(cls, request: Request):
