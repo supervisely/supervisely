@@ -117,12 +117,12 @@ html_theme_options = {
     'repo_url': 'https://github.com/supervisely/supervisely',
     'repo_name': 'Supervisely',
 
-    # Visible levels of the global TOC; -1 means unlimited
-    'globaltoc_depth': 3,
     # If False, expand all TOC entries
     'globaltoc_collapse': True,
     # If True, show hidden TOC entries
     'globaltoc_includehidden': True,
+    # Visible levels of the global TOC; -1 means unlimited
+    'globaltoc_depth': 3,
 
     'html_prettify': False,
     'html_minify': True,
