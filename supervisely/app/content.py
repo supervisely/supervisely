@@ -60,6 +60,10 @@ class _PatchableJson(dict):
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
 
+    def raise_for_key(self, key: str):
+        if key in self:
+            raise KeyError(f"Key {key} already exists in {self._field}")
+
 
 class StateJson(_PatchableJson, metaclass=Singleton):
     _global_lock: asyncio.Lock = None
