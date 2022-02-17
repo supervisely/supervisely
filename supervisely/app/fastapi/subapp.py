@@ -54,8 +54,7 @@ def create() -> FastAPI:
 
     import supervisely
 
-    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="static")
-
+    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
     return app
 
 

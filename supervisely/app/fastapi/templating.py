@@ -8,7 +8,7 @@ from supervisely.app.singleton import Singleton
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
-    def __init__(self, directory: typing.Union[str, PathLike]) -> None:
+    def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
         super().__init__(directory)
         self.context_widgets = {}
 
