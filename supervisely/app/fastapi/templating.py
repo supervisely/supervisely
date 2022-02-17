@@ -4,9 +4,10 @@ import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
 from fastapi.templating import _TemplateResponse
 from starlette.background import BackgroundTask
+from supervisely.app.singleton import Singleton
 
 
-class Jinja2Templates(_fastapi_Jinja2Templates):
+class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     def __init__(self, directory: typing.Union[str, PathLike]) -> None:
         super().__init__(directory)
         self.context_widgets = {}
