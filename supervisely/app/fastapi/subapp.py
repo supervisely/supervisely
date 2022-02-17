@@ -54,8 +54,7 @@ def create() -> FastAPI:
 
     import supervisely
 
-    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="static")
-
+    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
     return app
 
 
@@ -64,7 +63,8 @@ def shutdown():
     current_process.send_signal(signal.SIGINT)  # emit ctrl + c
 
 
-def enable_hot_reload_on_debug(app: FastAPI, templates: Jinja2Templates):
+def enable_hot_reload_on_debug(app: FastAPI):
+    templates = Jinja2Templates()
     gettrace = getattr(sys, "gettrace", None)
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
@@ -73,7 +73,7 @@ def enable_hot_reload_on_debug(app: FastAPI, templates: Jinja2Templates):
         import arel
 
         hot_reload = arel.HotReload(paths=[arel.Path(".")])
-        app.add_websocket_route("/hot-reload", route=hot_reload, name="sly-hot-reload")
+        app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
         app.add_event_handler("startup", hot_reload.startup)
         app.add_event_handler("shutdown", hot_reload.shutdown)
         templates.env.globals["DEBUG"] = "1"

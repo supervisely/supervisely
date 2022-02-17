@@ -5,9 +5,8 @@ from black import format_cell
 import markupsafe
 from jinja2 import Environment
 from supervisely.app.jinja2 import create_env
-
-# from supervisely.api.api import Api
-# from supervisely.app.content import DataJson, LastStateJson
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi import Jinja2Templates
 
 
 class RadioTable:
@@ -24,6 +23,7 @@ class RadioTable:
         self.rows = rows
         self.subtitles = subtitles
         self.column_formatters = column_formatters
+        self.auto_registration = True
 
         self._header = []
         for col in self.columns:
@@ -40,6 +40,9 @@ class RadioTable:
                 frow.append(self.format_value(col, val))
             self._frows.append(frow)
 
+        if self.auto_registration:
+            self.init(DataJson(), StateJson(), Jinja2Templates())
+
     def format_value(self, column_name: str, value):
         fn = self.column_formatters.get(column_name, self.default_formatter)
         return fn(value)
@@ -49,9 +52,12 @@ class RadioTable:
             return "-"
         return value
 
-    def init(self, data: dict, state: dict):
+    def init(self, data: DataJson, state: StateJson, templates: Jinja2Templates):
+        data.raise_for_key(self.widget_id)
         data[self.widget_id] = {"header": self._header, "rows": self._frows}
+        state.raise_for_key(self.widget_id)
         state[self.widget_id] = {"selectedRow": 0}
+        templates.context_widgets[self.widget_id] = self
 
     def to_html(self):
         current_dir = Path(__file__).parent.absolute()
