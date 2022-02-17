@@ -1,0 +1,23 @@
+.notification-box {
+  background-color: lightgray;
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+}
+.notification-box-warning {
+  background-color: #fcf8e3;
+  border: 1px solid #faebcc;
+  border-left: 4px solid #cd9c38;
+}
+.notification-box-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+.notification-box-warning .notification-box-icon {
+  color: #cd9c38;
+}
+.notification-box-title {
+  font-size: 14px;
+  font-weight: bold;
+}

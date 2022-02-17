@@ -1,0 +1,40 @@
+<link
+  rel="stylesheet"
+  href="/sly/css/app/widgets/radio_table/radio_table.css"
+/>
+
+<table class="beautiful-table">
+  <thead>
+    <tr>
+      <th v-for="col in data.{{{widget.widget_id}}}['header']">
+        <div v-html="col['title']"></div>
+        <div
+          v-if="col['subtitle']"
+          style="color: #7f858e; font-weight: normal; font-size: 12px"
+        >
+          {{col['subtitle']}}
+        </div>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rows">
+      <td v-for="val, vidx in row">
+        <div v-if="vidx === 0" style="text-align: left">
+          <el-radio
+            class="radio"
+            v-model="state.{{{widget.widget_id}}}.selectedRow"
+            :label="ridx"
+          >
+            <!-- <div v-html="val"></div> -->
+            {{val}}
+          </el-radio>
+        </div>
+        <div v-else>
+          <div v-html="val"></div>
+          <!-- {{val}} -->
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
