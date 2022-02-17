@@ -51,13 +51,13 @@ setup(
             "jinja2==3.0.3",
             "psutil==5.9.0",
             "jsonpatch==1.32",
-            "python-dotenv==0.19.2"  
+            "python-dotenv==0.19.2",  
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
             "plotly>=4.11.0",
             "psutil>=5.4.5",
-            "python-dotenv==0.19.2"
+            "python-dotenv==0.19.2",
         ],
         # legacy dependencies
         'plugins':[
