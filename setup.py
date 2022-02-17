@@ -21,7 +21,7 @@ setup(
     long_description_content_type='text/markdown',
     url="https://github.com/supervisely/supervisely",
     package_data={
-        "supervisely": ["app/widgets/*.html", "app/widgets/*.css"], 
+        "": ["*.html", "*.css"], 
         "supervisely": ["video/*.sh"]
     },
     install_requires=[
