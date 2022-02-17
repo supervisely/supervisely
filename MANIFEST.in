@@ -1,5 +1,0 @@
-include supervisely/video/get_video_info.sh
-include supervisely/app/widgets/radio_table/radio_table.html
-include supervisely/app/widgets/radio_table/radio_table.css
-include supervisely/app/widgets/notification_box/notification_box.html
-include supervisely/app/widgets/notification_box/notification_box.css
