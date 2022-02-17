@@ -12,10 +12,6 @@ def read(fname):
 response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
 version = response.json()["tag_name"]
 
-# Dependencies do not include PyTorch, so
-# supervisely_lib.nn.hosted.pytorch will not work out of the box.
-# If you need to invoke that part of the code, it is very likely you
-# already have PyTorch installed.
 setup(
     name="supervisely",
     version=version,
