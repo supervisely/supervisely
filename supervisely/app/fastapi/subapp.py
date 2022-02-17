@@ -63,7 +63,8 @@ def shutdown():
     current_process.send_signal(signal.SIGINT)  # emit ctrl + c
 
 
-def enable_hot_reload_on_debug(app: FastAPI, templates: Jinja2Templates):
+def enable_hot_reload_on_debug(app: FastAPI):
+    templates = Jinja2Templates()
     gettrace = getattr(sys, "gettrace", None)
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
