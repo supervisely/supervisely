@@ -5,12 +5,15 @@ import sys
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 
+
+# print(supervisely.__path__)
 # "--reload-include", "*.py,*.html"
 
 
@@ -48,6 +51,10 @@ def create() -> FastAPI:
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
             WebsocketManager().disconnect(websocket)
+
+    import supervisely
+
+    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="static")
 
     return app
 
