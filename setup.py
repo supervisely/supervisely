@@ -2,6 +2,7 @@ import os
 import requests
 from setuptools import find_packages, setup
 
+#@TODO: change manifest location
 
 def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as fin:
