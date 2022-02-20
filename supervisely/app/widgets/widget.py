@@ -38,3 +38,12 @@ class Widget:
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         return markupsafe.Markup(html)
+
+
+# https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+# https://github.com/pwwang/python-varname
+# https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string/18425523#18425523
+# https://ideone.com/ym3bkD
+# https://github.com/pwwang/python-varname
+# https://stackoverflow.com/questions/13034496/using-global-variables-between-files
+# https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules
