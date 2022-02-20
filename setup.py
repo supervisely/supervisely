@@ -35,6 +35,7 @@ setup(
         "requests-toolbelt>=0.9.1",
         "Shapely>=1.7.1",
         "bidict>=0.21.2",
+        "varname>=0.8.1",
     ],
     extras_require={
         'extras': [
