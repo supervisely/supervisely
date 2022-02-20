@@ -1,29 +1,22 @@
-from typing import List, Dict
-from pathlib import Path
-import os
-from black import format_cell
-import markupsafe
-from jinja2 import Environment
+from typing import List
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.fastapi import Jinja2Templates
+from supervisely.app.widgets import Widget
 
 
-class RadioTable:
+class RadioTable(Widget):
     def __init__(
         self,
-        widget_id: str,
         columns: List[str],
         rows: List[List[str]],
         subtitles: dict = {},  # col_name -> subtitle
         column_formatters: dict = {},
+        widget_id: str = None,
     ):
-        self.widget_id = widget_id
         self.columns = columns
         self.rows = rows
         self.subtitles = subtitles
         self.column_formatters = column_formatters
-        self.auto_registration = True
 
         self._header = []
         for col in self.columns:
@@ -40,8 +33,13 @@ class RadioTable:
                 frow.append(self.format_value(col, val))
             self._frows.append(frow)
 
-        if self.auto_registration:
-            self.init(DataJson(), StateJson(), Jinja2Templates())
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def init_data(self):
+        return {"header": self._header, "rows": self._frows}
+
+    def init_state(self):
+        return {"selectedRow": 0}
 
     def format_value(self, column_name: str, value):
         fn = self.column_formatters.get(column_name, self.default_formatter)
@@ -51,16 +49,3 @@ class RadioTable:
         if value is None:
             return "-"
         return value
-
-    def init(self, data: DataJson, state: StateJson, templates: Jinja2Templates):
-        data.raise_for_key(self.widget_id)
-        data[self.widget_id] = {"header": self._header, "rows": self._frows}
-        state.raise_for_key(self.widget_id)
-        state[self.widget_id] = {"selectedRow": 0}
-        templates.context_widgets[self.widget_id] = self
-
-    def to_html(self):
-        current_dir = Path(__file__).parent.absolute()
-        jinja2_sly_env: Environment = create_env(current_dir)
-        html = jinja2_sly_env.get_template("radio_table.html").render({"widget": self})
-        return markupsafe.Markup(html)
