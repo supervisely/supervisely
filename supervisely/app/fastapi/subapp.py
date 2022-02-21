@@ -11,7 +11,7 @@ from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
-
+from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 
 # print(supervisely.__path__)
 # "--reload-include", "*.py,*.html"
@@ -37,6 +37,19 @@ def create() -> FastAPI:
         gettrace = getattr(sys, "gettrace", None)
         if gettrace is not None and gettrace():
             response.headers["x-debug-mode"] = "1"
+        return response
+
+    @app.post("/session-info")
+    async def send_session_info(request: Request):
+        server_address = os.environ.get(SERVER_ADDRESS)
+        if server_address is not None:
+            server_address = Api.normalize_server_address(server_address)
+            
+        response = JSONResponse(content={
+            TASK_ID: os.environ.get(TASK_ID),
+            SERVER_ADDRESS: server_address,
+            API_TOKEN: os.environ.get(API_TOKEN),            
+        })
         return response
 
     @app.post("/shutdown")
