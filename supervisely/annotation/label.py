@@ -80,13 +80,16 @@ class LabelBase:
 
         res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
-            LabelJsonFields.OBJ_CLASS_ID: self.obj_class.sly_id,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
             ** self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
         }
+        
+        if self.obj_class.sly_id is not None:
+            res[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
+            
         return res
 
     @classmethod
