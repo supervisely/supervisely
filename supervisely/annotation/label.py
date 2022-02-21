@@ -15,6 +15,7 @@ from supervisely.geometry.constants import GEOMETRY_TYPE, GEOMETRY_SHAPE
 
 class LabelJsonFields:
     OBJ_CLASS_NAME = 'classTitle'
+    OBJ_CLASS_ID = 'classId'
     DESCRIPTION = 'description'
     TAGS = 'tags'
 
@@ -79,6 +80,7 @@ class LabelBase:
 
         res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
+            LabelJsonFields.OBJ_CLASS_ID: self.obj_class.sly_id,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
             ** self.geometry.to_json(),
