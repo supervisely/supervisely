@@ -3,7 +3,7 @@ import signal
 import psutil
 import sys
 
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -49,7 +49,7 @@ def create() -> FastAPI:
             content={
                 TASK_ID: os.environ.get(TASK_ID),
                 SERVER_ADDRESS: server_address,
-                API_TOKEN: os.environ.get(API_TOKEN)
+                API_TOKEN: os.environ.get(API_TOKEN),
             }
         )
         return response
