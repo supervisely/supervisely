@@ -1,0 +1,19 @@
+<el-dialog
+  title="Restart step"
+  :visible.sync="state.{{{widget.widget_id}}}.restart_step"
+  size="tiny"
+>
+  <span> This step and all next steps will be reset </span>
+  <span slot="footer" class="dialog-footer">
+    <el-button @click="state.{{{widget.widget_id}}}.restart_step = null"
+      >Cancel</el-button
+    >
+    <el-button
+      type="primary"
+      class="regular"
+      @click="post(state.{{{widget.widget_id}}}.method_name);"
+    >
+      Confirm
+    </el-button>
+  </span>
+</el-dialog>

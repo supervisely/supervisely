@@ -1,13 +1,13 @@
 from typing import List
 from fastapi import APIRouter, Request, Depends
 from supervisely.app.widgets import Widget
-from supervisely.app.content import StateJson
+from supervisely.app.content import StateJson, DataJson
 
 
-class RestartDialog(Widget):
+class RestartStep(Widget):
     def __init__(
         self,
-        steps: List,  # (str, callable)
+        steps: List,  # of callable
         method_name: str = "/restart",
         widget_id: str = None,
     ):
@@ -17,14 +17,18 @@ class RestartDialog(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         @self.router.post(self.method_name)
-        def retart(
+        async def restart(
             request: Request, state: StateJson = Depends(StateJson.from_request)
         ):
-            print(123)
-            pass
+            data = DataJson()
+            for restart_fn in self.steps:
+                restart_fn(data, state)
+            state["restart_step"] = None
+            await state.synchronize_changes()
+            await data.synchronize_changes()
 
     def init_data(self):
         return {}  # {"steps": {name: endpoint for (name, endpoint) in self.steps}}
 
     def init_state(self):
-        return {"restartName": None}
+        return {"restart_step": None}
