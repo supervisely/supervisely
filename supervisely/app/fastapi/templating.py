@@ -2,7 +2,7 @@ import typing
 from os import PathLike
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
-from fastapi.templating import _TemplateResponse
+from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 
