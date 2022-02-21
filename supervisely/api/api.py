@@ -44,6 +44,7 @@ SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
 SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC"
 SERVER_ADDRESS = "SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
+TASK_ID = "TASK_ID"
 
 
 class Api:
@@ -65,11 +66,7 @@ class Api:
         """
         if token is None:
             raise ValueError("Token is None")
-        self.server_address = server_address.strip("/")
-        if ("http://" not in self.server_address) and (
-            "https://" not in self.server_address
-        ):
-            self.server_address = "http://" + self.server_address
+        self.server_address = Api.normalize_server_address(server_address)
 
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "20"))
@@ -120,6 +117,16 @@ class Api:
 
         self.logger = external_logger or logger
 
+    @classmethod
+    def normalize_server_address(cls, server_address):
+        result = server_address.strip("/")
+        if ("http://" not in result) and (
+            "https://" not in result
+        ):
+            result = "http://" + result
+        return result
+        
+    
     @classmethod
     def from_env(cls, retry_count=5, ignore_task_id=False):
         """
