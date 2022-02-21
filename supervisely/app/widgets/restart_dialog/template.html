@@ -1,5 +1,9 @@
-<el-dialog title="Restart step" :visible.sync="state.restartName" size="tiny">
-  <span>
+<el-dialog
+  title="Restart step"
+  :visible.sync="state.{{{widget.widget_id}}}.restartName"
+  size="tiny"
+>
+  <!-- <span>
     This step <b>{{state.restartName}}</b> and all next steps will be reset
   </span>
   <span slot="footer" class="dialog-footer">
@@ -7,10 +11,9 @@
     <el-button
       type="primary"
       class="regular"
-      @click="post(state.{{{widget.widget_id}}}[state.restartName]); state.restartName = null;"
+      @click="post({{{widget.method_name}}}); state.restartName = null;"
     >
       Confirm
     </el-button>
-  </span>
+  </span> -->
 </el-dialog>
-<!--        $nextTick(() => { $refs['card3'].$el.scrollIntoView({behavior: 'smooth', block: 'center'}); });-->
