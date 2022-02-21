@@ -157,7 +157,7 @@ class AnnotationApi(ModuleApi):
         for label in labels:
             _label_json = label.to_json()
             _label_json["geometry"] = label.geometry.to_json()
-            if _label_json.get("classId", None) is not None:
+            if "classId" not in _label_json:
                 raise KeyError("Update project meta from server to get class id")
             payload.append(_label_json)
 
