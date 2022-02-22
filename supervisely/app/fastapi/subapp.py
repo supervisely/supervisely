@@ -3,7 +3,16 @@ import signal
 import psutil
 import sys
 
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, Depends
+from fastapi import (
+    FastAPI,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+    HTTPException,
+)
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -95,3 +104,17 @@ def enable_hot_reload_on_debug(app: FastAPI):
         templates.env.globals["hot_reload"] = hot_reload
     else:
         print("In runtime mode ...")
+
+
+def handle_server_errors(app: FastAPI):
+    @app.exception_handler(500)
+    async def server_exception_handler(request, exc):
+        return await http_exception_handler(
+            request, HTTPException(status_code=500, detail=repr(exc))
+        )
+
+
+def init(app: FastAPI):
+    enable_hot_reload_on_debug(app)
+    app.mount("/sly", create())
+    handle_server_errors(app)
