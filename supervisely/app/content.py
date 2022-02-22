@@ -55,6 +55,7 @@ class _PatchableJson(dict):
     async def _apply_patch(self, patch):
         async with self._lock:
             patch.apply(self._last, in_place=True)
+            self._last = copy.deepcopy(self._last)
 
     async def synchronize_changes(self):
         patch = self._get_patch()
