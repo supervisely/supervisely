@@ -20,11 +20,11 @@ class Widget:
         # get singletons
         data = DataJson()
         state = StateJson()
-        templates = Jinja2Templates()
         data.raise_for_key(self.widget_id)
         data[self.widget_id] = self.init_data()
         state.raise_for_key(self.widget_id)
         state[self.widget_id] = self.init_state()
+        templates = Jinja2Templates()
         templates.context_widgets[self.widget_id] = self
 
     def init_data(self):

@@ -3,7 +3,16 @@ import signal
 import psutil
 import sys
 
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+    HTTPException,
+)
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -44,12 +53,14 @@ def create() -> FastAPI:
         server_address = os.environ.get(SERVER_ADDRESS)
         if server_address is not None:
             server_address = Api.normalize_server_address(server_address)
-            
-        response = JSONResponse(content={
-            TASK_ID: os.environ.get(TASK_ID),
-            SERVER_ADDRESS: server_address,
-            API_TOKEN: os.environ.get(API_TOKEN),            
-        })
+
+        response = JSONResponse(
+            content={
+                TASK_ID: os.environ.get(TASK_ID),
+                SERVER_ADDRESS: server_address,
+                API_TOKEN: os.environ.get(API_TOKEN),
+            }
+        )
         return response
 
     @app.post("/shutdown")
@@ -93,3 +104,25 @@ def enable_hot_reload_on_debug(app: FastAPI):
         templates.env.globals["hot_reload"] = hot_reload
     else:
         print("In runtime mode ...")
+
+
+def handle_server_errors(app: FastAPI):
+    @app.exception_handler(500)
+    async def server_exception_handler(request, exc):
+        return await http_exception_handler(
+            request,
+            HTTPException(
+                status_code=500,
+                detail={
+                    # "title": "error title",
+                    "message": repr(exc)
+                },
+            ),
+        )
+
+
+def init(app: FastAPI, root_dir: str = "."):
+    Jinja2Templates(directory=root_dir)
+    enable_hot_reload_on_debug(app)
+    app.mount("/sly", create())
+    handle_server_errors(app)
