@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import os
 import enum
@@ -80,7 +81,9 @@ class StateJson(_PatchableJson, metaclass=Singleton):
         await StateJson._replace_global(dict(self))
 
     @classmethod
-    async def from_request(cls, request: Request):
+    async def from_request(cls, request: Request) -> StateJson:
+        if "application/json" not in request.headers.get("Content-Type", ""):
+            return None
         content = await request.json()
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
