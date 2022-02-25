@@ -110,7 +110,14 @@ def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
         return await http_exception_handler(
-            request, HTTPException(status_code=500, detail=repr(exc))
+            request,
+            HTTPException(
+                status_code=500,
+                detail={
+                    # "title": "error title",
+                    "message": repr(exc)
+                },
+            ),
         )
 
 
