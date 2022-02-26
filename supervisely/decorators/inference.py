@@ -1,13 +1,14 @@
 import os
-import supervisely as sly
+import supervisely_lib as sly
 
 
 def crop_input_before_inference(func):
     """Crops input image before inference and then scales annotation back to original image size"""
+
     def wrapper_inference(image_path, context, state, app_logger):
         assert isinstance(image_path, str)
         image = sly.image.read(image_path)
-        if "rectangle_crop" not in state.keys() or state["rectangle_crop"] is None:
+        if "rectangle_crop" not in state.keys():
             ann_json = func(image_path, context, state, app_logger)
             return ann_json
 
@@ -22,7 +23,7 @@ def crop_input_before_inference(func):
         sly.image.write(image_crop_path, image_crop)
 
         ann_json = func(image_crop_path, context, state, app_logger)
-        
+
         original_height, original_width = image.shape[:2]
         ann_json["size"]["height"], ann_json["size"]["width"] = original_height, original_width
         for object in ann_json["objects"]:
@@ -34,4 +35,5 @@ def crop_input_before_inference(func):
 
         sly.fs.silent_remove(image_crop_path)
         return ann_json
+
     return wrapper_inference
