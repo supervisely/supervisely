@@ -103,6 +103,7 @@ import supervisely.app as app
 
 from supervisely.decorators.profile import timeit
 from supervisely.decorators.profile import update_fields
+from supervisely.decorators.inference import crop_input_before_inference
 
 import supervisely.script as script
 from supervisely.user.user import UserRoleName
