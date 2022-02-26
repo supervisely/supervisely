@@ -1,5 +1,5 @@
 import os
-import supervisely_lib as sly
+import supervisely as sly
 
 
 def crop_input_before_inference(func):
