@@ -6,6 +6,7 @@ import supervisely_lib as sly
 
 def process_image_path(image_path, state):
     image = sly.image.read(image_path)
+    image_size = image.shape[:2]
     image_base_dir = os.path.dirname(image_path)
     image_name, image_ext = os.path.splitext(os.path.basename(image_path))
 
@@ -15,14 +16,36 @@ def process_image_path(image_path, state):
     image_crop = sly.image.crop(image, sly_rect)
     image_crop_path = os.path.join(image_base_dir, sly.rand_str(10) + "_" + image_name + "_crop" + image_ext)
     sly.image.write(image_crop_path, image_crop)
-    return image_crop_path
+    return image_crop_path, image_size, image_crop.shape[:2], sly_rect
 
 
 def process_image_np(image_np, state):
     selected_figure_bbox = state["rectangle_crop"]
     sly_rect = sly.Rectangle.from_json(selected_figure_bbox)
     image_crop = sly.image.crop(image_np, sly_rect)
-    return image_crop
+    image_size, image_crop_size = image_np.shape[:2], image_crop.shape[:2]
+    return image_crop, image_size, image_crop_size, sly_rect
+
+
+def rescale_ann(ann_json, project_meta, original_size, crop_size, rectangle):
+    ann = sly.Annotation.from_json(ann_json, project_meta)
+    updated_labels = []
+    for label in ann.labels:
+        if type(label.geometry) is sly.Rectangle:
+            updated_geometry = sly.Rectangle(
+                top=label.geometry.top + rectangle.top,
+                left=label.geometry.left + rectangle.left,
+                bottom=label.geometry.bottom + rectangle.top,
+                right=label.geometry.right + rectangle.left)
+        if type(label.geometry) is sly.Bitmap:
+            bitmap_data = label.geometry.data
+            bitmap_origin = sly.PointLocation(label.geometry.origin.col + rectangle.top, label.geometry.origin.row + rectangle.left)
+            updated_geometry = sly.Bitmap(data=bitmap_data, origin=bitmap_origin)
+        updated_labels.append(label.clone(geometry=updated_geometry))
+
+    ann = ann.clone(img_size=original_size, labels=updated_labels)
+    ann_json = ann.to_json()
+    return ann_json
 
 
 def crop_input_before_inference_and_scale_back_to_original_size(func):
@@ -41,17 +64,21 @@ def crop_input_before_inference_and_scale_back_to_original_size(func):
             image_path = kwargs["image_path"]
             if not isinstance(image_path, str):
                 app_logger.warn("Invalid input. Image path must be str")
-            image_path = process_image_path(image_path, state)
+            image_crop_path, image_size, image_crop_size, sly_rect = process_image_path(image_path, state)
+            kwargs["image_path"] = image_crop_path
+            image_path = image_crop_path
+            ann_json = func(*args, **kwargs)
+            ann_json = rescale_ann(ann_json, project_meta, image_size, image_crop_size, sly_rect)
             sly.fs.silent_remove(image_path)
 
         if "image_np" in kwargs.keys():
             image_np = kwargs["image_np"]
             if not isinstance(image_np, numpy.ndarray):
                 app_logger.warn("Invalid input. Image must be numpy.ndarray")
-            image_np = process_image_np(image_np, state)
-
-        ann_json = func(*args, **kwargs)
-        ann = sly.Annotation.from_json(ann_json, project_meta)
+            image_crop_np, image_size, image_crop_size, sly_rect = process_image_np(image_np, state)
+            kwargs["image_np"] = image_crop_np
+            ann_json = func(*args, **kwargs)
+            ann_json = rescale_ann(ann_json, project_meta, image_size, image_crop_size, sly_rect)
 
         return ann_json
     return wrapper_inference
