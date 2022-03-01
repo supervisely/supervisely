@@ -18,13 +18,13 @@ def crop_input_before_inference_and_scale_ann(func):
         image_base_dir = os.path.dirname(image_path)
         image_name, image_ext = os.path.splitext(os.path.basename(image_path))
 
-        image_crop = sly.image.crop(image, sly_rect)
+        image_crop = sly.image.crop(image, sly_rectangle)
         image_crop_path = os.path.join(image_base_dir, sly.rand_str(10) + "_" + image_name + "_crop" + image_ext)
         sly.image.write(image_crop_path, image_crop)
         return image_crop_path, image_size
 
     def process_image_np(image_np, sly_rectangle):
-        image_crop = sly.image.crop(image_np, sly_rect)
+        image_crop = sly.image.crop(image_np, sly_rectangle)
         image_size, image_crop_size = image_np.shape[:2], image_crop.shape[:2]
         return image_crop, image_size
 
@@ -66,7 +66,7 @@ def crop_input_before_inference_and_scale_ann(func):
             image_np = kwargs["image_np"]
             if not isinstance(image_np, numpy.ndarray):
                 supervisely.logger.warn("Invalid input. Image must be numpy.ndarray")
-            image_crop_np, image_size, image_crop_size, sly_rect = process_image_np(image_np, state)
+            image_crop_np, image_size = process_image_np(image_np, rectangle)
             kwargs["image_np"] = image_crop_np
             ann_json = func(*args, **kwargs)
             ann_json = scale_ann_to_original_size(ann_json, project_meta, image_size, rectangle)
@@ -75,7 +75,7 @@ def crop_input_before_inference_and_scale_ann(func):
             image_path = kwargs["image_path"]
             if not isinstance(image_path, str):
                 supervisely.logger.warn("Invalid input. Image path must be str")
-            image_crop_path, image_size, image_crop_size, sly_rect = process_image_path(image_path, state)
+            image_crop_path, image_size = process_image_path(image_path, rectangle)
             kwargs["image_path"] = image_crop_path
             image_path = image_crop_path
             ann_json = func(*args, **kwargs)
