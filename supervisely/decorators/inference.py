@@ -17,6 +17,16 @@ def crop_input_before_inference_and_scale_ann(func):
     Crops input image before inference if kwargs['state']['rectangle_crop'] provided
     and then scales annotation back to original image size.
     Image must be path or numpy array.
+
+    :param image_np(numpy.ndarray): Image in numpy.ndarray format (use image_path or image_np, not both)
+    :param image_path(str): Path to image (use image_path or image_np, not both)
+    :param project_meta(supervisely.project.project_meta.ProjectMeta): ProjectMeta of the current project
+    :param context(dict): Application context
+    :param state(dict): Application state
+    :param app_logger(logging.Logger): Application logger
+    :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
+    :return: Annotation in json format
+    :rtype: :class:`dict`
     """
 
     def process_image_path(image_path, sly_rectangle):
@@ -72,21 +82,23 @@ def crop_input_before_inference_and_scale_ann(func):
         if "image_np" in kwargs.keys():
             image_np = kwargs["image_np"]
             if not isinstance(image_np, numpy.ndarray):
-                logger.warn("Invalid input. Image must be numpy.ndarray")
+                raise ValueError("Invalid input. Image path must be numpy.ndarray")
             image_crop_np, image_size = process_image_np(image_np, rectangle)
             kwargs["image_np"] = image_crop_np
             ann_json = func(*args, **kwargs)
             ann_json = scale_ann_to_original_size(ann_json, project_meta, image_size, rectangle)
-
         elif "image_path" in kwargs.keys():
             image_path = kwargs["image_path"]
             if not isinstance(image_path, str):
-                logger.warn("Invalid input. Image path must be str")
+                raise ValueError("Invalid input. Image path must be str")
             image_crop_path, image_size = process_image_path(image_path, rectangle)
             kwargs["image_path"] = image_crop_path
             image_path = image_crop_path
             ann_json = func(*args, **kwargs)
             ann_json = scale_ann_to_original_size(ann_json, project_meta, image_size, rectangle)
             silent_remove(image_path)
+        else:
+            raise ValueError('image_np or image_path not provided!')
+
         return ann_json
     return wrapper_inference
