@@ -11,19 +11,23 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.geometry.point_location import PointLocation
 
 
-def crop_input_before_inference_and_scale_ann(func):
-    """Decorator for processing annotation labels before and after inference.
+def process_image_with_crop(func):
+    """
+    Decorator for processing annotation labels before and after inference.
 
     Crops input image before inference if kwargs['state']['rectangle_crop'] provided
     and then scales annotation back to original image size.
-    Image must be path or numpy array.
 
-    :param image_np(numpy.ndarray): Image in numpy.ndarray format (use image_path or image_np, not both)
-    :param image_path(str): Path to image (use image_path or image_np, not both)
-    :param project_meta(supervisely.project.project_meta.ProjectMeta): ProjectMeta of the current project
-    :param context(dict): Application context
-    :param state(dict): Application state
-    :param app_logger(logging.Logger): Application logger
+    Keyword arguments:
+
+    :param image_np: Image in numpy.ndarray format (use image_path or image_np, not both)
+    :type image_np: numpy.ndarray
+    :param image_path: Path to image (use image_path or image_np, not both)
+    :type image_path: str
+    :param project_meta: ProjectMeta of the current project
+    :type project_meta: ProjectMeta
+    :param state: Application state
+    :type state: dict
     :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
     :return: Annotation in json format
     :rtype: :class:`dict`
@@ -93,7 +97,6 @@ def crop_input_before_inference_and_scale_ann(func):
                 raise ValueError("Invalid input. Image path must be str")
             image_crop_path, image_size = process_image_path(image_path, rectangle)
             kwargs["image_path"] = image_crop_path
-            image_path = image_crop_path
             ann_json = func(*args, **kwargs)
             ann_json = scale_ann_to_original_size(ann_json, project_meta, image_size, rectangle)
             silent_remove(image_path)
