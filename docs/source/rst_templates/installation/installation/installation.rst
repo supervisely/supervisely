@@ -10,6 +10,14 @@ To install Supervisely from pip simply type the following command in terminal:
 
     pip install supervisely
 
+The above command installs only recommended dependencies, that are required for general usage. If
+you face some import errors, then you should install extra dependencies (used only in limited scenarios). To install
+extras dependencies use the following command:
+
+.. code-block:: bash
+
+    pip install 'supervisely[extras]'
+
 We release updates quite often, so use following command if you would like to upgrade your current Supervisely package:
 
 .. code-block:: bash
@@ -25,7 +33,7 @@ We release updates quite often, so use following command if you would like to up
 
          apt-get install libgtk2.0-dev
 
-   Or use pre-built Docker image which can be found on Docker Hub:
+   You can also use pre-built Docker image which can be found on Docker Hub:
 
    .. code-block:: bash
 
@@ -51,3 +59,6 @@ Or
 .. code-block:: bash
 
     python -m pip install git+https://github.com/supervisely/supervisely.git
+
+
+

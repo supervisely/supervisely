@@ -130,7 +130,7 @@ pip install supervisely --upgrade
 ```
 
 By default `pip install supervisely` installs only “recommended” dependencies, that are required for general usage. If
-you face some import errors then you shoud install extra dependencies (used only in limited scenarios). To install
+you face some import errors then you should install extra dependencies (used only in limited scenarios). To install
 extras dependencies use the following command:
 
 ```bash

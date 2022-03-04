@@ -40,13 +40,39 @@ extensions = [
 
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
-    "sphinx.ext.autosectionlabel"
+    "sphinx.ext.autosectionlabel",
+    "sphinx_material"
 ]
+
+# Override default of `utf-8-sig` which can cause problems with autosummary due
+# to the extra Unicode Byte Order Mark that gets inserted.
+source_encoding = 'utf-8'
+master_doc = 'index'
+language = 'en'
+html_use_index = False
+
+# Don't include "View page source" links, since they aren't very helpful,
+# especially for generated pages.
+html_copy_source = False
+
+# Skip unnecessary footer text.
+html_show_sphinx = False
+html_show_copyright = True
 
 # Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8/", None),
+    "numpy": ('https://numpy.org/doc/stable/', ('intersphinx_inv/numpy.inv', None))
 }
+
+rst_prolog = """
+.. role:: python(code)
+   :language: python
+   :class: highlight
+.. role:: json(code)
+   :language: json
+   :class: highlight
+"""
 
 templates_path = ['_templates']
 html_static_path = ['_static']
@@ -113,16 +139,54 @@ html_theme_options = {
     'color_primary': 'pink',
     'color_accent': 'light-blue',
 
+    'site_url': 'https://supervise.ly',
     # Set the repo location to get a badge with stats
     'repo_url': 'https://github.com/supervisely/supervisely',
     'repo_name': 'Supervisely',
+    'repo_type': 'github',
 
+    # Visible levels of the global TOC; -1 means unlimited
+    'globaltoc_depth': -1,
     # If False, expand all TOC entries
     'globaltoc_collapse': True,
     # If True, show hidden TOC entries
     'globaltoc_includehidden': True,
-    # Visible levels of the global TOC; -1 means unlimited
-    'globaltoc_depth': 3,
+
+    'features': [
+        'navigation.expand',
+        # 'navigation.tabs',
+        # 'toc.integrate',
+        'navigation.sections',
+        # 'navigation.instant',
+        # 'header.autohide',
+        'navigation.top',
+        # 'search.highlight',
+        # 'search.share',
+    ],
+
+    'palette': [
+        {
+            'media': '(prefers-color-scheme: dark)',
+            'scheme': 'slate',
+            'primary': 'green',
+            'accent': 'light blue',
+            'toggle': {
+                'icon': 'material/lightbulb',
+                'name': 'Switch to light mode',
+            },
+        },
+        {
+            'media': '(prefers-color-scheme: light)',
+            'scheme': 'default',
+            'primary': 'green',
+            'accent': 'light blue',
+            'toggle': {
+                'icon': 'material/lightbulb-outline',
+                'name': 'Switch to dark mode',
+            },
+        },
+    ],
+
 
     'html_prettify': False,
     'html_minify': True,
@@ -152,14 +216,14 @@ html_theme_options = {
         },
     ],
 
-    "version_dropdown": True,
-    "version_json": "_static/versions.json",
-    "version_info": {
-        "Release": "https://bashtage.github.io/sphinx-material/",
-        "Development": "https://bashtage.github.io/sphinx-material/devel/",
-        "Release (rel)": "/sphinx-material/",
-        "Development (rel)": "/sphinx-material/devel/",
-    }
+    # "version_dropdown": True,
+    # "version_json": "_static/versions.json",
+    # "version_info": {
+    #     "Release": "https://bashtage.github.io/sphinx-material/",
+    #     "Development": "https://bashtage.github.io/sphinx-material/devel/",
+    #     "Release (rel)": "/sphinx-material/",
+    #     "Development (rel)": "/sphinx-material/devel/",
+    # }
 }
 
 # If false, no module index is generated.

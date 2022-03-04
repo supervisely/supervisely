@@ -1,9 +1,8 @@
-{% extends "!layout.html" %}
+{# Import the theme's layout. #}
+{% extends '!layout.html' %}
 
-{% block footer %}
+{%- block extrahead %}
+{# Add custom things to the head HTML tag #}
+{# Call the parent block #}
 {{ super() }}
-<script script type="text/javascript">
-    var collapsedSections = ['Best practices', 'Optional Extensions', 'Tutorials', 'API References', 'Bolts', 'Examples', 'Partner Domain Frameworks', 'Community'];
-</script>
-
-{% endblock %}
+{%- endblock %}

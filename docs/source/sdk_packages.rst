@@ -1,10 +1,14 @@
 API References
 ==============
 
+Public REST API
+===============
 .. toctree::
 
    Public REST API              <https://api.docs.supervise.ly/>
 
+Python SDK
+==========
 
 Annotation
 ----------
@@ -22,7 +26,7 @@ Annotation
     label
     obj_class
     obj_class_collection
-    tag
+    Tag
     tag_collection
     tag_meta
     tag_meta_collection
