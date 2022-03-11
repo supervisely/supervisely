@@ -11,7 +11,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.geometry.point_location import PointLocation
 
 
-def process_image_with_crop(func):
+def process_image_roi(func):
     """
     Decorator for processing annotation labels before and after inference.
 
@@ -76,13 +76,13 @@ def process_image_with_crop(func):
     def wrapper_inference(*args, **kwargs):
         project_meta = kwargs["project_meta"]
         state = kwargs["state"]
-        rectangle_crop = state.get("rectangle_crop")
+        rectangle_json = state.get("rectangle")
 
-        if rectangle_crop is None:
+        if rectangle_json is None:
             ann_json = func(*args, **kwargs)
             return ann_json
 
-        rectangle = Rectangle.from_json(rectangle_crop)
+        rectangle = Rectangle.from_json(rectangle_json)
         if "image_np" in kwargs.keys():
             image_np = kwargs["image_np"]
             if not isinstance(image_np, numpy.ndarray):
