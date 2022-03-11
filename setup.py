@@ -36,6 +36,7 @@ setup(
         "Shapely>=1.7.1",
         "bidict>=0.21.2",
         "varname>=0.8.1",
+        "python-dotenv==0.19.2",
     ],
     extras_require={
         'extras': [
@@ -56,7 +57,6 @@ setup(
             "jinja2==3.0.3",
             "psutil==5.9.0",
             "jsonpatch==1.32",
-            "python-dotenv==0.19.2",
             "MarkupSafe==2.0.1",
             "arel==0.2.0",
         ],
@@ -64,7 +64,6 @@ setup(
             "grpcio==1.34.1",
             "plotly>=4.11.0",
             "psutil>=5.4.5",
-            "python-dotenv==0.19.2",
         ],
         # legacy dependencies
         'plugins':[
