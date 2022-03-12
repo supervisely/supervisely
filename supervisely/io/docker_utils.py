@@ -18,25 +18,25 @@ def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progres
     logger.info('docker_pull_if_needed args', extra={
         'policy': policy, 
         'type(policy)': type(policy),
-        'policy == PullPolicy.ALWAYS': policy == PullPolicy.ALWAYS,
-        'policy == PullPolicy.NEVER': policy == PullPolicy.NEVER,
-        'policy == PullPolicy.IF_NOT_PRESENT': policy == PullPolicy.IF_NOT_PRESENT,
-        'policy == PullPolicy.IF_AVAILABLE': policy == PullPolicy.IF_AVAILABLE
+        'policy == PullPolicy.ALWAYS': str(policy) == str(PullPolicy.ALWAYS),
+        'policy == PullPolicy.NEVER': str(policy) == str(PullPolicy.NEVER),
+        'policy == PullPolicy.IF_NOT_PRESENT': str(policy) == str(PullPolicy.IF_NOT_PRESENT),
+        'policy == PullPolicy.IF_AVAILABLE': str(policy) == str(PullPolicy.IF_AVAILABLE)
     })
-    if policy == PullPolicy.ALWAYS:
+    if str(policy) == str(PullPolicy.ALWAYS):
         if progress is False:
             _docker_pull(docker_api, docker_image_name, logger)
         else:
             _docker_pull_progress(docker_api, docker_image_name, logger)
-    elif policy == PullPolicy.NEVER:
+    elif str(policy) == str(PullPolicy.NEVER):
         pass
-    elif policy == PullPolicy.IF_NOT_PRESENT:
+    elif str(policy) == str(PullPolicy.IF_NOT_PRESENT):
         if not _docker_image_exists(docker_api, docker_image_name):
             if progress is False:
                 _docker_pull(docker_api, docker_image_name, logger)
             else:
                 _docker_pull_progress(docker_api, docker_image_name, logger)
-    elif policy == PullPolicy.IF_AVAILABLE:
+    elif str(policy) == str(PullPolicy.IF_AVAILABLE):
         if progress is False:
             _docker_pull(docker_api, docker_image_name, logger, raise_exception=False)
         else:
