@@ -15,6 +15,14 @@ class PullPolicy(Enum):
 
 
 def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progress=True):
+    logger.info('docker_pull_if_needed args', extra={
+        'policy': policy, 
+        'type(policy)': type(policy),
+        'policy == PullPolicy.ALWAYS': policy == PullPolicy.ALWAYS,
+        'policy == PullPolicy.NEVER': policy == PullPolicy.NEVER,
+        'policy == PullPolicy.IF_NOT_PRESENT': policy == PullPolicy.IF_NOT_PRESENT,
+        'policy == PullPolicy.IF_AVAILABLE': policy == PullPolicy.IF_AVAILABLE
+    })
     if policy == PullPolicy.ALWAYS:
         if progress is False:
             _docker_pull(docker_api, docker_image_name, logger)
@@ -33,6 +41,8 @@ def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progres
             _docker_pull(docker_api, docker_image_name, logger, raise_exception=False)
         else:
             _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception=False)
+    else:
+        raise RuntimeError(f"Unknown pull policy {str(policy)}")
     if not _docker_image_exists(docker_api, docker_image_name):
         raise RuntimeError(f"Docker image {docker_image_name} not found. Agent's PULL_POLICY is {str(policy)}")
 
