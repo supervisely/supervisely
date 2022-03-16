@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+
+from asgiref.sync import async_to_sync
 from varname import varname
 from jinja2 import Environment
 import markupsafe
@@ -19,19 +21,27 @@ class Widget:
     def _register(self):
         # get singletons
         data = DataJson()
-        state = StateJson()
         data.raise_for_key(self.widget_id)
-        data[self.widget_id] = self.init_data()
+        self.update_data(data=data)
+
+        state = StateJson()
         state.raise_for_key(self.widget_id)
-        state[self.widget_id] = self.init_state()
+        self.update_state(state=state)
+
         templates = Jinja2Templates()
         templates.context_widgets[self.widget_id] = self
 
-    def init_data(self):
+    def get_serialized_data(self):
         raise NotImplementedError()
 
-    def init_state(self):
+    def get_serialized_state(self):
         raise NotImplementedError()
+
+    def update_state(self, state):
+        state[self.widget_id] = self.get_serialized_state()
+
+    def update_data(self, data):
+        data[self.widget_id] = self.get_serialized_data()
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()

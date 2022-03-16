@@ -13,32 +13,25 @@ class RadioTable(Widget):
         column_formatters: dict = {},
         widget_id: str = None,
     ):
+
         self.columns = columns
-        self.rows = rows
+        self._rows = rows
         self.subtitles = subtitles
         self.column_formatters = column_formatters
 
-        self._header = []
+        self._fheader = []
         for col in self.columns:
-            self._header.append({"title": col, "subtitle": self.subtitles.get(col)})
+            self._fheader.append({"title": col, "subtitle": self.subtitles.get(col)})
 
         self._frows = []
-        for idx, row in enumerate(self.rows):
-            if len(row) != len(self.columns):
-                raise ValueError(
-                    f"Row #{idx} length is {len(row)} != number of columns ({len(self.columns)})"
-                )
-            frow = []
-            for col, val in zip(self.columns, row):
-                frow.append(self.format_value(col, val))
-            self._frows.append(frow)
+        self._update_frows()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def init_data(self):
-        return {"header": self._header, "rows": self._frows}
+    def get_serialized_data(self):
+        return {"header": self._fheader, "rows": self._frows}
 
-    def init_state(self):
+    def get_serialized_state(self):
         return {"selectedRow": 0}
 
     def format_value(self, column_name: str, value):
@@ -49,3 +42,34 @@ class RadioTable(Widget):
         if value is None:
             return "-"
         return value
+
+    def _update_frows(self):
+        self._frows = []
+        for idx, row in enumerate(self._rows):
+            if len(row) != len(self.columns):
+                raise ValueError(
+                    f"Row #{idx} length is {len(row)} != number of columns ({len(self.columns)})"
+                )
+            frow = []
+            for col, val in zip(self.columns, row):
+                frow.append(self.format_value(col, val))
+            self._frows.append(frow)
+
+    def get_selected_row(self, state):
+        widget_actual_state = state.get(self.widget_id)
+        widget_actual_data = DataJson().get(self.widget_id)
+        if widget_actual_state is not None and widget_actual_data is not None:
+            selected_row_index = widget_actual_state['selectedRow']
+            return self.rows[selected_row_index]
+
+    @property
+    def rows(self):
+        return self._rows
+
+    @rows.setter
+    def rows(self, value):
+        self._rows = value
+        self._update_frows()
+        self.update_data(data=DataJson())
+
+
