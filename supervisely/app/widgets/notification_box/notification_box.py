@@ -22,7 +22,7 @@ class NotificationBox(Widget):
         widget_id: str = None,
     ):
         self.title = title
-        self.description = description
+        self._description = description
         if self.title is None and self.description is None:
             raise ValueError(
                 "Both title and description can not be None at the same time"
@@ -36,8 +36,20 @@ class NotificationBox(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def init_data(self):
-        return {"title": self.title, "description": self.description, "icon": self.icon}
+    def get_serialized_data(self):
+        return {"title": self.title, "description": self._description, "icon": self.icon}
 
-    def init_state(self):
+    def get_serialized_state(self):
         return None
+
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+        self.update_data(data=DataJson())
+
+
+

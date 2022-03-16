@@ -14,8 +14,8 @@ class DoneLabel(Widget):
         self.text = text
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def init_data(self):
+    def get_serialized_data(self):
         return {"text": self.text}
 
-    def init_state(self):
+    def get_serialized_state(self):
         return None
