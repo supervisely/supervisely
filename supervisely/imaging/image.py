@@ -97,7 +97,7 @@ def validate_format(path):
     """
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        data, header = nrrd.read(path)
+        data, header = nrrd.read(path, index_order='C')
         return
 
     try:
@@ -132,7 +132,7 @@ def read(path, remove_alpha_channel=True) -> np.ndarray:
 
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        data, header = nrrd.read(path)
+        data, header = nrrd.read(path, index_order='C')
         return data
 
     validate_format(path)
@@ -167,7 +167,7 @@ def read_bytes(image_bytes, keep_alpha=False) -> np.ndarray:
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
         header = nrrd.read_header(file_like)
-        data = nrrd.read_data(header, file_like)
+        data = nrrd.read_data(header, file_like, index_order='C')
         return data
 
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
@@ -203,7 +203,7 @@ def write(path, img, remove_alpha_channel=True):
 
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        return nrrd.write(path, img)
+        return nrrd.write(path, img, index_order='C')
 
     res_img = img.copy()
     if len(img.shape) == 2:
@@ -332,7 +332,7 @@ def write_bytes(img, ext) -> bytes:
     if ext == ".nrrd":
         nrrd_bytes = None
         _filename = f"./sly-nrrd-data-bytes-{rand_str(10)}{ext}"
-        nrrd.write(_filename, img)
+        nrrd.write(_filename, img, index_order='C')
         with open(_filename, "rb") as nrrd_file:
             nrrd_bytes = nrrd_file.read()
         silent_remove(_filename)
