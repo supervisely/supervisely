@@ -3,6 +3,7 @@
 from enum import Enum
 import urllib
 from collections import defaultdict
+from typing import Dict
 
 from supervisely.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
 from supervisely.project.project_meta import ProjectMeta
@@ -208,6 +209,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
         response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
         return response.json()
+    
+    def update_settings(self, id: int, settings: Dict[str, str]) -> None:
+        """
+        Update given project settings.
+
+        :param id: Project ID
+        :type id: int
+        :param settings: Project settings
+        :type settings: Dict[str, str]
+        """
+        self._api.post('projects.settings.update', {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(self, id, progress_cb=None):
         # returns dict: tagname->images infos
