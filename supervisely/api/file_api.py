@@ -168,7 +168,7 @@ class FileApi(ModuleApiBase):
 
     def dir_exists(self, team_id, remote_directory):
         files_infos = self.list(team_id, remote_directory)
-        if len(files_infos) > 0:
+        if len(files_infos) > 1:
             return True
         return False
 
