@@ -168,9 +168,7 @@ class FileApi(ModuleApiBase):
 
     def dir_exists(self, team_id, remote_directory):
         dir_name = os.path.dirname(remote_directory) + '/'
-        if dir_name == remote_directory:
-            return True
-        elif remote_directory == "/":
+        if dir_name == remote_directory or remote_directory == "/":
             return True
         return False
 
