@@ -170,6 +170,8 @@ class FileApi(ModuleApiBase):
         dir_name = os.path.dirname(remote_directory) + '/'
         if dir_name == remote_directory:
             return True
+        elif remote_directory == "/":
+            return True
         return False
 
     def get_free_name(self, team_id, path):
