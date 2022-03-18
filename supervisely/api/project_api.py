@@ -212,7 +212,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
-        Update given project settings.
+        Updates project wuth given project settings by id.
 
         :param id: Project ID
         :type id: int
@@ -235,3 +235,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 if progress_cb is not None:
                     progress_cb(1)
         return tag2images
+    
+    def images_grouping(self, id: int, enable: bool, tag_name: str) -> None:
+        """
+        Enables images grouping in project.
+
+        :param id: Project ID
+        :type id: int
+        :param enable: if True groups images by given tag name
+        :type enable: Dict[str, str]
+        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :type tag_name: str
+        """
+        project_meta_json = self.get_meta(id)
+        project_meta = ProjectMeta.from_json(project_meta_json)
+        group_tag_meta = project_meta.get_tag_meta(tag_name)
+        if group_tag_meta is None:
+            raise Exception(f"Tag {tag_name} doesn't exists in the given project")
+
+        group_tag_id = group_tag_meta.sly_id
+        project_settings = {
+            "groupImages": enable,
+            "groupImagesByTagId": group_tag_id
+        }
+        self.update_settings(id=id, settings=project_settings)
