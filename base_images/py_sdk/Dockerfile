@@ -4,5 +4,5 @@ ARG tag_ref_name
 
 RUN pip install attrs
 
-#RUN pip install supervisely==6.2.2
 RUN pip install supervisely==$tag_ref_name
+RUN pip install supervisely[apps]==$tag_ref_name
