@@ -1,0 +1,11 @@
+.progress-title {
+    margin: 0 0;
+    background: #3266a8;
+    color: white;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 9px 18px;
+    transition: .5s box-shadow, .5s opacity, .5s background !important;
+    text-transform: uppercase;
+    font-size: 13px;
+}

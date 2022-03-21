@@ -5,6 +5,8 @@ import enum
 import json
 import jsonpatch
 import asyncio
+
+from asgiref.sync import async_to_sync
 from fastapi import Request
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
@@ -57,10 +59,17 @@ class _PatchableJson(dict):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
 
-    async def synchronize_changes(self):
+    async def _synchronize_changes(self):
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
+
+    def synchronize_changes(self):
+        try:
+            async_to_sync(self._synchronize_changes)()
+        except RuntimeError:
+            loop = asyncio.get_running_loop()
+            asyncio.ensure_future(self._synchronize_changes(), loop=loop)
 
     def raise_for_key(self, key: str):
         if key in self:
