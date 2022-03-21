@@ -1,0 +1,19 @@
+<link rel="stylesheet" href="/sly/css/app/widgets/sly_tqdm/style.css"/>
+
+
+<div>
+    <div style="display: flex; flex-direction: column">
+        <div style="display: flex; flex-direction: row; justify-content: space-between;
+                      margin: 10px 4px">
+            <div v-if="data.{{{widget.widget_id}}}.message" class="progress-title">
+                {{ data.{{{widget.widget_id}}}.message }}
+            </div>
+            <div v-if="data.{{{widget.widget_id}}}.info" class="progress-title" style="margin: 0 8px;">
+                {{ data.{{{widget.widget_id}}}.info }}
+            </div>
+        </div>
+
+        <el-progress :percentage="data.{{{widget.widget_id}}}.percent" :status="data.{{{widget.widget_id}}}.status"
+                     style="margin-left: 5px"></el-progress>
+    </div>
+</div>

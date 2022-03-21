@@ -38,10 +38,14 @@ class Widget:
         raise NotImplementedError()
 
     def update_state(self, state):
-        state[self.widget_id] = self.get_serialized_state()
+        serialized_state = self.get_serialized_state()
+        if serialized_state is not None:
+            state[self.widget_id] = serialized_state
 
     def update_data(self, data):
-        data[self.widget_id] = self.get_serialized_data()
+        serialized_data = self.get_serialized_data()
+        if serialized_data is not None:
+            data[self.widget_id] = self.get_serialized_data()
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()
