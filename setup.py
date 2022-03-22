@@ -60,6 +60,7 @@ setup(
             "jsonpatch==1.32",
             "MarkupSafe==2.0.1",
             "arel==0.2.0",
+            "tqdm==4.63.0"
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
