@@ -38,6 +38,7 @@ setup(
         "varname>=0.8.1",
         "python-dotenv==0.19.2",
         "pynrrd==0.4.2",
+        "tqdm==4.63.0"
     ],
     extras_require={
         'extras': [
@@ -59,8 +60,7 @@ setup(
             "psutil==5.9.0",
             "jsonpatch==1.32",
             "MarkupSafe==2.0.1",
-            "arel==0.2.0",
-            "tqdm==4.63.0"
+            "arel==0.2.0"
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
