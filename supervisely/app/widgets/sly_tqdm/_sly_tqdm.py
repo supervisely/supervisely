@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+from supervisely.sly_logger import logger, EventType
 
 
 def extract_by_regexp(regexp, string):
@@ -31,6 +32,25 @@ class _slyProgressBarIO:
         self.prev_state = self.progress.copy()
         self.total_provided = total_provided
 
+    def print_progress_to_supervisely_tasks_section(self):
+        '''
+        Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
+        '''
+        extra = {
+            'event_type': EventType.PROGRESS,
+            'subtask': self.progress.get('message', None),
+            'current': self.progress.get('percent', 0),
+            'total': 100,
+        }
+
+        # if self.is_size:
+        #     extra['current_label'] = self.current_label
+        #     extra['total_label'] = self.total_label
+
+        logger.info('progress', extra=extra)
+
+        # logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+
     def write(self, s):
         print(s)
         new_text = s.strip().replace('\r', '')
@@ -44,7 +64,7 @@ class _slyProgressBarIO:
 
     def flush(self):
         if self.prev_state != self.progress:
-            if self.progress['percent'] != '0' and self.progress['percent'] != '' and self.progress['info'] != '':
+            if self.progress['percent'] != '' and self.progress['info'] != '':
 
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
@@ -63,6 +83,7 @@ class _slyProgressBarIO:
 class sly_tqdm(Widget):
     def __init__(self,
                  message: str = None,
+                 show_percents: bool = False,
                  widget_id: str = None):
         """
         Wrapper for classic tqdm progress bar.
@@ -80,6 +101,7 @@ class sly_tqdm(Widget):
 
         """
         self.message = message
+        self.show_percents = show_percents
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -106,7 +128,8 @@ class sly_tqdm(Widget):
             'percent': 0,
             'info': None,
             'message': self.message,
-            'status': None
+            'status': None,
+            'show_percents': self.show_percents
         }
 
     def get_serialized_state(self):
