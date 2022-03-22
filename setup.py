@@ -37,8 +37,7 @@ setup(
         "bidict>=0.21.2",
         "varname>=0.8.1",
         "python-dotenv==0.19.2",
-        "pynrrd==0.4.2",
-        "tqdm==4.63.0"
+        "pynrrd==0.4.2"
     ],
     extras_require={
         'extras': [
