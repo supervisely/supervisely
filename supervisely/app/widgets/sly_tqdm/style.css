@@ -1,11 +1,18 @@
 .progress-title {
     margin: 0 0;
-    background: #3266a8;
-    color: white;
-    font-weight: 500;
+    /*background: #3266a8;*/
+    color: #5b5b5b;
+    font-weight: 400;
     border-radius: 8px;
-    padding: 9px 18px;
+    padding: 0 0;
     transition: .5s box-shadow, .5s opacity, .5s background !important;
-    text-transform: uppercase;
+    /*text-transform: uppercase;*/
     font-size: 13px;
+}
+
+
+*.el-progress-bar {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0 !important;
 }
