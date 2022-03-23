@@ -59,19 +59,10 @@ class _PatchableJson(dict):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
 
-    async def _synchronize_changes(self):
+    async def synchronize_changes(self):
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
-
-    def synchronize_changes(self):
-        try:
-            loop = asyncio.get_running_loop()
-            asyncio.ensure_future(self._synchronize_changes(), loop=loop)
-        except RuntimeError:
-            async_to_sync(self._synchronize_changes)()
-        except Exception as ex:
-            logger.error(ex, exc_info=True)
 
     def raise_for_key(self, key: str):
         if key in self:
