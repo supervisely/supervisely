@@ -19,9 +19,9 @@ class RadioTable(Widget):
         self.subtitles = subtitles
         self.column_formatters = column_formatters
 
-        self._fheader = []
+        self._header = []
         for col in self.columns:
-            self._fheader.append({"title": col, "subtitle": self.subtitles.get(col)})
+            self._header.append({"title": col, "subtitle": self.subtitles.get(col)})
 
         self._frows = []
         self._update_frows()
@@ -29,19 +29,19 @@ class RadioTable(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_serialized_data(self):
-        return {"header": self._fheader, "rows": self._frows}
+        return {"header": self._header, "frows": self._frows, "raw_rows_data": self.rows}
 
     def get_serialized_state(self):
         return {"selectedRow": 0}
 
     def format_value(self, column_name: str, value):
         fn = self.column_formatters.get(column_name, self.default_formatter)
-        return fn(value)
+        return fn(f"data.{self.widget_id}.raw_rows_data[params.ridx][params.vidx]")
 
     def default_formatter(self, value):
         if value is None:
             return "-"
-        return value
+        return "<div> {{{{ data.{}.raw_rows_data[params.ridx][params.vidx] }}}} </div>".format(self.widget_id)
 
     def _update_frows(self):
         self._frows = []

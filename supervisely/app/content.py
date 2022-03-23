@@ -66,10 +66,10 @@ class _PatchableJson(dict):
 
     def synchronize_changes(self):
         try:
-            async_to_sync(self._synchronize_changes)()
-        except RuntimeError:
             loop = asyncio.get_running_loop()
             asyncio.ensure_future(self._synchronize_changes(), loop=loop)
+        except RuntimeError:
+            async_to_sync(self._synchronize_changes)()
         except Exception as ex:
             logger.error(ex, exc_info=True)
 
