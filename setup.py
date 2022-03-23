@@ -31,7 +31,7 @@ setup(
         "pillow>=5.4.1",
         "protobuf>=3.14.0",
         "python-json-logger==0.1.11",
-        "requests>=2.24.0",
+        "requests>=2.27.1",
         "requests-toolbelt>=0.9.1",
         "Shapely>=1.7.1",
         "bidict>=0.21.2",
