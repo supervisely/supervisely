@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import re
+import sys
 
 from asgiref.sync import async_to_sync
 from tqdm import tqdm
@@ -39,20 +40,17 @@ class _slyProgressBarIO:
         extra = {
             'event_type': EventType.PROGRESS,
             'subtask': self.progress.get('message', None),
-            'current': self.progress.get('percent', 0),
+            'current': int(self.progress.get('percent', 0)),
             'total': 100,
         }
 
-        # if self.is_size:
-        #     extra['current_label'] = self.current_label
-        #     extra['total_label'] = self.total_label
+        gettrace = getattr(sys, "gettrace", None)
+        in_debug_mode = gettrace is not None and gettrace()
 
-        logger.info('progress', extra=extra)
-
-        # logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+        if not in_debug_mode and self.total_provided:
+            logger.info('progress', extra=extra)
 
     def write(self, s):
-        print(s)
         new_text = s.strip().replace('\r', '')
         if len(new_text) != 0:
             if self.total_provided:
@@ -65,6 +63,7 @@ class _slyProgressBarIO:
     def flush(self):
         if self.prev_state != self.progress:
             if self.progress['percent'] != '' and self.progress['info'] != '':
+                self.print_progress_to_supervisely_tasks_section()
 
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
@@ -76,6 +75,9 @@ class _slyProgressBarIO:
     def __del__(self):
         DataJson()[f'{self.widget_id}']['status'] = "success"
         DataJson()[f'{self.widget_id}']['percent'] = 100
+        self.progress['percent'] = 100
+
+        self.print_progress_to_supervisely_tasks_section()
 
         DataJson().synchronize_changes()
 
@@ -115,13 +117,12 @@ class sly_tqdm(Widget):
 
         sly_io = _slyProgressBarIO(self.widget_id, message, total_provided)
 
-        if total_provided is not None:
-            return tqdm(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io, ncols=ncols,
-                        mininterval=mininterval,
-                        maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable, unit=unit,
-                        unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing, bar_format=bar_format,
-                        initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
-                        gui=gui, **kwargs)
+        return tqdm(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io, ncols=ncols,
+                    mininterval=mininterval,
+                    maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable, unit=unit,
+                    unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing, bar_format=bar_format,
+                    initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
+                    gui=gui, **kwargs)
 
     def get_serialized_data(self):
         return {

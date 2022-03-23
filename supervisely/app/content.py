@@ -70,6 +70,8 @@ class _PatchableJson(dict):
         except RuntimeError:
             loop = asyncio.get_running_loop()
             asyncio.ensure_future(self._synchronize_changes(), loop=loop)
+        except Exception as ex:
+            logger.error(ex, exc_info=True)
 
     def raise_for_key(self, key: str):
         if key in self:
