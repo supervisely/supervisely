@@ -6,7 +6,6 @@ import json
 import jsonpatch
 import asyncio
 
-from asgiref.sync import async_to_sync
 from fastapi import Request
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
