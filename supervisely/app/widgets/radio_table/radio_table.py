@@ -28,10 +28,10 @@ class RadioTable(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_serialized_data(self):
+    def get_json_data(self):
         return {"header": self._header, "frows": self._frows, "raw_rows_data": self.rows}
 
-    def get_serialized_state(self):
+    def get_json_state(self):
         return {"selectedRow": 0}
 
     def format_value(self, column_name: str, value):
@@ -56,8 +56,8 @@ class RadioTable(Widget):
             self._frows.append(frow)
 
     def get_selected_row(self, state):
-        widget_actual_state = state.get(self.widget_id)
-        widget_actual_data = DataJson().get(self.widget_id)
+        widget_actual_state = state[self.widget_id]
+        widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = widget_actual_state['selectedRow']
             return self.rows[selected_row_index]
@@ -70,6 +70,8 @@ class RadioTable(Widget):
     def rows(self, value):
         self._rows = value
         self._update_frows()
-        self.update_data(data=DataJson())
+        DataJson()[self.widget_id]['frows'] = self._frows
+        DataJson()[self.widget_id]['raw_rows_data'] = self._rows
+
 
 

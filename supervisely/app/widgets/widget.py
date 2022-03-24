@@ -22,7 +22,7 @@ class Widget:
         # get singletons
         data = DataJson()
         data.raise_for_key(self.widget_id)
-        self.update_data(data=data)
+        self.update_data()
 
         state = StateJson()
         state.raise_for_key(self.widget_id)
@@ -31,21 +31,22 @@ class Widget:
         templates = Jinja2Templates()
         templates.context_widgets[self.widget_id] = self
 
-    def get_serialized_data(self):
+    def get_json_data(self):
         raise NotImplementedError()
 
-    def get_serialized_state(self):
+    def get_json_state(self):
         raise NotImplementedError()
 
     def update_state(self, state):
-        serialized_state = self.get_serialized_state()
+        serialized_state = self.get_json_state()
         if serialized_state is not None:
             state[self.widget_id] = serialized_state
 
-    def update_data(self, data):
-        serialized_data = self.get_serialized_data()
+    def update_data(self):
+        data = DataJson()
+        serialized_data = self.get_json_data()
         if serialized_data is not None:
-            data[self.widget_id] = self.get_serialized_data()
+            data[self.widget_id] = serialized_data
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()
