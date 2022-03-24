@@ -5,6 +5,7 @@ import enum
 import json
 import jsonpatch
 import asyncio
+
 from fastapi import Request
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
