@@ -14,8 +14,8 @@ class DoneLabel(Widget):
         self.text = text
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def init_data(self):
+    def get_json_data(self):
         return {"text": self.text}
 
-    def init_state(self):
+    def get_json_state(self):
         return None

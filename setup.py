@@ -37,7 +37,7 @@ setup(
         "bidict>=0.21.2",
         "varname>=0.8.1",
         "python-dotenv==0.19.2",
-        "pynrrd==0.4.2",
+        "pynrrd==0.4.2"
     ],
     extras_require={
         'extras': [
@@ -60,6 +60,7 @@ setup(
             "jsonpatch==1.32",
             "MarkupSafe==2.0.1",
             "arel==0.2.0",
+            "tqdm==4.62.3"
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
