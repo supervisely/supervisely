@@ -68,7 +68,7 @@ class _slyProgressBarIO:
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
 
-                DataJson().synchronize_changes()
+                async_to_sync(DataJson().synchronize_changes)()
 
                 self.prev_state = copy.deepcopy(self.progress)
 
@@ -79,10 +79,10 @@ class _slyProgressBarIO:
 
         self.print_progress_to_supervisely_tasks_section()
 
-        DataJson().synchronize_changes()
+        async_to_sync(DataJson().synchronize_changes)()
 
 
-class sly_tqdm(Widget):
+class SlyTqdm(Widget):
     def __init__(self,
                  message: str = None,
                  show_percents: bool = False,
@@ -124,7 +124,7 @@ class sly_tqdm(Widget):
                     initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
                     gui=gui, **kwargs)
 
-    def get_serialized_data(self):
+    def get_json_data(self):
         return {
             'percent': 0,
             'info': None,
@@ -133,5 +133,5 @@ class sly_tqdm(Widget):
             'show_percents': self.show_percents
         }
 
-    def get_serialized_state(self):
+    def get_json_state(self):
         return None

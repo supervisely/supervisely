@@ -36,20 +36,11 @@ class NotificationBox(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_serialized_data(self):
+    def get_json_data(self):
         return {"title": self._title, "description": self._description, "icon": self.icon}
 
-    def get_serialized_state(self):
+    def get_json_state(self):
         return None
-
-    @property
-    def description(self):
-        return self._description
-
-    @description.setter
-    def description(self, value):
-        self._description = value
-        self.update_data(data=DataJson())
 
     @property
     def title(self):
@@ -58,7 +49,16 @@ class NotificationBox(Widget):
     @title.setter
     def title(self, value):
         self._title = value
-        self.update_data(data=DataJson())
+        DataJson()[self.widget_id]['title'] = self._title
+
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+        DataJson()[self.widget_id]['description'] = self._description
 
 
 
