@@ -1,10 +1,23 @@
 # coding: utf-8
 
-from supervisely.sly_logger import logger, ServiceType, EventType, add_logger_handler, \
-    add_default_logging_into_file, get_task_logger, change_formatters_default_values, LOGGING_LEVELS
+from supervisely.sly_logger import (
+    logger,
+    ServiceType,
+    EventType,
+    add_logger_handler,
+    add_default_logging_into_file,
+    get_task_logger,
+    change_formatters_default_values,
+    LOGGING_LEVELS,
+)
 
-from supervisely.function_wrapper import main_wrapper, function_wrapper, catch_silently, function_wrapper_nofail, \
-    function_wrapper_external_logger
+from supervisely.function_wrapper import (
+    main_wrapper,
+    function_wrapper,
+    catch_silently,
+    function_wrapper_nofail,
+    function_wrapper_external_logger,
+)
 
 from supervisely.io import fs
 from supervisely.io import env
@@ -13,18 +26,32 @@ from supervisely.io import network_exceptions
 from supervisely.io.fs_cache import FileCache
 
 from supervisely.imaging import image
+
 # legacy
 # import supervisely.imaging.video as imagevideo
 from supervisely.imaging import color
 
 from supervisely.task.paths import TaskPaths
 
-from supervisely.task.progress import epoch_float, Progress, report_import_finished, report_dtl_finished, \
-    report_dtl_verification_finished, \
-    report_metrics_training, report_metrics_validation, report_inference_finished
+from supervisely.task.progress import (
+    epoch_float,
+    Progress,
+    report_import_finished,
+    report_dtl_finished,
+    report_dtl_verification_finished,
+    report_metrics_training,
+    report_metrics_validation,
+    report_inference_finished,
+)
 
-from supervisely.project.project import Project, OpenMode, download_project, read_single_project, upload_project, \
-    Dataset
+from supervisely.project.project import (
+    Project,
+    OpenMode,
+    download_project,
+    read_single_project,
+    upload_project,
+    Dataset,
+)
 from supervisely.project.project_meta import ProjectMeta
 
 from supervisely.annotation.annotation import ANN_EXT, Annotation
@@ -61,7 +88,11 @@ from supervisely.metric.classification_metrics import ClassificationMetrics
 from supervisely.metric.map_metric import MAPMetric
 
 from supervisely.worker_api.agent_api import AgentAPI
-from supervisely.worker_api.chunking import ChunkSplitter, ChunkedFileWriter, ChunkedFileReader
+from supervisely.worker_api.chunking import (
+    ChunkSplitter,
+    ChunkedFileWriter,
+    ChunkedFileReader,
+)
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
 from supervisely.api.api import Api
@@ -70,8 +101,17 @@ from supervisely.api.task_api import WaitingTimeExceeded
 from supervisely.project.project_type import ProjectType
 from supervisely.api.report_api import NotificationType
 
-from supervisely._utils import rand_str, batched, get_bytes_hash, generate_names, ENTERPRISE, COMMUNITY, _dprint, \
-    take_with_default, get_string_hash
+from supervisely._utils import (
+    rand_str,
+    batched,
+    get_bytes_hash,
+    generate_names,
+    ENTERPRISE,
+    COMMUNITY,
+    _dprint,
+    take_with_default,
+    get_string_hash,
+)
 from supervisely.tiny_timer import TinyTimer
 
 from supervisely.aug import aug
@@ -82,23 +122,46 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.frame_collection import FrameCollection
-from supervisely.project.video_project import VideoDataset, VideoProject, download_video_project, upload_video_project
+from supervisely.project.video_project import (
+    VideoDataset,
+    VideoProject,
+    download_video_project,
+    upload_video_project,
+)
 from supervisely.video import video
 
 import supervisely.labeling_jobs.utils as lj
 
 from supervisely.pointcloud import pointcloud
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-from supervisely.pointcloud_annotation.pointcloud_episode_annotation import PointcloudEpisodeAnnotation
+from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
+    PointcloudEpisodeAnnotation,
+)
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-from supervisely.project.pointcloud_project import PointcloudDataset, PointcloudProject, download_pointcloud_project
-from supervisely.project.pointcloud_episode_project import PointcloudEpisodeDataset, PointcloudEpisodeProject, download_pointcloud_episode_project
+from supervisely.project.pointcloud_project import (
+    PointcloudDataset,
+    PointcloudProject,
+    download_pointcloud_project,
+)
+from supervisely.project.pointcloud_episode_project import (
+    PointcloudEpisodeDataset,
+    PointcloudEpisodeProject,
+    download_pointcloud_episode_project,
+)
 
 from supervisely.pyscripts_utils import utils as ps
 from supervisely.io import docker_utils
-# import supervisely.app as app
-# from supervisely.app.v1.app_service import AppService
+
+try:
+    import supervisely.app as app
+    from supervisely.app.v1.app_service import AppService
+except (ImportError, ModuleNotFoundError) as e:
+    # todo: import warnings
+    logger.warn(
+        "To use app submodule you need to install additional dependencies with command: pip install supervisely[apps]"
+    )
+
 
 from supervisely.decorators.profile import timeit
 from supervisely.decorators.profile import update_fields
