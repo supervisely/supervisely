@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 
-from asgiref.sync import async_to_sync
 from varname import varname
 from jinja2 import Environment
 import markupsafe
