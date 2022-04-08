@@ -26,8 +26,17 @@ def aug_to_python(aug_info):
     pstr = ""
     for name, value in aug_info["params"].items():
         v = value
-        if type(v) is list:  #name != 'nb_iterations' and
-            v = (v[0], v[1])
+        if isinstance(v, list) and len(v) == 2:  #name != 'nb_iterations' and
+            v = tuple(v)
+        elif isinstance(v, dict) and "x" in v.keys() and "y" in v.keys():
+            x = v["x"]
+            y = v["y"]
+            if isinstance(x, list) and len(x) == 2:
+                x = tuple(x)
+            if isinstance(y, list) and len(y) == 2:
+                y = tuple(y)
+            v = {"x": x, "y": y}
+            
         if type(value) is str:
             pstr += f"{name}='{v}', "
         else:
@@ -103,9 +112,17 @@ def build_pipeline(aug_infos, random_order=False):
         params = aug_info["params"]
 
         aug_func = get_function(category_name, aug_name)
-        # TODO: hotfix:
-        if aug_name == "CropAndPad":
-            params["percent"] = tuple(params["percent"])
+
+        for param_name, param_val in params.items():
+            if isinstance(param_val, dict):
+                if "x" in param_val.keys() and "y" in param_val.keys():
+                    if isinstance(param_val["x"], list) and len(param_val["x"]) == 2:
+                        param_val["x"] = tuple(param_val["x"])
+                    if isinstance(param_val["y"], list) and len(param_val["y"]) == 2:
+                        param_val["y"] = tuple(param_val["y"])
+            elif isinstance(param_val, list) and len(param_val) == 2:
+                # all {'par': [n1, n2]} to {'par': (n1, n2)}
+                params[param_name] = tuple(param_val)
 
         aug = aug_func(**params)
 
