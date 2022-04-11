@@ -352,7 +352,7 @@ def apply_to_image_bbox_and_masks(augs, img, bboxes, masks, segmentation_type="s
         If segmentation_type=='instance', shape must be (H, W, C), where
         C is num_objects, C > 0.
 
-    segmentation_type : str, one of ('semantic', 'instance', 'semantic_and_instance')
+    segmentation_type : str, one of ('semantic', 'instance')
         Define how to process segmentation masks.
 
     Returns
