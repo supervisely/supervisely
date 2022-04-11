@@ -3,9 +3,9 @@ import copy
 import re
 import sys
 
-from asgiref.sync import async_to_sync
 from tqdm import tqdm
 
+from supervisely.app.fastapi import run_sync
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger, EventType
@@ -68,7 +68,7 @@ class _slyProgressBarIO:
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
 
-                async_to_sync(DataJson().synchronize_changes)()
+                run_sync(DataJson().synchronize_changes())
 
                 self.prev_state = copy.deepcopy(self.progress)
 
@@ -79,7 +79,7 @@ class _slyProgressBarIO:
 
         self.print_progress_to_supervisely_tasks_section()
 
-        async_to_sync(DataJson().synchronize_changes)()
+        run_sync(DataJson().synchronize_changes())
 
 
 class SlyTqdm(Widget):
