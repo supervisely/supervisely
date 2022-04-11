@@ -284,7 +284,7 @@ def apply_to_image_and_bbox(augs, img, bboxes):
     
 
 def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
-    """Apply augmentations to image and segmentation masks (instance or semantic). 
+    """Apply augmentations to image and segmentation mask (instance or semantic). 
 
     Parameters
     ----------
@@ -294,13 +294,13 @@ def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
     img : (H, W) or (H, W, C) ndarray
         Input image.
 
-    masks : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
-        Instance or semantic segmentation masks.
+    mask : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
+        Instance or semantic segmentation mask.
         If segmentation_type=='semantic', shape must be (H, W).
         If segmentation_type=='instance', shape must be (H, W, C), where
         C is num_objects, C > 0.
 
-    segmentation_type : str, one of ('semantic', 'instance', 'semantic_and_instance')
+    segmentation_type : str, one of ('semantic', 'instance')
         Define how to process segmentation masks.
 
     Returns
@@ -312,9 +312,13 @@ def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
         Augmented segmentation mask.
 
     """
+    assert isinstance(segmentation_type, str) and segmentation_type in ["semantic", "instance"]
+    assert isinstance(mask, np.ndarray)
+    assert mask.shape[:2] == img.shape[:2]
+
     if segmentation_type == "instance":
-        N_instances = masks.shape[2]
-        masks = _instances_to_nonoverlapping_mask(masks) # [H,W,C] -> [H,W]
+        N_instances = mask.shape[2]
+        mask = _instances_to_nonoverlapping_mask(mask) # [H,W,C] -> [H,W]
     
     segmaps = SegmentationMapsOnImage(mask, shape=img.shape[:2])
     
@@ -331,8 +335,8 @@ def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
     return res_img, res_mask
 
 
-def apply_to_image_bbox_and_masks(augs, img, bboxes, masks, segmentation_type="semantic"):
-    """Apply augmentations to image, bounding boxes and segmentation masks 
+def apply_to_image_bbox_and_mask(augs, img, bboxes, mask, segmentation_type="semantic"):
+    """Apply augmentations to image, bounding boxes and segmentation mask 
     (instance or semantic). 
 
     Parameters
@@ -346,8 +350,8 @@ def apply_to_image_bbox_and_masks(augs, img, bboxes, masks, segmentation_type="s
     bboxes : List[bbox], where bbox: list or tuple of bbox coords in XYXY format
         Bounding boxes.
 
-    masks : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
-        Instance or semantic segmentation masks.
+    mask : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
+        Instance or semantic segmentation mask.
         If segmentation_type=='semantic', shape must be (H, W).
         If segmentation_type=='instance', shape must be (H, W, C), where
         C is num_objects, C > 0.
@@ -369,30 +373,30 @@ def apply_to_image_bbox_and_masks(augs, img, bboxes, masks, segmentation_type="s
     """
     assert isinstance(bboxes, list)
     assert isinstance(segmentation_type, str) and segmentation_type in ["semantic", "instance"]
-    assert isinstance(masks, np.ndarray)
-    assert img.shape[:2] == masks.shape[:2]
+    assert isinstance(mask, np.ndarray)
+    assert img.shape[:2] == mask.shape[:2]
 
     if segmentation_type == "semantic":
-        assert masks.ndim == 2
+        assert mask.ndim == 2
     elif segmentation_type == "instance":
-        assert masks.ndim == 3
+        assert mask.ndim == 3
 
     boxes = [BoundingBox(box[0], box[1], box[2], box[3]) for box in bboxes]
     boxes = BoundingBoxesOnImage(boxes, shape=img.shape[:2])
     
     if segmentation_type == "instance":
-        N_instances = masks.shape[2]
-        masks = _instances_to_nonoverlapping_mask(masks) # [H,W,C] -> [H,W]
-    segmaps = SegmentationMapsOnImage(masks, shape=masks.shape)
+        N_instances = mask.shape[2]
+        mask = _instances_to_nonoverlapping_mask(mask) # [H,W,C] -> [H,W]
+    segmaps = SegmentationMapsOnImage(mask, shape=mask.shape)
 
     res_img, res_boxes, res_segmaps = _apply(augs, img, boxes=boxes, masks=segmaps)
 
-    res_masks = res_segmaps.get_arr()
+    res_mask = res_segmaps.get_arr()
     if segmentation_type == "instance":
-        res_masks = _nonoverlapping_mask_to_instances(res_masks, N_instances) # [H,W] -> [H,W,C]
+        res_mask = _nonoverlapping_mask_to_instances(res_mask, N_instances) # [H,W] -> [H,W,C]
     res_boxes = [[res_box.x1, res_box.y1, res_box.x2, res_box.y2] for res_box in res_boxes]
 
-    return res_img, res_boxes, res_masks
+    return res_img, res_boxes, res_mask
 
 
 def apply_to_image_bbox_and_both_types_masks(augs, img, bboxes, semantic_mask, instance_masks):
@@ -434,7 +438,7 @@ def apply_to_image_bbox_and_both_types_masks(augs, img, bboxes, semantic_mask, i
     """
     assert isinstance(bboxes, list)
     assert isinstance(semantic_mask, np.ndarray) and semantic_mask.ndim == 2
-    assert isinstance(instance_masks, np.ndarray) and semantic_mask.ndim == 3
+    assert isinstance(instance_masks, np.ndarray) and instance_masks.ndim == 3
     assert img.shape[:2] == semantic_mask.shape[:2] == instance_masks.shape[:2]
 
     boxes = [BoundingBox(box[0], box[1], box[2], box[3]) for box in bboxes]
