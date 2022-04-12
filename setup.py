@@ -60,6 +60,7 @@ setup(
         ],
         'docs': [
             "sphinx==4.4.0",
+            "jinja2==3.0.3",
             "sphinx-immaterial==0.4.0",
             "sphinx-copybutton==0.4.0",
             "sphinx-autodoc-typehints==1.15.3",
