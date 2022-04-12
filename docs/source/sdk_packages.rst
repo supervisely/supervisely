@@ -10,6 +10,9 @@ Public REST API
 Python SDK
 ==========
 
+.. automodule:: supervisely
+    :members:
+
 Annotation
 ----------
 **Annnotation**
