@@ -61,8 +61,8 @@ setup(
         'docs': [
             "sphinx==4.4.0",
             "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.5.0",
-            "sphinx-autodoc-typehints==1.18.0",
+            "sphinx-copybutton==0.4.0",
+            "sphinx-autodoc-typehints==1.15.3",
             "sphinxcontrib-details-directive==0.1.0",
             "m2r2==0.3.2",
             "nbsphinx==0.8.8",
