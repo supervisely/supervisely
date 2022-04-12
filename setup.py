@@ -59,7 +59,7 @@ setup(
             "python-dotenv==0.19.2"
         ],
         'docs': [
-            "sphinx==4.5.0",
+            "sphinx==4.4.0",
             "sphinx-immaterial==0.4.0",
             "sphinx-copybutton==0.5.0",
             "sphinx-autodoc-typehints==1.18.0",
