@@ -46,7 +46,6 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
-    "sphinx.ext.viewcode",
     "sphinxcontrib.details.directive",
 ]
 
