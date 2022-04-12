@@ -6,11 +6,8 @@
 
 # -- Path setup --------------------------------------------------------------
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-
+# add docs path to python sys.path to allow autodoc-ing a test_py_module
+# sourcery skip: merge-list-append, move-assign-in-block
 import os
 import sys
 
@@ -21,10 +18,14 @@ sys.path.insert(0, os.path.abspath('../../help'))
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../../../'))
 
+# sys.setrecursionlimit(10000)
+
+
 # -- Project information -----------------------------------------------------
 project = 'Supervisely'
 copyright = '2022, Supervisely Team'
 author = 'Supervisely Team'
+
 
 # -- General configuration ---------------------------------------------------
 extensions = [
@@ -41,7 +42,12 @@ extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
     "sphinx.ext.autosectionlabel",
-    "sphinx_material"
+
+    "sphinx.ext.extlinks",
+    "sphinx.ext.todo",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "sphinxcontrib.details.directive",
 ]
 
 # Override default of `utf-8-sig` which can cause problems with autosummary due
@@ -62,17 +68,11 @@ html_show_copyright = True
 # Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8/", None),
+    "sphinx_docs": ("https://www.sphinx-doc.org/en/master", None),
     "numpy": ('https://numpy.org/doc/stable/', ('intersphinx_inv/numpy.inv', None))
 }
 
-rst_prolog = """
-.. role:: python(code)
-   :language: python
-   :class: highlight
-.. role:: json(code)
-   :language: json
-   :class: highlight
-"""
+default_role = "any"
 
 templates_path = ['_templates']
 html_static_path = ['_static']
@@ -114,120 +114,91 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/images/sly-top-logo-white.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = '_static/images/favicon.ico'  # need fix later
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_material'
+
+extensions.append("sphinx_immaterial")
+html_title = "Supervisely SDK"
+html_theme = "sphinx_immaterial"
+html_favicon = '_static/images/favicon.ico'
+html_logo = '_static/images/sly-top-logo-white.png'
+
+# material theme options (see theme.conf for more information)
 html_theme_options = {
-
-    # Set the name of the project to appear in the navigation.
-    'nav_title': 'Supervisely',
-
-    # Specify a base_url used to generate sitemap.xml. If not
-    # specified, then no sitemap will be built.
-    # 'base_url': 'https://github.com/supervisely/supervisely',
-
-    # Set the color and the accent color
-    'color_primary': 'pink',
-    'color_accent': 'light-blue',
-
-    'site_url': 'https://supervise.ly',
-    # Set the repo location to get a badge with stats
-    'repo_url': 'https://github.com/supervisely/supervisely',
-    'repo_name': 'Supervisely',
-    'repo_type': 'github',
-
-    # Visible levels of the global TOC; -1 means unlimited
-    'globaltoc_depth': -1,
-    # If False, expand all TOC entries
-    'globaltoc_collapse': True,
-    # If True, show hidden TOC entries
-    'globaltoc_includehidden': True,
-
-    'features': [
-        'navigation.expand',
-        # 'navigation.tabs',
-        # 'toc.integrate',
-        'navigation.sections',
-        # 'navigation.instant',
-        # 'header.autohide',
-        'navigation.top',
-        # 'search.highlight',
-        # 'search.share',
+    "icon": {
+        "repo": "fontawesome/brands/github",
+    },
+    "site_url": "https://supervise.ly/",
+    "repo_url": "https://github.com/supervisely/supervisely",
+    "repo_name": "Supervisely",
+    "repo_type": "github",
+    # "edit_uri": "blob/main/docs",
+    "google_analytics": ["UA-XXXXX", "auto"],
+    "globaltoc_collapse": True,
+    "features": [
+        # "navigation.expand",
+        # "navigation.tabs",
+        # "toc.integrate",
+        "navigation.sections",
+        # "navigation.instant",
+        # "header.autohide",
+        "navigation.top",
+        # "navigation.tracking",
+        # "search.highlight",
+        "search.share",
     ],
-
-    'palette': [
+    "palette": [
         {
-            'media': '(prefers-color-scheme: dark)',
-            'scheme': 'slate',
-            'primary': 'green',
-            'accent': 'light blue',
-            'toggle': {
-                'icon': 'material/lightbulb',
-                'name': 'Switch to light mode',
+            "media": "(prefers-color-scheme: light)",
+            "scheme": "default",
+            "primary": "pink",
+            "accent": "light-blue",
+            "toggle": {
+                "icon": "material/lightbulb-outline",
+                "name": "Switch to dark mode",
             },
         },
         {
-            'media': '(prefers-color-scheme: light)',
-            'scheme': 'default',
-            'primary': 'green',
-            'accent': 'light blue',
-            'toggle': {
-                'icon': 'material/lightbulb-outline',
-                'name': 'Switch to dark mode',
+            "media": "(prefers-color-scheme: dark)",
+            "scheme": "slate",
+            "primary": "pink",
+            "accent": "deep-orange",
+            "toggle": {
+                "icon": "material/lightbulb",
+                "name": "Switch to light mode",
             },
         },
     ],
-
-
-    'html_prettify': False,
-    'html_minify': True,
-    'css_minify': True,
-
-    "nav_links": [
-        # {"href": "index", "internal": True, "title": "Home"},
-        {
-            "href": "https://supervise.ly",
-            "internal": False,
-            "title": "Supervisely Platform",
-        },
-        {
-            "href": "https://github.com/supervisely-ecosystem",
-            "internal": False,
-            "title": "Ecosystem",
-        },
-        {
-            "href": "https://docs.supervise.ly",
-            "internal": False,
-            "title": "UI Documentation",
-        },
-        {
-            "href": "https://www.youtube.com/c/Supervisely/videos",
-            "internal": False,
-            "title": "YouTube",
-        },
-    ],
-
-    # "version_dropdown": True,
-    # "version_json": "_static/versions.json",
-    # "version_info": {
-    #     "Release": "https://bashtage.github.io/sphinx-material/",
-    #     "Development": "https://bashtage.github.io/sphinx-material/devel/",
-    #     "Release (rel)": "/sphinx-material/",
-    #     "Development (rel)": "/sphinx-material/devel/",
-    # }
-}
+    "version_dropdown": False,
+    # "version_info": [
+    #     {
+    #         "version": "https://sphinx-immaterial.rtfd.io",
+    #         "title": "Supervisely",
+    #         "aliases": []
+    #     },
+    #     {
+    #         "version": "https://jbms.github.io/sphinx-immaterial",
+    #         "title": "Supervisely Ecosystem",
+    #         "aliases": []
+    #     },
+    #     {
+    #         "version": "https://jbms.github.io/sphinx-immaterial",
+    #         "title": "YouTube",
+    #         "aliases": []
+    #     },
+    # ],
+    "toc_title_is_page_title": False,
+}  # end html_theme_options
 
 # If false, no module index is generated.
-html_domain_indices = False
+html_domain_indices = True
 
 # Disable typehints
 autodoc_typehints = "none"

@@ -320,7 +320,7 @@ def get_info(video_path: str, cpu_count: Optional[int]=None) -> Dict:
 
     for frame in video_meta['frames']:
         if frame['stream_index'] == 0:
-            frames_to_timecodes.append(float(frame['pkt_pts_time']))
+            frames_to_timecodes.append(float(frame.get('pkt_pts_time', frame.get('pts_time'))))
 
     stream_infos = []
     for stream in video_meta['streams']:

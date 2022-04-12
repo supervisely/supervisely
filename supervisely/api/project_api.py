@@ -12,6 +12,7 @@ from enum import Enum
 import pandas as pd
 import urllib
 from collections import defaultdict
+from typing import Dict
 
 from supervisely.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
 from supervisely.project.project_meta import ProjectMeta
@@ -642,6 +643,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
         response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
         return response.json()
+    
+    def update_settings(self, id: int, settings: Dict[str, str]) -> None:
+        """
+        Updates project wuth given project settings by id.
+
+        :param id: Project ID
+        :type id: int
+        :param settings: Project settings
+        :type settings: Dict[str, str]
+        """
+        self._api.post('projects.settings.update', {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(self, id: int, progress_cb: Optional[Progress]=None) -> defaultdict:
         """
@@ -686,3 +698,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 if progress_cb is not None:
                     progress_cb(1)
         return tag2images
+    
+    def images_grouping(self, id: int, enable: bool, tag_name: str) -> None:
+        """
+        Enables images grouping in project.
+
+        :param id: Project ID
+        :type id: int
+        :param enable: if True groups images by given tag name
+        :type enable: Dict[str, str]
+        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :type tag_name: str
+        """
+        project_meta_json = self.get_meta(id)
+        project_meta = ProjectMeta.from_json(project_meta_json)
+        group_tag_meta = project_meta.get_tag_meta(tag_name)
+        if group_tag_meta is None:
+            raise Exception(f"Tag {tag_name} doesn't exists in the given project")
+
+        group_tag_id = group_tag_meta.sly_id
+        project_settings = {
+            "groupImages": enable,
+            "groupImagesByTagId": group_tag_id
+        }
+        self.update_settings(id=id, settings=project_settings)

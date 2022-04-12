@@ -1,9 +1,11 @@
+from __future__ import annotations
 import copy
 import os
 import enum
 import json
 import jsonpatch
 import asyncio
+
 from fastapi import Request
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
@@ -55,78 +57,47 @@ class _PatchableJson(dict):
         async with self._lock:
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
-            
+
     async def synchronize_changes(self):
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
 
-    @classmethod
-    async def _from_request(cls, field, request: Request):
-        content = await request.json()
-        d = content.get(field, {})
-        return cls(d)
-
-    @classmethod
-    async def from_request(cls, request: Request):
-        raise NotImplementedError()
+    def raise_for_key(self, key: str):
+        if key in self:
+            raise KeyError(f"Key {key} already exists in {self._field}")
 
 
-class LastStateJson(_PatchableJson, metaclass=Singleton):
+class StateJson(_PatchableJson, metaclass=Singleton):
+    _global_lock: asyncio.Lock = None
+
     def __init__(self, *args, **kwargs):
-        super().__init__(Field.STATE, *args, **kwargs)
-
-    @classmethod
-    async def from_request(cls, request: Request):
-        content = await request.json()
-        last_state = cls()
-        d = content.get(last_state._field)
-        if d is not None:
-            async with last_state._lock:
-                last_state.clear()
-                last_state.update(d)
-                last_state._last = copy.deepcopy(dict(last_state))
-        return last_state
-
-    async def replace(self, d: dict):
-        # update method already exists in dict
-        if d is not None:
-            async with self._lock:
-                self.clear()
-                self.update(d)
-                self._last = copy.deepcopy(dict(self))
-
-
-class ContextJson(_PatchableJson):
-    def __init__(self, *args, **kwargs):
-        super().__init__(Field.CONTEXT, *args, **kwargs)
-
-    @classmethod
-    async def from_request(cls, request: Request):
-        return await cls._from_request(Field.CONTEXT, request)
-
-
-class StateJson(_PatchableJson):
-    def __init__(self, *args, **kwargs):
+        if StateJson._global_lock is None:
+            StateJson._global_lock = asyncio.Lock()
         super().__init__(Field.STATE, *args, **kwargs)
 
     async def _apply_patch(self, patch):
         await super()._apply_patch(patch)
-        await LastStateJson()._apply_patch(patch)
+        # @TODO: _replace_global to patching for optimization
+        await StateJson._replace_global(dict(self))
 
     @classmethod
-    async def from_request(cls, request: Request):
-        state_json = await cls._from_request(Field.STATE, request)
-        await LastStateJson().replace(state_json)
-        return state_json
+    async def from_request(cls, request: Request) -> StateJson:
+        if "application/json" not in request.headers.get("Content-Type", ""):
+            return None
+        content = await request.json()
+        d = content.get(Field.STATE, {})
+        await cls._replace_global(d)
+        return cls(d, __local__=True)
+
+    @classmethod
+    async def _replace_global(cls, d: dict):
+        async with cls._global_lock:
+            global_state = cls()
+            global_state.clear()
+            global_state.update(copy.deepcopy(d))
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
-
-    @classmethod
-    async def from_request(cls, request: Request):
-        raise RuntimeError(
-            f"""Request from Supervisely App never contains \"{cls._field}\" field. Every request from app contains by default current state and context"""
-        )

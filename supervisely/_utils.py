@@ -109,7 +109,7 @@ def sizeof_fmt(num, suffix='B'):
 
 def _remove_sensitive_information(d: dict):
     new_dict = copy.deepcopy(d)
-    fields = ["api_token", "API_TOKEN", "AGENT_TOKEN", "apiToken"]
+    fields = ["api_token", "API_TOKEN", "AGENT_TOKEN", "apiToken", "spawnApiToken"]
     for field in fields:
         if field in new_dict:
             new_dict[field] = "***"

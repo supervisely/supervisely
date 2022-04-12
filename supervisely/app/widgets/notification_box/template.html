@@ -1,0 +1,17 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/notification_box/style.css" />
+
+<div class="notification-box notification-box-{{{widget.box_type}}}">
+  <i class="notification-box-icon zmdi {{{widget.icon}}}"></i>
+
+  <div>
+    <div
+      v-if="data.{{{widget.widget_id}}}.title"
+      class="notification-box-title"
+      v-html="data.{{{widget.widget_id}}}.title"
+    ></div>
+    <div
+      v-if="data.{{{widget.widget_id}}}.description"
+      v-html="data.{{{widget.widget_id}}}.description"
+    ></div>
+  </div>
+</div>
