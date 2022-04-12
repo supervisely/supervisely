@@ -4,6 +4,8 @@ ARG tag_ref_name
 
 RUN apt-get update
 RUN apt-get install -y zlib1g
+RUN apt install -y libssl-dev
+
 
 RUN cd /tmp \
     && wget https://www.python.org/ftp/python/3.8.13/Python-3.8.13.tgz \
