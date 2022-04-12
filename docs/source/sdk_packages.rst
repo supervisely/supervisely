@@ -13,6 +13,21 @@ Python SDK
 .. automodule:: supervisely
     :members:
 
+   Annotation
+   ==========
+
+   API
+   ===
+
+   Augmentation
+   ============
+
+   Views
+   =====
+
+   Data types
+   ==========
+
 Annotation
 ----------
 **Annnotation**
