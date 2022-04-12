@@ -7,26 +7,9 @@ Public REST API
 
    Public REST API              <https://api.docs.supervise.ly/>
 
+
 Python SDK
 ==========
-
-.. automodule:: supervisely
-    :members:
-
-   Annotation
-   ==========
-
-   API
-   ===
-
-   Augmentation
-   ============
-
-   Views
-   =====
-
-   Data types
-   ==========
 
 Annotation
 ----------
@@ -40,14 +23,22 @@ Annotation
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    annotation
-    label
-    obj_class
-    obj_class_collection
-    Tag
-    tag_collection
-    tag_meta
-    tag_meta_collection
+    annotation.Annotation
+    annotation.AnnotationJsonFields
+    label.Label
+    label.LabelBase
+    label.LabelJsonFields
+    label.PixelwiseScoresLabel
+    obj_class.ObjClass
+    obj_class.ObjClassJsonFields
+    obj_class_collection.ObjClassCollection
+    tag.Tag
+    tag_collection.TagCollection
+    tag_meta.TagMeta
+    tag_meta.TagApplicableTo
+    tag_meta.TagMetaJsonFields
+    tag_meta.TagValueType
+    tag_meta_collection.TagMetaCollection
 
 API
 ---
