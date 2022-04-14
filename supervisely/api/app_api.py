@@ -5,7 +5,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 from supervisely._utils import take_with_default
 
-#from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
+# from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
 STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
@@ -19,6 +19,36 @@ from supervisely import logger
 class AppApi(TaskApi):
     def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
         raise RuntimeError("Method is unavailable")
+
+    def get_info_by_id(self, id):
+        '''
+        :param id: int
+        :return: application info by numeric id
+        '''
+        return self._get_info_by_id(id, 'apps.info')
+
+    def get_list(self,
+                 team_id,
+                 filter=None,
+                 context=None,
+                 repository_key=None,
+                 show_disabled=False,
+                 integrated_into=None,
+                 session_tags=None,
+                 only_running=False,
+                 with_shared=True):
+
+        return self.get_list_all_pages(method='apps.list', data={
+            "teamId": team_id,
+            "filter": take_with_default(filter, []),  # for example [{"field": "id", "operator": "=", "value": None}]
+            "context": take_with_default(context, []),  # for example ["images_project"]
+            "repositoryKey": repository_key,
+            "integratedInto": take_with_default(integrated_into, []),  # for example ["image_annotation_tool"]
+            "sessionTags": take_with_default(session_tags, []),  # for example ["string"]
+            "onlyRunning": only_running,
+            "showDisabled": show_disabled,
+            "withShared": with_shared
+        })
 
     def _run_plugin_task(self, task_type, agent_id, plugin_id, version, config, input_projects, input_models,
                          result_name):
@@ -42,7 +72,7 @@ class AppApi(TaskApi):
     def download_import_file(self, id, file_path, save_path):
         raise RuntimeError("Method is unavailable")
 
-    def create_task_detached(self, workspace_id, task_type: str=None):
+    def create_task_detached(self, workspace_id, task_type: str = None):
         raise RuntimeError("Method is unavailable")
 
     def upload_files(self, task_id, abs_paths, names, progress_cb=None):
@@ -56,7 +86,8 @@ class AppApi(TaskApi):
             d["scrollIntoView"] = None
 
         s = take_with_default(state, {})
-        fields = [{"field": TEMPLATE, "payload": template}, {"field": DATA, "payload": d}, {"field": STATE, "payload": s}]
+        fields = [{"field": TEMPLATE, "payload": template}, {"field": DATA, "payload": d},
+                  {"field": STATE, "payload": s}]
         resp = self._api.task.set_fields(task_id, fields)
         return resp
 

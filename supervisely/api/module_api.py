@@ -75,7 +75,7 @@ class ApiField:
     IS_RESTRICTED =     'isRestricted'
     DISABLE =           'disable'
     TEAMS =             'teams'
-    USER_IDS =          'userIds'
+    USER_IDS =          'usersIds'
     PROJECT_NAME =      (['projectTitle'], 'project_name')
     DATASET_NAME =      (['datasetTitle'], 'dataset_name')
     WORKSPACE_NAME =    (['workspaceTitle'], 'workspace_name')
@@ -189,6 +189,12 @@ class ApiField:
     STATE =             'state'
     IDS =               'ids'
     DATE =              'date'
+    PARAMS =            'params'
+    LOG_LEVEL =         'logLevel'
+    APP_VERSION =       'appVersion'
+    IS_BRANCH =         'isBranch'
+    TASK_NAME =         'taskName'
+    PROXY_KEEP_URL =    'proxyKeepUrl'
 
 
 def _get_single_item(items):
