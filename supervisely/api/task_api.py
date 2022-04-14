@@ -197,7 +197,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def start(self, agent_id, app_id, workspace_id, description='application description', params=None,
               log_level='info',
-              user_ids=None, app_version='', is_branch=False,
+              users_ids=None, app_version='', is_branch=False,
               task_name='pythonSpawned', restart_policy='never', proxy_keep_url=False):
 
         return self._api.post(method='tasks.run.app', data={
@@ -207,7 +207,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.DESCRIPTION: description,
             ApiField.PARAMS: take_with_default(params, {'state': {}}),
             ApiField.LOG_LEVEL: log_level,
-            ApiField.USER_IDS: take_with_default(user_ids, []),
+            ApiField.USERS_IDS: take_with_default(users_ids, []),
             ApiField.APP_VERSION: app_version,
             ApiField.IS_BRANCH: is_branch,
             ApiField.TASK_NAME: task_name,
