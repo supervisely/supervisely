@@ -189,6 +189,19 @@ class ApiField:
     STATE =             'state'
     IDS =               'ids'
     DATE =              'date'
+    PARAMS =            'params'
+    LOG_LEVEL =         'logLevel'
+    APP_VERSION =       'appVersion'
+    IS_BRANCH =         'isBranch'
+    TASK_NAME =         'taskName'
+    PROXY_KEEP_URL =    'proxyKeepUrl'
+    USERS_IDS =         'usersIds'
+    MODULE_ID =         'moduleId'
+    USER_LOGIN =        'userLogin'
+    SLUG =              'slug'
+    IS_SHARED =         'isShared'
+    TASKS =             'tasks'
+    REPO =              'repo'
 
 
 def _get_single_item(items):
