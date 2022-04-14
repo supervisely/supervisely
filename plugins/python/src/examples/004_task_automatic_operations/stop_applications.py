@@ -12,3 +12,5 @@ all_tasks_info = api.task.get_list(workspace_id=WORKSPACE_ID, filters=[{'field':
 for task_info in all_tasks_info:
     task_info = api.task.stop(id=task_info['id'])
     supervisely.logger.info(f'{task_info=}')
+
+supervisely.logger.info(f'{len(all_tasks_info)} task(-s) stopped')
