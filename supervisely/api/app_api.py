@@ -17,8 +17,27 @@ from supervisely import logger
 
 
 class AppApi(TaskApi):
-    def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
-        raise RuntimeError("Method is unavailable")
+    @staticmethod
+    def info_sequence():
+        return [ApiField.ID,
+                ApiField.CREATED_BY_ID,
+                ApiField.MODULE_ID,
+                ApiField.DISABLED,
+                ApiField.USER_LOGIN,
+                ApiField.CONFIG,
+                ApiField.NAME,
+                ApiField.SLUG,
+                ApiField.IS_SHARED,
+                ApiField.TASKS,
+                ApiField.REPO,
+                ApiField.TEAM_ID]
+
+    @staticmethod
+    def info_tuple_name():
+        return 'AppInfo'
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        return super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
     def get_info_by_id(self, id):
         '''
@@ -49,6 +68,9 @@ class AppApi(TaskApi):
             "showDisabled": show_disabled,
             "withShared": with_shared
         })
+
+    def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
+        raise RuntimeError("Method is unavailable")
 
     def _run_plugin_task(self, task_type, agent_id, plugin_id, version, config, input_projects, input_models,
                          result_name):

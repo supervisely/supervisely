@@ -15,17 +15,6 @@ from supervisely._utils import (
 )
 
 
-class TaskStatuses:
-    QUEUED =             'queued'
-    CONSUMED =           'consumed'
-    STARTED =            'started'
-    DEPLOYED =           'deployed'
-    ERROR =              'error'
-    FINISHED =           'finished'
-    TERMINATING =        'terminating'
-    STOPPED =            'stopped'
-
-
 class TaskApi(ModuleApiBase, ModuleWithStatus):
     class RestartPolicy(StrEnum):
         NEVER = 'never'
