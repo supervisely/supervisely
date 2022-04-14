@@ -25,8 +25,7 @@ for current_app in apps_list_to_launch:
         agent_id=AGENT_ID,
         app_id=current_app['id'],
         workspace_id=WORKSPACE_ID,
-        params={'state': app_default_state},
-        users_ids=[283]
+        params={'state': app_default_state}
     )
 
     launched_tasks_ids.extend(list(map(lambda task_elem: task_elem['taskId'], launched_tasks_list)))  # extract task_ids
