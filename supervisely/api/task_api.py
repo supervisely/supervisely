@@ -200,7 +200,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
               users_ids=None, app_version='', is_branch=False,
               task_name='pythonSpawned', restart_policy='never', proxy_keep_url=False):
 
-        return self._api.post(method='tasks.run.app', data={
+        resp = self._api.post(method='tasks.run.app', data={
             ApiField.AGENT_ID: agent_id,
             ApiField.APP_ID: app_id,
             ApiField.WORKSPACE_ID: workspace_id,
@@ -213,7 +213,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.TASK_NAME: task_name,
             ApiField.RESTART_POLICY: restart_policy,
             ApiField.PROXY_KEEP_URL: proxy_keep_url
-        }).json()
+        })
+
+        return resp.json()
 
     def stop(self, id):
         response = self._api.post('tasks.stop', {ApiField.ID: id})

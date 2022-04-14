@@ -1,5 +1,14 @@
 import supervisely
 
+"""
+BE SURE THAT YOU HAVE ENV VARIABLES
+
+SERVER_ADDRESS="https://app.supervise.ly/"  # or your instance address
+API_TOKEN=""                                # get it in https://app.supervise.ly/user/settings/tokens
+AGENT_TOKEN=""                              # get it in https://app.supervise.ly/nodes/list
+"""
+
+
 # define variables
 AGENT_ID = 49
 TEAM_ID = 305
@@ -32,10 +41,10 @@ for current_app in apps_list_to_launch:
     supervisely.logger.info(f'application {current_app["name"]=}, {current_app["id"]=} launched')
 
 # show launched applications statuses
-supervisely.logger.info(f'{len(launched_tasks_ids)} task(-s) launched')
 supervisely.logger.info(f'{launched_tasks_ids=}')
 
 for task_id in launched_tasks_ids:
     task_info = api.task.get_info_by_id(id=task_id)
     supervisely.logger.info(f'{task_info["status"]=}')
 
+supervisely.logger.info(f'{len(launched_tasks_ids)} task(-s) launched')

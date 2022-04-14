@@ -1,6 +1,15 @@
 import supervisely
 from supervisely.api.task_api import TaskStatuses
 
+"""
+BE SURE THAT YOU HAVE ENV VARIABLES
+
+SERVER_ADDRESS="https://app.supervise.ly/"  # or your instance address
+API_TOKEN=""                                # get it in https://app.supervise.ly/user/settings/tokens
+AGENT_TOKEN=""                              # get it in https://app.supervise.ly/nodes/list
+"""
+
+
 WORKSPACE_ID = 437
 
 api = supervisely.Api.from_env()
