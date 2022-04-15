@@ -70,13 +70,14 @@ class Polyline(VectorGeometry):
 
         # tiny hack to combine consecutive segments
         lines_combined = []
-        for simple_l in res_lines_pts:
-            if len(lines_combined) > 0:
-                prev = lines_combined[-1]
-                if prev[-1] == simple_l[0]:
-                    lines_combined[-1] = list(prev) + list(simple_l[1:])
-                    continue
-            lines_combined.append(simple_l)
+        if res_lines_pts != [()]:
+            for simple_l in res_lines_pts:
+                if len(lines_combined) > 0:
+                    prev = lines_combined[-1]
+                    if prev[-1] == simple_l[0]:
+                        lines_combined[-1] = list(prev) + list(simple_l[1:])
+                        continue
+                lines_combined.append(simple_l)
 
         return [Polyline(row_col_list_to_points(line)) for line in lines_combined]
 
