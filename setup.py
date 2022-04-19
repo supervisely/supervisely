@@ -37,12 +37,12 @@ setup(
         "bidict>=0.21.2",
         "varname>=0.8.1",
         "python-dotenv==0.19.2",
-        "pynrrd==0.4.2"
+        "pynrrd==0.4.2",
+        "imgaug==0.4.0"
     ],
     extras_require={
         'extras': [
             "docker==5.0.3",
-            "imgaug==0.4.0",
             "imagecorruptions==1.1.2",
             "scikit-image>=0.17.1",
             "matplotlib>=3.3.2",
