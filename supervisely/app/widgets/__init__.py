@@ -3,5 +3,7 @@ from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
 from supervisely.app.widgets.done_label.done_label import DoneLabel
 from supervisely.app.widgets.sly_tqdm.sly_tqdm import SlyTqdm
+from supervisely.app.widgets.grid_gallery.grid_gallery import GridGallery
+from supervisely.app.widgets.classic_table.classic_table import ClassicTable
 
 # from supervisely.app.widgets.restart_step.restart_step import RestartStep
