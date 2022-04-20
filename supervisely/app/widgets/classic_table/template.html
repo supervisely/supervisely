@@ -1,5 +1,13 @@
-<link rel="stylesheet" href="./sly/css/app/widgets/grid_gallery/style.css" />
+<link rel="stylesheet" href="./sly/css/app/widgets/classic_table/style.css"/>
 
-<div>
-   <sly-table :content="data.{{{widget.widget_id}}}"></sly-table>
+<div v-if="data.{{{widget.widget_id}}}.available_routes.row_clicked_cb">
+    <sly-table :content="data.{{{widget.widget_id}}}.table_data"
+               @input="state.{{{widget.widget_id}}}.selected_row = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')">
+
+    </sly-table>
+</div>
+
+<div v-else>
+    <sly-table :content="data.{{{widget.widget_id}}}.table_data">
+    </sly-table>
 </div>

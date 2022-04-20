@@ -25,7 +25,7 @@ class GridGallery(Widget):
 
         self._data = []
         self._layout = []
-        self._annotations = []
+        self._annotations = {}
 
         self.columns_number = columns_number
 
@@ -77,7 +77,8 @@ class GridGallery(Widget):
                 "opacity": self.opacity,
                 "showOpacityInHeader": self.show_opacity_header,
                 "fillRectangle": self.fill_rectangle,
-                "borderWidth": self.border_width
+                "borderWidth": self.border_width,
+                "viewHeight": '400px'
             }
         }
 
@@ -201,7 +202,7 @@ class GridGallery(Widget):
             annotations[cell_data['cell_uuid']] = {
                 "url": cell_data["image_url"],
                 "figures": [label.to_json() for label in cell_data["annotation"].labels],
-                "title": cell_data["title"],
+                "title": cell_data["title"], #?
                 "info": cell_data.get("info", None),
                 "labelingUrl": cell_data.get("labelingUrl", None)
             }
