@@ -1,16 +1,8 @@
 import pandas as pd
-
-import copy
-import uuid
-from typing import Union
-
 from varname import varname
 
-import supervisely
-from supervisely import Annotation
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
-from supervisely.sly_logger import logger
 
 
 class PackerUnpacker:
@@ -107,7 +99,7 @@ class ClassicTable(Widget):
         self._parsed_data = None
         self._data_type = None
 
-        self.update_table_data(input_data=data)
+        self._update_table_data(input_data=data)
 
         self.available_routes = {}
         self.add_widget_routes(widget_routes)
@@ -119,9 +111,9 @@ class ClassicTable(Widget):
                 'available_routes': self.available_routes}
 
     def get_json_state(self):
-        return {'selected_row': None}
+        return {'selected_row': {}}
 
-    def update_table_data(self, input_data):
+    def _update_table_data(self, input_data):
         if input_data is not None:
             self._parsed_data = self.get_unpacked_data(input_data=input_data)
             self._data_type = type(input_data)
@@ -162,8 +154,25 @@ class ClassicTable(Widget):
 
     @data.setter
     def data(self, value):
-        self.update_table_data(input_data=value)
+        self._update_table_data(input_data=value)
         DataJson()[self.widget_id]['table_data'] = self._parsed_data
+
+    def insert_row(self, data, index=-1):
+        PackerUnpacker.validate_sizes({'columns': self._parsed_data['columns'], 'data': [data]})
+
+        table_data = self._parsed_data['data']
+        index = len(table_data) if index > len(table_data) or index < 0 else index
+
+        self._parsed_data['data'].insert(index, data)
+        DataJson()[self.widget_id]['table_data'] = self._parsed_data
+
+    def pop_row(self, index=-1):
+        index = len(self._parsed_data['data']) - 1 if index > len(self._parsed_data['data']) or index < 0 else index
+
+        if len(self._parsed_data['data']) != 0:
+            popped_row = self._parsed_data['data'].pop(index)
+            DataJson()[self.widget_id]['table_data'] = self._parsed_data
+            return popped_row
 
     def add_widget_routes(self, routes: Routes):
         if routes is not None:
@@ -171,3 +180,11 @@ class ClassicTable(Widget):
                 if route_cb is not None:
                     routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
                     self.available_routes[route_name] = True
+
+    def get_selected_cell(self, state):
+        return {
+            'row_index': state[self.widget_id]['selected_row'].get('selectedRow'),
+            'col_index': state[self.widget_id]['selected_row'].get('selectedColumn'),
+            'data': state[self.widget_id]['selected_row'].get('selectedRowData')
+        }
+
