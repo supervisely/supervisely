@@ -196,7 +196,7 @@ class ClassicTable(Widget):
     def add_widget_routes(self, routes: Routes):
         if routes is not None:
             for route_name, route_cb in routes.routes.items():
-                if route_cb is not None:
+                if callable(route_cb):
                     routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
                     self.available_routes[route_name] = True
 
