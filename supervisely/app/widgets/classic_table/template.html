@@ -1,8 +1,8 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/classic_table/style.css"/>
 
-<div v-if="data.{{{widget.widget_id}}}.available_routes.row_clicked_cb">
+<div v-if="data.{{{widget.widget_id}}}.available_routes.cell_clicked_cb">
     <sly-table :content="data.{{{widget.widget_id}}}.table_data"
-               @input="state.{{{widget.widget_id}}}.selected_row = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')">
+               @input="state.{{{widget.widget_id}}}.selected_row = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')">
 
     </sly-table>
 </div>

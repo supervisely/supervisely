@@ -1,3 +1,4 @@
+import fastapi
 import pandas as pd
 from varname import varname
 
@@ -73,12 +74,15 @@ DATATYPE_TO_UNPACKER = {
 class ClassicTable(Widget):
     class Routes:
         def __init__(self,
-                     app,
-                     row_clicked_cb: object = None):
+                     app: fastapi.FastAPI,
+                     cell_clicked_cb: object = None):
             self.app = app
-            self.routes = {'row_clicked_cb': row_clicked_cb}
+            self.routes = {'cell_clicked_cb': cell_clicked_cb}
 
-    def __init__(self, data: PackerUnpacker.SUPPORTED_TYPES = None, widget_routes: Routes = None,
+    def __init__(self,
+                 data: PackerUnpacker.SUPPORTED_TYPES = None,
+                 fixed_columns_num: int = None,
+                 widget_routes: Routes = None,
                  widget_id: str = None):
         """
         :param data: Data of table in different formats:
@@ -104,11 +108,17 @@ class ClassicTable(Widget):
         self.available_routes = {}
         self.add_widget_routes(widget_routes)
 
+        self._fix_columns = fixed_columns_num
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {'table_data': self._parsed_data,
-                'available_routes': self.available_routes}
+        return {
+            'table_data': self._parsed_data,
+            'table_options': {
+                'fixColumns': self._fix_columns,
+            },
+            'available_routes': self.available_routes}
 
     def get_json_state(self):
         return {'selected_row': {}}
@@ -149,6 +159,15 @@ class ClassicTable(Widget):
                                           unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type])
 
     @property
+    def fixed_columns_num(self):
+        return self._fix_columns
+
+    @fixed_columns_num.setter
+    def fixed_columns_num(self, value):
+        self._fix_columns = value
+        DataJson()[self.widget_id]['table_options']['fixColumns'] = self._fix_columns
+
+    @property
     def data(self):
         return self.get_packed_data(self._parsed_data)
 
@@ -182,9 +201,14 @@ class ClassicTable(Widget):
                     self.available_routes[route_name] = True
 
     def get_selected_cell(self, state):
+        row_index = state[self.widget_id]['selected_row'].get('selectedRow')
+        col_index = state[self.widget_id]['selected_row'].get('selectedColumn')
+        row_data = state[self.widget_id]['selected_row'].get('selectedRowData')
+
         return {
-            'row_index': state[self.widget_id]['selected_row'].get('selectedRow'),
-            'col_index': state[self.widget_id]['selected_row'].get('selectedColumn'),
-            'data': state[self.widget_id]['selected_row'].get('selectedRowData')
+            'row_index': row_index,
+            'col_index': col_index,
+            'row_data': row_data,
+            'cell_data': row_data[int(col_index)] if col_index is not None and row_data is not None else None
         }
 
