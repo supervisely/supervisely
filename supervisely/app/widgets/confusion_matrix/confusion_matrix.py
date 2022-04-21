@@ -71,17 +71,16 @@ DATATYPE_TO_UNPACKER = {
 }
 
 
-class ClassicTable(Widget):
+class ConfusionMatrix(Widget):
     class Routes:
         def __init__(self,
                      app: fastapi.FastAPI,
-                     cell_clicked_cb: object = None):
+                     row_clicked_cb: object = None):
             self.app = app
-            self.routes = {'cell_clicked_cb': cell_clicked_cb}
+            self.routes = {'cell_clicked_cb': row_clicked_cb}
 
     def __init__(self,
                  data: PackerUnpacker.SUPPORTED_TYPES = None,
-                 fixed_columns_num: int = None,
                  widget_routes: Routes = None,
                  widget_id: str = None):
         """
@@ -118,7 +117,8 @@ class ClassicTable(Widget):
             'table_options': {
                 'fixColumns': self._fix_columns,
             },
-            'available_routes': self.available_routes}
+            'available_routes': self.available_routes
+        }
 
     def get_json_state(self):
         return {'selected_row': {}}
@@ -159,15 +159,6 @@ class ClassicTable(Widget):
                                           unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type])
 
     @property
-    def fixed_columns_num(self):
-        return self._fix_columns
-
-    @fixed_columns_num.setter
-    def fixed_columns_num(self, value):
-        self._fix_columns = value
-        DataJson()[self.widget_id]['table_options']['fixColumns'] = self._fix_columns
-
-    @property
     def data(self):
         return self.get_packed_data(self._parsed_data)
 
@@ -196,19 +187,13 @@ class ClassicTable(Widget):
     def add_widget_routes(self, routes: Routes):
         if routes is not None:
             for route_name, route_cb in routes.routes.items():
-                if callable(route_cb):
+                if route_cb is not None:
                     routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
                     self.available_routes[route_name] = True
 
     def get_selected_cell(self, state):
-        row_index = state[self.widget_id]['selected_row'].get('selectedRow')
-        col_index = state[self.widget_id]['selected_row'].get('selectedColumn')
-        row_data = state[self.widget_id]['selected_row'].get('selectedRowData')
-
         return {
-            'row_index': row_index,
-            'col_index': col_index,
-            'row_data': row_data,
-            'cell_data': list(row_data.items())[int(col_index)] if col_index is not None and row_data is not None else None
+            'row_index': state[self.widget_id]['selected_row'].get('selectedRow'),
+            'col_index': state[self.widget_id]['selected_row'].get('selectedColumn'),
+            'data': state[self.widget_id]['selected_row'].get('selectedRowData')
         }
-
