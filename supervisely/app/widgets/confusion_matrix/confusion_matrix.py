@@ -1,9 +1,13 @@
 import fastapi
 import pandas as pd
 from varname import varname
+import numpy as np
+import copy
 
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+
+from supervisely.sly_logger import logger
 
 
 class PackerUnpacker:
@@ -11,17 +15,23 @@ class PackerUnpacker:
 
     @staticmethod
     def validate_sizes(unpacked_data):
+
+        if len(unpacked_data['data']) != len(unpacked_data['classes']):
+            raise ValueError('Sizes mismatch:\n'
+                             f'number of rows ({len(unpacked_data["data"])}) != number of columns ({len(unpacked_data["classes"])})')
+
         for row in unpacked_data['data']:
-            if len(row) != len(unpacked_data['columns']):
+            if len(row) != len(unpacked_data['classes']):
                 raise ValueError('Sizes mismatch:\n'
-                                 f'{len(row)=} != {len(unpacked_data["columns"])=}\n'
+                                 f'{len(row)=} != {len(unpacked_data["classes"])=}\n'
                                  f'{row=}\n'
-                                 f'{unpacked_data["columns"]=}')
+                                 f'{unpacked_data["classes"]=}')
 
     @staticmethod
-    def unpack_data(data, unpacker_cb):
+    def unpack_data(data, unpacker_cb, validate_sizes=True):
         unpacked_data = unpacker_cb(data)
-        PackerUnpacker.validate_sizes(unpacked_data)
+        if validate_sizes:
+            PackerUnpacker.validate_sizes(unpacked_data)
         return unpacked_data
 
     @staticmethod
@@ -31,32 +41,50 @@ class PackerUnpacker:
 
     @staticmethod
     def dict_unpacker(data: dict):
+        formatted_rows = []
+        for origin_row in data['values_by_rows']:
+            formatted_rows.append([{'value': element} for element in origin_row])
+
         unpacked_data = {
-            'columns': data['columns_names'],
-            'data': data['values_by_rows']
+            'classes': data['columns_names'],
+            'data': formatted_rows
         }
 
         return unpacked_data
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
+        formatted_rows = []
+        for origin_row in list(data.values):
+            formatted_rows.append([{'value': element} for element in origin_row])
+
         unpacked_data = {
-            'columns': data.columns.to_list(),
-            'data': data.values.tolist()
+            'classes': data.columns.to_list(),
+            'data': formatted_rows
         }
         return unpacked_data
 
     @staticmethod
     def dict_packer(data):
+        unformatted_rows = []
+
+        for origin_row in data['data']:
+            unformatted_rows.append([element['value'] for element in origin_row])
+
         packed_data = {
-            'columns_names': data['columns'],
-            'values_by_rows': data['data']
+            'columns_names': data['classes'],
+            'values_by_rows': unformatted_rows
         }
         return packed_data
 
     @staticmethod
     def pandas_packer(data):
-        packed_data = pd.DataFrame(data=data['data'], columns=data['columns'])
+        unformatted_rows = []
+
+        for origin_row in data['data']:
+            unformatted_rows.append([element['value'] for element in origin_row])
+
+        packed_data = pd.DataFrame(data=unformatted_rows, columns=data['classes'])
         return packed_data
 
 
@@ -75,13 +103,15 @@ class ConfusionMatrix(Widget):
     class Routes:
         def __init__(self,
                      app: fastapi.FastAPI,
-                     row_clicked_cb: object = None):
+                     cell_clicked_cb: object = None):
             self.app = app
-            self.routes = {'cell_clicked_cb': row_clicked_cb}
+            self.routes = {'cell_clicked_cb': cell_clicked_cb}
 
     def __init__(self,
                  data: PackerUnpacker.SUPPORTED_TYPES = None,
                  widget_routes: Routes = None,
+                 x_label: str = 'Predicted Values',
+                 y_label: str = 'Actual Values',
                  widget_id: str = None):
         """
         :param data: Data of table in different formats:
@@ -100,22 +130,27 @@ class ConfusionMatrix(Widget):
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
+        self._parsed_data_with_totals = {}
         self._data_type = None
 
-        self._update_table_data(input_data=data)
+        self._update_matrix_data(input_data=data)
+        self._calculate_totals()
 
         self.available_routes = {}
         self.add_widget_routes(widget_routes)
 
-        self._fix_columns = fixed_columns_num
+        self.x_label = x_label
+        self.y_label = y_label
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            'table_data': self._parsed_data,
-            'table_options': {
-                'fixColumns': self._fix_columns,
+            'matrix_data': self._parsed_data_with_totals,
+            'matrix_options': {
+                'selectable': len(self.available_routes) > 0,
+                'horizontalLabel': self.x_label,
+                'verticalLabel': self.y_label
             },
             'available_routes': self.available_routes
         }
@@ -123,22 +158,50 @@ class ConfusionMatrix(Widget):
     def get_json_state(self):
         return {'selected_row': {}}
 
-    def _update_table_data(self, input_data):
+    def _update_matrix_data(self, input_data):
         if input_data is not None:
             self._parsed_data = self.get_unpacked_data(input_data=input_data)
             self._data_type = type(input_data)
         else:
             self._parsed_data = {
-                'columns': [],
+                'classes': [],
                 'data': []
             }
             self._data_type = dict
+
+    def _calculate_totals(self):
+        matrix_data = []
+        for origin_row in self._parsed_data['data']:
+            matrix_data.append([element['value'] for element in origin_row])
+
+        totals_by_rows = np.asarray(['-' for _ in matrix_data]).reshape(-1, 1)
+        totals_by_columns = np.asarray([['-' for _ in matrix_data]])
+
+        try:
+            matrix_data = np.matrix(matrix_data).astype(float)
+            totals_by_rows = np.sum(matrix_data, axis=1)
+            totals_by_columns = np.sum(matrix_data, axis=0)
+
+            self._parsed_data_with_totals.update(self._calculate_max_values(matrix_data))
+
+        except Exception as ex:
+            logger.warning(ex)
+
+        totals_by_columns = np.hstack([totals_by_columns, [[None]]])
+
+        matrix_data = np.hstack([matrix_data, totals_by_rows])
+        matrix_data = np.vstack([matrix_data, totals_by_columns])
+
+        self._parsed_data_with_totals.update(self.get_unpacked_data(input_data={
+            'columns_names': self._parsed_data['classes'],
+            'values_by_rows': matrix_data.tolist()
+        }, validate_sizes=False))
 
     def get_packed_data(self, input_data):
         return PackerUnpacker.pack_data(data=input_data,
                                         packer_cb=DATATYPE_TO_PACKER[self._data_type])
 
-    def get_unpacked_data(self, input_data):
+    def get_unpacked_data(self, input_data, validate_sizes=True):
         input_data_type = type(input_data)
 
         if input_data_type not in self._supported_types:
@@ -156,7 +219,8 @@ class ConfusionMatrix(Widget):
                             ''')
 
         return PackerUnpacker.unpack_data(data=input_data,
-                                          unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type])
+                                          unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type],
+                                          validate_sizes=validate_sizes)
 
     @property
     def data(self):
@@ -164,36 +228,40 @@ class ConfusionMatrix(Widget):
 
     @data.setter
     def data(self, value):
-        self._update_table_data(input_data=value)
-        DataJson()[self.widget_id]['table_data'] = self._parsed_data
-
-    def insert_row(self, data, index=-1):
-        PackerUnpacker.validate_sizes({'columns': self._parsed_data['columns'], 'data': [data]})
-
-        table_data = self._parsed_data['data']
-        index = len(table_data) if index > len(table_data) or index < 0 else index
-
-        self._parsed_data['data'].insert(index, data)
-        DataJson()[self.widget_id]['table_data'] = self._parsed_data
-
-    def pop_row(self, index=-1):
-        index = len(self._parsed_data['data']) - 1 if index > len(self._parsed_data['data']) or index < 0 else index
-
-        if len(self._parsed_data['data']) != 0:
-            popped_row = self._parsed_data['data'].pop(index)
-            DataJson()[self.widget_id]['table_data'] = self._parsed_data
-            return popped_row
+        self._update_matrix_data(input_data=value)
+        DataJson()[self.widget_id]['matrix_data'] = self._parsed_data
 
     def add_widget_routes(self, routes: Routes):
         if routes is not None:
             for route_name, route_cb in routes.routes.items():
-                if route_cb is not None:
+                if callable(route_cb):
                     routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
                     self.available_routes[route_name] = True
 
     def get_selected_cell(self, state):
+        row_index = state[self.widget_id]['selected_row'].get('row')
+        col_index = state[self.widget_id]['selected_row'].get('col')
+
+        row_data = None
+        cell_data = None
+
+        if row_index is not None and col_index is not None:
+            row_data = [element['value'] for element in self._parsed_data['data'][row_index]]
+            cell_data = {
+                'row_name': self._parsed_data['classes'][row_index],
+                'col_name': self._parsed_data['classes'][col_index],
+                'value': row_data[col_index]
+            }
+
         return {
-            'row_index': state[self.widget_id]['selected_row'].get('selectedRow'),
-            'col_index': state[self.widget_id]['selected_row'].get('selectedColumn'),
-            'data': state[self.widget_id]['selected_row'].get('selectedRowData')
+            'row_index': row_index,
+            'col_index': col_index,
+            'row_data': row_data,
+            'cell_data': cell_data
+        }
+
+    def _calculate_max_values(self, matrix_data):
+        return {
+            "diagonalMax": float(max(np.diagonal(matrix_data))),
+            "maxValue": float(matrix_data.max())
         }
