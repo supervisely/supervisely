@@ -19,6 +19,7 @@ class ProjectSelector(Widget):
                  team_is_selectable: bool = True,
                  datasets_is_selectable: bool = True,
                  widget_id: str = None):
+
         self._team_id = team_id
 
         self._is_selectable = {
@@ -42,11 +43,18 @@ class ProjectSelector(Widget):
             'datasetsIds': []
         }
 
-    def get_selected_workspace(self):
-        raise NotImplementedError
+    def get_selected_team_id(self, state):
+        return state[self.widget_id]['teamId']
 
-    def get_selected_project(self):
-        raise NotImplementedError
+    def get_selected_workspace_id(self, state):
+        return state[self.widget_id]['workspaceId']
 
-    def get_selected_datasets(self):
-        raise NotImplementedError
+    def get_selected_project_id(self, state):
+        return state[self.widget_id]['projectId']
+
+    def get_selected_datasets(self, state):
+        datasets = []
+        if self._is_selectable['datasets']:
+            datasets = state[self.widget_id]['datasetsIds']
+        return datasets
+
