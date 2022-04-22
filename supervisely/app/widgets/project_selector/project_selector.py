@@ -6,12 +6,13 @@ from supervisely.app.widgets import Widget
 
 
 class ProjectSelector(Widget):
-    class Routes:
-        def __init__(self,
-                     app: fastapi.FastAPI,
-                     cell_clicked_cb: object = None):
-            self.app = app
-            self.routes = {'cell_clicked_cb': cell_clicked_cb}
+    # @TODO: add Routes project changes events
+    # class Routes:
+    #     def __init__(self,
+    #                  app: fastapi.FastAPI,
+    #                  cell_clicked_cb: object = None):
+    #         self.app = app
+    #         self.routes = {'cell_clicked_cb': cell_clicked_cb}
 
     def __init__(self,
                  team_id: int = None,
