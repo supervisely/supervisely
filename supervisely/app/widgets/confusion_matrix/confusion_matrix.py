@@ -101,15 +101,10 @@ DATATYPE_TO_UNPACKER = {
 
 class ConfusionMatrix(Widget):
     class Routes:
-        def __init__(self,
-                     app: fastapi.FastAPI,
-                     cell_clicked_cb: object = None):
-            self.app = app
-            self.routes = {'cell_clicked_cb': cell_clicked_cb}
+        CELL_CLICKED = 'cell_clicked_cb'
 
     def __init__(self,
                  data: PackerUnpacker.SUPPORTED_TYPES = None,
-                 widget_routes: Routes = None,
                  x_label: str = 'Predicted Values',
                  y_label: str = 'Actual Values',
                  widget_id: str = None):
@@ -125,8 +120,6 @@ class ConfusionMatrix(Widget):
                                                           ]
                                       }
         """
-        self.widget_id = varname(frame=1) if widget_id is None else widget_id
-
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
@@ -136,11 +129,10 @@ class ConfusionMatrix(Widget):
         self._update_matrix_data(input_data=data)
         self._calculate_totals()
 
-        self.available_routes = {}
-        self.add_widget_routes(widget_routes)
-
         self.x_label = x_label
         self.y_label = y_label
+
+        self._widget_routes = {}
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -148,11 +140,11 @@ class ConfusionMatrix(Widget):
         return {
             'matrix_data': self._parsed_data_with_totals,
             'matrix_options': {
-                'selectable': len(self.available_routes) > 0,
+                'selectable': len(self._widget_routes) > 0,
                 'horizontalLabel': self.x_label,
                 'verticalLabel': self.y_label
             },
-            'available_routes': self.available_routes
+            'available_routes': self._widget_routes
         }
 
     def get_json_state(self):
@@ -230,13 +222,6 @@ class ConfusionMatrix(Widget):
     def data(self, value):
         self._update_matrix_data(input_data=value)
         DataJson()[self.widget_id]['matrix_data'] = self._parsed_data
-
-    def add_widget_routes(self, routes: Routes):
-        if routes is not None:
-            for route_name, route_cb in routes.routes.items():
-                if callable(route_cb):
-                    routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
-                    self.available_routes[route_name] = True
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]['selected_row'].get('row')

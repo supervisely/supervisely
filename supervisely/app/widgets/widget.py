@@ -16,6 +16,8 @@ class Widget:
             self.widget_id = varname(frame=2)
         self._register()
 
+        self._widget_routes = {}
+
     def _register(self):
         # get singletons
         data = DataJson()
@@ -45,6 +47,14 @@ class Widget:
         serialized_data = self.get_json_data()
         if serialized_data is not None:
             data[self.widget_id] = serialized_data
+
+    def add_route(self, app, route):
+        def decorator(f):
+            if self._widget_routes.get(route) is not None:
+                raise Exception(f"Route [{route}] already attached to function with name: {self._widget_routes[route]}")
+            app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
+            self._widget_routes[route] = f.__name__
+        return decorator
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()
