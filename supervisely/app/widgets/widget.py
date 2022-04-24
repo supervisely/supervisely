@@ -4,7 +4,7 @@ from varname import varname
 from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
-from supervisely.app.content import DataJson, StateJson
+from supervisely.app.content import DataJson, StateJson, RegisterWidgets
 from supervisely.app.fastapi import Jinja2Templates
 
 
@@ -14,11 +14,13 @@ class Widget:
         self._file_path = file_path
         if self.widget_id is None:
             self.widget_id = varname(frame=2)
-        self._register()
 
         self._widget_routes = {}
 
+        RegisterWidgets().append(self._register)
+
     def _register(self):
+        print(f'register called with {self._widget_routes=}')
         # get singletons
         data = DataJson()
         data.raise_for_key(self.widget_id)

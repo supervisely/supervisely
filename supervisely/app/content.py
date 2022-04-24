@@ -103,6 +103,6 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         super().__init__(Field.DATA, *args, **kwargs)
 
 
-class RegisterWidgets(metaclass=Singleton):
+class RegisterWidgets(list, metaclass=Singleton):
     def __init__(self):
-        self.register = []
+        super().__init__()
