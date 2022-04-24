@@ -38,7 +38,8 @@ setup(
         "varname>=0.8.1",
         "python-dotenv==0.19.2",
         "pynrrd==0.4.2",
-        "imgaug==0.4.0"
+        "imgaug==0.4.0",
+        "pydicom==2.3.0",
     ],
     extras_require={
         'extras': [
