@@ -165,3 +165,5 @@ from supervisely.user.user import UserRoleName
 from supervisely.io import github_utils as git
 
 from supervisely.aug import imgaug_utils
+
+import supervisely.volume as volume

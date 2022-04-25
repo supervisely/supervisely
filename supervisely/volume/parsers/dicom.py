@@ -4,7 +4,7 @@ import os
 import supervisely as sly
 from supervisely import TaskPaths
 from supervisely.volume.loaders.dicom import SliceStacker
-
+import magic
 
 photometricInterpretationRGB = set(
     [
@@ -29,8 +29,11 @@ def unpack_value(val):
 def load(entry_path):
     suids = set([])
     for file in os.listdir(entry_path):
-        if file.lower().endswith("dcm"):
-            full_path = os.path.join(entry_path, file)
+        full_path = os.path.join(entry_path, file)
+        if (
+            file.lower().endswith("dcm")
+            or magic.from_file(full_path, mime=True) == "application/dicom"
+        ):
             si_uid = pydicom.read_file(full_path, stop_before_pixels=True)[
                 SliceStacker.SI_UID_TAG
             ].value
