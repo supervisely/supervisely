@@ -4,7 +4,7 @@ from varname import varname
 from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
-from supervisely.app.content import DataJson, StateJson, RegisterWidgets
+from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import Jinja2Templates
 
 
@@ -15,12 +15,9 @@ class Widget:
         if self.widget_id is None:
             self.widget_id = varname(frame=2)
 
-        self._widget_routes = {}
-
-        RegisterWidgets().append(self._register)
+        self._register()
 
     def _register(self):
-        print(f'register called with {self._widget_routes=}')
         # get singletons
         data = DataJson()
         data.raise_for_key(self.widget_id)
@@ -42,20 +39,24 @@ class Widget:
     def update_state(self, state):
         serialized_state = self.get_json_state()
         if serialized_state is not None:
-            state[self.widget_id] = serialized_state
+            state.setdefault(self.widget_id, {}).update(serialized_state)
 
     def update_data(self):
         data = DataJson()
         serialized_data = self.get_json_data()
         if serialized_data is not None:
-            data[self.widget_id] = serialized_data
+            data.setdefault(self.widget_id, {}).update(serialized_data)
 
     def add_route(self, app, route):
         def decorator(f):
-            if self._widget_routes.get(route) is not None:
-                raise Exception(f"Route [{route}] already attached to function with name: {self._widget_routes[route]}")
+            existing_cb = DataJson()[self.widget_id].get('widget_routes', {}).get(route)
+            if existing_cb is not None:
+                raise Exception(f"Route [{route}] already attached to function with name: {existing_cb}")
+
             app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
-            self._widget_routes[route] = f.__name__
+            DataJson()[self.widget_id].setdefault('widget_routes', {})[route] = f.__name__
+            # self._widget_routes[route] = f.__name__
+            self.update_data()
         return decorator
 
     def to_html(self):

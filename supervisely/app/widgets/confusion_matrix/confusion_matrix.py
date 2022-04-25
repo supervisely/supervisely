@@ -132,19 +132,16 @@ class ConfusionMatrix(Widget):
         self.x_label = x_label
         self.y_label = y_label
 
-        self._widget_routes = {}
-
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
             'matrix_data': self._parsed_data_with_totals,
             'matrix_options': {
-                'selectable': len(self._widget_routes) > 0,
+                'selectable': len(DataJson().get(self.widget_id, {}).get('widget_routes', {})) > 0,
                 'horizontalLabel': self.x_label,
                 'verticalLabel': self.y_label
-            },
-            'available_routes': self._widget_routes
+            }
         }
 
     def get_json_state(self):

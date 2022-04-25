@@ -73,16 +73,11 @@ DATATYPE_TO_UNPACKER = {
 
 class ClassicTable(Widget):
     class Routes:
-        def __init__(self,
-                     app: fastapi.FastAPI,
-                     cell_clicked_cb: object = None):
-            self.app = app
-            self.routes = {'cell_clicked_cb': cell_clicked_cb}
+        CELL_CLICKED = 'cell_clicked_cb'
 
     def __init__(self,
                  data: PackerUnpacker.SUPPORTED_TYPES = None,
                  fixed_columns_num: int = None,
-                 widget_routes: Routes = None,
                  widget_id: str = None):
         """
         :param data: Data of table in different formats:
@@ -96,17 +91,12 @@ class ClassicTable(Widget):
                                                           ]
                                       }
         """
-        self.widget_id = varname(frame=1) if widget_id is None else widget_id
-
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
         self._data_type = None
 
         self._update_table_data(input_data=data)
-
-        self.available_routes = {}
-        self.add_widget_routes(widget_routes)
 
         self._fix_columns = fixed_columns_num
 
@@ -117,8 +107,8 @@ class ClassicTable(Widget):
             'table_data': self._parsed_data,
             'table_options': {
                 'fixColumns': self._fix_columns,
-            },
-            'available_routes': self.available_routes}
+            }
+        }
 
     def get_json_state(self):
         return {'selected_row': {}}
@@ -209,6 +199,6 @@ class ClassicTable(Widget):
             'row_index': row_index,
             'col_index': col_index,
             'row_data': row_data,
-            'cell_data': list(row_data.items())[int(col_index)] if col_index is not None and row_data is not None else None
+            'cell_data': list(row_data.items())[
+                int(col_index)] if col_index is not None and row_data is not None else None
         }
-
