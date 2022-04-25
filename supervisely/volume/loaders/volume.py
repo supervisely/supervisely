@@ -7,7 +7,7 @@ Provide a class that represents 3D scan volumes in a desired anatomical coordina
 
 import numpy as np
 
-import loaders.anatomical_coords as ac
+import supervisely.volume.loaders.anatomical_coords as ac
 
 
 class Volume:
@@ -53,8 +53,15 @@ class Volume:
         ``src_voxel_data`` and ``src_transformation`` -- for debugging, for example (default: None).
     """
 
-    def __init__(self, src_voxel_data, src_transformation, src_system,
-                 src_spatial_dimensions=(0, 1, 2), system="RAS", src_object=None):
+    def __init__(
+        self,
+        src_voxel_data,
+        src_transformation,
+        src_system,
+        src_spatial_dimensions=(0, 1, 2),
+        system="RAS",
+        src_object=None,
+    ):
 
         self.__src_system = src_system
         self.__user_system = None
@@ -68,8 +75,12 @@ class Volume:
         self.__src_data = src_voxel_data  # The source voxel data
         self.__vsrc2cuser_4x4 = None
         # ^ Mapping from ``src_data``'s voxel indices to the desired anatomical coordinate system
-        self.__src_spatial_dimensions = tuple(sorted(src_spatial_dimensions))  # Remaining dimensions are time or data
-        self.__src_spatial_shape = tuple(self.__src_data.shape[i] for i in self.__src_spatial_dimensions)
+        self.__src_spatial_dimensions = tuple(
+            sorted(src_spatial_dimensions)
+        )  # Remaining dimensions are time or data
+        self.__src_spatial_shape = tuple(
+            self.__src_data.shape[i] for i in self.__src_spatial_dimensions
+        )
 
         self.__aligned_spacing = None
         self.__aligned_data = None
@@ -119,12 +130,18 @@ class Volume:
         # Transform: given source array indices -> user system aligned array indices
         vsrc2vuser_4x4 = ac.homogeneous_matrix(vsrc2suser_3x3) @ offset_4x4
         # Transform: user system aligned array indices -> given source array indices
-        vuser2vsrc_4x4 = np.round(np.linalg.inv(vsrc2vuser_4x4)).astype(vsrc2vuser_4x4.dtype)
+        vuser2vsrc_4x4 = np.round(np.linalg.inv(vsrc2vuser_4x4)).astype(
+            vsrc2vuser_4x4.dtype
+        )
 
         # Transform: given source array indices -> user system coordinates
-        vsrc2cuser_4x4 = ac.transformation_for_new_coordinate_system(trans=vsrc2csrc_4x4, sold2snew=ssrc2suser_3x3)
+        vsrc2cuser_4x4 = ac.transformation_for_new_coordinate_system(
+            trans=vsrc2csrc_4x4, sold2snew=ssrc2suser_3x3
+        )
         # Transform: user system aligned array indices -> user system coordinates
-        vuser2cuser_4x4 = ac.transformation_for_new_voxel_alignment(trans=vsrc2cuser_4x4, vnew2vold=vuser2vsrc_4x4)
+        vuser2cuser_4x4 = ac.transformation_for_new_voxel_alignment(
+            trans=vsrc2cuser_4x4, vnew2vold=vuser2vsrc_4x4
+        )
 
         self.__vsrc2vuser_4x4 = vsrc2vuser_4x4
         self.__vuser2vsrc_4x4 = vuser2vsrc_4x4
@@ -133,11 +150,17 @@ class Volume:
 
         # Recalculate voxel sizes ("spacing")
         self.__src_spacing = tuple(np.linalg.norm(vsrc2csrc_4x4[:ndim, :ndim], axis=0))
-        self.__aligned_spacing = tuple(np.linalg.norm(vuser2cuser_4x4[:ndim, :ndim], axis=0))
+        self.__aligned_spacing = tuple(
+            np.linalg.norm(vuser2cuser_4x4[:ndim, :ndim], axis=0)
+        )
 
         # Actually swap the given source array, then bring the spatial dimensions to the front
-        aligned_volume = ac.swap(self.__src_data, vsrc2vuser_4x4, self.__src_spatial_dimensions)
-        aligned_volume = ac.pull_spatial_dimensions(aligned_volume, self.__src_spatial_dimensions)
+        aligned_volume = ac.swap(
+            self.__src_data, vsrc2vuser_4x4, self.__src_spatial_dimensions
+        )
+        aligned_volume = ac.pull_spatial_dimensions(
+            aligned_volume, self.__src_spatial_dimensions
+        )
         self.__aligned_data = aligned_volume
 
     @property
@@ -267,7 +290,9 @@ class Volume:
         get_aligned_transformation : Same transformation, but for ``aligned_data``.
         """
         sold2snew_3x3 = ac.permutation_matrix(self.__src_system, system)
-        return ac.transformation_for_new_coordinate_system(trans=self.__vsrc2csrc_4x4, sold2snew=sold2snew_3x3)
+        return ac.transformation_for_new_coordinate_system(
+            trans=self.__vsrc2csrc_4x4, sold2snew=sold2snew_3x3
+        )
 
     def get_aligned_transformation(self, system):
         """
@@ -290,7 +315,9 @@ class Volume:
         get_src_transformation : Same transformation, but for ``src_data``.
         """
         vsrc2csys_4x4 = self.get_src_transformation(system=system)
-        return ac.transformation_for_new_voxel_alignment(trans=vsrc2csys_4x4, vnew2vold=self.__vuser2vsrc_4x4)
+        return ac.transformation_for_new_voxel_alignment(
+            trans=vsrc2csys_4x4, vnew2vold=self.__vuser2vsrc_4x4
+        )
 
     def copy(self, deep=True):
         """
@@ -309,8 +336,13 @@ class Volume:
             A copy of the current instance.
         """
         src_voxel_data = self.__src_data.copy() if deep else self.__src_data
-        return Volume(src_voxel_data=src_voxel_data, src_transformation=self.__vsrc2csrc_4x4.copy(),
-                      src_system=self.__src_system, system=self.__user_system, src_object=self.__src_object)
+        return Volume(
+            src_voxel_data=src_voxel_data,
+            src_transformation=self.__vsrc2csrc_4x4.copy(),
+            src_system=self.__src_system,
+            system=self.__user_system,
+            src_object=self.__src_object,
+        )
 
     def copy_like(self, template, src_spatial_dimensions=None, deep=True):
         """
@@ -351,22 +383,43 @@ class Volume:
 
         # Combine, calculate necessary offset, and actually swap current instance's aligned array respectively
         cur_suser_2_tpl_vsrc_3x3 = tpl_vuser_2_tpl_vsrc_3x3 @ cur_suser_2_tpl_suser_3x3
-        offset_4x4 = ac.offset(cur_suser_2_tpl_vsrc_3x3, current_instance.__aligned_data.shape[:3])
-        cur_vuser_2_tpl_vsrc_4x4 = ac.homogeneous_matrix(cur_suser_2_tpl_vsrc_3x3) @ offset_4x4
-        cur_aligned_volume_swapped = ac.swap(current_instance.__aligned_data, cur_vuser_2_tpl_vsrc_4x4,
-                                             spatial_dimensions=(0, 1, 2), copy=deep)
+        offset_4x4 = ac.offset(
+            cur_suser_2_tpl_vsrc_3x3, current_instance.__aligned_data.shape[:3]
+        )
+        cur_vuser_2_tpl_vsrc_4x4 = (
+            ac.homogeneous_matrix(cur_suser_2_tpl_vsrc_3x3) @ offset_4x4
+        )
+        cur_aligned_volume_swapped = ac.swap(
+            current_instance.__aligned_data,
+            cur_vuser_2_tpl_vsrc_4x4,
+            spatial_dimensions=(0, 1, 2),
+            copy=deep,
+        )
 
         # Move spatial dimensions for the current instances to the defined positions
-        src_spatial_dimensions = (template.__src_spatial_dimensions if src_spatial_dimensions is None
-                                  else src_spatial_dimensions)
+        src_spatial_dimensions = (
+            template.__src_spatial_dimensions
+            if src_spatial_dimensions is None
+            else src_spatial_dimensions
+        )
         ac.push_spatial_dimensions(cur_aligned_volume_swapped, src_spatial_dimensions)
 
         # Calculate respective transformation to world coordinates for the swapped aligned array
-        swapped_vsrc_2_cur_cuser_4x4 = ac.transformation_for_new_voxel_alignment(current_instance.__vuser2cuser_4x4, np.linalg.inv(cur_vuser_2_tpl_vsrc_4x4))
-        swapped_vsrc_2_tpl_csrc_4x4 = ac.transformation_for_new_coordinate_system(swapped_vsrc_2_cur_cuser_4x4, ac.permutation_matrix(src=cur_suser, dst=tpl_ssrc))
+        swapped_vsrc_2_cur_cuser_4x4 = ac.transformation_for_new_voxel_alignment(
+            current_instance.__vuser2cuser_4x4, np.linalg.inv(cur_vuser_2_tpl_vsrc_4x4)
+        )
+        swapped_vsrc_2_tpl_csrc_4x4 = ac.transformation_for_new_coordinate_system(
+            swapped_vsrc_2_cur_cuser_4x4,
+            ac.permutation_matrix(src=cur_suser, dst=tpl_ssrc),
+        )
 
-        return Volume(src_voxel_data=cur_aligned_volume_swapped, src_transformation=swapped_vsrc_2_tpl_csrc_4x4,
-                      src_system=tpl_ssrc, src_spatial_dimensions=src_spatial_dimensions, system=tpl_suser,
-                      src_object=current_instance.__src_object)
+        return Volume(
+            src_voxel_data=cur_aligned_volume_swapped,
+            src_transformation=swapped_vsrc_2_tpl_csrc_4x4,
+            src_system=tpl_ssrc,
+            src_spatial_dimensions=src_spatial_dimensions,
+            system=tpl_suser,
+            src_object=current_instance.__src_object,
+        )
 
     # TODO: Add a print method for nice output

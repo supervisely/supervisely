@@ -16,8 +16,8 @@ import nibabel
 import numpy as np
 from pathlib import Path
 
-import loaders.anatomical_coords as ac
-from loaders.volume import Volume
+import supervisely.volume.loaders.anatomical_coords as ac
+from supervisely.volume.loaders.volume import Volume
 
 
 def open_image(path, verbose=True, squeeze=False):
@@ -51,7 +51,7 @@ def open_image(path, verbose=True, squeeze=False):
     """
     # According to the NIfTI-1 specification [1]_, the world coordinate system of NIfTI-1 files is always RAS.
     src_system = "RAS"
-    
+
     try:
         src_object = nibabel.nifti1.load(path)
     except Exception as e:
@@ -59,13 +59,19 @@ def open_image(path, verbose=True, squeeze=False):
 
     voxel_data = np.asanyarray(src_object.dataobj)
     if isinstance(voxel_data, np.memmap):
-        voxel_data.mode = "c"  # Make sure that no changes happen to data on disk: copy on write
+        voxel_data.mode = (
+            "c"  # Make sure that no changes happen to data on disk: copy on write
+        )
     hdr = src_object.header
 
     ndim = hdr["dim"][0]
     if ndim < 3:
-        raise IOError("Currently only 3D images can be handled. The given image has {} dimension(s).".format(ndim))
-    
+        raise IOError(
+            "Currently only 3D images can be handled. The given image has {} dimension(s).".format(
+                ndim
+            )
+        )
+
     if verbose:
         print("Loading image:", path)
         print("Meta data:")
@@ -79,8 +85,14 @@ def open_image(path, verbose=True, squeeze=False):
 
     mat = hdr.get_best_affine()
 
-    volume = Volume(src_voxel_data=voxel_data, src_transformation=mat, src_system=src_system,
-                    src_spatial_dimensions=(0, 1, 2), system="RAS", src_object=src_object)
+    volume = Volume(
+        src_voxel_data=voxel_data,
+        src_transformation=mat,
+        src_system=src_system,
+        src_spatial_dimensions=(0, 1, 2),
+        system="RAS",
+        src_object=src_object,
+    )
     return volume
 
 
@@ -104,7 +116,9 @@ def save_image(path, data, transformation, spatial_dimensions=(0, 1, 2)):
         of the given values is ignored, as the mapping order from voxel indices to the world coordinate system should be
         handled exclusively by the given ``transformation`` matrix.
     """
-    data = ac.pull_spatial_dimensions(data, spatial_dimensions)  # Spatial dimensions must always be in front for NIfTI
+    data = ac.pull_spatial_dimensions(
+        data, spatial_dimensions
+    )  # Spatial dimensions must always be in front for NIfTI
     nibabel.Nifti1Image(data, transformation).to_filename(path)
 
 
@@ -127,7 +141,9 @@ def save_volume(path, volume, src_order=True):
     system = "RAS"
 
     if src_order:
-        data = ac.pull_spatial_dimensions(volume.src_data, volume.src_spatial_dimensions)
+        data = ac.pull_spatial_dimensions(
+            volume.src_data, volume.src_spatial_dimensions
+        )
         transformation = volume.get_src_transformation(system)
     else:
         data = volume.aligned_data  # Spatial dimensions already in front
@@ -166,7 +182,7 @@ def compress(path, delete_originals=False):
     """
     Compress the NIfTI file(s) at the given path to `.nii.gz` files. Save the result(s) with the same name(s) in the
     same folder, but with the file extension changed from `.nii` to `.nii.gz`.
-    
+
     Parameters
     ----------
     path : str
@@ -177,8 +193,10 @@ def compress(path, delete_originals=False):
     """
     path = Path(path).resolve()
     if path.is_dir():
-        file_paths = sorted((f.resolve() for f in path.iterdir() if str(f).lower().endswith(".nii")),
-                            key=lambda p: str(p).lower())
+        file_paths = sorted(
+            (f.resolve() for f in path.iterdir() if str(f).lower().endswith(".nii")),
+            key=lambda p: str(p).lower(),
+        )
     else:
         file_paths = [path]
 

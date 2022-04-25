@@ -40,6 +40,7 @@ setup(
         "pynrrd==0.4.2",
         "imgaug==0.4.0",
         "pydicom==2.3.0",
+        "nibabel==3.2.2",
     ],
     extras_require={
         'extras': [

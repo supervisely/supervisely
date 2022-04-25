@@ -12,7 +12,7 @@ References
 import nrrd
 import numpy as np
 
-from loaders.volume import Volume
+from supervisely.volume.loaders.volume import Volume
 
 
 def open_image(path, verbose=True):
@@ -50,12 +50,19 @@ def open_image(path, verbose=True):
             print("{}: {!r}".format(k, hdr[k]))
 
     __check_data_kinds_in(hdr)
-    src_system = __world_coordinate_system_from(hdr)  # No fixed world coordinates for NRRD images!
+    src_system = __world_coordinate_system_from(
+        hdr
+    )  # No fixed world coordinates for NRRD images!
     mat = __matrix_from(hdr)  # Voxels to world coordinates
 
     # Create new ``Volume`` instance
-    volume = Volume(src_voxel_data=voxel_data, src_transformation=mat, src_system=src_system, system="RAS",
-                    src_object=src_object)
+    volume = Volume(
+        src_voxel_data=voxel_data,
+        src_transformation=mat,
+        src_system=src_system,
+        system="RAS",
+        src_object=src_object,
+    )
     return volume
 
 
@@ -83,13 +90,19 @@ def save_image(path, data, transformation, system="RAS", kinds=None):
 
     """
     if data.ndim > 3:
-        raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
+        raise RuntimeError(
+            "Currently, only supports saving NRRD files with scalar data only!"
+        )
 
     # Create the header entries from the transformation
     space = system.upper()
     space_directions = transformation[:3, :3].T.tolist()
     space_origin = transformation[:3, 3].tolist()
-    options = {"space": space, "space directions": space_directions, "space origin": space_origin}
+    options = {
+        "space": space,
+        "space directions": space_directions,
+        "space origin": space_origin,
+    }
     if kinds is not None:
         kinds = (data.ndim * [kinds]) if isinstance(kinds, str) else list(kinds)
         options["kinds"] = kinds
@@ -121,7 +134,9 @@ def save_volume(path, volume, src_order=True, src_system=True, kinds=None):
         or "space".
     """
     if volume.aligned_data.ndim > 3:
-        raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
+        raise RuntimeError(
+            "Currently, only supports saving NRRD files with scalar data only!"
+        )
 
     system = volume.src_system if src_system else volume.system
     system = system if system in ["RAS", "LAS", "LPS"] else "RAS"
@@ -133,7 +148,9 @@ def save_volume(path, volume, src_order=True, src_system=True, kinds=None):
         data = volume.aligned_data
         transformation = volume.get_aligned_transformation(system)
 
-    save_image(path, data=data, transformation=transformation, system=system, kinds=kinds)
+    save_image(
+        path, data=data, transformation=transformation, system=system, kinds=kinds
+    )
 
 
 def __check_data_kinds_in(header):
@@ -189,7 +206,9 @@ def __world_coordinate_system_from(header):
     try:
         system_str = header["space"]
     except KeyError as e:
-        raise IOError("Need the header's \"space\" field to determine the image's anatomical coordinate system.")
+        raise IOError(
+            "Need the header's \"space\" field to determine the image's anatomical coordinate system."
+        )
 
     if len(system_str) == 3:
         # We are lucky: this is already the format that we need
@@ -199,11 +218,14 @@ def __world_coordinate_system_from(header):
     # of each component. We cannot handle 4D data nor data with scanner-based coordinates ("scanner-...") or
     # non-anatomical coordinates ("3D-...")
     system_components = system_str.split("-")
-    if len(system_components) == 3 and not system_components[0].lower() in ["scanner", "3d"]:
+    if len(system_components) == 3 and not system_components[0].lower() in [
+        "scanner",
+        "3d",
+    ]:
         system_str = "".join(c[0].upper() for c in system_components)
         return system_str
 
-    raise IOError("Cannot handle \"space\" value {}".format(system_str))
+    raise IOError('Cannot handle "space" value {}'.format(system_str))
 
 
 def __matrix_from(header):
@@ -224,7 +246,11 @@ def __matrix_from(header):
         space_directions = header["space directions"]
         space_origin = header["space origin"]
     except KeyError as e:
-        raise IOError("Need the header's \"{}\" field to determine the mapping from voxels to world coordinates.".format(e))
+        raise IOError(
+            'Need the header\'s "{}" field to determine the mapping from voxels to world coordinates.'.format(
+                e
+            )
+        )
 
     # "... the space directions field gives, one column at a time, the mapping from image space to world space
     # coordinates ... [1]_" -> list of columns, needs to be transposed

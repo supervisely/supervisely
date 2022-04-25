@@ -15,7 +15,7 @@ import tarfile
 import tempfile
 import zipfile
 
-from loaders.volume import Volume
+from supervisely.volume.loaders.volume import Volume
 
 
 # TODO: for archives, do not write them back to disk but use "file-like objects" instead, as is done in
@@ -43,7 +43,7 @@ def open_stack(path, verbose=True, sloppy=False):
     Case 3 (``path`` points to a DICOM file)
         Iterate over the contents of the file's base directory (*non-recursively*) and try to combine all present DICOM
         files that share the "Series Instance UID" with the given file.
-        
+
     If ``sloppy`` is `True`, ignore the "Series Instance UID" in either case and try to combine all of the directory's
     DICOM files.
 
@@ -81,7 +81,9 @@ def open_stack(path, verbose=True, sloppy=False):
     if Path(path).resolve().is_file() and not is_dicom_file(path):
         # Handle case 2 (archive file)
         with extract_archive(path) as tmp_path:
-            volume = SliceStacker(tmp_path, sloppy=sloppy, recursive=True).execute().volume
+            volume = (
+                SliceStacker(tmp_path, sloppy=sloppy, recursive=True).execute().volume
+            )
     else:
         # Handle case 1 and 3
         volume = SliceStacker(path, sloppy=sloppy, recursive=False).execute().volume
@@ -119,7 +121,11 @@ def extract_archive(path):
         #
         # .. [*] http://code.activestate.com/recipes/576714-extract-a-compressed-file/ (20180612)
         successfully_extracted = False
-        for opener, mode in [(zipfile.ZipFile, "r"), (tarfile.open, "r:gz"), (tarfile.open, "r:bz2")]:
+        for opener, mode in [
+            (zipfile.ZipFile, "r"),
+            (tarfile.open, "r:gz"),
+            (tarfile.open, "r:bz2"),
+        ]:
             try:
                 with opener(path, mode) as file:
                     file.extractall(path=tmpdirname)
@@ -128,7 +134,11 @@ def extract_archive(path):
             except:
                 pass
         if not successfully_extracted:
-            raise IOError("The file '{}' could not be extracted! Is it an archive file?".format(path))
+            raise IOError(
+                "The file '{}' could not be extracted! Is it an archive file?".format(
+                    path
+                )
+            )
         yield tmpdirname
 
 
@@ -191,13 +201,14 @@ class SliceStacker:
         If `False` (default), only search the current directory itself (see ``path``) for DICOM files; if `True`, also
         search its subdirectories.
     """
+
     SI_UID_TAG = (0x0020, 0x000E)  #: Series Instance UID
     ORIENT_TAG = (0x0020, 0x0037)  #: Image Orientation (Patient)
-    POS_TAG    = (0x0020, 0x0032)  #: Image Position (Patient)
+    POS_TAG = (0x0020, 0x0032)  #: Image Position (Patient)
     PX_SPC_TAG = (0x0028, 0x0030)  #: Pixel Spacing
-    ROWS_TAG   = (0x0028, 0x0010)  #: Rows
-    COLS_TAG   = (0x0028, 0x0011)  #: Columns
-    
+    ROWS_TAG = (0x0028, 0x0010)  #: Rows
+    COLS_TAG = (0x0028, 0x0011)  #: Columns
+
     def __init__(self, path, si_uid=None, sloppy=False, recursive=False):
 
         path = Path(path)
@@ -205,14 +216,14 @@ class SliceStacker:
         self.si_uid = None  # The slices' common Series Instance UID (0020,000E) or None
         self.sloppy = sloppy
         self.recursive = recursive
-        
+
         self.slices = {}
         # ^ A dictionary of all slices (sharing the determined Series Instance UID, if desired). The respective file
         # name is used as key, the value is a ``pydicom.dataset.FileDataset`` instance
         self.sorted_slices = None  # A list of all slices as ``pydicom.dataset.FileDataset`` instances after sorting
-        
+
         self.volume = None  # The stacked image volume as a ``volume.Volume`` instance
-        
+
         if si_uid is None and not sloppy:
             self.__find_series_instance_uid(path)
         else:
@@ -232,10 +243,15 @@ class SliceStacker:
         path = path.resolve()
         if path.is_dir():
             self.base_dir = str(path)
-            for f in sorted(path.glob("**/*" if self.recursive else "*"), key=lambda p: str(p).lower()):
+            for f in sorted(
+                path.glob("**/*" if self.recursive else "*"),
+                key=lambda p: str(p).lower(),
+            ):
                 file_path = str(f.resolve())
                 if is_dicom_file(file_path):
-                    self.si_uid = pydicom.read_file(file_path, stop_before_pixels=True)[SliceStacker.SI_UID_TAG].value
+                    self.si_uid = pydicom.read_file(file_path, stop_before_pixels=True)[
+                        SliceStacker.SI_UID_TAG
+                    ].value
                     break
         else:
             self.base_dir = str(path.parent)
@@ -246,8 +262,10 @@ class SliceStacker:
                 pass
         # If the ``si_uid`` attribute has not been set so far, something went wrong
         if self.si_uid is None:
-            raise IOError("No Series Instance UID could be determined for {}.".format(path))
-    
+            raise IOError(
+                "No Series Instance UID could be determined for {}.".format(path)
+            )
+
     def __collect_slices(self):
         """
         Collect the slices from the ``base_dir`` sharing the ``si_uid``. Fill ``slices`` accordingly.
@@ -267,7 +285,11 @@ class SliceStacker:
                 pass
         if not self.slices:
             if not self.sloppy:
-                raise IOError("No slices could be loaded sharing the Series Instance UID {}.".format(self.si_uid))
+                raise IOError(
+                    "No slices could be loaded sharing the Series Instance UID {}.".format(
+                        self.si_uid
+                    )
+                )
             else:
                 raise IOError("No slices could be loaded.")
 
@@ -279,21 +301,29 @@ class SliceStacker:
         # According to the DICOM specification, section C.7.6.2.1.1, the world coordinate system for DICOM images is
         # LPS for bipeds and a similar right-handed system for others.
         src_system = "LPS"
-        
+
         slices = list(self.slices.values())  # list of ``FileDataset`` instances
         n = len(slices)
         if n < 1:
-            raise IOError("Stacking works for more than one slice only, but {} slice(s) have been found.".format(n))
+            raise IOError(
+                "Stacking works for more than one slice only, but {} slice(s) have been found.".format(
+                    n
+                )
+            )
         # Use the tags of an arbitrary slice for setting most of the transformation matrix values
         slice_ref = slices[0]
-        
+
         # Create the transformation matrix, "NiBabel-style" [2]_, assuming `(r, c, s)` indices, where `(r, c)` gives row
         # and column index of the individual slices and `s` is the slice index
         mat = np.eye(4)
         # Get the directional cosines via "Image Orientation (Patient)" and flip them to have `(r, c)` indices rather
         # than the `(c, r)` order of the DICOM specification's affine matrix (see section C.7.6.2.1.1)
-        cos_ref = np.asarray(get_tag_value_with_default(slice_ref, SliceStacker.ORIENT_TAG, [1, 0, 0, 0, 1, 0]))
-        c = cos_ref.reshape(2,3)[::-1].T  # 3x2, flipped columns
+        cos_ref = np.asarray(
+            get_tag_value_with_default(
+                slice_ref, SliceStacker.ORIENT_TAG, [1, 0, 0, 0, 1, 0]
+            )
+        )
+        c = cos_ref.reshape(2, 3)[::-1].T  # 3x2, flipped columns
         # Determine an orthogonal vector on the directional cosines for sorting the slices: calculate cross product
         # of them. The order of the vectors in the cross product actually doesn't matter, as the resulting vector's
         # direction and the resulting slice order cancel out with the choice of the offset of the respective
@@ -302,16 +332,23 @@ class SliceStacker:
         # Apply "Pixel Spacing". Note that no flipping is necessary here, as the first value already gives the
         # spacing between adjacent rows and the second value gives the spacing between adjacent columns (again see
         # section C.7.6.2.1.1 of the DICOM specification)
-        spc_ref = np.asarray(get_tag_value_with_default(slice_ref, SliceStacker.PX_SPC_TAG, [1, 1]))
+        spc_ref = np.asarray(
+            get_tag_value_with_default(slice_ref, SliceStacker.PX_SPC_TAG, [1, 1])
+        )
         c = c @ np.diag(spc_ref)
         mat[:3, :2] = c
         # Sort the slices along the determined stacking direction: Calculate the dot product of their "Image Position
         # (Patient)" value with the direction vector to get the position w.r.t. said direction (see [3]_)
-        order = lambda s: get_tag_value_with_default(s, SliceStacker.POS_TAG, [0, 0, 0]) @ stack_dir
+        order = (
+            lambda s: get_tag_value_with_default(s, SliceStacker.POS_TAG, [0, 0, 0])
+            @ stack_dir
+        )
         slices = self.sorted_slices = sorted(slices, key=order)
         # Get the offset via "Image Position (Patient)" of the (sorted) first slice. No need to flip here as only
         # world coordinates are concerned
-        pos_0 = np.asarray(get_tag_value_with_default(slices[0], SliceStacker.POS_TAG, [0, 0, 0]))
+        pos_0 = np.asarray(
+            get_tag_value_with_default(slices[0], SliceStacker.POS_TAG, [0, 0, 0])
+        )
         mat[:3, 3] = pos_0
 
         if n == 1:
@@ -319,23 +356,36 @@ class SliceStacker:
         else:
             # Calculate the "s part" of the transformation matrix (i.e. flipping and scaling for the slice index,
             # see [2]_). The matrix is complete afterwards
-            pos_end = np.asarray(get_tag_value_with_default(slices[-1], SliceStacker.POS_TAG, [0, 0, 0]))
+            pos_end = np.asarray(
+                get_tag_value_with_default(slices[-1], SliceStacker.POS_TAG, [0, 0, 0])
+            )
             s = (pos_end - pos_0) / (n - 1)
 
             mat[:3, 2] = s
 
         # Actually stack the slices, then create a new ``Volume`` instance (use `(r, c, s)` indices, see above)
-        stack = np.empty((slice_ref[SliceStacker.ROWS_TAG].value, slice_ref[SliceStacker.COLS_TAG].value, n))
+        stack = np.empty(
+            (
+                slice_ref[SliceStacker.ROWS_TAG].value,
+                slice_ref[SliceStacker.COLS_TAG].value,
+                n,
+            )
+        )
         for i in range(n):
-            stack[:,:,i] = slices[i].pixel_array
-        self.volume = Volume(src_voxel_data=stack, src_transformation=mat, src_system=src_system, system="RAS",
-                             src_object=self)
+            stack[:, :, i] = slices[i].pixel_array
+        self.volume = Volume(
+            src_voxel_data=stack,
+            src_transformation=mat,
+            src_system=src_system,
+            system="RAS",
+            src_object=self,
+        )
 
     def execute(self):
         """
         Collect the appropriate slices in the current directory and stack them according to their "Image Position (
         Patient)" (0020,0032) and "Image Orientation (Patient)" (0020,0037) values.
-        
+
         Returns
         -------
         SliceStacker
@@ -343,5 +393,5 @@ class SliceStacker:
         """
         self.__collect_slices()
         self.__sort_slices()
-        
+
         return self
