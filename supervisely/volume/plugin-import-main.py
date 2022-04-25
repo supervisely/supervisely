@@ -92,8 +92,8 @@ def process_file(api, project_info, dataset_info, entry_path, parser_type):
                     "y": data.shape[1],
                     "z": data.shape[2],
                 },
-                "ACS": volume.system,
-                "IJK2WorldMatrix": volume.aligned_transformation.flatten().tolist(),
+                "ACS": volume.system,  # always have to be a RAS
+                "IJK2WorldMatrix": volume.aligned_transformation.flatten().tolist(),  # simpleItk alternative - get origin, get spacing, get translation
             }
         )
 

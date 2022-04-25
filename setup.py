@@ -39,10 +39,12 @@ setup(
         "python-dotenv==0.19.2",
         "pynrrd==0.4.2",
         "imgaug==0.4.0",
-        "pydicom==2.3.0",
-        "nibabel==3.2.2",
-        "python-magic==0.4.25",
+        "SimpleITK==2.1.1.2",
         #@TODO: ???
+        # "pandas=1.4.2"
+        "pydicom==2.3.0",
+        # "nibabel==3.2.2",
+        "python-magic==0.4.25",
         # "python-gdcm==3.0.10",
         # "file-magic==0.4.0",
         # "pylibjpeg==1.3.0",
