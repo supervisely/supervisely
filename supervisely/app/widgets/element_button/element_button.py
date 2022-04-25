@@ -6,6 +6,8 @@ from typing import Literal
 import fastapi
 from varname import varname
 
+from supervisely.app import DataJson
+from supervisely.app.fastapi import run_sync
 from supervisely.app.widgets import Widget
 
 
@@ -34,8 +36,30 @@ class ElementButton(Widget):
             'button_type': self._button_type,
             'plain': self._plain,
             'button_size': self._button_size,
+
+            'states': {
+                'is_loading': False,
+                'is_disabled': False
+            }
         }
 
     def get_json_state(self):
         return None
 
+    @property
+    def is_loading(self):
+        return DataJson()[self.widget_id]['states']['is_loading']
+
+    @is_loading.setter
+    def is_loading(self, value):
+        DataJson()[self.widget_id]['states']['is_loading'] = value
+        run_sync(DataJson().synchronize_changes())
+
+    @property
+    def is_disabled(self):
+        return DataJson()[self.widget_id]['states']['is_disabled']
+
+    @is_disabled.setter
+    def is_disabled(self, value):
+        DataJson()[self.widget_id]['states']['is_disabled'] = value
+        run_sync(DataJson().synchronize_changes())

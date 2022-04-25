@@ -3,8 +3,9 @@
 <div>
     <el-button :type="data.{{{widget.widget_id}}}.button_type"
                :plain="data.{{{widget.widget_id}}}.plain"
-               @click="post('/{{{widget.widget_id}}}/button_clicked_cb')">
-       {{ data.{{{widget.widget_id}}}.text }}
+               @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
+               :loading="data.{{{widget.widget_id}}}.states.is_loading">
+        {{ data.{{{widget.widget_id}}}.text }}
     </el-button>
 
 </div>

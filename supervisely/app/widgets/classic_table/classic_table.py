@@ -183,12 +183,6 @@ class ClassicTable(Widget):
             DataJson()[self.widget_id]['table_data'] = self._parsed_data
             return popped_row
 
-    def add_widget_routes(self, routes: Routes):
-        if routes is not None:
-            for route_name, route_cb in routes.routes.items():
-                if callable(route_cb):
-                    routes.app.add_api_route(f'/{self.widget_id}/{route_name}', route_cb, methods=["POST"])
-                    self.available_routes[route_name] = True
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]['selected_row'].get('selectedRow')

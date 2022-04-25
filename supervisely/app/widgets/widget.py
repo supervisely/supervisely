@@ -55,7 +55,7 @@ class Widget:
 
             app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
             DataJson()[self.widget_id].setdefault('widget_routes', {})[route] = f.__name__
-            # self._widget_routes[route] = f.__name__
+
             self.update_data()
         return decorator
 

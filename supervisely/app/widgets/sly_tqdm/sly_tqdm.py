@@ -2,6 +2,7 @@ import asyncio
 import copy
 import re
 import sys
+import weakref
 
 from tqdm import tqdm
 
@@ -20,7 +21,7 @@ def extract_by_regexp(regexp, string):
 
 
 class _slyProgressBarIO:
-    def __init__(self, widget_id, message=None, total_provided=None):
+    def __init__(self, widget_id, message=None, total=None):
         self.widget_id = widget_id
 
         self.progress = {
@@ -31,33 +32,45 @@ class _slyProgressBarIO:
         }
 
         self.prev_state = self.progress.copy()
-        self.total_provided = total_provided
+        self.total = total
+        self.tqdm_object = tqdm(disable=True)
+
+        self.n = 0
 
     def print_progress_to_supervisely_tasks_section(self):
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         '''
+
+        try:
+            current_value = self.tqdm_object.n
+        except ReferenceError:
+            if self.total is not None:
+                current_value = self.total
+            else:
+                return
+
         extra = {
             'event_type': EventType.PROGRESS,
             'subtask': self.progress.get('message', None),
-            'current': int(self.progress.get('percent', 0)),
-            'total': 100,
+            'current': current_value,
+            'total': self.total,
         }
 
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
 
-        if not in_debug_mode and self.total_provided:
+        if not in_debug_mode:
             logger.info('progress', extra=extra)
 
     def write(self, s):
         new_text = s.strip().replace('\r', '')
         if len(new_text) != 0:
-            if self.total_provided:
-                self.progress['percent'] = extract_by_regexp(r'\d*\%', new_text).replace('%', '')
+            if self.total is not None:
+                self.progress['percent'] = self.tqdm_object.n / self.total * 100
                 self.progress['info'] = extract_by_regexp(r'(\d+(?:\.\d+\w+)?)*/.*\]', new_text)
             else:
-                self.progress['percent'] = 50
+                self.progress['percent'] = self.tqdm_object.n
                 self.progress['info'] = extract_by_regexp(r'(\d+(?:\.\d+\w+)?)*.*\]', new_text)
 
     def flush(self):
@@ -73,6 +86,7 @@ class _slyProgressBarIO:
                 self.prev_state = copy.deepcopy(self.progress)
 
     def __del__(self):
+        print('destructor called')
         DataJson()[f'{self.widget_id}']['status'] = "success"
         DataJson()[f'{self.widget_id}']['percent'] = 100
         self.progress['percent'] = 100
@@ -112,17 +126,36 @@ class SlyTqdm(Widget):
                  unit_scale=False, dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0, position=None,
                  postfix=None, unit_divisor=1000, gui=False, **kwargs):
 
-        total_provided = True if (iterable is not None and hasattr(iterable, '__len__') and len(
-            iterable) is not None) or total is not None else False
+        class TqdmWithDestructor(tqdm):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
 
-        sly_io = _slyProgressBarIO(self.widget_id, message, total_provided)
+                self.sly_io = kwargs['file']
 
-        return tqdm(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io, ncols=ncols,
-                    mininterval=mininterval,
-                    maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable, unit=unit,
-                    unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing, bar_format=bar_format,
-                    initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
-                    gui=gui, **kwargs)
+            def __del__(self):
+                self.sly_io.write(self.__str__())
+                self.sly_io.flush()
+
+                del self.sly_io
+                del self.fp
+                self.disable = True
+
+        extracted_total = copy.copy(tqdm(iterable=iterable, total=total, disable=True).total)
+
+        sly_io = _slyProgressBarIO(self.widget_id, message, extracted_total)
+
+        tqdm_object = TqdmWithDestructor(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io,
+                                         ncols=ncols,
+                                         mininterval=mininterval,
+                                         maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable,
+                                         unit=unit,
+                                         unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing,
+                                         bar_format=bar_format,
+                                         initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
+                                         gui=gui, **kwargs)
+
+        sly_io.tqdm_object = weakref.proxy(tqdm_object)
+        return tqdm_object
 
     def get_json_data(self):
         return {
