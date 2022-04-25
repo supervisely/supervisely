@@ -35,8 +35,6 @@ class _slyProgressBarIO:
         self.total = total
         self.tqdm_object = tqdm(disable=True)
 
-        self.n = 0
-
     def print_progress_to_supervisely_tasks_section(self):
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
@@ -86,7 +84,6 @@ class _slyProgressBarIO:
                 self.prev_state = copy.deepcopy(self.progress)
 
     def __del__(self):
-        print('destructor called')
         DataJson()[f'{self.widget_id}']['status'] = "success"
         DataJson()[f'{self.widget_id}']['percent'] = 100
         self.progress['percent'] = 100
