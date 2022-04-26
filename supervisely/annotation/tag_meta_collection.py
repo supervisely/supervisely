@@ -1,5 +1,5 @@
 # coding: utf-8
-"""collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances"""
+"""Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances"""
 
 # docs
 from __future__ import annotations

@@ -1,5 +1,5 @@
 # coding: utf-8
-"""labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
+"""Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
 
 # docs
 from __future__ import annotations
@@ -20,7 +20,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.geometry.constants import GEOMETRY_TYPE, GEOMETRY_SHAPE
-
 
 
 class LabelJsonFields:

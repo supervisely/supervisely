@@ -6,21 +6,92 @@ Annotation
 **Annnotation**
 - Working with labeling data of individual images. Annotation is the class that wraps all the labeling data for a given image: its Labels (geometrical objects) and Tags.
 
-.. currentmodule:: supervisely.annotation
+.. currentmodule:: supervisely.annotation.annotation
 
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    annotation
-    label
-    obj_class
-    obj_class_collection
+    Annotation
+    AnnotationJsonFields
+
+
+.. currentmodule:: supervisely.annotation.label
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    Label
+    LabelBase
+    LabelJsonFields
+
+
+.. currentmodule:: supervisely.annotation.obj_class
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    ObjClass
+    ObjClassJsonFields
+
+
+.. currentmodule:: supervisely.annotation.obj_class_collection
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    ObjClassCollection
+
+
+.. currentmodule:: supervisely.annotation.tag
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
     Tag
-    tag_collection
-    tag_meta
-    tag_meta_collection
+    TagJsonFields
+
+
+.. currentmodule:: supervisely.annotation.tag_collection
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    TagCollection
+
+
+.. currentmodule:: supervisely.annotation.tag_meta
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    TagMeta
+    TagMetaJsonFields
+    TagApplicableTo
+    TagValueType
+
+
+.. currentmodule:: supervisely.annotation.tag_meta_collection
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    TagMetaCollection
 
 API
 ---

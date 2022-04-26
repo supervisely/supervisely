@@ -1,5 +1,5 @@
 # coding: utf-8
-"""general information about :class:`Label<supervisely.annotation.label.LabelBase>`"""
+"""General information about :class:`Label<supervisely.annotation.label.LabelBase>`"""
 
 # docs
 from __future__ import annotations

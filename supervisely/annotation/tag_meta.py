@@ -1,5 +1,5 @@
 # coding: utf-8
-"""general information about :class:`Tag<supervisely.annotation.tag.Tag>`"""
+"""General information about :class:`Tag<supervisely.annotation.tag.Tag>`"""
 
 from __future__ import annotations
 from typing import List, Optional, Dict

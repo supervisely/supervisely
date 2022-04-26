@@ -46,6 +46,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
     "sphinxcontrib.details.directive",
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 # Override default of `utf-8-sig` which can cause problems with autosummary due
@@ -68,7 +69,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8/", None),
     "sphinx_docs": ("https://www.sphinx-doc.org/en/master", None),
     "numpy": ('https://numpy.org/doc/stable/', ('intersphinx_inv/numpy.inv', None)),
-    'cv2': ('http://docs.opencv.org/4.x/', None),
+    # 'cv2': ('http://docs.opencv.org/4.x/', None),
 }
 
 default_role = "any"
@@ -77,6 +78,7 @@ templates_path = ['_templates']
 html_static_path = ['_static']
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
+# autodoc_mock_imports = ["supervisely"]
 autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = True  # Remove 'view source code' from top of page (for html, not python)
 autodoc_inherit_docstrings = False  # If no docstring, inherit from base class
