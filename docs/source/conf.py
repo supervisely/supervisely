@@ -46,7 +46,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
     "sphinxcontrib.details.directive",
-    "IPython.sphinxext.ipython_console_highlighting",
+    # "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 # Override default of `utf-8-sig` which can cause problems with autosummary due
