@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Supervisely SDK for Python
-==========================
+Supervisely SDK
+===============
 
 .. mdinclude:: ../../README.md
 
@@ -12,11 +12,35 @@ Supervisely SDK for Python
 .. toctree::
    :maxdepth: 1
    :hidden:
+   :caption: Python API
 
-   rst_templates/installation/installation
    sdk_packages
-   rst_templates/tutorials/tutorials
-   rst_templates/troubleshooting/troubleshooting
+   Public REST API              <https://api.docs.supervise.ly/>
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Setup
+
+   rst_templates/installation/prerequisites/prerequisites
+   rst_templates/installation/installation/installation
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Tutorials
+
+   rst_templates/tutorials/basics
+   rst_templates/tutorials/dev
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Troubleshooting
+
+   rst_templates/troubleshooting/faq/faq
+   rst_templates/troubleshooting/install_issues/install_issues
 
 .. toctree::
    :caption: Source Code
@@ -24,5 +48,14 @@ Supervisely SDK for Python
 
    Supervisely GitHub                   <https://github.com/supervisely/supervisely>
    Supervisely Ecosystem                <https://github.com/supervisely-ecosystem/>
+
+.. toctree::
+   :caption: Social
+   :hidden:
+
+   Slack                   <https://supervise.ly/slack>
+   Medium                  <https://medium.com/@deepsystems>
+   YouTube                <https://www.youtube.com/supervisely>
+
 
 

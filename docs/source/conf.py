@@ -158,7 +158,7 @@ html_theme_options = {
             "media": "(prefers-color-scheme: light)",
             "scheme": "default",
             "primary": "pink",
-            "accent": "light-blue",
+            "accent": "pink",
             "toggle": {
                 "icon": "material/lightbulb-outline",
                 "name": "Switch to dark mode",
@@ -168,7 +168,7 @@ html_theme_options = {
             "media": "(prefers-color-scheme: dark)",
             "scheme": "slate",
             "primary": "pink",
-            "accent": "deep-orange",
+            "accent": "pink",
             "toggle": {
                 "icon": "material/lightbulb",
                 "name": "Switch to light mode",
@@ -193,7 +193,7 @@ html_theme_options = {
     #         "aliases": []
     #     },
     # ],
-    "toc_title_is_page_title": False,
+    "toc_title_is_page_title": True,
 }  # end html_theme_options
 
 # If false, no module index is generated.

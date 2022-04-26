@@ -10,6 +10,6 @@ Build documentation guide for debug puproses
 
 after building the documentation the `build` folder should appear
 
-if run into some errors or you documentation is not updated try to use:
+if run into some errors, or your documentation is not updated try to use:
 - `make clean` and then run one of the building commands from above
-- also try to refresh page with `shift + f5`
+- also try to refresh page with `shift + f5` if you can't see any changes

@@ -1,12 +1,3 @@
-API References
-==============
-
-Public REST API
-===============
-.. toctree::
-
-   Public REST API              <https://api.docs.supervise.ly/>
-
 Python SDK
 ==========
 
