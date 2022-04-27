@@ -11,7 +11,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     Annotation
     AnnotationJsonFields
@@ -22,7 +22,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     Label
     LabelBase
@@ -34,7 +34,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     ObjClass
     ObjClassJsonFields
@@ -45,7 +45,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     ObjClassCollection
 
@@ -55,7 +55,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     Tag
     TagJsonFields
@@ -66,7 +66,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     TagCollection
 
@@ -76,7 +76,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     TagMeta
     TagMetaJsonFields
@@ -89,7 +89,7 @@ Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     TagMetaCollection
 
@@ -98,34 +98,203 @@ API
 **API**
 - Python wrappers to script your interactions with the Supervisely web instance. Instead of clicking around, you can write a script to request, via the API, a sequence of tasks, like training up a neural network and then running inference on a validation dataset.
 
-.. currentmodule:: supervisely.api
+.. currentmodule:: supervisely.api.api
 
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
-    api
-    agent_api
-    annotation_api
-    app_api
-    dataset_api
-    file_api
-    image_annotation_tool_api
-    image_api
-    import_storage_api
-    labeling_job_api
-    module_api
-    neural_network_api
-    object_class_api
-    plugin_api
-    project_api
-    project_class_api
-    role_api
-    task_api
-    team_api
-    user_api
-    workspace_api
+    Api
+
+.. currentmodule:: supervisely.api.agent_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    AgentApi
+
+.. currentmodule:: supervisely.api.annotation_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    AnnotationApi
+
+.. currentmodule:: supervisely.api.app_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    AppApi
+
+.. currentmodule:: supervisely.api.dataset_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    DatasetApi
+
+.. currentmodule:: supervisely.api.file_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    FileApi
+
+.. currentmodule:: supervisely.api.image_annotation_tool_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ImageAnnotationToolApi
+    ImageAnnotationToolAction
+
+.. currentmodule:: supervisely.api.image_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ImageApi
+
+.. currentmodule:: supervisely.api.import_storage_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ImportStorageApi
+
+.. currentmodule:: supervisely.api.labeling_job_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    LabelingJobApi
+
+.. currentmodule:: supervisely.api.module_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ApiField
+    ModuleApi
+    ModuleApiBase
+    CloneableModuleApi
+    UpdateableModule
+    RemoveableModuleApi
+    RemoveableBulkModuleApi
+    ModuleWithStatus
+
+.. currentmodule:: supervisely.api.neural_network_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    NeuralNetworkApi
+
+.. currentmodule:: supervisely.api.object_class_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ObjectClassApi
+
+.. currentmodule:: supervisely.api.plugin_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PluginApi
+
+.. currentmodule:: supervisely.api.project_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ProjectApi
+
+.. currentmodule:: supervisely.api.project_class_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ProjectClassApi
+
+.. currentmodule:: supervisely.api.role_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    RoleApi
+
+.. currentmodule:: supervisely.api.task_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    TaskApi
+
+.. currentmodule:: supervisely.api.team_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ActivityAction
+    TeamApi
+
+.. currentmodule:: supervisely.api.user_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    UserApi
+
+.. currentmodule:: supervisely.api.workspace_api
+
+.. autosummary::
+    :toctree: rst_templates/api
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    WorkspaceApi
 
 
 Augmentation
@@ -137,7 +306,6 @@ Augmentation
 
 .. autosummary::
     :toctree: rst_templates/api
-    :nosignatures:
     :template: autosummary/custom-module-template.rst
 
     aug
@@ -150,7 +318,7 @@ Collection
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     key_indexed_collection
 
@@ -162,7 +330,7 @@ Decorators
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     profile
 
@@ -176,7 +344,7 @@ Geometry
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     any_geometry
     bitmap
@@ -201,7 +369,7 @@ Imaging
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     font
     color
@@ -217,7 +385,7 @@ IO
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     fs
     json
@@ -230,7 +398,7 @@ Labeling Jobs
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     utils
 
@@ -243,7 +411,7 @@ Pointcloud
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
     pointcloud
 
@@ -255,7 +423,7 @@ Pointcloud Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    pointcloud_annotation
    pointcloud_figure
@@ -272,7 +440,7 @@ Project
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    project
    pointcloud-project
@@ -290,7 +458,7 @@ Task
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    progress
 
@@ -302,7 +470,7 @@ User
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    user
 
@@ -314,7 +482,7 @@ Video
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    video
 
@@ -326,7 +494,7 @@ Video Annotation
 .. autosummary::
     :toctree: rst_templates/api
     :nosignatures:
-    :template: autosummary/custom-module-template.rst
+    :template: autosummary/custom-class-template.rst
 
    frame
    frame_collection

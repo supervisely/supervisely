@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Tag ZXCCXZZXCCZX can be attached to whole image and/or to individual :class:`Label<supervisely.annotation.label.Label>`"""
+"""Tag can be attached to whole image and/or to individual :class:`Label<supervisely.annotation.label.Label>`"""
 
 # docs
 from __future__ import annotations

@@ -1,4 +1,4 @@
-{{ name | escape | underline}}
+{{ name | escape | underline }}
 
 .. currentmodule:: {{ module }}
 
@@ -27,8 +27,21 @@
    .. rubric:: {{ _('Attributes') }}
 
    .. autosummary::
+      :nosignatures:
    {% for item in attributes %}
-      ~{{ name }}.{{ item }}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
+   {% block functions %}
+   {% if functions %}
+   .. rubric:: {{ _('Functions') }}
+
+   .. autosummary::
+      :nosignatures:
+   {% for item in functions %}
+      {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
