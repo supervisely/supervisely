@@ -225,6 +225,7 @@ def get_meta(
             "spacing": spacing,
             "origin": origin,
             "directions": directions,
+            "shape": np_shape,
         }
     )
     return volume_meta

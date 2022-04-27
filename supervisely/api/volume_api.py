@@ -13,6 +13,7 @@ from supervisely import volume
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely._utils import batched
 from supervisely import logger
+from supervisely.task.progress import Progress
 
 
 class VolumeApi(RemoveableBulkModuleApi):
@@ -118,7 +119,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 results.append(self._convert_json_info(info_json))
         return results
 
-    def upload_np(self, dataset_id, name, np_data, meta):
+    def upload_np(self, dataset_id, name, np_data, meta, progress_cb: Progress = None):
         ext = get_file_ext(name)
         if ext != ".nrrd":
             raise ValueError(
@@ -131,9 +132,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_info = self.upload_hash(
             dataset_id, f"{get_file_name(name)}.nrrd", volume_hash, meta
         )
+        progress_cb(1)  # upload volume
 
         # slice all directions
-        slices_cnt = 0
         for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
             slices = []
             for i in range(dimension):
@@ -168,8 +169,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                     )
 
                     if len(slices) > 10:
-                        self._upload_slices_bulk(volume_info.id, slices, None)
-                        slices_cnt += len(slices)
+                        self._upload_slices_bulk(volume_info.id, slices, progress_cb)
                         slices.clear()
 
                 except Exception as e:
@@ -184,14 +184,21 @@ class VolumeApi(RemoveableBulkModuleApi):
                     )
 
                 if len(slices) > 0:
-                    self._upload_slices_bulk(volume_info.id, slices, None)
-                    slices_cnt += len(slices)
+                    self._upload_slices_bulk(volume_info.id, slices, progress_cb)
+                    slices.clear()
 
         return volume_info
 
-    def upload_dicom_serie_paths(self, dataset_id, name, paths, meta):
+    def upload_dicom_serie_paths(
+        self,
+        dataset_id,
+        name,
+        paths,
+        meta,
+        progress_cb=None,
+    ):
         volume_np = volume.read_serie_volume_np(paths)
-        return self.upload_np(dataset_id, name, volume_np, meta)
+        return self.upload_np(dataset_id, name, volume_np, meta, progress_cb)
 
     def upload_nrrd_path(path):
         raise NotImplementedError()
