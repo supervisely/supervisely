@@ -22,7 +22,6 @@ photometricInterpretationRGB = set(
 def unpack_value(val):
     if isinstance(val, MultiValue):
         return val[0]
-
     return val
 
 

@@ -40,17 +40,10 @@ setup(
         "pynrrd==0.4.2",
         "imgaug==0.4.0",
         "SimpleITK==2.1.1.2",
-        #@TODO: ???
-        # "pandas=1.4.2"
+        "pandas==1.4.2",
         "pydicom==2.3.0",
-        # "nibabel==3.2.2",
+        "stringcase==1.2.0",
         "python-magic==0.4.25",
-        # "python-gdcm==3.0.10",
-        # "file-magic==0.4.0",
-        # "pylibjpeg==1.3.0",
-        # "pylibjpeg-libjpeg==1.2.0",
-        # "pylibjpeg-openjpeg==1.1.1",
-        # "pylibjpeg-rle==1.1.0"
     ],
     extras_require={
         'extras': [

@@ -31,6 +31,7 @@ import supervisely.api.advanced_api as advanced_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.github_api as github_api
+import supervisely.api.volume_api as volume_api
 from supervisely.sly_logger import logger
 
 
@@ -111,6 +112,7 @@ class Api:
         self.import_storage = import_stoarge_api.ImportStorageApi(self)
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
+        self.volume = volume_api.VolumeApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -120,13 +122,10 @@ class Api:
     @classmethod
     def normalize_server_address(cls, server_address):
         result = server_address.strip("/")
-        if ("http://" not in result) and (
-            "https://" not in result
-        ):
+        if ("http://" not in result) and ("https://" not in result):
             result = "http://" + result
         return result
-        
-    
+
     @classmethod
     def from_env(cls, retry_count=5, ignore_task_id=False):
         """
