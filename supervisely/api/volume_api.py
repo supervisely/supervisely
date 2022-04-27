@@ -1,7 +1,4 @@
-import io
-import re
-import urllib.parse
-import json
+import SimpleITK as sitk
 
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.io.fs import (
@@ -27,9 +24,6 @@ class VolumeApi(RemoveableBulkModuleApi):
             ApiField.MIME,
             ApiField.EXT,
             ApiField.SIZE,
-            # ApiField.WIDTH, #@TODO
-            # ApiField.HEIGHT,
-            # ApiField.LABELS_COUNT,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
             ApiField.META,
@@ -194,11 +188,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         dataset_id,
         name,
         paths,
-        meta,
-        progress_cb=None,
+        log_progress=True,
     ):
-        volume_np = volume.read_serie_volume_np(paths)
-        return self.upload_np(dataset_id, name, volume_np, meta, progress_cb)
+        volume_np, volume_meta = volume.read_serie_volume_np(paths)
+        progress_cb = None
+        if log_progress is True:
+            progress_cb = Progress(f"Upload volume  {name}", sum(volume_np.shape))
+        return self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
 
     def upload_nrrd_path(path):
         raise NotImplementedError()

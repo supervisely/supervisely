@@ -13,4 +13,5 @@ from .volume import (
     encode,
     inspect_series,
     get_meta,
+    read_serie_volume,
 )
