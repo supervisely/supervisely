@@ -28,30 +28,30 @@ class _slyProgressBarIO:
             'percent': 0,
             'info': '',
             'message': message,
-            'status': None
+            'status': None,
+            'n': -1
         }
 
         self.prev_state = self.progress.copy()
         self.total = total
-        self.tqdm_object = tqdm(disable=True)
+
+        self._n = 0
+
+        self._done = False
 
     def print_progress_to_supervisely_tasks_section(self):
         '''
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         '''
 
-        try:
-            current_value = self.tqdm_object.n
-        except ReferenceError:
-            if self.total is not None:
-                current_value = self.total
-            else:
-                return
+        if self._n == self.progress['n']:
+            return
 
+        self.progress['n'] = self._n
         extra = {
             'event_type': EventType.PROGRESS,
             'subtask': self.progress.get('message', None),
-            'current': current_value,
+            'current': self._n,
             'total': self.total,
         }
 
@@ -65,16 +65,19 @@ class _slyProgressBarIO:
         new_text = s.strip().replace('\r', '')
         if len(new_text) != 0:
             if self.total is not None:
-                self.progress['percent'] = self.tqdm_object.n / self.total * 100
+                self.progress['percent'] = self._n / self.total * 100
                 self.progress['info'] = extract_by_regexp(r'(\d+(?:\.\d+\w+)?)*/.*\]', new_text)
             else:
-                self.progress['percent'] = self.tqdm_object.n
+                self.progress['percent'] = self._n
                 self.progress['info'] = extract_by_regexp(r'(\d+(?:\.\d+\w+)?)*.*\]', new_text)
 
     def flush(self):
         if self.prev_state != self.progress:
             if self.progress['percent'] != '' and self.progress['info'] != '':
                 self.print_progress_to_supervisely_tasks_section()
+
+                if self.progress['percent'] == 100 and self.total is not None:
+                    self.progress['status'] = "success"
 
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
@@ -84,13 +87,26 @@ class _slyProgressBarIO:
                 self.prev_state = copy.deepcopy(self.progress)
 
     def __del__(self):
-        DataJson()[f'{self.widget_id}']['status'] = "success"
-        DataJson()[f'{self.widget_id}']['percent'] = 100
-        self.progress['percent'] = 100
+        self.progress['status'] = "success"
 
+        self.flush()
         self.print_progress_to_supervisely_tasks_section()
 
-        run_sync(DataJson().synchronize_changes())
+
+class CustomTqdm(tqdm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def refresh(self, *args, **kwargs):
+        if self.fp is not None:
+            self.fp._n = self.n
+        super().refresh(*args, **kwargs)
+
+    def __del__(self):
+        self.refresh()
+        super(CustomTqdm, self).__del__()
+        if self.fp is not None:
+            self.fp.__del__()
 
 
 class SlyTqdm(Widget):
@@ -116,42 +132,36 @@ class SlyTqdm(Widget):
         self.message = message
         self.show_percents = show_percents
 
+        self._active_session = None
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def __call__(self, iterable=None, message=None, desc=None, total=None, leave=True, ncols=None,
                  mininterval=1.0, maxinterval=10.0, miniters=None, ascii=False, disable=False, unit='it',
                  unit_scale=False, dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0, position=None,
                  postfix=None, unit_divisor=1000, gui=False, **kwargs):
-
-        class TqdmWithDestructor(tqdm):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-                self.sly_io = kwargs['file']
-
-            def __del__(self):
-                self.sly_io.write(self.__str__())
-                self.sly_io.flush()
-
-                del self.sly_io
-                del self.fp
-                self.disable = True
-
         extracted_total = copy.copy(tqdm(iterable=iterable, total=total, disable=True).total)
+
+        if self._active_session is not None:
+            try:
+                self._active_session.__del__()
+            except ReferenceError:
+                pass
 
         sly_io = _slyProgressBarIO(self.widget_id, message, extracted_total)
 
-        tqdm_object = TqdmWithDestructor(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io,
-                                         ncols=ncols,
-                                         mininterval=mininterval,
-                                         maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable,
-                                         unit=unit,
-                                         unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing,
-                                         bar_format=bar_format,
-                                         initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
-                                         gui=gui, **kwargs)
+        tqdm_object = CustomTqdm(iterable=iterable, desc=desc, total=total, leave=leave, file=sly_io,
+                                 ncols=ncols,
+                                 mininterval=mininterval,
+                                 maxinterval=maxinterval, miniters=miniters, ascii=ascii, disable=disable,
+                                 unit=unit,
+                                 unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing,
+                                 bar_format=bar_format,
+                                 initial=initial, position=position, postfix=postfix, unit_divisor=unit_divisor,
+                                 gui=gui, **kwargs)
 
-        sly_io.tqdm_object = weakref.proxy(tqdm_object)
+        self._active_session = weakref.proxy(tqdm_object)
+
         return tqdm_object
 
     def get_json_data(self):

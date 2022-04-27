@@ -76,11 +76,6 @@ def create() -> FastAPI:
         except WebSocketDisconnect:
             WebsocketManager().disconnect(websocket)
 
-    # @app.on_event("startup")
-    # async def register_widgets():
-    #     for widget_register_cb in RegisterWidgets():
-    #         widget_register_cb()
-
     import supervisely
 
     app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")

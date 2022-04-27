@@ -159,6 +159,9 @@ class Dataset(KeyObject):
         mkdir(self.ann_dir)
         mkdir(self.item_dir)
 
+    def get_items_names(self) -> list:
+        return os.listdir(self.item_dir)
+
     def item_exists(self, item_name):
         '''
         Checks if given item name belongs to items of dataset
@@ -183,6 +186,10 @@ class Dataset(KeyObject):
         if not self.item_exists(item_name):
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
         return os.path.join(self.item_dir, item_name)
+
+    def get_ann(self, item_name, project_meta: ProjectMeta) -> Annotation:
+        ann_path = self.get_ann_path(item_name)
+        return Annotation.load_json_file(ann_path, project_meta)
 
     def get_ann_path(self, item_name):
         ann_path = self._item_to_ann.get(item_name, None)
@@ -1068,16 +1075,14 @@ def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=Non
                 if progress_cb is not None:
                     progress_cb(len(batch))
 
-    # download images from server
+    # download from server
     if len(images_to_download) > 0:
         # prepare lists for api methods
         img_ids = []
         img_paths = []
         for img_info in images_to_download:
             img_ids.append(img_info.id)
-            # TODO download to a temp file and use dataset api to add the image to the dataset.
-            img_paths.append(
-                os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
+            img_paths.append(os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
 
         # download annotations
         if only_image_tags is False:
@@ -1092,12 +1097,17 @@ def _download_dataset(api: Api, dataset, dataset_id, cache=None, progress_cb=Non
             if progress_cb is not None:
                 progress_cb(len(images_to_download))
 
-        api.image.download_paths(dataset_id, img_ids, img_paths, progress_cb)
-        for img_info, img_path in zip(images_to_download, img_paths):
-            img_info_to_add = None
-            if save_image_info is True:
-                img_info_to_add = img_info
-            dataset.add_item_file(img_info.name, img_path, img_name_to_ann[img_info.id], img_info=img_info_to_add)
+        # download images and write to dataset
+        for img_info_batch in batched(images_to_download):
+            images_ids_batch = [image_info.id for image_info in img_info_batch]
+            images_nps = api.image.download_nps(dataset_id, images_ids_batch, progress_cb=progress_cb)
+
+            for index, image_np in enumerate(images_nps):
+                img_info = img_info_batch[index]
+                image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+
+                dataset.add_item_np(item_name=image_name, img=image_np, ann=img_name_to_ann[img_info.id],
+                                    img_info=img_info if save_image_info is True else None)
 
         if cache:
             img_hashes = [img_info.hash for img_info in images_to_download]

@@ -2,6 +2,7 @@ import copy
 
 import fastapi
 
+from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
 
@@ -31,7 +32,8 @@ class ProjectSelector(Widget):
 
     def get_json_data(self):
         return {
-            'selectable': copy.copy(self._is_selectable)
+            'selectable': copy.copy(self._is_selectable),
+            'disabled': False
         }
 
     def get_json_state(self):
@@ -58,3 +60,10 @@ class ProjectSelector(Widget):
             datasets = state[self.widget_id]['datasetsIds']
         return datasets
 
+    @property
+    def disabled(self):
+        return DataJson()[self.widget_id]['disabled']
+
+    @disabled.setter
+    def disabled(self, value):
+        DataJson()[self.widget_id]['disabled'] = value

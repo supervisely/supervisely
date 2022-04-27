@@ -37,29 +37,26 @@ class ElementButton(Widget):
             'plain': self._plain,
             'button_size': self._button_size,
 
-            'states': {
-                'is_loading': False,
-                'is_disabled': False
-            }
+            'loading': False,
+            'disabled': False
         }
 
     def get_json_state(self):
         return None
 
     @property
-    def is_loading(self):
-        return DataJson()[self.widget_id]['states']['is_loading']
+    def loading(self):
+        return DataJson()[self.widget_id]['loading']
 
-    @is_loading.setter
-    def is_loading(self, value):
-        DataJson()[self.widget_id]['states']['is_loading'] = value
-        run_sync(DataJson().synchronize_changes())
+    @loading.setter
+    def loading(self, value):
+        DataJson()[self.widget_id]['loading'] = value
 
     @property
-    def is_disabled(self):
-        return DataJson()[self.widget_id]['states']['is_disabled']
+    def disabled(self):
+        return DataJson()[self.widget_id]['disabled']
 
-    @is_disabled.setter
-    def is_disabled(self, value):
-        DataJson()[self.widget_id]['states']['is_disabled'] = value
-        run_sync(DataJson().synchronize_changes())
+    @disabled.setter
+    def disabled(self, value):
+        DataJson()[self.widget_id]['disabled'] = value
+
