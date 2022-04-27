@@ -11,7 +11,7 @@ from supervisely.io.fs import (
 )
 from supervisely import volume
 import supervisely.volume.nrrd_encoder as nrrd_encoder
-from supervisely import batched
+from supervisely._utils import batched
 from supervisely import logger
 
 
@@ -119,13 +119,21 @@ class VolumeApi(RemoveableBulkModuleApi):
         return results
 
     def upload_np(self, dataset_id, name, np_data, meta):
+        ext = get_file_ext(name)
+        if ext != ".nrrd":
+            raise ValueError(
+                "Name has to be with .nrrd extension, for example: my_volume.nrrd"
+            )
 
         volume_bytes = volume.encode(np_data, meta)
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
-        self.upload_hash(dataset_id, f"{get_file_name(name)}.nrrd", volume_hash, meta)
+        volume_info = self.upload_hash(
+            dataset_id, f"{get_file_name(name)}.nrrd", volume_hash, meta
+        )
 
         # slice all directions
+        slices_cnt = 0
         for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
             slices = []
             for i in range(dimension):
@@ -151,17 +159,18 @@ class VolumeApi(RemoveableBulkModuleApi):
                         lambda v: v, [(img_bytes, img_hash)]
                     )
 
-                    cur_img = {
-                        "hash": img_hash,
-                        "sliceIndex": i,
-                        "normal": normal,
-                    }
+                    slices.append(
+                        {
+                            "hash": img_hash,
+                            "sliceIndex": i,
+                            "normal": normal,
+                        }
+                    )
 
-                    slices.append(cur_img)
-
-                    if slices > 10:
-                        self._upload_slices_bulk(volume_result["id"], slices, None)
-                        images_cnt += len(slices)
+                    if len(slices) > 10:
+                        self._upload_slices_bulk(volume_info.id, slices, None)
+                        slices_cnt += len(slices)
+                        slices.clear()
 
                 except Exception as e:
                     exc_str = str(e)
@@ -174,14 +183,13 @@ class VolumeApi(RemoveableBulkModuleApi):
                         },
                     )
 
-                progress.iter_done_report()
+                if len(slices) > 0:
+                    self._upload_slices_bulk(volume_info.id, slices, None)
+                    slices_cnt += len(slices)
+
+        return volume_info
 
     def upload_dicom_serie_paths(self, dataset_id, name, paths, meta):
-        ext = get_file_ext(name)
-        if ext != ".nrrd":
-            raise ValueError(
-                "Name has to be with .nrrd extension, for example: my_volume.nrrd"
-            )
         volume_np = volume.read_serie_volume_np(paths)
         return self.upload_np(dataset_id, name, volume_np, meta)
 
