@@ -113,7 +113,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 results.append(self._convert_json_info(info_json))
         return results
 
-    def upload_np(self, dataset_id, name, np_data, meta, progress_cb: Progress = None):
+    def upload_np(self, dataset_id, name, np_data, meta, progress_cb=None):
         ext = get_file_ext(name)
         if ext != ".nrrd":
             raise ValueError(
@@ -193,7 +193,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_np, volume_meta = volume.read_serie_volume_np(paths)
         progress_cb = None
         if log_progress is True:
-            progress_cb = Progress(f"Upload volume  {name}", sum(volume_np.shape))
+            progress_cb = Progress(
+                f"Upload volume {name}", sum(volume_np.shape)
+            ).iters_done_report
         return self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
 
     def upload_nrrd_path(path):
