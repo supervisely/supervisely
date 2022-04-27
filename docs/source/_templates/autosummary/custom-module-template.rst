@@ -1,9 +1,5 @@
 {{ name | escape | underline }}
 
-.. rubric:: Description
-
-.. automodule:: {{ fullname }}
-
 .. currentmodule:: {{ fullname }}
 
 {% if classes %}
@@ -26,3 +22,7 @@
     {% endfor %}
 
 {% endif %}
+
+.. rubric:: Description
+
+.. automodule:: {{ fullname }}

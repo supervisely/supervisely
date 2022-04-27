@@ -68,7 +68,7 @@ html_show_copyright = True
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8/", None),
     "sphinx_docs": ("https://www.sphinx-doc.org/en/master", None),
-    # "numpy": ('https://numpy.org/doc/stable/', ('intersphinx_inv/numpy.inv', None)),
+    "numpy": ('https://numpy.org/doc/stable/', ('intersphinx_inv/numpy.inv', None)),
     # 'cv2': ('http://docs.opencv.org/4.x/', None),
 }
 
