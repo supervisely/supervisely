@@ -129,6 +129,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         progress_cb(1)  # upload volume
 
         # slice all directions
+        # @TODO: https://simpleitk.readthedocs.io/en/master/link_SliceBySliceDecorator_docs.html
         for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
             slices = []
             for i in range(dimension):
@@ -177,9 +178,9 @@ class VolumeApi(RemoveableBulkModuleApi):
                         },
                     )
 
-                if len(slices) > 0:
-                    self._upload_slices_bulk(volume_info.id, slices, progress_cb)
-                    slices.clear()
+            if len(slices) > 0:
+                self._upload_slices_bulk(volume_info.id, slices, progress_cb)
+                slices.clear()
 
         return volume_info
 
