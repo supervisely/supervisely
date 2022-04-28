@@ -87,6 +87,7 @@ def normalize_volume_meta(meta):
 def read_serie_volume_np(paths: List[str]) -> np.ndarray:
     sitk_volume, meta = read_serie_volume(paths)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
+    volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
 
 

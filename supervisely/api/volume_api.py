@@ -129,30 +129,26 @@ class VolumeApi(RemoveableBulkModuleApi):
         progress_cb(1)  # upload volume
 
         # slice all directions
-        # @TODO: https://simpleitk.readthedocs.io/en/master/link_SliceBySliceDecorator_docs.html
-        # Ours ["sagittal", "coronal", "axial"] = [329, 512, 512]
-        # MITK ["sagittal", "coronal", "axial"] = [512, 512, 328]
         # http://insightsoftwareconsortium.github.io/SimpleITK-Notebooks/Python_html/03_Image_Details.html#Conversion-between-numpy-and-SimpleITK
-        # ["axial", "coronal", "sagittal"] - z, y, x #@TODO: check also in meta
-        # previous tony implementaiton = ["sagittal", "coronal", "axial"] - [x, y, z] wrong for numpy from sitk, ok for pydicom
         # x = 1 - sagittal
         # y = 1 - coronal
         # z = 1 - axial
-        for (plane, dimension) in zip(["axial", "coronal", "sagittal"], np_data.shape):
+
+        for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
             slices = []
             for i in range(dimension):
                 try:
                     normal = {"x": 0, "y": 0, "z": 0}
 
-                    if plane == "axial":
+                    if plane == "sagittal":
                         pixel_data = np_data[i, :, :]
-                        normal["z"] = 1
+                        normal["x"] = 1
                     elif plane == "coronal":
                         pixel_data = np_data[:, i, :]
                         normal["y"] = 1
-                    elif plane == "sagittal":
+                    elif plane == "axial":
                         pixel_data = np_data[:, :, i]
-                        normal["x"] = 1
+                        normal["z"] = 1
                     else:
                         raise ValueError(f"Unknown plane {plane}")
 
