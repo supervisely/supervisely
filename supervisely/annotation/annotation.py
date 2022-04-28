@@ -9,6 +9,7 @@ import operator
 import cv2
 from copy import deepcopy
 from PIL import Image
+from supervisely.annotation.obj_class import ObjClass
 
 from supervisely import logger
 from supervisely.annotation.label import Label
@@ -605,6 +606,23 @@ class Annotation:
 
         ensure_base_path(mask_path)
         im.save(mask_path)
+
+    def add_bg_object(self, bg_class_name):
+        if bg_class_name not in [label.obj_class.name for label in self.labels]:
+            bg_geometry = Rectangle.from_size(self.img_size)
+            bg_geometry = bg_geometry.convert(new_geometry=Bitmap)[0]
+
+            bg_class = ObjClass(bg_class_name, Bitmap)
+            new_label = Label(bg_geometry, bg_class)
+
+            updated_labels = self.labels
+            updated_labels.insert(0, new_label)
+
+            return self.clone(labels=updated_labels)
+
+        else:
+            return self
+
 
     def to_segmentation_task(self):
         class_mask = {}

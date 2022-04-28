@@ -7,6 +7,7 @@ from enum import Enum
 from typing import List
 import random
 
+
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -23,6 +24,7 @@ from supervisely.api.api import Api
 from supervisely.sly_logger import logger
 from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.rectangle import Rectangle
 
 # @TODO: rename img_path to item_path
 ItemPaths = namedtuple('ItemPaths', ['img_path', 'ann_path'])
@@ -214,7 +216,7 @@ class Dataset(KeyObject):
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
-        seg_path = os.path.join(self.seg_dir, item_name + ".png")
+        seg_path = os.path.join(self.seg_dir, item_name)
         return seg_path
 
     def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False, img_info=None):
@@ -626,9 +628,17 @@ class Project:
                 raise ValueError(f"Destination directory {dst_project_dir} is not empty")
 
         src_project = Project(src_project_dir, OpenMode.READ)
-        dst_meta, dst_mapping = src_project.meta.to_segmentation_task()
+        dst_meta = src_project.meta.clone()
+
+        if segmentation_type == 'semantic' and src_project.meta.obj_classes.get(_bg_class_name) is None:
+            dst_meta = src_project.meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
+
+        dst_meta, dst_mapping = dst_meta.to_segmentation_task()
 
         if target_classes is not None:
+            if segmentation_type == 'semantic':
+                if _bg_class_name not in target_classes:
+                    target_classes.append(_bg_class_name)
             # check that all target classes are in destination project meta
             for class_name in target_classes:
                 if dst_meta.obj_classes.get(class_name) is None:
@@ -640,9 +650,6 @@ class Project:
                 dst_meta.obj_classes.get(class_name) for class_name in target_classes
             ]))
 
-        if dst_meta.obj_classes.get(_bg_class_name) is None:
-            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
-
         if inplace is False:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
             dst_project.set_meta(dst_meta)
@@ -653,6 +660,9 @@ class Project:
             for item_name in src_dataset:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
+
+                if segmentation_type == 'semantic':
+                    ann = ann.add_bg_object(_bg_class_name)
 
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
 
