@@ -86,6 +86,13 @@ def normalize_volume_meta(meta):
 
 def read_serie_volume_np(paths: List[str]) -> np.ndarray:
     sitk_volume, meta = read_serie_volume(paths)
+    #sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
+
+    # with open("/work/output/test.nrrd", "wb") as file:
+    #     file.write(b)
+
+    #raise ValueError('awd')
+
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
@@ -148,18 +155,20 @@ def read_dicom_tags(path, allowed_keys: Union[None, List[str]] = _default_dicom_
 
 
 def encode(volume_np: np.ndarray, volume_meta):
+    directions = np.array(volume_meta["directions"]).reshape(3, 3)
+    directions *= volume_meta["spacing"]
+
     volume_bytes = nrrd_encoder.encode(
         volume_np,
         header={
             "encoding": "gzip",
-            "space": "RAS",
-            "space directions": np.array(volume_meta["directions"])
-            .reshape((3, 3))
-            .tolist(),
+            "space": "right-anterior-superior",
+            "space directions": directions.tolist(),
             "space origin": volume_meta["origin"],
         },
-        compression_level=1,
+        compression_level=9,
     )
+
     return volume_bytes
 
 
@@ -199,6 +208,18 @@ def read_serie_volume(paths):
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
 
+    origin = list(sitk_volume.GetOrigin())
+    directions = list(sitk_volume.GetDirection())
+
+    origin[0] *= -1
+    origin[1] *= -1
+
+    directions[0] *= -1
+    directions[4] *= -1
+
+    sitk_volume.SetOrigin(origin)
+    sitk_volume.SetDirection(directions)
+
     meta = get_meta(
         sitk_volume.GetSize(),
         f_min_max.GetMinimum(),
@@ -208,8 +229,16 @@ def read_serie_volume(paths):
         sitk_volume.GetDirection(),
         read_dicom_tags(paths[0]),
     )
+
     return sitk_volume, meta
 
+def compose_ijk_2_world_mat(spacing, origin, directions):
+    mat = (np.array(directions).reshape(3, 3) * spacing).T
+    mat = np.eye(4)
+    mat[:3, :3] = mat
+    mat[:3, 3] = origin
+
+    return mat
 
 def get_meta(
     sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
