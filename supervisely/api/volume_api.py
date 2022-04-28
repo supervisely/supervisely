@@ -130,21 +130,31 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         # slice all directions
         # @TODO: https://simpleitk.readthedocs.io/en/master/link_SliceBySliceDecorator_docs.html
-        for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
+        # Ours ["sagittal", "coronal", "axial"] = [329, 512, 512]
+        # MITK ["sagittal", "coronal", "axial"] = [512, 512, 328]
+        # http://insightsoftwareconsortium.github.io/SimpleITK-Notebooks/Python_html/03_Image_Details.html#Conversion-between-numpy-and-SimpleITK
+        # ["axial", "coronal", "sagittal"] - z, y, x #@TODO: check also in meta
+        # previous tony implementaiton = ["sagittal", "coronal", "axial"] - [x, y, z] wrong for numpy from sitk, ok for pydicom
+        # x = 1 - sagittal
+        # y = 1 - coronal
+        # z = 1 - axial
+        for (plane, dimension) in zip(["axial", "coronal", "sagittal"], np_data.shape):
             slices = []
             for i in range(dimension):
                 try:
                     normal = {"x": 0, "y": 0, "z": 0}
 
-                    if plane == "sagittal":
+                    if plane == "axial":
                         pixel_data = np_data[i, :, :]
-                        normal["x"] = 1
+                        normal["z"] = 1
                     elif plane == "coronal":
                         pixel_data = np_data[:, i, :]
                         normal["y"] = 1
-                    else:
+                    elif plane == "sagittal":
                         pixel_data = np_data[:, :, i]
-                        normal["z"] = 1
+                        normal["x"] = 1
+                    else:
+                        raise ValueError(f"Unknown plane {plane}")
 
                     img_bytes = nrrd_encoder.encode(
                         pixel_data, header={"encoding": "gzip"}, compression_level=1
@@ -163,7 +173,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                         }
                     )
 
-                    if len(slices) > 10:
+                    if len(slices) > 50:
                         self._upload_slices_bulk(volume_info.id, slices, progress_cb)
                         slices.clear()
 
@@ -206,6 +216,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         results = []
         if len(items) == 0:
             return results
+
         for batch in batched(items):
             response = self._api.post(
                 "volumes.slices.bulk.add",

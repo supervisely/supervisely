@@ -183,15 +183,22 @@ def read_serie_volume(paths):
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
 
-    # sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")  # reorient image, does not work
-    orientation_filter = sitk.DICOMOrientImageFilter()
-    orientation_filter.SetDesiredCoordinateOrientation("RAS")
-    sitk_volume = orientation_filter.Execute(sitk_volume)
-
+    # print("Input")
     # print("origin ", sitk_volume.GetOrigin())
     # print("direction ", sitk_volume.GetDirection())
     # print("spacing ", sitk_volume.GetSpacing())
     # print("size ", sitk_volume.GetSize())
+
+    sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")  # reorient image, does not work
+    # orientation_filter = sitk.DICOMOrientImageFilter()
+    # orientation_filter.SetDesiredCoordinateOrientation("RAS")
+    # sitk_volume = orientation_filter.Execute(sitk_volume)
+
+    print("RAS")
+    print("origin ", sitk_volume.GetOrigin())
+    print("direction ", sitk_volume.GetDirection())
+    print("spacing ", sitk_volume.GetSpacing())
+    print("size ", sitk_volume.GetSize())
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
@@ -209,7 +216,7 @@ def read_serie_volume(paths):
 
 
 def get_meta(
-    np_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
+    sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
 ):
     volume_meta = normalize_volume_meta(
         {
@@ -222,16 +229,16 @@ def get_meta(
                 "max": max_intensity,
             },
             "dimensionsIJK": {
-                "x": np_shape[0],
-                "y": np_shape[1],
-                "z": np_shape[2],
+                "x": sitk_shape[0],
+                "y": sitk_shape[1],
+                "z": sitk_shape[2],
             },
             "ACS": "RAS",
             # instead of IJK2WorldMatrix field
             "spacing": spacing,
             "origin": origin,
             "directions": directions,
-            "shape": np_shape,
+            # "shape": sitk_shape,
         }
     )
     return volume_meta
