@@ -183,22 +183,17 @@ def read_serie_volume(paths):
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
 
-    # print("Input")
-    # print("origin ", sitk_volume.GetOrigin())
-    # print("direction ", sitk_volume.GetDirection())
-    # print("spacing ", sitk_volume.GetSpacing())
-    # print("size ", sitk_volume.GetSize())
-
-    sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")  # reorient image, does not work
+    sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")
+    # RAS reorient image, does not work
     # orientation_filter = sitk.DICOMOrientImageFilter()
     # orientation_filter.SetDesiredCoordinateOrientation("RAS")
     # sitk_volume = orientation_filter.Execute(sitk_volume)
 
-    print("RAS")
-    print("origin ", sitk_volume.GetOrigin())
-    print("direction ", sitk_volume.GetDirection())
-    print("spacing ", sitk_volume.GetSpacing())
-    print("size ", sitk_volume.GetSize())
+    # print("Output")
+    # print("origin ", sitk_volume.GetOrigin())
+    # print("direction ", sitk_volume.GetDirection())
+    # print("spacing ", sitk_volume.GetSpacing())
+    # print("size ", sitk_volume.GetSize())
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
