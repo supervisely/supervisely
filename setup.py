@@ -40,7 +40,7 @@ setup(
         "pynrrd==0.4.2",
         "imgaug==0.4.0",
         "SimpleITK==2.1.1.2",
-        "pandas==1.4.2",
+        # "pandas==1.4.2",
         "pydicom==2.3.0",
         "stringcase==1.2.0",
         "python-magic==0.4.25",
