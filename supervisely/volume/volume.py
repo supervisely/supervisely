@@ -86,12 +86,11 @@ def normalize_volume_meta(meta):
 
 def read_serie_volume_np(paths: List[str]) -> np.ndarray:
     sitk_volume, meta = read_serie_volume(paths)
-    #sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
 
+    # sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
     #     file.write(b)
-
-    #raise ValueError('awd')
+    # raise ValueError('awd')
 
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
@@ -194,31 +193,23 @@ def read_serie_volume(paths):
     sitk_volume = reader.Execute()
 
     sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")
-    # RAS reorient image, does not work
+    # RAS reorient image using filter
     # orientation_filter = sitk.DICOMOrientImageFilter()
     # orientation_filter.SetDesiredCoordinateOrientation("RAS")
     # sitk_volume = orientation_filter.Execute(sitk_volume)
 
-    # print("Output")
-    # print("origin ", sitk_volume.GetOrigin())
-    # print("direction ", sitk_volume.GetDirection())
-    # print("spacing ", sitk_volume.GetSpacing())
-    # print("size ", sitk_volume.GetSize())
+    # https://discourse.itk.org/t/getdirection-and-getorigin-for-simpleitk-c-implementation/3472/8
+    origin = list(sitk_volume.GetOrigin())
+    directions = list(sitk_volume.GetDirection())
+    origin[0] *= -1
+    origin[1] *= -1
+    directions[0] *= -1
+    directions[4] *= -1
+    sitk_volume.SetOrigin(origin)
+    sitk_volume.SetDirection(directions)
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
-
-    origin = list(sitk_volume.GetOrigin())
-    directions = list(sitk_volume.GetDirection())
-
-    origin[0] *= -1
-    origin[1] *= -1
-
-    directions[0] *= -1
-    directions[4] *= -1
-
-    sitk_volume.SetOrigin(origin)
-    sitk_volume.SetDirection(directions)
 
     meta = get_meta(
         sitk_volume.GetSize(),
@@ -232,13 +223,14 @@ def read_serie_volume(paths):
 
     return sitk_volume, meta
 
+
 def compose_ijk_2_world_mat(spacing, origin, directions):
     mat = (np.array(directions).reshape(3, 3) * spacing).T
     mat = np.eye(4)
     mat[:3, :3] = mat
     mat[:3, 3] = origin
-
     return mat
+
 
 def get_meta(
     sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
@@ -263,7 +255,6 @@ def get_meta(
             "spacing": spacing,
             "origin": origin,
             "directions": directions,
-            # "shape": sitk_shape,
         }
     )
     return volume_meta
