@@ -9,7 +9,7 @@ import SimpleITK as sitk
 
 import pydicom
 import stringcase
-from supervisely.io.fs import get_file_ext
+from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
 
@@ -95,17 +95,17 @@ def read_serie_volume_np(paths: List[str]) -> np.ndarray:
     return volume_np, meta
 
 
+_anonymize_tags = ["PatientID", "PatientName"]
 _default_dicom_tags = [
     "SeriesInstanceUID",
     "Modality",
-    "PatientID",
-    "PatientName",
     "WindowCenter",
     "WindowWidth",
     "RescaleIntercept",
     "RescaleSlope",
     "PhotometricInterpretation",
 ]
+_default_dicom_tags.extend(_anonymize_tags)
 
 _photometricInterpretationRGB = set(
     [
@@ -120,7 +120,9 @@ _photometricInterpretationRGB = set(
 )
 
 
-def read_dicom_tags(path, allowed_keys: Union[None, List[str]] = _default_dicom_tags):
+def read_dicom_tags(
+    path, allowed_keys: Union[None, List[str]] = _default_dicom_tags, anonymize=True
+):
 
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
@@ -134,6 +136,8 @@ def read_dicom_tags(path, allowed_keys: Union[None, List[str]] = _default_dicom_
         keyword = pydicom.datadict.keyword_for_tag(tag)
         if allowed_keys is not None and keyword not in allowed_keys:
             continue
+        if anonymize is True and keyword in _anonymize_tags:
+            v = "anonymized"
         keyword = stringcase.camelcase(keyword)
         vol_info[keyword] = v
         if keyword in [
@@ -169,7 +173,7 @@ def encode(volume_np: np.ndarray, volume_meta):
     return volume_bytes
 
 
-def inspect_series(root_dir: str):
+def inspect_dicom_series(root_dir: str):
     found_series = {}
     for d in os.walk(root_dir):
         dir = d[0]
@@ -238,6 +242,10 @@ def compose_ijk_2_world_mat(spacing, origin, directions):
 def get_meta(
     sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
 ):
+
+    # x = 1 - sagittal
+    # y = 1 - coronal
+    # z = 1 - axial
     volume_meta = normalize_volume_meta(
         {
             **dicom_tags,
@@ -261,3 +269,15 @@ def get_meta(
         }
     )
     return volume_meta
+
+
+# def inspect_nrrd_series(root_dir: str):
+#     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
+#     for nrrd_path in nrrd_paths:
+#         pass
+
+#     pass
+
+
+# def read_nrrd_volume():
+#     pass

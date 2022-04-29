@@ -11,7 +11,8 @@ from .volume import (
     read_serie_volume_np,
     read_dicom_tags,
     encode,
-    inspect_series,
+    inspect_dicom_series,
     get_meta,
     read_serie_volume,
+    # inspect_nrrd_series,
 )
