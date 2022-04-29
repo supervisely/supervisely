@@ -190,14 +190,8 @@ class VolumeApi(RemoveableBulkModuleApi):
                     )
         return volume_info
 
-    def upload_dicom_serie_paths(
-        self,
-        dataset_id,
-        name,
-        paths,
-        log_progress=True,
-    ):
-        volume_np, volume_meta = volume.read_serie_volume_np(paths)
+    def upload_dicom_serie_paths(self, dataset_id, name, paths, log_progress=True):
+        volume_np, volume_meta = volume.read_dicom_serie_volume_np(paths)
         progress_cb = None
         if log_progress is True:
             progress_cb = Progress(
@@ -205,9 +199,6 @@ class VolumeApi(RemoveableBulkModuleApi):
             ).iters_done_report
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
-
-    def upload_nrrd_path(path):
-        raise NotImplementedError()
 
     def _upload_slices_bulk(self, volume_id, items, progress_cb=None):
         results = []
@@ -223,3 +214,13 @@ class VolumeApi(RemoveableBulkModuleApi):
                 progress_cb(len(batch))
             results.extend(response.json())
         return results
+
+    def upload_nrrd_serie_path(self, dataset_id, name, path, log_progress=True):
+        volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
+        progress_cb = None
+        if log_progress is True:
+            progress_cb = Progress(
+                f"Upload volume {name}", sum(volume_np.shape)
+            ).iters_done_report
+        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
+        return self.get_info_by_name(dataset_id, name)

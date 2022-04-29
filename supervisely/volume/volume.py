@@ -84,8 +84,8 @@ def normalize_volume_meta(meta):
     return meta
 
 
-def read_serie_volume_np(paths: List[str]) -> np.ndarray:
-    sitk_volume, meta = read_serie_volume(paths)
+def read_dicom_serie_volume_np(paths: List[str]) -> np.ndarray:
+    sitk_volume, meta = read_dicom_serie_volume(paths)
     # for debug:
     # sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
@@ -188,11 +188,7 @@ def inspect_dicom_series(root_dir: str):
     return found_series
 
 
-def read_serie_volume(paths):
-    reader = sitk.ImageSeriesReader()
-    reader.SetFileNames(paths)
-    sitk_volume = reader.Execute()
-
+def _sitk_image_orient_ras(sitk_volume):
     if sitk_volume.GetDimension() == 4 and sitk_volume.GetSize()[3] == 1:
         sitk_volume = sitk_volume[:, :, :, 0]
 
@@ -211,12 +207,18 @@ def read_serie_volume(paths):
     directions[4] *= -1
     sitk_volume.SetOrigin(origin)
     sitk_volume.SetDirection(directions)
+    return sitk_volume
+
+
+def read_dicom_serie_volume(paths):
+    reader = sitk.ImageSeriesReader()
+    reader.SetFileNames(paths)
+    sitk_volume = reader.Execute()
+    sitk_volume = _sitk_image_orient_ras(sitk_volume)
+    dicom_tags = read_dicom_tags(paths[0])
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
-
-    dicom_tags = read_dicom_tags(paths[0])
-
     meta = get_meta(
         sitk_volume.GetSize(),
         f_min_max.GetMinimum(),
@@ -226,7 +228,6 @@ def read_serie_volume(paths):
         sitk_volume.GetDirection(),
         dicom_tags,
     )
-
     return sitk_volume, meta
 
 
@@ -270,13 +271,36 @@ def get_meta(
     return volume_meta
 
 
-# def inspect_nrrd_series(root_dir: str):
-#     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
-#     for nrrd_path in nrrd_paths:
-#         pass
-
-#     pass
+def inspect_nrrd_series(root_dir: str):
+    nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
+    logger.info(f"Total {len(nrrd_paths)} nnrd series in directory {root_dir}")
+    return nrrd_paths
 
 
-# def read_nrrd_volume():
-#     pass
+def read_nrrd_serie_volume(path: str):
+    # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
+    reader = sitk.ImageFileReader()
+    # reader.SetImageIO("NrrdImageIO")
+    reader.SetFileName(path)
+    sitk_volume = reader.Execute()
+
+    sitk_volume = _sitk_image_orient_ras(sitk_volume)
+    f_min_max = sitk.MinimumMaximumImageFilter()
+    f_min_max.Execute(sitk_volume)
+    meta = get_meta(
+        sitk_volume.GetSize(),
+        f_min_max.GetMinimum(),
+        f_min_max.GetMaximum(),
+        sitk_volume.GetSpacing(),
+        sitk_volume.GetOrigin(),
+        sitk_volume.GetDirection(),
+        {},
+    )
+    return sitk_volume, meta
+
+
+def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
+    sitk_volume, meta = read_nrrd_serie_volume(paths)
+    volume_np = sitk.GetArrayFromImage(sitk_volume)
+    volume_np = np.transpose(volume_np, (2, 1, 0))
+    return volume_np, meta
