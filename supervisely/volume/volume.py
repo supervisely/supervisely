@@ -123,7 +123,6 @@ _photometricInterpretationRGB = set(
 def read_dicom_tags(
     path, allowed_keys: Union[None, List[str]] = _default_dicom_tags, anonymize=True
 ):
-
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
     reader.LoadPrivateTagsOn()
@@ -257,9 +256,9 @@ def get_meta(
                 "max": max_intensity,
             },
             "dimensionsIJK": {
-                "x": sitk_shape[2],
+                "x": sitk_shape[0],
                 "y": sitk_shape[1],
-                "z": sitk_shape[0],
+                "z": sitk_shape[2],
             },
             "ACS": "RAS",
             # instead of IJK2WorldMatrix field
