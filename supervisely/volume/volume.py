@@ -87,7 +87,7 @@ def normalize_volume_meta(meta):
 def read_dicom_serie_volume_np(paths: List[str]) -> np.ndarray:
     sitk_volume, meta = read_dicom_serie_volume(paths)
     # for debug:
-    # sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
+    # sitk.WriteImage(sitk_volume, "/work/output/sitk.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
     #     file.write(b)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
@@ -162,12 +162,16 @@ def encode(volume_np: np.ndarray, volume_meta):
         volume_np,
         header={
             "encoding": "gzip",
+            # "space": "left-posterior-superior",
             "space": "right-anterior-superior",
-            "space directions": directions.tolist(),
+            "space directions": directions.T.tolist(),
             "space origin": volume_meta["origin"],
         },
         compression_level=1,
     )
+
+    # with open("/work/output/test.nrrd", "wb") as file:
+    #     file.write(volume_bytes)
 
     return volume_bytes
 
@@ -204,7 +208,11 @@ def _sitk_image_orient_ras(sitk_volume):
     origin[0] *= -1
     origin[1] *= -1
     directions[0] *= -1
+    directions[1] *= -1
+    directions[3] *= -1
     directions[4] *= -1
+    directions[6] *= -1
+    directions[7] *= -1
     sitk_volume.SetOrigin(origin)
     sitk_volume.SetDirection(directions)
     return sitk_volume
@@ -232,9 +240,8 @@ def read_dicom_serie_volume(paths):
 
 
 def compose_ijk_2_world_mat(spacing, origin, directions):
-    mat = (np.array(directions).reshape(3, 3) * spacing).T
     mat = np.eye(4)
-    mat[:3, :3] = mat
+    mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
     mat[:3, 3] = origin
     return mat
 
