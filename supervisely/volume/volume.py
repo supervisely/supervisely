@@ -86,12 +86,10 @@ def normalize_volume_meta(meta):
 
 def read_serie_volume_np(paths: List[str]) -> np.ndarray:
     sitk_volume, meta = read_serie_volume(paths)
-
+    # for debug:
     # sitk.WriteImage(sitk_volume, "/work/output/test.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
     #     file.write(b)
-    # raise ValueError('awd')
-
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
@@ -251,9 +249,9 @@ def get_meta(
                 "max": max_intensity,
             },
             "dimensionsIJK": {
-                "x": sitk_shape[0],
+                "x": sitk_shape[2],
                 "y": sitk_shape[1],
-                "z": sitk_shape[2],
+                "z": sitk_shape[0],
             },
             "ACS": "RAS",
             # instead of IJK2WorldMatrix field
