@@ -1,6 +1,7 @@
 import SimpleITK as sitk
 
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
+from supervisely.api.volume.volume_tag_api import VolumeTagApi
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name,
@@ -14,6 +15,17 @@ from supervisely.task.progress import Progress
 
 
 class VolumeApi(RemoveableBulkModuleApi):
+    def __init__(self, api):
+        """
+        :param api: Api class object
+        """
+        super().__init__(api)
+        # self.annotation = VideoAnnotationAPI(api)
+        # self.object = VideoObjectApi(api)
+        # self.frame = VideoFrameAPI(api)
+        # self.figure = VolumeFigureApi(api)
+        self.tag = VolumeTagApi(api)
+
     @staticmethod
     def info_sequence():
         return [

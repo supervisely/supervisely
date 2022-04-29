@@ -31,7 +31,7 @@ import supervisely.api.advanced_api as advanced_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.github_api as github_api
-import supervisely.api.volume_api as volume_api
+import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
 
 
