@@ -44,6 +44,7 @@ setup(
         "pydicom==2.3.0",
         "stringcase==1.2.0",
         "python-magic==0.4.25",
+        "trimesh==3.11.2",
     ],
     extras_require={
         'extras': [
