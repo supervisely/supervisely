@@ -134,9 +134,9 @@ def read_dicom_tags(path, allowed_keys: Union[None, List[str]] = _default_dicom_
         v = reader.GetMetaData(k)
         tag = pydicom.tag.Tag(k.split("|")[0], k.split("|")[1])
         keyword = pydicom.datadict.keyword_for_tag(tag)
-        keyword = stringcase.camelcase(keyword)
         if allowed_keys is not None and keyword not in allowed_keys:
             continue
+        keyword = stringcase.camelcase(keyword)
         vol_info[keyword] = v
         if keyword in [
             "windowCenter",
@@ -192,6 +192,8 @@ def read_serie_volume(paths):
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
 
+    dicom_tags = read_dicom_tags(paths[0])
+
     sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")
     # RAS reorient image using filter
     # orientation_filter = sitk.DICOMOrientImageFilter()
@@ -218,7 +220,7 @@ def read_serie_volume(paths):
         sitk_volume.GetSpacing(),
         sitk_volume.GetOrigin(),
         sitk_volume.GetDirection(),
-        read_dicom_tags(paths[0]),
+        dicom_tags,
     )
 
     return sitk_volume, meta
@@ -237,10 +239,10 @@ def get_meta(
 ):
     volume_meta = normalize_volume_meta(
         {
+            **dicom_tags,
             "channelsCount": 1,
             "rescaleSlope": 1,
             "rescaleIntercept": 0,
-            **dicom_tags,
             "intensity": {
                 "min": min_intensity,
                 "max": max_intensity,
