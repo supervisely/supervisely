@@ -121,10 +121,20 @@ class VolumeApi(RemoveableBulkModuleApi):
             raise ValueError(
                 "Name has to be with .nrrd extension, for example: my_volume.nrrd"
             )
+        from timeit import default_timer as timer
 
+        logger.info("Start volume compression before upload...")
+        start = timer()
         volume_bytes = volume.encode(np_data, meta)
+        logger.info(f"Volume has been compressed in {timer() - start} seconds")
+
+        logger.info(f"Start uploading bytes of 3d volume ...")
+        start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
+        logger.info(
+            f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds"
+        )
         volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
         if progress_cb is not None:
             progress_cb(1)  # upload volume

@@ -166,7 +166,7 @@ def encode(volume_np: np.ndarray, volume_meta):
             "space directions": directions.tolist(),
             "space origin": volume_meta["origin"],
         },
-        compression_level=9,
+        compression_level=1,
     )
 
     return volume_bytes
