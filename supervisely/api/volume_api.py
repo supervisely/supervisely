@@ -113,7 +113,9 @@ class VolumeApi(RemoveableBulkModuleApi):
                 results.append(self._convert_json_info(info_json))
         return results
 
-    def upload_np(self, dataset_id, name, np_data, meta, progress_cb=None):
+    def upload_np(
+        self, dataset_id, name, np_data, meta, progress_cb=None, batch_size=30
+    ):
         ext = get_file_ext(name)
         if ext != ".nrrd":
             raise ValueError(
@@ -123,10 +125,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_bytes = volume.encode(np_data, meta)
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
-        volume_info = self.upload_hash(
-            dataset_id, f"{get_file_name(name)}.nrrd", volume_hash, meta
-        )
-        progress_cb(1)  # upload volume
+        volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
+        if progress_cb is not None:
+            progress_cb(1)  # upload volume
 
         # slice all directions
         # http://insightsoftwareconsortium.github.io/SimpleITK-Notebooks/Python_html/03_Image_Details.html#Conversion-between-numpy-and-SimpleITK
@@ -135,43 +136,47 @@ class VolumeApi(RemoveableBulkModuleApi):
         # z = 1 - axial
 
         for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
-            slices = []
-            for i in range(dimension):
+            for batch in batched(list(range(dimension))):
+                slices = []
+                slices_bytes = []
+                slices_hashes = []
                 try:
-                    normal = {"x": 0, "y": 0, "z": 0}
+                    for i in batch:
+                        normal = {"x": 0, "y": 0, "z": 0}
 
-                    if plane == "sagittal":
-                        pixel_data = np_data[i, :, :]
-                        normal["x"] = 1
-                    elif plane == "coronal":
-                        pixel_data = np_data[:, i, :]
-                        normal["y"] = 1
-                    elif plane == "axial":
-                        pixel_data = np_data[:, :, i]
-                        normal["z"] = 1
-                    else:
-                        raise ValueError(f"Unknown plane {plane}")
+                        if plane == "sagittal":
+                            pixel_data = np_data[i, :, :]
+                            normal["x"] = 1
+                        elif plane == "coronal":
+                            pixel_data = np_data[:, i, :]
+                            normal["y"] = 1
+                        elif plane == "axial":
+                            pixel_data = np_data[:, :, i]
+                            normal["z"] = 1
+                        else:
+                            raise ValueError(f"Unknown plane {plane}")
 
-                    img_bytes = nrrd_encoder.encode(
-                        pixel_data, header={"encoding": "gzip"}, compression_level=1
-                    )
+                        img_bytes = nrrd_encoder.encode(
+                            pixel_data, header={"encoding": "gzip"}, compression_level=1
+                        )
 
-                    img_hash = get_bytes_hash(img_bytes)
-                    self._api.image._upload_data_bulk(
-                        lambda v: v, [(img_bytes, img_hash)]
-                    )
+                        img_hash = get_bytes_hash(img_bytes)
+                        slices_bytes.append(img_bytes)
+                        slices_hashes.append(img_hash)
+                        slices.append(
+                            {
+                                "hash": img_hash,
+                                "sliceIndex": i,
+                                "normal": normal,
+                            }
+                        )
 
-                    slices.append(
-                        {
-                            "hash": img_hash,
-                            "sliceIndex": i,
-                            "normal": normal,
-                        }
-                    )
-
-                    if len(slices) > 50:
+                    if len(slices) > 0:
+                        self._api.image._upload_data_bulk(
+                            lambda v: v,
+                            zip(slices_bytes, slices_hashes),
+                        )
                         self._upload_slices_bulk(volume_info.id, slices, progress_cb)
-                        slices.clear()
 
                 except Exception as e:
                     exc_str = str(e)
@@ -183,11 +188,6 @@ class VolumeApi(RemoveableBulkModuleApi):
                             "file_path": name,
                         },
                     )
-
-            if len(slices) > 0:
-                self._upload_slices_bulk(volume_info.id, slices, progress_cb)
-                slices.clear()
-
         return volume_info
 
     def upload_dicom_serie_paths(
@@ -203,7 +203,8 @@ class VolumeApi(RemoveableBulkModuleApi):
             progress_cb = Progress(
                 f"Upload volume {name}", sum(volume_np.shape)
             ).iters_done_report
-        return self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
+        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
+        return self.get_info_by_name(dataset_id, name)
 
     def upload_nrrd_path(path):
         raise NotImplementedError()

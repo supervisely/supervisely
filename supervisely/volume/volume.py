@@ -192,7 +192,8 @@ def read_serie_volume(paths):
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
 
-    dicom_tags = read_dicom_tags(paths[0])
+    if sitk_volume.GetDimension() == 4 and sitk_volume.GetSize()[3] == 1:
+        sitk_volume = sitk_volume[:, :, :, 0]
 
     sitk_volume = sitk.DICOMOrient(sitk_volume, "RAS")
     # RAS reorient image using filter
@@ -212,6 +213,8 @@ def read_serie_volume(paths):
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
+
+    dicom_tags = read_dicom_tags(paths[0])
 
     meta = get_meta(
         sitk_volume.GetSize(),
