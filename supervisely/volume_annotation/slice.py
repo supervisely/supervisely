@@ -4,7 +4,7 @@ from supervisely.video_annotation.frame import Frame
 from supervisely._utils import take_with_default
 from supervisely.volume_annotation.constants import PLANE_NAME
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.volume_annotation.plane_info import PlaneName
+from supervisely.volume_annotation.plane_info import PlaneName, get_normal
 
 
 class Slice(Frame):
@@ -18,6 +18,10 @@ class Slice(Frame):
     @property
     def plane_name(self):
         return self._plane_name
+
+    @property
+    def normal(self):
+        return get_normal(self.plane_name)
 
     @classmethod
     def from_json(cls, data, objects, slices_count=None, key_id_map=None):

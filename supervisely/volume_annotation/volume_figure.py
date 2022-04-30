@@ -122,15 +122,12 @@ class VolumeFigure(VideoFigure):
             created_at=take_with_default(created_at, self.created_at),
         )
 
-    def to_json(self, key_id_map=None, save_meta=False):
-        data_json = super().to_json(key_id_map, save_meta)
-        if save_meta is True:
-            data_json[constants.META] = {
-                constants.SLICE_INDEX: self.slice_index,
-                constants.PLANE_NAME: self.plane_name,
-                constants.NORMAL: self.normal,
-            }
-        return data_json
+    def _get_meta(self):
+        return {
+            constants.SLICE_INDEX: self.slice_index,
+            constants.PLANE_NAME: self.plane_name,
+            constants.NORMAL: self.normal,
+        }
 
     def from_json(
         cls,
