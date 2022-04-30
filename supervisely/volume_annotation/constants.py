@@ -28,3 +28,7 @@ IMG_SIZE_WIDTH = "width"
 IMG_SIZE_HEIGHT = "height"
 
 META = "meta"
+
+SLICE_INDEX = "sliceIndex"
+PLANE_NAME = "planeName"
+NORMAL = "normal"
