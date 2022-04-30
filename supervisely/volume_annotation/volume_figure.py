@@ -1,11 +1,22 @@
 # coding: utf-8
-
+import uuid
 from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely._utils import take_with_default
+
 import supervisely.volume_annotation.constants as constants
+from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
+from supervisely.geometry.constants import (
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    CLASS_ID,
+)
+
 from supervisely.volume_annotation.plane_info import PlaneName, get_normal
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
@@ -80,18 +91,6 @@ class VolumeFigure(VideoFigure):
                     )
                 )
 
-    def to_json(self, key_id_map=None, save_meta=False):
-        data_json = super().to_json(key_id_map, save_meta)
-        if save_meta is True:
-            data_json[constants.META] = {
-                constants.SLICE_INDEX: self.slice_index,
-                constants.PLANE_NAME: self.plane_name,
-                constants.NORMAL: self.normal,
-            }
-        return data_json
-
-    # @TODO: from json
-
     def validate_bounds(self, img_size, _auto_correct=False):
         if type(self._geometry) == ClosedSurfaceMesh:
             return
@@ -122,16 +121,27 @@ class VolumeFigure(VideoFigure):
             created_at=take_with_default(created_at, self.created_at),
         )
 
+    def to_json(self, key_id_map=None, save_meta=False):
+        data_json = super().to_json(key_id_map, save_meta)
+        if save_meta is True:
+            data_json[constants.META] = {
+                constants.SLICE_INDEX: self.slice_index,
+                constants.PLANE_NAME: self.plane_name,
+                constants.NORMAL: self.normal,
+            }
+        return data_json
 
-class VideoFigure1:
-    @classmethod
     def from_json(
         cls,
         data,
         objects: VolumeObjectCollection,
+        plane_name,
         slice_index,
         key_id_map: KeyIdMap = None,
     ):
+        # @#TODO: copypaste from video figure, add base class and refactor copypaste later
+        # _video_figure = super().from_json(data, objects, slice_index, key_id_map)
+
         object_id = data.get(OBJECT_ID, None)
         object_key = None
         if OBJECT_KEY in data:
@@ -151,8 +161,8 @@ class VideoFigure1:
                     "Object with id={!r} not found in key_id_map".format(object_id)
                 )
 
-        object = objects.get(object_key)
-        if object is None:
+        volume_object = objects.get(object_key)
+        if volume_object is None:
             raise RuntimeError(
                 "Figure can not be deserialized: corresponding object {!r} not found in ObjectsCollection".format(
                     object_key.hex
@@ -176,10 +186,11 @@ class VideoFigure1:
         created_at = data.get(CREATED_AT, None)
 
         return cls(
-            object,
-            geometry,
-            frame_index,
-            key,
+            volume_object=volume_object,
+            geometry=geometry,
+            plane_name=plane_name,
+            slice_index=slice_index,
+            key=key,
             class_id=class_id,
             labeler_login=labeler_login,
             updated_at=updated_at,
