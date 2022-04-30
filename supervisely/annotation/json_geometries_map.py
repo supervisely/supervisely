@@ -11,16 +11,32 @@ from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 
-_INPUT_GEOMETRIES = [Bitmap, Cuboid, Point, Polygon, Polyline, Rectangle, GraphNodes, AnyGeometry,
-                     Cuboid3d, Pointcloud, Point3d, MultichannelBitmap]
-_JSON_SHAPE_TO_GEOMETRY_TYPE = {geometry.geometry_name(): geometry for geometry in _INPUT_GEOMETRIES}
+_INPUT_GEOMETRIES = [
+    Bitmap,
+    Cuboid,
+    Point,
+    Polygon,
+    Polyline,
+    Rectangle,
+    GraphNodes,
+    AnyGeometry,
+    Cuboid3d,
+    Pointcloud,
+    Point3d,
+    MultichannelBitmap,
+    ClosedSurfaceMesh,
+]
+_JSON_SHAPE_TO_GEOMETRY_TYPE = {
+    geometry.geometry_name(): geometry for geometry in _INPUT_GEOMETRIES
+}
 
 
 def GET_GEOMETRY_FROM_STR(figure_shape: str):
-    '''
+    """
     The function create geometry class object from given string
-    '''
+    """
     geometry = _JSON_SHAPE_TO_GEOMETRY_TYPE[figure_shape]
     return geometry
