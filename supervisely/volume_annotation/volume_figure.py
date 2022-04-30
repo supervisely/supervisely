@@ -46,7 +46,8 @@ class VolumeFigure(VideoFigure):
             updated_at=updated_at,
             created_at=created_at,
         )
-        self._plane_name = PlaneName.validate(plane_name)
+        PlaneName.validate(plane_name)
+        self._plane_name = plane_name
         self._slice_index = slice_index
 
     @property
