@@ -2,18 +2,16 @@
 
 from copy import deepcopy
 import uuid
+from sdk_part.volume_annotation.volume_figure import VolumeFigure
 
 from supervisely._utils import take_with_default
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
 from supervisely.volume_annotation.plane import Plane
-from supervisely.volume_annotation.plane_info import (
-    PlaneName,
-    get_img_size_from_volume_meta,
-    get_slices_count_from_volume_meta,
-)
 from supervisely.volume_annotation.constants import (
     FRAMES,
     IMG_SIZE,
@@ -27,10 +25,14 @@ from supervisely.volume_annotation.constants import (
     KEY,
     VIDEOS_MAP,
     VIDEO_NAME,
+    VOLUME_ID,
+    VOLUME_META,
+    PLANES,
+    SPATIAL_FIGURES,
 )
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+# @TODO: spatialFigures
 class VolumeAnnotation:
     def __init__(
         self,
@@ -40,6 +42,7 @@ class VolumeAnnotation:
         plane_coronal=None,
         plane_axial=None,
         tags=None,
+        spatial_figures=None,
         key=None,
     ):
         self._volume_meta = volume_meta
@@ -49,19 +52,18 @@ class VolumeAnnotation:
 
         self._plane_sagittal = take_with_default(
             plane_sagittal,
-            Plane(PlaneName.SAGITTAL, volume_meta=volume_meta),
+            Plane(Plane.SAGITTAL, volume_meta=volume_meta),
         )
-
         self._plane_coronal = take_with_default(
             plane_coronal,
-            Plane(PlaneName.CORONAL, volume_meta=volume_meta),
+            Plane(Plane.CORONAL, volume_meta=volume_meta),
         )
-
         self._plane_axial = take_with_default(
             plane_axial,
-            Plane(PlaneName.AXIAL, volume_meta=volume_meta),
+            Plane(Plane.AXIAL, volume_meta=volume_meta),
         )
 
+        self._spatial_figures = take_with_default(spatial_figures, [])
         self.validate_figures_bounds()
 
     @property
@@ -88,13 +90,17 @@ class VolumeAnnotation:
     def tags(self):
         return self._tags
 
+    @property
+    def spatial_figures(self):
+        return self._spatial_figures
+
     def key(self):
         return self._key
 
     def validate_figures_bounds(self):
-        raise NotImplementedError()
-        # for frame in self.frames:
-        #     frame.validate_figures_bounds(self.img_size)
+        self.plane_sagittal.validate_figures_bounds()
+        self.plane_coronal.validate_figures_bounds()
+        self.plane_axial.validate_figures_bounds()
 
     def is_empty(self):
         if len(self.objects) == 0 and len(self.tags) == 0:
@@ -104,91 +110,95 @@ class VolumeAnnotation:
 
     def clone(
         self,
-        volume_meta,
+        volume_meta=None,
         objects=None,
         plane_sagittal=None,
         plane_coronal=None,
         plane_axial=None,
         tags=None,
-        key=None,
+        spacial_figures=None,
     ):
-        return VideoAnnotation(
-            # volume_meta=take_with_default(take_with_default, self.volume_meta)
-            # img_size=take_with_default(img_size, self.img_size),
-            # frames_count=take_with_default(frames_count, self.frames_count),
-            # objects=take_with_default(objects, self.objects),
-            # frames=take_with_default(frames, self.frames),
-            # tags=take_with_default(tags, self.tags),
-            # description=take_with_default(description, self.description),
+        return VolumeAnnotation(
+            volume_meta=take_with_default(volume_meta, self.volume_meta),
+            objects=take_with_default(objects, self.objects),
+            plane_sagittal=take_with_default(plane_sagittal, self.plane_sagittal),
+            plane_coronal=take_with_default(plane_coronal, self.plane_coronal),
+            plane_axial=take_with_default(plane_axial, self.plane_axial),
+            tags=take_with_default(tags, self.tags),
+            spacial_figures=take_with_default(spacial_figures, self.spatial_figures),
         )
-
-
-class VideoAnnotation:
-    def to_json(self, key_id_map: KeyIdMap = None):
-        """
-        The function to_json convert videoannotation to json format
-        :param key_id_map: KeyIdMap class object
-        :return: videoannotation in json format
-        """
-        res_json = {
-            IMG_SIZE: {
-                IMG_SIZE_HEIGHT: int(self.img_size[0]),
-                IMG_SIZE_WIDTH: int(self.img_size[1]),
-            },
-            DESCRIPTION: self.description,
-            KEY: self.key().hex,
-            TAGS: self.tags.to_json(key_id_map),
-            OBJECTS: self.objects.to_json(key_id_map),
-            FRAMES: self.frames.to_json(key_id_map),
-            FRAMES_COUNT: self.frames_count,
-        }
-
-        if key_id_map is not None:
-            video_id = key_id_map.get_video_id(self.key())
-            if video_id is not None:
-                res_json[VIDEO_ID] = video_id
-
-        return res_json
 
     @classmethod
     def from_json(cls, data, project_meta, key_id_map: KeyIdMap = None):
-        """
-        The function from_json convert videoannotation from json format to VideoAnnotation class object.
-        :param data: input videoannotation in json format
-        :param project_meta: ProjectMeta class object
-        :param key_id_map: KeyIdMap class object
-        :return: VideoAnnotation class object
-        """
-        # video_name = data[VIDEO_NAME]
-        video_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
-
+        volume_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
         if key_id_map is not None:
-            key_id_map.add_video(video_key, data.get(VIDEO_ID, None))
+            key_id_map.add_video(volume_key, data.get(VOLUME_ID, None))
 
-        img_size_dict = data[IMG_SIZE]
-        img_height = img_size_dict[IMG_SIZE_HEIGHT]
-        img_width = img_size_dict[IMG_SIZE_WIDTH]
-        img_size = (img_height, img_width)
+        volume_meta = data[VOLUME_META]
 
-        description = data.get(DESCRIPTION, "")
-        frames_count = data[FRAMES_COUNT]
-
-        tags = VideoTagCollection.from_json(
+        tags = VolumeTagCollection.from_json(
             data[TAGS], project_meta.tag_metas, key_id_map
         )
-        objects = VideoObjectCollection.from_json(
+        objects = VolumeObjectCollection.from_json(
             data[OBJECTS], project_meta, key_id_map
         )
-        frames = FrameCollection.from_json(
-            data[FRAMES], objects, frames_count, key_id_map
+
+        plane_sagittal = Plane.from_json(
+            data,
+            objects,
+            Plane.get_slices_count(Plane.SAGITTAL, volume_meta),
+            key_id_map,
         )
 
-        return cls(
-            img_size=img_size,
-            frames_count=frames_count,
-            objects=objects,
-            frames=frames,
-            tags=tags,
-            description=description,
-            key=video_key,
+        plane_coronal = Plane.from_json(
+            data,
+            objects,
+            Plane.get_slices_count(Plane.CORONAL, volume_meta),
+            key_id_map,
         )
+
+        plane_axial = Plane.from_json(
+            data,
+            objects,
+            Plane.get_slices_count(Plane.AXIAL, volume_meta),
+            key_id_map,
+        )
+
+        spacial_figures = []
+        for figure_json in data.get(SPATIAL_FIGURES, []):
+            figure = VolumeFigure.from_json(figure_json, objects, key_id_map)
+            spacial_figures.append(figure)
+
+        return cls(
+            volume_meta=volume_meta,
+            objects=objects,
+            plane_sagittal=plane_sagittal,
+            plane_coronal=plane_coronal,
+            plane_axial=plane_axial,
+            tags=tags,
+            spacial_figures=spacial_figures,
+            key=volume_key,
+        )
+
+    def to_json(self, key_id_map: KeyIdMap = None):
+        res_json = {
+            VOLUME_META: self.volume_meta,
+            KEY: self.key().hex,
+            TAGS: self.tags.to_json(key_id_map),
+            OBJECTS: self.objects.to_json(key_id_map),
+            PLANES: [
+                self.plane_sagittal.to_json(),
+                self.plane_coronal.to_json(),
+                self.plane_axial.to_json(),
+            ],
+            SPATIAL_FIGURES: [
+                figure.to_json(key_id_map) for figure in self.spatial_figures
+            ],
+        }
+
+        if key_id_map is not None:
+            volume_id = key_id_map.get_video_id(self.key())
+            if volume_id is not None:
+                res_json[VOLUME_ID] = volume_id
+
+        return res_json

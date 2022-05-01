@@ -20,15 +20,12 @@ SLICES_COUNT = "slicesCount"
 VOLUME_ID = "volumeId"
 VOLUME_NAME = "volumeName"
 TAGS = "tags"
-DESCRIPTION = "description"
 
-IMG_DESCRIPTION = "description"
 IMG_SIZE = "size"
-IMG_SIZE_WIDTH = "width"
-IMG_SIZE_HEIGHT = "height"
 
 META = "meta"
 
 SLICE_INDEX = "sliceIndex"
 PLANE_NAME = "planeName"
 NORMAL = "normal"
+SPATIAL_FIGURES = "spatialFigures"
