@@ -42,94 +42,47 @@ class VolumeAnnotation:
         tags=None,
         key=None,
     ):
-        plane_sagittal = Plane(
-            PlaneName.SAGITTAL,
-            get_img_size_from_volume_meta(
-                PlaneName.SAGITTAL,
-            ),
+        self._volume_meta = volume_meta
+        self._tags = take_with_default(tags, VolumeTagCollection())
+        self._objects = take_with_default(objects, VolumeObjectCollection())
+        self._key = take_with_default(key, uuid.uuid4())
+
+        self._plane_sagittal = take_with_default(
+            plane_sagittal,
+            Plane(PlaneName.SAGITTAL, volume_meta=volume_meta),
         )
-        if not isinstance(img_size, (tuple, list)):
-            raise TypeError(
-                '{!r} has to be a tuple or a list. Given type "{}".'.format(
-                    "img_size", type(img_size)
-                )
-            )
-        self._img_size = tuple(img_size)
-        self._frames_count = frames_count
 
-        self._description = description
-        self._tags = take_with_default(tags, VideoTagCollection())
-        self._objects = take_with_default(objects, VideoObjectCollection())
-        self._frames = take_with_default(frames, FrameCollection())
-        self._key = take_with_default(key, uuid.uuid4())
+        self._plane_coronal = take_with_default(
+            plane_coronal,
+            Plane(PlaneName.CORONAL, volume_meta=volume_meta),
+        )
 
-        self.validate_figures_bounds()
-
-
-class VideoAnnotation:
-    """
-    This is a class for creating and using annotations for videos
-    """
-
-    def __init__(
-        self,
-        img_size,
-        frames_count,
-        objects=None,
-        frames=None,
-        tags=None,
-        description="",
-        key=None,
-    ):
-        """
-        The constructor for VideoAnnotation class.
-        :param img_size: size of the image(tuple or list of integers)
-        :param frames_count: int
-        :param objects: VideoObjectCollection
-        :param frames: FrameCollection
-        :param tags: VideoTagCollection
-        :param description: str
-        :param key: uuid class object
-        """
-        if not isinstance(img_size, (tuple, list)):
-            raise TypeError(
-                '{!r} has to be a tuple or a list. Given type "{}".'.format(
-                    "img_size", type(img_size)
-                )
-            )
-        self._img_size = tuple(img_size)
-        self._frames_count = frames_count
-
-        self._description = description
-        self._tags = take_with_default(tags, VideoTagCollection())
-        self._objects = take_with_default(objects, VideoObjectCollection())
-        self._frames = take_with_default(frames, FrameCollection())
-        self._key = take_with_default(key, uuid.uuid4())
+        self._plane_axial = take_with_default(
+            plane_axial,
+            Plane(PlaneName.AXIAL, volume_meta=volume_meta),
+        )
 
         self.validate_figures_bounds()
 
     @property
-    def img_size(self):
-        return deepcopy(self._img_size)
+    def volume_meta(self):
+        return deepcopy(self._volume_meta)
 
     @property
-    def frames_count(self):
-        return self._frames_count
+    def plane_sagittal(self):
+        return self._plane_sagittal
+
+    @property
+    def plane_coronal(self):
+        return self._plane_coronal
+
+    @property
+    def plane_axial(self):
+        return self._plane_axial
 
     @property
     def objects(self):
         return self._objects
-
-    @property
-    def frames(self):
-        return self._frames
-
-    @property
-    def figures(self):
-        """
-        :return: list of figures from all frames in collection
-        """
-        return self.frames.figures
 
     @property
     def tags(self):
@@ -138,17 +91,39 @@ class VideoAnnotation:
     def key(self):
         return self._key
 
-    @property
-    def description(self):
-        return self._description
-
     def validate_figures_bounds(self):
-        """
-        The function validate_figures_bounds checks if image contains figures from all frames in collection. Raise error if figure is out of image bounds
-        """
-        for frame in self.frames:
-            frame.validate_figures_bounds(self.img_size)
+        raise NotImplementedError()
+        # for frame in self.frames:
+        #     frame.validate_figures_bounds(self.img_size)
 
+    def is_empty(self):
+        if len(self.objects) == 0 and len(self.tags) == 0:
+            return True
+        else:
+            return False
+
+    def clone(
+        self,
+        volume_meta,
+        objects=None,
+        plane_sagittal=None,
+        plane_coronal=None,
+        plane_axial=None,
+        tags=None,
+        key=None,
+    ):
+        return VideoAnnotation(
+            # volume_meta=take_with_default(take_with_default, self.volume_meta)
+            # img_size=take_with_default(img_size, self.img_size),
+            # frames_count=take_with_default(frames_count, self.frames_count),
+            # objects=take_with_default(objects, self.objects),
+            # frames=take_with_default(frames, self.frames),
+            # tags=take_with_default(tags, self.tags),
+            # description=take_with_default(description, self.description),
+        )
+
+
+class VideoAnnotation:
     def to_json(self, key_id_map: KeyIdMap = None):
         """
         The function to_json convert videoannotation to json format
@@ -217,36 +192,3 @@ class VideoAnnotation:
             description=description,
             key=video_key,
         )
-
-    def clone(
-        self,
-        img_size=None,
-        frames_count=None,
-        objects=None,
-        frames=None,
-        tags=None,
-        description=None,
-    ):
-        """
-        :param img_size: size of the image(tuple or list of integers)
-        :param frames_count: int
-        :param objects: VideoObjectCollection
-        :param frames: FrameCollection
-        :param tags: VideoTagCollection
-        :param description: str
-        :return: VideoAnnotation class object
-        """
-        return VideoAnnotation(
-            img_size=take_with_default(img_size, self.img_size),
-            frames_count=take_with_default(frames_count, self.frames_count),
-            objects=take_with_default(objects, self.objects),
-            frames=take_with_default(frames, self.frames),
-            tags=take_with_default(tags, self.tags),
-            description=take_with_default(description, self.description),
-        )
-
-    def is_empty(self):
-        if len(self.objects) == 0 and len(self.tags) == 0:
-            return True
-        else:
-            return False
