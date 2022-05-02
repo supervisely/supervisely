@@ -31,6 +31,8 @@ class VideoDataset(Dataset):
 
     item_dir_name = "video"
     annotation_class = VideoAnnotation
+    item_module = sly_video
+    paths_tuple = VideoItemPaths
 
     @staticmethod
     def _has_valid_ext(path: str) -> bool:
@@ -39,7 +41,7 @@ class VideoDataset(Dataset):
         :param path: str
         :return: bool
         """
-        return sly_video.has_valid_ext(path)
+        return VideoDataset.item_module.has_valid_ext(path)
 
     def _get_empty_annotaion(self, item_name):
         """
@@ -47,7 +49,10 @@ class VideoDataset(Dataset):
         :param item_name: str
         :return: VideoAnnotation class object
         """
-        img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
+        (
+            img_size,
+            frames_count,
+        ) = VideoDataset.item_module.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
 
     def add_item_np(self, item_name, img, ann=None):
@@ -64,19 +69,18 @@ class VideoDataset(Dataset):
         """
         # Make sure we actually received a valid image file, clean it up and fail if not so.
         try:
-            sly_video.validate_format(item_path)
-        except (sly_video.UnsupportedVideoFormat, sly_video.VideoReadException):
+            VideoDataset.item_module.validate_format(item_path)
+        except Exception as e:
             os.remove(item_path)
-            raise
+            raise e
 
     def get_item_paths(self, item_name) -> VideoItemPaths:
         """
         :param item_name: str
         :return: namedtuple object containing paths to video and annotation from given path
         """
-        return VideoItemPaths(
-            video_path=self.get_img_path(item_name),
-            ann_path=self.get_ann_path(item_name),
+        return VideoDataset.paths_tuple(
+            self.get_img_path(item_name), self.get_ann_path(item_name)
         )
 
 
@@ -104,7 +108,7 @@ class VideoProject(Project):
         Download project from given project directory. Checks item and annotation directoris existing and dataset not empty.
         Consistency checks. Every video must have an annotation, and the correspondence must be one to one.
         """
-        super(VideoProject, self)._read()
+        super()._read()
         self._key_id_map = KeyIdMap()
         self._key_id_map.load_json(self._get_key_id_map_path())
 
