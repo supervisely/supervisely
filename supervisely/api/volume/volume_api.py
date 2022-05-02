@@ -1,9 +1,15 @@
 import SimpleITK as sitk
 
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
+from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
+from supervisely.api.volume.volume_object_api import VolumeObjectApi
+from supervisely.api.volume.volume_figure_api import VolumeFigureApi
+
+# from supervisely.api.volume.video_frame_api import VolumeFrameAPI
+from supervisely.api.volume.volume_tag_api import VolumeTagApi
+
 from supervisely.io.fs import ensure_base_path
 
-# from supervisely.api.volume.volume_tag_api import VolumeTagApi
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name,
@@ -22,11 +28,11 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param api: Api class object
         """
         super().__init__(api)
-        # self.annotation = VideoAnnotationAPI(api)
-        # self.object = VideoObjectApi(api)
+        self.annotation = VolumeAnnotationAPI(api)
+        self.object = VolumeObjectApi(api)
         # self.frame = VideoFrameAPI(api)
-        # self.figure = VolumeFigureApi(api)
-        # self.tag = VolumeTagApi(api)
+        self.figure = VolumeFigureApi(api)
+        self.tag = VolumeTagApi(api)
 
     @staticmethod
     def info_sequence():
@@ -266,3 +272,20 @@ class VolumeApi(RemoveableBulkModuleApi):
 
                 if progress_cb is not None:
                     progress_cb(len(chunk))
+
+    def upload_nrrd_series_paths(
+        self,
+        dataset_id,
+        names,
+        paths,
+        progress_cb=None,
+    ):
+        volume_infos = []
+        for name, path in zip(names, paths):
+            info = self.upload_nrrd_serie_path(
+                dataset_id, name, path, log_progress=True
+            )
+            volume_infos.append(info)
+            if progress_cb is not None:
+                progress_cb(1)
+        return volume_infos

@@ -1,4 +1,53 @@
-# # coding: utf-8
+# coding: utf-8
+
+# coding: utf-8
+
+from supervisely.api.module_api import ApiField
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.volume_annotation.plane import Plane
+import sdk_part.volume_annotation.constants as constants
+
+
+class VolumeFigureApi(FigureApi):
+    def create(
+        self,
+        volume_id,
+        object_id,
+        plane_name,
+        slice_index,
+        geometry_json,
+        geometry_type,
+        # track_id=None,
+    ):
+        Plane.validate_name(plane_name)
+
+        return super().create(
+            volume_id,
+            object_id,
+            # TODO: double meta field, maybe send just value without meta key?
+            {
+                ApiField.META: {
+                    constants.SLICE_INDEX: slice_index,
+                    constants.NORMAL: Plane.get_normal(plane_name),
+                }
+            },
+            geometry_json,
+            geometry_type,
+            # track_id,
+        )
+
+    def append_bulk(self, volume_id, figures, key_id_map: KeyIdMap):
+        keys = []
+        figures_json = []
+        for figure in figures:
+            keys.append(figure.key())
+            figures_json.append(figure.to_json(key_id_map, save_meta=True))
+
+        self._append_bulk(volume_id, figures_json, keys, key_id_map)
+
+
+# old implementation for backup
 # import re
 # from requests_toolbelt import MultipartDecoder, MultipartEncoder
 

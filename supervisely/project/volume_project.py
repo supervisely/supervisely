@@ -105,50 +105,56 @@ def download_volume_project(
                 )
 
             ds_progress.iters_done_report(len(batch))
-
+    # TODO: download stl files
     project_fs.set_key_id_map(key_id_map)
 
 
-# def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
-#     project_fs = VideoProject.read_single(dir)
-#     if project_name is None:
-#         project_name = project_fs.name
+# TODO: add methods to convert to 3d masks
 
-#     if api.project.exists(workspace_id, project_name):
-#         project_name = api.project.get_free_name(workspace_id, project_name)
 
-#     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
-#     api.project.update_meta(project.id, project_fs.meta.to_json())
+def upload_volume_project(dir, api, workspace_id, project_name=None, log_progress=True):
+    project_fs = VolumeProject.read_single(dir)
+    if project_name is None:
+        project_name = project_fs.name
 
-#     for dataset_fs in project_fs.datasets:
-#         dataset = api.dataset.create(project.id, dataset_fs.name)
+    if api.project.exists(workspace_id, project_name):
+        project_name = api.project.get_free_name(workspace_id, project_name)
 
-#         names, item_paths, ann_paths = [], [], []
-#         for item_name in dataset_fs:
-#             img_path, ann_path = dataset_fs.get_item_paths(item_name)
-#             names.append(item_name)
-#             item_paths.append(img_path)
-#             ann_paths.append(ann_path)
+    project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
+    api.project.update_meta(project.id, project_fs.meta.to_json())
 
-#         progress_cb = None
-#         if log_progress:
-#             ds_progress = Progress(
-#                 "Uploading videos to dataset {!r}".format(dataset.name),
-#                 total_cnt=len(item_paths),
-#             )
-#             progress_cb = ds_progress.iters_done_report
+    for dataset_fs in project_fs.datasets:
+        dataset = api.dataset.create(project.id, dataset_fs.name)
 
-#         item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
-#         item_ids = [item_info.id for item_info in item_infos]
-#         if log_progress:
-#             ds_progress = Progress(
-#                 "Uploading annotations to dataset {!r}".format(dataset.name),
-#                 total_cnt=len(item_paths),
-#             )
-#             progress_cb = ds_progress.iters_done_report
+        names, item_paths, ann_paths = [], [], []
+        for item_name in dataset_fs:
+            img_path, ann_path = dataset_fs.get_item_paths(item_name)
+            names.append(item_name)
+            item_paths.append(img_path)
+            ann_paths.append(ann_path)
 
-#         api.video.annotation.upload_paths(
-#             item_ids, ann_paths, project_fs.meta, progress_cb
-#         )
+        progress_cb = None
+        if log_progress:
+            ds_progress = Progress(
+                "Uploading volumes to dataset {!r}".format(dataset.name),
+                total_cnt=len(item_paths),
+            )
+            progress_cb = ds_progress.iters_done_report
 
-#     return project.id, project.name
+        item_infos = api.volume.upload_nrrd_series_paths(
+            dataset.id, names, item_paths, progress_cb
+        )
+        item_ids = [item_info.id for item_info in item_infos]
+        if log_progress:
+            ds_progress = Progress(
+                "Uploading annotations to dataset {!r}".format(dataset.name),
+                total_cnt=len(item_paths),
+            )
+            progress_cb = ds_progress.iters_done_report
+
+        # TODO: here
+        api.volume.annotation.upload_paths(
+            item_ids, ann_paths, project_fs.meta, progress_cb
+        )
+
+    return project.id, project.name
