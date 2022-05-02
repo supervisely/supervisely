@@ -1,6 +1,7 @@
 import SimpleITK as sitk
 
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
+from supervisely.io.fs import ensure_base_path
 
 # from supervisely.api.volume.volume_tag_api import VolumeTagApi
 from supervisely.io.fs import (
@@ -247,3 +248,21 @@ class VolumeApi(RemoveableBulkModuleApi):
             ).iters_done_report
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
+
+    def _download(self, id, is_stream=False):
+        response = self._api.post(
+            "volumes.download", {ApiField.ID: id}, stream=is_stream
+        )
+        return response
+
+    def download_path(self, id, path, progress_cb=None):
+        response = self._download(id, is_stream=True)
+        ensure_base_path(path)
+
+        with open(path, "wb") as fd:
+            mb1 = 1024 * 1024
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+
+                if progress_cb is not None:
+                    progress_cb(len(chunk))

@@ -206,6 +206,8 @@ class ApiField:
     PROCESSING_PATH = "processingPath"
     VOLUME_ID = "volumeId"
     VOLUME_SLICES = "volumeSlices"
+    VOLUME_IDS = "volumeIds"
+    VOLUME_NAME = "volumeName"
 
 
 def _get_single_item(items):

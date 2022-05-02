@@ -50,20 +50,11 @@ def download_volume_project(
     download_volumes=True,
     log_progress=False,
 ):
-    """
-    Download project with given id in destination directory
-    :param api: Api class object
-    :param project_id: int
-    :param dest_dir: str
-    :param dataset_ids: list of integers
-    :param download_videos: bool
-    :param log_progress: bool
-    """
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
 
-    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
+    project_fs = VolumeProject(dest_dir, OpenMode.CREATE)
 
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
@@ -77,37 +68,37 @@ def download_volume_project(
 
     for dataset in datasets_infos:
         dataset_fs = project_fs.create_dataset(dataset.name)
-        videos = api.video.get_list(dataset.id)
+        volumes = api.volume.get_list(dataset.id)
 
         ds_progress = None
         if log_progress:
             ds_progress = Progress(
-                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(videos)
+                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(volumes)
             )
-        for batch in batched(videos, batch_size=LOG_BATCH_SIZE):
-            video_ids = [video_info.id for video_info in batch]
-            video_names = [video_info.name for video_info in batch]
+        for batch in batched(volumes, batch_size=LOG_BATCH_SIZE):
+            volume_ids = [volume_info.id for volume_info in batch]
+            volume_names = [volume_info.name for volume_info in batch]
 
-            ann_jsons = api.video.annotation.download_bulk(dataset.id, video_ids)
+            ann_jsons = api.volume.annotation.download_bulk(dataset.id, volume_ids)
 
-            for video_id, video_name, ann_json in zip(
-                video_ids, video_names, ann_jsons
+            for volume_id, volume_name, ann_json in zip(
+                volume_ids, volume_names, ann_jsons
             ):
-                if video_name != ann_json[ApiField.VIDEO_NAME]:
+                if volume_name != ann_json[ApiField.VOLUME_NAME]:
                     raise RuntimeError(
-                        "Error in api.video.annotation.download_batch: broken order"
+                        "Error in api.volume.annotation.download_batch: broken order"
                     )
 
-                video_file_path = dataset_fs.generate_item_path(video_name)
-                if download_videos is True:
-                    api.video.download_path(video_id, video_file_path)
+                volume_file_path = dataset_fs.generate_item_path(volume_name)
+                if download_volumes is True:
+                    api.volume.download_path(volume_id, volume_file_path)
                 else:
-                    touch(video_file_path)
+                    touch(volume_file_path)
 
                 dataset_fs.add_item_file(
-                    video_name,
-                    video_file_path,
-                    ann=VideoAnnotation.from_json(
+                    volume_name,
+                    volume_file_path,
+                    ann=VolumeAnnotation.from_json(
                         ann_json, project_fs.meta, key_id_map
                     ),
                     _validate_item=False,
@@ -118,46 +109,46 @@ def download_volume_project(
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
-    project_fs = VideoProject.read_single(dir)
-    if project_name is None:
-        project_name = project_fs.name
+# def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
+#     project_fs = VideoProject.read_single(dir)
+#     if project_name is None:
+#         project_name = project_fs.name
 
-    if api.project.exists(workspace_id, project_name):
-        project_name = api.project.get_free_name(workspace_id, project_name)
+#     if api.project.exists(workspace_id, project_name):
+#         project_name = api.project.get_free_name(workspace_id, project_name)
 
-    project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+#     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
+#     api.project.update_meta(project.id, project_fs.meta.to_json())
 
-    for dataset_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, dataset_fs.name)
+#     for dataset_fs in project_fs.datasets:
+#         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths = [], [], []
-        for item_name in dataset_fs:
-            img_path, ann_path = dataset_fs.get_item_paths(item_name)
-            names.append(item_name)
-            item_paths.append(img_path)
-            ann_paths.append(ann_path)
+#         names, item_paths, ann_paths = [], [], []
+#         for item_name in dataset_fs:
+#             img_path, ann_path = dataset_fs.get_item_paths(item_name)
+#             names.append(item_name)
+#             item_paths.append(img_path)
+#             ann_paths.append(ann_path)
 
-        progress_cb = None
-        if log_progress:
-            ds_progress = Progress(
-                "Uploading videos to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
-            )
-            progress_cb = ds_progress.iters_done_report
+#         progress_cb = None
+#         if log_progress:
+#             ds_progress = Progress(
+#                 "Uploading videos to dataset {!r}".format(dataset.name),
+#                 total_cnt=len(item_paths),
+#             )
+#             progress_cb = ds_progress.iters_done_report
 
-        item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
-        item_ids = [item_info.id for item_info in item_infos]
-        if log_progress:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
-            )
-            progress_cb = ds_progress.iters_done_report
+#         item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
+#         item_ids = [item_info.id for item_info in item_infos]
+#         if log_progress:
+#             ds_progress = Progress(
+#                 "Uploading annotations to dataset {!r}".format(dataset.name),
+#                 total_cnt=len(item_paths),
+#             )
+#             progress_cb = ds_progress.iters_done_report
 
-        api.video.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, progress_cb
-        )
+#         api.video.annotation.upload_paths(
+#             item_ids, ann_paths, project_fs.meta, progress_cb
+#         )
 
-    return project.id, project.name
+#     return project.id, project.name
