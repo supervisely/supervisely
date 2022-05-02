@@ -30,7 +30,7 @@ class Plane(FrameCollection):
     SAGITTAL = "sagittal"
     CORONAL = "coronal"
     AXIAL = "axial"
-    _valid_names = [SAGITTAL, CORONAL, AXIAL]
+    _valid_names = [SAGITTAL, CORONAL, AXIAL, None]  # None for spatial figures
 
     @staticmethod
     def validate_name(name):

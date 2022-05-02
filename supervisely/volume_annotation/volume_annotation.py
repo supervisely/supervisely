@@ -158,10 +158,16 @@ class VolumeAnnotation:
             key_id_map=key_id_map,
         )
 
-        spacial_figures = []
+        spatial_figures = []
         for figure_json in data.get(SPATIAL_FIGURES, []):
-            figure = VolumeFigure.from_json(figure_json, objects, key_id_map)
-            spacial_figures.append(figure)
+            figure = VolumeFigure.from_json(
+                figure_json,
+                objects,
+                plane_name=None,
+                slice_index=None,
+                key_id_map=key_id_map,
+            )
+            spatial_figures.append(figure)
 
         return cls(
             volume_meta=volume_meta,
@@ -170,7 +176,7 @@ class VolumeAnnotation:
             plane_coronal=plane_coronal,
             plane_axial=plane_axial,
             tags=tags,
-            spacial_figures=spacial_figures,
+            spatial_figures=spatial_figures,
             key=volume_key,
         )
 

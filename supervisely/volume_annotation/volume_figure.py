@@ -63,7 +63,7 @@ class VolumeFigure(VideoFigure):
 
     @property
     def parent_object(self):
-        return self.volume_object()
+        return self.volume_object
 
     @property
     def frame_index(self):
@@ -94,6 +94,11 @@ class VolumeFigure(VideoFigure):
                         type(self._geometry), self.parent_object.obj_class.geometry_type
                     )
                 )
+
+    def _validate_geometry(self):
+        if type(self._geometry) == ClosedSurfaceMesh:
+            return
+        super()._validate_geometry()
 
     def validate_bounds(self, img_size, _auto_correct=False):
         if type(self._geometry) == ClosedSurfaceMesh:
@@ -132,6 +137,7 @@ class VolumeFigure(VideoFigure):
             constants.NORMAL: self.normal,
         }
 
+    @classmethod
     def from_json(
         cls,
         data,
