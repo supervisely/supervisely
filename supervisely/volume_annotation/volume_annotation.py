@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 import uuid
-from sdk_part.volume_annotation.volume_figure import VolumeFigure
+from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 from supervisely._utils import take_with_default
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -13,18 +13,9 @@ from supervisely.volume_annotation.volume_object_collection import (
 )
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.constants import (
-    FRAMES,
-    IMG_SIZE,
-    IMG_SIZE_HEIGHT,
-    IMG_SIZE_WIDTH,
-    DESCRIPTION,
-    FRAMES_COUNT,
     TAGS,
     OBJECTS,
-    VIDEO_ID,
     KEY,
-    VIDEOS_MAP,
-    VIDEO_NAME,
     VOLUME_ID,
     VOLUME_META,
     PLANES,
@@ -144,24 +135,27 @@ class VolumeAnnotation:
         )
 
         plane_sagittal = Plane.from_json(
-            data,
+            data[PLANES][0],
+            Plane.SAGITTAL,
             objects,
-            Plane.get_slices_count(Plane.SAGITTAL, volume_meta),
-            key_id_map,
+            volume_meta=volume_meta,
+            key_id_map=key_id_map,
         )
 
         plane_coronal = Plane.from_json(
-            data,
+            data[PLANES][1],
+            Plane.CORONAL,
             objects,
-            Plane.get_slices_count(Plane.CORONAL, volume_meta),
-            key_id_map,
+            volume_meta=volume_meta,
+            key_id_map=key_id_map,
         )
 
         plane_axial = Plane.from_json(
-            data,
+            data[PLANES][2],
+            Plane.AXIAL,
             objects,
-            Plane.get_slices_count(Plane.AXIAL, volume_meta),
-            key_id_map,
+            volume_meta=volume_meta,
+            key_id_map=key_id_map,
         )
 
         spacial_figures = []

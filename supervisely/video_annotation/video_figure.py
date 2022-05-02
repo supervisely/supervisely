@@ -127,12 +127,12 @@ class VideoFigure:
             if object_id is not None:
                 data_json[OBJECT_ID] = object_id
         if save_meta is True:
-            data_json[ApiField.META] = self._get_meta()
+            data_json[ApiField.META] = self.get_meta()
 
         self._add_creation_info(data_json)
         return data_json
 
-    def _get_meta(self):
+    def get_meta(self):
         return {ApiField.FRAME: self.frame_index}
 
     @classmethod

@@ -17,7 +17,6 @@ from supervisely.geometry.constants import (
     CLASS_ID,
 )
 
-from supervisely.volume_annotation.plane_info import PlaneName, get_normal
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
@@ -46,7 +45,9 @@ class VolumeFigure(VideoFigure):
             updated_at=updated_at,
             created_at=created_at,
         )
-        PlaneName.validate(plane_name)
+        from supervisely.volume_annotation.plane import Plane
+
+        Plane.validate_name(plane_name)
         self._plane_name = plane_name
         self._slice_index = slice_index
 
@@ -78,7 +79,9 @@ class VolumeFigure(VideoFigure):
 
     @property
     def normal(self):
-        return get_normal(self.plane_name)
+        from supervisely.volume_annotation.plane import Plane
+
+        return Plane.get_normal(self.plane_name)
 
     def _validate_geometry_type(self):
         if (
@@ -122,7 +125,7 @@ class VolumeFigure(VideoFigure):
             created_at=take_with_default(created_at, self.created_at),
         )
 
-    def _get_meta(self):
+    def get_meta(self):
         return {
             constants.SLICE_INDEX: self.slice_index,
             constants.PLANE_NAME: self.plane_name,

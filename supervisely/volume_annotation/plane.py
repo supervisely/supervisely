@@ -3,8 +3,9 @@
 from copy import deepcopy
 from supervisely._utils import take_with_default, validate_img_size
 from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.volume_annotation import constants
 from supervisely.volume_annotation.slice import Slice
-
+from supervisely.sly_logger import logger
 
 # example:
 # "volumeMeta": {
@@ -41,7 +42,7 @@ class Plane(FrameCollection):
     def __init__(
         self, plane_name, img_size=None, slices_count=None, items=None, volume_meta=None
     ):
-        Plane.validate(plane_name)
+        Plane.validate_name(plane_name)
         self._name = plane_name
 
         if img_size is None and volume_meta is None:
@@ -61,7 +62,7 @@ class Plane(FrameCollection):
             slices_count, Plane.get_slices_count(self._name, volume_meta)
         )
 
-        super.__init__(items=items)
+        super().__init__(items=items)
 
     @property
     def name(self):
@@ -122,8 +123,41 @@ class Plane(FrameCollection):
             return dimentions["y"]
 
     @classmethod
-    def from_json(cls, data, objects, frames_count=None, key_id_map=None):
-        raise NotImplementedError()
+    def from_json(
+        cls,
+        data,
+        plane_name,
+        objects,
+        img_size=None,
+        slices_count=None,
+        volume_meta=None,
+        key_id_map=None,
+    ):
+        Plane.validate_name(plane_name)
+        if plane_name != data[constants.NAME]:
+            raise ValueError(
+                f"Plane name {plane_name} differs from the name in json data {data[constants.NAME]}"
+            )
+
+        if Plane.get_normal(plane_name) != data[constants.NORMAL]:
+            raise ValueError(
+                f"Normal json data {data[constants.NORMAL]} is not valid for {plane_name}. It should be {Plane.get_normal(plane_name)}"
+            )
+        if slices_count is None:
+            if volume_meta is None:
+                raise ValueError(
+                    "Both slices_count and volume_meta are None, only one of them is allowed to be a None"
+                )
+            else:
+                slices_count = Plane.get_slices_count(plane_name, volume_meta)
+
+        slices = []
+        for slice_json in data[constants.SLICES]:
+            slices.append(
+                cls.item_type.from_json(slice_json, objects, slices_count, key_id_map)
+            )
+
+        return cls(plane_name, img_size, slices_count, slices, volume_meta)
 
     def to_json(self, key_id_map=None):
         raise NotImplementedError()
