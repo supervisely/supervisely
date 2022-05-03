@@ -126,8 +126,8 @@ class Dataset(KeyObject):
     def seg_dir(self):
         return os.path.join(self.directory, "seg")
 
-    @staticmethod
-    def _has_valid_ext(path: str) -> bool:
+    @classmethod
+    def _has_valid_ext(cls, path: str) -> bool:
         """
         The function _has_valid_ext checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp')
         :param path: the path to the file

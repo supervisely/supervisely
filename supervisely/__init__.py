@@ -176,3 +176,9 @@ from supervisely.volume_annotation.volume_object_collection import (
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.plane import Plane
+from supervisely.project.volume_project import (
+    VolumeDataset,
+    VolumeProject,
+    download_volume_project,
+    upload_volume_project,
+)

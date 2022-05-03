@@ -34,14 +34,14 @@ class VideoDataset(Dataset):
     item_module = sly_video
     paths_tuple = VideoItemPaths
 
-    @staticmethod
-    def _has_valid_ext(path: str) -> bool:
+    @classmethod
+    def _has_valid_ext(cls, path: str) -> bool:
         """
         Checks if file from given path is supported
         :param path: str
         :return: bool
         """
-        return VideoDataset.item_module.has_valid_ext(path)
+        return cls.item_module.has_valid_ext(path)
 
     def _get_empty_annotaion(self, item_name):
         """

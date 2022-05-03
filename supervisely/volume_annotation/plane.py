@@ -78,7 +78,7 @@ class Plane(FrameCollection):
 
     @property
     def normal(self):
-        return Plane.get_normal(self.plane_name)
+        return Plane.get_normal(self.name)
 
     def __str__(self):
         return super().__str__().replace("Frames", "Slices")
@@ -160,7 +160,16 @@ class Plane(FrameCollection):
         return cls(plane_name, img_size, slices_count, slices, volume_meta)
 
     def to_json(self, key_id_map=None):
-        raise NotImplementedError()
+        json_slices = []
+        for slice in self:
+            slice: Slice
+            json_slices.append(slice.to_json(key_id_map))
+
+        return {
+            constants.NAME: self.name,
+            constants.NORMAL: self.normal,
+            constants.SLICES: json_slices,
+        }
 
     def validate_figures_bounds(self):
         for slice in self:

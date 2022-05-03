@@ -10,6 +10,7 @@ from supervisely.task.progress import Progress
 from supervisely._utils import batched
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.volume import volume as sly_volume
@@ -43,7 +44,7 @@ class VolumeProject(VideoProject):
 
 
 def download_volume_project(
-    api,
+    api: Api,
     project_id,
     dest_dir,
     dataset_ids=None,
@@ -81,8 +82,8 @@ def download_volume_project(
 
             ann_jsons = api.volume.annotation.download_bulk(dataset.id, volume_ids)
 
-            for volume_id, volume_name, ann_json in zip(
-                volume_ids, volume_names, ann_jsons
+            for volume_id, volume_name, volume_info, ann_json in zip(
+                volume_ids, volume_names, batch, ann_jsons
             ):
                 if volume_name != ann_json[ApiField.VOLUME_NAME]:
                     raise RuntimeError(
@@ -91,7 +92,16 @@ def download_volume_project(
 
                 volume_file_path = dataset_fs.generate_item_path(volume_name)
                 if download_volumes is True:
-                    api.volume.download_path(volume_id, volume_file_path)
+                    item_progress = None
+                    if log_progress:
+                        item_progress = Progress(
+                            f"Downloading {volume_name}",
+                            total_cnt=volume_info.sizeb,
+                            is_size=True,
+                        )
+                    api.volume.download_path(
+                        volume_id, volume_file_path, item_progress.iters_done_report
+                    )
                 else:
                     touch(volume_file_path)
 
@@ -112,7 +122,9 @@ def download_volume_project(
 # TODO: add methods to convert to 3d masks
 
 
-def upload_volume_project(dir, api, workspace_id, project_name=None, log_progress=True):
+def upload_volume_project(
+    dir, api: Api, workspace_id, project_name=None, log_progress=True
+):
     project_fs = VolumeProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name

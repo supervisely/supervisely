@@ -6,7 +6,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.volume_annotation.plane import Plane
-import sdk_part.volume_annotation.constants as constants
+import supervisely.volume_annotation.constants as constants
 
 
 class VolumeFigureApi(FigureApi):

@@ -43,7 +43,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             ApiField.HASH,
             ApiField.MIME,
             ApiField.EXT,
-            ApiField.SIZE,
+            ApiField.SIZEB3,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
             ApiField.META,

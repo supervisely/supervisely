@@ -208,6 +208,7 @@ class ApiField:
     VOLUME_SLICES = "volumeSlices"
     VOLUME_IDS = "volumeIds"
     VOLUME_NAME = "volumeName"
+    SIZEB3 = (["fileMeta", "size"], "sizeb")
 
 
 def _get_single_item(items):
