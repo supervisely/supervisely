@@ -154,7 +154,9 @@ class Plane(FrameCollection):
         slices = []
         for slice_json in data[constants.SLICES]:
             slices.append(
-                cls.item_type.from_json(slice_json, objects, slices_count, key_id_map)
+                cls.item_type.from_json(
+                    slice_json, objects, plane_name, slices_count, key_id_map
+                )
             )
 
         return cls(plane_name, img_size, slices_count, slices, volume_meta)

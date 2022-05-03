@@ -169,6 +169,7 @@ def upload_volume_project(
             dataset.id, names, item_paths, progress_cb
         )
         item_ids = [item_info.id for item_info in item_infos]
+        ds_progress = None
         if log_progress:
             ds_progress = Progress(
                 "Uploading annotations to dataset {!r}".format(dataset.name),
@@ -176,7 +177,6 @@ def upload_volume_project(
             )
             progress_cb = ds_progress.iters_done_report
 
-        # TODO: here
         api.volume.annotation.upload_paths(
             item_ids, ann_paths, project_fs.meta, progress_cb
         )

@@ -80,9 +80,7 @@ class Frame(KeyObject):
 
         figures = []
         for figure_json in data.get(FIGURES, []):
-            figure = Frame.figure_type.from_json(
-                figure_json, objects, index, key_id_map
-            )
+            figure = cls.figure_type.from_json(figure_json, objects, index, key_id_map)
             figures.append(figure)
         return cls(index=index, figures=figures)
 

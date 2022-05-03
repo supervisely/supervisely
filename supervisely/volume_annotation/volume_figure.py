@@ -7,7 +7,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely._utils import take_with_default
-
+from supervisely.volume_annotation.volume_object import VolumeObject
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
 from supervisely.geometry.constants import (
@@ -52,7 +52,7 @@ class VolumeFigure(VideoFigure):
         self._slice_index = slice_index
 
     @property
-    def volume_object(self):
+    def volume_object(self) -> VolumeObject:
         return self._video_object
 
     @property
@@ -62,7 +62,7 @@ class VolumeFigure(VideoFigure):
         )
 
     @property
-    def parent_object(self):
+    def parent_object(self) -> VolumeObject:
         return self.volume_object
 
     @property

@@ -35,13 +35,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann.figures,
             key_id_map,
         )
+        # build interpolations for objects on server
+        # self._api.volume.figure.interpolate(volume_id, ann.spatial_figures, key_id_map)
 
     def upload_paths(self, volume_ids, ann_paths, project_meta, progress_cb=None):
-        # video_ids from the same dataset
-
+        key_id_map = KeyIdMap()
         for volume_id, ann_path in zip(volume_ids, ann_paths):
             ann_json = load_json_file(ann_path)
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
 
             # ignore existing key_id_map because the new objects will be created
-            self.append(volume_id, ann)
+            self.append(volume_id, ann, key_id_map)

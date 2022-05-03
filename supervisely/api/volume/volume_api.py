@@ -79,6 +79,9 @@ class VolumeApi(RemoveableBulkModuleApi):
             },
         )
 
+    def get_info_by_id(self, id):
+        return self._get_info_by_id(id, "volumes.info")
+
     def upload_hash(self, dataset_id, name, hash, meta=None):
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]

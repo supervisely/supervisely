@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from copy import deepcopy
+from re import L
 import uuid
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
@@ -23,7 +24,6 @@ from supervisely.volume_annotation.constants import (
 )
 
 
-# @TODO: spatialFigures
 class VolumeAnnotation:
     def __init__(
         self,
@@ -85,6 +85,13 @@ class VolumeAnnotation:
     def spatial_figures(self):
         return self._spatial_figures
 
+    @property
+    def figures(self):
+        all_figures = []
+        for plane in [self.plane_sagittal, self.plane_coronal, self.plane_axial]:
+            all_figures.extend(plane.figures)
+        return all_figures
+
     def key(self):
         return self._key
 
@@ -107,7 +114,7 @@ class VolumeAnnotation:
         plane_coronal=None,
         plane_axial=None,
         tags=None,
-        spacial_figures=None,
+        spatial_figures=None,
     ):
         return VolumeAnnotation(
             volume_meta=take_with_default(volume_meta, self.volume_meta),
@@ -116,7 +123,7 @@ class VolumeAnnotation:
             plane_coronal=take_with_default(plane_coronal, self.plane_coronal),
             plane_axial=take_with_default(plane_axial, self.plane_axial),
             tags=take_with_default(tags, self.tags),
-            spacial_figures=take_with_default(spacial_figures, self.spatial_figures),
+            spatial_figures=take_with_default(spatial_figures, self.spatial_figures),
         )
 
     @classmethod
