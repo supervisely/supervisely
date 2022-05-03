@@ -81,16 +81,49 @@ class VolumeFigureApi(FigureApi):
     def interpolate(
         self, volume_id, spatial_figures: List[VolumeFigure], key_id_map: KeyIdMap
     ):
-        raise NotImplementedError()
+        # raise NotImplementedError()
         # STL mesh interpolations can not be uploaded:
         # 400 Client Error: Bad Request for url: public/api/v3/figures.bulk.add ({"error":"Please, use \"figures.bulk.upload.geometry\" method to update figures with \"geometryType\" closed_surface_mesh","details":{"figures":[14]}})
+        # figures.bulk.upload.geometry
 
-        results = []
+        meshes = []
         for mesh in spatial_figures:
             object_id = key_id_map.get_object_id(mesh.volume_object.key())
             response = self._api.post(
                 "figures.volumetric_interpolation",
                 {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
             )
-            results.append(response.json())
+            figure_id = key_id_map.get_figure_id(mesh.key())
+
+            # @TODO: load from disk or get from server
+            meshes.append(response.json())
+
+        # for batch in batched(items_to_upload):
+        #     content_dict = {}
+        #     for idx, item in enumerate(batch):
+        #         content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'nrrd/*')
+        #     encoder = MultipartEncoder(fields=content_dict)
+        #     self._api.post('import-storage.bulk.upload', encoder)
+        #     if progress_cb is not None:
+        #         progress_cb(len(batch))
+
+        content_dict = {}
+        for idx, item in enumerate(meshes):
+            content_dict[f"{idx}-mesh"] = (
+                str(idx),
+                func_item_to_byte_stream(item),
+            )
+        encoder = MultipartEncoder(fields=content_dict)
+
+        self._api.post("figures.bulk.upload.geometry", encoder)
+
+        # if progress_cb is not None:
+        #     progress_cb(len(batch))
+
+        #     self._api.post(
+        #         "figures.bulk.upload.geometry",
+        #         {ApiField.FIGURE_ID: figure_id, ApiField.GEOMETRY: response.json()},
+        #     )
+
+        #     results.append(response.json())
         return results

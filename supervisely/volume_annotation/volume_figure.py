@@ -203,3 +203,10 @@ class VolumeFigure(VideoFigure):
             updated_at=updated_at,
             created_at=created_at,
         )
+
+    def to_json(self, key_id_map=None, save_meta=True):
+        json_data = super().to_json(key_id_map, save_meta)
+        if type(self._geometry) == ClosedSurfaceMesh:
+            json_data.pop(ApiField.GEOMETRY)
+            json_data.pop(ApiField.META)
+        return json_data

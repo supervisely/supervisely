@@ -35,8 +35,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann.figures,
             key_id_map,
         )
-        # build interpolations for objects on server
-        # self._api.volume.figure.interpolate(volume_id, ann.spatial_figures, key_id_map)
+        raise NotImplementedError()
+        # create empty figures for meshes
+        self._api.volume.figure.append_bulk(volume_id, ann.spatial_figures, key_id_map)
+        # build interpolations for objects and upload data to empty figures
+        self._api.volume.figure.interpolate(volume_id, ann.spatial_figures, key_id_map)
 
     def upload_paths(self, volume_ids, ann_paths, project_meta, progress_cb=None):
         key_id_map = KeyIdMap()
