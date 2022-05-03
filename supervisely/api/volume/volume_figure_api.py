@@ -1,7 +1,8 @@
 # coding: utf-8
-
-# coding: utf-8
-
+import re
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from supervisely.io.fs import ensure_base_path
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.api.entity_annotation.figure_api import FigureApi
@@ -45,6 +46,35 @@ class VolumeFigureApi(FigureApi):
             figures_json.append(figure.to_json(key_id_map, save_meta=True))
 
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
+
+    def _download_geometries_batch(self, ids):
+        for batch_ids in batched(ids):
+            response = self._api.post(
+                "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
+            )
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                figure_id = int(
+                    re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1]
+                )
+                yield figure_id, part
+
+    def download_stl_meshes(self, ids, paths):
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise RuntimeError(
+                'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
+            )
+
+        id_to_path = {id: path for id, path in zip(ids, paths)}
+        for img_id, resp_part in self._download_geometries_batch(ids):
+            ensure_base_path(id_to_path[img_id])
+            with open(id_to_path[img_id], "wb") as w:
+                w.write(resp_part.content)
 
 
 # old implementation for backup

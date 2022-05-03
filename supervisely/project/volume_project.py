@@ -26,6 +26,7 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
+    interpolation_dir = "interpolation"
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
@@ -34,6 +35,10 @@ class VolumeDataset(VideoDataset):
         path = item_name
         _, volume_meta = sly_volume.read_nrrd_serie_volume(path)
         return self.annotation_class(volume_meta)
+
+    def get_interpolation_path(self, item_name, figure):
+        dir = os.path.join(self.directory, self.interpolation_dir, item_name)
+        return os.path.join(dir, figure.key().hex + ".stl")
 
 
 class VolumeProject(VideoProject):
@@ -105,17 +110,24 @@ def download_volume_project(
                 else:
                     touch(volume_file_path)
 
+                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
                 dataset_fs.add_item_file(
                     volume_name,
                     volume_file_path,
-                    ann=VolumeAnnotation.from_json(
-                        ann_json, project_fs.meta, key_id_map
-                    ),
+                    ann=ann,
                     _validate_item=False,
                 )
 
+                mesh_ids = []
+                mesh_paths = []
+                for sf in ann.spatial_figures:
+                    figure_id = key_id_map.get_figure_id(sf.key())
+                    mesh_ids.append(figure_id)
+                    figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
+                    mesh_paths.append(figure_path)
+                api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
+
             ds_progress.iters_done_report(len(batch))
-    # TODO: download stl files
     project_fs.set_key_id_map(key_id_map)
 
 
