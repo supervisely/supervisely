@@ -118,7 +118,6 @@ class VolumeFigure(VideoFigure):
         created_at=None,
     ):
         return self.__class__(
-            self,
             volume_object=take_with_default(volume_object, self.parent_object),
             geometry=take_with_default(geometry, self.geometry),
             plane_name=take_with_default(plane_name, self.plane_name),
