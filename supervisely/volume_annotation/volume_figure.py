@@ -176,9 +176,11 @@ class VolumeFigure(VideoFigure):
             )
 
         shape_str = data[ApiField.GEOMETRY_TYPE]
-        geometry_json = data[ApiField.GEOMETRY]
-
         shape = GET_GEOMETRY_FROM_STR(shape_str)
+        if shape == ClosedSurfaceMesh:
+            geometry_json = data
+        else:
+            geometry_json = data[ApiField.GEOMETRY]
         geometry = shape.from_json(geometry_json)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
