@@ -148,12 +148,13 @@ class VolumeFigureApi(FigureApi):
 
     # def _upload_geometries_batch(ids, )
     def _upload_meshes_batch(self, figure2bytes):
-        content_dict = {}
         for figure_id, figure_bytes in figure2bytes.items():
-            content_dict[f"{figure_id}-figure"] = (str(figure_id), figure_bytes)
-        encoder = MultipartEncoder(fields=content_dict)
-        resp = self._api.post("figures.bulk.upload.geometry", encoder)
-        x = resp
+            content_dict = {
+                ApiField.FIGURE_ID: str(figure_id),
+                ApiField.GEOMETRY: (str(figure_id), figure_bytes, "application/sla"),
+            }
+            encoder = MultipartEncoder(fields=content_dict)
+            resp = self._api.post("figures.bulk.upload.geometry", encoder)
 
     def upload_stl_meshes(
         self,
@@ -162,6 +163,7 @@ class VolumeFigureApi(FigureApi):
         key_id_map: KeyIdMap,
         interpolation_dir=None,
     ):
+        # upload existing interpolations or create on the fly and and add them to empty mesh figures
         if len(spatial_figures) == 0:
             return
 

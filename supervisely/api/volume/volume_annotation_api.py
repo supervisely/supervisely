@@ -59,8 +59,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             self._api.volume.figure.append_bulk(
                 volume_id, ann.spatial_figures, key_id_map
             )
-            # upload existing interpolations to empty mesh figures
+            # upload existing interpolations or create on the fly and and add them to empty mesh figures
             self._api.volume.figure.upload_stl_meshes(
                 volume_id, ann.spatial_figures, key_id_map, interpolation_dir
             )
-            # create interpolations and upload them to empty mesh figures
+            if progress_cb is not None:
+                progress_cb(1)
