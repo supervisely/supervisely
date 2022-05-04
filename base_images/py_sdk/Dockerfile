@@ -2,6 +2,9 @@ FROM supervisely/base-py:6.1.7
 
 ARG tag_ref_name
 
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+
 RUN apt-get update
 RUN apt-get install -y zlib1g
 
