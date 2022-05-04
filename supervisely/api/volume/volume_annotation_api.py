@@ -35,17 +35,32 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann.figures,
             key_id_map,
         )
-        raise NotImplementedError()
-        # create empty figures for meshes
-        self._api.volume.figure.append_bulk(volume_id, ann.spatial_figures, key_id_map)
-        # build interpolations for objects and upload data to empty figures
-        self._api.volume.figure.interpolate(volume_id, ann.spatial_figures, key_id_map)
 
-    def upload_paths(self, volume_ids, ann_paths, project_meta, progress_cb=None):
+    def upload_paths(
+        self,
+        volume_ids,
+        ann_paths,
+        project_meta,
+        interpolation_dirs=None,
+        progress_cb=None,
+    ):
+        if interpolation_dirs is None:
+            interpolation_dirs = [None] * len(ann_paths)
+
         key_id_map = KeyIdMap()
-        for volume_id, ann_path in zip(volume_ids, ann_paths):
+        for volume_id, ann_path, interpolation_dir in zip(
+            volume_ids, ann_paths, interpolation_dirs
+        ):
             ann_json = load_json_file(ann_path)
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
-
-            # ignore existing key_id_map because the new objects will be created
             self.append(volume_id, ann, key_id_map)
+
+            # create empty figures for meshes
+            self._api.volume.figure.append_bulk(
+                volume_id, ann.spatial_figures, key_id_map
+            )
+            # upload existing interpolations to empty mesh figures
+            self._api.volume.figure.upload_stl_meshes(
+                volume_id, ann.spatial_figures, key_id_map, interpolation_dir
+            )
+            # create interpolations and upload them to empty mesh figures

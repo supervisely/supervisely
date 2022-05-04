@@ -1,8 +1,9 @@
 # coding: utf-8
 import re
+import os
 from typing import List
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-from supervisely.io.fs import ensure_base_path
+from supervisely.io.fs import ensure_base_path, file_exists
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -10,6 +11,7 @@ from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.volume_annotation.plane import Plane
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 
 class VolumeFigureApi(FigureApi):
@@ -41,6 +43,8 @@ class VolumeFigureApi(FigureApi):
         )
 
     def append_bulk(self, volume_id, figures, key_id_map: KeyIdMap):
+        if len(figures) == 0:
+            return
         keys = []
         figures_json = []
         for figure in figures:
@@ -79,51 +83,99 @@ class VolumeFigureApi(FigureApi):
                 w.write(resp_part.content)
 
     def interpolate(
-        self, volume_id, spatial_figures: List[VolumeFigure], key_id_map: KeyIdMap
+        self, volume_id, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
     ):
-        # raise NotImplementedError()
-        # STL mesh interpolations can not be uploaded:
-        # 400 Client Error: Bad Request for url: public/api/v3/figures.bulk.add ({"error":"Please, use \"figures.bulk.upload.geometry\" method to update figures with \"geometryType\" closed_surface_mesh","details":{"figures":[14]}})
-        # figures.bulk.upload.geometry
-
-        meshes = []
-        for mesh in spatial_figures:
-            object_id = key_id_map.get_object_id(mesh.volume_object.key())
-            response = self._api.post(
-                "figures.volumetric_interpolation",
-                {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
+        if type(spatial_figure._geometry) != ClosedSurfaceMesh:
+            raise TypeError(
+                "Interpolation can be created only for figures with geometry ClosedSurfaceMesh"
             )
-            figure_id = key_id_map.get_figure_id(mesh.key())
+        object_id = key_id_map.get_object_id(spatial_figure.volume_object.key())
+        response = self._api.post(
+            "figures.volumetric_interpolation",
+            {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
+        )
+        return response.content
 
-            # @TODO: load from disk or get from server
-            meshes.append(response.json())
+    # def interpolate_batch(
+    #     self, volume_id, spatial_figures: List[VolumeFigure], key_id_map: KeyIdMap
+    # ):
+    #     # raise NotImplementedError()
+    #     # STL mesh interpolations can not be uploaded:
+    #     # 400 Client Error: Bad Request for url: public/api/v3/figures.bulk.add ({"error":"Please, use \"figures.bulk.upload.geometry\" method to update figures with \"geometryType\" closed_surface_mesh","details":{"figures":[14]}})
+    #     # figures.bulk.upload.geometry
 
-        # for batch in batched(items_to_upload):
-        #     content_dict = {}
-        #     for idx, item in enumerate(batch):
-        #         content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'nrrd/*')
-        #     encoder = MultipartEncoder(fields=content_dict)
-        #     self._api.post('import-storage.bulk.upload', encoder)
-        #     if progress_cb is not None:
-        #         progress_cb(len(batch))
+    #     meshes = []
+    #     for mesh in spatial_figures:
+    #         object_id = key_id_map.get_object_id(mesh.volume_object.key())
+    #         response = self._api.post(
+    #             "figures.volumetric_interpolation",
+    #             {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
+    #         )
+    #         figure_id = key_id_map.get_figure_id(mesh.key())
 
+    #         # @TODO: load from disk or get from server
+    #         meshes.append(response.json())
+
+    #     # for batch in batched(items_to_upload):
+    #     #     content_dict = {}
+    #     #     for idx, item in enumerate(batch):
+    #     #         content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'nrrd/*')
+    #     #     encoder = MultipartEncoder(fields=content_dict)
+    #     #     self._api.post('import-storage.bulk.upload', encoder)
+    #     #     if progress_cb is not None:
+    #     #         progress_cb(len(batch))
+
+    #     # content_dict = {}
+    #     # for idx, item in enumerate(meshes):
+    #     #     content_dict[f"{idx}-mesh"] = (
+    #     #         str(idx),
+    #     #         func_item_to_byte_stream(item),
+    #     #     )
+    #     # encoder = MultipartEncoder(fields=content_dict)
+
+    #     # self._api.post("figures.bulk.upload.geometry", encoder)
+
+    #     # # if progress_cb is not None:
+    #     # #     progress_cb(len(batch))
+
+    #     # #     self._api.post(
+    #     # #         "figures.bulk.upload.geometry",
+    #     # #         {ApiField.FIGURE_ID: figure_id, ApiField.GEOMETRY: response.json()},
+    #     # #     )
+
+    #     # #     results.append(response.json())
+    #     # return results
+
+    # def _upload_geometries_batch(ids, )
+    def _upload_meshes_batch(self, figure2bytes):
         content_dict = {}
-        for idx, item in enumerate(meshes):
-            content_dict[f"{idx}-mesh"] = (
-                str(idx),
-                func_item_to_byte_stream(item),
-            )
+        for figure_id, figure_bytes in figure2bytes.items():
+            content_dict[f"{figure_id}-figure"] = (str(figure_id), figure_bytes)
         encoder = MultipartEncoder(fields=content_dict)
+        resp = self._api.post("figures.bulk.upload.geometry", encoder)
+        x = resp
 
-        self._api.post("figures.bulk.upload.geometry", encoder)
+    def upload_stl_meshes(
+        self,
+        volume_id,
+        spatial_figures: List[VolumeFigure],
+        key_id_map: KeyIdMap,
+        interpolation_dir=None,
+    ):
+        if len(spatial_figures) == 0:
+            return
 
-        # if progress_cb is not None:
-        #     progress_cb(len(batch))
-
-        #     self._api.post(
-        #         "figures.bulk.upload.geometry",
-        #         {ApiField.FIGURE_ID: figure_id, ApiField.GEOMETRY: response.json()},
-        #     )
-
-        #     results.append(response.json())
-        return results
+        figure2bytes = {}
+        for sp in spatial_figures:
+            figure_id = key_id_map.get_figure_id(sp.key())
+            if interpolation_dir is not None:
+                meth_path = os.path.join(interpolation_dir, sp.key().hex + ".stl")
+                if file_exists(meth_path):
+                    with open(meth_path, "rb") as in_file:
+                        meth_bytes = in_file.read()
+                    figure2bytes[figure_id] = meth_bytes
+            # else - no stl file
+            if figure_id not in figure2bytes:
+                meth_bytes = self.interpolate(volume_id, sp, key_id_map)
+                figure2bytes[figure_id] = meth_bytes
+        self._upload_meshes_batch(figure2bytes)

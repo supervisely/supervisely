@@ -36,9 +36,13 @@ class VolumeDataset(VideoDataset):
         _, volume_meta = sly_volume.read_nrrd_serie_volume(path)
         return self.annotation_class(volume_meta)
 
+    def get_interpolation_dir(self, item_name):
+        return os.path.join(self.directory, self.interpolation_dir, item_name)
+
     def get_interpolation_path(self, item_name, figure):
-        dir = os.path.join(self.directory, self.interpolation_dir, item_name)
-        return os.path.join(dir, figure.key().hex + ".stl")
+        return os.path.join(
+            self.get_interpolation_dir(item_name), figure.key().hex + ".stl"
+        )
 
 
 class VolumeProject(VideoProject):
@@ -150,12 +154,13 @@ def upload_volume_project(
     for dataset_fs in project_fs.datasets:
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths = [], [], []
+        names, item_paths, ann_paths, interpolation_dirs = [], [], [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(img_path)
             ann_paths.append(ann_path)
+            interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
 
         progress_cb = None
         if log_progress:
@@ -178,7 +183,7 @@ def upload_volume_project(
             progress_cb = ds_progress.iters_done_report
 
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, progress_cb
+            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb
         )
 
     return project.id, project.name
