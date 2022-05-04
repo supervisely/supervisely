@@ -115,6 +115,7 @@ from supervisely._utils import (
 from supervisely.tiny_timer import TinyTimer
 
 from supervisely.aug import aug
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 from supervisely.video_annotation.video_object import VideoObject
@@ -165,3 +166,19 @@ from supervisely.user.user import UserRoleName
 from supervisely.io import github_utils as git
 
 from supervisely.aug import imgaug_utils
+
+import supervisely.volume as volume
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely.volume_annotation.volume_object import VolumeObject
+from supervisely.volume_annotation.volume_object_collection import (
+    VolumeObjectCollection,
+)
+from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.volume_annotation.slice import Slice
+from supervisely.volume_annotation.plane import Plane
+from supervisely.project.volume_project import (
+    VolumeDataset,
+    VolumeProject,
+    download_volume_project,
+    upload_volume_project,
+)
