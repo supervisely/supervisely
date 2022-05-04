@@ -14,6 +14,7 @@ from supervisely.volume_annotation.volume_object_collection import (
 )
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.constants import (
+    NAME,
     TAGS,
     OBJECTS,
     KEY,
@@ -141,29 +142,36 @@ class VolumeAnnotation:
             data[OBJECTS], project_meta, key_id_map
         )
 
-        plane_sagittal = Plane.from_json(
-            data[PLANES][0],
-            Plane.SAGITTAL,
-            objects,
-            volume_meta=volume_meta,
-            key_id_map=key_id_map,
-        )
-
-        plane_coronal = Plane.from_json(
-            data[PLANES][1],
-            Plane.CORONAL,
-            objects,
-            volume_meta=volume_meta,
-            key_id_map=key_id_map,
-        )
-
-        plane_axial = Plane.from_json(
-            data[PLANES][2],
-            Plane.AXIAL,
-            objects,
-            volume_meta=volume_meta,
-            key_id_map=key_id_map,
-        )
+        plane_sagittal = None
+        plane_coronal = None
+        plane_axial = None
+        for plane_json in data[PLANES]:
+            if plane_json[NAME] == Plane.SAGITTAL:
+                plane_sagittal = Plane.from_json(
+                    plane_json,
+                    Plane.SAGITTAL,
+                    objects,
+                    volume_meta=volume_meta,
+                    key_id_map=key_id_map,
+                )
+            elif plane_json[NAME] == Plane.CORONAL:
+                plane_coronal = Plane.from_json(
+                    plane_json,
+                    Plane.CORONAL,
+                    objects,
+                    volume_meta=volume_meta,
+                    key_id_map=key_id_map,
+                )
+            elif plane_json[NAME] == Plane.AXIAL:
+                plane_axial = Plane.from_json(
+                    plane_json,
+                    Plane.AXIAL,
+                    objects,
+                    volume_meta=volume_meta,
+                    key_id_map=key_id_map,
+                )
+            else:
+                raise RuntimeError(f"Unknown plane name {plane_json[NAME]}")
 
         spatial_figures = []
         for figure_json in data.get(SPATIAL_FIGURES, []):
