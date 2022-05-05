@@ -127,7 +127,6 @@ class ConfusionMatrix(Widget):
         self._data_type = None
 
         self._update_matrix_data(input_data=data)
-        self._calculate_totals()
 
         self.x_label = x_label
         self.y_label = y_label
@@ -157,6 +156,7 @@ class ConfusionMatrix(Widget):
                 'data': []
             }
             self._data_type = dict
+        self._calculate_totals()
 
     def _calculate_totals(self):
         matrix_data = []
@@ -174,7 +174,7 @@ class ConfusionMatrix(Widget):
             self._parsed_data_with_totals.update(self._calculate_max_values(matrix_data))
 
         except Exception as ex:
-            logger.warning(ex)
+            logger.warning(f'Cannot calculate totals for matrix ({self.__class__.__name__}): {ex}')
 
         totals_by_columns = np.hstack([totals_by_columns, [[None]]])
 
@@ -218,7 +218,7 @@ class ConfusionMatrix(Widget):
     @data.setter
     def data(self, value):
         self._update_matrix_data(input_data=value)
-        DataJson()[self.widget_id]['matrix_data'] = self._parsed_data
+        DataJson()[self.widget_id]['matrix_data'] = self._parsed_data_with_totals
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]['selected_row'].get('row')

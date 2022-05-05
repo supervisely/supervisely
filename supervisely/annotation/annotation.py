@@ -619,7 +619,6 @@ class Annotation:
             updated_labels.insert(0, new_label)
 
             return self.clone(labels=updated_labels)
-
         else:
             return self
 
