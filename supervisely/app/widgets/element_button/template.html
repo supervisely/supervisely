@@ -3,10 +3,11 @@
 <div>
     <el-button :type="data.{{{widget.widget_id}}}.button_type"
                :plain="data.{{{widget.widget_id}}}.plain"
-               @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
                :loading="data.{{{widget.widget_id}}}.loading"
-               :disabled="data.{{{widget.widget_id}}}.disabled">
-        {{ data.{{{widget.widget_id}}}.text }}
+               :size="data.{{{widget.widget_id}}}.button_size"
+               :disabled="data.{{{widget.widget_id}}}.disabled"
+               @click="post('/{{{widget.widget_id}}}/button_clicked_cb')">
+        <span v-html="data.{{{widget.widget_id}}}.text"></span>
     </el-button>
 
 </div>

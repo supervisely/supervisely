@@ -28,11 +28,9 @@ class GridGallery(Widget):
 
         self.columns_number = columns_number
 
-        self.preview_info = False
-        self._with_title_url = False
-
         self._last_used_column_index = 0
-        self._project_meta: supervisely.ProjectMeta | None = None
+        self._project_meta: supervisely.ProjectMeta = None
+        self._loading = False
 
         #############################
         # grid gallery settings
@@ -45,7 +43,6 @@ class GridGallery(Widget):
         self._enable_zoom: bool = enable_zoom
         self._sync_views: bool = sync_views
         self._resize_on_zoom: bool = resize_on_zoom
-
         #############################
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -70,7 +67,8 @@ class GridGallery(Widget):
                 "projectMeta": self._generate_project_meta(),
                 "layout": self._layout,
                 "annotations": self._annotations
-            }
+            },
+            "loading": self._loading
         }
 
     def get_json_state(self):
@@ -84,9 +82,12 @@ class GridGallery(Widget):
 
                 "fillRectangle": self._fill_rectangle,
                 "borderWidth": self._border_width,
+                "selectable": False,
 
                 "viewHeight": None
-            }
+            },
+            "selectedImage": None,
+            "activeFigure": None
         }
 
     def get_column_index(self, incoming_value):
@@ -152,3 +153,12 @@ class GridGallery(Widget):
         self._update_layout()
         self._update_annotations()
         self._update_project_meta()
+
+    @property
+    def loading(self):
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]['loading'] = self._loading

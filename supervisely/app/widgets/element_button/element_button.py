@@ -28,6 +28,9 @@ class ElementButton(Widget):
         self._plain = plain
         self._button_size = button_size
 
+        self._loading = False
+        self._disabled = False
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -37,26 +40,37 @@ class ElementButton(Widget):
             'plain': self._plain,
             'button_size': self._button_size,
 
-            'loading': False,
-            'disabled': False
+            'loading': self._loading,
+            'disabled': self._disabled
         }
 
     def get_json_state(self):
         return None
 
     @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, value):
+        self._text = value
+        DataJson()[self.widget_id]['text'] = self._text
+
+    @property
     def loading(self):
-        return DataJson()[self.widget_id]['loading']
+        return self._loading
 
     @loading.setter
     def loading(self, value):
-        DataJson()[self.widget_id]['loading'] = value
+        self._loading = value
+        DataJson()[self.widget_id]['loading'] = self._loading
 
     @property
     def disabled(self):
-        return DataJson()[self.widget_id]['disabled']
+        return self._disabled
 
     @disabled.setter
     def disabled(self, value):
-        DataJson()[self.widget_id]['disabled'] = value
+        self._disabled = value
+        DataJson()[self.widget_id]['disabled'] = self._disabled
 

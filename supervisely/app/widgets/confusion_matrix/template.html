@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/confusion_matrix/style.css"/>
 
-<div>
+<div v-loading="data.{{{widget.widget_id}}}.loading">
   <sly-confusion-matrix :data="data.{{{widget.widget_id}}}.matrix_data"
                         :options="data.{{{widget.widget_id}}}.matrix_options"
                         @input="state.{{{widget.widget_id}}}.selected_row = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')">

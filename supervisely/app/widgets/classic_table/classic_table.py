@@ -183,11 +183,10 @@ class ClassicTable(Widget):
             DataJson()[self.widget_id]['table_data'] = self._parsed_data
             return popped_row
 
-
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]['selected_row'].get('selectedRow')
         col_index = state[self.widget_id]['selected_row'].get('selectedColumn')
-        row_data = state[self.widget_id]['selected_row'].get('selectedRowData')
+        row_data = state[self.widget_id]['selected_row'].get('selectedRowData', {})
 
         return {
             'row_index': row_index,

@@ -131,6 +131,8 @@ class ConfusionMatrix(Widget):
         self.x_label = x_label
         self.y_label = y_label
 
+        self._loading = False
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -140,7 +142,8 @@ class ConfusionMatrix(Widget):
                 'selectable': len(DataJson().get(self.widget_id, {}).get('widget_routes', {})) > 0,
                 'horizontalLabel': self.x_label,
                 'verticalLabel': self.y_label
-            }
+            },
+            'loading': self._loading
         }
 
     def get_json_state(self):
@@ -247,3 +250,12 @@ class ConfusionMatrix(Widget):
             "diagonalMax": float(max(np.diagonal(matrix_data))),
             "maxValue": float(matrix_data.max())
         }
+
+    @property
+    def loading(self):
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]['loading'] = self._loading
