@@ -223,8 +223,8 @@ class VolumeApi(RemoveableBulkModuleApi):
                     )
         return volume_info
 
-    def upload_dicom_serie_paths(self, dataset_id, name, paths, log_progress=True):
-        volume_np, volume_meta = volume.read_dicom_serie_volume_np(paths)
+    def upload_dicom_serie_paths(self, dataset_id, name, paths, log_progress=True, anonymize=True):
+        volume_np, volume_meta = volume.read_dicom_serie_volume_np(paths, anonymize=anonymize)
         progress_cb = None
         if log_progress is True:
             progress_cb = Progress(

@@ -84,8 +84,8 @@ def normalize_volume_meta(meta):
     return meta
 
 
-def read_dicom_serie_volume_np(paths: List[str]) -> np.ndarray:
-    sitk_volume, meta = read_dicom_serie_volume(paths)
+def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
+    sitk_volume, meta = read_dicom_serie_volume(paths, anonymize=anonymize)
     # for debug:
     # sitk.WriteImage(sitk_volume, "/work/output/sitk.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
@@ -218,12 +218,12 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths):
+def read_dicom_serie_volume(paths, anonymize=True):
     reader = sitk.ImageSeriesReader()
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
     sitk_volume = _sitk_image_orient_ras(sitk_volume)
-    dicom_tags = read_dicom_tags(paths[0])
+    dicom_tags = read_dicom_tags(paths[0], anonymize=anonymize)
 
     f_min_max = sitk.MinimumMaximumImageFilter()
     f_min_max.Execute(sitk_volume)
