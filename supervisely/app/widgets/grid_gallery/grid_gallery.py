@@ -2,7 +2,6 @@ import copy
 import uuid
 
 import supervisely
-from supervisely import Annotation
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
@@ -102,8 +101,9 @@ class GridGallery(Widget):
 
         return incoming_value
 
-    def append(self, image_url: str,
-               annotation: Annotation = None,
+    def append(self,
+               image_url: str,
+               annotation: supervisely.Annotation = None,
                title: str = '',
                column_index: int = None):
 
@@ -112,7 +112,7 @@ class GridGallery(Widget):
 
         self._data.append({
             "image_url": image_url,
-            "annotation": Annotation((1, 1)) if annotation is None else annotation.clone(),
+            "annotation": supervisely.Annotation((1, 1)) if annotation is None else annotation.clone(),
             "column_index": column_index,
             "title": title,
             "cell_uuid": cell_uuid

@@ -216,7 +216,7 @@ class Dataset(KeyObject):
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError('Item {} not found in the project.'.format(item_name))
-        seg_path = os.path.join(self.seg_dir, item_name)
+        seg_path = os.path.join(self.seg_dir, f'{item_name}.png')
         return seg_path
 
     def add_item_file(self, item_name, item_path, ann=None, _validate_item=True, _use_hardlink=False, img_info=None):
@@ -631,7 +631,7 @@ class Project:
         dst_meta = src_project.meta.clone()
 
         if segmentation_type == 'semantic' and src_project.meta.obj_classes.get(_bg_class_name) is None:
-            dst_meta = src_project.meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
+            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
         dst_meta, dst_mapping = dst_meta.to_segmentation_task()
 
@@ -664,7 +664,7 @@ class Project:
                 if segmentation_type == 'semantic':
                     ann = ann.add_bg_object(_bg_class_name)
 
-                seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
+                seg_ann = ann.to_nonoverlapping_masks(dst_mapping, target_classes=target_classes)  # rendered instances and filter classes
 
                 if segmentation_type == 'semantic':
                     seg_ann = seg_ann.to_segmentation_task()
