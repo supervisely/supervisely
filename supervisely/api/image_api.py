@@ -309,11 +309,18 @@ class ImageApi(RemoveableBulkModuleApi):
             if not pending_hashes:
                 return
 
+            warning_items = []
+            for h in pending_hashes:
+                item_data =  hash_to_items[h]
+                if isinstance(item_data, (bytes, bytearray)):
+                    item_data = "some bytes ..."
+                warning_items.append((h, item_data))
+            
             logger.warn(
                 "Unable to upload images (data).",
                 extra={
                     "retry_idx": retry_idx,
-                    "items": [(h, hash_to_items[h]) for h in pending_hashes],
+                    "items": warning_items,
                 },
             )
             # now retry it for the case if it is a shadow server/connection error
