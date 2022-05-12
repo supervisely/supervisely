@@ -54,6 +54,9 @@ class PackerUnpacker:
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
+        data = data.where(pd.notnull(data), None)
+        data = data.astype(object).replace(np.nan, 'None')
+
         formatted_rows = []
         for origin_row in list(data.values):
             formatted_rows.append([{'value': element} for element in origin_row])
@@ -171,8 +174,8 @@ class ConfusionMatrix(Widget):
 
         try:
             matrix_data = np.matrix(matrix_data).astype(float)
-            totals_by_rows = np.sum(matrix_data, axis=1)
-            totals_by_columns = np.sum(matrix_data, axis=0)
+            totals_by_rows = np.sum(matrix_data, axis=1).round(2)
+            totals_by_columns = np.sum(matrix_data, axis=0).round(2)
 
             self._parsed_data_with_totals.update(self._calculate_max_values(matrix_data))
 
