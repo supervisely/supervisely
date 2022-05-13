@@ -1,16 +1,19 @@
 from typing import Literal
-import markupsafe
 
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
+SUCCESS = "success"
 INFO = "info"
 WARNING = "warning"
 ERROR = "error"
 
-from pathlib import Path
-from jinja2 import Environment
-import jinja2
+BOXTYPE2ICON = {
+    SUCCESS: "zmdi-check-circle",
+    INFO: "zmdi-info",
+    WARNING: "zmdi-alert-triangle",
+    ERROR: "zmdi-alert-circle",
+}
 
 
 class NotificationBox(Widget):
@@ -18,7 +21,7 @@ class NotificationBox(Widget):
         self,
         title: str = None,
         description: str = None,
-        box_type: Literal["info", "warning", "error"] = WARNING,
+        box_type: Literal["success", "info", "warning", "error"] = INFO,
         widget_id: str = None,
     ):
         self._title = title
@@ -27,12 +30,14 @@ class NotificationBox(Widget):
             raise ValueError(
                 "Both title and description can not be None at the same time"
             )
+
         self.box_type = box_type
-        self.icon = "zmdi-alert-triangle"  # @TODO: get by box type
-        if self.box_type != WARNING:
+        if self.box_type not in [SUCCESS, INFO, WARNING, ERROR]:
             raise ValueError(
-                f"Only {WARNING} type is supported. Other types {[INFO, WARNING, ERROR]} will be supported later"
+                f"Box type {box_type} type isn't supported. Please select one of {[SUCCESS, INFO, WARNING, ERROR]} box_type"
             )
+
+        self.icon = BOXTYPE2ICON[self.box_type]
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -59,6 +64,3 @@ class NotificationBox(Widget):
     def description(self, value):
         self._description = value
         DataJson()[self.widget_id]['description'] = self._description
-
-
-
