@@ -1,3 +1,5 @@
+import copy
+
 import fastapi
 import numpy as np
 import pandas as pd
@@ -33,8 +35,8 @@ class PackerUnpacker:
     @staticmethod
     def dict_unpacker(data: dict):
         unpacked_data = {
-            'columns': data['columns_names'],
-            'data': data['values_by_rows']
+            'columns': data['columns'],
+            'data': data['data']
         }
 
         return unpacked_data
@@ -53,8 +55,8 @@ class PackerUnpacker:
     @staticmethod
     def dict_packer(data):
         packed_data = {
-            'columns_names': data['columns'],
-            'values_by_rows': data['data']
+            'columns': data['columns'],
+            'data': data['data']
         }
         return packed_data
 
@@ -80,7 +82,8 @@ class ClassicTable(Widget):
         CELL_CLICKED = 'cell_clicked_cb'
 
     def __init__(self,
-                 data: PackerUnpacker.SUPPORTED_TYPES = None,
+                 data: list = None,
+                 columns: list = None,
                  fixed_columns_num: int = None,
                  widget_id: str = None):
         """
@@ -95,12 +98,13 @@ class ClassicTable(Widget):
                                                           ]
                                       }
         """
+
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
         self._data_type = None
 
-        self._update_table_data(input_data=data)
+        self._update_table_data(input_data=pd.DataFrame(data=data, columns=columns))
 
         self._fix_columns = fixed_columns_num
 
@@ -119,8 +123,7 @@ class ClassicTable(Widget):
 
     def _update_table_data(self, input_data):
         if input_data is not None:
-            self._parsed_data = self.get_unpacked_data(input_data=input_data)
-            self._data_type = type(input_data)
+            self._parsed_data = copy.deepcopy(self._get_unpacked_data(input_data=input_data))
         else:
             self._parsed_data = {
                 'columns': [],
@@ -128,11 +131,11 @@ class ClassicTable(Widget):
             }
             self._data_type = dict
 
-    def get_packed_data(self, input_data):
+    def _get_packed_data(self, input_data, data_type):
         return PackerUnpacker.pack_data(data=input_data,
-                                        packer_cb=DATATYPE_TO_PACKER[self._data_type])
+                                        packer_cb=DATATYPE_TO_PACKER[data_type])
 
-    def get_unpacked_data(self, input_data):
+    def _get_unpacked_data(self, input_data):
         input_data_type = type(input_data)
 
         if input_data_type not in self._supported_types:
@@ -140,8 +143,8 @@ class ClassicTable(Widget):
                             '''
                             1. Pandas Dataframe \n
                             2. Python dict with structure {
-                                        'columns_names': ['col_name_1', 'col_name_2', ...],
-                                        'values_by_rows': [
+                                        'columns': ['col_name_1', 'col_name_2', ...],
+                                        'data': [
                                                             ['row_1_column_1', 'row_1_column_2', ...],
                                                             ['row_2_column_1', 'row_2_column_2', ...],
                                                             ...
@@ -161,12 +164,17 @@ class ClassicTable(Widget):
         self._fix_columns = value
         DataJson()[self.widget_id]['table_options']['fixColumns'] = self._fix_columns
 
-    @property
-    def data(self):
-        return self.get_packed_data(self._parsed_data)
+    def to_json(self) -> dict:
+        return self._get_packed_data(self._parsed_data, dict)
 
-    @data.setter
-    def data(self, value):
+    def to_pandas(self) -> pd.DataFrame:
+        return self._get_packed_data(self._parsed_data, pd.DataFrame)
+
+    def read_json(self, value: dict):
+        self._update_table_data(input_data=value)
+        DataJson()[self.widget_id]['table_data'] = self._parsed_data
+
+    def read_pandas(self, value: pd.DataFrame):
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]['table_data'] = self._parsed_data
 

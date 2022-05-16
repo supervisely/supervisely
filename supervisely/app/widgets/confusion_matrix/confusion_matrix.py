@@ -42,11 +42,11 @@ class PackerUnpacker:
     @staticmethod
     def dict_unpacker(data: dict):
         formatted_rows = []
-        for origin_row in data['values_by_rows']:
+        for origin_row in data['data']:
             formatted_rows.append([{'value': element} for element in origin_row])
 
         unpacked_data = {
-            'classes': data['columns_names'],
+            'classes': data['columns'],
             'data': formatted_rows
         }
 
@@ -75,8 +75,8 @@ class PackerUnpacker:
             unformatted_rows.append([element['value'] for element in origin_row])
 
         packed_data = {
-            'columns_names': data['classes'],
-            'values_by_rows': unformatted_rows
+            'data': unformatted_rows,
+            'columns': data['classes'],
         }
         return packed_data
 
@@ -107,16 +107,17 @@ class ConfusionMatrix(Widget):
         CELL_CLICKED = 'cell_clicked_cb'
 
     def __init__(self,
-                 data: PackerUnpacker.SUPPORTED_TYPES = None,
+                 data: list = None,
+                 columns: list = None,
                  x_label: str = 'Predicted Values',
                  y_label: str = 'Actual Values',
                  widget_id: str = None):
         """
         :param data: Data of table in different formats:
-        1. Pandas Dataframe
-        2. Python dict with structure {
-                                        'columns_names': ['col_name_1', 'col_name_2', ...],
-                                        'values_by_rows': [
+        1. Pandas Dataframe \n
+                            2. Python dict with structure {
+                                        'columns': ['col_name_1', 'col_name_2', ...],
+                                        'data': [
                                                             ['row_1_column_1', 'row_1_column_2', ...],
                                                             ['row_2_column_1', 'row_2_column_2', ...],
                                                             ...
@@ -129,7 +130,7 @@ class ConfusionMatrix(Widget):
         self._parsed_data_with_totals = {}
         self._data_type = None
 
-        self._update_matrix_data(input_data=data)
+        self._update_matrix_data(input_data=pd.DataFrame(data=data, columns=columns))
 
         self.x_label = x_label
         self.y_label = y_label
@@ -154,7 +155,7 @@ class ConfusionMatrix(Widget):
 
     def _update_matrix_data(self, input_data):
         if input_data is not None:
-            self._parsed_data = self.get_unpacked_data(input_data=input_data)
+            self._parsed_data = copy.deepcopy(self.get_unpacked_data(input_data=input_data))
             self._data_type = type(input_data)
         else:
             self._parsed_data = {
@@ -188,13 +189,13 @@ class ConfusionMatrix(Widget):
         matrix_data = np.vstack([matrix_data, totals_by_columns])
 
         self._parsed_data_with_totals.update(self.get_unpacked_data(input_data={
-            'columns_names': self._parsed_data['classes'],
-            'values_by_rows': matrix_data.tolist()
+            'columns': self._parsed_data['classes'],
+            'data': matrix_data.tolist()
         }, validate_sizes=False))
 
-    def get_packed_data(self, input_data):
+    def _get_packed_data(self, input_data, data_type):
         return PackerUnpacker.pack_data(data=input_data,
-                                        packer_cb=DATATYPE_TO_PACKER[self._data_type])
+                                        packer_cb=DATATYPE_TO_PACKER[data_type])
 
     def get_unpacked_data(self, input_data, validate_sizes=True):
         input_data_type = type(input_data)
@@ -204,8 +205,8 @@ class ConfusionMatrix(Widget):
                             '''
                             1. Pandas Dataframe \n
                             2. Python dict with structure {
-                                        'columns_names': ['col_name_1', 'col_name_2', ...],
-                                        'values_by_rows': [
+                                        'columns': ['col_name_1', 'col_name_2', ...],
+                                        'data': [
                                                             ['row_1_column_1', 'row_1_column_2', ...],
                                                             ['row_2_column_1', 'row_2_column_2', ...],
                                                             ...
@@ -217,14 +218,19 @@ class ConfusionMatrix(Widget):
                                           unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type],
                                           validate_sizes=validate_sizes)
 
-    @property
-    def data(self):
-        return self.get_packed_data(self._parsed_data)
+    def to_json(self) -> dict:
+        return self._get_packed_data(self._parsed_data, dict)
 
-    @data.setter
-    def data(self, value):
+    def to_pandas(self) -> pd.DataFrame:
+        return self._get_packed_data(self._parsed_data, pd.DataFrame)
+
+    def read_json(self, value: dict):
         self._update_matrix_data(input_data=value)
-        DataJson()[self.widget_id]['matrix_data'] = self._parsed_data_with_totals
+        DataJson()[self.widget_id]['table_data'] = self._parsed_data
+
+    def read_pandas(self, value: pd.DataFrame):
+        self._update_matrix_data(input_data=value)
+        DataJson()[self.widget_id]['table_data'] = self._parsed_data
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]['selected_row'].get('row')
