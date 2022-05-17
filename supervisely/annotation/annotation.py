@@ -584,7 +584,7 @@ class Annotation:
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
 
-            dest_class = mapping[lbl.obj_class]
+            dest_class = mapping[lbl.obj_class.name]
             if dest_class is None:
                 continue  # skip labels
 

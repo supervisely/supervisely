@@ -643,9 +643,9 @@ class Project:
             for class_name in target_classes:
                 if dst_meta.obj_classes.get(class_name) is None:
                     raise KeyError(f"Class {class_name} not found in destination project meta")
-            for src_class in list(dst_mapping.keys()):
-                if src_class.name not in target_classes:
-                    dst_mapping[src_class] = None
+            for src_class_name in list(dst_mapping.keys()):
+                if src_class_name not in target_classes:
+                    dst_mapping[src_class_name] = None
             dst_meta = dst_meta.clone(obj_classes=ObjClassCollection([
                 dst_meta.obj_classes.get(class_name) for class_name in target_classes
             ]))
@@ -666,7 +666,7 @@ class Project:
                 if segmentation_type == 'semantic':
                     seg_ann = seg_ann.add_bg_object(_bg_class_name)
                     bg_obj_class = {label.obj_class.name: label.obj_class for label in seg_ann.labels}[_bg_class_name]
-                    dst_mapping[bg_obj_class] = bg_obj_class
+                    dst_mapping[bg_obj_class.name] = bg_obj_class
 
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 

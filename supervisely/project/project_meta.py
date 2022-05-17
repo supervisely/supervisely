@@ -252,16 +252,16 @@ class ProjectMeta(JsonSerializable):
             if target_classes is None or obj_class.name in target_classes:
                 if obj_class.geometry_type in keep_geometries:
                     if obj_class.geometry_type == Bitmap:
-                        mapping[obj_class] = obj_class
+                        mapping[obj_class.name] = obj_class
                         res_classes.append(obj_class)
                     else:
                         new_class = obj_class.clone(geometry_type=Bitmap)
-                        mapping[obj_class] = new_class
+                        mapping[obj_class.name] = new_class
                         res_classes.append(new_class)
                 else:
-                    mapping[obj_class] = None
+                    mapping[obj_class.name] = None
             else:
-                mapping[obj_class] = None
+                mapping[obj_class.name] = None
 
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
