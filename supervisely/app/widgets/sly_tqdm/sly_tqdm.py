@@ -89,6 +89,7 @@ class _slyProgressBarIO:
 
     def __del__(self):
         self.progress['status'] = "success"
+        self.progress['percent'] = 100
 
         self.flush()
         self.print_progress_to_supervisely_tasks_section()
