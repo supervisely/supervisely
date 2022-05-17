@@ -574,24 +574,22 @@ class Annotation:
         if output_path:
             sly_image.write(output_path, bitmap)
 
-    def to_nonoverlapping_masks(self, mapping, target_classes=None):
+    def to_nonoverlapping_masks(self, mapping):
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
             #if mapping[lbl.obj_class] is not None:
-            if target_classes is None:
-                lbl.draw(common_img, color=idx)
-            elif lbl.obj_class.name in target_classes:
-                lbl.draw(common_img, color=idx)
+            lbl.draw(common_img, color=idx)
 
         #(unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
 
             dest_class = mapping[lbl.obj_class]
-            if dest_class is None or (target_classes is not None and lbl.obj_class.name not in target_classes):
+            if dest_class is None:
                 continue  # skip labels
 
             mask = common_img == idx
+
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
                 new_mask = Bitmap(data=mask)

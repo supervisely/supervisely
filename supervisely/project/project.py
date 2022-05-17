@@ -630,10 +630,10 @@ class Project:
         src_project = Project(src_project_dir, OpenMode.READ)
         dst_meta = src_project.meta.clone()
 
-        if segmentation_type == 'semantic' and src_project.meta.obj_classes.get(_bg_class_name) is None:
-            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
+        dst_meta, dst_mapping = dst_meta.to_segmentation_task(target_classes=target_classes)
 
-        dst_meta, dst_mapping = dst_meta.to_segmentation_task()
+        if segmentation_type == 'semantic' and dst_meta.obj_classes.get(_bg_class_name) is None:
+            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
 
         if target_classes is not None:
             if segmentation_type == 'semantic':
@@ -661,12 +661,15 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                if segmentation_type == 'semantic':
-                    ann = ann.add_bg_object(_bg_class_name)
-
-                seg_ann = ann.to_nonoverlapping_masks(dst_mapping, target_classes=target_classes)  # rendered instances and filter classes
+                seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
 
                 if segmentation_type == 'semantic':
+                    seg_ann = seg_ann.add_bg_object(_bg_class_name)
+                    bg_obj_class = {label.obj_class.name: label.obj_class for label in seg_ann.labels}[_bg_class_name]
+                    dst_mapping[bg_obj_class] = bg_obj_class
+
+                    seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
+
                     seg_ann = seg_ann.to_segmentation_task()
                 elif segmentation_type == 'instance':
                     pass
