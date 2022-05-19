@@ -564,10 +564,13 @@ class Project:
 
         possible_datasets = get_subdirs(self.directory)
         for ds_name in possible_datasets:
-            current_dataset = self.dataset_class(
-                os.path.join(self.directory, ds_name), OpenMode.READ
-            )
-            self._datasets = self._datasets.add(current_dataset)
+            try:
+                current_dataset = self.dataset_class(
+                    os.path.join(self.directory, ds_name), OpenMode.READ
+                )
+                self._datasets = self._datasets.add(current_dataset)
+            except Exception as ex:
+                logger.warning(ex, exc_info=True)
 
         if self.total_items == 0:
             raise RuntimeError("Project is empty")
