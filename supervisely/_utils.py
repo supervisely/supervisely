@@ -19,18 +19,22 @@ random.seed(datetime.now())
 
 def rand_str(length):
     chars = string.ascii_letters + string.digits  # [A-z][0-9]
-    return ''.join((random.choice(chars)) for _ in range(length))
+    return "".join((random.choice(chars)) for _ in range(length))
 
 
-#@TODO: use in API? or remove
+# @TODO: use in API? or remove
 def generate_free_name(used_names, possible_name, with_ext=False):
     res_name = possible_name
     new_suffix = 1
     while res_name in set(used_names):
         if with_ext is True:
-            res_name = '{}_{:02d}{}'.format(sly_fs.get_file_name(possible_name), new_suffix, sly_fs.get_file_ext(possible_name))
+            res_name = "{}_{:02d}{}".format(
+                sly_fs.get_file_name(possible_name),
+                new_suffix,
+                sly_fs.get_file_ext(possible_name),
+            )
         else:
-            res_name = '{}_{:02d}'.format(possible_name, new_suffix)
+            res_name = "{}_{:02d}".format(possible_name, new_suffix)
         new_suffix += 1
     return res_name
 
@@ -41,14 +45,14 @@ def generate_names(base_name, count):
 
     names = [base_name]
     for idx in range(1, count):
-        names.append('{}_{:02d}{}'.format(name, idx, ext))
+        names.append("{}_{:02d}{}".format(name, idx, ext))
 
     return names
 
 
 def camel_to_snake(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 def take_with_default(v, default):
@@ -57,15 +61,15 @@ def take_with_default(v, default):
 
 def batched(seq, batch_size=50):
     for i in range(0, len(seq), batch_size):
-        yield seq[i:i + batch_size]
+        yield seq[i : i + batch_size]
 
 
 def get_bytes_hash(bytes):
-    return base64.b64encode(hashlib.sha256(bytes).digest()).decode('utf-8')
+    return base64.b64encode(hashlib.sha256(bytes).digest()).decode("utf-8")
 
 
 def get_string_hash(data):
-    return base64.b64encode(hashlib.sha256(str.encode(data)).digest()).decode('utf-8')
+    return base64.b64encode(hashlib.sha256(str.encode(data)).digest()).decode("utf-8")
 
 
 def unwrap_if_numpy(x):
@@ -96,15 +100,15 @@ def validate_percent(value):
     if 0 <= value <= 100:
         pass
     else:
-        raise ValueError('Percent has to be in range [0; 100]')
+        raise ValueError("Percent has to be in range [0; 100]")
 
 
-def sizeof_fmt(num, suffix='B'):
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f %s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%.1f %s%s" % (num, 'Yi', suffix)
+    return "%.1f %s%s" % (num, "Yi", suffix)
 
 
 def _remove_sensitive_information(d: dict):
@@ -120,3 +124,13 @@ def _remove_sensitive_information(d: dict):
                 if field in new_dict[parent_key]:
                     new_dict[parent_key][field] = "***"
     return new_dict
+
+
+def validate_img_size(img_size):
+    if not isinstance(img_size, (tuple, list)):
+        raise TypeError(
+            '{!r} has to be a tuple or a list. Given type "{}".'.format(
+                "img_size", type(img_size)
+            )
+        )
+    return tuple(img_size)

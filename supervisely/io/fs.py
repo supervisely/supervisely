@@ -68,7 +68,9 @@ def list_dir_recursively(dir: str) -> list:
     return all_files
 
 
-def list_files_recursively(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
+def list_files_recursively(
+    dir: str, valid_extensions: list = None, filter_fn=None
+) -> list:
     """
     Recursively walks through directory and returns list with all file paths.
 
@@ -85,9 +87,12 @@ def list_files_recursively(dir: str, valid_extensions: list = None, filter_fn=No
             for filename in file_names:
                 yield os.path.join(dir_name, filename)
 
-    return [file_path for file_path in file_path_generator() if
-            (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
-            (filter_fn is None or filter_fn(file_path))]
+    return [
+        file_path
+        for file_path in file_path_generator()
+        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+        and (filter_fn is None or filter_fn(file_path))
+    ]
 
 
 def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
@@ -102,9 +107,12 @@ def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
          A list containing file paths.
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
-    return [file_path for file_path in res if
-      (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
-      (filter_fn is None or filter_fn(file_path))]
+    return [
+        file_path
+        for file_path in res
+        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+        and (filter_fn is None or filter_fn(file_path))
+    ]
 
 
 def mkdir(dir: str, remove_content_if_exists=False):
@@ -136,8 +144,8 @@ def copy_file(src: str, dst: str):
 
     """
     ensure_base_path(dst)
-    with open(dst, 'wb') as out_f:
-        with open(src, 'rb') as in_f:
+    with open(dst, "wb") as out_f:
+        with open(src, "rb") as in_f:
             shutil.copyfileobj(in_f, out_f, length=1024 * 1024)
 
 
@@ -155,7 +163,9 @@ def hardlink_or_copy_tree(src: str, dst: str):
         dst_sub_dir = os.path.join(dst, relative_dir)
         mkdir(dst_sub_dir)
         for file_name in file_names:
-            hardlink_or_copy_file(os.path.join(dir_name, file_name), os.path.join(dst_sub_dir, file_name))
+            hardlink_or_copy_file(
+                os.path.join(dir_name, file_name), os.path.join(dst_sub_dir, file_name)
+            )
 
 
 def dir_exists(dir: str) -> bool:
@@ -217,8 +227,8 @@ def clean_dir(dir_: str, ignore_errors=True):
         dir_: Target directory path.
     """
     # old implementation
-    #shutil.rmtree(dir_, ignore_errors=True)
-    #mkdir(dir_)
+    # shutil.rmtree(dir_, ignore_errors=True)
+    # mkdir(dir_)
 
     for filename in os.listdir(dir_):
         file_path = os.path.join(dir_, filename)
@@ -288,30 +298,32 @@ def archive_directory(dir_: str, tar_path: str):
         dir_: Target directory path.
         tar_path: Path for output tar archive.
     """
-    with tarfile.open(tar_path, 'w', encoding='utf-8') as tar:
+    with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
 
 
 def get_file_hash(path):
-    return get_bytes_hash(open(path, 'rb').read())
+    return get_bytes_hash(open(path, "rb").read())
 
 
 def tree(dir_path):
-    out = subprocess.Popen(['tree', '--filelimit', '500', '-h', '-n', dir_path],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
+    out = subprocess.Popen(
+        ["tree", "--filelimit", "500", "-h", "-n", dir_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
     stdout, stderr = out.communicate()
     return stdout.decode("utf-8")
 
 
 def log_tree(dir_path, logger):
     out = tree(dir_path)
-    logger.info("DIRECTORY_TREE", extra={'tree': out})
+    logger.info("DIRECTORY_TREE", extra={"tree": out})
 
 
 def touch(path):
     ensure_base_path(path)
-    with open(path, 'a'):
+    with open(path, "a"):
         os.utime(path, None)
 
 
@@ -319,10 +331,12 @@ def download(url, save_path, cache: FileCache = None, progress=None):
     def _download():
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get('Content-Length', '0'))
+            total_size_in_bytes = int(
+                CaseInsensitiveDict(r.headers).get("Content-Length", "0")
+            )
             if progress is not None and type(progress) is Progress:
                 progress.set(0, total_size_in_bytes)
-            with open(save_path, 'wb') as f:
+            with open(save_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
                     if progress is not None:
@@ -334,7 +348,9 @@ def download(url, save_path, cache: FileCache = None, progress=None):
     if cache is None:
         _download()
     else:
-        cache_path = cache.check_storage_object(get_string_hash(url), get_file_ext(save_path))
+        cache_path = cache.check_storage_object(
+            get_string_hash(url), get_file_ext(save_path)
+        )
         if cache_path is None:
             # file not in cache
             _download()
@@ -350,4 +366,3 @@ def download(url, save_path, cache: FileCache = None, progress=None):
                     progress(sizeb)
 
     return save_path
-

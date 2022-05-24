@@ -83,6 +83,7 @@ def create() -> FastAPI:
 
 
 def shutdown():
+    logger.info("Shutting down...")
     current_process = psutil.Process(os.getpid())
     current_process.send_signal(signal.SIGINT)  # emit ctrl + c
 
