@@ -17,11 +17,15 @@ class ProjectSelector(Widget):
 
     def __init__(self,
                  team_id: int = None,
+                 workspace_id: int = None,
+                 project_id: int = None,
                  team_is_selectable: bool = True,
                  datasets_is_selectable: bool = True,
                  widget_id: str = None):
 
         self._team_id = team_id
+        self._workspace_id = workspace_id
+        self._project_id = project_id
 
         self._is_selectable = {
             'team': team_is_selectable,
@@ -39,8 +43,8 @@ class ProjectSelector(Widget):
     def get_json_state(self):
         return {
             'teamId': self._team_id,
-            'workspaceId': None,
-            'projectId': None,
+            'workspaceId': self._workspace_id,
+            'projectId': self._project_id,
             'allDatasets': True,
             'datasetsIds': []
         }
