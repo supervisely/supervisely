@@ -693,6 +693,8 @@ class Project:
                              progress_cb=None, segmentation_type='semantic'):
 
         _bg_class_name = "__bg__"
+        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
+
         if dst_project_dir is None and inplace is False:
             raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
                              f"argument (inplace=True) directly")
@@ -711,19 +713,18 @@ class Project:
         dst_meta, dst_mapping = dst_meta.to_segmentation_task(target_classes=target_classes)
 
         if segmentation_type == 'semantic' and dst_meta.obj_classes.get(_bg_class_name) is None:
-            dst_meta = dst_meta.add_obj_class(ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0]))
+            dst_meta = dst_meta.add_obj_class(_bg_obj_class)
 
         if target_classes is not None:
             if segmentation_type == 'semantic':
                 if _bg_class_name not in target_classes:
                     target_classes.append(_bg_class_name)
+
             # check that all target classes are in destination project meta
             for class_name in target_classes:
                 if dst_meta.obj_classes.get(class_name) is None:
                     raise KeyError(f"Class {class_name} not found in destination project meta")
-            for src_class_name in list(dst_mapping.keys()):
-                if src_class_name not in target_classes:
-                    dst_mapping[src_class_name] = None
+
             dst_meta = dst_meta.clone(obj_classes=ObjClassCollection([
                 dst_meta.obj_classes.get(class_name) for class_name in target_classes
             ]))
@@ -735,6 +736,7 @@ class Project:
         for src_dataset in src_project.datasets:
             if inplace is False:
                 dst_dataset = dst_project.create_dataset(src_dataset.name)
+
             for item_name in src_dataset:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
@@ -742,10 +744,9 @@ class Project:
                 seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
 
                 if segmentation_type == 'semantic':
-                    seg_ann = seg_ann.add_bg_object(_bg_class_name)
-                    bg_obj_class = {label.obj_class.name: label.obj_class for label in seg_ann.labels}[_bg_class_name]
-                    dst_mapping[bg_obj_class.name] = bg_obj_class
+                    seg_ann = seg_ann.add_bg_object(_bg_obj_class)
 
+                    dst_mapping[hash(_bg_obj_class)] = _bg_obj_class
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 
                     seg_ann = seg_ann.to_segmentation_task()

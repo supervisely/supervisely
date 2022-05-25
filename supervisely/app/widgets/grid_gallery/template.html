@@ -11,7 +11,7 @@
                 @input="state.{{{widget.widget_id}}}.selectedImage = $event; post('/{{{widget.widget_id}}}/image_clicked_cb')">
             <template v-slot:card-footer="{ annotation }">
                 <div v-if="annotation.title && annotation.title.length > 0" style="text-align: center; margin-top: 5px">
-                    <el-tag type="primary">{{annotation.title}}</i></el-tag>
+                    <el-tag v-html="annotation.title" type="primary" style="height: 100%"></el-tag>
                 </div>
             </template>
         </sly-grid-gallery>
@@ -24,7 +24,7 @@
                 :active-figure="state.{{{widget.widget_id}}}.activeFigure">
             <template v-slot:card-footer="{ annotation }">
                 <div v-if="annotation.title && annotation.title.length > 0" style="text-align: center; margin-top: 5px">
-                    <el-tag type="primary">{{annotation.title}}</i></el-tag>
+                    <el-tag v-html="annotation.title" type="primary" style="height: 100%"></el-tag>
                 </div>
             </template>
         </sly-grid-gallery>

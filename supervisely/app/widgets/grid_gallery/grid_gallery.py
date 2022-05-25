@@ -13,7 +13,7 @@ class GridGallery(Widget):
     def __init__(self, columns_number: int,
 
                  annotations_opacity: float = 0.5,
-                 show_header: bool = True,
+                 show_opacity_slider: bool = True,
 
                  enable_zoom: bool = False,
                  resize_on_zoom: bool = False,
@@ -37,7 +37,7 @@ class GridGallery(Widget):
         self._fill_rectangle: bool = True
         self._border_width: str = '3px'
 
-        self._show_opacity_header: bool = show_header
+        self._show_opacity_header: bool = show_opacity_slider
         self._opacity: float = annotations_opacity
         self._enable_zoom: bool = enable_zoom
         self._sync_views: bool = sync_views
