@@ -14,6 +14,6 @@ except (ImportError, ModuleNotFoundError) as e:
 def __getattr__(name):
     if _import_failed is True:
         raise ModuleNotFoundError(
-            'No module named supervisely.app, please install dependencies with "pip install supervisely[app]"'
+            'No module named supervisely.app, please install dependencies with "pip install supervisely[apps]"'
         )
     return getattr(sys.modules[__name__], name)
