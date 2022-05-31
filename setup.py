@@ -29,7 +29,7 @@ setup(
         "opencv-python>=4.5.5.62",
         "PTable>=0.9.2",
         "pillow>=5.4.1",
-        "protobuf>=3.14.0",
+        "protobuf==3.14.0",
         "python-json-logger==0.1.11",
         "requests>=2.27.1",
         "requests-toolbelt>=0.9.1",
