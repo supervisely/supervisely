@@ -1,5 +1,5 @@
 # coding: utf-8
-import functools
+
 import os
 import shutil
 import errno
@@ -95,7 +95,6 @@ def list_files_recursively(
     ]
 
 
-@functools.lru_cache(maxsize=5)
 def list_files(dir: str, valid_extensions: list = None, filter_fn=None) -> list:
     """
     Returns list with file paths presented in given directory.

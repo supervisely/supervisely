@@ -37,7 +37,7 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
 
 # @TODO: rename img_path to item_path
-ItemPaths = namedtuple("ItemPaths", ["img_path", "ann_path", "img_info_path"])
+ItemPaths = namedtuple("ItemPaths", ["img_path", "ann_path"])
 ItemInfo = namedtuple("ItemInfo", ["dataset_name", "name", "img_path", "ann_path"])
 
 
@@ -151,7 +151,7 @@ class Dataset(KeyObject):
                 "Annotation directory not found: {!r}".format(self.ann_dir)
             )
 
-        raw_ann_paths = list_files(self.ann_dir, tuple([ANN_EXT]))
+        raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
         img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
 
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
@@ -498,14 +498,10 @@ class Dataset(KeyObject):
         :param item_name: str
         :return: ItemPaths class object
         """
-        img_path = self.get_img_path(item_name)
-        ann_path = self.get_ann_path(item_name)
-        img_info_path = self.get_img_info_path(item_name)
 
         return ItemPaths(
-            img_path=img_path if os.path.isfile(img_path) else None,
-            ann_path=ann_path if os.path.isfile(ann_path) else None,
-            img_info_path=img_info_path if os.path.isfile(img_info_path) else None,
+            img_path=self.get_img_path(item_name),
+            ann_path=self.get_ann_path(item_name)
         )
 
     def __len__(self):
@@ -521,13 +517,13 @@ class Dataset(KeyObject):
     def delete_item(self, item_name):
         if self.item_exists(item_name):
             data_path, ann_path = self.get_item_paths(item_name)
+            img_info_path = self.get_img_info_path(item_name)
             silent_remove(data_path)
             silent_remove(ann_path)
+            silent_remove(img_info_path)
             self._item_to_ann.pop(item_name)
             return True
         return False
-
-
 
 
 class Project:
@@ -664,7 +660,7 @@ class Project:
         return ds
 
     def _add_item_file_to_dataset(
-            self, ds, item_name, item_paths, _validate_item, _use_hardlink
+            self, ds, item_name, item_paths, img_info_path, _validate_item, _use_hardlink
     ):
         """
         Add item file and annotation from given name and path to given dataset items directory. Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -678,7 +674,7 @@ class Project:
             item_name,
             item_path=item_paths.img_path,
             ann=item_paths.ann_path,
-            img_info=item_paths.img_info_path,
+            img_info=img_info_path,
             _validate_item=_validate_item,
             _use_hardlink=_use_hardlink,
         )
@@ -700,10 +696,20 @@ class Project:
 
         for ds in self:
             new_ds = new_project.create_dataset(ds.name)
+
+            ds: Dataset
             for item_name in ds:
                 item_paths = ds.get_item_paths(item_name)
+                img_info_path = ds.get_img_info_path(item_name)
+
+                item_paths = ItemPaths(
+                    img_path=item_paths.img_path if os.path.isfile(item_paths.img_path) else None,
+                    ann_path=item_paths.ann_path if os.path.isfile(item_paths.ann_path) else None
+                )
+                img_info_path = img_info_path if os.path.isfile(img_info_path) else None
+
                 self._add_item_file_to_dataset(
-                    new_ds, item_name, item_paths, _validate_item, _use_hardlink
+                    new_ds, item_name, item_paths, img_info_path, _validate_item, _use_hardlink
                 )
         return new_project
 
@@ -1139,18 +1145,22 @@ def upload_project(
     for dataset_fs in project_fs.datasets:
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
+        dataset_fs: Dataset
+
         names, img_paths, ann_paths, img_infos = [], [], [], []
         for item_name in dataset_fs:
-            img_path, ann_path, img_info_path = dataset_fs.get_item_paths(item_name)
+            img_path, ann_path = dataset_fs.get_item_paths(item_name)
+            img_info_path = dataset_fs.get_img_info_path(item_name)
+
             names.append(item_name)
             img_paths.append(img_path)
             ann_paths.append(ann_path)
 
-            if img_info_path is not None:
+            if os.path.isfile(img_info_path) is True:
                 img_infos.append(dataset_fs.get_image_info(item_name=item_name))
 
-        img_paths = list(filter(None, img_paths))
-        ann_paths = list(filter(None, ann_paths))
+        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
+        ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
 
         if log_progress and progress_cb is None:
             ds_progress = Progress(
