@@ -29,7 +29,7 @@ setup(
         "opencv-python>=4.5.5.62",
         "PTable>=0.9.2",
         "pillow>=5.4.1",
-        "protobuf>=3.14.0",
+        "protobuf>=3.14.0, <=3.20.1",
         "python-json-logger==0.1.11",
         "requests>=2.27.1",
         "requests-toolbelt>=0.9.1",
@@ -40,7 +40,6 @@ setup(
         "pynrrd==0.4.2",
         "imgaug==0.4.0",
         "SimpleITK==2.1.1.2",
-        # "pandas==1.4.2",
         "pydicom==2.3.0",
         "stringcase==1.2.0",
         "python-magic==0.4.25",
@@ -66,7 +65,8 @@ setup(
             "jsonpatch==1.32",
             "MarkupSafe==2.0.1",
             "arel==0.2.0",
-            "tqdm==4.62.3"
+            "tqdm==4.62.3",
+            "pandas==1.4.2",
         ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
