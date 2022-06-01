@@ -781,7 +781,6 @@ class Project:
                 if segmentation_type == 'semantic':
                     seg_ann = seg_ann.add_bg_object(_bg_obj_class)
 
-                    # dst_mapping[hash(_bg_obj_class)] = _bg_obj_class
                     dst_mapping[_bg_obj_class] = _bg_obj_class
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 
