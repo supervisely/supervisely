@@ -120,7 +120,7 @@ class Plane(FrameCollection):
         elif name == Plane.CORONAL:
             return dimentions["y"]
         elif name == Plane.AXIAL:
-            return dimentions["y"]
+            return dimentions["z"]
 
     @classmethod
     def from_json(
