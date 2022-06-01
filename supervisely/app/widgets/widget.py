@@ -14,6 +14,7 @@ class Widget:
         self._file_path = file_path
         if self.widget_id is None:
             self.widget_id = varname(frame=2)
+
         self._register()
 
     def _register(self):
@@ -38,13 +39,25 @@ class Widget:
     def update_state(self, state):
         serialized_state = self.get_json_state()
         if serialized_state is not None:
-            state[self.widget_id] = serialized_state
+            state.setdefault(self.widget_id, {}).update(serialized_state)
 
     def update_data(self):
         data = DataJson()
         serialized_data = self.get_json_data()
         if serialized_data is not None:
-            data[self.widget_id] = serialized_data
+            data.setdefault(self.widget_id, {}).update(serialized_data)
+
+    def add_route(self, app, route):
+        def decorator(f):
+            existing_cb = DataJson()[self.widget_id].get('widget_routes', {}).get(route)
+            if existing_cb is not None:
+                raise Exception(f"Route [{route}] already attached to function with name: {existing_cb}")
+
+            app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
+            DataJson()[self.widget_id].setdefault('widget_routes', {})[route] = f.__name__
+
+            self.update_data()
+        return decorator
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()

@@ -1,32 +1,34 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/sly_tqdm/style.css"/>
 
 
-<div>
-    <div style="display: flex; flex-direction: column">
-        <div style="display: flex; flex-direction: row; justify-content: space-between;
+<el-collapse-transition>
+    <div v-show="data.{{{widget.widget_id}}}.message || data.{{{widget.widget_id}}}.info">
+        <div style="display: flex; flex-direction: column; cursor: default;">
+            <div style="display: flex; flex-direction: row; justify-content: space-between;
                       margin: 5px 0">
-            <div v-if="data.{{{widget.widget_id}}}.message" class="progress-title">
-                {{ data.{{{widget.widget_id}}}.message }}
+                <div v-if="data.{{{widget.widget_id}}}.message" class="progress-title">
+                    {{ data.{{{widget.widget_id}}}.message }}
+                </div>
+                <div v-if="data.{{{widget.widget_id}}}.info" class="progress-title" style="margin: 0 0;">
+                    {{ data.{{{widget.widget_id}}}.info }}
+                </div>
             </div>
-            <div v-if="data.{{{widget.widget_id}}}.info" class="progress-title" style="margin: 0 0;">
-                {{ data.{{{widget.widget_id}}}.info }}
-            </div>
+
+
+            <el-progress
+                    v-if="data.{{{widget.widget_id}}}.show_percents"
+                    class="custom-line"
+                    :show-text="true"
+                    :text-inside="true"
+                    :stroke-width="18"
+                    :percentage="data.{{{widget.widget_id}}}.percent" :status="data.{{{widget.widget_id}}}.status">
+            </el-progress>
+            <el-progress
+                    v-else
+                    class="custom-line"
+                    :show-text="false"
+                    :percentage="data.{{{widget.widget_id}}}.percent" :status="data.{{{widget.widget_id}}}.status">
+            </el-progress>
         </div>
-
-
-        <el-progress
-                v-if="data.{{{widget.widget_id}}}.show_percents"
-                class="custom-line"
-                     :show-text="true"
-                     :text-inside="true"
-                     :stroke-width="18"
-                :percentage="data.{{{widget.widget_id}}}.percent" :status="data.{{{widget.widget_id}}}.status">
-        </el-progress>
-        <el-progress
-                v-else
-                class="custom-line"
-                     :show-text="false"
-                :percentage="data.{{{widget.widget_id}}}.percent" :status="data.{{{widget.widget_id}}}.status">
-        </el-progress>
     </div>
-</div>
+</el-collapse-transition>
