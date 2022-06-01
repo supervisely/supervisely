@@ -9,6 +9,7 @@ import operator
 import cv2
 from copy import deepcopy
 from PIL import Image
+from supervisely.annotation.obj_class import ObjClass
 
 from supervisely import logger
 from supervisely.annotation.label import Label
@@ -578,6 +579,7 @@ class Annotation:
         for idx, lbl in enumerate(self.labels, start=1):
             #if mapping[lbl.obj_class] is not None:
             lbl.draw(common_img, color=idx)
+
         #(unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
@@ -587,6 +589,7 @@ class Annotation:
                 continue  # skip labels
 
             mask = common_img == idx
+
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
                 new_mask = Bitmap(data=mask)
@@ -605,6 +608,21 @@ class Annotation:
 
         ensure_base_path(mask_path)
         im.save(mask_path)
+
+    def add_bg_object(self, bg_obj_class: ObjClass):
+        if bg_obj_class not in [label.obj_class for label in self.labels]:
+            bg_geometry = Rectangle.from_size(self.img_size)
+            bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
+
+            new_label = Label(bg_geometry, bg_obj_class)
+
+            updated_labels = self.labels
+            updated_labels.insert(0, new_label)
+
+            return self.clone(labels=updated_labels)
+        else:
+            return self
+
 
     def to_segmentation_task(self):
         class_mask = {}
