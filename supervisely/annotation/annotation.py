@@ -584,7 +584,7 @@ class Annotation:
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
 
-            dest_class = mapping[hash(lbl.obj_class)]
+            dest_class = mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
 
@@ -610,7 +610,7 @@ class Annotation:
         im.save(mask_path)
 
     def add_bg_object(self, bg_obj_class: ObjClass):
-        if hash(bg_obj_class) not in [hash(label.obj_class) for label in self.labels]:
+        if bg_obj_class not in [label.obj_class for label in self.labels]:
             bg_geometry = Rectangle.from_size(self.img_size)
             bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
 
