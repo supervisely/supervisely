@@ -311,3 +311,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if info is None:
             info = self.create(workspace_id, name, type=type, description=description)
         return info
+
+    def edit_info(self, id, name=None, description=None, readme=None, custom_data=None):
+        if (
+            name is None
+            and description is None
+            and readme is None
+            and custom_data is None
+        ):
+            raise ValueError("one of the arguments has to be specified")
+
+        body = {ApiField.ID: id}
+        if name is not None:
+            body[ApiField.NAME] = name
+        if description is not None:
+            body[ApiField.DESCRIPTION] = description
+        if readme is not None:
+            body[ApiField.README] = readme
+        if custom_data is not None:
+            body[ApiField.CUSTOM_DATA] = custom_data
+
+        response = self._api.post(self._get_update_method(), body)
+        return self._convert_json_info(response.json())
