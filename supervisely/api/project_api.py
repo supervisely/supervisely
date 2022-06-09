@@ -283,7 +283,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     progress_cb(1)
         return tag2images
 
-    def images_grouping(self, id: int, enable: bool, tag_name: str) -> None:
+    def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
         """
         Enables images grouping in project.
 
@@ -301,7 +301,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise Exception(f"Tag {tag_name} doesn't exists in the given project")
 
         group_tag_id = group_tag_meta.sly_id
-        project_settings = {"groupImages": enable, "groupImagesByTagId": group_tag_id}
+        project_settings = {"groupImages": enable, "groupImagesByTagId": group_tag_id, "groupImagesSync": sync}
         self.update_settings(id=id, settings=project_settings)
 
     def get_or_create(
