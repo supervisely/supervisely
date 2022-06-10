@@ -63,7 +63,7 @@ def process_image_roi(func):
             if type(label.geometry) is Bitmap:
                 bitmap_data = label.geometry.data
                 bitmap_origin = PointLocation(label.geometry.origin.row + sly_rectangle.top,
-                                                label.geometry.origin.col + sly_rectangle.left)
+                                              label.geometry.origin.col + sly_rectangle.left)
 
                 updated_geometry = Bitmap(data=bitmap_data, origin=bitmap_origin)
             updated_labels.append(label.clone(geometry=updated_geometry))
@@ -104,4 +104,68 @@ def process_image_roi(func):
             raise ValueError('image_np or image_path not provided!')
 
         return ann_json
+
     return wrapper_inference
+
+
+# def process_sliding_window(func):
+#     def check_sliding_sizes_by_image(img_size, sliding_window_settings):
+#         if sliding_window_settings["windowHeight"] > img_size[0]:
+#             sliding_window_settings["windowHeight"] = img_size[0]
+#
+#         if sliding_window_settings["windowWidth"] > img_size[1]:
+#             sliding_window_settings["windowWidth"] = img_size[1]
+#
+#     @functools.wraps(func)
+#     def wrapper_inference(*args, **kwargs):
+#         project_meta = kwargs["project_meta"]
+#         state = kwargs["state"]
+#         sliding_window_settings = state.get("sliding_window_settings")
+#
+#         slider = SlidingWindowsFuzzy([state["windowHeight"], state["windowWidth"]],
+#                                      [state["overlapY"], state["overlapX"]],
+#                                      state["borderStrategy"])
+#
+#         if "image_np" in kwargs.keys():
+#             full_image = kwargs["image_np"]
+#             if not isinstance(full_image, numpy.ndarray):
+#                 raise ValueError("Invalid input. Image path must be numpy.ndarray")
+#
+#             check_sliding_sizes_by_image(img_size=full_image.shape[:2], sliding_window_settings=sliding_window_settings)
+#             ann_json = func(*args, **kwargs)
+#             ann = Annotation.from_json(ann_json, project_meta)
+#         elif "image_path" in kwargs.keys():
+#             image_path = kwargs["image_path"]
+#             if not isinstance(image_path, str):
+#                 raise ValueError("Invalid input. Image path must be str")
+#             image_crop_path, image_size = process_image_path(image_path, rectangle)
+#             kwargs["image_path"] = image_crop_path
+#
+#         crop_names = []
+#         crop_images = []
+#         crop_anns = []
+#
+#         for window_index, window in enumerate(slider.get(full_image.shape[:2])):
+#             crop_name = "{}___{:04d}_{}_{}{}".format(sly.fs.get_file_name(image_info.name),
+#                                                      window_index,
+#                                                      window.top,
+#                                                      window.left,
+#                                                      sly.fs.get_file_ext(image_info.name))
+#             crop_names.append(crop_name)
+#
+#             crop_ann = ann.relative_crop(window)
+#             crop_anns.append(crop_ann)
+#
+#             if state["borderStrategy"] == str(SlidingWindowBorderStrategy.ADD_PADDING):
+#                 crop_image = sly.image.crop_with_padding(img, window)
+#             else:
+#                 crop_image = sly.image.crop(img, window)
+#             crop_images.append(crop_image)
+#
+#         dst_image_infos = api.image.upload_nps(dst_dataset.id, crop_names, crop_images)
+#         dst_image_ids = [dst_img_info.id for dst_img_info in dst_image_infos]
+#         api.annotation.upload_anns(dst_image_ids, crop_anns)
+#
+#         return ann_json
+#
+#     return wrapper_inference
