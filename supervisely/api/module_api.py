@@ -209,6 +209,13 @@ class ApiField:
     VOLUME_IDS = "volumeIds"
     VOLUME_NAME = "volumeName"
     SIZEB3 = (["fileMeta", "size"], "sizeb")
+    INCLUDE = "include"
+    CLASSES = "classes"
+    PROJECT_TAGS = "projectTags"
+    DATASETS = "datasets"
+    IMAGES_TAGS = "imagesTags"
+    ANNOTATION_OBJECTS_TAGS = "annotationObjectsTags"
+    FIGURES_TAGS = "figuresTags"
 
 
 def _get_single_item(items):
