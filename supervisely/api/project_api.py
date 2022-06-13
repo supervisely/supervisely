@@ -127,6 +127,40 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post("projects.meta", {"id": id})
         return response.json()
 
+    def clone_advanced(self, 
+                       id, 
+                       dst_workspace_id, 
+                       dst_name,
+                       with_meta=True,
+                       with_datasets=True,
+                       with_items=True,
+                       with_annotations=True):
+        if not with_meta and with_annotations:
+            raise ValueError("with_meta parameter must be True if with_annotations parameter is True")
+        if not with_datasets and with_items:
+            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
+        response = self._api.post(
+            self._clone_api_method_name(),
+            {
+                ApiField.ID: id,
+                ApiField.WORKSPACE_ID: dst_workspace_id,
+                ApiField.NAME: dst_name,
+                ApiField.INCLUDE: {
+                    ApiField.CLASSES: with_meta,
+                    ApiField.PROJECT_TAGS: with_meta,
+                    ApiField.DATASETS: with_datasets,
+                    ApiField.IMAGES: with_items,
+                    ApiField.IMAGES_TAGS: with_items,
+                    ApiField.ANNOTATION_OBJECTS: with_annotations,
+                    ApiField.ANNOTATION_OBJECTS_TAGS: with_annotations,
+                    ApiField.FIGURES: with_annotations,
+                    ApiField.FIGURES_TAGS: with_annotations
+                },
+
+            },
+        )
+        return response.json()[ApiField.TASK_ID]
+
     def create(
         self,
         workspace_id,
@@ -312,12 +346,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             info = self.create(workspace_id, name, type=type, description=description)
         return info
 
-    def edit_info(self, id, name=None, description=None, readme=None, custom_data=None):
+    def edit_info(self, id, name=None, description=None, readme=None, custom_data=None, project_type=None):
         if (
             name is None
             and description is None
             and readme is None
             and custom_data is None
+            and project_type is None
         ):
             raise ValueError("one of the arguments has to be specified")
 
@@ -330,6 +365,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             body[ApiField.README] = readme
         if custom_data is not None:
             body[ApiField.CUSTOM_DATA] = custom_data
+        if project_type is not None:
+            if isinstance(project_type, ProjectType):
+                project_type = str(project_type)
+            if project_type not in ProjectType.values():
+                raise ValueError(f"project type must be one of: {ProjectType.values()}")
+            project_info = self.get_info_by_id(id)
+            current_project_type = project_info.type
+            if project_type == current_project_type:
+                raise ValueError(f"project with id {id} already has type {project_type}")
+            if not (current_project_type == str(ProjectType.POINT_CLOUDS) and project_type == str(ProjectType.POINT_CLOUD_EPISODES)):
+                raise ValueError(f"conversion from {current_project_type} to {project_type} is not supported ")
+            body[ApiField.TYPE] = project_type
 
         response = self._api.post(self._get_update_method(), body)
         return self._convert_json_info(response.json())

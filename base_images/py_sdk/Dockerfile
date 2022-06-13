@@ -11,7 +11,7 @@ RUN apt-get install -y zlib1g
 
 RUN pip install attrs
 RUN pip install --upgrade pip
-RUN pip install requests==2.27.1
+RUN pip install requests==2.28.0
 RUN apt-get install -y libmagic-dev
 
 RUN pip install supervisely==$tag_ref_name
