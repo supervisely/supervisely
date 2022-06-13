@@ -63,7 +63,7 @@ def process_image_roi(func):
             if type(label.geometry) is Bitmap:
                 bitmap_data = label.geometry.data
                 bitmap_origin = PointLocation(label.geometry.origin.row + sly_rectangle.top,
-                                                label.geometry.origin.col + sly_rectangle.left)
+                                              label.geometry.origin.col + sly_rectangle.left)
 
                 updated_geometry = Bitmap(data=bitmap_data, origin=bitmap_origin)
             updated_labels.append(label.clone(geometry=updated_geometry))
@@ -104,4 +104,6 @@ def process_image_roi(func):
             raise ValueError('image_np or image_path not provided!')
 
         return ann_json
+
     return wrapper_inference
+

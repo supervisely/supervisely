@@ -114,7 +114,7 @@ class AppApi(TaskApi):
         return resp
 
     def get_url(self, task_id):
-        return os.path.join(self._api.server_address, "apps/sessions", str(task_id))
+        return f"/apps/sessions/{task_id}"
 
     def download_git_file(self, app_id, version, file_path, save_path):
         raise NotImplementedError()
