@@ -194,7 +194,7 @@ class FileApi(ModuleApiBase):
         return res_path
 
     def get_url(self, file_id):
-        return urllib.parse.urljoin(self._api.server_address, "files/{}".format(file_id))
+        return f"/files/{file_id}"
 
     def get_info_by_path(self, team_id, remote_path):
         path_infos = self.list(team_id, remote_path)

@@ -406,7 +406,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def set_output_archive(self, task_id, file_id, file_name, file_url=None):
         if file_url is None:
-            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+            file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
                                        file_url=file_url,
                                        description="Download archive", icon="zmdi zmdi-archive",
@@ -414,7 +414,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def set_output_file_download(self, task_id, file_id, file_name, file_url=None, download=True):
         if file_url is None:
-            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+            file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
                                        file_url=file_url,
                                        description="Download file", icon="zmdi zmdi-file",
