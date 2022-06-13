@@ -127,18 +127,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post("projects.meta", {"id": id})
         return response.json()
 
-    def _clone_advanced(self, 
-                        clone_type: dict, 
-                        dst_workspace_id: int, 
-                        dst_name: str,
-                        with_meta: bool = True,
-                        with_datasets: bool = True,
-                        with_items: bool = True,
-                        with_annotations: bool = True):
+    def clone_advanced(self, 
+                       id, 
+                       dst_workspace_id, 
+                       dst_name,
+                       with_meta=True,
+                       with_datasets=True,
+                       with_items=True,
+                       with_annotations=True):
+        if not with_meta and with_annotations:
+            raise ValueError("with_meta parameter must be True if with_annotations parameter is True")
+        if not with_datasets and with_items:
+            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
         response = self._api.post(
             self._clone_api_method_name(),
             {
-                **clone_type,
+                ApiField.ID: id,
                 ApiField.WORKSPACE_ID: dst_workspace_id,
                 ApiField.NAME: dst_name,
                 ApiField.INCLUDE: {
@@ -156,26 +160,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             },
         )
         return response.json()[ApiField.TASK_ID]
-
-    def clone_advanced(self, 
-                       id, 
-                       dst_workspace_id, 
-                       dst_name,
-                       with_meta=True,
-                       with_datasets=True,
-                       with_items=True,
-                       with_annotations=True):
-        if not with_meta and with_annotations:
-            raise ValueError("with_meta parameter must be True if with_annotations parameter is True")
-        if not with_datasets and with_items:
-            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
-        return self._clone_advanced({ApiField.ID: id}, 
-                                    dst_workspace_id, 
-                                    dst_name,
-                                    with_meta,
-                                    with_datasets,
-                                    with_items,
-                                    with_annotations)
 
     def create(
         self,
