@@ -106,4 +106,3 @@ def process_image_roi(func):
         return ann_json
 
     return wrapper_inference
-

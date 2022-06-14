@@ -716,14 +716,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param image_id: int
         :return: url of given image id
         """
-        result = urllib.parse.urljoin(
-            self._api.server_address,
-            "app/images/{}/{}/{}/{}#image-{}".format(
-                team_id, workspace_id, project_id, dataset_id, image_id
-            ),
-        )
-
-        return result
+        return f"/app/images/{team_id}/{workspace_id}/{project_id}/{dataset_id}#image-{image_id}"
 
     def _download_batch_by_hashes(self, hashes):
         for batch_hashes in batched(hashes):
@@ -773,21 +766,18 @@ class ImageApi(RemoveableBulkModuleApi):
         return res_title
 
     def storage_url(self, path_original):
-        result = urllib.parse.urljoin(
-            self._api.server_address, "{}".format(path_original)
-        )
-        return result
+        return path_original
 
     def preview_url(self, url, width=None, height=None, quality=70):
         # @TODO: if both width and height are defined, and they are not proportioned to original image resolution,
-        # then images will be croped from center
+        # then images will be cropped from center
         if width is None:
             width = ""
         if height is None:
             height = ""
         return url.replace(
             "/image-converter",
-            "/previews/{}x{},jpeg,q{}/image-converter".format(width, height, quality),
+            f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
         )
 
     def update_meta(self, id, meta):
