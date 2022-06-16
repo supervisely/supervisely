@@ -18,6 +18,16 @@ class PointcloudEpisodeApi(PointcloudApi):
 
     def get_frame_name_map(self, dataset_id):
         pointclouds = self.get_list(dataset_id)
-        return {x.frame: x.name for x in pointclouds}
+
+        frame_index_to_pcl_name = {}
+        if len(pointclouds) > 0 and pointclouds[0].frame is None:
+            pointclouds_names = sorted([x.name for x in pointclouds])
+            for frame_index, pcl_name in enumerate(pointclouds_names):
+                frame_index_to_pcl_name[frame_index] = pcl_name
+
+        else:
+            frame_index_to_pcl_name = {x.frame: x.name for x in pointclouds}
+
+        return frame_index_to_pcl_name
 
 
