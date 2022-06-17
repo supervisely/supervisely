@@ -24,12 +24,17 @@ class RadioTable(Widget):
             self._header.append({"title": col, "subtitle": self.subtitles.get(col)})
 
         self._frows = []
-        self._update_frows()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+        self.rows = rows
+
     def get_json_data(self):
-        return {"header": self._header, "frows": self._frows, "raw_rows_data": self.rows}
+        return {
+            "header": self._header,
+            "frows": self._frows,
+            "raw_rows_data": self.rows,
+        }
 
     def get_json_state(self):
         return {"selectedRow": 0}
@@ -41,7 +46,9 @@ class RadioTable(Widget):
     def default_formatter(self, value):
         if value is None:
             return "-"
-        return "<div> {{{{ data.{}.raw_rows_data[params.ridx][params.vidx] }}}} </div>".format(self.widget_id)
+        return "<div> {{{{ data.{}.raw_rows_data[params.ridx][params.vidx] }}}} </div>".format(
+            self.widget_id
+        )
 
     def _update_frows(self):
         self._frows = []
@@ -59,7 +66,7 @@ class RadioTable(Widget):
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
-            selected_row_index = widget_actual_state['selectedRow']
+            selected_row_index = widget_actual_state["selectedRow"]
             return self.rows[selected_row_index]
 
     @property
@@ -70,8 +77,5 @@ class RadioTable(Widget):
     def rows(self, value):
         self._rows = value
         self._update_frows()
-        DataJson()[self.widget_id]['frows'] = self._frows
-        DataJson()[self.widget_id]['raw_rows_data'] = self._rows
-
-
-
+        DataJson()[self.widget_id]["frows"] = self._frows
+        DataJson()[self.widget_id]["raw_rows_data"] = self._rows
