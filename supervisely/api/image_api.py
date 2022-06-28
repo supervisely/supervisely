@@ -64,6 +64,36 @@ class ImageApi(RemoveableBulkModuleApi):
             },
         )
 
+    def get_filtered_list(self, dataset_id, filters=None, sort="id", sort_order="asc"):
+        """
+        :param dataset_id: int
+        :param filters: list of dicts {'type': str, 'data': dict}
+        :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
+        :return: list of filtered images for a given dataset
+        """
+        if filters is None or not filters:
+            return self.get_list(dataset_id, sort=sort, sort_order=sort_order)
+        
+        if not all(["type" in filter.keys() for filter in filters]):
+            raise ValueError("'type' field not found in filter")
+        if not all(["data" in filter.keys() for filter in filters]):
+            raise ValueError("'data' field not found in filter")
+        
+        allowed_filter_types = ['images_filename', 'images_tag', 'objects_tag', \
+            'objects_class', 'objects_annotator', 'tagged_by_annotator', 'issues_count']
+        if not all([filter["type"] in allowed_filter_types for filter in filters]):
+            raise ValueError(f"'type' field must be one of: {allowed_filter_types}")
+        
+        return self.get_list_all_pages(
+            "images.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTERS: filters,
+                ApiField.SORT: sort,
+                ApiField.SORT_ORDER: sort_order,
+            }
+        )
+
     def get_info_by_id(self, id):
         """
         :param id: int

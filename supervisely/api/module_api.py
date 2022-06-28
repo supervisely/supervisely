@@ -40,6 +40,7 @@ class ApiField:
     TASK_ID = "taskId"
     LABELS_COUNT = "labelsCount"
     FILTER = "filter"
+    FILTERS = "filters"
     META = "meta"
     FILE_META = "fileMeta"
     SHARED_LINK = "sharedLinkToken"
