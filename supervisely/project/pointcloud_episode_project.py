@@ -56,19 +56,22 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def _read(self):
         if not dir_exists(self.item_dir):
-            raise FileNotFoundError('Item directory not found: {!r}'.format(self.item_dir))
+            raise NotADirectoryError(f"Cannot read dataset {self.item_dir}: directory not found")
 
-        item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
-        item_names = sorted([os.path.basename(path) for path in item_paths])
+        try:
+            item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
+            item_names = sorted([os.path.basename(path) for path in item_paths])
 
-        map_file_path = self.get_frame_pointcloud_map_path()
-        if os.path.isfile(map_file_path):
-            self._frame_to_pc_map = load_json_file(map_file_path)
-        else:
-            self._frame_to_pc_map = {frame_index: item_names[frame_index] for frame_index in range(len(item_names))}
+            map_file_path = self.get_frame_pointcloud_map_path()
+            if os.path.isfile(map_file_path):
+                self._frame_to_pc_map = load_json_file(map_file_path)
+            else:
+                self._frame_to_pc_map = {frame_index: item_names[frame_index] for frame_index in range(len(item_names))}
 
-        self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
-        self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
+            self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
+            self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
+        except Exception as ex:
+            raise Exception(f"Cannot read dataset ({self.item_dir}): {repr(ex)}")
 
     def get_frame_idx(self, item_name: str) -> int:
         return int(self._item_to_ann[item_name])
@@ -157,7 +160,7 @@ def download_pointcloud_episode_project(api: Api, project_id: int, dest_dir: str
 def upload_pointcloud_episode_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None,
                                       log_progress: Optional[bool]=False) -> Tuple[int, str]:
     # STEP 0 — create project remotely
-    project_locally = PointcloudEpisodeProject.read_single(directory)
+    project_locally = PointcloudEpisodeProject(directory, OpenMode.READ)
     project_name = project_locally.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):
@@ -246,6 +249,7 @@ def upload_pointcloud_episode_project(directory: str, api: Api, workspace_id: in
                                                ApiField.HASH: img_hash,
                                                ApiField.META: meta_json[ApiField.META]})
 
-        api.pointcloud_episode.add_related_images(img_infos['img_metas'])
+        if len(img_infos['img_metas']) > 0:
+            api.pointcloud_episode.add_related_images(img_infos['img_metas'])
 
     return project_remotely.id, project_remotely.name

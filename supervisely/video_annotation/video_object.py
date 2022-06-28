@@ -14,7 +14,12 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, CLASS_ID
+from supervisely.geometry.constants import (
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    CLASS_ID,
+)
 
 
 class VideoObject(KeyObject):
@@ -57,10 +62,11 @@ class VideoObject(KeyObject):
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
-        self.class_id = class_id
+
         self._obj_class = obj_class
         self._key = take_with_default(key, uuid.uuid4())
         self._tags = take_with_default(tags, VideoTagCollection())
+        self._class_id = take_with_default(class_id, None)
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -137,6 +143,10 @@ class VideoObject(KeyObject):
             # ]
         """
         return self._tags.clone()
+
+    @property
+    def class_id(self):
+        return self._class_id
 
     def add_tag(self, tag: VideoTag) -> VideoObject:
         """
@@ -256,7 +266,7 @@ class VideoObject(KeyObject):
         data_json = {
             KEY: self.key().hex,
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
-            LabelJsonFields.TAGS: self.tags.to_json(key_id_map)
+            LabelJsonFields.TAGS: self.tags.to_json(key_id_map),
         }
 
         if key_id_map is not None:
@@ -301,8 +311,10 @@ class VideoObject(KeyObject):
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:
-            raise RuntimeError(f'Failed to deserialize a object from JSON: class name {obj_class_name!r} '
-                               f'was not found in the given project meta.')
+            raise RuntimeError(
+                f"Failed to deserialize a object from JSON: class name {obj_class_name!r} "
+                f"was not found in the given project meta."
+            )
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
@@ -314,10 +326,17 @@ class VideoObject(KeyObject):
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
 
-        return cls(obj_class=obj_class,
-                   key=key,
-                   tags=VideoTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
-                   class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            obj_class=obj_class,
+            key=key,
+            tags=VideoTagCollection.from_json(
+                data[LabelJsonFields.TAGS], project_meta.tag_metas
+            ),
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def clone(self, obj_class: Optional[ObjClass]=None, tags: Optional[VideoTagCollection] = None, key: Optional[KeyIdMap]=None,
               class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None, created_at: Optional[str]=None) -> VideoObject:

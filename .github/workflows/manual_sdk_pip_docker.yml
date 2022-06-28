@@ -40,7 +40,7 @@ jobs:
       uses: mr-smithers-excellent/docker-build-push@v5
       with:
         image: supervisely/base-py-sdk
-        tags: ${{ env.RELEASE_VERSION }}
+        tags: ${{ env.RELEASE_VERSION }}, latest
         addLatest: true
         dockerfile: "base_images/py_sdk/Dockerfile"
         registry: docker.io

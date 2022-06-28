@@ -139,9 +139,12 @@ def list_files_recursively(dir: str, valid_extensions: Optional[List[str]] = Non
             for filename in file_names:
                 yield os.path.join(dir_name, filename)
 
-    return [file_path for file_path in file_path_generator() if
-            (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
-            (filter_fn is None or filter_fn(file_path))]
+    return [
+        file_path
+        for file_path in file_path_generator()
+        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+        and (filter_fn is None or filter_fn(file_path))
+    ]
 
 
 def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
@@ -168,9 +171,12 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
          # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
-    return [file_path for file_path in res if
-      (valid_extensions is None or get_file_ext(file_path) in valid_extensions) and
-      (filter_fn is None or filter_fn(file_path))]
+    return [
+        file_path
+        for file_path in res
+        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+        and (filter_fn is None or filter_fn(file_path))
+    ]
 
 
 def mkdir(dir: str, remove_content_if_exists: Optional[bool]=False) -> None:
@@ -235,8 +241,8 @@ def copy_file(src: str, dst: str) -> None:
         copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
     """
     ensure_base_path(dst)
-    with open(dst, 'wb') as out_f:
-        with open(src, 'rb') as in_f:
+    with open(dst, "wb") as out_f:
+        with open(src, "rb") as in_f:
             shutil.copyfileobj(in_f, out_f, length=1024 * 1024)
 
 
@@ -286,7 +292,9 @@ def hardlink_or_copy_tree(src: str, dst: str) -> None:
         dst_sub_dir = os.path.join(dst, relative_dir)
         mkdir(dst_sub_dir)
         for file_name in file_names:
-            hardlink_or_copy_file(os.path.join(dir_name, file_name), os.path.join(dst_sub_dir, file_name))
+            hardlink_or_copy_file(
+                os.path.join(dir_name, file_name), os.path.join(dst_sub_dir, file_name)
+            )
 
 
 def dir_exists(dir: str) -> bool:
@@ -387,8 +395,8 @@ def clean_dir(dir_: str, ignore_errors: Optional[bool]=True) -> None:
         clean_dir('/home/admin/work/projects/examples')
     """
     # old implementation
-    #shutil.rmtree(dir_, ignore_errors=True)
-    #mkdir(dir_)
+    # shutil.rmtree(dir_, ignore_errors=True)
+    # mkdir(dir_)
 
     for filename in os.listdir(dir_):
         file_path = os.path.join(dir_, filename)
@@ -501,7 +509,7 @@ def archive_directory(dir_: str, tar_path: str) -> None:
         from supervisely.io.fs import archive_directory
         archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
     """
-    with tarfile.open(tar_path, 'w', encoding='utf-8') as tar:
+    with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
 
 
@@ -609,7 +617,7 @@ def log_tree(dir_path: str, logger) -> None:
         log_tree('/home/admin/work/projects/examples', logger)
     """
     out = tree(dir_path)
-    logger.info("DIRECTORY_TREE", extra={'tree': out})
+    logger.info("DIRECTORY_TREE", extra={"tree": out})
 
 
 def touch(path: str) -> None:
@@ -628,7 +636,7 @@ def touch(path: str) -> None:
         touch('/home/admin/work/projects/examples/1.jpeg')
     """
     ensure_base_path(path)
-    with open(path, 'a'):
+    with open(path, "a"):
         os.utime(path, None)
 
 
@@ -660,10 +668,12 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
     def _download():
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get('Content-Length', '0'))
+            total_size_in_bytes = int(
+                CaseInsensitiveDict(r.headers).get("Content-Length", "0")
+            )
             if progress is not None and type(progress) is Progress:
                 progress.set(0, total_size_in_bytes)
-            with open(save_path, 'wb') as f:
+            with open(save_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
                     if progress is not None:
@@ -675,7 +685,9 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
     if cache is None:
         _download()
     else:
-        cache_path = cache.check_storage_object(get_string_hash(url), get_file_ext(save_path))
+        cache_path = cache.check_storage_object(
+            get_string_hash(url), get_file_ext(save_path)
+        )
         if cache_path is None:
             # file not in cache
             _download()
@@ -691,4 +703,3 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
                     progress(sizeb)
 
     return save_path
-

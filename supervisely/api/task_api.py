@@ -14,7 +14,10 @@ from supervisely.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from supervisely.io.fs import get_file_name, ensure_base_path, get_file_hash
 from supervisely.collection.str_enum import StrEnum
-from supervisely._utils import batched
+from supervisely._utils import (
+    batched,
+    take_with_default
+)
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
@@ -246,7 +249,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         encoder = MultipartEncoder({'id': str(task_id).encode('utf-8'),
                                     'name': get_file_name(archive_path),
                                     'archive': (
-                                    os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar')})
+                                        os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar')})
 
         def callback(monitor_instance):
             read_mb = monitor_instance.bytes_read / 1024.0 / 1024.0
@@ -367,7 +370,29 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             task_id = task_ids[0]
         return task_id
 
-    def stop(self, id: int) -> Status:
+    def start(self, agent_id, app_id, workspace_id, description='application description', params=None,
+              log_level='info',
+              users_ids=None, app_version='', is_branch=False,
+              task_name='pythonSpawned', restart_policy='never', proxy_keep_url=False):
+
+        resp = self._api.post(method='tasks.run.app', data={
+            ApiField.AGENT_ID: agent_id,
+            ApiField.APP_ID: app_id,
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.DESCRIPTION: description,
+            ApiField.PARAMS: take_with_default(params, {'state': {}}),
+            ApiField.LOG_LEVEL: log_level,
+            ApiField.USERS_IDS: take_with_default(users_ids, []),
+            ApiField.APP_VERSION: app_version,
+            ApiField.IS_BRANCH: is_branch,
+            ApiField.TASK_NAME: task_name,
+            ApiField.RESTART_POLICY: restart_policy,
+            ApiField.PROXY_KEEP_URL: proxy_keep_url
+        })
+
+        return resp.json()
+
+    def stop(self, id):
         response = self._api.post('tasks.stop', {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
 
@@ -375,8 +400,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         response = self._api.post('tasks.import.files_list', {ApiField.ID: id})
         return response.json() if (response is not None) else None
 
-    def download_import_file(self, id: int, file_path: str, save_path: str) -> None:
-        response = self._api.post('tasks.import.download_file', {ApiField.ID: id, ApiField.FILENAME: file_path}, stream=True)
+    def download_import_file(self, id, file_path, save_path):
+        response = self._api.post('tasks.import.download_file', {ApiField.ID: id, ApiField.FILENAME: file_path},
+                                  stream=True)
 
         ensure_base_path(save_path)
         with open(save_path, 'wb') as fd:
@@ -391,7 +417,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def submit_logs(self, logs) -> None:
         response = self._api.post('tasks.logs.add', {ApiField.LOGS: logs})
-        #return response.json()[ApiField.TASK_ID]
+        # return response.json()[ApiField.TASK_ID]
 
     def upload_files(self, task_id: int, abs_paths: List[str], names: List[str], progress_cb:Optional[Progress] = None) -> None:
         if len(abs_paths) != len(names):
@@ -421,7 +447,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 for name in hash_to_name[hash]:
                     files.append({ApiField.NAME: name, ApiField.HASH: hash})
             for batch in batched(files):
-                resp = self._api.post('tasks.files.bulk.add-by-hash', {ApiField.TASK_ID: task_id, ApiField.FILES: batch})
+                resp = self._api.post('tasks.files.bulk.add-by-hash',
+                                      {ApiField.TASK_ID: task_id, ApiField.FILES: batch})
         if progress_cb is not None:
             progress_cb(len(remote_hashes))
 
@@ -565,7 +592,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def set_output_archive(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str]=None) -> Dict:
         if file_url is None:
-            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+            file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
                                        file_url=file_url,
                                        description="Download archive", icon="zmdi zmdi-archive",
@@ -574,14 +601,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def set_output_file_download(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str]=None,
                                  download: Optional[bool]=True) -> Dict:
         if file_url is None:
-            file_url = self._api.file.get_info_by_id(file_id).full_storage_url
+            file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
                                        file_url=file_url,
                                        description="Download file", icon="zmdi zmdi-file",
                                        download=download)
 
     def send_request(self, task_id: int, method: str, data: Dict, context: Optional[Dict]={},
-                     skip_response: Optional[bool]=False, timeout: Optional[int]=60):
+                     skip_response: bool=False, timeout: Optional[int]=60):
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
         resp = self._api.post("tasks.request.direct", {ApiField.TASK_ID: task_id,
@@ -592,5 +619,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                                        'timeout': timeout})
         return resp.json()
 
-    def set_output_directory(self, task_id: int, file_id: int, directory_path: str) -> Dict:
-        return self._set_custom_output(task_id, file_id, directory_path, description="Directory", icon="zmdi zmdi-folder")
+    def set_output_directory(self, task_id, file_id, directory_path):
+        return self._set_custom_output(task_id, file_id, directory_path, description="Directory",
+                                       icon="zmdi zmdi-folder")

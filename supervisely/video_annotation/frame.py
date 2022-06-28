@@ -60,6 +60,8 @@ class Frame(KeyObject):
         #     ]
         # }
     """
+    figure_type = VideoFigure
+
     def __init__(self, index: int, figures: Optional[List[VideoFigure]]=None):
         self._index = index
         self._figures = take_with_default(figures, [])
@@ -129,7 +131,7 @@ class Frame(KeyObject):
         for figure in self._figures:
             figure.validate_bounds(img_size, _auto_correct=False)
 
-    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
+    def to_json(self, key_id_map: KeyIdMap = None) -> Dict:
         """
         Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -182,7 +184,7 @@ class Frame(KeyObject):
         """
         data_json = {
             INDEX: self.index,
-            FIGURES: [figure.to_json(key_id_map) for figure in self.figures]
+            FIGURES: [figure.to_json(key_id_map) for figure in self.figures],
         }
         return data_json
 
@@ -227,11 +229,15 @@ class Frame(KeyObject):
 
         if frames_count is not None:
             if index > frames_count:
-                raise ValueError("Video contains {} frames. Frame index is {}".format(frames_count, index))
+                raise ValueError(
+                    "Item contains {} frames. Frame index is {}".format(
+                        frames_count, index
+                    )
+                )
 
         figures = []
         for figure_json in data.get(FIGURES, []):
-            figure = VideoFigure.from_json(figure_json, objects, index, key_id_map)
+            figure = cls.figure_type.from_json(figure_json, objects, index, key_id_map)
             figures.append(figure)
         return cls(index=index, figures=figures)
 

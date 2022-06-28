@@ -237,7 +237,7 @@ class FileApi(ModuleApiBase):
                     progress_cb(len(chunk))
 
     def download(self, team_id: int, remote_path: str, local_save_path: str, cache: Optional[FileCache] = None,
-                 progress_cb: Optional[Progress] = None) -> None:
+                 progress_cb: Progress = None) -> None:
         """
         Download File from Team Files.
 
@@ -612,7 +612,7 @@ class FileApi(ModuleApiBase):
             print(file_url)
             # Output: http://supervise.ly/files/7660
          """
-        return urllib.parse.urljoin(self._api.server_address, "files/{}".format(file_id))
+        return f"/files/{file_id}"
 
     def get_info_by_path(self, team_id: int, remote_path: str) -> NamedTuple:
         """

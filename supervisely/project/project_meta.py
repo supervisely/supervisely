@@ -982,7 +982,7 @@ class ProjectMeta(JsonSerializable):
     def __ne__(self, other: ProjectMeta):
         return not self == other
 
-    def to_segmentation_task(self, keep_geometries: Optional[List]=[Polygon, Bitmap]) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+    def to_segmentation_task(self, keep_geometries: Optional[List]=[Polygon, Bitmap], target_classes=None) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
         """
         Convert project meta classes geometries with keep_geometries types to Bitmaps and create new ProjectMeta.
 
@@ -1049,16 +1049,21 @@ class ProjectMeta(JsonSerializable):
         res_classes = []
         for obj_class in self.obj_classes:
             obj_class: ObjClass
-            if obj_class.geometry_type in keep_geometries:
-                if obj_class.geometry_type == Bitmap:
-                    mapping[obj_class] = obj_class
-                    res_classes.append(obj_class)
+
+            if target_classes is None or obj_class.name in target_classes:
+                if obj_class.geometry_type in keep_geometries:
+                    if obj_class.geometry_type == Bitmap:
+                        mapping[obj_class] = obj_class
+                        res_classes.append(obj_class)
+                    else:
+                        new_class = obj_class.clone(geometry_type=Bitmap)
+                        mapping[obj_class] = new_class
+                        res_classes.append(new_class)
                 else:
-                    new_class = obj_class.clone(geometry_type=Bitmap)
-                    mapping[obj_class] = new_class
-                    res_classes.append(new_class)
+                    mapping[obj_class] = None
             else:
                 mapping[obj_class] = None
+
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 

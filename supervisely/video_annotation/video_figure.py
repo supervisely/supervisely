@@ -6,6 +6,8 @@ import uuid
 from uuid import UUID
 from bidict import bidict
 
+from supervisely.api.module_api import ApiField
+
 from supervisely._utils import take_with_default
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.rectangle import Rectangle
@@ -15,9 +17,14 @@ from supervisely.api.module_api import ApiField
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, CLASS_ID
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.constants import (
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    CLASS_ID,
+)
 
 
 class OutOfImageBoundsExtension(Exception):
@@ -203,8 +210,10 @@ class VideoFigure:
         """
         Checks geometry of VideoFigure class object for correctness
         """
-        self._geometry.validate(self.parent_object.obj_class.geometry_type.geometry_name(),
-                                self.parent_object.obj_class.geometry_config)
+        self._geometry.validate(
+            self.parent_object.obj_class.geometry_type.geometry_name(),
+            self.parent_object.obj_class.geometry_config,
+        )
 
     def _validate_geometry_type(self):
         """
@@ -212,8 +221,11 @@ class VideoFigure:
         """
         if self.parent_object.obj_class.geometry_type != AnyGeometry:
             if type(self._geometry) is not self.parent_object.obj_class.geometry_type:
-                raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
-                                   .format(type(self._geometry), self.parent_object.obj_class.geometry_type))
+                raise RuntimeError(
+                    "Input geometry type {!r} != geometry type of ObjClass {}".format(
+                        type(self._geometry), self.parent_object.obj_class.geometry_type
+                    )
+                )
 
     def to_json(self, key_id_map: Optional[UUID]=None, save_meta: Optional[bool]=False) -> Dict:
         """
@@ -267,7 +279,7 @@ class VideoFigure:
             KEY: self.key().hex,
             OBJECT_KEY: self.parent_object.key().hex,
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
-            ApiField.GEOMETRY: self.geometry.to_json()
+            ApiField.GEOMETRY: self.geometry.to_json(),
         }
 
         if key_id_map is not None:
@@ -279,10 +291,13 @@ class VideoFigure:
             if object_id is not None:
                 data_json[OBJECT_ID] = object_id
         if save_meta is True:
-            data_json[ApiField.META] = {ApiField.FRAME: self.frame_index}
+            data_json[ApiField.META] = self.get_meta()
 
         self._add_creation_info(data_json)
         return data_json
+
+    def get_meta(self):
+        return {ApiField.FRAME: self.frame_index}
 
     @classmethod
     def from_json(cls, data: Dict, objects: VideoObjectCollection, frame_index: int, key_id_map: Optional[KeyIdMap] = None) -> VideoFigure:
@@ -316,18 +331,26 @@ class VideoFigure:
             object_key = uuid.UUID(data[OBJECT_KEY])
 
         if object_id is None and object_key is None:
-            raise RuntimeError("Figure can not be deserialized from json: object_id or object_key are not found")
+            raise RuntimeError(
+                "Figure can not be deserialized from json: object_id or object_key are not found"
+            )
 
         if object_key is None:
             if key_id_map is None:
                 raise RuntimeError("Figure can not be deserialized: key_id_map is None")
             object_key = key_id_map.get_object_key(object_id)
             if object_key is None:
-                raise RuntimeError("Object with id={!r} not found in key_id_map".format(object_id))
+                raise RuntimeError(
+                    "Object with id={!r} not found in key_id_map".format(object_id)
+                )
 
         object = objects.get(object_key)
         if object is None:
-            raise RuntimeError("Figure can not be deserialized: corresponding object {!r} not found in ObjectsCollection".format(object_key.hex))
+            raise RuntimeError(
+                "Figure can not be deserialized: corresponding object {!r} not found in ObjectsCollection".format(
+                    object_key.hex
+                )
+            )
 
         shape_str = data[ApiField.GEOMETRY_TYPE]
         geometry_json = data[ApiField.GEOMETRY]
@@ -345,8 +368,16 @@ class VideoFigure:
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
 
-        return cls(object, geometry, frame_index, key,
-                   class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            object,
+            geometry,
+            frame_index,
+            key,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def clone(self, video_object: Optional[VideoObject]=None, geometry: Optional[Geometry]=None, frame_index: Optional[int]=None,
               key: Optional[UUID]=None, class_id: Optional[int]=None, labeler_login: Optional[str]=None,
@@ -457,7 +488,9 @@ class VideoFigure:
             raise OutOfImageBoundsExtension("Figure is out of image bounds")
 
         if _auto_correct is True:
-            geometries_after_crop = [cropped_geometry for cropped_geometry in self.geometry.crop(canvas_rect)]
+            geometries_after_crop = [
+                cropped_geometry for cropped_geometry in self.geometry.crop(canvas_rect)
+            ]
             if len(geometries_after_crop) != 1:
                 raise OutOfImageBoundsExtension("Several geometries after crop")
             self._set_geometry_inplace(geometries_after_crop[0])

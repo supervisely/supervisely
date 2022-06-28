@@ -23,26 +23,29 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_type import ProjectType
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
-VideoItemPaths = namedtuple('VideoItemPaths', ['video_path', 'ann_path'])
+VideoItemPaths = namedtuple("VideoItemPaths", ["video_path", "ann_path"])
 
 
 class VideoDataset(Dataset):
     """
-    Class for creating and using VideoDataset objects. Here is where your labeled and unlabeled images and other
+    This is a class for creating and using VideoDataset objects. Here is where your labeled and unlabeled images and other
     files live. There is no more levels: images or videos are directly attached to a dataset. Dataset is a unit of work.
     All images or videos are directly attached to a dataset. A dataset is some sort of data folder with stuff to annotate.
     """
-    item_dir_name = 'video'
-    annotation_class = VideoAnnotation
 
-    @staticmethod
-    def _has_valid_ext(path: str) -> bool:
+    item_dir_name = "video"
+    annotation_class = VideoAnnotation
+    item_module = sly_video
+    paths_tuple = VideoItemPaths
+
+    @classmethod
+    def _has_valid_ext(cls, path: str) -> bool:
         """
         Checks if file from given path is supported
         :param path: str
         :return: bool
         """
-        return sly_video.has_valid_ext(path)
+        return cls.item_module.has_valid_ext(path)
 
     def _get_empty_annotaion(self, item_name):
         """
@@ -50,7 +53,10 @@ class VideoDataset(Dataset):
         :param item_name: str
         :return: VideoAnnotation class object
         """
-        img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
+        (
+            img_size,
+            frames_count,
+        ) = VideoDataset.item_module.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
 
     def add_item_np(self, item_name, img, ann=None):
@@ -67,41 +73,33 @@ class VideoDataset(Dataset):
         """
         # Make sure we actually received a valid image file, clean it up and fail if not so.
         try:
-            sly_video.validate_format(item_path)
-        except (sly_video.UnsupportedVideoFormat, sly_video.VideoReadException):
+            VideoDataset.item_module.validate_format(item_path)
+        except Exception as e:
             os.remove(item_path)
-            raise
+            raise e
 
-    def set_ann(self, item_name: str, ann) -> None:
-        """
-        Save given videoannotation for given video to the appropriate folder
-        :param item_name: str
-        :param ann: VideoAnnotation class object, raise error if ann type is another
-        """
-        if type(ann) is not self.annotation_class:
-            raise TypeError("Type of 'ann' have to be Annotation, not a {}".format(type(ann)))
-        dst_ann_path = self.get_ann_path(item_name)
-        dump_json_file(ann.to_json(), dst_ann_path)
-
-    def get_item_paths(self, item_name: str) -> VideoItemPaths:
+    def get_item_paths(self, item_name) -> VideoItemPaths:
         """
         :param item_name: str
         :return: namedtuple object containing paths to video and annotation from given path
         """
-        return VideoItemPaths(video_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
+        return VideoDataset.paths_tuple(
+            self.get_img_path(item_name), self.get_ann_path(item_name)
+        )
 
 
 class VideoProject(Project):
     """
-    Class for creating and using VideoProject objects. You can think of a VideoProject as a superfolder with data and
+    This is a class for creating and using VideoProject objects. You can think of a VideoProject as a superfolder with data and
     meta information.
     """
+
     dataset_class = VideoDataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = VideoDataset
 
-    def __init__(self, directory: str, mode: OpenMode):
+    def __init__(self, directory, mode: OpenMode):
         """
         :param directory: path to the directory where the project will be saved or where it will be loaded from
         :param mode: OpenMode class object which determines in what mode to work with the project (generate exception error if not so)
@@ -114,7 +112,7 @@ class VideoProject(Project):
         Download project from given project directory. Checks item and annotation directoris existing and dataset not empty.
         Consistency checks. Every video must have an annotation, and the correspondence must be one to one.
         """
-        super(VideoProject, self)._read()
+        super()._read()
         self._key_id_map = KeyIdMap()
         self._key_id_map.load_json(self._get_key_id_map_path())
 
@@ -125,7 +123,9 @@ class VideoProject(Project):
         super()._create()
         self.set_key_id_map(KeyIdMap())
 
-    def _add_item_file_to_dataset(self, ds, item_name, item_paths, _validate_item, _use_hardlink):
+    def _add_item_file_to_dataset(
+        self, ds, item_name, item_paths, _validate_item, _use_hardlink
+    ):
         """
         Add given item file to dataset items directory and add annatation to dataset annotations dir corresponding to item.
         Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -135,14 +135,19 @@ class VideoProject(Project):
         :param _validate_item: bool
         :param _use_hardlink: bool
         """
-        ds.add_item_file(item_name, item_paths.item_path,
-                         ann=item_paths.ann_path, _validate_item=_validate_item, _use_hardlink=_use_hardlink)
+        ds.add_item_file(
+            item_name,
+            item_paths.item_path,
+            ann=item_paths.ann_path,
+            _validate_item=_validate_item,
+            _use_hardlink=_use_hardlink,
+        )
 
     @property
     def key_id_map(self):
         return self._key_id_map
 
-    def set_key_id_map(self, new_map: KeyIdMap) -> None:
+    def set_key_id_map(self, new_map: KeyIdMap):
         """
         Save given KeyIdMap object to project dir in json format.
         :param new_map: KeyIdMap class object
@@ -154,10 +159,10 @@ class VideoProject(Project):
         """
         :return: str (full path to key_id_map.json)
         """
-        return os.path.join(self.directory, 'key_id_map.json')
+        return os.path.join(self.directory, "key_id_map.json")
 
     @classmethod
-    def read_single(cls, dir: str):
+    def read_single(cls, dir):
         """
         Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
         :param dir: str
@@ -166,8 +171,8 @@ class VideoProject(Project):
         return read_project_wrapper(dir, cls)
 
 
-def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
-                           download_videos: Optional[bool]=True, log_progress: Optional[bool]=False) -> None:
+def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids: List[int]=None,
+                           download_videos: bool=True, log_progress: bool=False) -> None:
     """
     Download project with given id in destination directory.
 
@@ -208,16 +213,22 @@ def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids
 
         ds_progress = None
         if log_progress:
-            ds_progress = Progress('Downloading dataset: {!r}'.format(dataset.name), total_cnt=len(videos))
+            ds_progress = Progress(
+                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(videos)
+            )
         for batch in batched(videos, batch_size=LOG_BATCH_SIZE):
             video_ids = [video_info.id for video_info in batch]
             video_names = [video_info.name for video_info in batch]
 
             ann_jsons = api.video.annotation.download_bulk(dataset.id, video_ids)
 
-            for video_id, video_name, ann_json in zip(video_ids, video_names, ann_jsons):
+            for video_id, video_name, ann_json in zip(
+                video_ids, video_names, ann_jsons
+            ):
                 if video_name != ann_json[ApiField.VIDEO_NAME]:
-                    raise RuntimeError("Error in api.video.annotation.download_batch: broken order")
+                    raise RuntimeError(
+                        "Error in api.video.annotation.download_batch: broken order"
+                    )
 
                 video_file_path = dataset_fs.generate_item_path(video_name)
                 if download_videos is True:
@@ -225,13 +236,16 @@ def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids
                 else:
                     touch(video_file_path)
 
-                dataset_fs.add_item_file(video_name,
-                                         video_file_path,
-                                         ann=VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
-                                         _validate_item=False)
+                dataset_fs.add_item_file(
+                    video_name,
+                    video_file_path,
+                    ann=VideoAnnotation.from_json(
+                        ann_json, project_fs.meta, key_id_map
+                    ),
+                    _validate_item=False,
+                )
 
-            if log_progress:
-                ds_progress.iters_done_report(len(batch))
+            ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 
@@ -275,15 +289,23 @@ def upload_video_project(dir: str, api: Api, workspace_id: int, project_name: Op
 
         progress_cb = None
         if log_progress:
-            ds_progress = Progress('Uploading videos to dataset {!r}'.format(dataset.name), total_cnt=len(item_paths))
+            ds_progress = Progress(
+                "Uploading videos to dataset {!r}".format(dataset.name),
+                total_cnt=len(item_paths),
+            )
             progress_cb = ds_progress.iters_done_report
 
         item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
         item_ids = [item_info.id for item_info in item_infos]
         if log_progress:
-            ds_progress = Progress('Uploading annotations to dataset {!r}'.format(dataset.name), total_cnt=len(item_paths))
+            ds_progress = Progress(
+                "Uploading annotations to dataset {!r}".format(dataset.name),
+                total_cnt=len(item_paths),
+            )
             progress_cb = ds_progress.iters_done_report
 
-        api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
+        api.video.annotation.upload_paths(
+            item_ids, ann_paths, project_fs.meta, progress_cb
+        )
 
     return project.id, project.name

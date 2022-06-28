@@ -151,7 +151,7 @@ class FrameCollection(KeyIndexedCollection):
     """
     item_type = Frame
 
-    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
+    def to_json(self, key_id_map: KeyIdMap=None) -> List[Dict]:
         """
         Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -225,7 +225,7 @@ class FrameCollection(KeyIndexedCollection):
         return cls(frames)
 
     def __str__(self):
-        return 'Frames:\n' + super(FrameCollection, self).__str__()
+        return "Frames:\n" + super(FrameCollection, self).__str__()
 
     @property
     def figures(self):
@@ -355,7 +355,6 @@ class FrameCollection(KeyIndexedCollection):
             for figure in frame.figures:
                 keys.append(figure.key())
                 figure_json = figure.to_json(key_id_map)
-                figure_json[ApiField.META] = {ApiField.FRAME: frame.index}
+                figure_json[ApiField.META] = figure.get_meta()
                 figures_json.append(figure_json)
         return figures_json, keys
-

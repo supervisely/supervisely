@@ -32,16 +32,19 @@ import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely.api.advanced_api as advanced_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.remote_storage_api as remote_storage_api
+import supervisely.api.github_api as github_api
+import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
 
 
 from supervisely.io.network_exceptions import process_requests_exception, process_unhandled_request
 
-SUPERVISELY_TASK_ID = 'SUPERVISELY_TASK_ID'
-SUPERVISELY_PUBLIC_API_RETRIES = 'SUPERVISELY_PUBLIC_API_RETRIES'
-SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = 'SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC'
-SERVER_ADDRESS = 'SERVER_ADDRESS'
-API_TOKEN = 'API_TOKEN'
+SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
+SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
+SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC"
+SERVER_ADDRESS = "SERVER_ADDRESS"
+API_TOKEN = "API_TOKEN"
+TASK_ID = "TASK_ID"
 
 
 class Api:
@@ -81,22 +84,22 @@ class Api:
                  external_logger: Optional[logger] = None, ignore_task_id: Optional[bool] = False):
         if token is None:
             raise ValueError("Token is None")
-        self.server_address = server_address.strip('/')
-        if ('http://' not in self.server_address) and ('https://' not in self.server_address):
-            self.server_address = 'http://' + self.server_address
+        self.server_address = Api.normalize_server_address(server_address)
 
         if retry_count is None:
-            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, '20'))
+            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "20"))
         if retry_sleep_sec is None:
-            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, '1'))
+            retry_sleep_sec = int(
+                os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1")
+            )
 
         if len(token) != 128:
             raise ValueError("Invalid token {!r}: length != 128".format(token))
 
-        self.headers = {'x-api-key': token}
+        self.headers = {"x-api-key": token}
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:
-            self.headers['x-task-id'] = self.task_id
+            self.headers["x-task-id"] = self.task_id
         self.context = {}
         self.additional_fields = {}
 
@@ -125,6 +128,8 @@ class Api:
         self.advanced = advanced_api.AdvancedApi(self)
         self.import_storage = import_stoarge_api.ImportStorageApi(self)
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
+        self.github = github_api.GithubApi(self)
+        self.volume = volume_api.VolumeApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -132,7 +137,14 @@ class Api:
         self.logger = external_logger or logger
 
     @classmethod
-    def from_env(cls, retry_count: Optional[int]=5, ignore_task_id: Optional[bool]=False) -> Api:
+    def normalize_server_address(cls, server_address):
+        result = server_address.strip("/")
+        if ("http://" not in result) and ("https://" not in result):
+            result = "http://" + result
+        return result
+
+    @classmethod
+    def from_env(cls, retry_count: int=5, ignore_task_id: bool=False) -> Api:
         """
         Initialize API use environment variables.
 
@@ -153,7 +165,12 @@ class Api:
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
         """
-        return cls(os.environ[SERVER_ADDRESS], os.environ[API_TOKEN], retry_count=retry_count, ignore_task_id=ignore_task_id)
+        return cls(
+            os.environ[SERVER_ADDRESS],
+            os.environ[API_TOKEN],
+            retry_count=retry_count,
+            ignore_task_id=ignore_task_id,
+        )
 
     def add_header(self, key: str, value: str) -> None:
         """
@@ -168,8 +185,10 @@ class Api:
         :rtype: :class:`NoneType`
         """
         if key in self.headers:
-            raise RuntimeError(f'Header {key!r} is already set for the API object. '
-                               f'Current value: {self.headers[key]!r}. Tried to set value: {value!r}')
+            raise RuntimeError(
+                f"Header {key!r} is already set for the API object. "
+                f"Current value: {self.headers[key]!r}. Tried to set value: {value!r}"
+            )
         self.headers[key] = value
 
     def add_additional_field(self, key: str, value: str) -> None:
@@ -204,29 +223,46 @@ class Api:
             retries = self.retry_count
 
         for retry_idx in range(retries):
-            url = self.server_address + '/public/api/v3/' + method
+            url = self.server_address + "/public/api/v3/" + method
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
-                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    response = requests.post(url, data=data,
-                                             headers={**self.headers, 'Content-Type': data.content_type}, stream=stream)
+                    response = requests.post(
+                        url, data=data, headers=self.headers, stream=stream
+                    )
+                elif (
+                    type(data) is MultipartEncoderMonitor
+                    or type(data) is MultipartEncoder
+                ):
+                    response = requests.post(
+                        url,
+                        data=data,
+                        headers={**self.headers, "Content-Type": data.content_type},
+                        stream=stream,
+                    )
                 else:
                     json_body = data
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
-                    response = requests.post(url, json=json_body, headers=self.headers, stream=stream)
+                    response = requests.post(
+                        url, json=json_body, headers=self.headers, stream=stream
+                    )
 
                 if response.status_code != requests.codes.ok:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
-                process_requests_exception(self.logger, exc, method, url,
-                                           verbose=True, swallow_exc=True, sleep_sec=self.retry_sleep_sec,
-                                           response=response,
-                                           retry_info={"retry_idx": retry_idx + 1,
-                                                       "retry_limit": retries})
+                process_requests_exception(
+                    self.logger,
+                    exc,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=self.retry_sleep_sec,
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
@@ -253,7 +289,7 @@ class Api:
             retries = self.retry_count
 
         for retry_idx in range(retries):
-            url = self.server_address + '/public/api/v3/' + method
+            url = self.server_address + "/public/api/v3/" + method
             if use_public_api is False:
                 url = os.path.join(self.server_address, method)
             response = None
@@ -261,17 +297,25 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
-                process_requests_exception(self.logger, exc, method, url,
-                                           verbose=True, swallow_exc=True, sleep_sec=self.retry_sleep_sec,
-                                           response=response,
-                                           retry_info={"retry_idx": retry_idx + 2,
-                                                       "retry_limit": retries})
+                process_requests_exception(
+                    self.logger,
+                    exc,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=self.retry_sleep_sec,
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
+                )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
 
@@ -281,20 +325,30 @@ class Api:
         Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
         """
-        http_error_msg = ''
+        http_error_msg = ""
         if isinstance(response.reason, bytes):
             try:
-                reason = response.reason.decode('utf-8')
+                reason = response.reason.decode("utf-8")
             except UnicodeDecodeError:
-                reason = response.reason.decode('iso-8859-1')
+                reason = response.reason.decode("iso-8859-1")
         else:
             reason = response.reason
 
         if 400 <= response.status_code < 500:
-            http_error_msg = u'%s Client Error: %s for url: %s (%s)' % (response.status_code, reason, response.url, response.content.decode('utf-8'))
+            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                response.content.decode("utf-8"),
+            )
 
         elif 500 <= response.status_code < 600:
-            http_error_msg = u'%s Server Error: %s for url: %s (%s)' % (response.status_code, reason, response.url, response.content.decode('utf-8'))
+            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                response.content.decode("utf-8"),
+            )
 
         if http_error_msg:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
@@ -318,7 +372,7 @@ class Api:
         DETAILS_FIELD = "details"
 
         try:
-            data_str = response.content.decode('utf-8')
+            data_str = response.content.decode("utf-8")
             data = json.loads(data_str)
             error = data.get(ERROR_FIELD, default_error)
             details = data.get(DETAILS_FIELD, {})
@@ -333,5 +387,5 @@ class Api:
 
     def pop_header(self, key: str) -> str:
         if key not in self.headers:
-            raise KeyError(f'Header {key!r} not found')
+            raise KeyError(f"Header {key!r} not found")
         return self.headers.pop(key)

@@ -19,17 +19,35 @@ class Field(str, enum.Enum):
     CONTEXT = "context"
 
 
+# self._session_dir = "/sessions/{}".format(self.task_id)
+# self._template_path = None
+# debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
+# if debug_app_dir != "":
+#     self._session_dir = debug_app_dir
+# mkdir(self.data_dir)
+
+
 def get_data_dir():
-    key = "SLY_APP_DATA_DIR"
     dir = None
 
-    try:
-        dir = os.environ[key]
-    except KeyError as e:
-        raise KeyError(f"Environment variable {key} is not defined")
+    task_id = os.environ.get("TASK_ID")
+    if task_id is not None:
+        dir = f"/sessions/{task_id}"
+
+    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    for key in keys:
+        value = os.environ.get(key)
+        if value is not None:
+            dir = value
+            logger.debug(f"Load dir from evn {key}={value}")
+            break
+    if dir is None:
+        raise ValueError(
+            f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}"
+        )
 
     if dir_exists(dir) is False:
-        logger.warn(
+        logger.info(
             f"App data directory {dir} doesn't exist. Will be made automatically."
         )
         mkdir(dir)

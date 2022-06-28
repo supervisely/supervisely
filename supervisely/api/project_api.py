@@ -14,11 +14,15 @@ import urllib
 from collections import defaultdict
 from typing import Dict
 
-from supervisely.api.module_api import ApiField, CloneableModuleApi, UpdateableModule, RemoveableModuleApi
+from supervisely.api.module_api import (
+    ApiField,
+    CloneableModuleApi,
+    UpdateableModule,
+    RemoveableModuleApi,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.annotation import TagCollection
-
 
 
 class ProjectNotFound(Exception):
@@ -99,7 +103,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         NamedTuple name - **ProjectInfo**.
         """
-        return 'ProjectInfo'
+        return "ProjectInfo"
 
     def __init__(self, api):
         CloneableModuleApi.__init__(self, api)
@@ -267,7 +271,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
         """
         info = super().get_info_by_name(parent_id, name)
-        self._check_project_info(info, name=name, expected_type=expected_type, raise_error=raise_error)
+        self._check_project_info(
+            info, name=name, expected_type=expected_type, raise_error=raise_error
+        )
         return info
 
     def _check_project_info(self, info, id: Optional[int]=None, name: Optional[str]=None, expected_type=None, raise_error=False):
@@ -291,8 +297,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if info is None:
             raise ProjectNotFound("Project {} not found".format(str_id))
         if expected_type is not None and info.type != str(expected_type):
-            raise ExpectedProjectTypeMismatch("Project {!r} has type {!r}, but expected type is {!r}"
-                                              .format(str_id, info.type, expected_type))
+            raise ExpectedProjectTypeMismatch(
+                "Project {!r} has type {!r}, but expected type is {!r}".format(
+                    str_id, info.type, expected_type
+                )
+            )
 
     def get_meta(self, id: int) -> Dict:
         """
@@ -337,6 +346,40 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         response = self._api.post('projects.meta', {'id': id})
         return response.json()
+
+    def clone_advanced(self,
+                       id,
+                       dst_workspace_id,
+                       dst_name,
+                       with_meta=True,
+                       with_datasets=True,
+                       with_items=True,
+                       with_annotations=True):
+        if not with_meta and with_annotations:
+            raise ValueError("with_meta parameter must be True if with_annotations parameter is True")
+        if not with_datasets and with_items:
+            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
+        response = self._api.post(
+            self._clone_api_method_name(),
+            {
+                ApiField.ID: id,
+                ApiField.WORKSPACE_ID: dst_workspace_id,
+                ApiField.NAME: dst_name,
+                ApiField.INCLUDE: {
+                    ApiField.CLASSES: with_meta,
+                    ApiField.PROJECT_TAGS: with_meta,
+                    ApiField.DATASETS: with_datasets,
+                    ApiField.IMAGES: with_items,
+                    ApiField.IMAGES_TAGS: with_items,
+                    ApiField.ANNOTATION_OBJECTS: with_annotations,
+                    ApiField.ANNOTATION_OBJECTS_TAGS: with_annotations,
+                    ApiField.FIGURES: with_annotations,
+                    ApiField.FIGURES_TAGS: with_annotations
+                },
+
+            },
+        )
+        return response.json()[ApiField.TASK_ID]
 
     def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES, description: Optional[str] = "",
                change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
@@ -384,15 +427,23 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     reference_image_url=None)
         """
         effective_name = self._get_effective_new_name(
-            parent_id=workspace_id, name=name, change_name_if_conflict=change_name_if_conflict)
-        response = self._api.post('projects.add', {ApiField.WORKSPACE_ID: workspace_id,
-                                                   ApiField.NAME: effective_name,
-                                                   ApiField.DESCRIPTION: description,
-                                                   ApiField.TYPE: str(type)})
+            parent_id=workspace_id,
+            name=name,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+        response = self._api.post(
+            "projects.add",
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.NAME: effective_name,
+                ApiField.DESCRIPTION: description,
+                ApiField.TYPE: str(type),
+            },
+        )
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
-        return 'projects.editInfo'
+        return "projects.editInfo"
 
     def update_meta(self, id: int, meta: Dict) -> None:
         """
@@ -423,7 +474,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post('projects.meta.update', {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
-        return 'projects.clone'
+        return "projects.clone"
 
     def get_datasets_count(self, id: int) -> int:
         """
@@ -480,7 +531,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
-        return 'projects.remove'
+        return "projects.remove"
 
     def merge_metas(self, src_project_id: int, dst_project_id: int) -> Dict:
         """
@@ -548,16 +599,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #
             #         [3 rows x 18 columns]
         """
+        import pandas as pd
         proj_info = self.get_info_by_id(id)
         workspace_info = self._api.workspace.get_info_by_id(proj_info.workspace_id)
-        activity = self._api.team.get_activity(workspace_info.team_id, filter_project_id=id, progress_cb=progress_cb)
+        activity = self._api.team.get_activity(
+            workspace_info.team_id, filter_project_id=id, progress_cb=progress_cb
+        )
         df = pd.DataFrame(activity)
         return df
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
-            res = res._replace(reference_image_url=urllib.parse.urljoin(self._api.server_address, res.reference_image_url))
+            res = res._replace(
+                reference_image_url=res.reference_image_url
+                )
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
         return res
@@ -611,8 +667,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_url)
             # Output: http://supervise.ly/projects/1951/datasets
         """
-        result = urllib.parse.urljoin(self._api.server_address, 'projects/{}/datasets'.format(id))
-        return result
+        return f"projects/{id}/datasets"
 
     def update_custom_data(self, id: int, data: Dict) -> Dict:
         """
@@ -640,10 +695,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             new_info = api.project.update_custom_data(project_id, custom_data)
         """
         if type(data) is not dict:
-            raise TypeError('Meta must be dict, not {!r}'.format(type(data)))
-        response = self._api.post('projects.editInfo', {ApiField.ID: id, ApiField.CUSTOM_DATA: data})
+            raise TypeError("Meta must be dict, not {!r}".format(type(data)))
+        response = self._api.post(
+            "projects.editInfo", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
+        )
         return response.json()
-    
+
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
         Updates project wuth given project settings by id.
@@ -653,7 +710,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param settings: Project settings
         :type settings: Dict[str, str]
         """
-        self._api.post('projects.settings.update', {ApiField.ID: id, ApiField.SETTINGS: settings})
+        self._api.post(
+            "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings}
+        )
 
     def download_images_tags(self, id: int, progress_cb: Optional[Progress]=None) -> defaultdict:
         """
@@ -684,22 +743,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # val [ImageInfo(id=2389066, name='IMG_1836.jpeg', link=None, hash='Si0WvJreU6pmrx1EDa1itkqqSkQkZFzNJSu...
         """
         # returns dict: tagname->images infos
-        #project_meta = self.get_meta(id) #TODO alex check bug
-        meta = self.get_meta(id) #TODO alex check bug
-        project_meta = sly.ProjectMeta.from_json(meta) #TODO alex check bug
+        project_meta = self.get_meta(id)
         id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
         tag2images = defaultdict(list)
         for dataset in self._api.dataset.get_list(id):
             ds_images = self._api.image.get_list(dataset.id)
             for img_info in ds_images:
-                tags = TagCollection.from_api_response(img_info.tags, project_meta.tag_metas, id_to_tagmeta)
+                tags = TagCollection.from_api_response(
+                    img_info.tags, project_meta.tag_metas, id_to_tagmeta
+                )
                 for tag in tags:
                     tag2images[tag.name].append(img_info)
                 if progress_cb is not None:
                     progress_cb(1)
         return tag2images
-    
-    def images_grouping(self, id: int, enable: bool, tag_name: str) -> None:
+
+    def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
         """
         Enables images grouping in project.
 
@@ -717,8 +776,48 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise Exception(f"Tag {tag_name} doesn't exists in the given project")
 
         group_tag_id = group_tag_meta.sly_id
-        project_settings = {
-            "groupImages": enable,
-            "groupImagesByTagId": group_tag_id
-        }
+        project_settings = {"groupImages": enable, "groupImagesByTagId": group_tag_id, "groupImagesSync": sync}
         self.update_settings(id=id, settings=project_settings)
+
+    def get_or_create(
+        self, workspace_id, name, type=ProjectType.IMAGES, description=""
+    ):
+        info = self.get_info_by_name(workspace_id, name)
+        if info is None:
+            info = self.create(workspace_id, name, type=type, description=description)
+        return info
+
+    def edit_info(self, id, name=None, description=None, readme=None, custom_data=None, project_type=None):
+        if (
+            name is None
+            and description is None
+            and readme is None
+            and custom_data is None
+            and project_type is None
+        ):
+            raise ValueError("one of the arguments has to be specified")
+
+        body = {ApiField.ID: id}
+        if name is not None:
+            body[ApiField.NAME] = name
+        if description is not None:
+            body[ApiField.DESCRIPTION] = description
+        if readme is not None:
+            body[ApiField.README] = readme
+        if custom_data is not None:
+            body[ApiField.CUSTOM_DATA] = custom_data
+        if project_type is not None:
+            if isinstance(project_type, ProjectType):
+                project_type = str(project_type)
+            if project_type not in ProjectType.values():
+                raise ValueError(f"project type must be one of: {ProjectType.values()}")
+            project_info = self.get_info_by_id(id)
+            current_project_type = project_info.type
+            if project_type == current_project_type:
+                raise ValueError(f"project with id {id} already has type {project_type}")
+            if not (current_project_type == str(ProjectType.POINT_CLOUDS) and project_type == str(ProjectType.POINT_CLOUD_EPISODES)):
+                raise ValueError(f"conversion from {current_project_type} to {project_type} is not supported ")
+            body[ApiField.TYPE] = project_type
+
+        response = self._api.post(self._get_update_method(), body)
+        return self._convert_json_info(response.json())

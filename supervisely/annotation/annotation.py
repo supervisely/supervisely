@@ -15,6 +15,7 @@ import operator
 import cv2
 from copy import deepcopy
 from PIL import Image
+from supervisely.annotation.obj_class import ObjClass
 from collections import defaultdict
 
 
@@ -455,6 +456,12 @@ class Annotation:
                           )
 
     def _add_labels_impl(self, dest, labels):
+        '''
+        The function _add_labels_impl extend list of the labels of the current Annotation object
+        :param dest: destination list of the Label class objects
+        :param labels: list of the Label class objects to be added to the destination list
+        :return: list of the Label class objects
+        '''
         for label in labels:
             # TODO Reconsider silent automatic normalization, reimplement
             canvas_rect = Rectangle.from_size(self.img_size)
@@ -1185,9 +1192,17 @@ class Annotation:
         return self.transform_labels(_flipud_label)
 
     def _get_font(self):
+        '''
+        The function get size of font for image with given size
+        :return: font for drawing
+        '''
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(self.img_size))
 
     def _draw_tags(self, bitmap):
+        '''
+        The function draws text labels on bitmap from left to right.
+        :param bitmap: target image
+        '''
         texts = [tag.get_compact_str() for tag in self.img_tags]
         sly_image.draw_text_sequence(bitmap, texts, (0, 0), sly_image.CornerAnchorMode.TOP_LEFT,
                                      font=self._get_font())
@@ -1937,6 +1952,7 @@ class Annotation:
         for idx, lbl in enumerate(self.labels, start=1):
             #if mapping[lbl.obj_class] is not None:
             lbl.draw(common_img, color=idx)
+
         #(unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
@@ -1946,6 +1962,7 @@ class Annotation:
                 continue  # skip labels
 
             mask = common_img == idx
+
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
                 new_mask = Bitmap(data=mask)
@@ -1977,6 +1994,21 @@ class Annotation:
 
         ensure_base_path(mask_path)
         im.save(mask_path)
+
+    def add_bg_object(self, bg_obj_class: ObjClass):
+        if bg_obj_class not in [label.obj_class for label in self.labels]:
+            bg_geometry = Rectangle.from_size(self.img_size)
+            bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
+
+            new_label = Label(bg_geometry, bg_obj_class)
+
+            updated_labels = self.labels
+            updated_labels.insert(0, new_label)
+
+            return self.clone(labels=updated_labels)
+        else:
+            return self
+
 
     def to_segmentation_task(self) -> Annotation:
         """

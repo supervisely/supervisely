@@ -416,7 +416,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
-            res = res._replace(reference_image_url=urllib.parse.urljoin(self._api.server_address, res.reference_image_url))
+            res = res._replace(reference_image_url=res.reference_image_url)
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
         return res

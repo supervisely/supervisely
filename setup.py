@@ -3,6 +3,7 @@ import requests
 
 from setuptools import find_packages, setup
 
+#@TODO: change manifest location
 
 def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as fin:
@@ -30,17 +31,25 @@ setup(
         "opencv-python>=4.5.5.62",
         "PTable>=0.9.2",
         "pillow>=5.4.1",
-        "protobuf>=3.14.0",
+        "protobuf>=3.14.0, <=3.20.1",
         "python-json-logger==0.1.11",
-        "requests>=2.24.0",
+        "requests>=2.27.1",
         "requests-toolbelt>=0.9.1",
         "Shapely>=1.7.1",
         "bidict>=0.21.2",
+        "varname>=0.8.1",
+        "python-dotenv==0.19.2",
+        "pynrrd==0.4.2",
+        "imgaug==0.4.0",
+        "SimpleITK==2.1.1.2",
+        "pydicom==2.3.0",
+        "stringcase==1.2.0",
+        "python-magic==0.4.25",
+        "trimesh==3.11.2",
     ],
     extras_require={
         'extras': [
             "docker==5.0.3",
-            "imgaug==0.4.0",
             "imagecorruptions==1.1.2",
             "scikit-image>=0.17.1",
             "matplotlib>=3.3.2",
@@ -50,13 +59,16 @@ setup(
             "pandas>=1.1.3",
         ],
         'apps': [
-            "uvicorn==0.17.0",
-            "fastapi==0.71.0",
+            "uvicorn[standard]==0.17.0",
+            "fastapi==0.74.0",
             "websockets==10.1",
             "jinja2==3.0.3",
             "psutil==5.9.0",
             "jsonpatch==1.32",
-            "python-dotenv==0.19.2"
+            "MarkupSafe==2.0.1",
+            "arel==0.2.0",
+            "tqdm==4.62.3",
+            "pandas==1.4.2",
         ],
         'docs': [
             "sphinx==4.4.0",
@@ -73,7 +85,6 @@ setup(
             "grpcio==1.34.1",
             "plotly>=4.11.0",
             "psutil>=5.4.5",
-            "python-dotenv==0.19.2"
         ],
         # legacy dependencies
         'plugins': [

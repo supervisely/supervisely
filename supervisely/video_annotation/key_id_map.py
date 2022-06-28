@@ -6,14 +6,14 @@ from uuid import UUID
 from bidict import bidict
 from supervisely.io.json import dump_json_file, load_json_file
 
-TAGS = 'tags'
-OBJECTS = 'objects'
-FIGURES = 'figures'
-VIDEOS = 'videos'
+TAGS = "tags"
+OBJECTS = "objects"
+FIGURES = "figures"
+VIDEOS = "videos"
 
 ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
-
+# @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
 class KeyIdMap:
     """
     KeyIdMap object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. It consist from dict with bidict values.
@@ -46,7 +46,11 @@ class KeyIdMap:
         :param id: int
         """
         if key_type not in ALLOWED_KEY_TYPES:
-            raise RuntimeError("Key type {!r} is not allowed. Allowed types are {}".format(key_type, ALLOWED_KEY_TYPES))
+            raise RuntimeError(
+                "Key type {!r} is not allowed. Allowed types are {}".format(
+                    key_type, ALLOWED_KEY_TYPES
+                )
+            )
         if type(key) is not uuid.UUID:
             raise RuntimeError("Key should be of type uuid.UUID")
         if id is not None and type(id) is not int:
