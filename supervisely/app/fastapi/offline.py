@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import traceback
 
@@ -50,24 +51,23 @@ def dump_html_to_dir(static_dir_path, template):
 def available_after_shutdown(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        template_response = None
         try:
             template_response, app = f(*args, **kwargs)
 
-            # app_template_path = pathlib.Path(f'apps-templates', os.getenv('TASK_ID', '0000'), 'app-template')
             app_template_path = pathlib.Path(tempfile.mkdtemp())
             app_static_paths = get_static_paths_by_mounted_object(mount=app)
             dump_statics_to_dir(static_dir_path=app_template_path, static_paths=app_static_paths)
             dump_html_to_dir(static_dir_path=app_template_path, template=template_response)
 
             # upload to supervisely here
+            # remote_dir = pathlib.Path(os.getenv('APP_NAME', 'sly_app'), os.getenv('TASK_ID', '0000'), 'app-template')
 
-            app_template_path.rmdir()
+            shutil.rmtree(app_template_path.as_posix())
             sly.logger.info(f'App files stored in {app_template_path} for offline usage')
+
+            return template_response
         except Exception as ex:
             traceback.print_exc()
             sly.logger.warning(f'Cannot dump files for offline usage, reason: {ex}')
 
-        finally:
-            return template_response
     return wrapper
