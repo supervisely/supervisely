@@ -1,18 +1,18 @@
+import functools
 import os
+import pathlib
 import shutil
 import tempfile
+import threading
 import traceback
-
-import supervisely as sly
-
-import functools
-import pathlib
 from collections import namedtuple
 from distutils.dir_util import copy_tree
 
 from fastapi import FastAPI
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
+
+import supervisely as sly
 
 
 def get_static_paths_by_mounted_object(mount) -> list:
@@ -24,8 +24,10 @@ def get_static_paths_by_mounted_object(mount) -> list:
             if type(current_route) == Mount and type(current_route.app) == FastAPI:
                 all_children_paths = get_static_paths_by_mounted_object(current_route)
                 for index, current_path in enumerate(all_children_paths):
-                    current_url_path = pathlib.Path(str(current_route.path).lstrip('/'), str(current_path.url_path).lstrip('/'))
-                    all_children_paths[index] = StaticPath(local_path=current_path.local_path, url_path=current_url_path)
+                    current_url_path = pathlib.Path(str(current_route.path).lstrip('/'),
+                                                    str(current_path.url_path).lstrip('/'))
+                    all_children_paths[index] = StaticPath(local_path=current_path.local_path,
+                                                           url_path=current_url_path)
                 static_paths.extend(all_children_paths)
             elif type(current_route) == Mount and type(current_route.app) == StaticFiles:
                 static_paths.append(StaticPath(local_path=pathlib.Path(current_route.app.directory),
@@ -48,22 +50,55 @@ def dump_html_to_dir(static_dir_path, template):
     pathlib.Path(static_dir_path / template.template.name).write_bytes(template.body)
 
 
+def upload_to_supervisely(static_dir_path):
+    api: sly.Api = sly.Api.from_env()
+
+    team_id, task_id = int(os.getenv('context.teamId')), int(os.getenv('TASK_ID', 0000))
+    remote_dir = pathlib.Path('/', os.getenv('APP_NAME', 'sly_app'), str(task_id), 'app-template')
+
+    api.file.upload_directory(team_id=team_id,
+                              local_dir=static_dir_path.as_posix(),
+                              remote_dir=remote_dir.as_posix())
+
+    if os.getenv('TASK_ID') is not None:
+        api.task.update_meta(id=task_id, data={'templateRootDirectory': remote_dir.as_posix()})
+
+    sly.logger.info(f'App files stored in {remote_dir.as_posix()} for offline usage')
+
+
+def dump_files_to_supervisely(app: FastAPI, template_response):
+    try:
+        if os.getenv('_SUPERVISELY_OFFLINE_FILES_UPLOADED', 'False') == 'True' and \
+                template_response.context.get('request') is not None:
+            return
+        os.environ['_SUPERVISELY_OFFLINE_FILES_UPLOADED'] = 'True'
+        sly.logger.info(f'Saving app files for offline usage')
+
+        app_template_path = pathlib.Path(tempfile.mkdtemp())
+        app_static_paths = get_static_paths_by_mounted_object(mount=app)
+        dump_statics_to_dir(static_dir_path=app_template_path, static_paths=app_static_paths)
+        dump_html_to_dir(static_dir_path=app_template_path, template=template_response)
+
+        upload_to_supervisely(static_dir_path=app_template_path)
+
+        shutil.rmtree(app_template_path.as_posix())
+
+    except Exception as ex:
+        traceback.print_exc()
+        sly.logger.warning(f'Cannot dump files for offline usage, reason: {ex}')
+        os.environ['_SUPERVISELY_OFFLINE_FILES_UPLOADED'] = 'False'
+
+
 def available_after_shutdown(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
             template_response, app = f(*args, **kwargs)
 
-            app_template_path = pathlib.Path(tempfile.mkdtemp())
-            app_static_paths = get_static_paths_by_mounted_object(mount=app)
-            dump_statics_to_dir(static_dir_path=app_template_path, static_paths=app_static_paths)
-            dump_html_to_dir(static_dir_path=app_template_path, template=template_response)
-
-            # upload to supervisely here
-            # remote_dir = pathlib.Path(os.getenv('APP_NAME', 'sly_app'), os.getenv('TASK_ID', '0000'), 'app-template')
-
-            shutil.rmtree(app_template_path.as_posix())
-            sly.logger.info(f'App files stored in {app_template_path} for offline usage')
+            threading.Thread(
+                target=functools.partial(dump_files_to_supervisely, app, template_response),
+                daemon=False
+            ).start()
 
             return template_response
         except Exception as ex:
