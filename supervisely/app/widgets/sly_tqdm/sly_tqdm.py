@@ -83,7 +83,10 @@ class _slyProgressBarIO:
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
 
-                run_sync(DataJson().synchronize_changes())
+                try:
+                    run_sync(DataJson().synchronize_changes())
+                except Exception as ex:
+                    logger.info(f'Failed to synchronize TQDM changes: {ex}')
 
                 self.prev_state = copy.deepcopy(self.progress)
 
