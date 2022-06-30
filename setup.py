@@ -25,7 +25,11 @@ setup(
     long_description=read("README.md"),
     long_description_content_type='text/markdown',
     url="https://github.com/supervisely/supervisely",
-    include_package_data=True,
+    package_data={
+        "": ["*.html", "*.css"],
+        "supervisely": ["video/*.sh"]
+    },
+    # include_package_data=True,
     install_requires=[
         "numpy>=1.19",
         "opencv-python>=4.5.5.62",
