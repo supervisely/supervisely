@@ -6,7 +6,7 @@ from collections import namedtuple
 import os
 import json
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
 import random
 import numpy as np
 
@@ -428,7 +428,8 @@ class Dataset(KeyObject):
         return seg_path
 
     def add_item_file(self, item_name: str, item_path: str, ann: Optional[Union[Annotation, str]] = None,
-                          _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False, img_info: Optional[NamedTuple]=None) -> None:
+                      _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False,
+                      img_info: Optional[NamedTuple] = None) -> None:
         """
         Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -470,7 +471,8 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Union[Annotation, str]] = None, img_info: Optional[NamedTuple]=None) -> None:
+    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Union[Annotation, str]] = None,
+                    img_info: Optional[NamedTuple] = None) -> None:
         """
         Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -504,7 +506,8 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Union[Annotation, str]] = None, img_info: Optional[NamedTuple]=None) -> None:
+    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Union[Annotation, str]] = None,
+                           img_info: Optional[NamedTuple] = None) -> None:
         """
         Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -538,7 +541,6 @@ class Dataset(KeyObject):
         self._add_item_raw_bytes(item_name, item_raw_bytes)
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
-
 
     def _get_empty_annotaion(self, item_name):
         """
@@ -1204,9 +1206,10 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False,
-                             target_classes: Optional[List[str]]=None, progress_cb: Optional[Progress]=None,
-                             segmentation_type: Optional[str]='semantic') -> None:
+    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
+                             inplace: Optional[bool] = False,
+                             target_classes: Optional[List[str]] = None, progress_cb: Optional[Callable] = None,
+                             segmentation_type: Optional[str] = 'semantic') -> None:
 
         _bg_class_name = "__bg__"
         _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
@@ -1290,7 +1293,8 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def to_detection_task(src_project_dir: str, dst_project_dir: Optional[str]=None, inplace: Optional[bool]=False) -> None:
+    def to_detection_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
+                          inplace: Optional[bool] = False) -> None:
         if dst_project_dir is None and inplace is False:
             raise ValueError(
                 f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -1332,7 +1336,8 @@ class Project:
             src_project.set_meta(det_meta)
 
     @staticmethod
-    def remove_classes_except(project_dir: str, classes_to_keep: Optional[List[str]]=[], inplace: Optional[bool]=False) -> None:
+    def remove_classes_except(project_dir: str, classes_to_keep: Optional[List[str]] = [],
+                              inplace: Optional[bool] = False) -> None:
         """
         Removes classes from Project with the exception of some classes.
 
@@ -1359,7 +1364,8 @@ class Project:
         Project.remove_classes(project_dir, classes_to_remove, inplace)
 
     @staticmethod
-    def remove_classes(project_dir: str, classes_to_remove: Optional[List[str]]=[], inplace: Optional[bool]=False) -> None:
+    def remove_classes(project_dir: str, classes_to_remove: Optional[List[str]] = [],
+                       inplace: Optional[bool] = False) -> None:
         """
         Removes given classes from Project.
 
@@ -1437,7 +1443,7 @@ class Project:
                 dataset.delete_item(item_name)
 
     @staticmethod
-    def remove_items_without_objects(project_dir: str, inplace: Optional[bool]=False) -> None:
+    def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Remove items(images and annotations) without objects from Project.
 
@@ -1457,7 +1463,7 @@ class Project:
         Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_tags(project_dir: str, inplace: Optional[bool]=False) -> None:
+    def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Remove items(images and annotations) without tags from Project.
 
@@ -1477,7 +1483,7 @@ class Project:
         Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_both_objects_and_tags(project_dir: str, inplace: Optional[bool]=False) -> None:
+    def remove_items_without_both_objects_and_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Remove items(images and annotations) without objects and tags from Project.
 
@@ -1500,7 +1506,8 @@ class Project:
         raise NotImplementedError("Method available only for dataset")
 
     @staticmethod
-    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> Tuple[
+        List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val counts.
 
@@ -1522,6 +1529,7 @@ class Project:
             val_count = 2
             train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
         """
+
         def _list_items_for_splits(project) -> List[ItemInfo]:
             items = []
             for dataset in project.datasets:
@@ -1547,7 +1555,7 @@ class Project:
 
     @staticmethod
     def get_train_val_splits_by_tag(project_dir: str, train_tag_name: str, val_tag_name: str,
-                                    untagged: Optional[str]="ignore") -> Tuple[List[ItemInfo], List[ItemInfo]]:
+                                    untagged: Optional[str] = "ignore") -> Tuple[List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val tags names.
 
@@ -1603,7 +1611,8 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_dataset(project_dir: str, train_datasets: List[str], val_datasets: List[str]) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+    def get_train_val_splits_by_dataset(project_dir: str, train_datasets: List[str], val_datasets: List[str]) -> Tuple[
+        List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val datasets names.
 
@@ -1625,6 +1634,7 @@ class Project:
             val_datasets = ['ds3', 'ds4']
             train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
         """
+
         def _add_items_to_list(project, datasets_names, items_list):
             for dataset_name in datasets_names:
                 dataset = project.datasets.get(dataset_name)
@@ -1643,7 +1653,7 @@ class Project:
         return train_items, val_items
 
 
-def read_single_project(dir: str, project_class: Optional[Project]=Project) -> Project:
+def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
     Read project from given directory.
 
@@ -1754,8 +1764,9 @@ def _download_project(
                 ds_progress.iters_done_report(len(batch))
 
 
-def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str] = None, log_progress: Optional[bool] = True,
-                   progress_cb: Optional[Progress]=None) -> Tuple[int, str]:
+def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str] = None,
+                   log_progress: Optional[bool] = True,
+                   progress_cb: Optional[Callable] = None) -> Tuple[int, str]:
     """
     Uploads project to Supervisely from the given directory.
 
@@ -1854,8 +1865,9 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional
 
 def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]] = None,
                      log_progress: Optional[bool] = False, batch_size: Optional[int] = 10,
-                     cache: Optional[FileCache] = None, progress_cb: Optional[Progress]=None,
-                     only_image_tags: Optional[bool]=False, save_image_info: Optional[bool]=False, save_images: bool=True) -> None:
+                     cache: Optional[FileCache] = None, progress_cb: Optional[Callable] = None,
+                     only_image_tags: Optional[bool] = False, save_image_info: Optional[bool] = False,
+                     save_images: bool = True) -> None:
     """
     Download project from Supervisely to the given directory.
 

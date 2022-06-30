@@ -5,7 +5,7 @@
 # docs
 from __future__ import annotations
 import json
-from typing import List, Optional, NamedTuple, Dict
+from typing import List, Optional, NamedTuple, Dict, Callable
 from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
 
@@ -68,7 +68,7 @@ class AnnotationApi(ModuleApi):
         return 'AnnotationInfo'
 
     def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None,
-                 progress_cb: Optional[Progress] = None) -> List[NamedTuple]:
+                 progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         """
         Get list of information about all annotations for a given dataset.
 
@@ -173,7 +173,7 @@ class AnnotationApi(ModuleApi):
                                   {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data})
         return self._convert_json_info(response.json())
 
-    def download_batch(self, dataset_id: int, image_ids: List[int], progress_cb: Optional[Progress] = None,
+    def download_batch(self, dataset_id: int, image_ids: List[int], progress_cb: Optional[Callable] = None,
                        with_custom_data: Optional[bool] = False) -> List[NamedTuple]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -248,7 +248,7 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_paths([img_id], [ann_path])
 
-    def upload_paths(self, img_ids: List[int], ann_paths: List[str], progress_cb: Optional[Progress] = None) -> None:
+    def upload_paths(self, img_ids: List[int], ann_paths: List[str], progress_cb: Optional[Callable] = None) -> None:
         """
         Loads an annotations from a given paths to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -306,7 +306,7 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_jsons([img_id], [ann_json])
 
-    def upload_jsons(self, img_ids: List[int], ann_jsons: List[Dict], progress_cb: Optional[Progress] = None) -> None:
+    def upload_jsons(self, img_ids: List[int], ann_jsons: List[Dict], progress_cb: Optional[Callable] = None) -> None:
         """
         Loads an annotations from dicts to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -360,7 +360,7 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_anns([img_id], [ann])
 
-    def upload_anns(self, img_ids: List[int], anns: List[Annotation], progress_cb: Optional[Progress] = None) -> None:
+    def upload_anns(self, img_ids: List[int], anns: List[Annotation], progress_cb: Optional[Callable] = None) -> None:
         """
         Loads an :class:`Annotations<supervisely.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -418,7 +418,7 @@ class AnnotationApi(ModuleApi):
     def _add_sort_param(self, data):
         return data
 
-    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int], progress_cb: Optional[Progress] = None) -> None:
+    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int], progress_cb: Optional[Callable] = None) -> None:
         """
         Copy annotations from one images IDs to another in API.
 

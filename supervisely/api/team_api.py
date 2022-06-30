@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import NamedTuple, List, Dict, Optional
+from typing import NamedTuple, List, Dict, Optional, Callable
 from supervisely.task.progress import Progress
 
 from supervisely.api.module_api import ApiField, ModuleNoParent, UpdateableModule
@@ -269,7 +269,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
     def get_activity(self, team_id: int,
                      filter_user_id: Optional[int]=None, filter_project_id: Optional[int]=None, filter_job_id: Optional[int]=None,
-                     filter_actions: Optional[List]=None, progress_cb: Optional[Progress]=None, start_date: Optional[str]=None,
+                     filter_actions: Optional[List]=None, progress_cb: Optional[Callable]=None, start_date: Optional[str]=None,
                      end_date: Optional[str]=None) -> List[Dict]:
         """
         Get Team activity by ID.

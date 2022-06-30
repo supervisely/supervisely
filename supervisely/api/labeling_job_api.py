@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional
+from typing import List, NamedTuple, Dict, Optional, Callable
 from supervisely.task.progress import Progress
 import pandas as pd
 
@@ -935,7 +935,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         response = self._api.post('jobs.stats', {ApiField.ID: id})
         return response.json()
 
-    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Progress]=None) -> pd.DataFrame:
+    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable]=None) -> pd.DataFrame:
         """
         Get all activity for given Labeling Job by ID.
 

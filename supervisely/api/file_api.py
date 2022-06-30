@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional
+from typing import NamedTuple, List, Dict, Optional, Callable
 
 import os
 import shutil
@@ -19,6 +19,7 @@ from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove
+
 
 class FileApi(ModuleApiBase):
     """
@@ -46,6 +47,7 @@ class FileApi(ModuleApiBase):
         file_path = "/999_App_Test/"
         files = api.file.list(team_id, file_path)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -226,9 +228,10 @@ class FileApi(ModuleApiBase):
         return dir_size
 
     def _download(self, team_id, remote_path, local_save_path, progress_cb=None):  # TODO: progress bar
-        response = self._api.post('file-storage.download', {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path}, stream=True)
-        #print(response.headers)
-        #print(response.headers['Content-Length'])
+        response = self._api.post('file-storage.download', {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path},
+                                  stream=True)
+        # print(response.headers)
+        # print(response.headers['Content-Length'])
         ensure_base_path(local_save_path)
         with open(local_save_path, 'wb') as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
@@ -280,14 +283,16 @@ class FileApi(ModuleApiBase):
                     # file not in cache
                     self._download(team_id, remote_path, local_save_path, progress_cb)
                     if file_info.hash != get_file_hash(local_save_path):
-                        raise KeyError(f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})")
+                        raise KeyError(
+                            f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})")
                     cache.write_object(local_save_path, file_info.hash)
                 else:
                     cache.read_object(file_info.hash, local_save_path)
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
 
-    def download_directory(self, team_id: int, remote_path: str, local_save_path: str, progress_cb: Optional[Progress]=None) -> None:
+    def download_directory(self, team_id: int, remote_path: str, local_save_path: str,
+                           progress_cb: Optional[Callable] = None) -> None:
         """
         Download Directory from Team Files.
 
@@ -327,10 +332,10 @@ class FileApi(ModuleApiBase):
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
         shutil.rmtree(temp_dir)
 
-
     def _upload_legacy(self, team_id, src, dst):
         def path_to_bytes_stream(path):
             return open(path, 'rb')
+
         item = get_file_name_with_ext(dst)
         content_dict = {}
         content_dict[ApiField.NAME] = item
@@ -338,13 +343,13 @@ class FileApi(ModuleApiBase):
         dst_dir = os.path.dirname(dst)
         if not dst_dir.endswith(os.path.sep):
             dst_dir += os.path.sep
-        content_dict[ApiField.PATH] = dst_dir # os.path.basedir ...
+        content_dict[ApiField.PATH] = dst_dir  # os.path.basedir ...
         content_dict["file"] = (item, path_to_bytes_stream(src), mimetypes.MimeTypes().guess_type(src)[0])
         encoder = MultipartEncoder(fields=content_dict)
         resp = self._api.post("file-storage.upload?teamId={}".format(team_id), encoder)
         return resp.json()
 
-    def upload(self, team_id: int, src: str, dst: str, progress_cb: Optional[Progress] = None) -> NamedTuple:
+    def upload(self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None) -> NamedTuple:
         """
         Upload File to Team Files.
 
@@ -375,7 +380,8 @@ class FileApi(ModuleApiBase):
         """
         return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
 
-    def upload_bulk(self, team_id: int, src_paths: List[str], dst_paths: List[str], progress_cb: Optional[Progress] = None) -> List[NamedTuple]:
+    def upload_bulk(self, team_id: int, src_paths: List[str], dst_paths: List[str],
+                    progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         """
         Upload Files to Team Files.
 
@@ -404,8 +410,10 @@ class FileApi(ModuleApiBase):
 
             api.file.upload_bulk(8, src_paths, dst_remote_paths)
         """
+
         def path_to_bytes_stream(path):
             return open(path, 'rb')
+
         content_dict = []
         for idx, (src, dst) in enumerate(zip(src_paths, dst_paths)):
             name = get_file_name_with_ext(dst)
@@ -486,7 +494,7 @@ class FileApi(ModuleApiBase):
 
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
-        resp = self._api.post("file-storage.remove",{ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        resp = self._api.post("file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
 
     def exists(self, team_id: int, remote_path: str) -> bool:
         """
@@ -575,7 +583,7 @@ class FileApi(ModuleApiBase):
         res_name = name
         suffix = 0
 
-        def _combine(suffix:int=None):
+        def _combine(suffix: int = None):
             res = "{}/{}".format(directory, res_name)
             if suffix is not None:
                 res += "_{:03d}".format(suffix)
@@ -659,7 +667,7 @@ class FileApi(ModuleApiBase):
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
-        #if res.storage_path is not None:
+        # if res.storage_path is not None:
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
         return res
 
@@ -733,7 +741,8 @@ class FileApi(ModuleApiBase):
         return res_dir
 
     def upload_directory(self, team_id: int, local_dir: str, remote_dir: str,
-                         change_name_if_conflict: Optional[bool]=True, progress_size_cb: Optional[Progress] = None) -> str:
+                         change_name_if_conflict: Optional[bool] = True,
+                         progress_size_cb: Optional[Callable] = None) -> str:
         """
         Upload Directory to Team Files from local path.
 
@@ -777,4 +786,3 @@ class FileApi(ModuleApiBase):
 
         upload_results = self.upload_bulk(team_id, local_files, remote_files, progress_size_cb)
         return res_remote_dir
-

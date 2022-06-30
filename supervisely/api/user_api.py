@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional
+from typing import List, NamedTuple, Dict, Optional, Callable
 import pandas as pd
 from supervisely.task.progress import Progress
 
@@ -629,7 +629,7 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Progress]=None) -> pd.DataFrame:
+    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable]=None) -> pd.DataFrame:
         """
         Get User activity data.
 

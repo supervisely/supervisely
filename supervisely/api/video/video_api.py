@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple, NamedTuple, Dict, Optional
+from typing import List, Tuple, NamedTuple, Dict, Optional, Callable
 from requests import Response
 
 import json
@@ -49,6 +49,7 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id = 466654
         ds = api.video.get_list(dataset_id)
     """
+
     def __init__(self, api):
         super().__init__(api)
         self.annotation = VideoAnnotationAPI(api)
@@ -103,7 +104,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def info_tuple_name():
         return 'VideoInfo'
 
-    def url(self, dataset_id: int, video_id: int, video_frame: Optional[int]=0) -> str:
+    def url(self, dataset_id: int, video_id: int, video_frame: Optional[int] = 0) -> str:
         """
         :param dataset_id: int
         :param video_id: int
@@ -120,7 +121,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=True):
         return super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
-    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]]=None) -> List[NamedTuple]:
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
         """
         Get list of information about all video annotations for a given dataset.
 
@@ -220,7 +221,7 @@ class VideoApi(RemoveableBulkModuleApi):
             #     ]
             # ]
         """
-        return self.get_list_all_pages('videos.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages('videos.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
@@ -297,7 +298,7 @@ class VideoApi(RemoveableBulkModuleApi):
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id, dataset_id
 
-    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: Optional[int]=None) -> NamedTuple:
+    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None) -> NamedTuple:
         """
         Upload Video from given hash to Dataset.
 
@@ -358,8 +359,8 @@ class VideoApi(RemoveableBulkModuleApi):
             meta = {"videoStreamIndex": stream_index}
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
-    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]]=None,
-                      progress_cb: Optional[Progress]=None) -> List[NamedTuple]:
+    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]] = None,
+                      progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         """
         Upload Videos from given hashes to Dataset.
 
@@ -443,7 +444,7 @@ class VideoApi(RemoveableBulkModuleApi):
         response = self._api.post('videos.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id: int, path: str, progress_cb: Optional[Progress]=None) -> None:
+    def download_path(self, id: int, path: str, progress_cb: Optional[Callable] = None) -> None:
         """
         Downloads Video from Dataset to local path by ID.
 
@@ -481,7 +482,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def download_range_by_id(self, id: int, frame_start: int, frame_end: int, is_stream: Optional[bool]=True) -> Response:
+    def download_range_by_id(self, id: int, frame_start: int, frame_end: int,
+                             is_stream: Optional[bool] = True) -> Response:
         """
         Downloads Video with given ID between given start and end frames.
 
@@ -513,7 +515,8 @@ class VideoApi(RemoveableBulkModuleApi):
         path_original = self.get_info_by_id(id).path_original
         return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
 
-    def downalod_range_by_path(self, path_original: str, frame_start: int, frame_end: int, is_stream: Optional[bool]=False) -> Response:
+    def downalod_range_by_path(self, path_original: str, frame_start: int, frame_end: int,
+                               is_stream: Optional[bool] = False) -> Response:
         """
         Downloads Video with given path in Supervisely between given start and end frames.
 
@@ -544,7 +547,7 @@ class VideoApi(RemoveableBulkModuleApi):
             path_sl = video_info.path_original
             response = api.video.downalod_range_by_path(path_sl, start_fr, end_fr)
         """
-        response = self._api.get(method = 'image-converter/transcode' + path_original,
+        response = self._api.get(method='image-converter/transcode' + path_original,
                                  params={'startFrame': frame_start, 'endFrame': frame_end, "transmux": True},
                                  stream=is_stream,
                                  use_public_api=False)
@@ -623,10 +626,12 @@ class VideoApi(RemoveableBulkModuleApi):
                                                                     "data": {
                                                                         ApiField.TRACK_ID: track_id,
                                                                         ApiField.ERROR: {
-                                                                            ApiField.MESSAGE: "{}: {}".format(error, message)
+                                                                            ApiField.MESSAGE: "{}: {}".format(error,
+                                                                                                              message)
                                                                         }
                                                                     }
                                                                     })
+
     # def upload(self):
     #     #"/videos.bulk.upload"
     #     pass
@@ -635,7 +640,7 @@ class VideoApi(RemoveableBulkModuleApi):
     #     metas = None if meta is None else [meta]
     #     return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
-    #@TODO: copypaste from image_api
+    # @TODO: copypaste from image_api
     def check_existing_hashes(self, hashes: List[str]) -> List[str]:
         """
         Checks existing hashes for Videos.
@@ -685,8 +690,8 @@ class VideoApi(RemoveableBulkModuleApi):
             results.extend(response.json())
         return results
 
-    def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Progress]=None,
-                     metas: Optional[List[Dict]]=None, infos=None, item_progress=None) -> List[NamedTuple]:
+    def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Callable] = None,
+                     metas: Optional[List[Dict]] = None, infos=None, item_progress=None) -> List[NamedTuple]:
         """
         Uploads Videos with given names from given local paths to Dataset.
 
@@ -718,6 +723,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
             video_infos = api.video.upload_path(dataset_id, names=video_names, paths=video_paths)
         """
+
         def path_to_bytes_stream(path):
             return open(path, 'rb')
 
@@ -733,7 +739,8 @@ class VideoApi(RemoveableBulkModuleApi):
         video_info_results = []
         hashes = [get_file_hash(x) for x in paths]
 
-        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb, item_progress=item_progress)
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb,
+                               item_progress=item_progress)
         if update_headers:
             self.upsert_infos(hashes, infos)
             self._api.pop_header("x-skip-processing")
@@ -747,7 +754,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 for stream_info in video_streams:
                     stream_index = stream_info["index"]
 
-                    #TODO: check is community
+                    # TODO: check is community
                     # if instance_type == sly.COMMUNITY:
                     #     if _check_video_requires_processing(file_info, stream_info) is True:
                     #         warn_video_requires_processing(file_name)
@@ -772,6 +779,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if progress_cb is not None:
             def _callback(monitor, progress):
                 progress(monitor.bytes_read)
+
             callback = partial(_callback, progress=progress_cb)
             monitor = MultipartEncoderMonitor(encoder, callback)
             resp = self._api.post('videos.bulk.upload', monitor)
@@ -787,21 +795,23 @@ class VideoApi(RemoveableBulkModuleApi):
                 'total_cnt': len(hashes_items_to_upload), 'ok_cnt': len(remote_hashes), 'items': problem_items})
         return remote_hashes
 
-    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None, item_progress=None):
+    def _upload_data_bulk(self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None,
+                          item_progress=None):
         hash_to_items = {i_hash: item for item, i_hash in items_hashes}
 
         unique_hashes = set(hash_to_items.keys())
         remote_hashes = set(self.check_existing_hashes(list(unique_hashes)))  # existing -- from server
         if progress_cb:
             progress_cb(len(remote_hashes))
-        #pending_hashes = unique_hashes #- remote_hashes #@TODO: only fo debug!
+        # pending_hashes = unique_hashes #- remote_hashes #@TODO: only fo debug!
         pending_hashes = unique_hashes - remote_hashes
 
         for retry_idx in range(retry_cnt):
             # single attempt to upload all data which is not uploaded yet
             for hashes in batched(list(pending_hashes)):
                 pending_hashes_items = [(h, hash_to_items[h]) for h in hashes]
-                hashes_rcv = self._upload_uniq_videos_single_req(func_item_to_byte_stream, pending_hashes_items, item_progress)
+                hashes_rcv = self._upload_uniq_videos_single_req(func_item_to_byte_stream, pending_hashes_items,
+                                                                 item_progress)
                 pending_hashes -= set(hashes_rcv)
                 if set(hashes_rcv) - set(hashes):
                     logger.warn('Hash inconsistency in images bulk upload.',
@@ -825,7 +835,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def upsert_info(self, hash: str, info: Dict) -> Dict:
         return self.upsert_infos([hash], [info])
 
-    def upsert_infos(self, hashes: List[str], infos: List[Dict], links: Optional[List[str]]=None) -> Dict:
+    def upsert_infos(self, hashes: List[str], infos: List[Dict], links: Optional[List[str]] = None) -> Dict:
         payload = []
         if links is None:
             links = [None] * len(hashes)
@@ -839,7 +849,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return resp.json()
 
     def upload_links(self, dataset_id: int, names: List[str], hashes: List[str], links: List[str], infos: List[Dict],
-                     metas: Optional[List[Dict]]=None) -> List[NamedTuple]:
+                     metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
         self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, metas)
 

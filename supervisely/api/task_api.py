@@ -2,7 +2,7 @@
 """api for working with tasks"""
 
 # docs
-from typing import List, NamedTuple, Dict, Optional
+from typing import List, NamedTuple, Dict, Optional, Callable
 import os
 import time
 from collections import defaultdict, OrderedDict
@@ -245,7 +245,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             time.sleep(effective_wait_timeout)
         raise WaitingTimeExceeded('Waiting time exceeded')
 
-    def upload_dtl_archive(self, task_id: int, archive_path: str, progress_cb: Optional[Progress]=None):
+    def upload_dtl_archive(self, task_id: int, archive_path: str, progress_cb: Optional[Callable]=None):
         encoder = MultipartEncoder({'id': str(task_id).encode('utf-8'),
                                     'name': get_file_name(archive_path),
                                     'archive': (
@@ -419,7 +419,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         response = self._api.post('tasks.logs.add', {ApiField.LOGS: logs})
         # return response.json()[ApiField.TASK_ID]
 
-    def upload_files(self, task_id: int, abs_paths: List[str], names: List[str], progress_cb:Optional[Progress] = None) -> None:
+    def upload_files(self, task_id: int, abs_paths: List[str], names: List[str], progress_cb:Optional[Callable] = None) -> None:
         if len(abs_paths) != len(names):
             raise RuntimeError("Inconsistency: len(abs_paths) != len(names)")
 

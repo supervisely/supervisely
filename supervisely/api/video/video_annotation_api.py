@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Callable
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 import json
@@ -111,7 +111,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                      info.project_id, info.dataset_id, video_id,
                      ann.tags, ann.objects, ann.figures, key_id_map)
 
-    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta, progress_cb: Optional[Progress]=None) -> None:
+    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta,
+                     progress_cb: Optional[Callable] = None) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
 

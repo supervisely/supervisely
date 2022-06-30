@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional
+from typing import List, NamedTuple, Dict, Optional, Callable
 from pandas.core.frame import DataFrame
 from supervisely.task.progress import Progress
 import supervisely as sly
@@ -58,6 +58,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -181,9 +182,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
-        return self.get_list_all_pages('projects.list',  {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []})
+        return self.get_list_all_pages('projects.list', {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []})
 
-    def get_info_by_id(self, id: int, expected_type: Optional[str] = None, raise_error: Optional[bool] = False) -> NamedTuple:
+    def get_info_by_id(self, id: int, expected_type: Optional[str] = None,
+                       raise_error: Optional[bool] = False) -> NamedTuple:
         """
         Get Project information by ID.
 
@@ -276,7 +278,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
         return info
 
-    def _check_project_info(self, info, id: Optional[int]=None, name: Optional[str]=None, expected_type=None, raise_error=False):
+    def _check_project_info(self, info, id: Optional[int] = None, name: Optional[str] = None, expected_type=None,
+                            raise_error=False):
         """
         Checks if a project exists with a given id and type of project == expected type
         :param info: project metadata information
@@ -381,7 +384,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
         return response.json()[ApiField.TASK_ID]
 
-    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES, description: Optional[str] = "",
+    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES,
+               description: Optional[str] = "",
                change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
         """
         Create Project with given name in the given Workspace ID.
@@ -570,7 +574,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb: Optional[Progress]=None) -> DataFrame:
+    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -613,7 +617,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if res.reference_image_url is not None:
             res = res._replace(
                 reference_image_url=res.reference_image_url
-                )
+            )
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
         return res
@@ -714,7 +718,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings}
         )
 
-    def download_images_tags(self, id: int, progress_cb: Optional[Progress]=None) -> defaultdict:
+    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
@@ -780,7 +784,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self.update_settings(id=id, settings=project_settings)
 
     def get_or_create(
-        self, workspace_id, name, type=ProjectType.IMAGES, description=""
+            self, workspace_id, name, type=ProjectType.IMAGES, description=""
     ):
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
@@ -789,11 +793,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def edit_info(self, id, name=None, description=None, readme=None, custom_data=None, project_type=None):
         if (
-            name is None
-            and description is None
-            and readme is None
-            and custom_data is None
-            and project_type is None
+                name is None
+                and description is None
+                and readme is None
+                and custom_data is None
+                and project_type is None
         ):
             raise ValueError("one of the arguments has to be specified")
 
@@ -815,7 +819,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             current_project_type = project_info.type
             if project_type == current_project_type:
                 raise ValueError(f"project with id {id} already has type {project_type}")
-            if not (current_project_type == str(ProjectType.POINT_CLOUDS) and project_type == str(ProjectType.POINT_CLOUD_EPISODES)):
+            if not (current_project_type == str(ProjectType.POINT_CLOUDS) and project_type == str(
+                    ProjectType.POINT_CLOUD_EPISODES)):
                 raise ValueError(f"conversion from {current_project_type} to {project_type} is not supported ")
             body[ApiField.TYPE] = project_type
 

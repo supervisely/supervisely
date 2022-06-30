@@ -1,7 +1,7 @@
 # coding: utf-8
 
 #docs
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import os
 import shutil
@@ -640,7 +640,7 @@ def touch(path: str) -> None:
         os.utime(path, None)
 
 
-def download(url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Progress] = None) -> str:
+def download(url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None) -> str:
     """
     Load image from url to host by target path.
 
