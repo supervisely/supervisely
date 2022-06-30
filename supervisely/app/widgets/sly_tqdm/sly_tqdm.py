@@ -115,12 +115,9 @@ class CustomTqdm(tqdm):
             self.fp.__del__()
 
     def __del__(self):
-        try:
-            super(CustomTqdm, self).__del__()
-            if self.fp is not None:
-                self.fp.__del__()
-        except Exception as ex:
-            logger.warning(f'Deleting SlyTqdm unsuccessful: {ex}')
+        super(CustomTqdm, self).__del__()
+        if self.fp is not None:
+            self.fp.__del__()
 
 
 class SlyTqdm(Widget):
