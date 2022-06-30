@@ -29,7 +29,6 @@ setup(
         "": ["*.html", "*.css"],
         "supervisely": ["video/*.sh"]
     },
-    # include_package_data=True,
     install_requires=[
         "numpy>=1.19",
         "opencv-python>=4.5.5.62",
