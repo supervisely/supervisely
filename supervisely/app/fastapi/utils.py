@@ -1,8 +1,6 @@
 import asyncio
 import concurrent.futures
 
-from supervisely import logger
-
 
 def run_sync(coroutine):
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
