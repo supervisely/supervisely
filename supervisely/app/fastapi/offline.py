@@ -89,20 +89,21 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
         os.environ['_SUPERVISELY_OFFLINE_FILES_UPLOADED'] = 'False'
 
 
-def available_after_shutdown(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        try:
-            template_response, app = f(*args, **kwargs)
+def available_after_shutdown(app: FastAPI):
+    def func_layer_wrapper(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            template_response = f(*args, **kwargs)
+            try:
+                threading.Thread(
+                    target=functools.partial(dump_files_to_supervisely, app, template_response),
+                    daemon=False
+                ).start()
 
-            threading.Thread(
-                target=functools.partial(dump_files_to_supervisely, app, template_response),
-                daemon=False
-            ).start()
+                return template_response
+            except Exception as ex:
+                traceback.print_exc()
+                sly.logger.warning(f'Cannot dump files for offline usage, reason: {ex}')
 
-            return template_response
-        except Exception as ex:
-            traceback.print_exc()
-            sly.logger.warning(f'Cannot dump files for offline usage, reason: {ex}')
-
-    return wrapper
+        return wrapper
+    return func_layer_wrapper
