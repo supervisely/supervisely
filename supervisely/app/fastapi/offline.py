@@ -56,14 +56,14 @@ def upload_to_supervisely(static_dir_path):
     team_id, task_id = int(os.getenv('context.teamId')), int(os.getenv('TASK_ID', 0000))
     remote_dir = pathlib.Path('/', 'offline-usage', str(task_id), 'app-template')
 
-    api.file.upload_directory(team_id=team_id,
-                              local_dir=static_dir_path.as_posix(),
-                              remote_dir=remote_dir.as_posix())
+    res_remote_dir: str = api.file.upload_directory(team_id=team_id,
+                                                    local_dir=static_dir_path.as_posix(),
+                                                    remote_dir=remote_dir.as_posix())
 
     if os.getenv('TASK_ID') is not None:
-        api.task.update_meta(id=task_id, data={'templateRootDirectory': remote_dir.as_posix()})
+        api.task.update_meta(id=task_id, data={'templateRootDirectory': res_remote_dir})
 
-    sly.logger.info(f'App files stored in {remote_dir.as_posix()} for offline usage')
+    sly.logger.info(f'App files stored in {res_remote_dir} for offline usage')
 
 
 def dump_files_to_supervisely(app: FastAPI, template_response):
@@ -106,4 +106,5 @@ def available_after_shutdown(app: FastAPI):
                 sly.logger.warning(f'Cannot dump files for offline usage, reason: {ex}')
 
         return wrapper
+
     return func_layer_wrapper
