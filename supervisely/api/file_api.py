@@ -10,6 +10,8 @@ import shutil
 import tarfile
 from pathlib import Path
 import urllib
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -784,5 +786,8 @@ class FileApi(ModuleApiBase):
         local_files = list_files_recursively(local_dir)
         remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
 
-        upload_results = self.upload_bulk(team_id, local_files, remote_files, progress_size_cb)
+        for local_paths_batch, remote_files_batch in zip(batched(local_files, batch_size=50),
+                                                         batched(remote_files, batch_size=50)):
+
+            self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
