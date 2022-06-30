@@ -54,7 +54,7 @@ def upload_to_supervisely(static_dir_path):
     api: sly.Api = sly.Api.from_env()
 
     team_id, task_id = int(os.getenv('context.teamId')), int(os.getenv('TASK_ID', 0000))
-    remote_dir = pathlib.Path('/', os.getenv('APP_NAME', 'sly_app'), str(task_id), 'app-template')
+    remote_dir = pathlib.Path('/', 'offline-usage', str(task_id), 'app-template')
 
     api.file.upload_directory(team_id=team_id,
                               local_dir=static_dir_path.as_posix(),
