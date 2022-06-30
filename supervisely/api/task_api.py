@@ -434,3 +434,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def set_output_directory(self, task_id, file_id, directory_path):
         return self._set_custom_output(task_id, file_id, directory_path, description="Directory",
                                        icon="zmdi zmdi-folder")
+
+    def update_meta(self, id: int, data: dict):
+        """
+        Update given task metadata
+        :param id: int — task id
+        :param data: dict — meta data to update
+
+        """
+        if type(data) == dict:
+            data.update({'id': id})
+
+        self._api.post("tasks.meta.update", data)

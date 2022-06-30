@@ -4,6 +4,8 @@ import shutil
 import tarfile
 from pathlib import Path
 import urllib
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -13,6 +15,7 @@ from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove
+
 
 class FileApi(ModuleApiBase):
     @staticmethod
@@ -157,7 +160,7 @@ class FileApi(ModuleApiBase):
         pass
 
     def remove(self, team_id, path):
-        resp = self._api.post("file-storage.remove",{ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        resp = self._api.post("file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
 
     def exists(self, team_id, remote_path):
         path_infos = self.list(team_id, remote_path)
@@ -234,6 +237,9 @@ class FileApi(ModuleApiBase):
         local_files = list_files_recursively(local_dir)
         remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
 
-        upload_results = self.upload_bulk(team_id, local_files, remote_files, progress_size_cb)
+        for local_paths_batch, remote_files_batch in zip(batched(local_files, batch_size=50),
+                                                         batched(remote_files, batch_size=50)):
+
+            self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
 
