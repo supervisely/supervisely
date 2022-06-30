@@ -7,7 +7,6 @@ from typing import List, NamedTuple, Dict, Optional, Callable
 import pandas as pd
 from supervisely.task.progress import Progress
 
-
 from collections import namedtuple
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
@@ -237,7 +236,7 @@ class UserApi(ModuleApiBase):
                                                convert_json_info_cb=self._api.user._convert_json_info)
         return _get_single_item(team_members)
 
-    def get_list(self, filters: List[Dict[str, str]]=None) -> List[NamedTuple]:
+    def get_list(self, filters: List[Dict[str, str]] = None) -> List[NamedTuple]:
         """
         Get list of information about Users.
 
@@ -274,7 +273,8 @@ class UserApi(ModuleApiBase):
         """
         return self.get_list_all_pages('users.list', {ApiField.FILTER: filters or []})
 
-    def create(self, login: str, password: str, is_restricted: Optional[bool]=False, name: Optional[str]="", email: Optional[str]="") -> NamedTuple:
+    def create(self, login: str, password: str, is_restricted: Optional[bool] = False, name: Optional[str] = "",
+               email: Optional[str] = "") -> NamedTuple:
         """
         Creates new User with given login and password.
 
@@ -486,7 +486,7 @@ class UserApi(ModuleApiBase):
         response = self._api.post('members.remove', {ApiField.ID: user_id,
                                                      ApiField.TEAM_ID: team_id})
 
-    def update(self, id: int, password: Optional[str]=None, name: Optional[str]=None) -> NamedTuple:
+    def update(self, id: int, password: Optional[str] = None, name: Optional[str] = None) -> NamedTuple:
         """
         Updates User info.
 
@@ -629,7 +629,7 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable]=None) -> pd.DataFrame:
+    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None) -> pd.DataFrame:
         """
         Get User activity data.
 
@@ -703,4 +703,8 @@ class UserApi(ModuleApiBase):
         response = self._api.post('members.add', {ApiField.LOGIN: user_login,
                                                   ApiField.TEAM_ID: team_id,
                                                   ApiField.ROLE_ID: role_id})
+        return response.json()
+
+    def get_ssh_keys(self):
+        response = self._api.post("users.ssh-keys", {})
         return response.json()

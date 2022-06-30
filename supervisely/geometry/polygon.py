@@ -8,6 +8,8 @@ import numpy as np
 from typing import List, Dict, Optional
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
 
 from shapely.geometry import mapping, Polygon as ShapelyPolygon
 
@@ -237,6 +239,4 @@ class Polygon(VectorGeometry):
 
     @classmethod
     def allowed_transforms(cls):
-        from supervisely.geometry.any_geometry import AnyGeometry
-        from supervisely.geometry.bitmap import Bitmap
         return [AnyGeometry, Rectangle, Bitmap]
