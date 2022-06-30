@@ -72,8 +72,9 @@ class _slyProgressBarIO:
                 self.progress['percent'] = int(self._n)
                 self.progress['info'] = extract_by_regexp(r'(\d+(?:\.\d+\w+)?)*.*\]', new_text)
 
-    def flush(self):
+    def flush(self, synchronize_changes=True):
         if self.prev_state != self.progress:
+
             if self.progress['percent'] != '' and self.progress['info'] != '':
                 self.print_progress_to_supervisely_tasks_section()
 
@@ -83,10 +84,8 @@ class _slyProgressBarIO:
                 for key, value in self.progress.items():
                     DataJson()[f'{self.widget_id}'][key] = value
 
-                try:
+                if synchronize_changes is True:
                     run_sync(DataJson().synchronize_changes())
-                except Exception as ex:
-                    logger.info(f'Failed to synchronize TQDM changes: {ex}')
 
                 self.prev_state = copy.deepcopy(self.progress)
 
@@ -94,7 +93,7 @@ class _slyProgressBarIO:
         self.progress['status'] = "success"
         self.progress['percent'] = 100
 
-        self.flush()
+        self.flush(synchronize_changes=False)
         self.print_progress_to_supervisely_tasks_section()
 
 
@@ -118,9 +117,11 @@ class CustomTqdm(tqdm):
             self.fp.__del__()
 
     def __del__(self):
+
         super(CustomTqdm, self).__del__()
         if self.fp is not None:
             self.fp.__del__()
+
 
 
 class SlyTqdm(Widget):
