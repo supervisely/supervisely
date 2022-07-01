@@ -1,5 +1,6 @@
 import os
 import requests
+
 from setuptools import find_packages, setup
 
 #@TODO: change manifest location
@@ -12,6 +13,10 @@ def read(fname):
 response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
 version = response.json()["tag_name"]
 
+# Dependencies do not include PyTorch, so
+# supervisely_lib.nn.hosted.pytorch will not work out of the box.
+# If you need to invoke that part of the code, it is very likely you
+# already have PyTorch installed.
 setup(
     name="supervisely",
     version=version,
@@ -21,7 +26,7 @@ setup(
     long_description_content_type='text/markdown',
     url="https://github.com/supervisely/supervisely",
     package_data={
-        "": ["*.html", "*.css"], 
+        "": ["*.html", "*.css"],
         "supervisely": ["video/*.sh"]
     },
     install_requires=[
@@ -68,13 +73,24 @@ setup(
             "tqdm==4.62.3",
             "pandas==1.4.2",
         ],
+        'docs': [
+            "sphinx==4.4.0",
+            "jinja2==3.0.3",
+            "sphinx-immaterial==0.4.0",
+            "sphinx-copybutton==0.4.0",
+            "sphinx-autodoc-typehints==1.15.3",
+            "sphinxcontrib-details-directive==0.1.0",
+            "m2r2==0.3.2",
+            "nbsphinx==0.8.8",
+            "nbsphinx-link==1.3.0",
+        ],
         'sdk-no-usages': [
             "grpcio==1.34.1",
             "plotly>=4.11.0",
             "psutil>=5.4.5",
         ],
         # legacy dependencies
-        'plugins':[
+        'plugins': [
             "jsonschema>=2.6.0,<3.0.0",
         ],
         'sdk-nn-plugins': [

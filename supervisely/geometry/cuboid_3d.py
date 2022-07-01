@@ -8,15 +8,15 @@ from supervisely.geometry.geometry import Geometry
 
 
 class Vector3d:
-    '''
+    """
     This is a class for creating and using Vector3d objects for Cuboid3d class objects
-    '''
+    """
     def __init__(self, x, y, z):
-        '''
+        """
         :param x: int
         :param y: int
         :param z: int
-        '''
+        """
         self._x = x
         self._y = y
         self._z = z
@@ -34,19 +34,19 @@ class Vector3d:
         return self._z
 
     def to_json(self):
-        '''
+        """
         The function to_json convert Vector3d class object to json format(dict)
         :return: Vector3d in json format
-        '''
+        """
         return {X: self.x, Y: self.y, Z: self.z}
 
     @classmethod
     def from_json(cls, data):
-        '''
+        """
         The function from_json convert Vector3d from json format(dict) to Vector3d class object.
         :param data: Vector3d in json format(dict)
         :return: Vector3d class object
-        '''
+        """
         x = data[X]
         y = data[Y]
         z = data[Z]
@@ -57,9 +57,9 @@ class Vector3d:
 
 
 class Cuboid3d(Geometry):
-    '''
+    """
     This is a class for creating and using Cuboid3d objects for Labels
-    '''
+    """
     @staticmethod
     def geometry_name():
         return 'cuboid_3d'
@@ -67,12 +67,12 @@ class Cuboid3d(Geometry):
     def __init__(self, position: Vector3d, rotation: Vector3d, dimensions: Vector3d,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
 
-        '''
+        """
 
         :param position: Vector3d class object
         :param rotation: Vector3d class object
         :param dimensions: Vector3d class object
-        '''         
+        """         
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         
         if type(position) is not Vector3d:
@@ -99,10 +99,10 @@ class Cuboid3d(Geometry):
         return self._dimensions.clone()
 
     def to_json(self):
-        '''
+        """
         The function to_json convert Cuboid3d class object to json format(dict)
         :return: Cuboid3d in json format
-        '''
+        """
         res = {POSITION: self.position.to_json(),
                 ROTATION: self.rotation.to_json(),
                 DIMENTIONS: self.dimensions.to_json()}
@@ -112,11 +112,11 @@ class Cuboid3d(Geometry):
 
     @classmethod
     def from_json(cls, data):
-        '''
+        """
         The function from_json convert Cuboid3d from json format(dict) to Cuboid3d class object.
         :param data: Cuboid3d in json format(dict)
         :return: Cuboid3d class object
-        '''
+        """
         position = Vector3d.from_json(data[POSITION])
         rotation = Vector3d.from_json(data[ROTATION])
         dimentions = Vector3d.from_json(data[DIMENTIONS])

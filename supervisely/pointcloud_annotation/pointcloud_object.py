@@ -1,6 +1,8 @@
 # coding: utf-8
 
+# docs
 import uuid
+from typing import Optional
 
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.annotation.label import LabelJsonFields
@@ -12,18 +14,18 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 
 class PointcloudObject(VideoObject):
-    '''
-    This is a class for creating and using PointcloudObject objects for videos
-    '''
+    """
+    Class for creating and using PointcloudObject objects for videos
+    """
     @classmethod
-    def from_json(cls, data, project_meta: ProjectMeta, key_id_map: KeyIdMap = None):
-        '''
-        The function from_json convert PointcloudObject from json format to PointcloudObject class object. Raise error if object class name is not found in the given project meta
+    def from_json(cls, data, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
+        """
+        Convert PointcloudObject from json format to PointcloudObject class object. Raise error if object class name is not found in the given project meta
         :param data: input PointcloudObject in json format
         :param project_meta: ProjectMeta class object
         :param key_id_map: KeyIdMap class object
         :return: PointcloudObject class object
-        '''
+        """
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:

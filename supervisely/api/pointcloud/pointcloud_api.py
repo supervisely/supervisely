@@ -1,6 +1,11 @@
 # coding: utf-8
-from collections import defaultdict
 
+# docs
+from requests import Response
+from typing import List, NamedTuple, Dict, Optional, Callable
+from supervisely.task.progress import Progress
+
+from collections import defaultdict
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.io.fs import ensure_base_path, get_file_hash
 from supervisely._utils import batched
@@ -14,9 +19,9 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 class PointcloudApi(RemoveableBulkModuleApi):
     def __init__(self, api):
-        '''
+        """
         :param api: Api class object
-        '''
+        """
         super().__init__(api)
         self.annotation = PointcloudAnnotationAPI(api)
         self.object = PointcloudObjectApi(api)
@@ -36,7 +41,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 ApiField.LINK,
                 ApiField.HASH,
                 ApiField.PATH_ORIGINAL,
-                #ApiField.PREVIEW,
+                # ApiField.PREVIEW,
                 ApiField.CLOUD_MIME,
                 ApiField.FIGURES_COUNT,
                 ApiField.ANN_OBJECTS_COUNT,
@@ -49,53 +54,54 @@ class PointcloudApi(RemoveableBulkModuleApi):
     def info_tuple_name():
         return 'PointCloudInfo'
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
+    def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
         return super(PointcloudApi, self)._convert_json_info(info, skip_missing=skip_missing)
 
-    def get_list(self, dataset_id, filters=None):
-        '''
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+        """
         :param dataset_id: int
         :param filters: list
         :return: list of the pointclouds objects from the dataset with given id
-        '''
-        return self.get_list_all_pages('point-clouds.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
+        """
+        return self.get_list_all_pages('point-clouds.list',
+                                       {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id):
-        '''
+    def get_info_by_id(self, id: int) -> NamedTuple:
+        """
         :param id: int
         :return: PointcloudApi metadata by numeric id
-        '''
+        """
         return self._get_info_by_id(id, 'point-clouds.info')
 
-    def _download(self, id, is_stream=False):
-        '''
+    def _download(self, id: int, is_stream: Optional[bool] = False):
+        """
         :param id: int
         :param is_stream: bool
         :return: Response object containing pointcloud object with given id
-        '''
+        """
         response = self._api.post('point-clouds.download', {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id, path):
-        '''
+    def download_path(self, id: int, path: str) -> None:
+        """
         Download pointcloud with given id on the given path
         :param id: int
         :param path: str
-        '''
+        """
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:
-            for chunk in response.iter_content(chunk_size=1024*1024):
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def get_list_related_images(self, id):
+    def get_list_related_images(self, id: int) -> List:
         dataset_id = self.get_info_by_id(id).dataset_id
         filters = [{"field": ApiField.ENTITY_ID, "operator": "=", "value": id}]
         return self.get_list_all_pages('point-clouds.images.list',
                                        {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters},
-                                       convert_json_info_cb=lambda x : x)
+                                       convert_json_info_cb=lambda x: x)
 
-    def download_related_image(self, id, path):
+    def download_related_image(self, id: int, path: str) -> Response:
         response = self._api.post('point-clouds.images.download', {ApiField.ID: id}, stream=True)
         ensure_base_path(path)
         with open(path, 'wb') as fd:
@@ -103,13 +109,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 fd.write(chunk)
         return response
 
-    #@TODO: copypaste from video_api
-    def upload_hash(self, dataset_id, name, hash, meta=None):
+    # @TODO: copypaste from video_api
+    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None) -> NamedTuple:
         meta = {} if meta is None else meta
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     # @TODO: copypaste from video_api
-    def upload_hashes(self, dataset_id, names, hashes, metas=None, progress_cb=None):
+    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]] = None,
+                      progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb)
 
     # @TODO: copypaste from video_api
@@ -141,29 +148,32 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         return ordered_results
 
-    def upload_related_image(self, path):
+    def upload_related_image(self, path: str) -> List[str]:
         return self.upload_related_images([path])
 
-    def upload_related_images(self, paths, progress_cb=None):
+    def upload_related_images(self, paths: List[str], progress_cb: Optional[Callable] = None) -> List[str]:
         def path_to_bytes_stream(path):
             return open(path, 'rb')
+
         return self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
 
-    def add_related_images(self, images_json):
+    def add_related_images(self, images_json: Dict) -> Dict:
         response = self._api.post('point-clouds.images.add', {ApiField.IMAGES: images_json})
         return response.json()
 
-    def upload_path(self, dataset_id, name, path, meta=None):
+    def upload_path(self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None) -> NamedTuple:
         metas = None if meta is None else [meta]
         return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
-    def upload_paths(self, dataset_id, names, paths, progress_cb=None, metas=None):
+    def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Callable] = None,
+                     metas: Optional[Dict] = None) -> List[NamedTuple]:
         def path_to_bytes_stream(path):
             return open(path, 'rb')
+
         hashes = self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
-    def check_existing_hashes(self, hashes):
+    def check_existing_hashes(self, hashes: List[str]) -> List[str]:
         results = []
         if len(hashes) == 0:
             return results

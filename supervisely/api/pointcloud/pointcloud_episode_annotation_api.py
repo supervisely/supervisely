@@ -10,7 +10,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     _method_download = 'point-clouds.episodes.annotations.info'
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
-    def download(self, dataset_id):
+    def download(self, dataset_id: int):
         """
         :param dataset_id: int
         :return: dataset episode annotation for given id, received after execution post request
@@ -22,7 +22,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         raise RuntimeError('Not supported for episodes')
 
     def append(self, dataset_id, ann: PointcloudEpisodeAnnotation, frame_to_pointcloud_ids,
-               key_id_map: KeyIdMap = None):
+               key_id_map: KeyIdMap = None) -> None:
         if key_id_map is None:
             # create for internal purposes (to link figures and tags to objects)
             key_id_map = KeyIdMap()
