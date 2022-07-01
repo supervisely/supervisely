@@ -182,3 +182,5 @@ from supervisely.project.volume_project import (
     download_volume_project,
     upload_volume_project,
 )
+
+from supervisely.geometry.bitmap import SkeletonizeMethod

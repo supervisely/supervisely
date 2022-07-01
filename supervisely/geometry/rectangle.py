@@ -1,7 +1,12 @@
 # coding: utf-8
 
+# docs
+from __future__ import annotations
 import cv2
 import numpy as np
+from typing import List, Tuple, Dict, Optional
+import supervisely as sly
+
 
 from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 from supervisely.geometry.geometry import Geometry
@@ -9,25 +14,49 @@ from supervisely.geometry.point_location import PointLocation, points_to_row_col
 from supervisely.geometry import validation
 
 
-# @TODO: validation
 class Rectangle(Geometry):
-    '''
-    This is a class for creating and using Rectangle objects for Labels
-    '''
+    """
+    Rectangle geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
+
+    :param top: Minimal vertical value of Rectangle object.
+    :type top: int or float
+    :param left: Minimal horizontal value of Rectangle object.
+    :type left: int or float
+    :param bottom: Maximal vertical value of Rectangle object.
+    :type bottom: int or float
+    :param right: Maximal vertical value of Rectangle object.
+    :type right: int or float
+    :param sly_id: Rectangle ID in Supervisely server.
+    :type sly_id: int, optional
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Rectangle belongs.
+    :type class_id: int, optional
+    :param labeler_login: Login of the user who created Rectangle.
+    :type labeler_login: str, optional
+    :param updated_at: Date and Time when Rectangle was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :type updated_at: str, optional
+    :param created_at: Date and Time when Rectangle was created. Date Format is the same as in "updated_at" parameter.
+    :type created_at: str, optional
+    :raises: :class:`ValueError`. Rectangle top argument must have less or equal value then bottom, left argument must have less or equal value then right
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        top = 100
+        left = 100
+        bottom = 700
+        right = 900
+        figure = sly.Rectangle(top, left, bottom, right)
+    """
     @staticmethod
     def geometry_name():
         return 'rectangle'
 
-    def __init__(self, top, left, bottom, right,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        """
-        Float-type coordinates will be deprecated soon.
-        Args:
-            top: minimal vertical value
-            left: minimal horizontal value
-            bottom: maximal vertical value
-            right: maximal horizontal value
-        """
+    def __init__(self, top: int, left: int, bottom: int, right: int,
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         if top > bottom:
             raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
@@ -40,15 +69,28 @@ class Rectangle(Geometry):
 
         self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
 
-    """
-    Implementation of all methods from Geometry
-    """
+    def to_json(self) -> Dict:
+        """
+        Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
-    def to_json(self):
-        '''
-        The function to_json convert Rectangle class object to json format
-        :return: Rectangle in json format
-        '''
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_json = figure.to_json()
+            print(figure_json)
+            # Output: {
+            #    "points": {
+            #        "exterior": [
+            #            [100, 100],
+            #            [900, 700]
+            #        ],
+            #        "interior": []
+            #    }
+            # }
+        """
         packed_obj = {
             POINTS: {
                 EXTERIOR: points_to_row_col_list(self._points, flip_row_col_order=True),
@@ -59,12 +101,31 @@ class Rectangle(Geometry):
         return packed_obj
 
     @classmethod
-    def from_json(cls, data):
-        '''
-        The function from_json convert Rectangle from json format to Rectangle class object. If json format is not correct it generate exception error.
-        :param data: input Rectangle in json format
-        :return: Rectangle class object
-        '''
+    def from_json(cls, data: Dict) -> Rectangle:
+        """
+        Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: Rectangle in json format as a dict.
+        :type data: dict
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            figure_json = {
+                "points": {
+                    "exterior": [
+                        [100, 100],
+                        [900, 700]
+                    ],
+                    "interior": []
+                }
+            }
+            figure = sly.Rectangle.from_json(figure_json)
+        """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -80,12 +141,23 @@ class Rectangle(Geometry):
         return cls(top=top, left=left, bottom=bottom, right=right,
                    sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
-    def crop(self, other):
-        '''
-        Crop the current Rectangle with a given rectangle
-        :param other: Rectangle class object
-        :return: list with Rectangle class object, if Rectangle class object not intersect with given rectangle, empty list will be returned
-        '''
+    def crop(self, other: Rectangle) -> List[Rectangle]:
+        """
+        Crops current Rectangle.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: List of Rectangle objects
+        :rtype: :class:`List[Rectangle]<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
+        """
         top = max(self.top, other.top)
         left = max(self.left, other.left)
         bottom = min(self.bottom, other.bottom)
@@ -99,62 +171,148 @@ class Rectangle(Geometry):
         return Rectangle(top=round(min(rows)), left=round(min(cols)), bottom=round(max(rows)), right=round(max(cols)))
 
     @property
-    def corners(self):
-        '''
-        :return: list of coners(PointLocation class objects) of Rectangle
-        '''
+    def corners(self) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
+        """
+        Get list of Rectangle corners.
+
+        :return: List of PointLocation objects
+        :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            corners = figure.corners
+            for corner in corners:
+                print(corner.row, corner.col)
+            # Output:
+            # 100 100
+            # 100 900
+            # 700 900
+            # 700 100
+        """
         return [PointLocation(row=self.top, col=self.left), PointLocation(row=self.top, col=self.right),
                 PointLocation(row=self.bottom, col=self.right), PointLocation(row=self.bottom, col=self.left)]
 
-    def rotate(self, rotator):
-        '''
-        The function rotate Rectangle with a given rotator(ImageRotator class object contain size of image and angle to rotate)
-        :param rotator: ImageRotator class object
-        :return: Rectangle class object
-        '''
+    def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
+        """
+        Rotates current Rectangle.
+
+        :param rotator: ImageRotator object for rotation.
+        :type rotator: ImageRotator
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            from supervisely.geometry.image_rotator import ImageRotator
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            rotator = ImageRotator((height, width), 25)
+            rotate_figure = figure.rotate(rotator)
+        """
         return self._transform(lambda p: rotator.transform_point(p))
 
-    def resize(self, in_size, out_size):
-        '''
-        Resize the current Rectangle to match a certain size
-        :param in_size: input image size
-        :param out_size: output image size
-        :return: Rectangle class object
-        '''
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Rectangle:
+        """
+        Resizes current Rectangle.
+
+        :param in_size: Input image size (height, width) to which belongs Rectangle.
+        :type in_size: Tuple[int, int]
+        :param out_size: Desired output image size (height, width) to which belongs Rectangle.
+        :type out_size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            in_height, in_width = 300, 400
+            out_height, out_width = 600, 800
+            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+        """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
-    def scale(self, factor):
-        '''
-        The function scale change scale of the current Rectangle object with a given factor
-        :param factor: float scale parameter
-        :return: Rectangle class object
-        '''
+    def scale(self, factor: float) -> Rectangle:
+        """
+        Scales current Rectangle.
+
+        :param factor: Scale parameter.
+        :type factor: float
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            scale_figure = figure.scale(0.75)
+        """
         return self._transform(lambda p: p.scale(factor))
 
-    def translate(self, drow, dcol):
-        '''
-        The function translate shifts the rectangle by a certain number of pixels and return the copy of the current Rectangle object
-        :param drow: horizontal shift
-        :param dcol: vertical shift
-        :return: Rectangle class object
-        '''
+    def translate(self, drow: int, dcol: int) -> Rectangle:
+        """
+        Translates current Rectangle.
+
+        :param drow: Horizontal shift.
+        :type drow: int
+        :param dcol: Vertical shift.
+        :type dcol: int
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            translate_figure = figure.translate(150, 250)
+        """
         return self._transform(lambda p: p.translate(drow, dcol))
 
-    def fliplr(self, img_size):
-        '''
-        The function fliplr the current Rectangle object geometry in horizontal
-        :param img_size: size of the image
-        :return: Rectangle class object
-        '''
+    def fliplr(self, img_size: Tuple[int, int]) -> Rectangle:
+        """
+        Flips current Rectangle in horizontal.
+
+        :param img_size: Input image size (height, width) to which belongs Rectangle.
+        :type img_size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            fliplr_figure = figure.fliplr((height, width))
+        """
         img_width = img_size[1]
         return Rectangle(top=self.top, left=(img_width - self.right), bottom=self.bottom, right=(img_width - self.left))
 
-    def flipud(self, img_size):
-        '''
-        The function flipud the current Rectangle object geometry in vertical
-        :param img_size: size of the image
-        :return: Rectangle class object
-        '''
+    def flipud(self, img_size: Tuple[int, int]) -> Rectangle:
+        """
+        Flips current Rectangle in vertical.
+
+        :param img_size: Input image size (height, width) to which belongs Rectangle.
+        :type img_size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            height, width = 300, 400
+            flipud_figure = figure.flipud((height, width))
+        """
         img_height = img_size[0]
         return Rectangle(top=(img_height - self.bottom), left=self.left, bottom=(img_height - self.top),
                          right=self.right)
@@ -166,45 +324,101 @@ class Rectangle(Geometry):
         cv2.rectangle(bitmap, pt1=(self.left, self.top), pt2=(self.right, self.bottom), color=color,
                       thickness=thickness)
 
-    def to_bbox(self):
-        '''
-        :return: copy of current Rectangle class object
-        '''
+    def to_bbox(self) -> Rectangle:
+        """
+        Makes a copy of Rectangle.
+
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+            new_figure = figure.to_bbox()
+        """
         return self.clone()
 
     @property
-    def area(self):
-        '''
-        :return: area of current Rectangle object
-        '''
+    def area(self) -> float:
+        """
+        Rectangle area.
+
+        :return: Area of current Rectangle object
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.area)
+            # Output: 7288.0
+        """
         return float(self.width * self.height)
 
     @classmethod
-    def from_array(cls, arr):
-        '''
-        The function from_array create Rectangle object with given array shape
-        :param arr: numpy array
-        :return: Rectangle class object
-        '''
+    def from_array(cls, arr: np.ndarray) -> Rectangle:
+        """
+        Create Rectangle with given array shape.
+
+        :param arr: Numpy array.
+        :type arr: np.ndarray
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            np_array = np.zeros((300, 400))
+            figure_from_np = sly.Rectangle.from_array(np_array)
+        """
         return cls(top=0, left=0, bottom=arr.shape[0] - 1, right=arr.shape[1] - 1)
 
     # TODO re-evaluate whether we need this, looks trivial.
     @classmethod
-    def from_size(cls, size: tuple):
-        '''
-        The function from_size create Rectangle object with given size shape
-        :param size: tuple of integers
-        :return: Rectangle class object
-        '''
+    def from_size(cls, size: Tuple[int, int]) -> Rectangle:
+        """
+        Create Rectangle with given size shape.
+
+        :param size: Input size.
+        :type size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            size = (300, 400)
+            figure_from_size = sly.Rectangle.from_size(size)
+        """
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
-    def from_geometries_list(cls, geometries):
-        '''
-        The function from_geometries_list create Rectangle object from given geometry object
-        :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
-        :return: Rectangle class object
-        '''
+    def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
+        """
+        Create Rectangle from given geometry objects.
+
+        :param geometries: List of geometry type objects: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<Rectangle>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`.
+        :type geometries: List[Geometry]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
+            figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
+        """
         bboxes = [g.to_bbox() for g in geometries]
         top = min(bbox.top for bbox in bboxes)
         left = min(bbox.left for bbox in bboxes)
@@ -213,76 +427,224 @@ class Rectangle(Geometry):
         return cls(top=top, left=left, bottom=bottom, right=right)
 
     @property
-    def left(self):
+    def left(self) -> int:
+        """
+        Minimal horizontal value of Rectangle.
+
+        :return: Minimal horizontal value
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.left)
+            # Output: 100
+        """
         return self._points[0].col
 
     @property
-    def right(self):
+    def right(self) -> int:
+        """
+        Maximal horizontal value of Rectangle.
+
+        :return: Maximal horizontal value
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.right)
+            # Output: 900
+        """
         return self._points[1].col
 
     @property
-    def top(self):
+    def top(self) -> int:
+        """
+        Minimal vertical value of Rectangle.
+
+        :return: Minimal vertical value
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(rectangle.top)
+            # Output: 100
+        """
         return self._points[0].row
 
     @property
-    def bottom(self):
+    def bottom(self) -> int:
+        """
+        Maximal vertical value of Rectangle.
+
+        :return: Maximal vertical value
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.bottom)
+            # Output: 700
+        """
         return self._points[1].row
 
     @property
-    def center(self):
-        '''
-        :return: center of rectangle(PointLocation class obgect)
-        '''
+    def center(self) -> PointLocation:
+        """
+        Center of Rectangle.
+
+        :return: PointLocation object
+        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            center = figure.center()
+        """
         return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
-    def width(self):
-        '''
-        :return: width of rectangle(int)
-        '''
+    def width(self) -> int:
+        """
+        Width of Rectangle.
+
+        :return: Width
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.width)
+            # Output: 801
+        """
         return self.right - self.left + 1
 
     @property
-    def height(self):
-        '''
-        :return: height of rectangle(int)
-        '''
+    def height(self) -> int:
+        """
+        Height of Rectangle
+
+        :return: Height
+        :rtype: :class:`int`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.height)
+            # Output: 601
+        """
         return self.bottom - self.top + 1
 
-    def contains(self, rect):
-        '''
-        The function contains checks if Rectangle class object contains a given rectangle
-        :param rect: Rectangle class object
-        :return: bool
-        '''
+    def contains(self, rect: Rectangle) -> bool:
+        """
+        Checks if Rectangle contains a given Rectangle object.
+
+        :param rect: Rectangle object.
+        :type rect: Rectangle
+        :return: True if Rectangle contains given Rectangle object, otherwise False
+        :rtype: :class:`bool`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            rect = sly.Rectangle(200, 250, 400, 500))
+            print(figure.contains(rect))
+            # Output: True
+        """
         return (self.left <= rect.left and
                 self.right >= rect.right and
                 self.top <= rect.top and
                 self.bottom >= rect.bottom)
 
-    def contains_point_location(self, pt: PointLocation):
-        '''
-        The function contains_point_location checks if Rectangle class object contains a given point
-        :param pt: PointLocation class object
-        :return: bool
-        '''
+    def contains_point_location(self, pt: PointLocation) -> bool:
+        """
+        Checks if Rectangle contains a given PointLocation object.
+
+        :param pt: PointLocation object.
+        :type pt: PointLocation
+        :return: True if Rectangle contains given PointLocation object, otherwise False
+        :rtype: :class:`bool`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            pt = sly.PointLocation(250, 300))
+            print(figure.contains_point_location(pt))
+            # Output: True
+        """
         return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
 
-    def to_size(self):
-        '''
-        :return: height and width of rectangle(int)
-        '''
+    def to_size(self) -> Tuple[int, int]:
+        """
+        Height and width of Rectangle.
+
+        :return: Height and width of Rectangle object
+        :rtype: :class:`Tuple[int, int]`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            height, width = figure.to_size()
+            print(height, width)
+            # Output: 700 900
+        """
         return self.height, self.width
 
     def get_cropped_numpy_slice(self, data: np.ndarray) -> np.ndarray:
-        '''
-        The function get_cropped_numpy_slice checks slice of given numpy array with Rectangle parameters
-        :param data: numpy array
-        :return: numpy array
-        '''
+        """
+        Slice of given numpy array with Rectangle.
+
+        :param data: Numpy array.
+        :type data: np.ndarray
+        :return: Sliced numpy array
+        :rtype: :class:`np.ndarray<np.ndarray>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            np_slice = np.zeros((200, 500))
+            mask_slice = figure.get_cropped_numpy_slice(np_slice)
+            print(mask_slice.shape)
+            # Output: (199, 499)
+        """
         return data[self.top:(self.bottom+1), self.left:(self.right+1), ...]
 
-    def intersects_with(self, rect):
+    def intersects_with(self, rect: Rectangle) -> bool:
+        """
+        Checks intersects Rectangle with given Rectangle object or not.
+
+        :param rect: Rectangle object.
+        :type rect: Rectangle
+        :return: True if given Rectangle object intersects with Rectangle, otherwise False
+        :rtype: :class:`bool`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            rect = sly.Rectangle(90, 90, 400, 500)
+            print(figure.intersects_with(rect))
+            # Output: True
+        """
         if self.left > rect.right or self.right < rect.left:
             return False
         if self.top > rect.bottom or self.bottom < rect.top:

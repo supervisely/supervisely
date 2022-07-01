@@ -1,10 +1,13 @@
 # coding: utf-8
 
+# docs
+from typing import List, NamedTuple, Dict, Optional
+
+
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
-
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 
 
@@ -12,15 +15,15 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = 'point-clouds.annotations.bulk.info'
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
-    def download(self, pointcloud_id):
-        '''
+    def download(self, pointcloud_id: int) -> List[Dict]:
+        """
         :param pointcloud_id: int
         :return: list of content of pointcloud object with given id, received after execution post request
-        '''
+        """
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
         return self._download(info.dataset_id, pointcloud_id)
 
-    def append(self, pointcloud_id, ann: PointcloudAnnotation, key_id_map: KeyIdMap = None):
+    def append(self, pointcloud_id: int, ann: PointcloudAnnotation, key_id_map: Optional[KeyIdMap] = None) -> None:
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
 
         new_objects = []

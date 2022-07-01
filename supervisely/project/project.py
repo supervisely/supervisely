@@ -1,11 +1,14 @@
 # coding: utf-8
+
+from __future__ import annotations
 import shutil
 from collections import namedtuple
 import os
 import json
 from enum import Enum
-from typing import List
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
 import random
+import numpy as np
 
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -42,6 +45,9 @@ ItemInfo = namedtuple("ItemInfo", ["dataset_name", "name", "img_path", "ann_path
 
 
 class OpenMode(Enum):
+    """
+    Defines the mode of using the :class:`Project<supervisely.project.project.Project>` and :class:`Dataset<supervisely.project.project.Dataset>`.
+    """
     READ = 1
     CREATE = 2
 
@@ -57,12 +63,21 @@ def _get_effective_ann_name(img_name, ann_names):
 
 class Dataset(KeyObject):
     """
-    This is a class for creating and using Dataset objects. Here is where your labeled and unlabeled images and other
-    files live. There is no more levels: images or videos are directly attached to a dataset. Dataset is a unit of work.
-    All images or videos are directly attached to a dataset. A dataset is some sort of data folder with stuff to annotate.
-    """
+    Dataset is where your labeled and unlabeled images, videos and other files live. :class:`Dataset<Dataset>` object is immutable.
 
-    item_dir_name = "img"
+    :param directory: Path to dataset directory.
+    :type directory: str
+    :param mode: Determines working mode for the given dataset.
+    :type mode: OpenMode
+    :Usage example:
+
+     .. code-block:: python
+
+         from supervisely.project.project import Dataset, OpenMode
+         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+         ds = Dataset(dataset_path, OpenMode.READ)
+    """
+    item_dir_name = 'img'
     annotation_class = Annotation
 
     def __init__(self, directory: str, mode: OpenMode):
@@ -90,34 +105,108 @@ class Dataset(KeyObject):
             self._create()
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """
+        Dataset name.
+
+        :return: Dataset Name
+        :rtype: :`class`: str
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            print(dataset.name)
+            # Output: "ds1"
+        """
         return self._name
 
     def key(self):
         return self.name
 
     @property
-    def directory(self):
+    def directory(self) -> str:
+        """
+        Path to Dataset directory.
+
+        :return: Path to dataset directory
+        :rtype: :class:`str`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.directory)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1'
+        """
         return self._directory
 
     @property
-    def item_dir(self):
+    def item_dir(self) -> str:
+        """
+        Path to the dataset items directory.
+
+        :return: Path to the dataset directory with items
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.img_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img'
+         """
         return self.img_dir
 
     @property
-    def img_dir(self):
+    def img_dir(self) -> str:
         """
-        :return: path to the directory with images in dataset
+        Path to the dataset images directory.
+
+        :return: Path to the dataset directory with images
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.img_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img'
         """
         # @TODO: deprecated method, should be private and be renamed in future
         return os.path.join(self.directory, self.item_dir_name)
 
     @property
-    def ann_dir(self):
+    def ann_dir(self) -> str:
         """
-        :return: path to the directory with annotations in dataset
+        Path to the dataset annotations directory.
+
+        :return: Path to the dataset directory with annotations
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.ann_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann'
         """
-        return os.path.join(self.directory, "ann")
+        return os.path.join(self.directory, 'ann')
 
     @property
     def img_info_dir(self):
@@ -192,25 +281,74 @@ class Dataset(KeyObject):
     def get_items_names(self) -> list:
         return list(self._item_to_ann.keys())
 
-    def item_exists(self, item_name):
+    def item_exists(self, item_name: str) -> bool:
         """
-        Checks if given item name belongs to items of dataset
-        :param item_name: str
-        :return: bool
+        Checks if given item name belongs to the dataset.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :return: True if item exist, otherwise False
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ds.item_exists("IMG_0748")      # False
+            ds.item_exists("IMG_0748.jpeg") # True
         """
         return item_name in self._item_to_ann
 
-    def get_item_path(self, item_name):
+    def get_item_path(self, item_name: str) -> str:
         """
-        :param item_name: str
-        :return: str (path to given item), generate exception error if item not found in dataset
+        Path to the given item.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :return: Path to the given item
+        :rtype: :class:`str`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ds.get_item_path("IMG_0748")
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            ds.get_item_path("IMG_0748.jpeg")
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg'
         """
         return self.get_img_path(item_name)
 
-    def get_img_path(self, item_name):
+    def get_img_path(self, item_name: str) -> str:
         """
-        :param item_name: str
-        :return: str (path to given image), generate exception error if image not found in dataset
+        Path to the given image.
+
+        :param item_name: Image name.
+        :type item_name: str
+        :return: Path to the given image
+        :rtype: :class:`str`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ds.get_img_path("IMG_0748")
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            ds.get_img_path("IMG_0748.jpeg")
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json'
         """
         # @TODO: deprecated method, should be private and be renamed in future
         if not self.item_exists(item_name):
@@ -222,51 +360,104 @@ class Dataset(KeyObject):
         ann_path = self.get_ann_path(item_name)
         return Annotation.load_json_file(ann_path, project_meta)
 
-    def get_ann_path(self, item_name):
+    def get_ann_path(self, item_name: str) -> str:
+        """
+        Path to the given annotation.
+
+        :param item_name: Annotation name.
+        :type item_name: str
+        :return: Path to the given annotation
+        :rtype: :class:`str`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ds.get_ann_path("IMG_0748")
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            ds.get_ann_path("IMG_0748.jpeg")
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json'
+        """
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
         return os.path.join(self.ann_dir, ann_path)
 
-    def get_img_info_path(self, item_name):
+    def get_img_info_path(self, item_name: str) -> str:
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
         return os.path.join(self.img_info_dir, ann_path)
 
-    def get_image_info(self, item_name):
+    def get_image_info(self, item_name: str) -> NamedTuple:
+        """
+        Information for Image with given name.
+
+        :param item_name: Image name.
+        :type item_name: str
+        :return: Image with information for the given Dataset
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            info = ds.get_image_info("IMG_0748.jpeg")
+        """
         img_info_path = self.get_img_info_path(item_name)
         image_info_dict = load_json_file(img_info_path)
         ImageInfo = namedtuple("ImageInfo", image_info_dict)
         info = ImageInfo(**image_info_dict)
         return info
 
-    def get_seg_path(self, item_name):
+    def get_seg_path(self, item_name: str) -> str:
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
         seg_path = os.path.join(self.seg_dir, f'{item_name}.png')
         return seg_path
 
-    def add_item_file(
-            self,
-            item_name,
-            item_path=None,
-            ann=None,
-            _validate_item=True,
-            _use_hardlink=False,
-            img_info=None,
-    ):
+    def add_item_file(self, item_name: str, item_path: str, ann: Optional[Union[Annotation, str]] = None,
+                      _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False,
+                      img_info: Optional[NamedTuple] = None) -> None:
         """
-        Add given item file to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
-        empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension
-        :param item_name: str
-        :param item_path: str
-        :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
-        :param _validate_item: bool
-        :param _use_hardlink: bool
+        Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param item_path: Path to the item.
+        :type item_path: str
+        :param ann: Annotation object or path to annotation.json file.
+        :type ann: Annotation or str, optional
+        :param _validate_item: Checks input files format.
+        :type _validate_item: bool, optional
+        :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
+        :type _use_hardlink: bool, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension.
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann = "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg.json"
+            ds.add_item_file("IMG_777.jpeg", "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg", ann=ann)
         """
         if item_path is None and ann is None and img_info is None:
             raise RuntimeError("No item_path or ann or img_info provided.")
@@ -280,13 +471,33 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name, img=None, ann=None, img_info=None):
+    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Union[Annotation, str]] = None,
+                    img_info: Optional[NamedTuple] = None) -> None:
         """
-        Write given image(RGB format(numpy matrix)) to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
-        empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension
-        :param item_name: str
-        :param img: image in RGB format(numpy matrix)
-        :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
+        Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param img: numpy Image matrix in RGB format.
+        :type img: np.ndarray
+        :param ann: Annotation object or path to annotation.json file.
+        :type ann: Annotation or str, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            img_path = "/home/admin/Pictures/Clouds.jpeg"
+            img_np = sly.image.read(img_path)
+            ds.add_item_np("IMG_050.jpeg", img_np)
         """
         if img is None and ann is None and img_info is None:
             raise RuntimeError("No img or ann or img_info provided.")
@@ -295,14 +506,34 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name, item_raw_bytes=None, ann=None, img_info=None):
+    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Union[Annotation, str]] = None,
+                           img_info: Optional[NamedTuple] = None) -> None:
         """
-        Write given binary object to dataset items directory, and add given annatation to dataset annotations dir(if ann=None
-        empty annotation will be create). Generate exception error if item_name already exists in dataset or item name has unsupported extension.
-        Make sure we actually received a valid image file, clean it up and fail if not so.
-        :param item_name: str
-        :param item_raw_bytes: binary object
-        :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
+        Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param item_raw_bytes: Binary object.
+        :type item_raw_bytes: bytes
+        :param ann: Annotation object or path to annotation.json file.
+        :type ann: Annotation or str, optional
+        :param img_info: NamedTuple ImageInfo containing information about Image.
+        :type img_info: NamedTuple, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            img_path = "/home/admin/Pictures/Clouds.jpeg"
+            img_np = sly.image.read(img_path)
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")
+            ds.add_item_np("IMG_050.jpeg", img_bytes)
         """
         if item_raw_bytes is None and ann is None and img_info is None:
             raise RuntimeError("No item_raw_bytes or ann or img_info provided.")
@@ -384,10 +615,24 @@ class Dataset(KeyObject):
             fout.write(item_raw_bytes)
         self._validate_added_item_or_die(dst_img_path)
 
-    def generate_item_path(self, item_name):
+    def generate_item_path(self, item_name: str) -> str:
         """
-        :param item_name: str
-        :return: str (full path to the given item)
+        Generates full path to the given item.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :return: Full path to the given item
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.generate_item_path("IMG_0748.jpeg"))
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg'
         """
         return os.path.join(self.item_dir, item_name)
 
@@ -455,11 +700,27 @@ class Dataset(KeyObject):
             os.remove(item_path)
             raise
 
-    def set_ann(self, item_name: str, ann):
+    def set_ann(self, item_name: str, ann: Annotation) -> None:
         """
-        Save given annotation with given name to dataset annotations dir in json format.
-        :param item_name: str
-        :param ann: Annotation class object (Generate exception error if not so)
+        Replaces given annotation for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param ann: Annotation object.
+        :type ann: Annotation
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            height, width = 500, 700
+            ann = sly.Annotation((height, width))
+            ds.set_ann("IMG_0748.jpeg", ann)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -468,11 +729,27 @@ class Dataset(KeyObject):
         dst_ann_path = self.get_ann_path(item_name)
         dump_json_file(ann.to_json(), dst_ann_path, indent=4)
 
-    def set_ann_file(self, item_name: str, ann_path: str):
+    def set_ann_file(self, item_name: str, ann_path: str) -> None:
         """
-        Copy given annotation with given name to dataset annotations dir
-        :param item_name: str
-        :param ann_path: str (Generate exception error if not so)
+        Clones annotation with given name from dataset to the given annotation file path.
+
+        :param item_name: Item Name.
+        :type item_name: str
+        :param ann_path: Path to the annotation file.
+        :type ann_path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann_out_path = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_4455.jpeg.json"
+            ds.set_ann_file("IMG_1812.jpeg", ann_out_path)
         """
         if type(ann_path) is not str:
             raise TypeError(
@@ -481,28 +758,65 @@ class Dataset(KeyObject):
         dst_ann_path = self.get_ann_path(item_name)
         copy_file(ann_path, dst_ann_path)
 
-    def set_ann_dict(self, item_name: str, ann: dict):
+    def set_ann_dict(self, item_name: str, ann: Dict) -> None:
         """
-        Save given annotation with given name to dataset annotations dir in json format.
-        :param item_name: str
-        :param ann: dict (json format)
+        Saves given annotation with given name to dataset annotations dir in json format.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param ann: Annotation as a dict in json format.
+        :type ann: dict
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann_json = {
+                "description":"",
+                "size":{
+                    "height":500,
+                    "width":700
+                },
+                "tags":[],
+                "objects":[],
+                "customBigData":{}
+            }
+
+            ds.set_ann_dict("IMG_8888.jpeg", ann_json)
         """
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
         dump_json_file(ann, dst_ann_path, indent=4)
 
-    def get_item_paths(self, item_name) -> ItemPaths:
+    def get_item_paths(self, item_name: str) -> ItemPaths:
         """
-        Create ItemPaths object with passes to items and annotation dirs with given name
-        :param item_name: str
-        :return: ItemPaths class object
-        """
+        Generates ItemPaths object with paths to item and annotation directories for item with given name.
 
-        return ItemPaths(
-            img_path=self.get_img_path(item_name),
-            ann_path=self.get_ann_path(item_name)
-        )
+        :param item_name: Item name.
+        :type item_name: str
+        :return: ItemPaths object
+        :rtype: :class:`ItemPaths<ItemPaths>`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            img_path, ann_path = dataset.get_item_paths("IMG_0748.jpeg")
+            print("img_path: " img_path, "ann_path: " ann_path)
+            # Output: img_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg
+            # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
+        """
+        return ItemPaths(img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
 
     def __len__(self):
         return len(self._item_to_ann)
@@ -514,7 +828,25 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
-    def delete_item(self, item_name):
+    def delete_item(self, item_name: str) -> bool:
+        """
+        Delete image and annotation from Dataset.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :return: bool
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            result = dataset.delete_item("IMG_0748.jpeg")
+            # Output: True
+        """
         if self.item_exists(item_name):
             data_path, ann_path = self.get_item_paths(item_name)
             img_info_path = self.get_img_info_path(item_name)
@@ -528,16 +860,26 @@ class Dataset(KeyObject):
 
 class Project:
     """
-    This is a class for creating and using Project objects. You can think of a Project as a superfolder with data and
-    meta information.
-    """
+    Project is a parent directory for dataset. :class:`Project<Project>` object is immutable.
 
+    :param directory: Path to project directory.
+    :type directory: str
+    :param mode: Determines working mode for the given project.
+    :type mode: OpenMode
+    :Usage example:
+
+     .. code-block:: python
+
+         from supervisely.project.project import Project, OpenMode
+         project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+         project = Project(project_path, OpenMode.READ)
+    """
     dataset_class = Dataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = Dataset
 
-    def __init__(self, directory, mode: OpenMode):
+    def __init__(self, directory: str, mode: OpenMode):
         """
         :param directory: path to the directory where the project will be saved or where it will be loaded from
         :param mode: OpenMode class object which determines in what mode to work with the project (generate exception error if not so)
@@ -561,29 +903,116 @@ class Project:
             self._create()
 
     @property
-    def parent_dir(self):
+    def parent_dir(self) -> str:
+        """
+        Project parent directory.
+
+        :return: Path to project parent directory
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             print(project.parent_dir)
+             # Output: '/home/admin/work/supervisely/projects'
+        """
         return self._parent_dir
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """
+        Project name.
+
+        :return: Name
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             print(project.name)
+             # Output: 'lemons_annotated'
+        """
         return self._name
 
     @property
-    def datasets(self):
+    def datasets(self) -> DatasetDict:
+        """
+        Project datasets.
+
+        :return: Datasets
+        :rtype: :class:`DatasetDict`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             for dataset in project.datasets:
+                print(dataset.name)
+                # Output: ds1
+                #         ds2
+        """
         return self._datasets
 
     @property
     def meta(self) -> ProjectMeta:
+        """
+        Project meta.
+
+        :return: Project meta
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             print(project.meta)
+             # Output:
+             # +-------+--------+----------------+--------+
+             # |  Name | Shape  |     Color      | Hotkey |
+             # +-------+--------+----------------+--------+
+             # |  kiwi | Bitmap |  [255, 0, 0]   |        |
+             # | lemon | Bitmap | [81, 198, 170] |        |
+             # +-------+--------+----------------+--------+
+             # Tags
+             # +------+------------+-----------------+--------+---------------+--------------------+
+             # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+             # +------+------------+-----------------+--------+---------------+--------------------+
+        """
         return self._meta
 
     @property
-    def directory(self):
+    def directory(self) -> str:
+        """
+        Path to the project directory.
+
+        :return: Path to the project directory
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             print(project.directory)
+             # Output: '/home/admin/work/supervisely/projects/lemons_annotated'
+        """
         return os.path.join(self.parent_dir, self.name)
 
     @property
-    def total_items(self):
+    def total_items(self) -> int:
         """
+        Total number of items in project.
+
         :return: total number of items in project
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             print(project.total_items)
+             # Output: 12
         """
         return sum(len(ds) for ds in self._datasets)
 
@@ -633,10 +1062,30 @@ class Project:
         # @TODO: validation here
         pass
 
-    def set_meta(self, new_meta):
+    def set_meta(self, new_meta: ProjectMeta) -> None:
         """
-        Save given meta to project dir in json format.
-        :param new_meta: ProjectMeta class object
+        Saves given meta to project directory in json format.
+
+        :param new_meta: ProjectMeta object.
+        :type new_meta: ProjectMeta
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+             proj_lemons = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             proj_kiwi = sly.Project("/home/admin/work/supervisely/projects/kiwi_annotated", sly.OpenMode.READ)
+
+             proj_lemons.set_meta(proj_kiwi.meta)
+
+             print(project.proj_lemons)
+             # Output:
+             # +-------+--------+----------------+--------+
+             # |  Name | Shape  |     Color      | Hotkey |
+             # +-------+--------+----------------+--------+
+             # |  kiwi | Bitmap |  [255, 0, 0]   |        |
+             # +-------+--------+----------------+--------+
         """
         self._meta = new_meta
         dump_json_file(self.meta.to_json(), self._get_project_meta_path(), indent=4)
@@ -648,12 +1097,28 @@ class Project:
         for dataset in self._datasets:
             yield dataset
 
-    def create_dataset(self, ds_name):
+    def create_dataset(self, ds_name: str) -> Dataset:
         """
-        Creates a leaf directory with given name and all intermediate ones for items and annatations. Add new dataset
-        to the collection of all datasets in project
-        :param ds_name: str
-        :return: Dataset class object
+        Creates a subdirectory with given name and all intermediate subdirectories for items and annotations in project directory, and also adds created dataset
+        to the collection of all datasets in the project.
+
+        :param ds_name: Dataset name.
+        :type ds_name: str
+        :return: Dataset object
+        :rtype: :class:`Dataset<Dataset>`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             project.create_dataset("ds3")
+
+             for dataset in project.datasets:
+                 print(dataset.name)
+
+             # Output: ds1
+             #         ds2
+             #         ds3
         """
         ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
@@ -679,16 +1144,27 @@ class Project:
             _use_hardlink=_use_hardlink,
         )
 
-    def copy_data(
-            self, dst_directory, dst_name=None, _validate_item=True, _use_hardlink=False
-    ):
+    def copy_data(self, dst_directory: str, dst_name: Optional[str] = None, _validate_item: Optional[bool] = True,
+                  _use_hardlink: Optional[bool] = False) -> Project:
         """
-        Make copy of project in given directory.
-        :param dst_directory: str
-        :param dst_name: str
-        :param _validate_item: bool
-        :param _use_hardlink: bool
-        :return: Project class object
+        Makes a copy of the Project.
+
+        :param dst_directory: Path to project parent directory.
+        :type dst_directory: str
+        :param dst_name: Project name.
+        :type dst_name: str, optional
+        :param _validate_item: Checks input files format.
+        :type _validate_item: bool, optional
+        :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
+        :type _use_hardlink: bool, optional
+        :return: Project object
+        :rtype: :class:`Project<Project>`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+             project.copy_data("/home/admin/work/supervisely/projects/", "lemons_copy")
         """
         dst_name = dst_name if dst_name is not None else self.name
         new_project = Project(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
@@ -730,8 +1206,10 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir, dst_project_dir=None, inplace=False, target_classes=None,
-                             progress_cb=None, segmentation_type='semantic'):
+    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
+                             inplace: Optional[bool] = False,
+                             target_classes: Optional[List[str]] = None, progress_cb: Optional[Callable] = None,
+                             segmentation_type: Optional[str] = 'semantic') -> None:
 
         _bg_class_name = "__bg__"
         _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
@@ -815,7 +1293,8 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def to_detection_task(src_project_dir, dst_project_dir=None, inplace=False):
+    def to_detection_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
+                          inplace: Optional[bool] = False) -> None:
         if dst_project_dir is None and inplace is False:
             raise ValueError(
                 f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -857,7 +1336,26 @@ class Project:
             src_project.set_meta(det_meta)
 
     @staticmethod
-    def remove_classes_except(project_dir, classes_to_keep=None, inplace=False):
+    def remove_classes_except(project_dir: str, classes_to_keep: Optional[List[str]] = [],
+                              inplace: Optional[bool] = False) -> None:
+        """
+        Removes classes from Project with the exception of some classes.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param classes_to_keep: Classes to keep in project.
+        :type classes_to_keep: List[str], optional
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+             project.remove_classes_except(project_path, inplace=True)
+        """
         classes_to_remove = []
         project = Project(project_dir, OpenMode.READ)
         for obj_class in project.meta.obj_classes:
@@ -866,7 +1364,27 @@ class Project:
         Project.remove_classes(project_dir, classes_to_remove, inplace)
 
     @staticmethod
-    def remove_classes(project_dir, classes_to_remove=None, inplace=False):
+    def remove_classes(project_dir: str, classes_to_remove: Optional[List[str]] = [],
+                       inplace: Optional[bool] = False) -> None:
+        """
+        Removes given classes from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param classes_to_remove: Classes to remove.
+        :type classes_to_remove: List[str], optional
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+             classes_to_remove = ['lemon']
+             project.remove_classes(project_path, classes_to_remove, inplace=True)
+        """
         if inplace is False:
             raise ValueError(
                 f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
@@ -925,30 +1443,93 @@ class Project:
                 dataset.delete_item(item_name)
 
     @staticmethod
-    def remove_items_without_objects(project_dir, inplace=False):
-        Project._remove_items(
-            project_dir=project_dir, without_objects=True, inplace=inplace
-        )
+    def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
+        """
+        Remove items(images and annotations) without objects from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_objects(project_path)
+        """
+        Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_tags(project_dir, inplace=False):
-        Project._remove_items(
-            project_dir=project_dir, without_tags=True, inplace=inplace
-        )
+    def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
+        """
+        Remove items(images and annotations) without tags from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_tags(project_path)
+        """
+        Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
 
     @staticmethod
-    def remove_items_without_both_objects_and_tags(project_dir, inplace=False):
-        Project._remove_items(
-            project_dir=project_dir, without_objects_and_tags=True, inplace=inplace
-        )
+    def remove_items_without_both_objects_and_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
+        """
+        Remove items(images and annotations) without objects and tags from Project.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :type inplace: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            project.remove_items_without_both_objects_and_tags(project_path)
+        """
+        Project._remove_items(project_dir=project_dir, without_objects_and_tags=True, inplace=inplace)
 
     def get_item_paths(self, item_name) -> ItemPaths:
         raise NotImplementedError("Method available only for dataset")
 
     @staticmethod
-    def get_train_val_splits_by_count(
-            project_dir, train_count, val_count
-    ) -> (List[ItemInfo], List[ItemInfo]):
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> Tuple[
+        List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val counts.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_count: Number of train items.
+        :type train_count: int
+        :param val_count: Number of val items.
+        :type val_count: int
+        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_count = 4
+            val_count = 2
+            train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
+        """
+
         def _list_items_for_splits(project) -> List[ItemInfo]:
             items = []
             for dataset in project.datasets:
@@ -973,9 +1554,31 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_tag(
-            project_dir, train_tag_name, val_tag_name, untagged="ignore"
-    ):
+    def get_train_val_splits_by_tag(project_dir: str, train_tag_name: str, val_tag_name: str,
+                                    untagged: Optional[str] = "ignore") -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val tags names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_tag_name: Train tag name.
+        :type train_tag_name: str
+        :param val_tag_name: Val tag name.
+        :type val_tag_name: str
+        :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
+        :type untagged: str, optional
+        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_tag_name = 'train'
+            val_tag_name = 'val'
+            train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
+        """
         untagged_actions = ["ignore", "train", "val"]
         if untagged not in untagged_actions:
             raise ValueError(
@@ -1008,7 +1611,30 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_dataset(project_dir, train_datasets, val_datasets):
+    def get_train_val_splits_by_dataset(project_dir: str, train_datasets: List[str], val_datasets: List[str]) -> Tuple[
+        List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val datasets names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_datasets: List of train datasets names.
+        :type train_datasets: List[str]
+        :param val_datasets: List of val datasets names.
+        :type val_datasets: List[str]
+        :raises: :class:`KeyError` if dataset name not found in project
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[ItemInfo], List[ItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            train_datasets = ['ds1', 'ds2']
+            val_datasets = ['ds3', 'ds4']
+            train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
+        """
+
         def _add_items_to_list(project, datasets_names, items_list):
             for dataset_name in datasets_names:
                 dataset = project.datasets.get(dataset_name)
@@ -1027,12 +1653,23 @@ class Project:
         return train_items, val_items
 
 
-def read_single_project(dir, project_class=Project):
+def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
-    Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
-    :param dir: str
-    :param project_class: Project class object type
+    Read project from given directory.
+
+    :param dir: Path to project parent directory, which must contain only project folder.
+    :type dir: str
+    :param project_class: Project object
+    :type project_class: Project
     :return: Project class object
+    :rtype: :class:`Project<Project>`
+    :raises: :class:`Exception` if given directory contains more than one subdirectory.
+    :Usage example:
+
+     .. code-block:: python
+
+            proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
+            project = sly.read_single_project(proj_dir)
     """
     try:
         project_fs = project_class(dir, OpenMode.READ)
@@ -1127,9 +1764,45 @@ def _download_project(
                 ds_progress.iters_done_report(len(batch))
 
 
-def upload_project(
-        dir, api, workspace_id, project_name=None, log_progress=True, progress_cb=None
-):
+def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str] = None,
+                   log_progress: Optional[bool] = True,
+                   progress_cb: Optional[Callable] = None) -> Tuple[int, str]:
+    """
+    Uploads project to Supervisely from the given directory.
+
+    :param dir: Path to project directory.
+    :type dir: str
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param workspace_id: Workspace ID, where project will be uploaded.
+    :type workspace_id: int
+    :param project_name: Name of the project in Supervisely.
+    :type project_name: str, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: bool, optional
+    :param progress_cb: Function to check progress.
+    :type progress_cb: Function, optional
+    :return: Project ID and name
+    :rtype: :class:`int`, :class:`str`
+    :Usage example:
+
+     .. code-block:: python
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+            project = sly.Project(project_directory, sly.OpenMode.READ)
+
+            # Obtain server address and your api_token from environment variables
+            # Edit those values if you run this notebook on your own PC
+            address = os.environ['SERVER_ADDRESS']
+            token = os.environ['API_TOKEN']
+
+            # Initialize API object
+            api = sly.Api(address, token)
+
+            # Upload Project
+            sly.upload_project(project_directory, api, workspace_id=45, project_name="Lemons")
+    """
     project_fs = read_single_project(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -1190,19 +1863,55 @@ def upload_project(
     return project.id, project.name
 
 
-def download_project(
-        api: Api,
-        project_id,
-        dest_dir,
-        dataset_ids=None,
-        log_progress=False,
-        batch_size=10,
-        cache: FileCache = None,
-        progress_cb=None,
-        only_image_tags=False,
-        save_image_info=False,
-        save_images=True,
-):
+def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]] = None,
+                     log_progress: Optional[bool] = False, batch_size: Optional[int] = 10,
+                     cache: Optional[FileCache] = None, progress_cb: Optional[Callable] = None,
+                     only_image_tags: Optional[bool] = False, save_image_info: Optional[bool] = False,
+                     save_images: bool = True) -> None:
+    """
+    Download project from Supervisely to the given directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Supervisely downloadable project ID.
+    :type project_id: int
+    :param dest_dir: Destination directory.
+    :type dest_dir: str
+    :param dataset_ids: Dataset IDs.
+    :type dataset_ids: List[int], optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: bool, optional
+    :param batch_size: The number of images in the batch when they are loaded to a host.
+    :type batch_size: int, optional
+    :param cache: FileCache object.
+    :type cache: FileCache, optional
+    :param progress_cb: Function to check progress.
+    :type progress_cb: Function, optional
+    :param only_image_tags: Download project with only images tags.
+    :type only_image_tags: bool, optional
+    :param save_image_info: Save images infos.
+    :type save_image_info: bool, optional
+    :return: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+            # Local destination Project folder
+            save_directory = "/home/admin/work/supervisely/source/project"
+
+            # Obtain server address and your api_token from environment variables
+            # Edit those values if you run this notebook on your own PC
+            address = os.environ['SERVER_ADDRESS']
+            token = os.environ['API_TOKEN']
+
+            # Initialize API object
+            api = sly.Api(address, token)
+            project_id = 8888
+
+            # Upload Project
+            sly.download_project(api, project_id, save_directory)
+    """
     if cache is None:
         _download_project(
             api,

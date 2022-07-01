@@ -4,6 +4,7 @@ import os
 import json
 import urllib.parse
 import uuid
+from typing import List, NamedTuple, Dict, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.collection.str_enum import StrEnum
@@ -18,13 +19,41 @@ class NotificationType(StrEnum):
 
 #@TODO: стандартизовать title/description/name и так жалее у всех одинакого
 class ReportApi(ModuleApiBase):
+    """
+    API for working with Reports. :class:`ReportApi<ReportApi>` object is immutable.
+
+    :param api: API connection to the server
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        report = api.report
+    """
     def __init__(self, api):
         ModuleApiBase.__init__(self, api)
 
     #https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template
     #grid-template: "a a a" 40px "b c c" 40px "b c c" 40px / 1fr 1fr 1fr;
     #area -a or b or c
-    def create(self, team_id, name, widgets, layout=""):
+    def create(self, team_id: int, name: str, widgets, layout: Optional[str]=""):
+        """
+        Creates report in the given Team.
+
+        :param team_id: Team ID in Supervisely, where report will be created
+        :type team_id: int
+        :param name: Report name.
+        :type name: str
+        :param widgets:
+        :type widgets:
+        :param layout:
+        :type layout:
+        :return:
+        :rtype:
+        :Usage example:
+
+         .. code-block: python
+        """
         data = {
             ApiField.TEAM_ID: team_id,
             ApiField.NAME: name,
@@ -84,10 +113,28 @@ class ReportApi(ModuleApiBase):
     #     res["id"] = uuid.uuid4().hex if id is None else id
     #     return res
 
-    def url(self, id):
+    def url(self, id: int) -> str:
+        """
+        Get Report URL by ID.
+
+        :param id: Report ID.
+        :type id: int
+        :returns: Report URL
+        :rtype: :class:`str`
+        """
         return urllib.parse.urljoin(self._api.server_address, 'reports/{}'.format(id))
 
-    def get_widget(self, report_id, widget_id):
+    def get_widget(self, report_id: int, widget_id: int):
+        """
+        Get Widget by ID.
+
+        :param report_id: Report ID.
+        :type report_id: int
+        :param widget_id: Widget ID.
+        :type widget_id: int
+        :returns: Report Widget
+        :rtype:
+        """
         response = self._api.post('reports.widgets.get', {"reportId": report_id, "widgetId": widget_id})
         return response.json()
 
@@ -109,8 +156,54 @@ class ReportApi(ModuleApiBase):
         response = self._api.post(method, {ApiField.REPORT_ID: report_id, ApiField.WIDGET: data})
         return response.json()
 
-    def update_widget(self, report_id, widget_id, name=None, description=None, area=None, content=None, options=None):
+    def update_widget(self, report_id: int, widget_id: int, name: Optional[str] = None, description: Optional[str] = None,
+                      area=None, content=None, options=None):
+        """
+        Method description
+
+        :param report_id: Report ID.
+        :type report_id: int
+        :param widget_id: Widget ID.
+        :type widget_id: int
+        :param name:
+        :type name: str
+        :param description:
+        :type description: str
+        :param area:
+        :type area:
+        :param content:
+        :type content:
+        :param options:
+        :type options:
+
+        :returns: Report Widget
+        :rtype:
+        """
         return self._change_widget('reports.widgets.update', report_id, widget_id, name, description, area, content, options)
 
-    def rewrite_widget(self, report_id, widget_id, widget_type, name=None, description=None, area=None, content=None, options=None):
+    def rewrite_widget(self, report_id: int, widget_id: int, widget_type, name: str = None, description: str = None,
+                       area=None, content=None, options=None):
+        """
+        Method description
+
+        :param report_id: Report ID.
+        :type report_id: int
+        :param widget_id: Widget ID.
+        :type widget_id: int
+        :param widget_type: Widget type.
+        :type widget_type:
+        :param name:
+        :type name: str
+        :param description:
+        :type description: str
+        :param area:
+        :type area:
+        :param content:
+        :type content:
+        :param options:
+        :type options:
+
+        :returns: Report Widget
+        :rtype:
+        """
         return self._change_widget('reports.widgets.rewrite', report_id, widget_id, widget_type, name, description, area, content, options)

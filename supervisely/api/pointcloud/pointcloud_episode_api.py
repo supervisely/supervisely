@@ -1,4 +1,8 @@
 # coding: utf-8
+
+# docs
+from typing import Dict
+
 from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudApi
 from supervisely.api.pointcloud.pointcloud_episode_annotation_api import PointcloudEpisodeAnnotationAPI
@@ -16,7 +20,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         else:
             raise RuntimeError('Error with point cloud meta or API version. Please, contact support')
 
-    def get_frame_name_map(self, dataset_id):
+    def get_frame_name_map(self, dataset_id: int) -> Dict:
         pointclouds = self.get_list(dataset_id)
 
         frame_index_to_pcl_name = {}

@@ -1,6 +1,10 @@
 # coding: utf-8
 
+# docs
+from typing import Tuple, Optional
+
 import os
+import matplotlib.font_manager as fontman
 from PIL import ImageFont
 from supervisely.io.fs import get_file_ext, file_exists
 
@@ -20,7 +24,6 @@ def _get_font_path_by_name(font_file_name: str) -> str:
         full path of requested by name font or None if file not found in system paths
 
     """
-    import matplotlib.font_manager as fontman
     fonts_paths_list = fontman.findSystemFonts()
     for path in fonts_paths_list:
         if os.path.basename(path) == font_file_name:
@@ -28,7 +31,7 @@ def _get_font_path_by_name(font_file_name: str) -> str:
     return None
 
 
-def load_font(font_file_name: str, font_size: int = 12) -> ImageFont.FreeTypeFont:
+def load_font(font_file_name: str, font_size: Optional[int] = 12) -> ImageFont.FreeTypeFont:
     """
     Set global font true-type for drawing.
     Args:
@@ -48,7 +51,7 @@ def load_font(font_file_name: str, font_size: int = 12) -> ImageFont.FreeTypeFon
         raise ValueError('Supported only TrueType fonts!')
 
 
-def get_font(font_file_name: str = None, font_size: int = 12) -> ImageFont.FreeTypeFont:
+def get_font(font_file_name: Optional[str] = None, font_size: Optional[int] = 12) -> ImageFont.FreeTypeFont:
     """
     Args:
         font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
@@ -65,12 +68,12 @@ def get_font(font_file_name: str = None, font_size: int = 12) -> ImageFont.FreeT
     return _fonts[font_key]
 
 
-def get_readable_font_size(img_size) -> int:
-    '''
+def get_readable_font_size(img_size: Tuple[int, int]) -> int:
+    """
     Get size of font for image with given sizes
     :param img_size: size of image
     :return: size of font
-    '''
+    """
     minimal_font_size = 6
     base_font_size = 14
     base_image_size = 512

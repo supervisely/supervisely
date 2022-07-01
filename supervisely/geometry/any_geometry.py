@@ -5,9 +5,15 @@ from supervisely.geometry.constants import ANY_SHAPE
 
 
 class AnyGeometry(Geometry):
-    '''
-    This is a class for creating and using AnyGeometry for Labels.
-    '''
+    """
+    AnyGeometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`AnyGeometry<AnyGeometry>` class object is immutable.
+    """
     @staticmethod
     def geometry_name():
+        """
+        Geometry name.
+
+        :return: Geometry name
+        :rtype: :class:`str`
+        """
         return ANY_SHAPE
