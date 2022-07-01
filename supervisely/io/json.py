@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import json
-import pandas as pd
 from typing import Dict, Optional
 
 
@@ -153,6 +152,7 @@ def flatten_json(data: Dict, sep: Optional[str]=".") -> Dict:
     :returns: Dict
     :rtype: :class:`dict`
     """
+    import pandas as pd
     df = pd.json_normalize(data, sep=sep)
     return df.to_dict(orient='records')[0]
 
