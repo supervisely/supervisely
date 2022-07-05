@@ -171,8 +171,14 @@ class VideoProject(Project):
         return read_project_wrapper(dir, cls)
 
 
-def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids: List[int]=None,
-                           download_videos: bool=True, log_progress: bool=False) -> None:
+def download_video_project(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: List[int] = None,
+    download_videos: bool = True,
+    log_progress: bool = False,
+) -> None:
     """
     Download project with given id in destination directory.
 
@@ -245,12 +251,19 @@ def download_video_project(api: Api, project_id: int, dest_dir: str, dataset_ids
                     _validate_item=False,
                 )
 
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_video_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=True) -> Tuple[int, str]:
+def upload_video_project(
+    dir: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = True,
+) -> Tuple[int, str]:
     """
     Upload video project from given directory in Supervisely.
 
