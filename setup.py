@@ -49,6 +49,7 @@ setup(
         "stringcase==1.2.0",
         "python-magic==0.4.25",
         "trimesh==3.11.2",
+        "scikit-video==1.1.11",
     ],
     extras_require={
         'extras': [
