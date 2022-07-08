@@ -63,7 +63,7 @@ class AppService:
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
-        self._session_dir = "/sessions/{}".format(self.task_id)
+        self._session_dir = "/app"
         self._template_path = None
         debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
         if debug_app_dir != "":
