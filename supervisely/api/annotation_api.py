@@ -175,7 +175,7 @@ class AnnotationApi(ModuleApi):
         return self._convert_json_info(response.json())
 
     def download_json(self, image_id: int, with_custom_data: Optional[bool] = False) -> Dict[
-        str, Union[str, int, list]]:
+        str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
 
