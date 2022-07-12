@@ -1,11 +1,10 @@
 # coding: utf-8
 """download/upload/edit :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
 
-
 # docs
 from __future__ import annotations
 import json
-from typing import List, Optional, NamedTuple, Dict, Callable
+from typing import List, Optional, NamedTuple, Dict, Callable, Union
 from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
 
@@ -39,6 +38,7 @@ class AnnotationApi(ModuleApi):
         dataset_id = 254737
         ann_infos = api.annotation.get_list(dataset_id)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -128,7 +128,8 @@ class AnnotationApi(ModuleApi):
             #     "2021-02-06T11:07:26.080Z"
             # ]
         """
-        return self.get_list_all_pages('annotations.list',  {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}, progress_cb)
+        return self.get_list_all_pages('annotations.list',
+                                       {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}, progress_cb)
 
     def download(self, image_id: int, with_custom_data: Optional[bool] = False) -> NamedTuple:
         """
@@ -172,6 +173,42 @@ class AnnotationApi(ModuleApi):
         response = self._api.post('annotations.info',
                                   {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data})
         return self._convert_json_info(response.json())
+
+    def download_json(self, image_id: int, with_custom_data: Optional[bool] = False) -> Dict[
+        str, Union[str, int, list]]:
+        """
+        Download AnnotationInfo by image ID from API.
+
+        :param image_id: Image ID in Supervisely.
+        :type image_id: int
+        :param with_custom_data:
+        :type with_custom_data: bool, optional
+        :return: Information about Annotation
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            ann_info = api.annotation.download_json(image_id)
+            print(ann_info)
+            # Output: {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     }
+        """
+        return self.download(image_id=image_id, with_custom_data=with_custom_data).annotation
 
     def download_batch(self, dataset_id: int, image_ids: List[int], progress_cb: Optional[Callable] = None,
                        with_custom_data: Optional[bool] = False) -> List[NamedTuple]:
@@ -275,9 +312,11 @@ class AnnotationApi(ModuleApi):
             ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
             upl_paths = api.annotation.upload_paths(img_ids, ann_pathes)
         """
+
         def read_json(ann_path):
             with open(ann_path) as json_file:
                 return json.load(json_file)
+
         self._upload_batch(read_json, img_ids, ann_paths, progress_cb)
 
     def upload_json(self, img_id: int, ann_json: Dict) -> None:
@@ -418,7 +457,8 @@ class AnnotationApi(ModuleApi):
     def _add_sort_param(self, data):
         return data
 
-    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int], progress_cb: Optional[Callable] = None) -> None:
+    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int],
+                   progress_cb: Optional[Callable] = None) -> None:
         """
         Copy annotations from one images IDs to another in API.
 
