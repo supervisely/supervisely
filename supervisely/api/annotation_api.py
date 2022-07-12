@@ -196,8 +196,8 @@ class AnnotationApi(ModuleApi):
             api = sly.Api.from_env()
 
             image_id = 121236918
-            ann_info = api.annotation.download_json(image_id)
-            print(ann_info)
+            ann_json = api.annotation.download_json(image_id)
+            print(ann_json)
             # Output: {
             #         "description": "",
             #         "tags": [],
