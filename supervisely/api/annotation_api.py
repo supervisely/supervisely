@@ -177,13 +177,13 @@ class AnnotationApi(ModuleApi):
     def download_json(self, image_id: int, with_custom_data: Optional[bool] = False) -> Dict[
         str, Union[str, int, list]]:
         """
-        Download AnnotationInfo by image ID from API.
+        Download Annotation in json format by image ID from API.
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
         :param with_custom_data:
         :type with_custom_data: bool, optional
-        :return: Information about Annotation
+        :return: Annotation in json format
         :rtype: :class:`dict`
         :Usage example:
 
