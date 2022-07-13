@@ -267,7 +267,7 @@ Imagine, how it will be great if all ML tools and repositories have an interacti
 
 🎯 Our ambitious goal is to make it possible.
 
-![Semantic segmentation metrics app](https://github.com/supervisely-ecosystem/semantic-segmentation-metrics-dashboard/releases/download/v0.0.1/semantic-segmentation-metrics-poster.gif?raw=true)
+![Semantic segmentation metrics app](https://user-images.githubusercontent.com/73014155/178846370-ae86dd3c-e08d-4df2-871b-d342bf7ba370.gif)
 
 ### Develop fast with ready UI widgets
 
