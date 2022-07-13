@@ -34,10 +34,10 @@
 2. [Development 🧑‍💻](#development--)&#x20;
    1. [What developers can do](#what-developers-can-do)
    2. [Principles 🧭](#principles-)
-3. [Main features 💎](#main-features--)
-4. [Community 🌎](#community--)
-5. [Contribution 👏](#contribution--)
-6. [Partnership 🤝](#partnership--)
+3. [Main features 💎](#main-features-)
+4. [Community 🌎](#community-)
+5. [Contribution 👏](#contribution-)
+6. [Partnership 🤝](#partnership-)
 
 ## Introduction
 
