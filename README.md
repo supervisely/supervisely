@@ -266,17 +266,17 @@ Even in complex scenarios, like developing a GUI app integrated into a labeling 
 
 Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool) that applies NN right inside the labeling interface.&#x20;
 
-{% embed url="https://youtu.be/fOnyL8YHOBM" %}
-Easy debug even for complex integration scenarious
-{% endembed %}
+<a href="https://youtu.be/fOnyL8YHOBM">
+    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/convenient-debugging.png" style="max-width:100%;">
+</a>
 
 ### Apps can be both private and public
 
 All apps made by Supervisely team are [open-source](https://github.com/supervisely-ecosystem). Use them as examples: find on [GitHub](https://github.com/supervisely-ecosystem), fork and modify them the way you want. At the same time, customers and community users can still develop private apps to protect their intellectual property.
 
-{% embed url="https://youtu.be/Kyuc-lZu_tg" %}
-How to add private apps in Supervisely
-{% endembed %}
+<a href="https://youtu.be/Kyuc-lZu_tg">
+    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/public-private-apps.png" style="max-width:100%;">
+</a>
 
 ### Single-click deployment
 
@@ -286,9 +286,10 @@ Supervisely app is a git repository. Just provide the link to your git repo, Sup
 
 Users run your app on the latest stable release, and you can develop and test new features in parallel - just use git releases and branches. Supervisely automatically pull updates from git, even if the new version of an app has a bug, don't worry - users can select and run the previous version in a click.&#x20;
 
-{% embed url="https://youtu.be/ngoHfM98R8k" %}
-Run specific version or branch of the app&#x20;
-{% endembed %}
+
+<a href="https://youtu.be/ngoHfM98R8k">
+    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/versions-branches.png" style="max-width:100%;">
+</a>
 
 ### Supports both Github and Gitlab&#x20;
 
@@ -310,7 +311,7 @@ How will it work? Just connect your computer to your Supervisely instance and ru
 
 ### Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide
 
-![](<.gitbook/assets/image (3).png>)
+![](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/customers-logos.png)
 
 Supervisely helps companies and researchers all over the world to build their computer vision solutions in various industries from self-driving and agriculture to medicine. Join our [Community Edition](https://app.supervise.ly/) or request [Enterprise Edition](https://supervise.ly/enterprise) for your organization.
 
