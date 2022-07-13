@@ -177,7 +177,7 @@ It is simple and suitable for the most basic tasks and use-cases, for example:
 
 Interactive interfaces and visualizations are the keys to building and improving AI solutions: from custom data labeling to model training. Such apps open up opportunities to customize Supervisely platform to any type of task in Computer Vision, implement data and models workflows that fit your organization's needs, and even build vertical solutions for specific industries on top of it.
 
-![This interface is completely based on python in combination with easy-to-use Supervisely UI widgets (Batched SmartTool app for AI assisted object segmentations) ](https://github.com/supervisely-ecosystem/dev-smart-tool-batched/releases/download/v0.0.1/batch\_smart\_tool\_demo.gif)
+![This interface is completely based on python in combination with easy-to-use Supervisely UI widgets (Batched SmartTool app for AI assisted object segmentations) ](https://user-images.githubusercontent.com/73014155/178845451-8350a6d7-f318-4f5b-a9ee-4b871016e2e4.gif)
 
 Here are several examples:
 
@@ -192,7 +192,7 @@ Here are several examples:
 
 There is no single labeling tool that fits all tasks. Labeling tool has to be designed and customized for a specific task to make the job done in an efficient manner. Supervisely apps can be smoothly integrated into labeling tools to deliver amazing user experience (including multi tenancy) and annotation performance.
 
-![AI assisted retail labeling app is integrated into labeling tool and can communicate with it via web sockets](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/ai-cls.png)
+![AI assisted retail labeling app is integrated into labeling tool and can communicate with it via web sockets](https://user-images.githubusercontent.com/73014155/178843780-7da4ce34-fbb7-435e-9f3e-bc189043b72d.png)
 
 Here are several examples:
 
@@ -267,7 +267,7 @@ Imagine, how it will be great if all ML tools and repositories have an interacti
 
 🎯 Our ambitious goal is to make it possible.
 
-![Semantic segmentation metrics app](https://github.com/supervisely-ecosystem/semantic-segmentation-metrics-dashboard/releases/download/v0.0.1/semantic-segmentation-metrics-poster.gif?raw=true)
+![Semantic segmentation metrics app](https://user-images.githubusercontent.com/73014155/178846370-ae86dd3c-e08d-4df2-871b-d342bf7ba370.gif)
 
 ### Develop fast with ready UI widgets
 
@@ -289,7 +289,7 @@ Even in complex scenarios, like developing a GUI app integrated into a labeling 
 Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool) that applies NN right inside the labeling interface.&#x20;
 
 <a href="https://youtu.be/fOnyL8YHOBM">
-    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/convenient-debugging.png" style="max-width:100%;">
+    <img src="https://user-images.githubusercontent.com/73014155/178845440-e03e9a51-e953-4359-abb7-d6e6d3550bf6.png" style="max-width:100%;">
 </a>
 
 ### Apps can be both private and public
@@ -297,7 +297,7 @@ Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/app
 All apps made by Supervisely team are [open-source](https://github.com/supervisely-ecosystem). Use them as examples: find on [GitHub](https://github.com/supervisely-ecosystem), fork and modify them the way you want. At the same time, customers and community users can still develop private apps to protect their intellectual property.
 
 <a href="https://youtu.be/Kyuc-lZu_tg">
-    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/public-private-apps.png" style="max-width:100%;">
+    <img src="https://user-images.githubusercontent.com/73014155/178845433-6e1ce9c5-cfe1-4764-8966-313a99d7a57f.png" style="max-width:100%;">
 </a>
 
 ### Single-click deployment
@@ -310,7 +310,7 @@ Users run your app on the latest stable release, and you can develop and test ne
 
 
 <a href="https://youtu.be/ngoHfM98R8k">
-    <img src="https://github.com/supervisely/supervisely/releases/download/v6.33.0/versions-branches.png" style="max-width:100%;">
+    <img src="https://user-images.githubusercontent.com/73014155/178845418-3502c311-a593-44bc-a37c-43c17ce3458a.png" style="max-width:100%;">
 </a>
 
 ### Supports both Github and Gitlab&#x20;
