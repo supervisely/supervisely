@@ -9,9 +9,10 @@
 </h3>
 
 <p align="center">
-  <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack" alt="Slack"> </a>
-  <a href="https://pypi.org/project/supervisely" target="_blank"> <img src="https://img.shields.io/pypi/v/supervisely?color=%2334D058&label=pypi%20package" alt="Package version"> </a>
-</a>
+  <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack" alt="Slack"></img> </a>
+  <a href="https://pypi.org/project/supervisely" target="_blank"> <img src="https://img.shields.io/pypi/v/supervisely?color=%2334D058&label=pypi%20package" alt="Package version"> </img></a>
+  <img src="https://static.pepy.tech/personalized-badge/supervisely?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pip%20installs" alt="Package version"> </img>
+  <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/supervisely/agent?label=docker%20pulls%20-%20supervisely%2Fagent">
 </p>
 
 ---
