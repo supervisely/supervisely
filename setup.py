@@ -3,14 +3,17 @@ import requests
 
 from setuptools import find_packages, setup
 
-#@TODO: change manifest location
+# @TODO: change manifest location
+
 
 def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as fin:
         return fin.read()
 
 
-response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
+response = requests.get(
+    "https://api.github.com/repos/supervisely/supervisely/releases/latest"
+)
 version = response.json()["tag_name"]
 
 # Dependencies do not include PyTorch, so
@@ -20,15 +23,15 @@ version = response.json()["tag_name"]
 setup(
     name="supervisely",
     version=version,
-    packages=find_packages(include=['supervisely_lib', 'supervisely_lib.*', 'supervisely', 'supervisely.*']),
+    python_requires=">=3.7",
+    packages=find_packages(
+        include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
+    ),
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     url="https://github.com/supervisely/supervisely",
-    package_data={
-        "": ["*.html", "*.css"],
-        "supervisely": ["video/*.sh"]
-    },
+    package_data={"": ["*.html", "*.css"], "supervisely": ["video/*.sh"]},
     install_requires=[
         "numpy>=1.19",
         "opencv-python>=4.5.5.62",
@@ -62,7 +65,7 @@ setup(
         "pandas==1.4.2",
     ],
     extras_require={
-        'extras': [
+        "extras": [
             "docker==5.0.3",
             "imagecorruptions==1.1.2",
             "scikit-image>=0.17.1",
@@ -72,7 +75,7 @@ setup(
             "sk-video>=1.1.10",
             "pandas>=1.1.3",
         ],
-        'apps': [
+        "apps": [
             "uvicorn[standard]==0.17.0",
             "fastapi==0.74.0",
             "websockets==10.1",
@@ -84,7 +87,7 @@ setup(
             "tqdm==4.62.3",
             "pandas==1.4.2",
         ],
-        'docs': [
+        "docs": [
             "sphinx==4.4.0",
             "jinja2==3.0.3",
             "sphinx-immaterial==0.4.0",
@@ -95,18 +98,18 @@ setup(
             "nbsphinx==0.8.8",
             "nbsphinx-link==1.3.0",
         ],
-        'sdk-no-usages': [
+        "sdk-no-usages": [
             "grpcio==1.34.1",
             "plotly>=4.11.0",
             "psutil>=5.4.5",
         ],
         # legacy dependencies
-        'plugins': [
+        "plugins": [
             "jsonschema>=2.6.0,<3.0.0",
         ],
-        'sdk-nn-plugins': [
+        "sdk-nn-plugins": [
             "flask-restful>=0.3.7",
             "Werkzeug>=1.0.1",
         ],
-    }
+    },
 )
