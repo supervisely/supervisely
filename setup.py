@@ -50,6 +50,16 @@ setup(
         "python-magic==0.4.25",
         "trimesh==3.11.2",
         "scikit-video==1.1.11",
+        "uvicorn[standard]==0.17.0",
+        "fastapi==0.74.0",
+        "websockets==10.1",
+        "jinja2==3.0.3",
+        "psutil==5.9.0",
+        "jsonpatch==1.32",
+        "MarkupSafe==2.0.1",
+        "arel==0.2.0",
+        "tqdm==4.62.3",
+        "pandas==1.4.2",
     ],
     extras_require={
         'extras': [
