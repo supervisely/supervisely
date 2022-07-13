@@ -9,6 +9,9 @@
 </h3>
 
 <p align="center">
+  <a href="https://pypi.org/project/supervisely" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/supervisely"></img>
+  </a>
   <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack" alt="Slack"></img> </a>
   <a href="https://pypi.org/project/supervisely" target="_blank"> <img src="https://img.shields.io/pypi/v/supervisely?color=%2334D058&label=pypi%20package" alt="Package version"> </img></a>
   <a href="https://developer.supervise.ly" target="_blank">
