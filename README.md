@@ -71,7 +71,7 @@ That is why **Supervisely is building a platform** instead of a product.&#x20;
 
 ### [Supervisely Platform 🔥](https://supervise.ly/)
 
-![](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/platform-poster.png)
+![](https://user-images.githubusercontent.com/73014155/178843741-996aff24-7ceb-4e3e-88fe-1c19ccd9a757.png)
 
 You can think of [Supervisely](https://supervise.ly/) as an Operating System available via Web Browser to help you solve Computer Vision tasks. The idea is to unify all the relevant tools within a single [Ecosystem](https://ecosystem.supervise.ly/) of apps, tools, UI widgets and services that may be needed to make the AI development process as smooth and fast as possible.
 
@@ -87,7 +87,7 @@ More concretely, Supervisely includes the following functionality:
 
 ### [Supervisely Ecosystem](https://supervise.ly/ecosystem) 🎉
 
-![](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/ecosystem-poster.png)
+![](https://user-images.githubusercontent.com/73014155/178843764-a92b7ad4-0cce-40ce-b849-17b49c1e1ad3.png)
 
 The simplicity of creating Supervisely Apps has already led to the development of [hundreds of applications](https://ecosystem.supervise.ly/), ready to be run within a single click in a web browser and get the job done.
 
@@ -164,7 +164,7 @@ ann = api.annotation.download_json(image_info.id)
 
 Create python apps to automate routine and repetitive tasks, share them within your organization,  and provide an easy way to use them for end-users without coding background.  Headless apps are just python scripts that can be run from a context menu.&#x20;
 
-![run app from context menu](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/context-menu.png)
+![run app from context menu](https://user-images.githubusercontent.com/73014155/178843779-2af6fff3-ce28-4278-a57f-f6577615b849.png)
 
 It is simple and suitable for the most basic tasks and use-cases, for example:
 
@@ -333,7 +333,7 @@ How will it work? Just connect your computer to your Supervisely instance and ru
 
 ### Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide
 
-![](https://github.com/supervisely/developer-portal/releases/download/v0.0.0/customers-logos.png)
+![](https://user-images.githubusercontent.com/73014155/178843775-2d87709e-e8a7-4934-b8ed-57ab8c9b0d4b.png)
 
 Supervisely helps companies and researchers all over the world to build their computer vision solutions in various industries from self-driving and agriculture to medicine. Join our [Community Edition](https://app.supervise.ly/) or request [Enterprise Edition](https://supervise.ly/enterprise) for your organization.
 
