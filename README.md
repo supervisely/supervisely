@@ -28,16 +28,38 @@
 
 ---
 
-## Table of contents
+## Table of contents <!-- omit in toc -->
 
-1. [Introduction 🔥](#introduction)
-2. [Development 🧑‍💻](development--)&#x20;
-   1. [What developers can do](#what-developers-can-do)
-   2. [Principles](#principles)
-3. [Main features 💎](#main-features--)
-4. [Community 🌎](#community--)
-5. [Contribution 👏](#contribution--)
-6. [Partnership 🤝](#partnership--)
+- [Introduction](#introduction)
+  - [Supervisely Platform 🔥](#supervisely-platform-)
+  - [Supervisely Ecosystem 🎉](#supervisely-ecosystem-)
+- [Development 🧑‍💻&#x20;](#development--)
+  - [What developers can do](#what-developers-can-do)
+    - [Level 1. HTTP REST API](#level-1-http-rest-api)
+    - [Level 2. Python scripts for automation and integration](#level-2-python-scripts-for-automation-and-integration)
+    - [Level 3. Headless apps (without UI)](#level-3-headless-apps-without-ui)
+    - [Level 4. Apps with interactive UIs](#level-4-apps-with-interactive-uis)
+    - [Level 5. Apps with UI integrated into labeling tools](#level-5-apps-with-ui-integrated-into-labeling-tools)
+  - [Principles 🧭](#principles-)
+- [Main features 💎](#main-features-)
+  - [Start in a minute](#start-in-a-minute)
+  - [Magically simple API](#magically-simple-api)
+  - [Customization is everywhere](#customization-is-everywhere)
+  - [Interactive GUI is a game-changer](#interactive-gui-is-a-game-changer)
+  - [Develop fast with ready UI widgets](#develop-fast-with-ready-ui-widgets)
+  - [Convenient debugging](#convenient-debugging)
+  - [Apps can be both private and public](#apps-can-be-both-private-and-public)
+  - [Single-click deployment](#single-click-deployment)
+  - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
+  - [Supports both Github and Gitlab&#x20;](#supports-both-github-and-gitlab-)
+  - [App is just a web server, use any technology you love &#x20;](#app-is-just-a-web-server-use-any-technology-you-love--)
+  - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
+  - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
+- [Community 🌎](#community-)
+    - [Have an idea or ask for help?](#have-an-idea-or-ask-for-help)
+- [Contribution 👏](#contribution-)
+- [Partnership 🤝](#partnership-)
+
 
 ## Introduction
 
@@ -190,36 +212,19 @@ Development for Supervisely builds upon these five principles:
 
 ## Main features 💎
 
-- [Table of contents](#table-of-contents)
-- [Introduction](#introduction)
-  - [Supervisely Platform 🔥](#supervisely-platform-)
-  - [Supervisely Ecosystem 🎉](#supervisely-ecosystem-)
-- [Development 🧑‍💻&#x20;](#development--)
-  - [What developers can do](#what-developers-can-do)
-    - [Level 1. HTTP REST API](#level-1-http-rest-api)
-    - [Level 2. Python scripts for automation and integration](#level-2-python-scripts-for-automation-and-integration)
-    - [Level 3. Headless apps (without UI)](#level-3-headless-apps-without-ui)
-    - [Level 4. Apps with interactive UIs](#level-4-apps-with-interactive-uis)
-    - [Level 5. Apps with UI integrated into labeling tools](#level-5-apps-with-ui-integrated-into-labeling-tools)
-  - [Principles 🧭](#principles-)
-- [Main features 💎](#main-features-)
-  - [Start in a minute](#start-in-a-minute)
-  - [Magically simple API](#magically-simple-api)
-  - [Customization is everywhere](#customization-is-everywhere)
-  - [Interactive GUI is a game-changer](#interactive-gui-is-a-game-changer)
-  - [Develop fast with ready UI widgets](#develop-fast-with-ready-ui-widgets)
-  - [Convenient debugging](#convenient-debugging)
-  - [Apps can be both private and public](#apps-can-be-both-private-and-public)
-  - [Single-click deployment](#single-click-deployment)
-  - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
-  - [Supports both Github and Gitlab&#x20;](#supports-both-github-and-gitlab-)
-  - [App is just a web server, use any technology you love &#x20;](#app-is-just-a-web-server-use-any-technology-you-love--)
-  - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
-  - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
-- [Community 🌎](#community-)
-    - [Have an idea or ask for help?](#have-an-idea-or-ask-for-help)
-- [Contribution 👏](#contribution-)
-- [Partnership 🤝](#partnership-)
+- [Start in a minute](#start-in-a-minute)
+- [Magically simple API](#magically-simple-api)
+- [Customization is everywhere](#customization-is-everywhere)
+- [Interactive GUI is a game-changer](#interactive-gui-is-a-game-changer)
+- [Develop fast with ready UI widgets](#develop-fast-with-ready-ui-widgets)
+- [Convenient debugging](#convenient-debugging)
+- [Apps can be both private and public](#apps-can-be-both-private-and-public)
+- [Single-click deployment](#single-click-deployment)
+- [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
+- [Supports both Github and Gitlab&#x20;](#supports-both-github-and-gitlab-)
+- [App is just a web server, use any technology you love &#x20;](#app-is-just-a-web-server-use-any-technology-you-love--)
+- [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
+- [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
 
 ### Start in a minute
 
