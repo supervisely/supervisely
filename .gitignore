@@ -50,4 +50,5 @@ build
 
 docs/build
 docs/source/rst_templates/api
+docs/source/sdk
 panda.deb
