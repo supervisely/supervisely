@@ -1,5 +1,5 @@
-Python SDK
-==========
+SDK Reference
+==============
 
 Annotation
 ----------
@@ -9,7 +9,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.annotation
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -20,7 +20,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.label
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -32,7 +32,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.obj_class
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -43,7 +43,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.obj_class_collection
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -53,7 +53,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.tag
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -64,7 +64,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.tag_collection
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -74,7 +74,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.tag_meta
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -87,7 +87,7 @@ Annotation
 .. currentmodule:: supervisely.annotation.tag_meta_collection
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -101,7 +101,7 @@ API
 .. currentmodule:: supervisely.api.api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -110,7 +110,7 @@ API
 .. currentmodule:: supervisely.api.agent_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -119,7 +119,7 @@ API
 .. currentmodule:: supervisely.api.annotation_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -128,7 +128,7 @@ API
 .. currentmodule:: supervisely.api.app_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -137,7 +137,7 @@ API
 .. currentmodule:: supervisely.api.dataset_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -146,7 +146,7 @@ API
 .. currentmodule:: supervisely.api.file_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -155,7 +155,7 @@ API
 .. currentmodule:: supervisely.api.image_annotation_tool_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -165,7 +165,7 @@ API
 .. currentmodule:: supervisely.api.image_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -174,7 +174,7 @@ API
 .. currentmodule:: supervisely.api.import_storage_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -183,7 +183,7 @@ API
 .. currentmodule:: supervisely.api.labeling_job_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -192,7 +192,7 @@ API
 .. currentmodule:: supervisely.api.module_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -208,7 +208,7 @@ API
 .. currentmodule:: supervisely.api.neural_network_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -217,7 +217,7 @@ API
 .. currentmodule:: supervisely.api.object_class_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -226,7 +226,7 @@ API
 .. currentmodule:: supervisely.api.plugin_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -235,7 +235,7 @@ API
 .. currentmodule:: supervisely.api.project_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -244,7 +244,7 @@ API
 .. currentmodule:: supervisely.api.project_class_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -253,7 +253,7 @@ API
 .. currentmodule:: supervisely.api.role_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -262,7 +262,7 @@ API
 .. currentmodule:: supervisely.api.task_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -271,7 +271,7 @@ API
 .. currentmodule:: supervisely.api.team_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -281,7 +281,7 @@ API
 .. currentmodule:: supervisely.api.user_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -290,7 +290,7 @@ API
 .. currentmodule:: supervisely.api.workspace_api
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -305,7 +305,7 @@ Augmentation
 .. currentmodule:: supervisely.aug
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :template: autosummary/custom-module-template.rst
 
     aug
@@ -316,7 +316,7 @@ Collection
 .. currentmodule:: supervisely.collection
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -328,7 +328,7 @@ Decorators
 .. currentmodule:: supervisely.decorators
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -342,7 +342,7 @@ Geometry
 .. currentmodule:: supervisely.geometry
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -367,7 +367,7 @@ Imaging
 .. currentmodule:: supervisely.imaging
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -383,7 +383,7 @@ IO
 .. currentmodule:: supervisely.io
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -396,7 +396,7 @@ Labeling Jobs
 .. currentmodule:: supervisely.labeling_jobs
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -409,7 +409,7 @@ Pointcloud
 .. currentmodule:: supervisely.pointcloud
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -421,7 +421,7 @@ Pointcloud Annotation
 .. currentmodule:: supervisely.pointcloud_annotation
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -438,7 +438,7 @@ Project
 .. currentmodule:: supervisely.project
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -456,7 +456,7 @@ Task
 .. currentmodule:: supervisely.task
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -468,7 +468,7 @@ User
 .. currentmodule:: supervisely.user
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -480,7 +480,7 @@ Video
 .. currentmodule:: supervisely.video
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
@@ -492,7 +492,7 @@ Video Annotation
 .. currentmodule:: supervisely.video_annotation
 
 .. autosummary::
-    :toctree: rst_templates/api
+    :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
