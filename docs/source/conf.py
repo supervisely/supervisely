@@ -28,8 +28,26 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx_copybutton',
     'sphinx_autodoc_typehints',
-    'm2r2',
+    'myst_parser',
 ]
+
+# myst_enable_extensions = [
+#     "amsmath",
+#     "colon_fence",
+#     "deflist",
+#     "dollarmath",
+#     "fieldlist",
+#     "html_admonition",
+#     "html_image",
+#     "linkify",
+#     "replacements",
+#     "smartquotes",
+#     "strikethrough",
+#     "substitution",
+#     "tasklist",
+# ]
+
+myst_all_links_external = True
 
 source_encoding = 'utf-8'
 master_doc = 'index'
