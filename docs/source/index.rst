@@ -19,42 +19,18 @@ Supervisely SDK
 
 
 .. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Setup
-
-   rst_templates/installation/prerequisites/prerequisites
-   rst_templates/installation/installation/installation
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Tutorials
-
-   rst_templates/tutorials/basics
-   rst_templates/tutorials/dev
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Troubleshooting
-
-   rst_templates/troubleshooting/faq/faq
-   rst_templates/troubleshooting/install_issues/install_issues
-
-.. toctree::
-   :caption: Source Code
+   :caption: Supervisely Resources
    :hidden:
 
    Supervisely GitHub                   <https://github.com/supervisely/supervisely>
    Supervisely Ecosystem                <https://github.com/supervisely-ecosystem/>
+   Supervisely Developer Portal         <https://developer.supervise.ly/>
 
 .. toctree::
    :caption: Social
    :hidden:
 
    Slack                   <https://supervise.ly/slack>
-   Medium                  <https://medium.com/@deepsystems>
    YouTube                <https://www.youtube.com/supervisely>
 
 

@@ -40,7 +40,7 @@
 - [Introduction](#introduction)
   - [Supervisely Platform 🔥](#supervisely-platform-)
   - [Supervisely Ecosystem 🎉](#supervisely-ecosystem-)
-- [Development 🧑‍💻&#x20;](#development--)
+- [Development 🧑‍💻](#development--)
   - [What developers can do](#what-developers-can-do)
     - [Level 1. HTTP REST API](#level-1-http-rest-api)
     - [Level 2. Python scripts for automation and integration](#level-2-python-scripts-for-automation-and-integration)
@@ -58,8 +58,8 @@
   - [Apps can be both private and public](#apps-can-be-both-private-and-public)
   - [Single-click deployment](#single-click-deployment)
   - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
-  - [Supports both Github and Gitlab&#x20;](#supports-both-github-and-gitlab-)
-  - [App is just a web server, use any technology you love &#x20;](#app-is-just-a-web-server-use-any-technology-you-love--)
+  - [Supports both Github and Gitlab](#supports-both-github-and-gitlab-)
+  - [App is just a web server, use any technology you love](#app-is-just-a-web-server-use-any-technology-you-love--)
   - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
   - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
 - [Community 🌎](#community-)
@@ -70,11 +70,11 @@
 
 ## Introduction
 
-Every company wants to be sure that its current and future AI tasks are solvable.&#x20;
+Every company wants to be sure that its current and future AI tasks are solvable.
 
 The main issue with most solutions on the market is that they build as products. It's a black box developing by some company you don't really have an impact on. As soon as your requirements go beyond basic features offered and you want to customize your experience, add something that is not in line with the software owner development plans or won't benefit other customers, you're out of luck.
 
-That is why **Supervisely is building a platform** instead of a product.&#x20;
+That is why **Supervisely is building a platform** instead of a product.
 
 ### [Supervisely Platform 🔥](https://supervise.ly/)
 
@@ -100,9 +100,9 @@ The simplicity of creating Supervisely Apps has already led to the development o
 
 Label your data, perform quality assurance, inspect every aspect of your data, collaborate easily, train and apply state-of-the-art neural networks, integrate custom models, automate routine tasks and more — like in a real AppStore, there should be an app for everything.
 
-## [Development](https://developer.supervise.ly/) 🧑‍💻&#x20;
+## [Development](https://developer.supervise.ly/) 🧑‍💻
 
-Supervisely provides the foundation for integration, customization, development and running computer vision applications to address your custom tasks - just like in OS, like Windows or MacOS.&#x20;
+Supervisely provides the foundation for integration, customization, development and running computer vision applications to address your custom tasks - just like in OS, like Windows or MacOS.
 
 ### What developers can do
 
@@ -116,7 +116,7 @@ There are different levels of integration, customization, and automation:
 
 #### Level 1. HTTP REST API
 
-Supervisely has a rich [HTTP REST API](https://api.docs.supervise.ly/) that covers basically every action, you can do manually. You can use **any programming language** and **any development environment** to extend and customize your Supervisely experience.&#x20;
+Supervisely has a rich [HTTP REST API](https://api.docs.supervise.ly/) that covers basically every action, you can do manually. You can use **any programming language** and **any development environment** to extend and customize your Supervisely experience.
 
 ℹ️ For Python developers, we recommend using our [Python SDK](https://supervisely.readthedocs.io/en/latest/sdk\_packages.html) because it wraps up all API methods and can save you a lot of time with built-in error handling, network re-connection, response validation, request pagination, and so on.
 
@@ -132,7 +132,7 @@ Example:
 curl -H "x-api-key: <your-token-here>" https://app.supervise.ly/public/api/v3/projects.list
 ```
 
-As you can see, URL starts with `https://app.supervise.ly`. It is for Community Edition. For Enterprise Edition you have to use your custom server address.&#x20;
+As you can see, URL starts with `https://app.supervise.ly`. It is for Community Edition. For Enterprise Edition you have to use your custom server address.
 
 </details>
 
@@ -169,7 +169,7 @@ ann = api.annotation.download_json(image_info.id)
 
 #### Level 3. Headless apps (without UI)
 
-Create python apps to automate routine and repetitive tasks, share them within your organization,  and provide an easy way to use them for end-users without coding background.  Headless apps are just python scripts that can be run from a context menu.&#x20;
+Create python apps to automate routine and repetitive tasks, share them within your organization,  and provide an easy way to use them for end-users without coding background.  Headless apps are just python scripts that can be run from a context menu.
 
 ![run app from context menu](https://user-images.githubusercontent.com/73014155/178843779-2af6fff3-ce28-4278-a57f-f6577615b849.png)
 
@@ -177,7 +177,7 @@ It is simple and suitable for the most basic tasks and use-cases, for example:
 
 * import and export in custom format ([example1](https://ecosystem.supervise.ly/apps/import-images-groups), [example2](https://ecosystem.supervise.ly/apps/export-as-masks), [example3](https://ecosystem.supervise.ly/apps/export-to-pascal-voc), [example4](https://ecosystem.supervise.ly/apps/render-video-labels-to-mp4))
 * assets transformation ([example1](https://ecosystem.supervise.ly/apps/rasterize-objects-on-images), [example2](https://ecosystem.supervise.ly/apps/resize-images), [example3](https://ecosystem.supervise.ly/apps/change-video-framerate), [example4](https://ecosystem.supervise.ly/apps/convert\_ptc\_to\_ptc\_episodes))
-* users management ([example1](https://ecosystem.supervise.ly/apps/invite-users-to-team-from-csv), [example2](https://ecosystem.supervise.ly/apps/create-users-from-csv), [example3](https://ecosystem.supervise.ly/apps/export-activity-as-csv))&#x20;
+* users management ([example1](https://ecosystem.supervise.ly/apps/invite-users-to-team-from-csv), [example2](https://ecosystem.supervise.ly/apps/create-users-from-csv), [example3](https://ecosystem.supervise.ly/apps/export-activity-as-csv))
 * deploy special models for AI-assisted labeling ([example1](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fritm-interactive-segmentation%2Fsupervisely), [example2](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Ftrans-t%2Fsupervisely%2Fserve), [example3](https://ecosystem.supervise.ly/apps/volume-interpolation))
 
 #### Level 4. Apps with interactive UIs
@@ -203,7 +203,7 @@ There is no single labeling tool that fits all tasks. Labeling tool has to be de
 
 Here are several examples:
 
-* apps designed for custom labeling workflows ([example1](https://ecosystem.supervise.ly/apps/visual-tagging), [example2](https://ecosystem.supervise.ly/apps/review-labels-side-by-side))&#x20;
+* apps designed for custom labeling workflows ([example1](https://ecosystem.supervise.ly/apps/visual-tagging), [example2](https://ecosystem.supervise.ly/apps/review-labels-side-by-side))
 * NN inference is integrated for labeling automation and model predictions analysis ([example](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool))
 * industry-specific labeling tool: annotation of thousands of product types on shelves with AI assistance ([retail collection](https://ecosystem.supervise.ly/collections/supervisely-ecosystem%2Fgl-metric-learning%2Fsupervisely%2Fretail-collection), [labeling app](https://ecosystem.supervise.ly/apps/ai-assisted-classification))
 
@@ -228,8 +228,8 @@ Development for Supervisely builds upon these five principles:
 - [Apps can be both private and public](#apps-can-be-both-private-and-public)
 - [Single-click deployment](#single-click-deployment)
 - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
-- [Supports both Github and Gitlab&#x20;](#supports-both-github-and-gitlab-)
-- [App is just a web server, use any technology you love &#x20;](#app-is-just-a-web-server-use-any-technology-you-love--)
+- [Supports both Github and Gitlab](#supports-both-github-and-gitlab-)
+- [App is just a web server, use any technology you love ](#app-is-just-a-web-server-use-any-technology-you-love--)
 - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
 - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
 
@@ -270,7 +270,7 @@ Customization is the only way to cover all tasks in Computer Vision. Supervisely
 
 The majority of Python programs are "command line" based. While highly experienced programmers don't have problems with it, other tech people and end-users do.  This creates a digital divide, a "GUI Gap".  App with graphic user interface (GUI) becomes more approachable and easy to use to a wider audience. And finally, some tasks are impossible to solve without a GUI at all.
 
-Imagine, how it will be great if all ML tools and repositories have an interactive GUI with the RUN button ▶️. It will take minutes to start working with a top Deep Learning framework instead of spending weeks running it on your data.  &#x20;
+Imagine, how it will be great if all ML tools and repositories have an interactive GUI with the RUN button ▶️. It will take minutes to start working with a top Deep Learning framework instead of spending weeks running it on your data.  
 
 🎯 Our ambitious goal is to make it possible.
 
@@ -280,20 +280,20 @@ Imagine, how it will be great if all ML tools and repositories have an interacti
 
 Hundreds of interactive UI widgets and components are ready for you. Just add to your program and populate with the data. Python devs don't need to have any front‑end experience, in our developer portal you will find needed guides, examples, and tutorials. We support the following UI widgets:
 
-1. [Widgets made by Supervisely](https://ecosystem.supervise.ly/docs/grid-gallery) specifically for computer vision tasks, like rendering galleries of images with annotations, playing videos forward and backward with labels, interactive confusion matrices, tables, charts, ...&#x20;
+1. [Widgets made by Supervisely](https://ecosystem.supervise.ly/docs/grid-gallery) specifically for computer vision tasks, like rendering galleries of images with annotations, playing videos forward and backward with labels, interactive confusion matrices, tables, charts, ...
 2. [Element widgets](https://element.eleme.io/1.4/#/en-US/component/button) - Vue 2.0 based component library
 3. [Plotly](https://plotly.com/python/) Graphing Library for Python
 4. You can develop your own UI widgets ([example](https://github.com/supervisely-ecosystem/dev-smart-tool-batched/blob/master/static/smarttool.js))
 
-Supervisely team makes most of its apps publically available on [GitHub](https://github.com/supervisely-ecosystem). Use them as examples for your future apps: fork, modify, and copy-paste code snippets.&#x20;
+Supervisely team makes most of its apps publically available on [GitHub](https://github.com/supervisely-ecosystem). Use them as examples for your future apps: fork, modify, and copy-paste code snippets.
 
 ### Convenient debugging
 
-Supervisely is made by data scientists for data scientists. We trying to lower barriers and make a friendly development environment. Especially we care about debugging as one of the most crucial steps.&#x20;
+Supervisely is made by data scientists for data scientists. We trying to lower barriers and make a friendly development environment. Especially we care about debugging as one of the most crucial steps.
 
-Even in complex scenarios, like developing a GUI app integrated into a labeling tool, we keep it simple - use breakpoints in your favorite IDE to catch callbacks, step through the program and see live updates without page reload. As simple as that! Supervisely handles everything else -  WebSockets, authentication, Redis, RabitMQ, Postgres, ...&#x20;
+Even in complex scenarios, like developing a GUI app integrated into a labeling tool, we keep it simple - use breakpoints in your favorite IDE to catch callbacks, step through the program and see live updates without page reload. As simple as that! Supervisely handles everything else -  WebSockets, authentication, Redis, RabitMQ, Postgres, ...
 
-Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool) that applies NN right inside the labeling interface.&#x20;
+Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool) that applies NN right inside the labeling interface.
 
 <a href="https://youtu.be/fOnyL8YHOBM">
     <img src="https://user-images.githubusercontent.com/73014155/178845440-e03e9a51-e953-4359-abb7-d6e6d3550bf6.png" style="max-width:100%;">
@@ -313,28 +313,28 @@ Supervisely app is a git repository. Just provide the link to your git repo, Sup
 
 ### Reliable versioning - releases and branches
 
-Users run your app on the latest stable release, and you can develop and test new features in parallel - just use git releases and branches. Supervisely automatically pull updates from git, even if the new version of an app has a bug, don't worry - users can select and run the previous version in a click.&#x20;
+Users run your app on the latest stable release, and you can develop and test new features in parallel - just use git releases and branches. Supervisely automatically pull updates from git, even if the new version of an app has a bug, don't worry - users can select and run the previous version in a click.
 
 
 <a href="https://youtu.be/ngoHfM98R8k">
     <img src="https://user-images.githubusercontent.com/73014155/178845418-3502c311-a593-44bc-a37c-43c17ce3458a.png" style="max-width:100%;">
 </a>
 
-### Supports both Github and Gitlab&#x20;
+### Supports both Github and Gitlab
 
 Since Supervisely app is just a git repository, we support public and private repos from the most popular hosting platforms in the world - GitHub and GitLab.
 
-### App is just a web server, use any technology you love &#x20;
+### App is just a web server, use any technology you love 
 
-Supervisely SDK for Python provides the simplest way for python developers and data scientists to build interactive GUI apps of any complexity. Python is a recommended language for developing Supervisely apps, but not the only one. You can use any language or any technology you love, any web server can be deployed on top of the platform.&#x20;
+Supervisely SDK for Python provides the simplest way for python developers and data scientists to build interactive GUI apps of any complexity. Python is a recommended language for developing Supervisely apps, but not the only one. You can use any language or any technology you love, any web server can be deployed on top of the platform.
 
-For example, even [Visual Studio Code for web](https://github.com/coder/code-server) can be run as an app (see video below). &#x20;
+For example, even [Visual Studio Code for web](https://github.com/coder/code-server) can be run as an app (see video below). 
 
 ### Built-in cloud development environment (coming soon)
 
-In addition to the common way of development in your favorite IDE on your local computer or laptop, cloud development support will be integrated into Supervisely and **released soon** to speed up development, standardize dev environments, and lower barriers for beginners. &#x20;
+In addition to the common way of development in your favorite IDE on your local computer or laptop, cloud development support will be integrated into Supervisely and **released soon** to speed up development, standardize dev environments, and lower barriers for beginners. 
 
-How will it work? Just connect your computer to your Supervisely instance and run IDE app ([JupyterLab](https://jupyter.org/) and [Visual Studio Code for web](https://github.com/coder/code-server)) to start coding in a minute. We will provide a large number of template apps that cover the most popular use cases.&#x20;
+How will it work? Just connect your computer to your Supervisely instance and run IDE app ([JupyterLab](https://jupyter.org/) and [Visual Studio Code for web](https://github.com/coder/code-server)) to start coding in a minute. We will provide a large number of template apps that cover the most popular use cases.
 
 
 <a href="https://youtu.be/ptHJsdolHHk">
@@ -359,7 +359,7 @@ If you have any questions, ideas or feedback please:
 2. [Join our slack](https://supervise.ly/slack)
 3. [Contact us](https://supervise.ly/contact-us)
 
-Your feedback 👍 helps us a lot and we appreciate it&#x20;
+Your feedback 👍 helps us a lot and we appreciate it
 
 ## Contribution 👏
 
@@ -372,7 +372,7 @@ Want to help us bring Computer Vision R\&D to the next level? We encourage you t
 
 We are happy to expand and increase the value of Supervisely Ecosystem with additional technological partners, researchers, developers, and value-added resellers.
 
-Feel free to [contact us](https://supervise.ly/contact-us) if you have&#x20;
+Feel free to [contact us](https://supervise.ly/contact-us) if you have
 
 * ML service or product
 * unique domain expertise

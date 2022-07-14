@@ -35,17 +35,17 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_autodoc_typehints',
     'm2r2',
-    'nbsphinx',
-    'nbsphinx_link',
+    # 'nbsphinx',
+    # 'nbsphinx_link',
 
-    'sphinx.ext.duration',
-    'sphinx.ext.doctest',
-    "sphinx.ext.autosectionlabel",
+    # 'sphinx.ext.duration',
+    # 'sphinx.ext.doctest',
+    # "sphinx.ext.autosectionlabel",
 
-    "sphinx.ext.extlinks",
-    "sphinx.ext.todo",
-    "sphinx.ext.mathjax",
-    "sphinxcontrib.details.directive",
+    # "sphinx.ext.extlinks",
+    # "sphinx.ext.todo",
+    # "sphinx.ext.mathjax",
+    # "sphinxcontrib.details.directive",
     # "IPython.sphinxext.ipython_console_highlighting",
 ]
 
@@ -126,7 +126,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 # a list of builtin themes.
 
 extensions.append("sphinx_immaterial")
-html_title = "Supervisely SDK"
+html_title = "Supervisely SDK for Python"
 html_theme = "sphinx_immaterial"
 html_favicon = '_static/images/favicon.ico'
 html_logo = '_static/images/sly-top-logo-white.png'
@@ -159,8 +159,8 @@ html_theme_options = {
         {
             "media": "(prefers-color-scheme: light)",
             "scheme": "default",
-            "primary": "pink",
-            "accent": "pink",
+            "primary": "light-blue",
+            "accent": "light-blue",
             "toggle": {
                 "icon": "material/lightbulb-outline",
                 "name": "Switch to dark mode",
@@ -169,8 +169,8 @@ html_theme_options = {
         {
             "media": "(prefers-color-scheme: dark)",
             "scheme": "slate",
-            "primary": "pink",
-            "accent": "pink",
+            "primary": "light-blue",
+            "accent": "light-blue",
             "toggle": {
                 "icon": "material/lightbulb",
                 "name": "Switch to light mode",
