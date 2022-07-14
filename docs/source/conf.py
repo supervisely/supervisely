@@ -8,8 +8,6 @@ import os
 import sys
 
 # -- Path setup --------------------------------------------------------------
-
-
 PATH_HERE = os.path.abspath(os.path.dirname(__file__))
 PATH_ROOT = os.path.join(PATH_HERE, "..", "..")
 sys.path.insert(0, os.path.abspath(PATH_ROOT))
