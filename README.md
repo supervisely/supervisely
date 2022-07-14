@@ -40,7 +40,7 @@
 - [Introduction](#introduction)
   - [Supervisely Platform 🔥](#supervisely-platform-)
   - [Supervisely Ecosystem 🎉](#supervisely-ecosystem-)
-- [Development 🧑‍💻](#development--)
+- [Development 🧑‍💻](#development-)
   - [What developers can do](#what-developers-can-do)
     - [Level 1. HTTP REST API](#level-1-http-rest-api)
     - [Level 2. Python scripts for automation and integration](#level-2-python-scripts-for-automation-and-integration)
@@ -58,8 +58,8 @@
   - [Apps can be both private and public](#apps-can-be-both-private-and-public)
   - [Single-click deployment](#single-click-deployment)
   - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
-  - [Supports both Github and Gitlab](#supports-both-github-and-gitlab-)
-  - [App is just a web server, use any technology you love](#app-is-just-a-web-server-use-any-technology-you-love--)
+  - [Supports both Github and Gitlab](#supports-both-github-and-gitlab)
+  - [App is just a web server, use any technology you love](#app-is-just-a-web-server-use-any-technology-you-love)
   - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
   - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
 - [Community 🌎](#community-)
@@ -108,11 +108,11 @@ Supervisely provides the foundation for integration, customization, development 
 
 There are different levels of integration, customization, and automation:
 
-1. [HTTP REST API](#level-1.-http-rest-api)
-2. [Python scripts for automation and integration](#level-2.-python-scripts-for-automation-and-integration)
-3. [Headless apps (without UI)](#level-3.-headless-apps-without-ui)
-4. [Apps with interactive UIs](#level-4.-apps-with-interactive-uis)
-5. [Apps with UIs integrated into labeling tools](#level-5.-apps-with-ui-integrated-into-labeling-tools)
+1. [HTTP REST API](#level-1-http-rest-api)
+2. [Python scripts for automation and integration](#level-2-python-scripts-for-automation-and-integration)
+3. [Headless apps (without UI)](#level-3-headless-apps-without-ui)
+4. [Apps with interactive UIs](#level-4-apps-with-interactive-uis)
+5. [Apps with UIs integrated into labeling tools](#level-5-apps-with-ui-integrated-into-labeling-tools)
 
 #### Level 1. HTTP REST API
 
@@ -228,8 +228,8 @@ Development for Supervisely builds upon these five principles:
 - [Apps can be both private and public](#apps-can-be-both-private-and-public)
 - [Single-click deployment](#single-click-deployment)
 - [Reliable versioning - releases and branches](#reliable-versioning---releases-and-branches)
-- [Supports both Github and Gitlab](#supports-both-github-and-gitlab-)
-- [App is just a web server, use any technology you love ](#app-is-just-a-web-server-use-any-technology-you-love--)
+- [Supports both Github and Gitlab](#supports-both-github-and-gitlab)
+- [App is just a web server, use any technology you love](#app-is-just-a-web-server-use-any-technology-you-love)
 - [Built-in cloud development environment (coming soon)](#built-in-cloud-development-environment-coming-soon)
 - [Trusted by Fortune 500. Used by 65 000 researchers, developers, and companies worldwide](#trusted-by-fortune-500-used-by-65-000-researchers-developers-and-companies-worldwide)
 
