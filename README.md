@@ -35,7 +35,7 @@
 
 ---
 
-## Table of contents <!-- omit in toc -->
+## Table of contents
 
 - [Introduction](#introduction)
   - [Supervisely Platform 🔥](#supervisely-platform-)
