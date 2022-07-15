@@ -23,7 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp']
+SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif']
 DEFAULT_IMG_EXT = '.png'
 
 
@@ -53,7 +53,7 @@ class ImageReadException(Exception):
 
 def is_valid_ext(ext: str) -> bool:
     """
-    Checks file extension for list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp').
+    Checks file extension for list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
 
     :param ext: Image extention.
     :type ext: str
@@ -73,7 +73,7 @@ def is_valid_ext(ext: str) -> bool:
 
 def has_valid_ext(path: str) -> bool:
     """
-    Checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp').
+    Checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
 
     :param path: Path to file.
     :type path: str
@@ -94,7 +94,7 @@ def has_valid_ext(path: str) -> bool:
 
 def validate_ext(path: str) -> None:
     """
-    Generate exception error if file extention is not in list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp').
+    Generate exception error if file extention is not in list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
 
     :param path: Path to file.
     :type path: str
