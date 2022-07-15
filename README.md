@@ -10,15 +10,23 @@
 
 <p align="center">
   <a href="https://pypi.org/project/supervisely" target="_blank">
-    <img src="https://img.shields.io/pypi/pyversions/supervisely"></img>
+    <img src="https://static.pepy.tech/personalized-badge/supervisely?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pip%20installs" alt="Package version">
   </a>
-  <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack" alt="Slack"></img> </a>
-  <a href="https://pypi.org/project/supervisely" target="_blank"> <img src="https://img.shields.io/pypi/v/supervisely?color=%2334D058&label=pypi%20package" alt="Package version"> </img></a>
+  <a href="https://hub.docker.com/r/supervisely/agent/tags" target="_blank">
+    <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/supervisely/agent?label=docker%20pulls%20-%20supervisely%2Fagent">
+  </a>
+  <br/>
+  <a href="https://pypi.org/project/supervisely" target="_blank">
+    <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/supervisely?color=4ec528">
+  </a>
+  <a href="https://supervise.ly/slack" target="_blank"> <img src="https://img.shields.io/badge/slack-chat-green.svg?logo=slack&color=4ec528" alt="Slack">
+  </a>
+  <a href="https://pypi.org/project/supervisely" target="_blank"> 
+    <img src="https://img.shields.io/pypi/v/supervisely?color=4ec528&label=pypi%20package" alt="Package version"> 
+  </a>
   <a href="https://developer.supervise.ly" target="_blank">
-  <img src="https://readthedocs.org/projects/supervisely/badge/?version=stable&"//>
+    <img src="https://readthedocs.org/projects/supervisely/badge/?version=stable&color=4ec528">
   </a>
-  <img src="https://static.pepy.tech/personalized-badge/supervisely?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pip%20installs" alt="Package version"> </img>
-  <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/supervisely/agent?label=docker%20pulls%20-%20supervisely%2Fagent"></img>
 </p>
 
 ---
