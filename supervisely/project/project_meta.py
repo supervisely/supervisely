@@ -4,7 +4,7 @@
 from __future__ import annotations
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.tag_meta import TagMeta
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 
 
 from supervisely.io.json import JsonSerializable
@@ -45,9 +45,9 @@ class ProjectMeta(JsonSerializable):
     """
     General information about ProjectMeta. :class:`ProjectMeta<ProjectMeta>` object is immutable.
 
-    :param obj_classes: ObjClassCollection that stores ObjClass instances with unique names.
+    :param obj_classes: ObjClassCollection or just list that stores ObjClass instances with unique names.
     :type obj_classes: ObjClassCollection, optional
-    :param tag_metas: TagMetaCollection that stores TagMeta instances with unique names.
+    :param tag_metas: TagMetaCollection or just list that stores TagMeta instances with unique names.
     :type tag_metas: TagMetaCollection, optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
     :type project_type: str, optional
@@ -96,10 +96,27 @@ class ProjectMeta(JsonSerializable):
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
     """
-    def __init__(self, obj_classes: Optional[ObjClassCollection] = None, tag_metas: Optional[TagMetaCollection] = None,
+    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List]] = None, tag_metas: Optional[Union[TagMetaCollection, List]] = None,
                  project_type: Optional[ProjectType] = None):
-        self._obj_classes = ObjClassCollection() if obj_classes is None else obj_classes
-        self._tag_metas = take_with_default(tag_metas, TagMetaCollection())
+        
+        if obj_classes is None:
+            self._obj_classes = ObjClassCollection()
+        elif isinstance(obj_classes, list):
+            self._obj_classes = ObjClassCollection(obj_classes)
+        elif isinstance(obj_classes, ObjClassCollection):
+            self._obj_classes = obj_classes
+        else:
+            raise TypeError(f"obj_classes argument has unknown type {type(obj_classes)}")
+        
+        if tag_metas is None:
+            self._tag_metas = TagMetaCollection()
+        elif isinstance(tag_metas, list):
+            self._tag_metas = TagMetaCollection(tag_metas)
+        elif isinstance(tag_metas, TagMetaCollection):
+            self._tag_metas = tag_metas
+        else:
+            raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
+                
         self._project_type = project_type
 
     @property
@@ -380,7 +397,7 @@ class ProjectMeta(JsonSerializable):
         return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
                           tag_metas=self._tag_metas.merge(other._tag_metas))
 
-    def clone(self, obj_classes: Optional[ObjClassCollection] = None, tag_metas: Optional[TagMetaCollection] = None,
+    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List]] = None, tag_metas: Optional[Union[TagMetaCollection, List]] = None,
               project_type: Optional[str]=None) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.

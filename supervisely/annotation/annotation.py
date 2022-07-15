@@ -106,14 +106,23 @@ class Annotation:
         ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
         # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
     """
-    def __init__(self, img_size: Tuple[int, int], labels: Optional[List[Label]] = None, img_tags: Optional[TagCollection] = None,
+    def __init__(self, img_size: Tuple[int, int], labels: Optional[List[Label]] = None, img_tags: Optional[Union[TagCollection, List[Tag]]] = None,
                  img_description: Optional[str] = "", pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
                  image_id: Optional[int] = None):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
         self._img_description = img_description
-        self._img_tags = take_with_default(img_tags, TagCollection())
+        
+        if img_tags is None:
+            self._img_tags = TagCollection()
+        elif isinstance(img_tags, list):
+            self._img_tags = TagCollection(img_tags)
+        elif isinstance(img_tags, TagCollection):
+            self._img_tags = img_tags
+        else:
+            raise TypeError(f"img_tags argument has unknown type {type(img_tags)}")
+        
         self._labels = []
         self._add_labels_impl(self._labels, take_with_default(labels, []))
         self._pixelwise_scores_labels = []  # @TODO: store pixelwise scores as usual geometry labels
