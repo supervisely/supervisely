@@ -1,15 +1,23 @@
 # coding: utf-8
+"""annotation for a single image"""
+
+# docs
 from __future__ import annotations
+from typing import List, Tuple, Optional, Dict, Union
+from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag import Tag
 
 import json
 import itertools
 import numpy as np
-from typing import List
 import operator
 import cv2
 from copy import deepcopy
 from PIL import Image
 from supervisely.annotation.obj_class import ObjClass
+from collections import defaultdict
+
 
 from supervisely import logger
 from supervisely.annotation.label import Label
@@ -26,10 +34,19 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.io.fs import ensure_base_path
 
 
+
+
+# for imgaug
+from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+
 ANN_EXT = '.json'
 
 
 class AnnotationJsonFields:
+    """
+    Json fields for :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+    """
     IMG_DESCRIPTION = 'description'
     IMG_SIZE = 'size'
     IMG_SIZE_WIDTH = 'width'
@@ -43,31 +60,69 @@ class AnnotationJsonFields:
 
 
 class Annotation:
-    '''
-    This is a class for creating and using annotations for images
+    """
+    Annotation for a single image. :class:`Annotation<Annotation>` object is immutable.
 
-    Attributes:
-        img_size (tuple): size of the image
-        labels (list): list of Label class objects
-        img_tags (list): list of image tags
-        img_description (str): image description
-        pixelwise_scores_labels (list)
-    '''
-    def __init__(self, img_size, labels=None, img_tags=None, img_description="",
-                 pixelwise_scores_labels=None, custom_data=None, image_id=None):
-        '''
-        The constructor for Annotation class.
-        :param img_size(tuple): size of the image
-        :param labels(list): list of Label class objects
-        :param img_tags(list): list of image tags
-        :param img_description(str): image description
-        :param pixelwise_scores_labels(list)
-        '''
+    :param img_size: Size of the image (height, width).
+    :type img_size: Tuple[int, int] or List[int, int]
+    :param labels: List of Label objects.
+    :type labels: List[Label]
+    :param img_tags: TagCollection object.
+    :type img_tags: TagCollection
+    :param img_description: Image description.
+    :type img_description: str, optional
+    :raises: :class:`TypeError`, if image size is not tuple or list
+    :Usage example:
+
+     .. code-block:: python
+
+        # Simple Annotation example
+        import supervisely as sly
+
+        height, width = 500, 700
+        ann = sly.Annotation((height, width))
+
+        # More complex Annotation example
+        # TagCollection
+        meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+        tag_lemon = sly.Tag(meta_lemon, 'Hello')
+        tags = sly.TagCollection([tag_lemon])
+
+        # ObjClass
+        class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+
+        # Label
+        label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+
+        # Annotation
+        height, width = 300, 400
+        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+        # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
+
+        # If Label geometry is out of image size bounds, it will be cropped
+        label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
+        height, width = 300, 400
+
+        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+        # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
+    """
+    def __init__(self, img_size: Tuple[int, int], labels: Optional[List[Label]] = None, img_tags: Optional[Union[TagCollection, List[Tag]]] = None,
+                 img_description: Optional[str] = "", pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
+                 image_id: Optional[int] = None):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format('img_size', type(img_size)))
         self._img_size = tuple(img_size)
         self._img_description = img_description
-        self._img_tags = take_with_default(img_tags, TagCollection())
+        
+        if img_tags is None:
+            self._img_tags = TagCollection()
+        elif isinstance(img_tags, list):
+            self._img_tags = TagCollection(img_tags)
+        elif isinstance(img_tags, TagCollection):
+            self._img_tags = img_tags
+        else:
+            raise TypeError(f"img_tags argument has unknown type {type(img_tags)}")
+        
         self._labels = []
         self._add_labels_impl(self._labels, take_with_default(labels, []))
         self._pixelwise_scores_labels = []  # @TODO: store pixelwise scores as usual geometry labels
@@ -76,15 +131,78 @@ class Annotation:
         self._image_id = image_id
 
     @property
-    def img_size(self):
+    def img_size(self) -> Tuple[int, int]:
+        """
+        Size of the image (height, width).
+
+        :return: Image size
+        :rtype: :class:`Tuple[int, int]`
+        :Usage example:
+
+         .. code-block:: python
+
+            height, width = 300, 400
+            ann = sly.Annotation((height, width))
+            print(ann.img_size)
+            # Output: (300, 400)
+        """
         return deepcopy(self._img_size)
 
     @property
-    def image_id(self):
+    def image_id(self) -> int:
+        """
+        Id of the image.
+
+        :return: Image id
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            height, width = 300, 400
+            image_id = 12345
+            ann = sly.Annotation((height, width), image_id=image_id)
+            print(ann.image_id)
+            # Output: 12345
+        """
         return self._image_id
 
     @property
     def labels(self) -> List[Label]:
+        """
+        Labels on annotation.
+
+        :return: Copy of list with image labels
+        :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
+        :Usage example:
+
+         .. code-block:: python
+
+            # Create Labels and add them to Annotation
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+
+            labels_arr = [label_kiwi, label_lemon]
+
+            height, width = 300, 400
+            ann = sly.Annotation((height, width), labels_arr)
+
+            # Note that ann.labels return a COPY of list with image labels
+            class_potato = sly.ObjClass('potato', sly.Rectangle)
+            label_potato = sly.Label(sly.Rectangle(0, 0, 200, 400), class_potato)
+
+            ann.labels.append(label_potato)
+            print(len(ann.labels))
+            # Output: 2
+
+            ann_arr = ann.labels
+            ann_arr.append(label_potato)
+            print(len(ann_arr))
+            # Output: 3
+        """
         return self._labels.copy()
 
     @property
@@ -92,18 +210,77 @@ class Annotation:
         return self._pixelwise_scores_labels.copy()
 
     @property
-    def img_description(self):
+    def img_description(self) -> str:
+        """
+        Image description.
+
+        :return: Image description
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
+            print(ann.img_description)
+            # Output: Annotation for this image is empty
+        """
         return self._img_description
 
     @property
     def img_tags(self) -> TagCollection:
+        """
+        Image tags.
+
+        :return: TagCollection object
+        :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
+        :Usage example:
+
+         .. code-block:: python
+
+            # Create TagCollection
+            meta_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
+            tag_weather = sly.Tag(meta_weather, 'cloudy')
+            tags = sly.TagCollection([tag_weather])
+
+            ann = sly.Annotation((300, 400), img_tags=tags)
+            print(ann.img_tags)
+            # Output:
+            #   Tags:
+            #   +----------------+------------+--------+
+            #   |      Name      | Value type | Value  |
+            #   +----------------+------------+--------+
+            #   |     weather    | any_string | cloudy |
+            #   +----------------+------------+--------+
+        """
         return self._img_tags
 
-    def to_json(self):
-        '''
-        The function to_json convert annotation to json format
-        :return: annotation in json format
-        '''
+    def to_json(self) -> Dict:
+        """
+        Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((500, 700))
+            ann_json = ann.to_json()
+
+            print(ann_json)
+            # Output: {
+            #     "description": "",
+            #     "size": {
+            #         "height": 500,
+            #         "width": 700
+            #     },
+            #     "tags": [],
+            #     "objects": [],
+            #     "customBigData": {}
+            # }
+        """
         res = {
             AnnotationJsonFields.IMG_DESCRIPTION: self.img_description,
             AnnotationJsonFields.IMG_SIZE: {
@@ -132,14 +309,36 @@ class Annotation:
         return res
 
     @classmethod
-    def from_json(cls, data, project_meta):
-        '''
-        The function from_json convert annotation from json format to Annotation class object. If one of the labels
-        of annotation in json format cannot be convert to Label class object it generate exception error.
-        :param data: input annotation in json format
-        :param project_meta: ProjectMeta class object
-        :return: Annotation class object
-        '''
+    def from_json(cls, data: Dict, project_meta: ProjectMeta) -> Annotation:
+        """
+        Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+
+        :param data: Annotation in json format as a dict.
+        :type data: dict
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
+        :type project_meta: ProjectMeta
+        :return: Annotation object
+        :rtype: :class:`Annotation<Annotation>`
+        :raises: :class:`Exception`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            meta = sly.ProjectMeta()
+
+            ann_json = {
+                 "size": {
+                     "height": 500,
+                     "width": 700
+                 },
+                 "tags": [],
+                 "objects": []
+            }
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+        """
         img_size_dict = data[AnnotationJsonFields.IMG_SIZE]
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
@@ -177,23 +376,85 @@ class Annotation:
                    image_id=image_id)
 
     @classmethod
-    def load_json_file(cls, path, project_meta):
-        '''
-        The function load_json_file download json file and convert in to the Annotation class object
-        :param path: the path to the input json file
-        :param project_meta: ProjectMeta class object
-        :return: Annotation class object
-        '''
+    def load_json_file(cls, path: str, project_meta: ProjectMeta) -> Annotation:
+        """
+        Loads json file and converts it to Annotation.
+
+        :param path: Path to the json file.
+        :type path: str
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: ProjectMeta
+        :return: Annotation object
+        :rtype: :class:`Annotation<Annotation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            team_name = 'Vehicle Detection'
+            workspace_name = 'Cities'
+            project_name =  'London'
+
+            team = api.team.get_info_by_name(team_name)
+            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+            project = api.project.get_info_by_name(workspace.id, project_name)
+
+            meta = api.project.get_meta(project.id)
+
+            # Load json file
+            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+            ann = sly.Annotation.load_json_file(path, meta)
+        """
         with open(path) as fin:
             data = json.load(fin)
         return cls.from_json(data, project_meta)
 
-    def clone(self, img_size=None, labels=None, img_tags=None, img_description=None,
-              pixelwise_scores_labels=None, custom_data=None, image_id=None):
-        '''
-        The function clone make copy of the Annotation class object
-        :return: Annotation class object
-        '''
+    def clone(self, img_size: Optional[Tuple[int, int]] = None, labels: Optional[List[Label]] = None,
+              img_tags: Optional[TagCollection] = None, img_description: Optional[str] = None,
+              pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
+              image_id: Optional[int] = None) -> Annotation:
+        """
+        Makes a copy of Annotation with new fields, if fields are given, otherwise it will use fields of the original Annotation.
+
+        :param img_size: Size of the image (height, width).
+        :type img_size: Tuple[int, int] or List[int, int]
+        :param labels: List of Label objects.
+        :type labels: List[Label]
+        :param img_tags: TagCollection object.
+        :type img_tags: TagCollection
+        :param img_description: Image description.
+        :type img_description: str, optional
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 400))
+
+            # Let's clone our Annotation with Label
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+
+            # Assign cloned annotation to a new variable
+            ann_clone_1 = ann.clone(labels=[label_kiwi])
+
+            # Let's clone our Annotation with Label, TagCollection and description
+            meta_lemon = sly.TagMeta('lemon', sly.TagValueType.ANY_STRING)
+            tag_lemon = sly.Tag(meta_lemon, 'juicy')
+            tags = sly.TagCollection([tag_lemon])
+
+            # Assign cloned annotation to a new variable
+            ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
+
+        """
         return Annotation(img_size=take_with_default(img_size, self.img_size),
                           labels=take_with_default(labels, self.labels),
                           img_tags=take_with_default(img_tags, self.img_tags),
@@ -215,122 +476,319 @@ class Annotation:
             canvas_rect = Rectangle.from_size(self.img_size)
             dest.extend(label.crop(canvas_rect))
 
-    def add_label(self, label):
-        '''
-        The function add_label add label to the current Annotation object and return the copy of the
-        current  Annotation object
-        :param label: Label class object to be added
-        :return: Annotation class object with the new list of the Label class objects
-        '''
+    def add_label(self, label: Label) -> Annotation:
+        """
+        Clones Annotation and adds a new Label.
+
+        :param label: Label to be added.
+        :type label: Label
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Label
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+
+            # Add label to Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = ann.add_label(label_kiwi)
+        """
         return self.add_labels([label])
 
-    def add_labels(self, labels):
-        '''
-        The function add_labels extend list of the labels of the current Annotation object and return the copy of the
-        current  Annotation object
-        :param labels: list of the Label class objects to be added
-        :return: Annotation class object with the new list of the Label class objects
-        '''
+    def add_labels(self, labels: List[Label]) -> Annotation:
+        """
+        Clones Annotation and adds a new Labels.
+
+        :param labels: List of Label objects to be added.
+        :type labels: List[Label]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Labels
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+
+            # Add labels to Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = ann.add_labels([label_kiwi, label_lemon])
+        """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
         return self.clone(labels=[*self._labels, *new_labels])
 
-    def delete_label(self, label):
-        '''
-        The function delete_label detele label from the current Annotation object and return the copy of the
-        current  Annotation object. If there is no deleted label in current Annotation object it generate exception
-        error(KeyError).
-        :param label: Label class object to be delete
-        :return: Annotation class object with the new list of the Label class objects
-        '''
+    def delete_label(self, label: Label) -> Annotation:
+        """
+        Clones Annotation with removed Label.
+
+        :param label: Label to be deleted.
+        :type label: Label
+        :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Labels
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+
+            # Add labels to Annotation
+            ann = ann.add_labels([label_kiwi, label_lemon])
+            print(len(ann.labels))
+            # Output: 2
+
+            # Run through all labels in Annotation objects
+            for label in ann.labels:
+                if label.obj_class.name == 'lemon': # label obj_class name we want to delete
+                    # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                    new_ann = ann.delete_label(label)
+
+            print(len(new_ann.labels))
+            # Output: 1
+        """
         retained_labels = [_label for _label in self._labels if _label != label]
         if len(retained_labels) == len(self._labels):
             raise KeyError('Trying to delete a non-existing label of class: {}'.format(label.obj_class.name))
         return self.clone(labels=retained_labels)
 
-    def add_pixelwise_score_label(self, label):
-        '''
-        The function add_pixelwise_score_label add label to the pixelwise_scores_labels and return the copy of the
-        current  Annotation object
+    def add_pixelwise_score_label(self, label: Label) -> Annotation:
+        """
+        Add label to the pixelwise_scores_labels and return the copy of the current  Annotation object.
         :param label: Label class object to be added
         :return: Annotation class object with the new list of the pixelwise_scores_labels
-        '''
+        """
         return self.add_pixelwise_score_labels([label])
 
-    def add_pixelwise_score_labels(self, labels):
-        '''
-        The function add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
+    def add_pixelwise_score_labels(self, labels: List[Label]) -> Annotation:
+        """
+        Add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
         the copy of the current  Annotation object.
         :param labels: list of the Label class objects to be added
         :return: Annotation class object with the new list of the pixelwise_scores_labels
-        '''
+        """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
         return self.clone(pixelwise_scores_labels=[*self._pixelwise_scores_labels, *new_labels])
 
-    def add_tag(self, tag):
-        '''
-        The function add_tag add tag to the current Annotation object and return the copy of the
-        current  Annotation object
-        :param tag: TagCollection class object to be added
-        :return: Annotation class object with the new list of the tags
-        '''
+    def add_tag(self, tag: Tag) -> Annotation:
+        """
+        Clones Annotation and adds a new Tag.
+
+        :param tag: Tag object to be added.
+        :type tag: Tag
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Tag
+            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+            tag_message = sly.Tag(meta_message, 'Hello')
+
+            # Add Tag to Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = ann.add_tag(tag_message)
+        """
         return self.clone(img_tags=self._img_tags.add(tag))
 
-    def add_tags(self, tags):
-        '''
-        The function add_tags add tags to the current Annotation object and return the copy of the
-        current  Annotation object
-        :param tags: list of the TagCollection class objects to be added
-        :return: Annotation class object with the new list of the tags
-        '''
+    def add_tags(self, tags: List[Tag]) -> Annotation:
+        """
+        Clones Annotation and adds a new list of Tags.
+
+        :param tags: List of Tags to be added.
+        :type tags: List[Tag]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Tags
+            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+
+            tag_message = sly.Tag(meta_message, 'Hello')
+            tag_alert = sly.Tag(meta_alert)
+
+            # Add Tags to Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = ann.add_tags([tag_message, tag_alert])
+        """
         return self.clone(img_tags=self._img_tags.add_items(tags))
 
-    def delete_tags_by_name(self, tag_names):
-        '''
-        The function delete_tags_by_name removes tags by their names from current Annotation object and return the copy
-        of the current  Annotation object
-        :param tag_names: list of the tag names to be delete
-        :return: Annotation class object with the new list of the tags
-        '''
+    def delete_tags_by_name(self, tag_names: List[str]) -> Annotation:
+        """
+        Clones Annotation and removes Tags by their names.
+
+        :param tag_names: List of Tags names to be deleted.
+        :type tag_names: List[str]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Tags
+            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+
+            tag_message = sly.Tag(meta_message, 'Hello')
+            tag_alert = sly.Tag(meta_alert)
+
+            # Add Tags to Annotation
+            tags_ann = ann.add_tags([tag_message, tag_alert])
+
+            # Delete Tags from Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
+        """
         retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
         return self.clone(img_tags=TagCollection(items=retained_tags))
 
-    def delete_tag_by_name(self, tag_name):
-        '''
-        The function delete_tag_by_name removes tag by it name from current Annotation object and return the copy
-        of the current  Annotation object
-        :param tag_name: tag names to be delete
-        :return: Annotation class object with the new list of the tags
-        '''
+    def delete_tag_by_name(self, tag_name: str) -> Annotation:
+        """
+        Clones Annotation with removed Tag by it's name.
+
+        :param tag_name: Tag name to be delete.
+        :type tag_name: str
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            # Create Tag
+            meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
+            tag_alert = sly.Tag(meta_alert, 'Hello')
+
+            tag_ann = ann.add_tag(tag_alert)
+
+            # Delete Tag from Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            new_ann = tag_ann.delete_tag_by_name('Alert')
+        """
         return self.delete_tags_by_name([tag_name])
 
-    def delete_tags(self, tags):
-        '''
-        The function delete_tags removes tags from current Annotation object and return the copy of the current
-        Annotation object
-        :param tags: list of the TagCollection class objects to be deleted
-        :return: Annotation class object with the new list of the tags
-        '''
-        return self.delete_tags_by_name({tag.meta.name for tag in tags})
+    def delete_tags(self, tags: List[Tag]) -> Annotation:
+        """
+        Clones Annotation with removed Tags.
 
-    def delete_tag(self, tag):
-        '''
-        The function delete_tag remove tag from current Annotation object and return the copy of the current
-        Annotation object
-        :param tag: TagCollection class object to be deleted
-        :return: Annotation class object with the new list of the tags
-        '''
+        :param tags: List of Tags to be deleted.
+        :type tags: List[Tag]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+
+            tag_message = sly.Tag(meta_message, 'Hello')
+            tag_alert = sly.Tag(meta_alert)
+
+            ann = ann.add_tags([tag_message, tag_alert])
+            print(len(ann.img_tags))
+            # Output: 2
+
+            new_ann = ann.delete_tags([tag_message, tag_alert])
+            print(len(new_ann.img_tags))
+            # Output: 0
+        """
+        return self.delete_tags_by_name([tag.meta.name for tag in tags])
+
+    def delete_tag(self, tag: Tag) -> Annotation:
+        """
+        Clones Annotation with removed Tag.
+
+        :param tag: Tag to be deleted.
+        :type tag: Tag
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation((300, 600))
+
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+
+            tag_dog = sly.Tag(meta_dog, 'Woof!')
+            tag_cat = sly.Tag(meta_cat)
+
+            ann = ann.add_tags([tag_dog, tag_cat])
+            print(len(ann.img_tags))
+            # Output: 2
+
+            new_ann = ann.delete_tag(tag_dog)
+            print(len(new_ann.img_tags))
+            # Output: 1
+        """
         return self.delete_tags_by_name([tag.meta.name])
 
-    def transform_labels(self, label_transform_fn, new_size=None):
-        '''
-        The function transform_labels transform labels and change image size in current Annotation object and return the copy of the current
-        Annotation object
+    def transform_labels(self, label_transform_fn, new_size: Optional[Tuple[int, int]]=None) -> Annotation:
+        """
+        Transform labels and change image size in current Annotation object and return the copy of the current
+        Annotation object.
         :param label_transform_fn: function for transform labels
         :param new_size: new image size
         :return: Annotation class object with new labels and image size
-        '''
+        """
         def _do_transform_labels(src_labels, label_transform_fn):
             # long easy to debug
             # result = []
@@ -345,78 +803,399 @@ class Annotation:
         return self.clone(img_size=take_with_default(new_size, self.img_size), labels=new_labels,
                           pixelwise_scores_labels=new_pixelwise_scores_labels)
 
-    def crop_labels(self, rect):
-        '''
-        The function crop_labels crops labels in current Annotation object and return the copy of the current
-        Annotation object
-        :param rect: Rectangle class object
-        :return: Annotation class object with new labels
-        '''
+    def crop_labels(self, rect: Rectangle) -> Annotation:
+        """
+        Crops Labels of the current Annotation.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+
+            # Draw Annotation on image before crop
+            ann.draw_pretty(img, thickness=3)
+
+            # Crop Labels for current Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            cropped_ann = ann.crop_labels(sly.Rectangle(0, 0, 600, 700))
+
+            # Draw Annotation on image after crop
+            cropped_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/w2wR4h8.jpg
+
+                   After
+        """
         def _crop_label(label):
             return label.crop(rect)
         return self.transform_labels(_crop_label)
 
-    def relative_crop(self, rect):
-        '''
-        The function relative_crop crops labels and change image size in current Annotation object and return the copy of the current
-        Annotation object
-        :param rect: Rectangle class object
-        :return: Annotation class object with new labels and image size
-        '''
+    def relative_crop(self, rect: Rectangle) -> Annotation:
+        """
+        Crops current Annotation and with image size (height, width) changes.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.crop(new_img, sly.Rectangle(200, 300, 600, 700))
+
+            # Draw Annotation on image before relative crop
+            ann.draw_pretty(img, thickness=3)
+
+            # Relative Crop Labels for current Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            r_cropped_ann = ann.relative_crop(sly.Rectangle(200, 300, 600, 700))
+
+            # Draw Annotation on image after relative crop
+            r_cropped_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/23UuNdJ.png
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
+
+                   After
+        """
         def _crop_label(label):
             return label.relative_crop(rect)
         return self.transform_labels(_crop_label, rect.to_size())
 
-    def rotate(self, rotator):
-        '''
-        The function rotates all labels of the current Annotation object and return the copy of the current
-        Annotation object
-        :param rotator: ImageRotator class object
-        :return: Annotation class object with new(rotated) labels and image size
-        '''
+    def rotate(self, rotator: ImageRotator) -> Annotation:
+        """
+        Rotates current Annotation.
+
+        :param rotator: ImageRotator object.
+        :type rotator: ImageRotator
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.rotate(new_img, 10)
+
+            # Draw Annotation on image before rotation
+            ann.draw_pretty(img, thickness=3)
+
+            # Rotate Labels for current Annotation
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            rotator = ImageRotator(annotation.img_size, 10)
+            rotated_ann = ann.rotate(rotator)
+
+            # Draw Annotation on image after rotation
+            rotated_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
+
+                   After
+        """
         def _rotate_label(label):
             return [label.rotate(rotator)]
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
-    def resize(self, out_size):
-        '''
-        The function resize all labels of the current Annotation object and return the copy of the current
-        Annotation object
-        :param out_size: new image size
-        :return: Annotation class object with new(resized) labels and image size
-        '''
+    def resize(self, out_size: Tuple[int, int]) -> Annotation:
+        """
+        Resizes current Annotation.
+
+        :param out_size: Desired output image size (height, width).
+        :type out_size: Tuple[int, int]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.resize(new_img, (100, 200))
+
+            # Draw Annotation on image before resize
+            ann.draw_pretty(img, thickness=3)
+
+            # Resize
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            resized_ann = ann.resize((100, 200))
+
+            # Draw Annotation on image after resize
+            resized_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/RrvNMoV.jpg
+
+                   After
+        """
         def _resize_label(label):
             return [label.resize(self.img_size, out_size)]
         return self.transform_labels(_resize_label, out_size)
 
-    def scale(self, factor):
-        '''
-        The function scale change scale of the current Annotation object with a given factor and return the copy of the
-        current Annotation object
-        :param factor: float scale parameter
-        :return: Annotation class object with new scale
-        '''
+    def scale(self, factor: float) -> Annotation:
+        """
+        Scales current Annotation with the given factor.
+
+        :param factor: Scale size.
+        :type factor: float
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.scale(new_img, 0.55)
+
+            # Draw Annotation on image before rescale
+            ann.draw_pretty(img, thickness=3)
+
+            # Scale
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            rescaled_ann = ann.scale(0.55)
+
+            # Draw Annotation on image after rescale
+            rescaled_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
+
+                   After
+        """
         def _scale_label(label):
             return [label.scale(factor)]
         result_size = (round(self.img_size[0] * factor), round(self.img_size[1] * factor))
         return self.transform_labels(_scale_label, result_size)
 
-    def fliplr(self):
-        '''
-        The function flip the current Annotation object in horizontal and return the copy of the
-        current Annotation object
-        :return: Annotation class object
-        '''
+    def fliplr(self) -> Annotation:
+        """
+        Flips the current Annotation horizontally.
+
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.fliplr(new_img)
+
+            # Draw Annotation on image before horizontal flip
+            ann.draw_pretty(img, thickness=3)
+
+            # Flip
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            fliplr_ann = ann.fliplr()
+
+            # Draw Annotation on image after horizontal flip
+            fliplr_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/AQSuqIN.jpg
+
+                   After
+        """
         def _fliplr_label(label):
             return [label.fliplr(self.img_size)]
         return self.transform_labels(_fliplr_label)
 
-    def flipud(self):
-        '''
-        The function flip the current Annotation object in vertical and return the copy of the
-        current Annotation object
-        :return: Annotation class object
-        '''
+    def flipud(self) -> Annotation:
+        """
+        Flips the current Annotation vertically.
+
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+            new_img = copy.deepcopy(img)
+            new_img = sly.imaging.image.flipud(new_img)
+
+            # Draw Annotation on image before vertical flip
+            ann.draw_pretty(img, thickness=3)
+
+            # Flip
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            flipud_ann = ann.flipud()
+
+            # Draw Annotation on image after vertical flip
+            flipud_ann.draw_pretty(new_img, thickness=3)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/NVhvPDb.jpg
+
+                   After
+        """
         def _flipud_label(label):
             return [label.flipud(self.img_size)]
         return self.transform_labels(_flipud_label)
@@ -437,13 +1216,51 @@ class Annotation:
         sly_image.draw_text_sequence(bitmap, texts, (0, 0), sly_image.CornerAnchorMode.TOP_LEFT,
                                      font=self._get_font())
 
-    def draw(self, bitmap, color=None, thickness=1, draw_tags=False):
-        '''
-        The function draws rectangle near each label on bitmap
-        :param bitmap: target image (np.ndarray)
-        :param color: [R, G, B]
-        :param thickness: thickness of the drawing rectangle
-        '''
+    def draw(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+             draw_tags: Optional[bool] = False) -> None:
+        """
+        Draws current Annotation on image. Modifies mask.
+
+        :param bitmap: Image.
+        :type bitmap: np.ndarray
+        :param color: Drawing color in :class:`[R, G, B]`.
+        :type color: List[int, int, int], optional
+        :param thickness: Thickness of the drawing figure.
+        :type thickness: int, optional
+        :param draw_tags: Determines whether to draw tags on bitmap or not.
+        :type draw_tags: bool, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            # Draw Annotation on image
+            ann.draw(img)
+
+        .. image:: https://i.imgur.com/1W1Nfl1.jpg
+            :width: 600
+            :height: 500
+        """
         tags_font = None
         if draw_tags is True:
             tags_font = self._get_font()
@@ -452,13 +1269,52 @@ class Annotation:
         if draw_tags:
             self._draw_tags(bitmap)
 
-    def draw_contour(self, bitmap, color=None, thickness=1, draw_tags=False):
-        '''
-        The function draws the figure contour on a given bitmap
-        :param bitmap: target image (np.ndarray)
-        :param color: [R, G, B]
-        :param thickness: thickness of the drawing contour
-        '''
+
+    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+                     draw_tags: Optional[bool] = False) -> None:
+        """
+        Draws geometry contour of Annotation on image. Modifies mask.
+
+        :param bitmap: Image.
+        :type bitmap: np.ndarray
+        :param color: Drawing color in :class:`[R, G, B]`.
+        :type color: List[int, int, int], optional
+        :param thickness: Thickness of the drawing figure.
+        :type thickness: int, optional
+        :param draw_tags: Determines whether to draw tags on bitmap or not.
+        :type draw_tags: bool, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            # Draw Annotation contour on image
+            ann.draw_contour(img)
+
+        .. image:: https://i.imgur.com/F8KGZS4.jpg
+            :width: 600
+            :height: 500
+        """
         tags_font = None
         if draw_tags is True:
             tags_font = self._get_font()
@@ -468,18 +1324,86 @@ class Annotation:
             self._draw_tags(bitmap)
 
     @classmethod
-    def from_img_path(cls, img_path):
-        '''
-        The function from_img_path download image on the given path and return size of the image
-        :param img_path: the path to the input image
-        :return: size of the image
-        '''
+    def from_img_path(cls, img_path: str) -> Annotation:
+        """
+        Creates empty Annotation from image.
+
+        :param img_path: Path to the input image.
+        :type img_path: str
+        :return: Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
+            ann = sly.Annotation.from_img_path(img_path)
+        """
         img = sly_image.read(img_path)
         img_size = img.shape[:2]
         return cls(img_size)
 
     @classmethod
-    def stat_area(cls, render, names, colors):
+    def stat_area(cls, render: np.ndarray, names: List[str], colors: List[List[int, int, int]]) -> Dict[str, float]:
+        """
+        Get statistics about color area representation on the given render for the current Annotation.
+
+        :param render: Target render.
+        :type render: np.ndarray
+        :param names: List of color names.
+        :type names: List[str]
+        :param colors: List of :class:`[R, G, B]` colors.
+        :type colors: List[List[int, int, int]]
+        :return: Colors area representation on the given render
+        :rtype: :class:`dict`
+        :raises: :class:`RuntimeError` if len(names) != len(colors)
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            class_names = []
+            class_colors = []
+            for label in ann.labels:
+                class_names.append(label.obj_class.name)
+                class_colors.append(label.obj_class.color)
+
+            ann.draw_pretty(img, thickness=3)
+
+            ann_stats = ann.stat_area(img, class_names, class_colors)
+            print(ann_stats)
+            # Output: {
+            #     "lemon":0.45548266166822865,
+            #     "kiwi":0.5697047797563262,
+            #     "unlabeled":98.97481255857544,
+            #     "height":800,
+            #     "width":1067,
+            #     "channels":3
+            # }
+
+            print(stat_area)
+        """
         if len(names) != len(colors):
             raise RuntimeError("len(names) != len(colors) [{} != {}]".format(len(names), len(colors)))
 
@@ -517,7 +1441,38 @@ class Annotation:
         result['channels'] = channels
         return result
 
-    def stat_class_count(self, class_names):
+    def stat_class_count(self, class_names: Optional[List[str]]=None) -> defaultdict:
+        """
+        Get statistics about number of each class in Annotation.
+
+        :param class_names: List of classes names.
+        :type class_names: List[str], optional
+        :return: Number of each class in Annotation and total number of classes
+        :rtype: :class:`defaultdict`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # Create object classes
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+
+            # Create labels
+            label_kiwi = sly.Label(sly.Rectangle(100, 100, 700, 900), class_kiwi)
+            label_lemon = sly.Label(sly.Rectangle(200, 200, 500, 600), class_lemon)
+            labels_arr = [label_kiwi, label_lemon]
+
+            # Create annotation
+            height, width = 300, 400
+            ann = sly.Annotation((height, width), labels_arr)
+
+            stat_class = ann.stat_class_count(['lemon', 'kiwi'])
+
+            # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
+        """
         total = 0
         stat = {name: 0 for name in class_names}
         for label in self._labels:
@@ -529,7 +1484,45 @@ class Annotation:
         stat['total'] = total
         return stat
 
-    def draw_class_idx_rgb(self, render, name_to_index):
+    def draw_class_idx_rgb(self, render: np.ndarray, name_to_index: Dict[str, int]) -> None:
+        """
+        Draws current Annotation on render.
+
+        :param render: Target render to draw classes.
+        :type render: np.ndarray
+        :param name_to_index: Dict where keys are class names and values are class indices to draw on render.
+        :type name_to_index: dict
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            # Draw Annotation on image
+            name_to_index = {'lemon': 90, 'kiwi': 195}
+            ann.draw_class_idx_rgb(img, name_to_index)
+
+        .. image:: https://i.imgur.com/ACSaBgw.jpg
+            :width: 600
+            :height: 500
+        """
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
             color = [class_idx, class_idx, class_idx]
@@ -539,7 +1532,59 @@ class Annotation:
     def custom_data(self):
         return self._custom_data.copy()
 
-    def filter_labels_by_min_side(self, thresh, filter_operator=operator.lt, classes=None):
+    def filter_labels_by_min_side(self, thresh: int, filter_operator: Optional[operator] = operator.lt,
+                                  classes: Optional[List[str]] = None) -> Annotation:
+        """
+        Filters Labels of the current Annotation by side. If minimal side is smaller than Label threshold it will be ignored.
+
+        :param thresh: Side threshold to filter.
+        :type thresh: int
+        :param filter_operator: Type of filter operation.
+        :type filter_operator: operator
+        :param classes: List of Labels names to apply filter.
+        :type classes: List[str]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            # Filter Labels
+            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+            filtered_ann = ann.filter_labels_by_min_side(200)
+
+            # Draw filtered Annotation on image
+            filtered_ann.draw(img)
+
+        .. list-table::
+
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+
+                   Before
+
+              - .. figure:: https://i.imgur.com/uunTbPR.jpg
+
+                   After
+        """
         def filter(label):
             if classes == None or label.obj_class.name in classes:
                 bbox = label.geometry.to_bbox()
@@ -550,20 +1595,161 @@ class Annotation:
             return [label]
         return self.transform_labels(filter)
 
-    def get_label_by_id(self, sly_id) -> Label:
+    def get_label_by_id(self, sly_id: int) -> Label or None:
+        """
+        Get Label from current Annotation by sly_id.
+
+        :param sly_id: Label ID from Supervisely server.
+        :type sly_id: int
+        :return: Label or None
+        :rtype: :class:`Label<supervisely.annotation.label.Label>` or :class:`NoneType`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # To get Label ID you must first access ProjectMeta
+            PROJECT_ID = 999
+
+            meta_json = api.project.get_meta(PROJECT_ID)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            # Get desired image id to which label belongs to download annotation
+            image_id = 376728
+            ann_info = api.annotation.download(image_id)
+            ann_json = ann_info.annotation
+            ann = sly.Annotation.from_json(ann_json, meta)
+
+            # Get Label by it's ID
+            label_by_id = ann.get_label_by_id(sly_id=2263842)
+            print(label_by_id.to_json())
+            # Output: {
+            #     "classTitle":"kiwi",
+            #     "description":"",
+            #     "tags":[],
+            #     "points":{
+            #         "exterior":[
+            #             [481, 549],
+            #             [641, 703]
+            #         ],
+            #         "interior":[]
+            #     },
+            #     "labelerLogin":"cxnt",
+            #     "updatedAt":"2020-12-11T08:11:43.249Z",
+            #     "createdAt":"2020-12-10T09:38:57.969Z",
+            #     "id":2263842,
+            #     "classId":7370,
+            #     "geometryType":"rectangle",
+            #     "shape":"rectangle"
+            # }
+
+            # Returns None if Label ID doesn't exist on the given image ID
+            label_by_id = ann.get_label_by_id(sly_id=9999999)
+            # Output: None
+        """
         for label in self._labels:
             if label.geometry.sly_id == sly_id:
                 return label
         return None
 
-    def merge(self, other: Annotation):
+    def merge(self, other: Annotation) -> Annotation:
+        """
+        Merge current Annotation with another Annotation.
+
+        :param other: Annotation to merge.
+        :type other: Annotation
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # Create annotation
+            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+            tag_lemon = sly.Tag(meta_lemon, 'lemon')
+            tags_lemon = sly.TagCollection([tag_lemon])
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+            height, width = 300, 400
+            ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
+
+            # Create annotation to merge
+            meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+            tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
+            tags_kiwi = sly.TagCollection([tag_kiwi])
+            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+            label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
+            height, width = 700, 500
+            ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
+
+            # Merge annotations
+            ann_merge = ann_lemon.merge(ann_kiwi)
+
+            for label in ann_merge.labels:
+                print(label.obj_class.name)
+
+            # Output: lemon
+            # Output: kiwi
+        """
         res = self.clone()
         res = res.add_labels(other.labels)
         res = res.add_tags(other.img_tags)
         return res
 
-    def draw_pretty(self, bitmap: np.ndarray, color: List[int, int, int] = None, thickness: int = 1,
-                    opacity: float = 0.5, draw_tags: bool = False, output_path: str = None) -> None:
+    def draw_pretty(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+                    opacity: Optional[float] = 0.5, draw_tags: Optional[bool] = False, output_path: Optional[str] = None) -> None:
+        """
+        Draws current Annotation on image with contour. Modifies mask.
+
+        :param bitmap: Image.
+        :type bitmap: np.ndarray
+        :param color: Drawing color in :class:`[R, G, B]`.
+        :type color: List[int, int, int], optional
+        :param thickness: Thickness of the drawing figure.
+        :type thickness: int, optional
+        :param opacity: Opacity of the drawing figure.
+        :type opacity: float, optional
+        :param draw_tags: Determines whether to draw tags on bitmap or not.
+        :type draw_tags: bool, optional
+        :param output_path: Saves modified image to the given path.
+        :type output_path: str, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image and annotation from API
+            project_id = 888
+            image_id = 555555
+
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            img = api.image.download_np(image_id)
+
+            # Draw pretty Annotation on image
+            ann.draw_pretty(img, thickness=3)
+
+        .. image:: https://i.imgur.com/6huO1se.jpg
+            :width: 600
+            :height: 500
+        """
         height, width = bitmap.shape[:2]
         vis_filled = np.zeros((height, width, 3), np.uint8)
         self.draw(vis_filled, color=color, thickness=thickness, draw_tags=draw_tags)
@@ -574,7 +1760,203 @@ class Annotation:
         if output_path:
             sly_image.write(output_path, bitmap)
 
-    def to_nonoverlapping_masks(self, mapping):
+    def to_nonoverlapping_masks(self, mapping: Dict[ObjClass, ObjClass]) -> Annotation:
+        """
+        Create new annotation with non-overlapping labels masks. Convert classes to Bitmap or skip them.
+
+        :param mapping: Dict with ObjClasses for mapping.
+        :type mapping: Dict[ObjClass, ObjClass]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image annotation from API
+            project_id = 7548
+            image_id = 2254937
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(image_id)
+            print(json.dumps(ann_info.annotation, indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 56656282,
+            #             "classId": 122357,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T11:01:40.805Z",
+            #             "updatedAt": "2021-10-15T11:01:40.805Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+            #                 "origin": [
+            #                     589,
+            #                     372
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 56656281,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.178Z",
+            #             "updatedAt": "2021-10-15T13:22:58.178Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         719,
+            #                         115
+            #                     ],
+            #                   ...
+            #                     [
+            #                         732,
+            #                         123
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 56656280,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.178Z",
+            #             "updatedAt": "2021-10-15T13:22:58.178Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         250,
+            #                         216
+            #                     ],
+            #                   ...
+            #                     [
+            #                         278,
+            #                         212
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 56656279,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.177Z",
+            #             "updatedAt": "2021-10-15T13:22:58.177Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         554,
+            #                         581
+            #                     ],
+            #                   ...
+            #                     [
+            #                         560,
+            #                         587
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         }
+            #     ]
+            # }
+
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Create mapping. Let's check 'kiwi' classes and skip 'lemon' classes.
+            mapping = {}
+            for label in ann.labels:
+                if label.obj_class.name not in mapping:
+                    if label.obj_class.name == 'lemon':
+                        mapping[label.obj_class] = None
+                    else:
+                        new_obj_class = sly.ObjClass(label.obj_class.name, Bitmap)
+                        mapping[label.obj_class] = new_obj_class
+            nonoverlap_ann = ann.to_nonoverlapping_masks(mapping)
+            print(json.dumps(nonoverlap_ann.to_json(), indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "tags": [],
+            #     "objects": [
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     187,
+            #                     396
+            #                 ],
+            #                 "data": "eJwBLALT/YlQTkcNChoKAAAADUlIRFIAAACuAAAAzgEDAAAAnTar9wAAAAZQTFRFAAAA...
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap"
+            #         },
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     365,
+            #                     385
+            #                 ],
+            #                 "data": "eJwB4gEd/olQTkcNChoKAAAADUlIRFIAAACbAAAAwgEDAAAAZC4i8AAAAAZQTFRFAAAA...
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap"
+            #         },
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     469,
+            #                     506
+            #                 ],
+            #                 "data": "eJwBHgLh/YlQTkcNChoKAAAADUlIRFIAAAC1AAAArQEDAAAAzBisHAAAAAZQTFRFAAAA...
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap"
+            #         }
+            #     ],
+            #     "customBigData": {}
+            # }
+        """
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
             #if mapping[lbl.obj_class] is not None:
@@ -598,7 +1980,20 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def to_indexed_color_mask(self, mask_path, palette=Image.ADAPTIVE, colors=256):
+    def to_indexed_color_mask(self, mask_path: str, palette: Optional[Image.ADAPTIVE]=Image.ADAPTIVE,
+                              colors: Optional[int]=256) -> None:
+        """
+        Draw current Annotation on image and save it in PIL format.
+
+        :param mask_path: Saves image to the given path.
+        :type mask_path: str
+        :param palette: Palette to use when converting image from mode "RGB" to "P".
+        :type palette: Available palettes are `WEB` or `ADAPTIVE`, optional
+        :param colors: Number of colors to use for the `ADAPTIVE` palette.
+        :type colors: int, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        """
         mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
         for label in self.labels:
             label.geometry.draw(mask, label.obj_class.color)
@@ -624,7 +2019,138 @@ class Annotation:
             return self
 
 
-    def to_segmentation_task(self):
+    def to_segmentation_task(self) -> Annotation:
+        """
+        Convert Annotation classes by joining labels with same object classes to one label. Applies to Bitmap only.
+
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image annotation from API
+            project_id = 7473
+            image_id = 2223200
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(image_id)
+            print(json.dumps(ann_info.annotation, indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 57388829,
+            #             "classId": 121405,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:06:05.183Z",
+            #             "updatedAt": "2022-01-02T08:07:12.219Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "bitmap": {
+            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8W...,
+            #                 "origin": [
+            #                     481,
+            #                     543
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 57388831,
+            #             "classId": 121404,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:06:59.133Z",
+            #             "updatedAt": "2022-01-02T08:07:12.219Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rD...,
+            #                 "origin": [
+            #                     523,
+            #                     119
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 57388832,
+            #             "classId": 121405,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:07:12.104Z",
+            #             "updatedAt": "2022-01-02T08:07:12.104Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "bitmap": {
+            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+            #                 "origin": [
+            #                     773,
+            #                     391
+            #                 ]
+            #             }
+            #         }
+            #     ]
+            # }
+
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            segm_ann = ann.to_segmentation_task()
+            print(json.dumps(segm_ann.to_json(), indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "tags": [],
+            #     "objects": [
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     481,
+            #                     391
+            #                 ],
+            #                 "data": "eJwBagSV+4lQTkcNChoKAAAADUlIRFIAAAHpAAABOQEDAAAAjj5K+wAAAAZQTFRFAAAA...
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap"
+            #         },
+            #         {
+            #             "classTitle": "lemon",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     523,
+            #                     119
+            #                 ],
+            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap"
+            #         }
+            #     ],
+            #     "customBigData": {}
+            # }
+        """
         class_mask = {}
         for label in self.labels:
             if label.obj_class not in class_mask:
@@ -637,7 +2163,238 @@ class Annotation:
             new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
         return self.clone(labels=new_labels)
 
-    def to_detection_task(self, mapping):
+    def to_detection_task(self, mapping: Dict[ObjClass, ObjClass]) -> Annotation:
+        """
+        Convert Annotation classes geometries according to mapping dict and checking nonoverlapping masks.
+        Converting possible only to Bitmap or Rectangle.
+
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image annotation from API
+            project_id = 7548
+            image_id = 2254942
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(image_id)
+            print(json.dumps(ann_info.annotation, indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 56656282,
+            #             "classId": 122357,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T11:01:40.805Z",
+            #             "updatedAt": "2021-10-15T11:01:40.805Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+            #                 "origin": [
+            #                     589,
+            #                     372
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 56656281,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.178Z",
+            #             "updatedAt": "2021-10-15T13:22:58.178Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         719,
+            #                         115
+            #                     ],
+            #                   ...
+            #                     [
+            #                         732,
+            #                         123
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 56656280,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.178Z",
+            #             "updatedAt": "2021-10-15T13:22:58.178Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         250,
+            #                         216
+            #                     ],
+            #                   ...
+            #                     [
+            #                         278,
+            #                         212
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 56656279,
+            #             "classId": 122356,
+            #             "description": "",
+            #             "geometryType": "polygon",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2021-10-15T13:22:58.177Z",
+            #             "updatedAt": "2021-10-15T13:22:58.177Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         554,
+            #                         581
+            #                     ],
+            #                   ...
+            #                     [
+            #                         560,
+            #                         587
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         }
+            #     ]
+            # }
+
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Create mapping for classes converting. Let's convert classes to Rectangle.
+            mapping = {}
+            for label in ann.labels:
+                if label.obj_class.name not in mapping:
+                    new_obj_class = sly.ObjClass(label.obj_class.name, Rectangle)
+                    mapping[label.obj_class] = new_obj_class
+
+            det_ann = ann.to_detection_task(mapping)
+            print(json.dumps(det_ann.to_json(), indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "tags": [],
+            #     "objects": [
+            #         {
+            #             "classTitle": "lemon",
+            #             "description": "",
+            #             "tags": [],
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         589,
+            #                         372
+            #                     ],
+            #                     [
+            #                         899,
+            #                         537
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             },
+            #             "geometryType": "rectangle",
+            #             "shape": "rectangle"
+            #         },
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         612,
+            #                         110
+            #                     ],
+            #                     [
+            #                         765,
+            #                         282
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             },
+            #             "geometryType": "rectangle",
+            #             "shape": "rectangle"
+            #         },
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         196,
+            #                         212
+            #                     ],
+            #                     [
+            #                         352,
+            #                         380
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             },
+            #             "geometryType": "rectangle",
+            #             "shape": "rectangle"
+            #         },
+            #         {
+            #             "classTitle": "kiwi",
+            #             "description": "",
+            #             "tags": [],
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         425,
+            #                         561
+            #                     ],
+            #                     [
+            #                         576,
+            #                         705
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             },
+            #             "geometryType": "rectangle",
+            #             "shape": "rectangle"
+            #         }
+            #     ],
+            #     "customBigData": {}
+            # }
+        """
         aux_mapping = mapping.copy()
 
         to_render_mapping = {}
@@ -675,7 +2432,15 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def masks_to_imgaug(self, class_to_index=None):
+    def masks_to_imgaug(self, class_to_index: Dict[str, int]) -> SegmentationMapsOnImage or None:
+        """
+        Convert current annotation objects masks to SegmentationMapsOnImage format.
+
+        :param class_to_index: Dict matching class name to index.
+        :type class_to_index: dict
+        :return: SegmentationMapsOnImage, otherwise :class:`None`
+        :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
+        """
         from imgaug.augmentables.segmaps import SegmentationMapsOnImage
         h = self.img_size[0]
         w = self.img_size[1]
@@ -695,7 +2460,13 @@ class Annotation:
             segmaps = SegmentationMapsOnImage(mask, shape=self.img_size)
         return segmaps
 
-    def bboxes_to_imgaug(self):
+    def bboxes_to_imgaug(self) -> BoundingBoxesOnImage or None:
+        """
+        Convert current annotation objects boxes to BoundingBoxesOnImage format.
+
+        :return: BoundingBoxesOnImage, otherwise :class:`None`
+        :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
+        """
         from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
         boxes = []
         for label in self.labels:
@@ -712,9 +2483,26 @@ class Annotation:
         return bbs
 
     @classmethod
-    def from_imgaug(cls, img, ia_boxes=None, ia_masks=None,
-                    index_to_class=None,
-                    meta: ProjectMeta = None):
+    def from_imgaug(cls, img: np.ndarray, ia_boxes: Optional[List[BoundingBoxesOnImage]] = None, ia_masks:Optional[List[SegmentationMapsOnImage]] = None,
+                    index_to_class: Optional[Dict[int, str]] = None, meta: Optional[ProjectMeta] = None) -> Annotation:
+        """
+        Create Annotation from image and SegmentationMapsOnImage, BoundingBoxesOnImage data or ProjectMeta.
+
+        :param img: Image in numpy format.
+        :type img: np.ndarray
+        :param ia_boxes: List of BoundingBoxesOnImage data.
+        :type ia_boxes: List[BoundingBoxesOnImage], optional
+        :param ia_masks:  List of SegmentationMapsOnImage data.
+        :type ia_masks: List[SegmentationMapsOnImage], optional
+        :param index_to_class: Dictionary specifying index match of class name.
+        :type index_to_class: Dict[int, str], optional
+        :param meta: ProjectMeta.
+        :type meta: ProjectMeta, optional
+        :raises: :class:`ValueError`, if ia_boxes or ia_masks and meta is None
+        :raises: :class:`KeyError`, if processed ObjClass not found in meta
+        :return: Annotation object
+        :rtype: :class:`Annotation<Annotation>`
+        """
         if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
             raise ValueError("Project meta has to be provided")
 
@@ -743,13 +2531,146 @@ class Annotation:
 
         return cls(img_size=img.shape[:2], labels=labels)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """
+        Check whether annotation contains labels or tags, or not.
+
+        :returns: True if annotation is empty, False otherwise.
+        :rtype: :class:`bool`
+        """
         if len(self.labels) == 0 and len(self.img_tags) == 0:
             return True
         else:
             return False
 
-    def filter_labels_by_classes(self, keep_classes):
+    def filter_labels_by_classes(self, keep_classes: List[str]) -> Annotation:
+        """
+        Filter annotation labels by given classes names.
+
+        :param keep_classes: List with classes names.
+        :type keep_classes: List[str]
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get image annotation from API
+            project_id = 7473
+            image_id = 2223200
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(image_id)
+            print(json.dumps(ann_info.annotation, indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 57388829,
+            #             "classId": 121405,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:06:05.183Z",
+            #             "updatedAt": "2022-01-02T08:07:12.219Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "bitmap": {
+            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8WIy...,
+            #                 "origin": [
+            #                     481,
+            #                     543
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 57388831,
+            #             "classId": 121404,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:06:59.133Z",
+            #             "updatedAt": "2022-01-02T08:07:12.219Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rDuTdE...,
+            #                 "origin": [
+            #                     523,
+            #                     119
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 57388832,
+            #             "classId": 121405,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "createdAt": "2022-01-02T08:07:12.104Z",
+            #             "updatedAt": "2022-01-02T08:07:12.104Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "bitmap": {
+            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+            #                 "origin": [
+            #                     773,
+            #                     391
+            #                 ]
+            #             }
+            #         }
+            #     ]
+            # }
+
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Let's filter 'lemon' class
+            keep_classes = ['lemon']
+            filter_ann = ann.filter_labels_by_classes(keep_classes)
+            print(json.dumps(filter_ann.to_json(), indent=4))
+
+            # Output: {
+            #     "description": "",
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "tags": [],
+            #     "objects": [
+            #         {
+            #             "classTitle": "lemon",
+            #             "description": "",
+            #             "tags": [],
+            #             "bitmap": {
+            #                 "origin": [
+            #                     523,
+            #                     119
+            #                 ],
+            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...,
+            #             },
+            #             "shape": "bitmap",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alex",
+            #             "updatedAt": "2022-01-02T08:07:12.219Z",
+            #             "createdAt": "2022-01-02T08:06:59.133Z",
+            #             "id": 57388831,
+            #             "classId": 121404
+            #         }
+            #     ],
+            #     "customBigData": {}
+            # }
+        """
         new_labels = []
         for lbl in self.labels:
             if lbl.obj_class.name in keep_classes:

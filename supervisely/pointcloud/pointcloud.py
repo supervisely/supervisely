@@ -20,28 +20,28 @@ class PointcloudReadException(Exception):
 
 
 def is_valid_ext(ext: str) -> bool:
-    '''
+    """
     Checks if given extention is supported
     :param ext: str
     :return: bool
-    '''
+    """
     return ext.lower() in ALLOWED_POINTCLOUD_EXTENSIONS
 
 
 def has_valid_ext(path: str) -> bool:
-    '''
+    """
     Checks if file from given path with given extention is supported
     :param path: str
     :return: bool
-    '''
+    """
     return is_valid_ext(os.path.splitext(path)[1])
 
 
-def validate_ext(ext: str):
-    '''
+def validate_ext(ext: str) -> None:
+    """
     Raise error if given extention is not supported
     :param ext: str
-    '''
+    """
     if not is_valid_ext(ext):
         raise UnsupportedPointcloudFormat('Unsupported pointcloud extension: {}. Only the following extensions are supported: {}.'
                                           .format(ext, ALLOWED_POINTCLOUD_EXTENSIONS))

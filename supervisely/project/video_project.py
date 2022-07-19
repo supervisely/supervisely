@@ -1,7 +1,11 @@
 # coding: utf-8
 
+# docs
 from collections import namedtuple
 import os
+from typing import List, Optional, Tuple
+from supervisely.api.api import Api
+
 
 from supervisely.io.fs import file_exists, touch
 from supervisely.io.json import dump_json_file, load_json_file
@@ -168,21 +172,30 @@ class VideoProject(Project):
 
 
 def download_video_project(
-    api,
-    project_id,
-    dest_dir,
-    dataset_ids=None,
-    download_videos=True,
-    log_progress=False,
-):
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: List[int] = None,
+    download_videos: bool = True,
+    log_progress: bool = False,
+) -> None:
     """
-    Download project with given id in destination directory
-    :param api: Api class object
-    :param project_id: int
-    :param dest_dir: str
-    :param dataset_ids: list of integers
-    :param download_videos: bool
-    :param log_progress: bool
+    Download project with given id in destination directory.
+
+    :param api: Api class object.
+    :type api: Api
+    :param project_id: Project ID in Supervisely.
+    :type project_id: int
+    :param dest_dir: Directory to download video project.
+    :type dest_dir: str
+    :param dataset_ids: Datasets IDs in Supervisely to download.
+    :type dataset_ids: List[int], optional
+    :param download_videos: Download videos from Supervisely video project in dest_dir or not.
+    :type download_videos: bool, optional
+    :param log_progress: Logging progress of download video project or not.
+    :type log_progress: bool, optional
+    :return: None
+    :rtype: :class:`NoneType`
     """
     LOG_BATCH_SIZE = 1
 
@@ -238,12 +251,35 @@ def download_video_project(
                     _validate_item=False,
                 )
 
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_video_project(dir, api, workspace_id, project_name=None, log_progress=True):
+def upload_video_project(
+    dir: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = True,
+) -> Tuple[int, str]:
+    """
+    Upload video project from given directory in Supervisely.
+
+    :param dir: Directory with video project.
+    :type dir: str
+    :param api: Api class object.
+    :type api: Api
+    :param workspace_id: Workspace ID in Supervisely to upload video project.
+    :type workspace_id: int
+    :param project_name: Name of video project.
+    :type project_name: str
+    :param log_progress: Logging progress of download video project or not.
+    :type log_progress: bool, optional
+    :return: New video project ID in Supervisely and project name
+    :rtype: :class:`Tuple[int, str]`
+    """
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name

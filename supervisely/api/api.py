@@ -1,9 +1,11 @@
 # coding: utf-8
+"""api connection to the server which allows user to communicate with Supervisely"""
 
+from __future__ import annotations
 import os
 import requests
 import json
-
+from typing import List, Optional, NamedTuple, Dict
 from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
 
 import supervisely.api.team_api as team_api
@@ -35,10 +37,7 @@ import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
 
 
-from supervisely.io.network_exceptions import (
-    process_requests_exception,
-    process_unhandled_request,
-)
+from supervisely.io.network_exceptions import process_requests_exception, process_unhandled_request
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -49,22 +48,40 @@ TASK_ID = "TASK_ID"
 
 
 class Api:
-    def __init__(
-        self,
-        server_address,
-        token,
-        retry_count=None,
-        retry_sleep_sec=None,
-        external_logger=None,
-        ignore_task_id=False,
-    ):
-        """
-        :param server_address: str (example: http://192.168.1.69:5555)
-        :param token: str
-        :param retry_count: int
-        :param retry_sleep_sec: int
-        :param external_logger: logger class object
-        """
+    """
+    An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<Api>` object is immutable.
+
+    :param server_address: Address of the server.
+    :type server_address: str
+    :param token: Unique secret token associated with your agent.
+    :type token: str
+    :param retry_count: The number of attempts to connect to the server.
+    :type retry_count: int, optional
+    :param retry_sleep_sec: The number of seconds to delay between attempts to connect to the server.
+    :type retry_sleep_sec: int, optional
+    :param external_logger: Logger class object.
+    :type external_logger: logger, optional
+    :param ignore_task_id:
+    :type ignore_task_id: bool, optional
+    :raises: :class:`ValueError`, if token is None or it length != 128
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+    """
+    def __init__(self, server_address: str, token: str, retry_count: Optional[int] = None, retry_sleep_sec: Optional[int] = None,
+                 external_logger: Optional[logger] = None, ignore_task_id: Optional[bool] = False):
         if token is None:
             raise ValueError("Token is None")
         self.server_address = Api.normalize_server_address(server_address)
@@ -127,9 +144,26 @@ class Api:
         return result
 
     @classmethod
-    def from_env(cls, retry_count=5, ignore_task_id=False):
+    def from_env(cls, retry_count: int=5, ignore_task_id: bool=False) -> Api:
         """
-        :return: Api class object with server adress and token obtained from environment variables
+        Initialize API use environment variables.
+
+        :param retry_count: The number of attempts to connect to the server.
+        :type retry_count: int
+        :param ignore_task_id:
+        :type ignore_task_id: bool
+        :return: Api object
+        :rtype: :class:`Api<supervisely.api.api.Api>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
         """
         return cls(
             os.environ[SERVER_ADDRESS],
@@ -138,11 +172,17 @@ class Api:
             ignore_task_id=ignore_task_id,
         )
 
-    def add_header(self, key, value):
+    def add_header(self, key: str, value: str) -> None:
         """
-        Add given key and value to headers dictionary. Raise error if key is already set.
-        :param key: str
-        :param value: str
+        Add given key and value to headers dictionary.
+
+        :param key: New key.
+        :type key: str
+        :param value: New value.
+        :type value: str
+        :raises: :class:`RuntimeError`, if key is already set
+        :return: None
+        :rtype: :class:`NoneType`
         """
         if key in self.headers:
             raise RuntimeError(
@@ -151,22 +191,33 @@ class Api:
             )
         self.headers[key] = value
 
-    def add_additional_field(self, key, value):
+    def add_additional_field(self, key: str, value: str) -> None:
         """
         Add given key and value to additional_fields dictionary.
-        :param key: str
-        :param value: str
+
+        :param key: New key.
+        :type key: str
+        :param value: New value.
+        :type value: str
+        :return: None
+        :rtype: :class:`NoneType`
         """
         self.additional_fields[key] = value
 
-    def post(self, method, data, retries=None, stream=False):
+    def post(self, method: str, data: Dict, retries: Optional[int]=None, stream: Optional[bool]=False) -> requests.Response:
         """
-        Performs POST request to server with given parameters. Raise error if can not connect to server.
-        :param method: str
-        :param data: dict
-        :param retries: int (number of attempts to access the server)
-        :param stream: bool
-        :return: Request class object
+        Performs POST request to server with given parameters.
+
+        :param method:
+        :type method: str
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :type stream: bool, optional
+        :return: Response object
+        :rtype: :class:`Response<Response>`
         """
         if retries is None:
             retries = self.retry_count
@@ -216,7 +267,24 @@ class Api:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
-    def get(self, method, params, retries=None, stream=False, use_public_api=True):
+    def get(self, method: str, params: Dict, retries: Optional[int] = None, stream: Optional[bool] = False,
+            use_public_api: Optional[bool] = True) -> requests.Response:
+        """
+        Performs GET request to server with given parameters.
+
+        :param method:
+        :type method: str
+        :param params: Dictionary to send in the body of the :class:`Request`.
+        :type method: dict
+        :param retries: The number of attempts to connect to the server.
+        :type method: int, optional
+        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :type method: bool, optional
+        :param use_public_api:
+        :type method: bool, optional
+        :return: Response object
+        :rtype: :class:`Response<Response>`
+        """
         if retries is None:
             retries = self.retry_count
 
@@ -254,10 +322,9 @@ class Api:
     @staticmethod
     def _raise_for_status(response):
         """
-        Raise error and show message with code of mistake if given response can not connect to server.
+        Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
         """
-        """Raises stored :class:`HTTPError`, if one occurred."""
         http_error_msg = ""
         if isinstance(response.reason, bytes):
             try:
@@ -287,14 +354,18 @@ class Api:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
 
     @staticmethod
-    def parse_error(
-        response, default_error="Error", default_message="please, contact administrator"
-    ):
+    def parse_error(response: requests.Response, default_error: Optional[str]="Error", default_message: Optional[str]="please, contact administrator"):
         """
-        :param response: Request class object
-        :param default_error: str
-        :param default_message: str
-        :return: number of error and message about curren connection mistake
+        Processes error from response.
+
+        :param response: Request object.
+        :type method: Request
+        :param default_error: Error description.
+        :type method: str, optional
+        :param default_message: Message to user.
+        :type method: str, optional
+        :return: Number of error and message about curren connection mistake
+        :rtype: :class:`int`, :class:`str`
         """
         ERROR_FIELD = "error"
         MESSAGE_FIELD = "message"
@@ -314,7 +385,7 @@ class Api:
         except Exception as e:
             return "", ""
 
-    def pop_header(self, key):
+    def pop_header(self, key: str) -> str:
         if key not in self.headers:
             raise KeyError(f"Header {key!r} not found")
         return self.headers.pop(key)

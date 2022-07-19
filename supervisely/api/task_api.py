@@ -1,9 +1,14 @@
 # coding: utf-8
+"""api for working with tasks"""
 
+# docs
+from typing import List, NamedTuple, Dict, Optional, Callable
 import os
 import time
 from collections import defaultdict, OrderedDict
 import json
+from supervisely.task.progress import Progress
+
 
 from supervisely.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus, WaitingTimeExceeded
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -16,6 +21,30 @@ from supervisely._utils import (
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
+    """
+    API for working with Tasks. :class:`TaskApi<TaskApi>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        task_id = 121230
+        task_info = api.task.get_info_by_id(task_id)
+    """
     class RestartPolicy(StrEnum):
         NEVER = 'never'
         ON_ERROR = 'on_error'
@@ -41,47 +70,171 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         ModuleApiBase.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, workspace_id, filters=None):
-        '''
-        :param workspace_id: int
-        :param filters: list
-        :return: list of all tasks in given workspace
-        '''
-        return self.get_list_all_pages('tasks.list', {ApiField.WORKSPACE_ID: workspace_id,
-                                                      ApiField.FILTER: take_with_default(filters, [])})
+    def get_list(self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+        """
+        List of Tasks in the given Workspace.
 
-    def get_info_by_id(self, id):
-        '''
-        :param id: int
-        :return: task info by numeric id
-        '''
+        :param workspace_id: Workspace ID.
+        :type workspace_id: int
+        :param filters: List of params to sort output Projects.
+        :type filters: List[dict], optional
+        :return: List of Tasks with information for the given Workspace.
+        :rtype: :class:`List[NamedTuple]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            workspace_id = 23821
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_infos = api.task.get_list(workspace_id)
+
+            task_infos_filter = api.task.get_list(23821, filters=[{'field': 'id', 'operator': '=', 'value': 121230}])
+            print(task_infos_filter)
+            # Output: [
+            #     {
+            #         "id": 121230,
+            #         "type": "clone",
+            #         "status": "finished",
+            #         "startedAt": "2019-12-19T12:13:09.702Z",
+            #         "finishedAt": "2019-12-19T12:13:09.701Z",
+            #         "meta": {
+            #             "input": {
+            #                 "model": {
+            #                     "id": 1849
+            #                 },
+            #                 "isExternal": true,
+            #                 "pluginVersionId": 84479
+            #             },
+            #             "output": {
+            #                 "model": {
+            #                     "id": 12380
+            #                 },
+            #                 "pluginVersionId": 84479
+            #             }
+            #         },
+            #         "description": ""
+            #     }
+            # ]
+        """
+        return self.get_list_all_pages('tasks.list',
+                                       {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
+
+    def get_info_by_id(self, id: int) -> NamedTuple:
+        """
+        Get Task information by ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Information about Task.
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_info = api.task.get_info_by_id(task_id)
+            print(task_info)
+            # Output: {
+            #     "id": 121230,
+            #     "workspaceId": 23821,
+            #     "description": "",
+            #     "type": "clone",
+            #     "status": "finished",
+            #     "startedAt": "2019-12-19T12:13:09.702Z",
+            #     "finishedAt": "2019-12-19T12:13:09.701Z",
+            #     "userId": 16154,
+            #     "meta": {
+            #         "input": {
+            #             "model": {
+            #                 "id": 1849
+            #             },
+            #             "isExternal": true,
+            #             "pluginVersionId": 84479
+            #         },
+            #         "output": {
+            #             "model": {
+            #                 "id": 12380
+            #             },
+            #             "pluginVersionId": 84479
+            #         }
+            #     },
+            #     "settings": {},
+            #     "agentName": null,
+            #     "userLogin": "alexxx",
+            #     "teamId": 16087,
+            #     "agentId": null
+            # }
+        """
         return self._get_info_by_id(id, 'tasks.info')
 
-    def get_status(self, task_id):
-        '''
-        :param task_id: int
-        :return: Status class object (status of task with given id)
-        '''
+    def get_status(self, task_id: int) -> Status:
+        """
+        Check status of Task by ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Status object
+        :rtype: :class:`Status`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            task_status = api.task.get_status(task_id)
+            print(task_status)
+            # Output: finished
+        """
         status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
-    def raise_for_status(self, status):
-        '''
-        Raise error if status is ERROR
-        :param status: Status class object
-        '''
+    def raise_for_status(self, status: Status) -> None:
+        """
+        Raise error if Task status is ERROR.
+
+        :param status: Status object.
+        :type status: Status
+        :return: None
+        :rtype: :class:`NoneType`
+        """
         if status is self.Status.ERROR:
             raise RuntimeError('Task status: ERROR')
 
-    def wait(self, id, target_status, wait_attempts=None, wait_attempt_timeout_sec=None):
-        '''
-        Awaiting achievement by given task of a given status
-        :param id: int
-        :param target_status: Status class object (status of task we expect to destinate)
-        :param wait_attempts: int
-        :param wait_attempt_timeout_sec: int (raise error if waiting time exceeded)
-        :return: bool
-        '''
+    def wait(self, id: int, target_status: Status, wait_attempts: Optional[int]=None,
+             wait_attempt_timeout_sec: Optional[int]=None) -> bool:
+        """
+        Awaiting achievement by given Task of a given status.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :param target_status: Status object(status of task we expect to destinate).
+        :type target_status: Status
+        :param wait_attempts: The number of attempts to determine the status of the task that we are waiting for.
+        :type wait_attempts: int, optional
+        :param wait_attempt_timeout_sec: Number of seconds for intervals between attempts(raise error if waiting time exceeded).
+        :type wait_attempt_timeout_sec: int, optional
+        :return: True if the desired status is reached, False otherwise
+        :rtype: :class:`bool`
+        """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
@@ -92,7 +245,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             time.sleep(effective_wait_timeout)
         raise WaitingTimeExceeded('Waiting time exceeded')
 
-    def upload_dtl_archive(self, task_id, archive_path, progress_cb=None):
+    def upload_dtl_archive(self, task_id: int, archive_path: str, progress_cb: Optional[Callable]=None):
         encoder = MultipartEncoder({'id': str(task_id).encode('utf-8'),
                                     'name': get_file_name(archive_path),
                                     'archive': (
@@ -116,14 +269,46 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                                        ApiField.VERSION: version})
         return response.json()[ApiField.TASK_ID]
 
-    def get_context(self, id):
+    def get_context(self, id: int) -> Dict:
+        """
+        Get context information by task ID.
+
+        :param id: Task ID in Supervisely.
+        :type id: int
+        :return: Context information in dict format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            task_id = 121230
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            context = api.task.get_context(task_id)
+            print(context)
+            # Output: {
+            #     "team": {
+            #         "id": 16087,
+            #         "name": "alexxx"
+            #     },
+            #     "workspace": {
+            #         "id": 23821,
+            #         "name": "my_super_workspace"
+            #     }
+            # }
+        """
         response = self._api.post('GetTaskContext', {ApiField.ID: id})
         return response.json()
 
     def _convert_json_info(self, info: dict):
         return info
 
-    def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
+    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int]=None):
         response = self._api.post('tasks.run.dtl', {ApiField.WORKSPACE_ID: workspace_id,
                                                     ApiField.CONFIG: dtl_graph,
                                                     'advanced': {ApiField.AGENT_ID: agent_id}})
@@ -141,7 +326,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                                        ApiField.NAME: result_name})
         return response.json()[ApiField.TASK_ID]
 
-    def run_train(self, agent_id, input_project_id, input_model_id, result_nn_name, train_config=None):
+    def run_train(self, agent_id: int, input_project_id: int, input_model_id: int, result_nn_name: str, train_config: Optional[Dict]=None):
         model_info = self._api.model.get_info_by_id(input_model_id)
         return self._run_plugin_task(task_type=TaskApi.PluginTaskType.TRAIN.value,
                                      agent_id=agent_id,
@@ -152,7 +337,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                      result_name=result_nn_name,
                                      config={} if train_config is None else train_config)
 
-    def run_inference(self, agent_id, input_project_id, input_model_id, result_project_name, inference_config=None):
+    def run_inference(self, agent_id: int, input_project_id: int, input_model_id: int, result_project_name: str,
+                      inference_config:Optional[Dict]=None):
         model_info = self._api.model.get_info_by_id(input_model_id)
         return self._run_plugin_task(task_type=TaskApi.PluginTaskType.INFERENCE.value,
                                      agent_id=agent_id,
@@ -163,11 +349,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                      result_name=result_project_name,
                                      config={} if inference_config is None else inference_config)
 
-    def get_training_metrics(self, task_id):
+    def get_training_metrics(self, task_id: int):
         response = self._get_response_by_id(id=task_id, method='tasks.train-metrics', id_field=ApiField.TASK_ID)
         return response.json() if (response is not None) else None
 
-    def deploy_model(self, agent_id, model_id):
+    def deploy_model(self, agent_id: int, model_id: int) -> int:
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -176,7 +362,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self.wait(task_id, self.Status.DEPLOYED)
         return task_id
 
-    def deploy_model_async(self, agent_id, model_id):
+    def deploy_model_async(self, agent_id: int, model_id: int) -> int:
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -210,7 +396,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         response = self._api.post('tasks.stop', {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
 
-    def get_import_files_list(self, id):
+    def get_import_files_list(self, id: int) -> Dict or None:
         response = self._api.post('tasks.import.files_list', {ApiField.ID: id})
         return response.json() if (response is not None) else None
 
@@ -223,17 +409,17 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def create_task_detached(self, workspace_id, task_type: str = None):
+    def create_task_detached(self, workspace_id: int, task_type: Optional[str]=None):
         response = self._api.post('tasks.run.python', {ApiField.WORKSPACE_ID: workspace_id,
                                                        ApiField.SCRIPT: "xxx",
                                                        ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True}})
         return response.json()[ApiField.TASK_ID]
 
-    def submit_logs(self, logs):
+    def submit_logs(self, logs) -> None:
         response = self._api.post('tasks.logs.add', {ApiField.LOGS: logs})
         # return response.json()[ApiField.TASK_ID]
 
-    def upload_files(self, task_id, abs_paths, names, progress_cb=None):
+    def upload_files(self, task_id: int, abs_paths: List[str], names: List[str], progress_cb:Optional[Callable] = None) -> None:
         if len(abs_paths) != len(names):
             raise RuntimeError("Inconsistency: len(abs_paths) != len(names)")
 
@@ -305,7 +491,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     #     obj: {val: 1, res: 2, new_val: 1}
     # }
 
-    def set_fields(self, task_id, fields):
+    def set_fields(self, task_id: int, fields: List) -> Dict:
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
@@ -317,13 +503,13 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post('tasks.data.set', data)
         return resp.json()
 
-    def set_fields_from_dict(self, task_id, d):
+    def set_fields_from_dict(self, task_id: int, d: Dict) -> Dict:
         fields = []
         for k, v in d.items():
             fields.append({ApiField.FIELD: k, ApiField.PAYLOAD: v})
         return self.set_fields(task_id, fields)
 
-    def set_field(self, task_id, field, payload, append=False, recursive=False):
+    def set_field(self, task_id: int, field: Dict, payload: Dict, append: Optional[bool]=False, recursive: Optional[bool]=False) -> Dict:
         fields = [
             {
                 ApiField.FIELD: field,
@@ -334,7 +520,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         ]
         return self.set_fields(task_id, fields)
 
-    def get_fields(self, task_id, fields: list) -> dict:
+    def get_fields(self, task_id, fields: List):
         data = {
             ApiField.TASK_ID: task_id,
             ApiField.FIELDS: fields
@@ -342,7 +528,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post('tasks.data.get', data)
         return resp.json()["result"]
 
-    def get_field(self, task_id, field):
+    def get_field(self, task_id: int, field: Dict):
         result = self.get_fields(task_id, [field])
         return result[field]
 
@@ -352,12 +538,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             raise RuntimeError("Task (id={!r}) has type {!r}. "
                                "Checkpoints are available only for tasks of type {!r}".format())
 
-    def list_checkpoints(self, task_id):
+    def list_checkpoints(self, task_id: int):
         self._validate_checkpoints_support(task_id)
         resp = self._api.post('tasks.checkpoints.list', {ApiField.ID: task_id})
         return resp.json()
 
-    def delete_unused_checkpoints(self, task_id):
+    def delete_unused_checkpoints(self, task_id: int) -> Dict:
         self._validate_checkpoints_support(task_id)
         resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
         return resp.json()
@@ -365,7 +551,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def _set_output(self):
         pass
 
-    def set_output_project(self, task_id, project_id, project_name=None):
+    def set_output_project(self, task_id: int, project_id: int, project_name: Optional[str]=None) -> Dict:
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id)
             project_name = project.name
@@ -379,7 +565,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
         return resp.json()
 
-    def set_output_report(self, task_id, file_id, file_name):
+    def set_output_report(self, task_id: int, file_id: int, file_name: str) -> Dict:
         return self._set_custom_output(task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt")
 
     def _set_custom_output(self, task_id, file_id, file_name, file_url=None, description="File",
@@ -404,7 +590,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
         return resp.json()
 
-    def set_output_archive(self, task_id, file_id, file_name, file_url=None):
+    def set_output_archive(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str]=None) -> Dict:
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
@@ -412,7 +598,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                        description="Download archive", icon="zmdi zmdi-archive",
                                        download=True)
 
-    def set_output_file_download(self, task_id, file_id, file_name, file_url=None, download=True):
+    def set_output_file_download(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str]=None,
+                                 download: Optional[bool]=True) -> Dict:
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(task_id, file_id, file_name,
@@ -420,7 +607,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                        description="Download file", icon="zmdi zmdi-file",
                                        download=download)
 
-    def send_request(self, task_id, method, data, context={}, skip_response=False, timeout=60):
+    def send_request(self, task_id: int, method: str, data: Dict, context: Optional[Dict]={},
+                     skip_response: bool=False, timeout: Optional[int]=60):
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
         resp = self._api.post("tasks.request.direct", {ApiField.TASK_ID: task_id,
@@ -434,3 +622,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def set_output_directory(self, task_id, file_id, directory_path):
         return self._set_custom_output(task_id, file_id, directory_path, description="Directory",
                                        icon="zmdi zmdi-folder")
+
+    def update_meta(self, id: int, data: dict):
+        """
+        Update given task metadata
+        :param id: int — task id
+        :param data: dict — meta data to update
+
+        """
+        if type(data) == dict:
+            data.update({'id': id})
+
+        self._api.post("tasks.meta.update", data)

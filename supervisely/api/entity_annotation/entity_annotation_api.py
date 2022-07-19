@@ -1,5 +1,8 @@
 # coding: utf-8
 
+# docs
+from typing import List, Dict
+
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -12,19 +15,19 @@ class EntityAnnotationAPI(ModuleApi):
         raise NotImplementedError()
 
     def _download(self, dataset_id, entity_id):
-        '''
+        """
         :param dataset_id: int
         :param entity_id: int
         :return: list of content(annotation with given id from dataset with given id), received after execution post request
-        '''
+        """
         return self.download_bulk(dataset_id, [entity_id])[0]
 
-    def download_bulk(self, dataset_id, entity_ids):
-        '''
+    def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> Dict:
+        """
         :param dataset_id: int
         :param entity_ids: list of integers
         :return: list of content(annotations with given ids from dataset with given id), received after execution post request
-        '''
+        """
         response = self._api.post(self._method_download_bulk, {ApiField.DATASET_ID: dataset_id,
                                                                self._entity_ids_str: entity_ids})
         return response.json()

@@ -1,4 +1,11 @@
 # coding: utf-8
+
+# docs
+from __future__ import annotations
+from typing import List, Tuple, Dict, Optional
+from supervisely.geometry.image_rotator import ImageRotator
+from skimage import morphology as skimage_morphology
+
 import base64
 from enum import Enum
 import zlib
@@ -17,6 +24,9 @@ from supervisely.geometry.constants import BITMAP
 
 
 class SkeletonizeMethod(Enum):
+    """
+    Specifies possible skeletonization methods of :class:`Bitmap<Bitmap>`.
+    """
     SKELETONIZE = 0
     MEDIAL_AXIS = 1
     THINNING = 2
@@ -34,22 +44,73 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 
 class Bitmap(BitmapBase):
-    '''
-    This is a class for creating and using Bitmaps for Labels.
-    '''
+    """
+    Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
+
+    :param data: Bitmap mask data.
+    :type data: np.ndarray
+    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
+    :type origin: PointLocation, optional
+    :param sly_id: Bitmap ID in Supervisely server.
+    :type sly_id: int, optional
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+    :type class_id: int, optional
+    :param labeler_login: Login of the user who created Bitmap.
+    :type labeler_login: str, optional
+    :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :type updated_at: str, optional
+    :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
+    :type created_at: str, optional
+    :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        # Create simple bitmap
+        mask = np.array([[0, 0, 0, 0, 0],
+                         [0, 1, 1, 1, 0],
+                         [0, 1, 0, 1, 0],
+                         [0, 1, 1, 1, 0],
+                         [0, 0, 0, 0, 0]], dtype=np.bool_)
+
+        figure = sly.Bitmap(mask)
+
+        # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
+        print(figure.data)
+        # Output:
+        #    [[ True  True  True]
+        #     [ True False  True]
+        #     [ True  True  True]]
+
+        origin = figure.origin.to_json()
+        print(json.dumps(origin, indent=4))
+        # Output: {
+        #     "points": {
+        #         "exterior": [
+        #             [
+        #                 1,
+        #                 1
+        #             ]
+        #         ],
+        #         "interior": []
+        #     }
+
+        # Create bitmap from black and white image:
+        img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
+        mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
+        figure = sly.Bitmap(mask)
+
+     .. image:: https://i.imgur.com/2L3HRPs.jpg
+    """
     @staticmethod
     def geometry_name():
         return 'bitmap'
 
-    def __init__(self, data: np.ndarray, origin: PointLocation = None,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-        '''
-        The constructor for Bitmap class.
-        :param data: bool numpy array
-        :param origin: points (x and y coordinates) of the top left corner of a bitmap, i.e. the position of the
-        bitmap within the image
-        '''
-
+    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None,
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if data.dtype != np.bool:
             raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
 
@@ -69,13 +130,27 @@ class Bitmap(BitmapBase):
     def _impl_json_class_name(cls):
         return BITMAP
 
-    def rotate(self, rotator):
-        '''
-        The function rotate Bitmap mask with a given rotator
-        (ImageRotator class object contain size of image and angle to rotate)
-        :param rotator: ImageRotator class object
-        :return: Bitmap class object
-        '''
+    def rotate(self, rotator: ImageRotator) -> Bitmap:
+        """
+        Rotates current Bitmap.
+
+        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
+        :type rotator: ImageRotator
+        :return: Bitmap object
+        :rtype: :class:`Bitmap<Bitmap>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
+            height, width = ann.img_size
+            rotator = ImageRotator((height, width), 25)
+            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            rotate_figure = figure.rotate(rotator)
+        """
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
         self.draw(full_img_mask, 1)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
@@ -83,12 +158,21 @@ class Bitmap(BitmapBase):
         new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
         return Bitmap(data=new_mask)
 
-    def crop(self, rect):
-        '''
-        Crop the current Bitmap object with a given rectangle
-        :param rect: Rectangle class object
-        :return: Bitmap class object
-        '''
+    def crop(self, rect: Rectangle) -> List[Bitmap]:
+        """
+        Crops current Bitmap.
+
+        :param rect: Rectangle object for cropping.
+        :type rect: Rectangle
+        :return: List of Bitmaps
+        :rtype: :class:`List[Bitmap]<supervisely.geometry.bitmap.Bitmap>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+        """
         maybe_cropped_bbox = self.to_bbox().crop(rect)
         if len(maybe_cropped_bbox) == 0:
             return []
@@ -100,13 +184,26 @@ class Bitmap(BitmapBase):
                 return []
             return [Bitmap(data=cropped_mask, origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left))]
 
-    def resize(self, in_size, out_size):
-        '''
-        Resize the current Bitmap to match a certain size
-        :param in_size: input image size
-        :param out_size: output image size
-        :return: Bitmap class object
-        '''
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Bitmap:
+        """
+        Resizes current Bitmap.
+
+        :param in_size: Input image size (height, width) to which Bitmap belongs.
+        :type in_size: Tuple[int, int]
+        :param out_size: Output image size (height, width) to which Bitmap belongs.
+        :type out_size: Tuple[int, int]
+        :return: Bitmap object
+        :rtype: :class:`Bitmap<Bitmap>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            in_height, in_width = 800, 1067
+            out_height, out_width = 600, 800
+            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+        """
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data.astype(np.uint8), in_size,
                                                               out_size)
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
@@ -127,19 +224,43 @@ class Bitmap(BitmapBase):
             cv2.drawContours(bitmap, contours, -1, color, thickness=thickness)
 
     @property
-    def area(self):
-        '''
-        :return: area of current Bitmap
-        '''
+    def area(self) -> float:
+        """
+        Bitmap area.
+
+        :return: Area of current Bitmap
+        :rtype: :class:`float`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(figure.area)
+            # Output: 88101.0
+        """
         return float(self._data.sum())
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
-        '''
-        The function base64_2_data convert base64 encoded string to numpy
-        :param s: string
-        :return: numpy array
-        '''
+        """
+        Convert base64 encoded string to numpy array.
+
+        :param s: Input base64 encoded string.
+        :type s: str
+        :return: Bool numpy array
+        :rtype: :class:`np.ndarray`
+        :Usage example:
+
+         .. code-block:: python
+
+              import supervisely as sly
+
+              encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+              figure_data = sly.Bitmap.base64_2_data(encoded_string)
+              print(figure_data)
+              #  [[ True  True  True]
+              #   [ True False  True]
+              #   [ True  True  True]]
+        """
         z = zlib.decompress(base64.b64decode(s))
         n = np.frombuffer(z, np.uint8)
 
@@ -154,11 +275,38 @@ class Bitmap(BitmapBase):
 
     @staticmethod
     def data_2_base64(mask: np.ndarray) -> str:
-        '''
-        The function data_2_base64 convert numpy array to base64 encoded string
-        :param mask: numpy array
-        :return: string
-        '''
+        """
+        Convert numpy array to base64 encoded string.
+
+        :param mask: Bool numpy array.
+        :type mask: np.ndarray
+        :return: Base64 encoded string
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get annotation from API
+            meta_json = api.project.get_meta(PROJECT_ID)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(IMAGE_ID)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Get Bitmap from annotation
+            for label in ann.labels:
+                if type(label.geometry) == sly.Bitmap:
+                    figure = label.geometry
+
+            encoded_string = sly.Bitmap.data_2_base64(figure.data)
+            print(encoded_string)
+            # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+        """
         img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
         img_pil.putpalette([0, 0, 0, 255, 255, 255])
         bytes_io = io.BytesIO()
@@ -166,13 +314,23 @@ class Bitmap(BitmapBase):
         bytes_enc = bytes_io.getvalue()
         return base64.b64encode(zlib.compress(bytes_enc)).decode('utf-8')
 
-    def skeletonize(self, method_id: SkeletonizeMethod):
-        '''
-        The function compute the skeleton, medial axis transform or morphological thinning of Bitmap
-        :param method_id: method to convert binary image(numpy array)
-        :return: Bitmap class object
-        '''
-        from skimage import morphology as skimage_morphology
+    def skeletonize(self, method_id: SkeletonizeMethod) -> Bitmap:
+        """
+        Compute the skeleton, medial axis transform or morphological thinning of Bitmap.
+
+        :param method_id: Method to convert bool numpy array.
+        :type method_id: SkeletonizeMethod
+        :return: Bitmap object
+        :rtype: :class:`Bitmap<Bitmap>`
+        :Usage example:
+
+         .. code-block:: python
+
+            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            skeleton_figure = figure.skeletonize(SkeletonizeMethod.SKELETONIZE)
+            med_ax_figure = figure.skeletonize(SkeletonizeMethod.MEDIAL_AXIS)
+            thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
+        """
         if method_id == SkeletonizeMethod.SKELETONIZE:
             method = skimage_morphology.skeletonize
         elif method_id == SkeletonizeMethod.MEDIAL_AXIS:
@@ -186,12 +344,18 @@ class Bitmap(BitmapBase):
         res_mask = method(mask_u8).astype(bool)
         return Bitmap(data=res_mask, origin=self.origin)
 
-    def to_contours(self):
-        '''
-        The function to_contours get list of contours(in Polygon class objects) of all objects in Bitmap
-        :return: list of contours
-        '''
+    def to_contours(self) -> List[Polygon]:
+        """
+        Get list of contours in Bitmap.
 
+        :return: List of Polygon objects
+        :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
+        :Usage example:
+
+         .. code-block:: python
+
+            figure_contours = figure.to_contours()
+        """
         origin, mask = self.origin, self.data
         if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
             contours, hier = cv2.findContours(
@@ -226,13 +390,43 @@ class Bitmap(BitmapBase):
         res = [x.translate(offset_row, offset_col) for x in res]
         return res
 
-    def bitwise_mask(self, full_target_mask: np.ndarray, bit_op):
-        '''
-        The function bitwise_mask performs bitwise operations between a given numpy array and Bitmap object data
-        :param full_target_mask: numpy array
-        :param bit_op: type of bitwise operation(or, and, xor)
-        :return: Bitmap class object or empty list
-        '''
+    def bitwise_mask(self, full_target_mask: np.ndarray, bit_op) -> Bitmap:
+        """
+        Make bitwise operations between a given numpy array and Bitmap.
+
+        :param full_target_mask: Input numpy array.
+        :type full_target_mask: np.ndarray
+        :param bit_op: Type of bitwise operation(and, or, not, xor), uses `numpy logic <https://numpy.org/doc/stable/reference/routines.logic.html>`_ functions.
+        :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
+        :return: Bitmap object or empty list
+        :rtype: :class:`Bitmap<Bitmap>` or :class:`list`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            mask = np.array([[0, 0, 0, 0, 0],
+                            [0, 1, 1, 1, 0],
+                            [0, 1, 0, 1, 0],
+                            [0, 1, 1, 1, 0],
+                            [0, 0, 0, 0, 0]], dtype=np.bool_)
+
+            figure = sly.Bitmap(mask)
+
+            array = np.array([[0, 0, 0, 0, 0],
+                             [0, 1, 1, 1, 0],
+                             [0, 0, 1, 0, 0],
+                             [0, 0, 1, 0, 0],
+                             [0, 0, 0, 0, 0]], dtype=np.bool_)
+
+            bitwise_figure = figure.bitwise_mask(array, np.logical_and)
+            print(bitwise_figure.data)
+            # Output:
+            # [[ True  True  True]
+            #  [False False False]
+            #  [False  True False]]
+        """
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
         full_size_mask = np.full(full_size, False, bool)
