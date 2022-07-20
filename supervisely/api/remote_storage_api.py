@@ -3,6 +3,7 @@ from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder
+from supervisely.task.progress import Progress
 import mimetypes
 
 
@@ -15,10 +16,10 @@ class Provider(StrEnum):
     @staticmethod
     def validate_path(path):
         if (
-            not path.startswith(str(Provider.S3))
-            and not path.startswith(str(Provider.GOOGLE))
-            and not path.startswith(str(Provider.AZURE))
-            and not path.startswith(str(Provider.FS))
+                not path.startswith(str(Provider.S3))
+                and not path.startswith(str(Provider.GOOGLE))
+                and not path.startswith(str(Provider.AZURE))
+                and not path.startswith(str(Provider.FS))
         ):
             raise ValueError(
                 "Incorrect cloud path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
@@ -42,7 +43,28 @@ class RemoteStorageApi(ModuleApiBase):
         )
         return resp.json()
 
-    def download_path(self, remote_path, save_path, progress_cb=None):
+    def download_path(self, remote_path: str, save_path: str, progress_cb: Progress = None):
+        """
+        Downloads item from given remote path to given local path.
+
+        :param remote_path: Remote path to item that you want to upload.
+        :type remote_path: str
+        :param save_path: Local save path.
+        :type save_path: str
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :Usage example:
+
+        .. code-block:: python
+
+            provider = "s3" # can be one of ["s3", "google", "azure"]
+            bucket = "bucket-test-export"
+            path_in_bucket = "/demo/image.jpg"
+            remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+            # or alternatively use this:
+            # remote_path = f"{provider}://{bucket}{path_in_bucket}"
+            api.remote_storage.upload_path(local_path="images/my-cats.jpg", remote_path=remote_path)
+        """
         Provider.validate_path(remote_path)
         ensure_base_path(save_path)
         response = self._api.post(
@@ -56,9 +78,18 @@ class RemoteStorageApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def upload_path(self, local_path, remote_path):
+    def upload_path(self, local_path: str, remote_path: str):
         """
-        Usage example:
+        Uploads item from given local path to given remote path.
+
+        :param local_path: Local path to item that you want to upload.
+        :type local_path: str
+        :param remote_path: Remote destination path.
+        :type remote_path: str
+        :Usage example:
+
+        .. code-block:: python
+
             provider = "s3" # can be one of ["s3", "google", "azure"]
             bucket = "bucket-test-export"
             path_in_bucket = "/demo/image.jpg"
@@ -99,6 +130,26 @@ class RemoteStorageApi(ModuleApiBase):
         resp = self._api.post("remote-storage.upload", encoder)
         return resp.json()
 
-    def get_remote_path(provider: str, bucket: str, path_in_bucket: str):
+    def get_remote_path(self, provider: str, bucket: str, path_in_bucket: str) -> str:
+        """
+        Returns remote path.
+
+        :param provider: Can be one of "s3", "google", "azure".
+        :type provider: str
+        :param bucket: Name of the bucket container.
+        :type bucket: str
+        :param path_in_bucket: Path to item in bucket.
+        :type path_in_bucket: str
+        :Usage example:
+
+        .. code-block:: python
+
+            provider = "s3"
+            bucket = "bucket-test-export"
+            path_in_bucket = "/demo/image.jpg"
+            remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+            # Output: s3://bucket-test-export/demo/image.jpg
+        """
         res_path = f"{provider}://{bucket}{path_in_bucket}"
         Provider.validate_path(res_path)
+        return res_path
