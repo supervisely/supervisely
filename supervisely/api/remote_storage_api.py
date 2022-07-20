@@ -60,9 +60,11 @@ class RemoteStorageApi(ModuleApiBase):
         """
         Usage example:
             provider = "s3" # can be one of ["s3", "google", "azure"]
-            bucket_name = "bucket-test-export"
+            bucket = "bucket-test-export"
             path_in_bucket = "/demo/image.jpg"
-            remote_path = f"{provider}://{bucket_name}{path_in_bucket}"
+            remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+            # or alternatively use this:
+            # remote_path = f"{provider}://{bucket}{path_in_bucket}"
             api.remote_storage.upload_path(local_path="images/my-cats.jpg", remote_path=remote_path)
         """
         Provider.validate_path(remote_path)
@@ -96,3 +98,7 @@ class RemoteStorageApi(ModuleApiBase):
         encoder = MultipartEncoder(fields=content)
         resp = self._api.post("remote-storage.upload", encoder)
         return resp.json()
+
+    def get_remote_path(provider: str, bucket: str, path_in_bucket: str):
+        res_path = f"{provider}://{bucket}{path_in_bucket}"
+        Provider.validate_path(res_path)
