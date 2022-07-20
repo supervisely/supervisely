@@ -15,10 +15,10 @@ class Provider(StrEnum):
     @staticmethod
     def validate_path(path):
         if (
-                not path.startswith(str(Provider.S3))
-                and not path.startswith(str(Provider.GOOGLE))
-                and not path.startswith(str(Provider.AZURE))
-                and not path.startswith(str(Provider.FS))
+            not path.startswith(str(Provider.S3))
+            and not path.startswith(str(Provider.GOOGLE))
+            and not path.startswith(str(Provider.AZURE))
+            and not path.startswith(str(Provider.FS))
         ):
             raise ValueError(
                 "Incorrect cloud path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
@@ -42,7 +42,7 @@ class RemoteStorageApi(ModuleApiBase):
         )
         return resp.json()
 
-    def download_path(self, remote_path: str, save_path: str, progress_cb = None):
+    def download_path(self, remote_path: str, save_path: str, progress_cb=None):
         """
         Downloads item from given remote path to given local path.
 
@@ -147,6 +147,6 @@ class RemoteStorageApi(ModuleApiBase):
             remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
             # Output: s3://bucket-test-export/demo/image.jpg
         """
-        res_path = f"{provider}://{bucket}{path_in_bucket}"
+        res_path = f"{provider}://{bucket}/{path_in_bucket.lstrip('/')}"
         Provider.validate_path(res_path)
         return res_path
