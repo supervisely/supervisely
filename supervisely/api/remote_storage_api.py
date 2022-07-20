@@ -3,7 +3,6 @@ from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from requests_toolbelt import MultipartEncoder
-from supervisely.task.progress import Progress
 import mimetypes
 
 
@@ -43,7 +42,7 @@ class RemoteStorageApi(ModuleApiBase):
         )
         return resp.json()
 
-    def download_path(self, remote_path: str, save_path: str, progress_cb: Progress = None):
+    def download_path(self, remote_path: str, save_path: str, progress_cb = None):
         """
         Downloads item from given remote path to given local path.
 
@@ -51,8 +50,6 @@ class RemoteStorageApi(ModuleApiBase):
         :type remote_path: str
         :param save_path: Local save path.
         :type save_path: str
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
         :Usage example:
 
         .. code-block:: python
