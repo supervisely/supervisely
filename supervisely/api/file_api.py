@@ -20,7 +20,13 @@ from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursivel
 from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
-from supervisely.io.fs import get_file_hash, get_file_ext, get_file_size, list_files_recursively, silent_remove
+from supervisely.io.fs import (
+    get_file_hash,
+    get_file_ext,
+    get_file_size,
+    list_files_recursively,
+    silent_remove,
+)
 
 
 class FileApi(ModuleApiBase):
@@ -94,7 +100,7 @@ class FileApi(ModuleApiBase):
         """
         NamedTuple name - **FileInfo**.
         """
-        return 'FileInfo'
+        return "FileInfo"
 
     def list(self, team_id: int, path: str) -> List[Dict]:
         """
@@ -158,7 +164,9 @@ class FileApi(ModuleApiBase):
             #     }
             # ]
         """
-        response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        response = self._api.post(
+            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
+        )
         return response.json()
 
     def list2(self, team_id: int, path: str) -> List[NamedTuple]:
@@ -192,7 +200,9 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        response = self._api.post('file-storage.list', {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        response = self._api.post(
+            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
+        )
         results = [self._convert_json_info(info_json) for info_json in response.json()]
         return results
 
@@ -229,20 +239,31 @@ class FileApi(ModuleApiBase):
             dir_size += file_info.sizeb
         return dir_size
 
-    def _download(self, team_id, remote_path, local_save_path, progress_cb=None):  # TODO: progress bar
-        response = self._api.post('file-storage.download', {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path},
-                                  stream=True)
+    def _download(
+        self, team_id, remote_path, local_save_path, progress_cb=None
+    ):  # TODO: progress bar
+        response = self._api.post(
+            "file-storage.download",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path},
+            stream=True,
+        )
         # print(response.headers)
         # print(response.headers['Content-Length'])
         ensure_base_path(local_save_path)
-        with open(local_save_path, 'wb') as fd:
+        with open(local_save_path, "wb") as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def download(self, team_id: int, remote_path: str, local_save_path: str, cache: Optional[FileCache] = None,
-                 progress_cb: Progress = None) -> None:
+    def download(
+        self,
+        team_id: int,
+        remote_path: str,
+        local_save_path: str,
+        cache: Optional[FileCache] = None,
+        progress_cb: Progress = None,
+    ) -> None:
         """
         Download File from Team Files.
 
@@ -280,21 +301,29 @@ class FileApi(ModuleApiBase):
             if file_info.hash is None:
                 self._download(team_id, remote_path, local_save_path, progress_cb)
             else:
-                cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
+                cache_path = cache.check_storage_object(
+                    file_info.hash, get_file_ext(remote_path)
+                )
                 if cache_path is None:
                     # file not in cache
                     self._download(team_id, remote_path, local_save_path, progress_cb)
                     if file_info.hash != get_file_hash(local_save_path):
                         raise KeyError(
-                            f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})")
+                            f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})"
+                        )
                     cache.write_object(local_save_path, file_info.hash)
                 else:
                     cache.read_object(file_info.hash, local_save_path)
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
 
-    def download_directory(self, team_id: int, remote_path: str, local_save_path: str,
-                           progress_cb: Optional[Callable] = None) -> None:
+    def download_directory(
+        self,
+        team_id: int,
+        remote_path: str,
+        local_save_path: str,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Download Directory from Team Files.
 
@@ -328,7 +357,9 @@ class FileApi(ModuleApiBase):
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        temp_dir = os.path.join(
+            local_save_path, os.path.basename(os.path.normpath(remote_path))
+        )
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
@@ -336,7 +367,7 @@ class FileApi(ModuleApiBase):
 
     def _upload_legacy(self, team_id, src, dst):
         def path_to_bytes_stream(path):
-            return open(path, 'rb')
+            return open(path, "rb")
 
         item = get_file_name_with_ext(dst)
         content_dict = {}
@@ -346,12 +377,18 @@ class FileApi(ModuleApiBase):
         if not dst_dir.endswith(os.path.sep):
             dst_dir += os.path.sep
         content_dict[ApiField.PATH] = dst_dir  # os.path.basedir ...
-        content_dict["file"] = (item, path_to_bytes_stream(src), mimetypes.MimeTypes().guess_type(src)[0])
+        content_dict["file"] = (
+            item,
+            path_to_bytes_stream(src),
+            mimetypes.MimeTypes().guess_type(src)[0],
+        )
         encoder = MultipartEncoder(fields=content_dict)
         resp = self._api.post("file-storage.upload?teamId={}".format(team_id), encoder)
         return resp.json()
 
-    def upload(self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None) -> NamedTuple:
+    def upload(
+        self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None
+    ) -> NamedTuple:
         """
         Upload File to Team Files.
 
@@ -382,8 +419,13 @@ class FileApi(ModuleApiBase):
         """
         return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
 
-    def upload_bulk(self, team_id: int, src_paths: List[str], dst_paths: List[str],
-                    progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+    def upload_bulk(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        progress_cb: Optional[Callable] = None,
+    ) -> List[NamedTuple]:
         """
         Upload Files to Team Files.
 
@@ -414,7 +456,7 @@ class FileApi(ModuleApiBase):
         """
 
         def path_to_bytes_stream(path):
-            return open(path, 'rb')
+            return open(path, "rb")
 
         content_dict = []
         for idx, (src, dst) in enumerate(zip(src_paths, dst_paths)):
@@ -424,7 +466,16 @@ class FileApi(ModuleApiBase):
             if not dst_dir.endswith(os.path.sep):
                 dst_dir += os.path.sep
             content_dict.append((ApiField.PATH, dst_dir))
-            content_dict.append(("file", (name, path_to_bytes_stream(src), mimetypes.MimeTypes().guess_type(src)[0])))
+            content_dict.append(
+                (
+                    "file",
+                    (
+                        name,
+                        path_to_bytes_stream(src),
+                        mimetypes.MimeTypes().guess_type(src)[0],
+                    ),
+                )
+            )
         encoder = MultipartEncoder(fields=content_dict)
 
         # progress = None
@@ -446,7 +497,9 @@ class FileApi(ModuleApiBase):
             data = encoder
         else:
             data = MultipartEncoderMonitor(encoder, progress_cb)
-        resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
+        resp = self._api.post(
+            "file-storage.bulk.upload?teamId={}".format(team_id), data
+        )
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
         return results
 
@@ -496,31 +549,33 @@ class FileApi(ModuleApiBase):
 
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
-        resp = self._api.post("file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
+        resp = self._api.post(
+            "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
+        )
 
     def exists(self, team_id: int, remote_path: str) -> bool:
         """
-         Checks if file exists in Team Files.
+        Checks if file exists in Team Files.
 
-         :param team_id: Team ID in Supervisely.
-         :type team_id: int
-         :param remote_path: Remote path to File in Team Files.
-         :type remote_path: str
-         :return: True if file exists, otherwise False
-         :rtype: :class:`bool`
-         :Usage example:
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Remote path to File in Team Files.
+        :type remote_path: str
+        :return: True if file exists, otherwise False
+        :rtype: :class:`bool`
+        :Usage example:
 
-          .. code-block:: python
+         .. code-block:: python
 
-            import supervisely as sly
+           import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
 
-            file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
-            file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
-         """
+           file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
+           file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
+        """
         path_infos = self.list(team_id, remote_path)
         for info in path_infos:
             if info["path"] == remote_path:
@@ -529,27 +584,27 @@ class FileApi(ModuleApiBase):
 
     def dir_exists(self, team_id: int, remote_directory: str) -> bool:
         """
-         Checks if directory exists in Team Files.
+        Checks if directory exists in Team Files.
 
-         :param team_id: Team ID in Supervisely.
-         :type team_id: int
-         :param remote_path: Remote path to directory in Team Files.
-         :type remote_path: str
-         :return: True if directory exists, otherwise False
-         :rtype: :class:`bool`
-         :Usage example:
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Remote path to directory in Team Files.
+        :type remote_path: str
+        :return: True if directory exists, otherwise False
+        :rtype: :class:`bool`
+        :Usage example:
 
-          .. code-block:: python
+         .. code-block:: python
 
-            import supervisely as sly
+           import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
 
-            file = api.file.exists(8, "/999_App_Test/")   # True
-            file = api.file.exists(8, "/10000_App_Test/") # False
-         """
+           file = api.file.exists(8, "/999_App_Test/")   # True
+           file = api.file.exists(8, "/10000_App_Test/") # False
+        """
         files_infos = self.list(team_id, remote_directory)
         if len(files_infos) > 0:
             return True
@@ -557,28 +612,28 @@ class FileApi(ModuleApiBase):
 
     def get_free_name(self, team_id: int, path: str) -> str:
         """
-         Adds suffix to the end of the file name.
+        Adds suffix to the end of the file name.
 
-         :param team_id: Team ID in Supervisely.
-         :type team_id: int
-         :param path: Remote path to file in Team Files.
-         :type path: str
-         :return: New File name with suffix at the end
-         :rtype: :class:`str`
-         :Usage example:
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Remote path to file in Team Files.
+        :type path: str
+        :return: New File name with suffix at the end
+        :rtype: :class:`str`
+        :Usage example:
 
-          .. code-block:: python
+         .. code-block:: python
 
-            import supervisely as sly
+           import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
 
-            file = api.file.get_free_name(8, "/999_App_Test/ds1/02163.json")
-            print(file)
-            # Output: /999_App_Test/ds1/02163_000.json
-         """
+           file = api.file.get_free_name(8, "/999_App_Test/ds1/02163.json")
+           print(file)
+           # Output: /999_App_Test/ds1/02163_000.json
+        """
         directory = Path(path).parent
         name = get_file_name(path)
         ext = get_file_ext(path)
@@ -601,15 +656,42 @@ class FileApi(ModuleApiBase):
 
     def get_url(self, file_id: int) -> str:
         """
-         Gets URL for the File by ID.
+        Gets URL for the File by ID.
 
-         :param file_id: File ID in Supervisely.
-         :type file_id: int
-         :return: File URL
-         :rtype: :class:`str`
-         :Usage example:
+        :param file_id: File ID in Supervisely.
+        :type file_id: int
+        :return: File URL
+        :rtype: :class:`str`
+        :Usage example:
 
-          .. code-block:: python
+         .. code-block:: python
+
+           import supervisely as sly
+
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
+
+           file_id = 7660
+           file_url = sly.api.file.get_url(file_id)
+           print(file_url)
+           # Output: http://supervise.ly/files/7660
+        """
+        return f"/files/{file_id}"
+
+    def get_info_by_path(self, team_id: int, remote_path: str) -> NamedTuple:
+        """
+        Gets File information by path in Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Remote path to file in Team Files.
+        :type remote_path: str
+        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
+
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -617,50 +699,23 @@ class FileApi(ModuleApiBase):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            file_id = 7660
-            file_url = sly.api.file.get_url(file_id)
-            print(file_url)
-            # Output: http://supervise.ly/files/7660
-         """
-        return f"/files/{file_id}"
-
-    def get_info_by_path(self, team_id: int, remote_path: str) -> NamedTuple:
+            file_path = "/999_App_Test/ds1/00135.json"
+            file_info = api.file.get_info_by_id(8, file_path)
+            print(file_info)
+            # Output: FileInfo(team_id=8,
+            #                  id=7660,
+            #                  user_id=7,
+            #                  name='00135.json',
+            #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
+            #                  path='/999_App_Test/ds1/00135.json',
+            #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
+            #                  mime='application/json',
+            #                  ext='json',
+            #                  sizeb=261,
+            #                  created_at='2021-01-11T09:04:17.959Z',
+            #                  updated_at='2021-01-11T09:04:17.959Z',
+            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
-         Gets File information by path in Team Files.
-
-         :param team_id: Team ID in Supervisely.
-         :type team_id: int
-         :param remote_path: Remote path to file in Team Files.
-         :type remote_path: str
-         :return: Information about File. See :class:`info_sequence<info_sequence>`
-         :rtype: :class:`NamedTuple`
-         :Usage example:
-
-          .. code-block:: python
-
-             import supervisely as sly
-
-             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-             api = sly.Api.from_env()
-
-             file_path = "/999_App_Test/ds1/00135.json"
-             file_info = api.file.get_info_by_id(8, file_path)
-             print(file_info)
-             # Output: FileInfo(team_id=8,
-             #                  id=7660,
-             #                  user_id=7,
-             #                  name='00135.json',
-             #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
-             #                  path='/999_App_Test/ds1/00135.json',
-             #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
-             #                  mime='application/json',
-             #                  ext='json',
-             #                  sizeb=261,
-             #                  created_at='2021-01-11T09:04:17.959Z',
-             #                  updated_at='2021-01-11T09:04:17.959Z',
-             #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
-         """
         path_infos = self.list(team_id, remote_path)
         for info in path_infos:
             if info["path"] == remote_path:
@@ -675,55 +730,15 @@ class FileApi(ModuleApiBase):
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
-         Gets information about File by ID.
+        Gets information about File by ID.
 
-         :param id: File ID in Supervisely.
-         :type id: int
-         :return: Information about File. See :class:`info_sequence<info_sequence>`
-         :rtype: :class:`NamedTuple`
-         :Usage example:
+        :param id: File ID in Supervisely.
+        :type id: int
+        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`NamedTuple`
+        :Usage example:
 
-          .. code-block:: python
-
-             import supervisely as sly
-
-             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-             api = sly.Api.from_env()
-
-             file_id = 7660
-             file_info = api.file.get_info_by_id(file_id)
-             print(file_info)
-             # Output: FileInfo(team_id=8,
-             #                  id=7660,
-             #                  user_id=7,
-             #                  name='00135.json',
-             #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
-             #                  path='/999_App_Test/ds1/00135.json',
-             #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
-             #                  mime='application/json',
-             #                  ext='json',
-             #                  sizeb=261,
-             #                  created_at='2021-01-11T09:04:17.959Z',
-             #                  updated_at='2021-01-11T09:04:17.959Z',
-             #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
-         """
-        resp = self._api.post('file-storage.info', {ApiField.ID: id})
-        return self._convert_json_info(resp.json())
-
-    def get_free_dir_name(self, team_id: int, dir_path: str) -> str:
-        """
-         Adds suffix to the end of the Directory name.
-
-         :param team_id: Team ID in Supervisely.
-         :type team_id: int
-         :param dir_path: Path to Directory in Team Files.
-         :type dir_path: str
-         :return: New Directory name with suffix at the end
-         :rtype: :class:`str`
-         :Usage example:
-
-          .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -731,20 +746,65 @@ class FileApi(ModuleApiBase):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
-            print(new_dir_name)
-            # Output: /My_App_Test_001
-         """
-        res_dir = dir_path.rstrip('/')
+            file_id = 7660
+            file_info = api.file.get_info_by_id(file_id)
+            print(file_info)
+            # Output: FileInfo(team_id=8,
+            #                  id=7660,
+            #                  user_id=7,
+            #                  name='00135.json',
+            #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
+            #                  path='/999_App_Test/ds1/00135.json',
+            #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
+            #                  mime='application/json',
+            #                  ext='json',
+            #                  sizeb=261,
+            #                  created_at='2021-01-11T09:04:17.959Z',
+            #                  updated_at='2021-01-11T09:04:17.959Z',
+            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+        """
+        resp = self._api.post("file-storage.info", {ApiField.ID: id})
+        return self._convert_json_info(resp.json())
+
+    def get_free_dir_name(self, team_id: int, dir_path: str) -> str:
+        """
+        Adds suffix to the end of the Directory name.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param dir_path: Path to Directory in Team Files.
+        :type dir_path: str
+        :return: New Directory name with suffix at the end
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+           import supervisely as sly
+
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
+
+           new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
+           print(new_dir_name)
+           # Output: /My_App_Test_001
+        """
+        res_dir = dir_path.rstrip("/")
         suffix = 1
         while self.dir_exists(team_id, res_dir):
-            res_dir = dir_path.rstrip('/') + f"_{suffix:03d}"
+            res_dir = dir_path.rstrip("/") + f"_{suffix:03d}"
             suffix += 1
         return res_dir
 
-    def upload_directory(self, team_id: int, local_dir: str, remote_dir: str,
-                         change_name_if_conflict: Optional[bool] = True,
-                         progress_size_cb: Optional[Callable] = None) -> str:
+    def upload_directory(
+        self,
+        team_id: int,
+        local_dir: str,
+        remote_dir: str,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_size_cb: Optional[Callable] = None,
+    ) -> str:
         """
         Upload Directory to Team Files from local path.
 
@@ -779,15 +839,20 @@ class FileApi(ModuleApiBase):
             if change_name_if_conflict is True:
                 res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
             else:
-                raise FileExistsError(f"Directory {remote_dir} already exists in your team (id={team_id})")
+                raise FileExistsError(
+                    f"Directory {remote_dir} already exists in your team (id={team_id})"
+                )
         else:
             res_remote_dir = remote_dir
 
         local_files = list_files_recursively(local_dir)
         remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
 
-        for local_paths_batch, remote_files_batch in zip(batched(local_files, batch_size=50),
-                                                         batched(remote_files, batch_size=50)):
+        for local_paths_batch, remote_files_batch in zip(
+            batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
+        ):
 
-            self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
+            self.upload_bulk(
+                team_id, local_paths_batch, remote_files_batch, progress_size_cb
+            )
         return res_remote_dir
