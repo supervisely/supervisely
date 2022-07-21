@@ -22,6 +22,7 @@ from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 
+
 # print(supervisely.__path__)
 # "--reload-include", "*.py,*.html"
 
@@ -83,9 +84,12 @@ def create() -> FastAPI:
 
 
 def shutdown():
-    logger.info("Shutting down...")
-    current_process = psutil.Process(os.getpid())
-    current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+    try:
+        logger.info("Shutting down...")
+        current_process = psutil.Process(os.getpid())
+        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+    except KeyboardInterrupt:
+        logger.info("Application shutdown successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
