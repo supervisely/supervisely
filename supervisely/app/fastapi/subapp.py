@@ -89,7 +89,7 @@ def shutdown():
         current_process = psutil.Process(os.getpid())
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
-        logger.info("Application shutdown successfully")
+        logger.info("Application has been shut down successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
