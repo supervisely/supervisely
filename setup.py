@@ -100,7 +100,7 @@ setup(
             "sphinx-copybutton==0.4.0",
             "sphinx-autodoc-typehints==1.15.3",
             "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0"
+            "myst-parser==0.18.0",
         ],
         "sdk-no-usages": [
             "grpcio==1.34.1",
