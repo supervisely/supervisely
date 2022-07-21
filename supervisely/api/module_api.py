@@ -129,6 +129,7 @@ class ApiField:
     ENTITY_ID = "entityId"
     ANNOTATION_OBJECTS = "annotationObjects"
     TAG_ID = "tagId"
+    TAG_IDS = "tagIds"
     ERROR = "error"
     MESSAGE = "message"
     CONTENT = "content"
