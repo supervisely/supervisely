@@ -321,7 +321,7 @@ Even in complex scenarios, like developing a GUI app integrated into a labeling 
 
 Watch the video below, how we debug [the app](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%2Fnn-image-labeling%2Fannotation-tool) that applies NN right inside the labeling interface.
 
-<a href="https://youtu.be/Mp0BnWEujhA">
+<a href="https://youtu.be/fOnyL8YHOBM">
     <img src="https://user-images.githubusercontent.com/12828725/179207006-bcdd0922-21c1-4958-86e7-d532fbf7c974.png" style="max-width:100%;">
 </a>
 
