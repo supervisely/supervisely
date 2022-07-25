@@ -46,9 +46,9 @@ class ProjectMeta(JsonSerializable):
     General information about ProjectMeta. :class:`ProjectMeta<ProjectMeta>` object is immutable.
 
     :param obj_classes: ObjClassCollection or just list that stores ObjClass instances with unique names.
-    :type obj_classes: ObjClassCollection, optional
+    :type obj_classes: ObjClassCollection or List[ObjClass], optional
     :param tag_metas: TagMetaCollection or just list that stores TagMeta instances with unique names.
-    :type tag_metas: TagMetaCollection, optional
+    :type tag_metas: TagMetaCollection or List[TagMeta], optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
     :type project_type: str, optional
 
@@ -79,7 +79,9 @@ class ProjectMeta(JsonSerializable):
         kiwi = sly.ObjClass('kiwi', sly.Polygon)
         tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
         objects = sly.ObjClassCollection([lemon, kiwi])
+        # or objects = [lemon, kiwi]
         tags = sly.TagMetaCollection([tag_fruit])
+        # or tags = [tag_fruit]
         meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
         print(meta)
         # Output:
@@ -96,7 +98,7 @@ class ProjectMeta(JsonSerializable):
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
     """
-    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List]] = None, tag_metas: Optional[Union[TagMetaCollection, List]] = None,
+    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
                  project_type: Optional[ProjectType] = None):
         
         if obj_classes is None:
@@ -135,6 +137,7 @@ class ProjectMeta(JsonSerializable):
             lemon = sly.ObjClass('lemon', sly.Rectangle)
             kiwi = sly.ObjClass('kiwi', sly.Polygon)
             objects = sly.ObjClassCollection([lemon, kiwi])
+            # or objects = [lemon, kiwi]
 
             meta = sly.ProjectMeta(obj_classes=objects, project_type=sly.ProjectType.IMAGES)
 
@@ -178,6 +181,7 @@ class ProjectMeta(JsonSerializable):
 
             tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
             tags = sly.TagMetaCollection([tag_fruit])
+            # or tags = [tag_fruit]
 
             meta = sly.ProjectMeta(tag_metas=tags)
 
@@ -397,15 +401,15 @@ class ProjectMeta(JsonSerializable):
         return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
                           tag_metas=self._tag_metas.merge(other._tag_metas))
 
-    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List]] = None, tag_metas: Optional[Union[TagMetaCollection, List]] = None,
+    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
               project_type: Optional[str]=None) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
 
-        :param obj_classes: ObjClassCollection that stores ObjClass instances with unique names.
-        :type obj_classes: ObjClassCollection, optional
+        :param obj_classes: ObjClassCollection or just list that stores ObjClass instances with unique names.
+        :type obj_classes: ObjClassCollection or List[ObjClass], optional
         :param tag_metas: TagMetaCollection that stores TagMeta instances with unique names.
-        :type tag_metas: TagMetaCollection, optional
+        :type tag_metas: TagMetaCollection or List[TagMeta], optional
         :param project_type: Type of items in project: images, videos, volumes, point_clouds.
         :type project_type: str, optional
         :return: New instance of ProjectMeta object
@@ -419,8 +423,10 @@ class ProjectMeta(JsonSerializable):
             meta = sly.ProjectMeta()
             class_cat = sly.ObjClass('cat', sly.Rectangle)
             collection_cat = sly.ObjClassCollection([class_cat])
+            # or collection_cat = [class_cat]
             tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
             collection_tag_cat = sly.TagMetaCollection([tag_cat])
+            # or collection_tag_cat = [tag_cat]
             # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
             new_meta = meta.clone(obj_classes=collection_cat, tag_metas=collection_tag_cat)
             new_meta_json = new_meta.to_json()

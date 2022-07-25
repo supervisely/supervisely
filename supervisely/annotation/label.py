@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 from PIL.ImageFont import FreeTypeFont
 import numpy as np
 from supervisely.geometry.rectangle import Rectangle
@@ -38,7 +38,7 @@ class LabelBase:
     :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
     :type obj_class: ObjClass
     :param tags: Label :class:`tags<supervisely.annotation.tag_collection.TagCollection>`.
-    :type tags: TagCollection
+    :type tags: TagCollection or List[Tag]
     :param description: Label description.
     :type description: str, optional
     :Usage example:
@@ -62,8 +62,9 @@ class LabelBase:
         # Label
         geometry_figure = sly.Rectangle(0, 0, 300, 300)
         label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
+        # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
     """
-    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[TagCollection] = None, description: Optional[str] = ""):
+    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None, description: Optional[str] = ""):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -356,7 +357,7 @@ class LabelBase:
         """
         return self.clone(tags=self._tags.add_items(tags))
 
-    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None, tags: Optional[TagCollection] = None,
+    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None, tags: Optional[Union[TagCollection, List[Tag]]] = None,
               description: Optional[str] = None) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -366,7 +367,7 @@ class LabelBase:
         :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
         :type obj_class: ObjClass
         :param tags: Label :class:`tags<supervisely.annotation.tag.TagCollection>`.
-        :type tags: TagCollection
+        :type tags: TagCollection or List[Tag]
         :param description: Label description.
         :type description: str, optional
         :return: New instance of Label

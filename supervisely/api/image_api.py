@@ -1701,3 +1701,50 @@ class ImageApi(RemoveableBulkModuleApi):
             data[ApiField.VALUE] = value
         resp = self._api.post("image-tags.bulk.add-to-image", data)
         return resp.json()
+
+    def remove_batch(self, ids: List[int], progress_cb=None):
+        """
+        Remove images from supervisely by ids.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [2389126, 2389127]
+            api.image.remove_batch(image_ids)
+        """
+
+        super(ImageApi, self).remove_batch(ids, progress_cb)
+
+    def remove(self, image_id: int):
+        """
+        Remove image from supervisely by id.
+
+        :param image_id: Images ID in Supervisely.
+        :type image_id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 2389126
+            api.image.remove(image_id)
+        """
+        super(ImageApi, self).remove(image_id)
