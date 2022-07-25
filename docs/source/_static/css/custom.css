@@ -7,11 +7,11 @@ dt:target {
 
 dl.py.class dt.sig.sig-object.py {
     border-left: none;
-    border-top: 3px solid deeppink;
+    border-top: 3px solid #02a6f2;
     padding-left: 10px;
     position: relative;
     background: #f3f4f7;
-    border-left: 3px solid deeppink;
+    border-left: 3px solid #02a6f2;
     word-wrap: break-word;
     padding-right: 100px;
 }
@@ -23,7 +23,7 @@ dd dl.py.method dt.sig.sig-object.py {
     padding-left: 10px;
     position: relative;
     background: #f3f4f7;
-    border-left: 3px solid deeppink;
+    border-left: 3px solid #02a6f2;
     word-wrap: break-word;
     padding-right: 100px;
 }
@@ -35,7 +35,7 @@ dl.py.function dt.sig.sig-object.py {
     padding-left: 10px;
     position: relative;
     background: #f3f4f7;
-    border-left: 3px solid deeppink;
+    border-left: 3px solid #02a6f2;
     word-wrap: break-word;
     padding-right: 100px;
 }
@@ -47,7 +47,7 @@ dd dl.py.property dt.sig.sig-object.py {
     padding-left: 10px;
     position: relative;
     background: #f3f4f7;
-    border-left: 3px solid deeppink;
+    border-left: 3px solid #02a6f2;
     word-wrap: break-word;
     padding-right: 100px;
 }
@@ -59,7 +59,7 @@ dl.py.exception dt.sig.sig-object.py {
     padding-left: 10px;
     position: relative;
     background: #f3f4f7;
-    border-left: 3px solid deeppink;
+    border-left: 3px solid #02a6f2;
     word-wrap: break-word;
     padding-right: 100px;
 }
