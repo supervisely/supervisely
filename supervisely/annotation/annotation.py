@@ -67,8 +67,8 @@ class Annotation:
     :type img_size: Tuple[int, int] or List[int, int]
     :param labels: List of Label objects.
     :type labels: List[Label]
-    :param img_tags: TagCollection object.
-    :type img_tags: TagCollection
+    :param img_tags: TagCollection object or list of Tag objects.
+    :type img_tags: TagCollection or List[Tag]
     :param img_description: Image description.
     :type img_description: str, optional
     :raises: :class:`TypeError`, if image size is not tuple or list
@@ -87,6 +87,7 @@ class Annotation:
         meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
         tag_lemon = sly.Tag(meta_lemon, 'Hello')
         tags = sly.TagCollection([tag_lemon])
+        # or tags = [tag_lemon]
 
         # ObjClass
         class_lemon = sly.ObjClass('lemon', sly.Rectangle)
@@ -415,7 +416,7 @@ class Annotation:
         return cls.from_json(data, project_meta)
 
     def clone(self, img_size: Optional[Tuple[int, int]] = None, labels: Optional[List[Label]] = None,
-              img_tags: Optional[TagCollection] = None, img_description: Optional[str] = None,
+              img_tags: Optional[Union[TagCollection, List[Tag]]] = None, img_description: Optional[str] = None,
               pixelwise_scores_labels: Optional[List[Label]] = None, custom_data: Optional[Dict] = None,
               image_id: Optional[int] = None) -> Annotation:
         """
@@ -425,8 +426,8 @@ class Annotation:
         :type img_size: Tuple[int, int] or List[int, int]
         :param labels: List of Label objects.
         :type labels: List[Label]
-        :param img_tags: TagCollection object.
-        :type img_tags: TagCollection
+        :param img_tags: TagCollection object or list of Tag objects.
+        :type img_tags: TagCollection or List[Tag]
         :param img_description: Image description.
         :type img_description: str, optional
         :return: New instance of Annotation
