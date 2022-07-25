@@ -11,6 +11,19 @@ from collections import namedtuple
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
 
+class UserInfo(NamedTuple):
+    login: str
+    role: str
+    role_id: int
+    name: str
+    email: str
+    logins: int
+    disabled: bool
+    last_login: str
+    created_at: str
+    updated_at: str
+
+
 class UserApi(ModuleApiBase):
     """
     API for working with :class:`Users<supervisely.user.user.UserRoleName>`. :class:`UserApi<UserApi>` object is immutable.
@@ -58,17 +71,19 @@ class UserApi(ModuleApiBase):
                      created_at='2020-04-17T10:24:09.077Z',
                      updated_at='2021-03-24T15:13:01.148Z')
         """
-        return [ApiField.ID,
-                ApiField.LOGIN,
-                ApiField.ROLE,
-                ApiField.ROLE_ID,
-                ApiField.NAME,
-                ApiField.EMAIL,
-                ApiField.LOGINS,
-                ApiField.DISABLED,
-                ApiField.LAST_LOGIN,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.ID,
+            ApiField.LOGIN,
+            ApiField.ROLE,
+            ApiField.ROLE_ID,
+            ApiField.NAME,
+            ApiField.EMAIL,
+            ApiField.LOGINS,
+            ApiField.DISABLED,
+            ApiField.LAST_LOGIN,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -78,16 +93,17 @@ class UserApi(ModuleApiBase):
         return 'UserInfo'
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        return super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        return UserInfo(**res._asdict())
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> UserInfo:
         """
         Get User information by ID.
 
         :param id: User ID in Supervisely.
         :type id: int
         :return: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -116,14 +132,14 @@ class UserApi(ModuleApiBase):
         """
         return self._get_info_by_id(id, 'users.info')
 
-    def get_info_by_login(self, login: str) -> NamedTuple:
+    def get_info_by_login(self, login: str) -> UserInfo:
         """
         Get User information by login.
 
         :param login: User login in Supervisely.
         :type login: str
         :return: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -154,7 +170,7 @@ class UserApi(ModuleApiBase):
         items = self.get_list(filters)
         return _get_single_item(items)
 
-    def get_member_info_by_login(self, team_id: int, login: str) -> NamedTuple:
+    def get_member_info_by_login(self, team_id: int, login: str) -> UserInfo:
         """
         Get information about team member by Team ID and User login.
 
@@ -163,7 +179,7 @@ class UserApi(ModuleApiBase):
         :param login: User login in Supervisely.
         :type login: str
         :return: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -195,7 +211,7 @@ class UserApi(ModuleApiBase):
                                                convert_json_info_cb=self._api.user._convert_json_info)
         return _get_single_item(team_members)
 
-    def get_member_info_by_id(self, team_id: int, user_id: int) -> NamedTuple:
+    def get_member_info_by_id(self, team_id: int, user_id: int) -> UserInfo:
         """
         Get information about team member by Team ID and User ID.
 
@@ -204,7 +220,7 @@ class UserApi(ModuleApiBase):
         :param user_id: User ID in Supervisely.
         :type user_id: int
         :return: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -236,14 +252,14 @@ class UserApi(ModuleApiBase):
                                                convert_json_info_cb=self._api.user._convert_json_info)
         return _get_single_item(team_members)
 
-    def get_list(self, filters: List[Dict[str, str]] = None) -> List[NamedTuple]:
+    def get_list(self, filters: List[Dict[str, str]] = None) -> List[UserInfo]:
         """
         Get list of information about Users.
 
         :param filters: List of params to sort output Users.
         :type filters: List[dict], optional
         :return: List of information about Users. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[UserInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -274,7 +290,7 @@ class UserApi(ModuleApiBase):
         return self.get_list_all_pages('users.list', {ApiField.FILTER: filters or []})
 
     def create(self, login: str, password: str, is_restricted: Optional[bool] = False, name: Optional[str] = "",
-               email: Optional[str] = "") -> NamedTuple:
+               email: Optional[str] = "") -> UserInfo:
         """
         Creates new User with given login and password.
 
@@ -289,7 +305,7 @@ class UserApi(ModuleApiBase):
         :param email: New User email.
         :type email: str, optional
         :return: Information about new User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -381,14 +397,14 @@ class UserApi(ModuleApiBase):
     def get_token(self, login):
         raise NotImplementedError()
 
-    def get_teams(self, id: int) -> List[NamedTuple]:
+    def get_teams(self, id: int) -> List[UserInfo]:
         """
         Get list with information about User Teams.
 
         :param id: User ID in Supervisely.
         :type id: int
         :return: List of teams in which the User with the given ID is located
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[UserInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -486,7 +502,7 @@ class UserApi(ModuleApiBase):
         response = self._api.post('members.remove', {ApiField.ID: user_id,
                                                      ApiField.TEAM_ID: team_id})
 
-    def update(self, id: int, password: Optional[str] = None, name: Optional[str] = None) -> NamedTuple:
+    def update(self, id: int, password: Optional[str] = None, name: Optional[str] = None) -> UserInfo:
         """
         Updates User info.
 
@@ -497,7 +513,7 @@ class UserApi(ModuleApiBase):
         :param name: User name.
         :type name: str
         :return: New information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python
@@ -567,14 +583,14 @@ class UserApi(ModuleApiBase):
                                                        ApiField.TEAM_ID: team_id,
                                                        ApiField.ROLE_ID: role_id})
 
-    def get_team_members(self, team_id: int) -> List[NamedTuple]:
+    def get_team_members(self, team_id: int) -> List[UserInfo]:
         """
         Get list of information about Team Users.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
         :return: List of information about Team Users
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[UserInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -592,7 +608,7 @@ class UserApi(ModuleApiBase):
                                                convert_json_info_cb=self._api.user._convert_json_info)
         return team_members
 
-    def get_team_role(self, user_id: int, team_id: int) -> NamedTuple:
+    def get_team_role(self, user_id: int, team_id: int) -> UserInfo:
         """
         Get Team role for given User and Team IDs.
 
@@ -601,7 +617,7 @@ class UserApi(ModuleApiBase):
         :param team_id: Team ID in Supervisely.
         :type team_id: int
         :return: Information about Team :class:`Role<supervisely.api.role_api.RoleApi
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`UserInfo`
         :Usage example:
 
          .. code-block:: python

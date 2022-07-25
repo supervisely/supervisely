@@ -9,6 +9,22 @@ import urllib
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule, RemoveableModuleApi
 
 
+class DatasetInfo(NamedTuple):
+    id: int
+    name: str
+    description: str
+    size: int
+    readme: str
+    workspace_id: int
+    images_count: int  # for compatibility with existing code
+    items_count: int
+    datasets_count: int
+    created_at: str
+    updated_at: str
+    type: str
+    reference_image_url: str
+
+
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
     """
     API for working with :class:`Dataset<supervisely.project.project.Dataset>`. :class:`DatasetApi<DatasetApi>` object is immutable.
@@ -34,6 +50,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         project_id = 1951
         ds = api.dataset.get_list(project_id)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -54,16 +71,18 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         updated_at='2021-03-16T09:31:37.063Z',
                         reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png')
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.SIZE,
-                ApiField.PROJECT_ID,
-                ApiField.IMAGES_COUNT,
-                ApiField.ITEMS_COUNT,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT,
-                ApiField.REFERENCE_IMAGE_URL]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.PROJECT_ID,
+            ApiField.IMAGES_COUNT,
+            ApiField.ITEMS_COUNT,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.REFERENCE_IMAGE_URL
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -76,7 +95,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[DatasetInfo]:
         """
         List of Datasets in the given Project.
 
@@ -85,7 +104,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param filters: List of params to sort output Datasets.
         :type filters: List[dict], optional
         :return: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[DatasetInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -123,16 +142,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 reference_image_url="http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
             # ]
         """
-        return self.get_list_all_pages('datasets.list',  {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages('datasets.list',
+                                       {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> DatasetInfo:
         """
         Get Datasets information by ID.
 
         :param id: Dataset ID in Supervisely.
         :type id: int
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`DatasetInfo`
         :Usage example:
 
          .. code-block:: python
@@ -149,7 +169,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         return self._get_info_by_id(id, 'datasets.info')
 
-    def create(self, project_id: int, name: str, description: Optional[str] = "", change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
+    def create(self, project_id: int, name: str, description: Optional[str] = "",
+               change_name_if_conflict: Optional[bool] = False) -> DatasetInfo:
         """
         Create Dataset with given name in the given Project.
 
@@ -162,7 +183,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`DatasetInfo`
         :Usage example:
 
          .. code-block:: python
@@ -189,7 +210,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                                                    ApiField.DESCRIPTION: description})
         return self._convert_json_info(response.json())
 
-    def get_or_create(self, project_id: int, name: str, description: Optional[str] = "") -> NamedTuple:
+    def get_or_create(self, project_id: int, name: str, description: Optional[str] = "") -> DatasetInfo:
         """
         Checks if Dataset with given name already exists in the Project, if not creates Dataset with the given name.
 
@@ -200,7 +221,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param description: Dataset description.
         :type description: str, optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`DatasetInfo`
         :Usage example:
 
          .. code-block:: python
@@ -236,7 +257,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return 'datasets.remove'
 
     def copy_batch(self, dst_project_id: int, ids: List[int], new_names: Optional[List[str]] = None,
-                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[NamedTuple]:
+                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[
+        DatasetInfo]:
         """
         Copy given Datasets to the destination Project by IDs.
 
@@ -252,7 +274,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type with_annotations: bool, optional
         :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
         :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[DatasetInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -291,8 +313,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_datasets.append(new_dataset)
         return new_datasets
 
-    def copy(self, dst_project_id: int, id: int, new_name: Optional[str] = None, change_name_if_conflict: Optional[bool] = False,
-             with_annotations: Optional[bool] = False) -> NamedTuple:
+    def copy(self, dst_project_id: int, id: int, new_name: Optional[str] = None,
+             change_name_if_conflict: Optional[bool] = False,
+             with_annotations: Optional[bool] = False) -> DatasetInfo:
         """
         Copies given Dataset in destination Project by ID.
 
@@ -307,7 +330,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True copies Dataset with annotations, otherwise copies just items from Dataset without annotation.
         :type with_annotations: bool, optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`DatasetInfo`
         :Usage example:
 
          .. code-block:: python
@@ -332,7 +355,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return new_datasets[0]
 
     def move_batch(self, dst_project_id: int, ids: List[int], new_names: Optional[List[str]] = None,
-                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[NamedTuple]:
+                   change_name_if_conflict: Optional[bool] = False, with_annotations: Optional[bool] = False) -> List[
+        DatasetInfo]:
         """
         Moves given Datasets to the destination Project by IDs.
 
@@ -348,7 +372,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type with_annotations: bool, optional
         :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
         :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[DatasetInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -374,8 +398,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self.remove_batch(ids)
         return new_datasets
 
-    def move(self, dst_project_id: int, id: int, new_name: Optional[str] = None, change_name_if_conflict: Optional[bool] = False,
-             with_annotations: Optional[bool] = False) -> NamedTuple:
+    def move(self, dst_project_id: int, id: int, new_name: Optional[str] = None,
+             change_name_if_conflict: Optional[bool] = False,
+             with_annotations: Optional[bool] = False) -> DatasetInfo:
         """
         Moves given Dataset in destination Project by ID.
 
@@ -390,7 +415,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True moves Dataset with annotations, otherwise moves just items from Dataset without annotation.
         :type with_annotations: bool, optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`DatasetInfo`
         :Usage example:
 
          .. code-block:: python
@@ -419,5 +444,4 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             res = res._replace(reference_image_url=res.reference_image_url)
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
-        return res
-
+        return DatasetInfo(**res._asdict())

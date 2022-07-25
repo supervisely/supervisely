@@ -17,6 +17,27 @@ from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 
+class PointcloudInfo(NamedTuple):
+    id: int
+    frame: int
+    description: str
+    name: str
+    team_id: int
+    workspace_id: int
+    project_id: int
+    dataset_id: int
+    link: str
+    hash: str
+    path_original: str
+    cloud_mime: str
+    figures_count: int
+    ann_objects_count: int
+    tags: list
+    meta: dict
+    created_at: str
+    updated_at: str
+
+
 class PointcloudApi(RemoveableBulkModuleApi):
     def __init__(self, api):
         """
@@ -55,9 +76,10 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return 'PointCloudInfo'
 
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
-        return super(PointcloudApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super(PointcloudApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        return PointcloudInfo(**res._asdict())
 
-    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[PointcloudInfo]:
         """
         :param dataset_id: int
         :param filters: list
@@ -66,7 +88,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return self.get_list_all_pages('point-clouds.list',
                                        {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> PointcloudInfo:
         """
         :param id: int
         :return: PointcloudApi metadata by numeric id
@@ -110,13 +132,13 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return response
 
     # @TODO: copypaste from video_api
-    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None) -> PointcloudInfo:
         meta = {} if meta is None else meta
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     # @TODO: copypaste from video_api
     def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]] = None,
-                      progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+                      progress_cb: Optional[Callable] = None) -> List[PointcloudInfo]:
         return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb)
 
     # @TODO: copypaste from video_api
@@ -161,12 +183,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
         response = self._api.post('point-clouds.images.add', {ApiField.IMAGES: images_json})
         return response.json()
 
-    def upload_path(self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_path(self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None) -> PointcloudInfo:
         metas = None if meta is None else [meta]
         return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
     def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Callable] = None,
-                     metas: Optional[Dict] = None) -> List[NamedTuple]:
+                     metas: Optional[Dict] = None) -> List[PointcloudInfo]:
         def path_to_bytes_stream(path):
             return open(path, 'rb')
 

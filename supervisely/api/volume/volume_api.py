@@ -1,5 +1,5 @@
 import SimpleITK as sitk
-
+from typing import NamedTuple
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
 from supervisely.api.volume.volume_object_api import VolumeObjectApi
@@ -20,6 +20,30 @@ import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely._utils import batched
 from supervisely import logger
 from supervisely.task.progress import Progress
+
+
+class VolumeInfo(NamedTuple):
+    id: int
+    name: str
+    link: str
+    hash: str
+    mime: str
+    ext: str
+    sizeb: int
+    created_at: str
+    updated_at: str
+    meta: dict
+    path_original: str
+    full_storage_url: str
+    tags: list
+    team_id: int
+    workspace_id:  int
+    project_id: int
+    dataset_id: int
+    file_meta: dict
+    figures_count: int
+    ann_objects_count: int
+    processing_path: str
 
 
 class VolumeApi(RemoveableBulkModuleApi):
@@ -66,7 +90,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
-        return res
+        return VolumeInfo(**res._asdict())
 
     def get_list(self, dataset_id, filters=None, sort="id", sort_order="asc"):
         return self.get_list_all_pages(

@@ -10,7 +10,46 @@ import pandas as pd
 import time
 from supervisely.collection.str_enum import StrEnum
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
-                                           WaitingTimeExceeded
+    WaitingTimeExceeded
+
+
+class LabelingJobInfo(NamedTuple):
+    id: int
+    name: str
+    readme: str
+    description: str
+    team_id: int
+    workspace_id: int
+    workspace_name: str
+    project_id: int
+    project_name: str
+    dataset_id: int
+    dataset_name: str
+    created_by_id: int
+    created_by_login: str
+    assigned_to_id: int
+    assigned_to_login: str
+    reviewer_id: int
+    reviewer_login: str
+    created_at: str
+    started_at: str
+    finished_at: str
+    status: str
+    disabled: bool
+    images_count: int
+    finished_images_count: int
+    rejected_images_count: int
+    accepted_images_count: int
+    progress_images_count: int
+    classes_to_label: list
+    tags_to_label: list
+    images_range: tuple
+    objects_limit_per_image: int
+    tags_limit_per_image: int
+    filter_images_by_tags: list
+    include_images_with_tags: list
+    exclude_images_with_tags: list
+    entities: list
 
 
 class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
@@ -37,6 +76,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
         jobs = api.labeling_job.get_list(9) # api usage example
     """
+
     class Status(StrEnum):
         PENDING = 'pending'
         IN_PROGRESS = "in_progress"
@@ -144,7 +184,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     def __init__(self, api):
         ModuleApi.__init__(self, api)
 
-    def _convert_json_info(self, info: Dict, skip_missing: Optional[bool]=True):
+    def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
         if info is None:
             return None
         else:
@@ -196,22 +236,24 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                     value = (value['start'], value['end'])
 
                 field_values.append(value)
-            return self.InfoType(*field_values)
+
+            res = self.InfoType(*field_values)
+            return LabelingJobInfo(**res._asdict())
 
     def create(self,
-               name : str,
+               name: str,
                dataset_id: int,
                user_ids: List[int],
-               readme: Optional[str]=None,
-               description: Optional[str]=None,
-               classes_to_label: Optional[List[str]]=None,
-               objects_limit_per_image: Optional[int]=None,
-               tags_to_label: Optional[List[str]]=None,
-               tags_limit_per_image: Optional[int]=None,
-               include_images_with_tags: Optional[List[str]]=None,
-               exclude_images_with_tags: Optional[List[str]]=None,
-               images_range: Optional[List[int, int]]=None,
-               reviewer_id: Optional[int]=None) -> List[NamedTuple]:
+               readme: Optional[str] = None,
+               description: Optional[str] = None,
+               classes_to_label: Optional[List[str]] = None,
+               objects_limit_per_image: Optional[int] = None,
+               tags_to_label: Optional[List[str]] = None,
+               tags_limit_per_image: Optional[int] = None,
+               include_images_with_tags: Optional[List[str]] = None,
+               exclude_images_with_tags: Optional[List[str]] = None,
+               images_range: Optional[List[int, int]] = None,
+               reviewer_id: Optional[int] = None) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
 
@@ -242,7 +284,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         :param reviewer_id: User ID in Supervisely to assign User as Reviewer to Labeling Job.
         :type reviewer_id: int, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -398,13 +440,13 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         data = {ApiField.NAME: name,
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.USER_IDS: user_ids,
-                #ApiField.DESCRIPTION: description,
+                # ApiField.DESCRIPTION: description,
                 ApiField.META: {
-                     'classes': classes_to_label,
-                     'projectTags': tags_to_label,
-                     'imageTags': filter_images_by_tags,
-                     'imageFiguresLimit': objects_limit_per_image,
-                     'imageTagsLimit': tags_limit_per_image,}
+                    'classes': classes_to_label,
+                    'projectTags': tags_to_label,
+                    'imageTags': filter_images_by_tags,
+                    'imageFiguresLimit': objects_limit_per_image,
+                    'imageTagsLimit': tags_limit_per_image, }
                 }
 
         if readme is not None:
@@ -430,9 +472,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             created_jobs.append(self.get_info_by_id(job[ApiField.ID]))
         return created_jobs
 
-    def get_list(self, team_id: int, created_by_id: Optional[int]=None, assigned_to_id: Optional[int]=None,
-                 project_id: Optional[int]=None, dataset_id: Optional[int]=None,
-                 show_disabled: Optional[bool]=False) -> List[NamedTuple]:
+    def get_list(self, team_id: int, created_by_id: Optional[int] = None, assigned_to_id: Optional[int] = None,
+                 project_id: Optional[int] = None, dataset_id: Optional[int] = None,
+                 show_disabled: Optional[bool] = False) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
 
@@ -449,7 +491,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         :param show_disabled: Show disabled Labeling Jobs.
         :type show_disabled: bool, optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -582,14 +624,14 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         """
         self._api.post('jobs.stop', {ApiField.ID: id})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> LabelingJobInfo:
         """
         Get Labeling Job information by ID.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :return: Information about Labeling Job. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`LabelingJobInfo`
         :Usage example:
 
          .. code-block:: python
@@ -709,10 +751,11 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return self.Status(status_str)
 
     def raise_for_status(self, status):
-        #there is no ERROR status for labeling job
+        # there is no ERROR status for labeling job
         pass
 
-    def wait(self, id: int, target_status: str, wait_attempts: Optional[int]=None, wait_attempt_timeout_sec: Optional[int]=None) -> None:
+    def wait(self, id: int, target_status: str, wait_attempts: Optional[int] = None,
+             wait_attempt_timeout_sec: Optional[int] = None) -> None:
         """
         Wait for a Labeling Job to change to the expected target status.
 
@@ -935,7 +978,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         response = self._api.post('jobs.stats', {ApiField.ID: id})
         return response.json()
 
-    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable]=None) -> pd.DataFrame:
+    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable] = None) -> pd.DataFrame:
         """
         Get all activity for given Labeling Job by ID.
 
