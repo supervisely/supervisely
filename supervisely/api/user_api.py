@@ -12,6 +12,7 @@ from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
 
 class UserInfo(NamedTuple):
+    id: int
     login: str
     role: str
     role_id: int
