@@ -130,7 +130,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_list(
         self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
-    ) -> List[NamedTuple]:
+    ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
 
@@ -139,7 +139,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ProjectInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -224,7 +224,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type raise_error: bool, optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python
@@ -266,7 +266,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         name: str,
         expected_type: Optional[ProjectType] = None,
         raise_error: Optional[bool] = False,
-    ) -> NamedTuple:
+    ) -> ProjectInfo:
         """
         Get Project information by name.
 
@@ -279,7 +279,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python
@@ -436,7 +436,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         type: ProjectType = ProjectType.IMAGES,
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
-    ) -> NamedTuple:
+    ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
 
@@ -451,7 +451,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python

@@ -10,7 +10,7 @@ from supervisely.api.module_api import ApiField, ModuleNoParent, UpdateableModul
 from supervisely.sly_logger import logger
 
 
-#@TODO - umar will add meta with review status and duration
+# @TODO - umar will add meta with review status and duration
 class ActivityAction:
     """
     List of Team Actions to sort Team Activity.
@@ -77,6 +77,15 @@ class ActivityAction:
     # action: ANNOTATION_DURATION -> meta["duration"] e.g. meta-> {"duration": 30} in seconds
 
 
+class TeamInfo(NamedTuple):
+    id: int
+    name: str
+    description: str
+    role: str
+    created_at: str
+    updated_at: str
+
+
 class TeamApi(ModuleNoParent, UpdateableModule):
     """
     API for working with Team. :class:`TeamApi<TeamApi>` object is immutable.
@@ -101,6 +110,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         team_info = api.team.get_info_by_id(team_id) # api usage example
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -117,12 +127,14 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                      created_at='2020-03-31T14:49:08.931Z',
                      updated_at='2020-03-31T14:49:08.931Z')
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.ROLE,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.ROLE,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -135,14 +147,14 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         ModuleNoParent.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, filters: List[Dict[str, str]] = None) -> List[NamedTuple]:
+    def get_list(self, filters: List[Dict[str, str]] = None) -> List[TeamInfo]:
         """
         List of all Teams.
 
         :param filters: List of params to sort output Teams.
         :type filters: list, optional
         :return: List of all Teams with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[TeamInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -188,16 +200,16 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  updated_at='2020-04-02T08:59:03.717Z')
             # ]
         """
-        return self.get_list_all_pages('teams.list',  {ApiField.FILTER: filters or []})
+        return self.get_list_all_pages('teams.list', {ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> TeamInfo:
         """
         Get Team information by ID.
 
         :param id: Team ID in Supervisely.
         :type id: int
         :return: Information about Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`TeamInfo`
         :Usage example:
 
          .. code-block:: python
@@ -229,7 +241,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         """
         return self._get_info_by_id(id, 'teams.info')
 
-    def create(self, name: str, description: Optional[str] = "", change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
+    def create(self, name: str, description: Optional[str] = "",
+               change_name_if_conflict: Optional[bool] = False) -> TeamInfo:
         """
         Creates Team with given name.
 
@@ -240,7 +253,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :return: Information about Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`TeamInfo`
         :Usage example:
 
          .. code-block:: python
@@ -268,9 +281,11 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         return 'teams.editInfo'
 
     def get_activity(self, team_id: int,
-                     filter_user_id: Optional[int]=None, filter_project_id: Optional[int]=None, filter_job_id: Optional[int]=None,
-                     filter_actions: Optional[List]=None, progress_cb: Optional[Callable]=None, start_date: Optional[str]=None,
-                     end_date: Optional[str]=None) -> List[Dict]:
+                     filter_user_id: Optional[int] = None, filter_project_id: Optional[int] = None,
+                     filter_job_id: Optional[int] = None,
+                     filter_actions: Optional[List] = None, progress_cb: Optional[Callable] = None,
+                     start_date: Optional[str] = None,
+                     end_date: Optional[str] = None) -> List[Dict]:
         """
         Get Team activity by ID.
 

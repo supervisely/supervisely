@@ -7,6 +7,15 @@ from typing import NamedTuple, List, Dict, Optional
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
+class WorkspaceInfo(NamedTuple):
+    id: int
+    name: str
+    description: str
+    team_id: int
+    created_at: str
+    updated_at: str
+
+
 class WorkspaceApi(ModuleApi, UpdateableModule):
     """
     API for working with Workspace. :class:`WorkspaceApi<WorkspaceApi>` object is immutable.
@@ -31,6 +40,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
         workspace_info = api.workspace.get_info_by_id(workspace_id) # api usage example
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -47,12 +57,14 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
                           created_at='2020-04-15T10:50:41.926Z',
                           updated_at='2020-04-15T10:50:41.926Z')
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.TEAM_ID,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.TEAM_ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -65,7 +77,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[WorkspaceInfo]:
         """
         List of Workspaces in the given Team.
 
@@ -74,7 +86,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :param filters: List of params to sort output Workspaces.
         :type filters: List[dict], optional
         :return: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[WorkspaceInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -119,16 +131,16 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             #                       updated_at='2020-05-20T15:01:54.172Z')
             # ]
         """
-        return self.get_list_all_pages('workspaces.list',  {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages('workspaces.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> WorkspaceInfo:
         """
         Get Workspace information by ID.
 
         :param id: Workspace ID in Supervisely.
         :type id: int
         :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`WorkspaceInfo`
         :Usage example:
 
          .. code-block:: python
@@ -151,7 +163,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         return self._get_info_by_id(id, 'workspaces.info')
 
     def create(self, team_id: int, name: str, description: Optional[str] = "",
-               change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
+               change_name_if_conflict: Optional[bool] = False) -> WorkspaceInfo:
         """
         Create Workspace with given name in the given Team.
 
@@ -164,7 +176,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`WorkspaceInfo`
         :Usage example:
 
          .. code-block:: python

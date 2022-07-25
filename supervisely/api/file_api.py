@@ -29,6 +29,22 @@ from supervisely.io.fs import (
 )
 
 
+class FileInfo(NamedTuple):
+    team_id: int
+    id: int
+    user_id: int
+    name: str
+    hash: str
+    path: str
+    storage_path: str
+    mime: str
+    ext: str
+    sizeb2: int
+    created_at: str
+    upated_at: str
+    full_storage_url: str
+
+
 class FileApi(ModuleApiBase):
     """
     API for working with Files. :class:`FileApi<FileApi>` object is immutable.
@@ -169,7 +185,7 @@ class FileApi(ModuleApiBase):
         )
         return response.json()
 
-    def list2(self, team_id: int, path: str) -> List[NamedTuple]:
+    def list2(self, team_id: int, path: str) -> List[FileInfo]:
         """
         List of files in the Team Files.
 
@@ -178,7 +194,7 @@ class FileApi(ModuleApiBase):
         :param path: Path to File or Directory.
         :type path: str
         :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[FileInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -388,7 +404,7 @@ class FileApi(ModuleApiBase):
 
     def upload(
         self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None
-    ) -> NamedTuple:
+    ) -> FileInfo:
         """
         Upload File to Team Files.
 
@@ -401,7 +417,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
         :return: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`FileInfo`
         :Usage example:
 
          .. code-block:: python
@@ -425,7 +441,7 @@ class FileApi(ModuleApiBase):
         src_paths: List[str],
         dst_paths: List[str],
         progress_cb: Optional[Callable] = None,
-    ) -> List[NamedTuple]:
+    ) -> List[FileInfo]:
         """
         Upload Files to Team Files.
 
@@ -438,7 +454,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[FileInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -679,7 +695,7 @@ class FileApi(ModuleApiBase):
         """
         return f"/files/{file_id}"
 
-    def get_info_by_path(self, team_id: int, remote_path: str) -> NamedTuple:
+    def get_info_by_path(self, team_id: int, remote_path: str) -> FileInfo:
         """
         Gets File information by path in Team Files.
 
@@ -688,7 +704,7 @@ class FileApi(ModuleApiBase):
         :param remote_path: Remote path to file in Team Files.
         :type remote_path: str
         :return: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`FileInfo`
         :Usage example:
 
          .. code-block:: python
@@ -728,14 +744,14 @@ class FileApi(ModuleApiBase):
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
         return res
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> FileInfo:
         """
         Gets information about File by ID.
 
         :param id: File ID in Supervisely.
         :type id: int
         :return: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`FileInfo`
         :Usage example:
 
          .. code-block:: python
