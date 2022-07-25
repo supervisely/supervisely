@@ -39,9 +39,9 @@ class FileInfo(NamedTuple):
     storage_path: str
     mime: str
     ext: str
-    sizeb2: int
+    sizeb: int
     created_at: str
-    upated_at: str
+    updated_at: str
     full_storage_url: str
 
 
