@@ -33,6 +33,23 @@ class ExpectedProjectTypeMismatch(Exception):
     pass
 
 
+class ProjectInfo(NamedTuple):
+    id: int
+    name: str
+    description: str
+    size: int
+    readme: str
+    workspace_id: int
+    images_count: int  # for compatibility with existing code
+    items_count: int
+    datasets_count: int
+    created_at: str
+    updated_at: str
+    type: str
+    reference_image_url: str
+    custom_data: dict
+
+
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """
     API for working with :class:`Project<supervisely.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
@@ -83,21 +100,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
                         custom_data={}
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.SIZE,
-                ApiField.README,
-                ApiField.WORKSPACE_ID,
-                ApiField.IMAGES_COUNT,  # for compatibility with existing code
-                ApiField.ITEMS_COUNT,
-                ApiField.DATASETS_COUNT,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT,
-                ApiField.TYPE,
-                ApiField.REFERENCE_IMAGE_URL,
-                ApiField.CUSTOM_DATA
-                ]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.README,
+            ApiField.WORKSPACE_ID,
+            ApiField.IMAGES_COUNT,  # for compatibility with existing code
+            ApiField.ITEMS_COUNT,
+            ApiField.DATASETS_COUNT,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.TYPE,
+            ApiField.REFERENCE_IMAGE_URL,
+            ApiField.CUSTOM_DATA,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -110,7 +128,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
 
@@ -119,7 +139,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ProjectInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -182,10 +202,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
-        return self.get_list_all_pages('projects.list', {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []})
+        return self.get_list_all_pages(
+            "projects.list",
+            {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []},
+        )
 
-    def get_info_by_id(self, id: int, expected_type: Optional[str] = None,
-                       raise_error: Optional[bool] = False) -> NamedTuple:
+    def get_info_by_id(
+        self,
+        id: int,
+        expected_type: Optional[str] = None,
+        raise_error: Optional[bool] = False,
+    ) -> ProjectInfo:
         """
         Get Project information by ID.
 
@@ -197,7 +224,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type raise_error: bool, optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python
@@ -227,12 +254,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
 
         """
-        info = self._get_info_by_id(id, 'projects.info')
-        self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
+        info = self._get_info_by_id(id, "projects.info")
+        self._check_project_info(
+            info, id=id, expected_type=expected_type, raise_error=raise_error
+        )
         return info
 
-    def get_info_by_name(self, parent_id: int, name: str, expected_type: Optional[ProjectType] = None,
-                         raise_error: Optional[bool] = False) -> NamedTuple:
+    def get_info_by_name(
+        self,
+        parent_id: int,
+        name: str,
+        expected_type: Optional[ProjectType] = None,
+        raise_error: Optional[bool] = False,
+    ) -> ProjectInfo:
         """
         Get Project information by name.
 
@@ -245,7 +279,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python
@@ -278,8 +312,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
         return info
 
-    def _check_project_info(self, info, id: Optional[int] = None, name: Optional[str] = None, expected_type=None,
-                            raise_error=False):
+    def _check_project_info(
+        self,
+        info,
+        id: Optional[int] = None,
+        name: Optional[str] = None,
+        expected_type=None,
+        raise_error=False,
+    ):
         """
         Checks if a project exists with a given id and type of project == expected type
         :param info: project metadata information
@@ -347,21 +387,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #     "projectType":"images"
             # }
         """
-        response = self._api.post('projects.meta', {'id': id})
+        response = self._api.post("projects.meta", {"id": id})
         return response.json()
 
-    def clone_advanced(self,
-                       id,
-                       dst_workspace_id,
-                       dst_name,
-                       with_meta=True,
-                       with_datasets=True,
-                       with_items=True,
-                       with_annotations=True):
+    def clone_advanced(
+        self,
+        id,
+        dst_workspace_id,
+        dst_name,
+        with_meta=True,
+        with_datasets=True,
+        with_items=True,
+        with_annotations=True,
+    ):
         if not with_meta and with_annotations:
-            raise ValueError("with_meta parameter must be True if with_annotations parameter is True")
+            raise ValueError(
+                "with_meta parameter must be True if with_annotations parameter is True"
+            )
         if not with_datasets and with_items:
-            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
+            raise ValueError(
+                "with_datasets parameter must be True if with_items parameter is True"
+            )
         response = self._api.post(
             self._clone_api_method_name(),
             {
@@ -377,16 +423,20 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     ApiField.ANNOTATION_OBJECTS: with_annotations,
                     ApiField.ANNOTATION_OBJECTS_TAGS: with_annotations,
                     ApiField.FIGURES: with_annotations,
-                    ApiField.FIGURES_TAGS: with_annotations
+                    ApiField.FIGURES_TAGS: with_annotations,
                 },
-
             },
         )
         return response.json()[ApiField.TASK_ID]
 
-    def create(self, workspace_id: int, name: str, type: ProjectType = ProjectType.IMAGES,
-               description: Optional[str] = "",
-               change_name_if_conflict: Optional[bool] = False) -> NamedTuple:
+    def create(
+        self,
+        workspace_id: int,
+        name: str,
+        type: ProjectType = ProjectType.IMAGES,
+        description: Optional[str] = "",
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
 
@@ -401,7 +451,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ProjectInfo`
         :Usage example:
 
          .. code-block:: python
@@ -475,7 +525,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_meta = api.project.get_meta(lemons_proj_id)
             updated_meta = api.project.update_meta(kiwis_proj_id, project_meta)
         """
-        self._api.post('projects.meta.update', {ApiField.ID: id, ApiField.META: meta})
+        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
         return "projects.clone"
@@ -574,7 +624,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_activity(
+        self, id: int, progress_cb: Optional[Callable] = None
+    ) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -604,6 +656,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #         [3 rows x 18 columns]
         """
         import pandas as pd
+
         proj_info = self.get_info_by_id(id)
         workspace_info = self._api.workspace.get_info_by_id(proj_info.workspace_id)
         activity = self._api.team.get_activity(
@@ -612,15 +665,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         df = pd.DataFrame(activity)
         return df
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
+    def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
-            res = res._replace(
-                reference_image_url=res.reference_image_url
-            )
+            res = res._replace(reference_image_url=res.reference_image_url)
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
-        return res
+        return ProjectInfo(**res._asdict())
 
     def get_stats(self, id: int) -> Dict:
         """
@@ -644,7 +695,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_stats = api.project.get_stats(project_id)
         """
-        response = self._api.post('projects.stats', {ApiField.ID: id})
+        response = self._api.post("projects.stats", {ApiField.ID: id})
         return response.json()
 
     def url(self, id: int) -> str:
@@ -718,7 +769,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings}
         )
 
-    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
+    def download_images_tags(
+        self, id: int, progress_cb: Optional[Callable] = None
+    ) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
@@ -762,7 +815,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     progress_cb(1)
         return tag2images
 
-    def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
+    def images_grouping(
+        self, id: int, enable: bool, tag_name: str, sync: bool = False
+    ) -> None:
         """
         Enables images grouping in project.
 
@@ -780,24 +835,36 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise Exception(f"Tag {tag_name} doesn't exists in the given project")
 
         group_tag_id = group_tag_meta.sly_id
-        project_settings = {"groupImages": enable, "groupImagesByTagId": group_tag_id, "groupImagesSync": sync}
+        project_settings = {
+            "groupImages": enable,
+            "groupImagesByTagId": group_tag_id,
+            "groupImagesSync": sync,
+        }
         self.update_settings(id=id, settings=project_settings)
 
     def get_or_create(
-            self, workspace_id, name, type=ProjectType.IMAGES, description=""
+        self, workspace_id, name, type=ProjectType.IMAGES, description=""
     ):
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
             info = self.create(workspace_id, name, type=type, description=description)
         return info
 
-    def edit_info(self, id, name=None, description=None, readme=None, custom_data=None, project_type=None):
+    def edit_info(
+        self,
+        id,
+        name=None,
+        description=None,
+        readme=None,
+        custom_data=None,
+        project_type=None,
+    ):
         if (
-                name is None
-                and description is None
-                and readme is None
-                and custom_data is None
-                and project_type is None
+            name is None
+            and description is None
+            and readme is None
+            and custom_data is None
+            and project_type is None
         ):
             raise ValueError("one of the arguments has to be specified")
 
@@ -818,10 +885,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_info = self.get_info_by_id(id)
             current_project_type = project_info.type
             if project_type == current_project_type:
-                raise ValueError(f"project with id {id} already has type {project_type}")
-            if not (current_project_type == str(ProjectType.POINT_CLOUDS) and project_type == str(
-                    ProjectType.POINT_CLOUD_EPISODES)):
-                raise ValueError(f"conversion from {current_project_type} to {project_type} is not supported ")
+                raise ValueError(
+                    f"project with id {id} already has type {project_type}"
+                )
+            if not (
+                current_project_type == str(ProjectType.POINT_CLOUDS)
+                and project_type == str(ProjectType.POINT_CLOUD_EPISODES)
+            ):
+                raise ValueError(
+                    f"conversion from {current_project_type} to {project_type} is not supported "
+                )
             body[ApiField.TYPE] = project_type
 
         response = self._api.post(self._get_update_method(), body)

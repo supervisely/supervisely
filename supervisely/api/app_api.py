@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os
+from typing import NamedTuple, List
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 from supervisely._utils import take_with_default
@@ -16,30 +17,48 @@ from supervisely._utils import sizeof_fmt
 from supervisely import logger
 
 
+class AppInfo(NamedTuple):
+    id: int
+    created_by_id: int
+    module_id: int
+    disabled: bool
+    user_login: str
+    config: dict
+    name: str
+    slug: str
+    is_shared: bool
+    tasks: int
+    repo: str
+    team_id: int
+
+
 class AppApi(TaskApi):
     @staticmethod
     def info_sequence():
-        return [ApiField.ID,
-                ApiField.CREATED_BY_ID,
-                ApiField.MODULE_ID,
-                ApiField.DISABLED,
-                ApiField.USER_LOGIN,
-                ApiField.CONFIG,
-                ApiField.NAME,
-                ApiField.SLUG,
-                ApiField.IS_SHARED,
-                ApiField.TASKS,
-                ApiField.REPO,
-                ApiField.TEAM_ID]
+        return [
+            ApiField.ID,
+            ApiField.CREATED_BY_ID,
+            ApiField.MODULE_ID,
+            ApiField.DISABLED,
+            ApiField.USER_LOGIN,
+            ApiField.CONFIG,
+            ApiField.NAME,
+            ApiField.SLUG,
+            ApiField.IS_SHARED,
+            ApiField.TASKS,
+            ApiField.REPO,
+            ApiField.TEAM_ID
+        ]
 
     @staticmethod
     def info_tuple_name():
         return 'AppInfo'
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        return super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        return AppInfo(**res._asdict())
 
-    def get_info_by_id(self, id):
+    def get_info_by_id(self, id: int) -> AppInfo:
         '''
         :param id: int
         :return: application info by numeric id
@@ -55,7 +74,7 @@ class AppApi(TaskApi):
                  integrated_into=None,
                  session_tags=None,
                  only_running=False,
-                 with_shared=True):
+                 with_shared=True) -> List[AppInfo]:
 
         return self.get_list_all_pages(method='apps.list', data={
             "teamId": team_id,

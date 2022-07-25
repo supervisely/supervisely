@@ -24,6 +24,23 @@ from supervisely.video.video import get_video_streams, gen_video_stream_name
 from supervisely.task.progress import Progress
 
 
+class VideoInfo(NamedTuple):
+    id: int
+    name: str
+    hash: str
+    team_id: int
+    workspace_id: int
+    project_id: int
+    dataset_id: int
+    path_original: str
+    frames_to_timecodes: list
+    frames_count: int
+    frame_width: int
+    frame_height: int
+    created_at: str
+    updated_at: str
+
+
 class VideoApi(RemoveableBulkModuleApi):
     """
     API for working with :class:`Video<supervisely.video.video>`. :class:`VideoApi<VideoApi>` object is immutable.
@@ -115,13 +132,13 @@ class VideoApi(RemoveableBulkModuleApi):
                                                                 f'datasetId={dataset_id}&'
                                                                 f'videoFrame={video_frame}&'
                                                                 f'videoId={video_id}')
-
         return result
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        return super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        return VideoInfo(**res._asdict())
 
-    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[VideoInfo]:
         """
         Get list of information about all video annotations for a given dataset.
 
@@ -130,7 +147,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param filters: List of parameters to sort output Annotations.
         :type filters: List[dict], optional
         :return: Information about VideoAnnotations. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[VideoInfo]`
 
         :Usage example:
 
@@ -223,14 +240,14 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         return self.get_list_all_pages('videos.list', {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> VideoInfo:
         """
         Get Video information by ID.
 
         :param id: Video ID in Supervisely.
         :type id: int
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`VideoInfo`
         :Usage example:
 
          .. code-block:: python
@@ -298,7 +315,7 @@ class VideoApi(RemoveableBulkModuleApi):
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id, dataset_id
 
-    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None) -> NamedTuple:
+    def upload_hash(self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None) -> VideoInfo:
         """
         Upload Video from given hash to Dataset.
 
@@ -311,7 +328,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param stream_index: Index of video stream.
         :type stream_index: int, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`VideoInfo`
         :Usage example:
 
          .. code-block:: python
@@ -360,7 +377,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], metas: Optional[List[Dict]] = None,
-                      progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+                      progress_cb: Optional[Callable] = None) -> List[VideoInfo]:
         """
         Upload Videos from given hashes to Dataset.
 
@@ -375,7 +392,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[VideoInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -691,7 +708,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return results
 
     def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Callable] = None,
-                     metas: Optional[List[Dict]] = None, infos=None, item_progress=None) -> List[NamedTuple]:
+                     metas: Optional[List[Dict]] = None, infos=None, item_progress=None) -> List[VideoInfo]:
         """
         Uploads Videos with given names from given local paths to Dataset.
 
@@ -707,7 +724,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :raises: :class:`RuntimeError` if len(names) != len(paths)
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[VideoInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -849,7 +866,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return resp.json()
 
     def upload_links(self, dataset_id: int, names: List[str], hashes: List[str], links: List[str], infos: List[Dict],
-                     metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+                     metas: Optional[List[Dict]] = None) -> List[VideoInfo]:
         self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, metas)
 

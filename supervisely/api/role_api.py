@@ -3,10 +3,17 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, NamedTuple
 
 from enum import IntEnum
 from supervisely.api.module_api import ApiField, ModuleApiBase
+
+
+class RoleInfo(NamedTuple):
+    id: int
+    role: str
+    created_at: str
+    updated_at: str
 
 
 class RoleApi(ModuleApiBase):
@@ -33,11 +40,12 @@ class RoleApi(ModuleApiBase):
 
         roles = api.role.get_list() # api usage example
     """
+
     class DefaultRole(IntEnum):
-        ADMIN =     1
+        ADMIN = 1
         DEVELOPER = 2
         ANNOTATOR = 3
-        VIEWER =    4
+        VIEWER = 4
 
     @staticmethod
     def info_sequence():
@@ -65,14 +73,14 @@ class RoleApi(ModuleApiBase):
         """
         return 'RoleInfo'
 
-    def get_list(self, filters: Optional[List[Dict[str, str]]]=None) -> List:
+    def get_list(self, filters: Optional[List[Dict[str, str]]] = None) -> List[RoleInfo]:
         """
         List of all roles that are available on private Supervisely instance.
 
         :param filters: List of params to sort output Roles.
         :type filters: list
         :return: List of all roles with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`list`
+        :rtype: :class:`List[RoleInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -86,3 +94,7 @@ class RoleApi(ModuleApiBase):
             roles = api.role.get_list()
         """
         return self.get_list_all_pages('roles.list', {ApiField.FILTER: filters or []})
+
+    def _convert_json_info(self, info: dict, skip_missing=True):
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return RoleInfo(**res._asdict())

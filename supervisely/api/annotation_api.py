@@ -13,6 +13,14 @@ from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
 
 
+class AnnotationInfo(NamedTuple):
+    image_id: int
+    image_name: str
+    annotation: dict
+    created_at: str
+    updated_at: str
+
+
 class AnnotationApi(ModuleApi):
     """
     Annotation for a single image. :class:`AnnotationApi<AnnotationApi>` object is immutable.
@@ -74,7 +82,7 @@ class AnnotationApi(ModuleApi):
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         progress_cb: Optional[Callable] = None,
-    ) -> List[NamedTuple]:
+    ) -> List[AnnotationInfo]:
         """
         Get list of information about all annotations for a given dataset.
 
@@ -85,7 +93,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[AnnotationInfo]`
 
         :Usage example:
 
@@ -142,7 +150,7 @@ class AnnotationApi(ModuleApi):
 
     def download(
         self, image_id: int, with_custom_data: Optional[bool] = False
-    ) -> NamedTuple:
+    ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
 
@@ -151,7 +159,7 @@ class AnnotationApi(ModuleApi):
         :param with_custom_data:
         :type with_custom_data: bool, optional
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`Namedtuple`
+        :rtype: :class:`AnnotationInfo`
         :Usage example:
 
          .. code-block:: python
@@ -232,7 +240,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Callable] = None,
         with_custom_data: Optional[bool] = False,
-    ) -> List[NamedTuple]:
+    ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
 
@@ -243,7 +251,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[Namedtuple]`
+        :rtype: :class:`List[AnnotationInfo]`
 
         :Usage example:
 
@@ -670,10 +678,9 @@ class AnnotationApi(ModuleApi):
             },
         )
 
-    # def _convert_json_info(self, info: dict, skip_missing=True):
-    #     res = super()._convert_json_info(info, skip_missing=skip_missing)
-    #     res.annotation["imageId"] = res.image_id
-    #     return res
+    def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return AnnotationInfo(**res._asdict())
 
     def append_labels(self, image_id: int, labels: List[Label]) -> None:
         """
