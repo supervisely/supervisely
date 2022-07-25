@@ -97,6 +97,12 @@ class ProjectMeta(JsonSerializable):
         # +-------+------------+-----------------+--------+---------------+--------------------+
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
+
+        # Example 2
+
+        cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+        scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+        meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
     """
     def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
                  project_type: Optional[ProjectType] = None):
