@@ -14,14 +14,11 @@ class DatasetInfo(NamedTuple):
     name: str
     description: str
     size: int
-    readme: str
-    workspace_id: int
-    images_count: int  # for compatibility with existing code
+    project_id: int
+    images_count: int
     items_count: int
-    datasets_count: int
     created_at: str
     updated_at: str
-    type: str
     reference_image_url: str
 
 

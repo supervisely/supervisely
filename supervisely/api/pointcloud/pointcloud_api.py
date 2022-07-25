@@ -31,7 +31,7 @@ class PointcloudInfo(NamedTuple):
     path_original: str
     cloud_mime: str
     figures_count: int
-    ann_objects_count: int
+    objects_count: int
     tags: list
     meta: dict
     created_at: str
