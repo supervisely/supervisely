@@ -1723,7 +1723,6 @@ class ImageApi(RemoveableBulkModuleApi):
             image_ids = [2389126, 2389127]
             api.image.remove_batch(image_ids)
         """
-
         super(ImageApi, self).remove_batch(ids, progress_cb)
 
     def remove(self, image_id: int):
