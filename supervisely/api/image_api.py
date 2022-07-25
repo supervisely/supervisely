@@ -110,7 +110,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         List of Images in the given Dataset.
 
-                :param dataset_id: Dataset ID in which the Images are located.
+        :param dataset_id: Dataset ID in which the Images are located.
         :type dataset_id: int
         :param filters: List of params to sort output Images.
         :type filters: List[dict], optional
@@ -176,12 +176,32 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order
         })
     
-    def get_filtered_list(self, dataset_id, filters=None, sort="id", sort_order="asc"):
+    def get_filtered_list(self, dataset_id: int, filters: Optional[List[Dict]] = None, sort: Optional[str] = "id",
+                 sort_order: Optional[str] = "asc") -> List[NamedTuple]:
         """
-        :param dataset_id: int
-        :param filters: list of dicts {'type': str, 'data': dict}
+        :param dataset_id: Dataset ID in which the Images are located.
+        :type dataset_id: int
+        :param filters: List of params to sort output Images in format: list of dicts {'type': str, 'data': dict}
+        :type filters: List[dict], optional
         :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
-        :return: list of filtered images for a given dataset
+        :type sort: str, optional
+        :param sort_order:
+        :type sort_order: str, optional
+        :return: List of all images with information for the given Dataset. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[NamedTuple]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            # Get list of Images with names containing subsequence '2008'
+            img_infos = api.image.get_filtered_list(dataset_id, filters=[{ 'type': 'images_filename', 'data': { 'value': '2008' } }])
         """
         if filters is None or not filters:
             return self.get_list(dataset_id, sort=sort, sort_order=sort_order)
@@ -252,6 +272,8 @@ class ImageApi(RemoveableBulkModuleApi):
             img_ids = [376728, 376729, 376730, 376731, 376732, 376733]
             img_infos = image.get_info_by_id_batch(img_ids)
         """
+        # TODO: add progress
+        # TODO: dataset_id only from first image, is this correct?
         results = []
         if len(ids) == 0:
             return results
@@ -336,7 +358,7 @@ class ImageApi(RemoveableBulkModuleApi):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def _download_batch(self, dataset_id, ids):
+    def _download_batch(self, dataset_id, ids, progress_cb: Optional[Callable] = None):
         """
         Generate image id and it content from given dataset and list of images ids
         :param dataset_id: int
@@ -354,6 +376,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 # The regex has 2 capture group: one for the prefix and one for the actual name value.
                 img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield img_id, part
+            
+            if progress_cb is not None:
+                progress_cb(len(batch_ids))
 
     def download_paths(self, dataset_id: int, ids: List[int], paths: List[str], progress_cb: Optional[Callable] = None) -> None:
         """
@@ -367,7 +392,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
-        :raises: :class:`RuntimeError` if len(ids) != len(paths)
+        :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -402,22 +427,16 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise RuntimeError(
+            raise ValueError(
                 'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
             )
 
         id_to_path = {id: path for id, path in zip(ids, paths)}
-        # debug_ids = []
-        for img_id, resp_part in self._download_batch(dataset_id, ids):
-            # debug_ids.append(img_id)
+        for img_id, resp_part in self._download_batch(dataset_id, ids, progress_cb):
             with open(id_to_path[img_id], "wb") as w:
                 w.write(resp_part.content)
-            if progress_cb is not None:
-                progress_cb(1)
-        # if ids != debug_ids:
-        #    raise RuntimeError("images.bulk.download: imageIds order is broken")
 
-    def download_bytes(self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None) -> [bytes]:
+    def download_bytes(self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None) -> List[bytes]:
         """
         Download Images with given IDs from Dataset in Binary format.
 
@@ -447,10 +466,8 @@ class ImageApi(RemoveableBulkModuleApi):
             return []
 
         id_to_img = {}
-        for img_id, resp_part in self._download_batch(dataset_id, ids):
+        for img_id, resp_part in self._download_batch(dataset_id, ids, progress_cb):
             id_to_img[img_id] = resp_part.content
-            if progress_cb is not None:
-                progress_cb(1)
 
         return [id_to_img[id] for id in ids]
 
@@ -485,12 +502,14 @@ class ImageApi(RemoveableBulkModuleApi):
         return [sly_image.read_bytes(img_bytes, keep_alpha)
                 for img_bytes in self.download_bytes(dataset_id=dataset_id, ids=ids, progress_cb=progress_cb)]
 
-    def check_existing_hashes(self, hashes: List[str]) -> List[str]:
+    def check_existing_hashes(self, hashes: List[str], progress_cb: Optional[Callable] = None) -> List[str]:
         """
         Checks existing hashes for Images.
 
         :param hashes: List of hashes.
         :type hashes: List[str]
+        :param progress_cb: Function for tracking progress of checking.
+        :type progress_cb: Progress, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
         :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
@@ -532,6 +551,9 @@ class ImageApi(RemoveableBulkModuleApi):
         for hashes_batch in batched(hashes, batch_size=900):
             response = self._api.post("images.internal.hashes.list", hashes_batch)
             results.extend(response.json())
+
+            if progress_cb is not None:
+                progress_cb(len(hashes_batch))
         return results
 
     def check_image_uploaded(self, hash: str) -> bool:
@@ -659,7 +681,7 @@ class ImageApi(RemoveableBulkModuleApi):
             )
             # now retry it for the case if it is a shadow server/connection error
 
-        raise RuntimeError(
+        raise ValueError(
             "Unable to upload images (data). "
             "Please check if images are in supported format and if ones aren't corrupted."
         )
@@ -704,11 +726,11 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param paths: List of local Images pathes.
         :type paths: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: Progress, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
-        :raises: :class:`RuntimeError` if len(names) != len(paths)
+        :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
         :Usage example:
@@ -775,7 +797,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param imgs: Images in RGB numpy matrix format
         :type imgs: List[np.ndarray]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: Progress, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
@@ -860,7 +882,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param links: Links to Images.
         :type links: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: Progress, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
@@ -952,7 +974,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param hashes: Images hashes.
         :type hashes: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: Progress, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
@@ -1056,7 +1078,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param ids: Images IDs.
         :type ids: List[int]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: Progress, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
@@ -1140,7 +1162,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(names) == 0:
             return results
         if len(names) != len(items):
-            raise RuntimeError(
+            raise ValueError(
                 'Can not match "names" and "items" lists, len(names) != len(items)'
             )
 
@@ -1148,7 +1170,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas = [{}] * len(names)
         else:
             if len(names) != len(metas):
-                raise RuntimeError(
+                raise ValueError(
                     'Can not match "names" and "metas" len(names) != len(metas)'
                 )
 
@@ -1217,7 +1239,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return ApiField.IMAGE_IDS
 
     def copy_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: Optional[bool] = False,
-                   with_annotations: Optional[bool] = False) -> List[NamedTuple]:
+                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         """
         Copies Images with given IDs to Dataset.
 
@@ -1229,7 +1251,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if type of ids is not list or if images ids are from the destination Dataset
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: Progress, optional
+        :raises: :class:`TypeError` if type of ids is not list
+        :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
         :Usage example:
@@ -1257,7 +1282,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
         """
         if type(ids) is not list:
-            raise RuntimeError(
+            raise TypeError(
                 "ids parameter has type {!r}. but has to be of type {!r}".format(
                     type(ids), list
                 )
@@ -1270,26 +1295,29 @@ class ImageApi(RemoveableBulkModuleApi):
         existing_names = {image.name for image in existing_images}
 
         ids_info = self.get_info_by_id_batch(ids)
-        temp_ds_ids = {info.dataset_id for info in ids_info}
+        temp_ds_ids = []
+        for info in ids_info:
+            if info.dataset_id not in temp_ds_ids:
+                temp_ds_ids.append(info.dataset_id)
         if len(temp_ds_ids) > 1:
-            raise RuntimeError("Images ids have to be from the same dataset")
+            raise ValueError("Images ids have to be from the same dataset")
 
         if change_name_if_conflict:
             new_names = [
-                generate_free_name(existing_names, info.name, with_ext=True)
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
                 for info in ids_info
             ]
         else:
             new_names = [info.name for info in ids_info]
             names_intersection = existing_names.intersection(set(new_names))
             if len(names_intersection) != 0:
-                raise RuntimeError(
+                raise ValueError(
                     "Images with the same names already exist in destination dataset. "
                     'Please, use argument "change_name_if_conflict=True" to automatically resolve '
                     "names intersection"
                 )
 
-        new_images = self.upload_ids(dst_dataset_id, new_names, ids)
+        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb)
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
@@ -1303,7 +1331,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return new_images
 
     def move_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: Optional[bool] = False,
-                   with_annotations: Optional[bool] = False) -> List[NamedTuple]:
+                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
         """
         Moves Images with given IDs to Dataset.
 
@@ -1315,7 +1343,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if type of ids is not list or if images ids are from the destination Dataset
+        :param progress_cb: Function for tracking the progress of moving.
+        :type progress_cb: Progress, optional
+        :raises: :class:`TypeError` if type of ids is not list
+        :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
         :Usage example:
@@ -1342,7 +1373,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ds_fruit_id = 2574
             ds_fruit_img_infos = api.image.move_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
         """
-        new_images = self.copy_batch(dst_dataset_id, ids, change_name_if_conflict, with_annotations)
+        new_images = self.copy_batch(dst_dataset_id, ids, change_name_if_conflict, with_annotations, progress_cb)
         self.remove_batch(ids)
         return new_images
 
@@ -1469,7 +1500,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 h = content_utf8.replace('form-data; name="', "")[:-1]
                 yield h, part
 
-    def download_paths_by_hashes(self, hashes: List[str], paths: List[str], progress_cb: Optional[Callable]=None) -> None:
+    def download_paths_by_hashes(self, hashes: List[str], paths: List[str], 
+                                 progress_cb: Optional[Callable]=None) -> None:
         """
         Download Images with given hashes in Supervisely server and saves them for the given paths.
 
@@ -1479,7 +1511,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
-        :raises: :class:`RuntimeError` if len(hashes) != len(paths)
+        :raises: :class:`ValueError` if len(hashes) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1506,7 +1538,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(hashes) == 0:
             return
         if len(hashes) != len(paths):
-            raise RuntimeError(
+            raise ValueError(
                 'Can not match "hashes" and "paths" lists, len(hashes) != len(paths)'
             )
 
@@ -1536,7 +1568,8 @@ class ImageApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            img_project_id = api.image.get_project_id(121236920)
+            img_id = 121236920
+            img_project_id = api.image.get_project_id(img_id)
             print(img_project_id)
             # Output: 53939
         """
@@ -1579,9 +1612,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(image_id)
             img_storage_url = api.image.storage_url(img_info.path_original)
         """
+        # TODO: ????????
         return path_original
 
-    def preview_url(self, url: str, width: Optional[int] = None, height: Optional[int] = None, quality: Optional[int] = 70) -> str:
+    def preview_url(self, url: str, width: Optional[int] = None, 
+                    height: Optional[int] = None, quality: Optional[int] = 70) -> str:
         """
         Previews Image with the given resolution parameters.
 
@@ -1608,8 +1643,6 @@ class ImageApi(RemoveableBulkModuleApi):
             image_id = 376729
             img_info = api.image.get_info_by_id(image_id)
             img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
-
-            # DOESN'T WORK
         """
         #@TODO: if both width and height are defined, and they are not proportioned to original image resolution,
         # then images will be croped from center
@@ -1693,14 +1726,10 @@ class ImageApi(RemoveableBulkModuleApi):
             api.image.add_tag(image_id, tag_id)
         """
 
-        # data = {ApiField.TAG_ID: tag_id, ApiField.IMAGE_ID: image_id}
-        # if value is not None:
-        #     data[ApiField.VALUE] = value
-        # resp = self._api.post('image-tags.add-to-image', data)
-        # return resp.json()
         self.add_tag_batch([image_id], tag_id, value)
 
-    def add_tag_batch(self, image_ids: List[int], tag_id: int, value: Optional[Union[str, int]]=None) -> None:
+    def add_tag_batch(self, image_ids: List[int], tag_id: int, value: Optional[Union[str, int]] = None, 
+                      progress_cb: Optional[Callable] = None) -> None:
         """
         Add tag with given ID to Images by IDs.
 
@@ -1710,6 +1739,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type tag_id: int
         :param value: Tag value.
         :type value: int or str or None, optional
+        :param progress_cb: Function for tracking progress of adding tag.
+        :type progress_cb: Progress, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :Usage example:
@@ -1726,8 +1757,10 @@ class ImageApi(RemoveableBulkModuleApi):
             tag_id = 277083
             api.image.add_tag_batch(image_ids, tag_id)
         """
-        data = {ApiField.TAG_ID: tag_id, ApiField.IDS: image_ids}
-        if value is not None:
-            data[ApiField.VALUE] = value
-        resp = self._api.post("image-tags.bulk.add-to-image", data)
-        return resp.json()
+        for batch_ids in batched(image_ids, batch_size=500):
+            data = {ApiField.TAG_ID: tag_id, ApiField.IDS: batch_ids}
+            if value is not None:
+                data[ApiField.VALUE] = value
+            self._api.post("image-tags.bulk.add-to-image", data)
+            if progress_cb is not None:
+                progress_cb(len(batch_ids))

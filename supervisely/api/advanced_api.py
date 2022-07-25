@@ -1,10 +1,10 @@
 # coding: utf-8
 
 # docs
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Callable
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
-
+from supervisely._utils import batched
 
 class AdvancedApi(ModuleApiBase):
     def add_tag_to_object(self, tag_meta_id: int, figure_id: int, value: Optional[str or int]=None) -> Dict:
@@ -29,8 +29,11 @@ class AdvancedApi(ModuleApiBase):
         resp = self._api.post('image-tags.remove-from-image', data)
         return resp.json()
 
-    def remove_tags_from_images(self, tag_meta_ids: List[int], image_ids: List[int]) -> None:
-        data = {ApiField.TAG_IDS: tag_meta_ids, ApiField.IDS: image_ids}
-        resp = self._api.post('image-tags.bulk.remove-from-images', data)
-        return resp.json()
+    def remove_tags_from_images(self, tag_meta_ids: List[int], image_ids: List[int], 
+                                progress_cb: Optional[Callable] = None) -> None:
+        for batch_ids in batched(image_ids, batch_size=500):
+            data = {ApiField.TAG_IDS: tag_meta_ids, ApiField.IDS: batch_ids}
+            self._api.post('image-tags.bulk.remove-from-images', data)
+            if progress_cb is not None:
+                progress_cb(len(batch_ids))
         
