@@ -39,6 +39,9 @@ class VideoInfo(NamedTuple):
     frame_height: int
     created_at: str
     updated_at: str
+    tags: list
+    file_meta: dict
+    custom_data: dict
 
 
 class VideoApi(RemoveableBulkModuleApi):

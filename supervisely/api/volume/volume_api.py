@@ -42,7 +42,7 @@ class VolumeInfo(NamedTuple):
     dataset_id: int
     file_meta: dict
     figures_count: int
-    ann_objects_count: int
+    objects_count: int
     processing_path: str
 
 
