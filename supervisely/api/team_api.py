@@ -425,3 +425,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                             f"downloaded={len(results)}, total={total}")
 
         return results
+
+    def _convert_json_info(self, info: dict, skip_missing=True) -> TeamInfo:
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return TeamInfo(**res._asdict())

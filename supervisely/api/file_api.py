@@ -738,11 +738,11 @@ class FileApi(ModuleApiBase):
                 return self._convert_json_info(info)
         return None
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
+    def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         # if res.storage_path is not None:
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
-        return res
+        return FileInfo(**res._asdict())
 
     def get_info_by_id(self, id: int) -> FileInfo:
         """

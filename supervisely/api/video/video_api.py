@@ -132,7 +132,6 @@ class VideoApi(RemoveableBulkModuleApi):
                                                                 f'datasetId={dataset_id}&'
                                                                 f'videoFrame={video_frame}&'
                                                                 f'videoId={video_id}')
-
         return result
 
     def _convert_json_info(self, info: dict, skip_missing=True):

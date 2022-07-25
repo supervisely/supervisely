@@ -205,3 +205,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     def _get_update_method(self):
         return 'workspaces.editInfo'
+
+    def _convert_json_info(self, info: dict, skip_missing=True) -> WorkspaceInfo:
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return WorkspaceInfo(**res._asdict())

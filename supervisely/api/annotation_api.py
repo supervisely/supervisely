@@ -678,10 +678,9 @@ class AnnotationApi(ModuleApi):
             },
         )
 
-    # def _convert_json_info(self, info: dict, skip_missing=True):
-    #     res = super()._convert_json_info(info, skip_missing=skip_missing)
-    #     res.annotation["imageId"] = res.image_id
-    #     return res
+    def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return AnnotationInfo(**res._asdict())
 
     def append_labels(self, image_id: int, labels: List[Label]) -> None:
         """

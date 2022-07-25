@@ -93,7 +93,8 @@ class UserApi(ModuleApiBase):
         return 'UserInfo'
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        return super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        res = super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
+        return UserInfo(**res._asdict())
 
     def get_info_by_id(self, id: int) -> UserInfo:
         """
