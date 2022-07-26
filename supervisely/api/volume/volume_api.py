@@ -1,4 +1,3 @@
-import SimpleITK as sitk
 from typing import NamedTuple
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
