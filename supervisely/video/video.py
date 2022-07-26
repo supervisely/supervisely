@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from __future__ import annotations
-import skvideo.io
 from typing import Tuple, List, Dict, Optional
 
 import os
@@ -113,6 +112,7 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
         print(video_info)
         # Output: ((720, 1280), 152)
     """
+    import skvideo.io
     vreader = skvideo.io.FFmpegReader(path)
     vlength = vreader.getShape()[0]
     img_height = vreader.getShape()[1]
