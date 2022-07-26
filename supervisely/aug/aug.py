@@ -2,8 +2,9 @@
 """augmentations for images and annotations"""
 
 
-# docs
-import imgaug.augmenters as iaa
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from imgaug.augmenters import Sequential
 from typing import Tuple, List, Dict, Optional
 
 import random
@@ -647,7 +648,8 @@ def rotate(img: np.ndarray, ann: Annotation, degrees: float, mode: Optional[str]
     return res_img, res_ann
 
 
-def load_imgaug(json_data: Dict) -> iaa.Sequential:
+def load_imgaug(json_data: Dict) -> Sequential:
+    import imgaug.augmenters as iaa
     def _get_function(category_name, aug_name):
         try:
             submodule = getattr(iaa, category_name)
