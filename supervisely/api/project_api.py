@@ -4,7 +4,12 @@
 # docs
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional, Callable
-from pandas.core.frame import DataFrame
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pandas.core.frame import DataFrame
+
 from supervisely.task.progress import Progress
 import supervisely as sly
 
