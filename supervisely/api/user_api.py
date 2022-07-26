@@ -4,12 +4,14 @@
 # docs
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional, Callable
-import pandas as pd
 from supervisely.task.progress import Progress
 
 from collections import namedtuple
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pandas.core.frame import DataFrame
 
 class UserInfo(NamedTuple):
     id: int
@@ -646,7 +648,7 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None) -> pd.DataFrame:
+    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
         """
         Get User activity data.
 
@@ -683,6 +685,7 @@ class UserApi(ModuleApiBase):
             # 41       8        login_to_team  2021-01-04T11:53:56.447Z  ...  None  None  None
             # [42 rows x 18 columns]
         """
+        import pandas as pd
         activity = self._api.team.get_activity(team_id, filter_user_id=user_id, progress_cb=progress_cb)
         df = pd.DataFrame(activity)
         return df
