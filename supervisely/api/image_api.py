@@ -200,16 +200,18 @@ class ImageApi(RemoveableBulkModuleApi):
     def get_filtered_list(self, dataset_id: int, filters: Optional[List[Dict]] = None, sort: Optional[str] = "id",
                  sort_order: Optional[str] = "asc") -> List[NamedTuple]:
         """
+        List of filtered Images in the given Dataset.
+
         :param dataset_id: Dataset ID in which the Images are located.
         :type dataset_id: int
-        :param filters: List of params to sort output Images in format: list of dicts {'type': str, 'data': dict}
+        :param filters: List of params to sort output Images
         :type filters: List[dict], optional
         :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
         :type sort: str, optional
         :param sort_order:
         :type sort_order: str, optional
         :return: List of all images with information for the given Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
 
         :Usage example:
 
@@ -272,12 +274,14 @@ class ImageApi(RemoveableBulkModuleApi):
         return self._get_info_by_id(id, 'images.info')
 
     # @TODO: reimplement to new method images.bulk.info
-    def get_info_by_id_batch(self, ids: List[int]) -> List[ImageInfo]:
+    def get_info_by_id_batch(self, ids: List[int], progress_cb: Optional[Callable] = None) -> List[ImageInfo]:
         """
         Get Images information by ID.
 
         :param ids: Images IDs in Supervisely.
         :type ids: List[int]
+        :param progress_cb: Function for tracking the progress.
+        :type progress_cb: Progress, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -293,8 +297,6 @@ class ImageApi(RemoveableBulkModuleApi):
             img_ids = [376728, 376729, 376730, 376731, 376732, 376733]
             img_infos = image.get_info_by_id_batch(img_ids)
         """
-        # TODO: add progress
-        # TODO: dataset_id only from first image, is this correct?
         results = []
         if len(ids) == 0:
             return results
@@ -307,6 +309,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters},
                 )
             )
+            if progress_cb is not None:
+                progress_cb(len(batch))
         temp_map = {info.id: info for info in results}
         ordered_results = [temp_map[id] for id in ids]
         return ordered_results
@@ -396,10 +400,11 @@ class ImageApi(RemoveableBulkModuleApi):
                 # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
                 # The regex has 2 capture group: one for the prefix and one for the actual name value.
                 img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+
+                if progress_cb is not None:
+                    progress_cb(1)
                 yield img_id, part
             
-            if progress_cb is not None:
-                progress_cb(len(batch_ids))
 
     def download_paths(self, dataset_id: int, ids: List[int], paths: List[str],
                        progress_cb: Optional[Callable] = None) -> None:
@@ -1642,7 +1647,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(image_id)
             img_storage_url = api.image.storage_url(img_info.path_original)
         """
-        # TODO: ????????
+        
         return path_original
 
     def preview_url(self, url: str, width: Optional[int] = None, height: Optional[int] = None,
@@ -1787,7 +1792,7 @@ class ImageApi(RemoveableBulkModuleApi):
             tag_id = 277083
             api.image.add_tag_batch(image_ids, tag_id)
         """
-        for batch_ids in batched(image_ids, batch_size=500):
+        for batch_ids in batched(image_ids, batch_size=100):
             data = {ApiField.TAG_ID: tag_id, ApiField.IDS: batch_ids}
             if value is not None:
                 data[ApiField.VALUE] = value

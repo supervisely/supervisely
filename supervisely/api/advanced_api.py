@@ -31,7 +31,7 @@ class AdvancedApi(ModuleApiBase):
 
     def remove_tags_from_images(self, tag_meta_ids: List[int], image_ids: List[int], 
                                 progress_cb: Optional[Callable] = None) -> None:
-        for batch_ids in batched(image_ids, batch_size=500):
+        for batch_ids in batched(image_ids, batch_size=100):
             data = {ApiField.TAG_IDS: tag_meta_ids, ApiField.IDS: batch_ids}
             self._api.post('image-tags.bulk.remove-from-images', data)
             if progress_cb is not None:
