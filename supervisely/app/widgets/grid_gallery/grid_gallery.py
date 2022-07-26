@@ -18,6 +18,8 @@ class GridGallery(Widget):
                  enable_zoom: bool = False,
                  resize_on_zoom: bool = False,
                  sync_views: bool = False,
+                 fill_rectangle: bool = True,
+                 border_width: int = 3,
 
                  widget_id: str = None):
 
@@ -34,8 +36,8 @@ class GridGallery(Widget):
         #############################
         # grid gallery settings
         self._show_preview: bool = True
-        self._fill_rectangle: bool = True
-        self._border_width: str = '3px'
+        self._fill_rectangle: bool = fill_rectangle
+        self._border_width: int = border_width
 
         self._show_opacity_header: bool = show_opacity_slider
         self._opacity: float = annotations_opacity
