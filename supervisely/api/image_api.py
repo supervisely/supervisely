@@ -27,6 +27,26 @@ from supervisely.sly_logger import logger
 from supervisely._utils import batched, generate_free_name
 
 
+class ImageInfo(NamedTuple):
+    id: int
+    name: str
+    link: str
+    hash: str
+    mime: str
+    ext: str
+    size: int
+    width: int
+    height: int
+    labels_count: int
+    dataset_id: int
+    created_at: str
+    updated_at: str
+    meta: dict
+    path_original: str
+    full_storage_url: str
+    tags: list
+
+
 class ImageApi(RemoveableBulkModuleApi):
     """
     API for working with :class:`Image<supervisely.imaging.image>`. :class:`ImageApi<ImageApi>` object is immutable.
@@ -51,6 +71,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         image_info = api.image.get_info_by_id(image_id) # api usage example
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -106,7 +127,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return 'ImageInfo'
 
     def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None, sort: Optional[str] = "id",
-                 sort_order: Optional[str] = "asc") -> List[NamedTuple]:
+                 sort_order: Optional[str] = "asc") -> List[ImageInfo]:
         """
         List of Images in the given Dataset.
 
@@ -119,7 +140,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param sort_order:
         :type sort_order: str, optional
         :return: List of all images with information for the given Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -169,7 +190,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #           tags=[]
             # ]
         """
-        return self.get_list_all_pages('images.list',  {
+        return self.get_list_all_pages('images.list', {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
             ApiField.SORT: sort,
@@ -226,14 +247,14 @@ class ImageApi(RemoveableBulkModuleApi):
             }
         )
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> ImageInfo:
         """
         Get Image information by ID.
 
         :param id: Image ID in Supervisely.
         :type id: int
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -251,14 +272,14 @@ class ImageApi(RemoveableBulkModuleApi):
         return self._get_info_by_id(id, 'images.info')
 
     # @TODO: reimplement to new method images.bulk.info
-    def get_info_by_id_batch(self, ids: List[int]) -> List[NamedTuple]:
+    def get_info_by_id_batch(self, ids: List[int]) -> List[ImageInfo]:
         """
         Get Images information by ID.
 
         :param ids: Images IDs in Supervisely.
         :type ids: List[int]
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -380,7 +401,8 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
-    def download_paths(self, dataset_id: int, ids: List[int], paths: List[str], progress_cb: Optional[Callable] = None) -> None:
+    def download_paths(self, dataset_id: int, ids: List[int], paths: List[str],
+                       progress_cb: Optional[Callable] = None) -> None:
         """
         Download Images with given ids and saves them for the given paths.
 
@@ -586,7 +608,7 @@ class ImageApi(RemoveableBulkModuleApi):
             return True
 
     def _upload_uniq_images_single_req(
-        self, func_item_to_byte_stream, hashes_items_to_upload
+            self, func_item_to_byte_stream, hashes_items_to_upload
     ):
         """
         Upload images (binary data) to server with single request.
@@ -624,7 +646,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return remote_hashes
 
     def _upload_data_bulk(
-        self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None
+            self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None
     ):
         """
         Upload images (binary data) to server. Works with already existing or duplicating images.
@@ -667,7 +689,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             warning_items = []
             for h in pending_hashes:
-                item_data =  hash_to_items[h]
+                item_data = hash_to_items[h]
                 if isinstance(item_data, (bytes, bytearray)):
                     item_data = "some bytes ..."
                 warning_items.append((h, item_data))
@@ -686,7 +708,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "Please check if images are in supported format and if ones aren't corrupted."
         )
 
-    def upload_path(self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_path(self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
 
@@ -699,7 +721,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Image metadata.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -716,7 +738,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
 
     def upload_paths(self, dataset_id: int, names: List[str], paths: List[str], progress_cb: Optional[Callable] = None,
-                     metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+                     metas: Optional[List[Dict]] = None) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
 
@@ -732,7 +754,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -746,6 +768,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_path(dataset_id, names=img_names, paths=img_paths)
         """
+
         def path_to_bytes_stream(path):
             return open(path, "rb")
 
@@ -756,7 +779,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
-    def upload_np(self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_np(self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
 
@@ -769,7 +792,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Image metadata.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -786,8 +809,9 @@ class ImageApi(RemoveableBulkModuleApi):
         metas = None if meta is None else [meta]
         return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
 
-    def upload_nps(self, dataset_id: int, names: List[str], imgs: List[np.ndarray], progress_cb: Optional[Callable] = None,
-                   metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+    def upload_nps(self, dataset_id: int, names: List[str], imgs: List[np.ndarray],
+                   progress_cb: Optional[Callable] = None,
+                   metas: Optional[List[Dict]] = None) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
 
@@ -802,7 +826,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -822,6 +846,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps)
         """
+
         def img_to_bytes_stream(item):
             img, name = item[0], item[1]
             img_bytes = sly_image.write_bytes(img, get_file_ext(name))
@@ -839,7 +864,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
-    def upload_link(self, dataset_id: int, name: str, link: str, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_link(self, dataset_id: int, name: str, link: str, meta: Optional[Dict] = None) -> ImageInfo:
         """
         Uploads Image from given link to Dataset.
 
@@ -852,7 +877,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Image metadata.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -872,7 +897,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_links(dataset_id, [name], [link], metas=metas)[0]
 
     def upload_links(self, dataset_id: int, names: List[str], links: List[str], progress_cb: Optional[Callable] = None,
-                     metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+                     metas: Optional[List[Dict]] = None) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
 
@@ -887,7 +912,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -905,9 +930,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
         """
-        return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, progress_cb, metas=metas)
+        return self._upload_bulk_add(lambda item: (ApiField.LINK, item), dataset_id, names, links, progress_cb,
+                                     metas=metas)
 
-    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
 
@@ -920,7 +946,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Image metadata.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -963,8 +989,9 @@ class ImageApi(RemoveableBulkModuleApi):
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
 
-    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str], progress_cb: Optional[Callable] = None,
-                      metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+    def upload_hashes(self, dataset_id: int, names: List[str], hashes: List[str],
+                      progress_cb: Optional[Callable] = None,
+                      metas: Optional[List[Dict]] = None) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
 
@@ -979,7 +1006,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -1009,9 +1036,10 @@ class ImageApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
         """
-        return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, progress_cb, metas=metas)
+        return self._upload_bulk_add(lambda item: (ApiField.HASH, item), dataset_id, names, hashes, progress_cb,
+                                     metas=metas)
 
-    def upload_id(self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None) -> NamedTuple:
+    def upload_id(self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
 
@@ -1024,7 +1052,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Image metadata.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -1068,7 +1096,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
     def upload_ids(self, dataset_id: int, names: List[str], ids: List[int], progress_cb: Optional[Callable] = None,
-                   metas: Optional[List[Dict]] = None) -> List[NamedTuple]:
+                   metas: Optional[List[Dict]] = None) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
 
@@ -1083,7 +1111,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -1155,7 +1183,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return result
 
     def _upload_bulk_add(
-        self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None
+            self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None
     ):
         results = []
 
@@ -1230,7 +1258,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 if temp_ext != cur_ext:
                     field_values[idx] = "{}.{}".format(field_values[idx], temp_ext)
                 break
-        return self.InfoType(*field_values)
+
+        res = self.InfoType(*field_values)
+        return ImageInfo(**res._asdict())
 
     def _remove_batch_api_method_name(self):
         return "images.bulk.remove"
@@ -1239,7 +1269,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return ApiField.IMAGE_IDS
 
     def copy_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: Optional[bool] = False,
-                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
 
@@ -1256,7 +1286,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -1331,7 +1361,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return new_images
 
     def move_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: Optional[bool] = False,
-                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+                   with_annotations: Optional[bool] = False, progress_cb: Optional[Callable] = None) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
 
@@ -1348,7 +1378,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -1378,7 +1408,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return new_images
 
     def copy(self, dst_dataset_id: int, id: int, change_name_if_conflict: Optional[bool] = False,
-             with_annotations: Optional[bool] = False) -> NamedTuple:
+             with_annotations: Optional[bool] = False) -> ImageInfo:
         """
         Copies Image with given ID to destination Dataset.
 
@@ -1391,7 +1421,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -1410,7 +1440,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def move(self, dst_dataset_id: int, id: int, change_name_if_conflict: Optional[bool] = False,
-             with_annotations: Optional[bool] = False) -> NamedTuple:
+             with_annotations: Optional[bool] = False) -> ImageInfo:
         """
         Moves Image with given ID to destination Dataset.
 
@@ -1423,7 +1453,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :rtype: :class:`ImageInfo`
         :Usage example:
 
          .. code-block:: python
@@ -1500,8 +1530,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 h = content_utf8.replace('form-data; name="', "")[:-1]
                 yield h, part
 
-    def download_paths_by_hashes(self, hashes: List[str], paths: List[str], 
-                                 progress_cb: Optional[Callable]=None) -> None:
+    def download_paths_by_hashes(self, hashes: List[str], paths: List[str],
+                                 progress_cb: Optional[Callable] = None) -> None:
         """
         Download Images with given hashes in Supervisely server and saves them for the given paths.
 
@@ -1549,7 +1579,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 w.write(resp_part.content)
             if progress_cb is not None:
                 progress_cb(1)
-                
+
     def get_project_id(self, image_id: int) -> int:
         """
         Gets Project ID by Image ID.
@@ -1615,8 +1645,8 @@ class ImageApi(RemoveableBulkModuleApi):
         # TODO: ????????
         return path_original
 
-    def preview_url(self, url: str, width: Optional[int] = None, 
-                    height: Optional[int] = None, quality: Optional[int] = 70) -> str:
+    def preview_url(self, url: str, width: Optional[int] = None, height: Optional[int] = None,
+                    quality: Optional[int] = 70) -> str:
         """
         Previews Image with the given resolution parameters.
 
@@ -1644,7 +1674,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(image_id)
             img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
         """
-        #@TODO: if both width and height are defined, and they are not proportioned to original image resolution,
+        # @TODO: if both width and height are defined, and they are not proportioned to original image resolution,
         # then images will be croped from center
         if width is None:
             width = ""
@@ -1699,7 +1729,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return response.json()
 
-    def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]]=None) -> None:
+    def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None) -> None:
         """
         Add tag with given ID to Image by ID.
 
@@ -1764,3 +1794,51 @@ class ImageApi(RemoveableBulkModuleApi):
             self._api.post("image-tags.bulk.add-to-image", data)
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
+
+    def remove_batch(self, ids: List[int], progress_cb: Optional[Callable] = None):
+        """
+        Remove images from supervisely by ids.
+
+        :param ids: List of Images IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking progress of removing.
+        :type progress_cb: Progress, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [2389126, 2389127]
+            api.image.remove_batch(image_ids)
+        """
+        super(ImageApi, self).remove_batch(ids, progress_cb)
+
+    def remove(self, image_id: int):
+        """
+        Remove image from supervisely by id.
+
+        :param image_id: Images ID in Supervisely.
+        :type image_id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 2389126
+            api.image.remove(image_id)
+        """
+        super(ImageApi, self).remove(image_id)

@@ -13,6 +13,14 @@ from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
 
 
+class AnnotationInfo(NamedTuple):
+    image_id: int
+    image_name: str
+    annotation: dict
+    created_at: str
+    updated_at: str
+
+
 class AnnotationApi(ModuleApi):
     """
     Annotation for a single image. :class:`AnnotationApi<AnnotationApi>` object is immutable.
@@ -54,21 +62,27 @@ class AnnotationApi(ModuleApi):
                            created_at='2019-12-19T12:06:59.435Z',
                            updated_at='2021-02-06T11:07:26.080Z')
         """
-        return [ApiField.IMAGE_ID,
-                ApiField.IMAGE_NAME,
-                ApiField.ANNOTATION,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.IMAGE_ID,
+            ApiField.IMAGE_NAME,
+            ApiField.ANNOTATION,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **AnnotationInfo**.
         """
-        return 'AnnotationInfo'
+        return "AnnotationInfo"
 
-    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None,
-                 progress_cb: Optional[Callable] = None) -> List[NamedTuple]:
+    def get_list(
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        progress_cb: Optional[Callable] = None,
+    ) -> List[AnnotationInfo]:
         """
         Get list of information about all annotations for a given dataset.
 
@@ -79,7 +93,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :rtype: :class:`List[AnnotationInfo]`
 
         :Usage example:
 
@@ -128,10 +142,15 @@ class AnnotationApi(ModuleApi):
             #     "2021-02-06T11:07:26.080Z"
             # ]
         """
-        return self.get_list_all_pages('annotations.list',
-                                       {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}, progress_cb)
+        return self.get_list_all_pages(
+            "annotations.list",
+            {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []},
+            progress_cb,
+        )
 
-    def download(self, image_id: int, with_custom_data: Optional[bool] = False) -> NamedTuple:
+    def download(
+        self, image_id: int, with_custom_data: Optional[bool] = False
+    ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
 
@@ -140,7 +159,7 @@ class AnnotationApi(ModuleApi):
         :param with_custom_data:
         :type with_custom_data: bool, optional
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`Namedtuple`
+        :rtype: :class:`AnnotationInfo`
         :Usage example:
 
          .. code-block:: python
@@ -170,12 +189,15 @@ class AnnotationApi(ModuleApi):
             #     "2021-02-06T11:07:26.080Z"
             # ]
         """
-        response = self._api.post('annotations.info',
-                                  {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data})
+        response = self._api.post(
+            "annotations.info",
+            {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data},
+        )
         return self._convert_json_info(response.json())
 
-    def download_json(self, image_id: int, with_custom_data: Optional[bool] = False) -> Dict[
-        str, Union[str, int, list, dict]]:
+    def download_json(
+        self, image_id: int, with_custom_data: Optional[bool] = False
+    ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
 
@@ -208,10 +230,17 @@ class AnnotationApi(ModuleApi):
             #         "objects": []
             #     }
         """
-        return self.download(image_id=image_id, with_custom_data=with_custom_data).annotation
+        return self.download(
+            image_id=image_id, with_custom_data=with_custom_data
+        ).annotation
 
-    def download_batch(self, dataset_id: int, image_ids: List[int], progress_cb: Optional[Callable] = None,
-                       with_custom_data: Optional[bool] = False) -> List[NamedTuple]:
+    def download_batch(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        progress_cb: Optional[Callable] = None,
+        with_custom_data: Optional[bool] = False,
+    ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
 
@@ -222,7 +251,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Progress
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[Namedtuple]`
+        :rtype: :class:`List[AnnotationInfo]`
 
         :Usage example:
 
@@ -247,9 +276,9 @@ class AnnotationApi(ModuleApi):
             post_data = {
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.IMAGE_IDS: batch,
-                ApiField.WITH_CUSTOM_DATA: with_custom_data
+                ApiField.WITH_CUSTOM_DATA: with_custom_data,
             }
-            results = self._api.post('annotations.bulk.info', data=post_data).json()
+            results = self._api.post("annotations.bulk.info", data=post_data).json()
             for ann_dict in results:
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
@@ -257,6 +286,49 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
         return ordered_results
+
+    def download_json_batch(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        progress_cb: Optional[Callable] = None,
+    ) -> List[Dict]:
+        """
+        Get list of AnnotationInfos for given dataset ID from API.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of integers.
+        :type image_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[Dict]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            progress = sly.Progress("Annotations downloaded: ", len(image_ids))
+            anns_jsons = api.annotation.download_json_batch(dataset_id, image_ids, progress_cb=progress.iters_done_report)
+            # Output:
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+        """
+        results = self.download_batch(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            progress_cb=progress_cb,
+        )
+        return [ann_info.annotation for ann_info in results]
 
     def upload_path(self, img_id: int, ann_path: str) -> None:
         """
@@ -285,7 +357,12 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_paths([img_id], [ann_path])
 
-    def upload_paths(self, img_ids: List[int], ann_paths: List[str], progress_cb: Optional[Callable] = None) -> None:
+    def upload_paths(
+        self,
+        img_ids: List[int],
+        ann_paths: List[str],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Loads an annotations from a given paths to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -345,7 +422,12 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_jsons([img_id], [ann_json])
 
-    def upload_jsons(self, img_ids: List[int], ann_jsons: List[Dict], progress_cb: Optional[Callable] = None) -> None:
+    def upload_jsons(
+        self,
+        img_ids: List[int],
+        ann_jsons: List[Dict],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Loads an annotations from dicts to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -399,7 +481,12 @@ class AnnotationApi(ModuleApi):
         """
         self.upload_anns([img_id], [ann])
 
-    def upload_anns(self, img_ids: List[int], anns: List[Annotation], progress_cb: Optional[Callable] = None) -> None:
+    def upload_anns(
+        self,
+        img_ids: List[int],
+        anns: List[Annotation],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Loads an :class:`Annotations<supervisely.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
 
@@ -433,32 +520,44 @@ class AnnotationApi(ModuleApi):
         if len(img_ids) == 0:
             return
         if len(img_ids) != len(anns):
-            raise RuntimeError('Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)')
+            raise RuntimeError(
+                'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
+            )
 
         dataset_id = self._api.image.get_info_by_id(img_ids[0]).dataset_id
         for batch in batched(list(zip(img_ids, anns))):
-            data = [{ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)} for img_id, ann in batch]
-            self._api.post('annotations.bulk.add', data={ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATIONS: data})
+            data = [
+                {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
+                for img_id, ann in batch
+            ]
+            self._api.post(
+                "annotations.bulk.add",
+                data={ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATIONS: data},
+            )
             if progress_cb is not None:
                 progress_cb(len(batch))
 
     def get_info_by_id(self, id):
-        raise NotImplementedError('Method is not supported')
+        raise NotImplementedError("Method is not supported")
 
     def get_info_by_name(self, parent_id, name):
-        raise NotImplementedError('Method is not supported')
+        raise NotImplementedError("Method is not supported")
 
     def exists(self, parent_id, name):
-        raise NotImplementedError('Method is not supported')
+        raise NotImplementedError("Method is not supported")
 
     def get_free_name(self, parent_id, name):
-        raise NotImplementedError('Method is not supported')
+        raise NotImplementedError("Method is not supported")
 
     def _add_sort_param(self, data):
         return data
 
-    def copy_batch(self, src_image_ids: List[int], dst_image_ids: List[int],
-                   progress_cb: Optional[Callable] = None) -> None:
+    def copy_batch(
+        self,
+        src_image_ids: List[int],
+        dst_image_ids: List[int],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Copy annotations from one images IDs to another in API.
 
@@ -491,8 +590,10 @@ class AnnotationApi(ModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}
         """
         if len(src_image_ids) != len(dst_image_ids):
-            raise RuntimeError('Can not match "src_image_ids" and "dst_image_ids" lists, '
-                               'len(src_image_ids) != len(dst_image_ids)')
+            raise RuntimeError(
+                'Can not match "src_image_ids" and "dst_image_ids" lists, '
+                "len(src_image_ids) != len(dst_image_ids)"
+            )
         if len(src_image_ids) == 0:
             return
 
@@ -532,7 +633,9 @@ class AnnotationApi(ModuleApi):
         """
         self.copy_batch([src_image_id], [dst_image_id])
 
-    def copy_batch_by_ids(self, src_image_ids: List[int], dst_image_ids: List[int]) -> None:
+    def copy_batch_by_ids(
+        self, src_image_ids: List[int], dst_image_ids: List[int]
+    ) -> None:
         """
         Copy annotations from one images IDs to another images IDs in API.
 
@@ -559,19 +662,25 @@ class AnnotationApi(ModuleApi):
             api.annotation.copy_batch_by_ids(src_ids, dst_ids)
         """
         if len(src_image_ids) != len(dst_image_ids):
-            raise RuntimeError('Can not match "src_image_ids" and "dst_image_ids" lists, '
-                               'len(src_image_ids) != len(dst_image_ids)')
+            raise RuntimeError(
+                'Can not match "src_image_ids" and "dst_image_ids" lists, '
+                "len(src_image_ids) != len(dst_image_ids)"
+            )
         if len(src_image_ids) == 0:
             return
 
-        self._api.post('annotations.bulk.copy', data={"srcImageIds": src_image_ids,
-                                                      "destImageIds": dst_image_ids,
-                                                      "preserveSourceDate": True})
+        self._api.post(
+            "annotations.bulk.copy",
+            data={
+                "srcImageIds": src_image_ids,
+                "destImageIds": dst_image_ids,
+                "preserveSourceDate": True,
+            },
+        )
 
-    # def _convert_json_info(self, info: dict, skip_missing=True):
-    #     res = super()._convert_json_info(info, skip_missing=skip_missing)
-    #     res.annotation["imageId"] = res.image_id
-    #     return res
+    def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return AnnotationInfo(**res._asdict())
 
     def append_labels(self, image_id: int, labels: List[Label]) -> None:
         """
@@ -597,7 +706,10 @@ class AnnotationApi(ModuleApi):
 
         added_ids = []
         for batch_jsons in batched(payload, batch_size=100):
-            resp = self._api.post('figures.bulk.add', {ApiField.ENTITY_ID: image_id, ApiField.FIGURES: batch_jsons})
+            resp = self._api.post(
+                "figures.bulk.add",
+                {ApiField.ENTITY_ID: image_id, ApiField.FIGURES: batch_jsons},
+            )
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
