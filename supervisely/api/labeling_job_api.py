@@ -4,8 +4,11 @@
 # docs
 from __future__ import annotations
 from typing import List, NamedTuple, Dict, Optional, Callable
-from supervisely.task.progress import Progress
-import pandas as pd
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pandas.core.frame import DataFrame
 
 import time
 from supervisely.collection.str_enum import StrEnum
@@ -978,7 +981,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         response = self._api.post('jobs.stats', {ApiField.ID: id})
         return response.json()
 
-    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable] = None) -> pd.DataFrame:
+    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+        import pandas as pd
+        
         """
         Get all activity for given Labeling Job by ID.
 
