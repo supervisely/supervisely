@@ -4,7 +4,6 @@
 from __future__ import annotations
 from typing import List, Tuple, Dict, Optional
 from supervisely.geometry.image_rotator import ImageRotator
-from skimage import morphology as skimage_morphology
 
 import base64
 from enum import Enum
@@ -331,6 +330,7 @@ class Bitmap(BitmapBase):
             med_ax_figure = figure.skeletonize(SkeletonizeMethod.MEDIAL_AXIS)
             thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
         """
+        from skimage import morphology as skimage_morphology
         if method_id == SkeletonizeMethod.SKELETONIZE:
             method = skimage_morphology.skeletonize
         elif method_id == SkeletonizeMethod.MEDIAL_AXIS:
