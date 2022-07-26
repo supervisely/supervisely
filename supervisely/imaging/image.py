@@ -9,7 +9,6 @@ import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
-import skimage.transform
 
 from supervisely.io.fs import ensure_base_path, get_file_ext
 from supervisely.geometry.rectangle import Rectangle
@@ -668,6 +667,7 @@ def resize_inter_nearest(img: np.ndarray, out_size: Optional[Tuple[int, int]]=No
 
                    After
     """
+    import skimage.transform
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     resize_kv_args = dict(order=0, preserve_range=True, mode='constant')
     if parse_version(skimage.__version__) >= parse_version('0.14.0'):
@@ -811,6 +811,7 @@ def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=Rotat
 
                    After origin_size mode
     """
+    import skimage.transform
     rotator = ImageRotator(imsize=img.shape[:2], angle_degrees_ccw=degrees_angle)
     if mode == RotateMode.KEEP_BLACK:
         return rotator.rotate_img(img, use_inter_nearest=False)  # @TODO: order = ???
