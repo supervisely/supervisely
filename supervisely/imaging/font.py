@@ -4,17 +4,19 @@
 from typing import Tuple, Optional
 
 import os
-import matplotlib.font_manager as fontman
+
 from PIL import ImageFont
 from supervisely.io.fs import get_file_ext, file_exists
 
 
-FONT_EXTENSION = '.ttf'
-DEFAULT_FONT_FILE_NAME = 'DejaVuSansMono.ttf'
+FONT_EXTENSION = ".ttf"
+DEFAULT_FONT_FILE_NAME = "DejaVuSansMono.ttf"
 _fonts = {}  # (font name, size) -> font
 
 
 def _get_font_path_by_name(font_file_name: str) -> str:
+    import matplotlib.font_manager as fontman
+
     """
     Walk over systems fonts paths and match with given `font_file_name`.
     Args:
@@ -31,7 +33,9 @@ def _get_font_path_by_name(font_file_name: str) -> str:
     return None
 
 
-def load_font(font_file_name: str, font_size: Optional[int] = 12) -> ImageFont.FreeTypeFont:
+def load_font(
+    font_file_name: str, font_size: Optional[int] = 12
+) -> ImageFont.FreeTypeFont:
     """
     Set global font true-type for drawing.
     Args:
@@ -43,15 +47,20 @@ def load_font(font_file_name: str, font_size: Optional[int] = 12) -> ImageFont.F
     if get_file_ext(font_file_name) == FONT_EXTENSION:
         font_path = _get_font_path_by_name(font_file_name)
         if (font_path is not None) and file_exists(font_path):
-            return ImageFont.truetype(font_path, font_size, encoding='utf-8')
+            return ImageFont.truetype(font_path, font_size, encoding="utf-8")
         else:
             raise ValueError(
-                'Font file "{}" not found in system paths. Try to set another font.'.format(font_file_name))
+                'Font file "{}" not found in system paths. Try to set another font.'.format(
+                    font_file_name
+                )
+            )
     else:
-        raise ValueError('Supported only TrueType fonts!')
+        raise ValueError("Supported only TrueType fonts!")
 
 
-def get_font(font_file_name: Optional[str] = None, font_size: Optional[int] = 12) -> ImageFont.FreeTypeFont:
+def get_font(
+    font_file_name: Optional[str] = None, font_size: Optional[int] = 12
+) -> ImageFont.FreeTypeFont:
     """
     Args:
         font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
@@ -77,4 +86,7 @@ def get_readable_font_size(img_size: Tuple[int, int]) -> int:
     minimal_font_size = 6
     base_font_size = 14
     base_image_size = 512
-    return max(minimal_font_size, round(base_font_size * (img_size[0] + img_size[1]) // 2) // base_image_size)
+    return max(
+        minimal_font_size,
+        round(base_font_size * (img_size[0] + img_size[1]) // 2) // base_image_size,
+    )
