@@ -10,12 +10,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from supervisely.task.progress import Progress
-import supervisely as sly
-
-from enum import Enum
-import pandas as pd
-import urllib
 from collections import defaultdict
 from typing import Dict
 
