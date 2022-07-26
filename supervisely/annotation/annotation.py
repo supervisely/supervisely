@@ -34,11 +34,10 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.io.fs import ensure_base_path
 
 
-
-
-# for imgaug
-from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from imgaug.augmentables.bbs import BoundingBoxesOnImage
+    from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 ANN_EXT = '.json'
 
