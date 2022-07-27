@@ -51,7 +51,7 @@ def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size:
 
 class BitmapBase(Geometry):
     """
-     BitmapBase is a base class of :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>` geometry. :class:`BitmapBase<BitmapBase>` class object is immutable.
+    BitmapBase is a base class of :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>` geometry. :class:`BitmapBase<BitmapBase>` class object is immutable.
 
     :param data: Bitmap mask data.
     :type data: np.ndarray
@@ -72,7 +72,7 @@ class BitmapBase(Geometry):
 
     :Usage example: Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
     """
-    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None, expected_data_dims: Optional[int]=None,
+    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None, expected_data_dims: Optional[int] = None,
                  sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
                  updated_at: Optional[str] = None, created_at: Optional[str] = None):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
@@ -87,8 +87,8 @@ class BitmapBase(Geometry):
 
         data_dims = len(data.shape)
         if expected_data_dims is not None and data_dims != expected_data_dims:
-            raise ValueError('BitmapBase "data" argument must be a {}-dimensional numpy array. '
-                             'Instead got {} dimensions'.format(expected_data_dims, data_dims))
+            raise ValueError(f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions')
+
 
         self._origin = origin.clone()
         self._data = data.copy()
