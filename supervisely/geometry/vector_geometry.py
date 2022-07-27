@@ -62,7 +62,11 @@ class VectorGeometry(Geometry):
         exterior: Union[
             List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
         ],
-        interior: Union[List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]] = [],
+        interior: Union[
+            List[List[PointLocation]],
+            List[List[List[int, int]]],
+            List[List[Tuple[int, int]]],
+        ] = [],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[int] = None,
@@ -76,9 +80,9 @@ class VectorGeometry(Geometry):
             if isinstance(p, PointLocation):
                 result_exterior.append(p)
             elif isinstance(p, tuple) and len(p) == 2:
-                result_exterior.append(PointLocation(p[1], p[0]))
+                result_exterior.append(PointLocation(p[0], p[1]))
             elif isinstance(p, list) and len(p) == 2:
-                result_exterior.append(PointLocation(p[1], p[0]))
+                result_exterior.append(PointLocation(p[0], p[1]))
             else:
                 raise TypeError(
                     'Type of items (coordinates) in list "exterior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
@@ -86,7 +90,9 @@ class VectorGeometry(Geometry):
 
         result_interior = []
         if not isinstance(interior, list):
-            raise TypeError('Argument "interior" must be a list of lists with coordinates')
+            raise TypeError(
+                'Argument "interior" must be a list of lists with coordinates'
+            )
         for coords in interior:
             if not isinstance(interior, list):
                 raise TypeError('"interior" coords must be a list of coordinates')
