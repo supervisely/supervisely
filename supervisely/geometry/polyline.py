@@ -31,8 +31,8 @@ class Polyline(VectorGeometry):
     """
     Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
 
-    :param exterior: List of PointLocation objects, the Polyline is defined with these points.
-    :type exterior: List[PointLocation]
+    :param exterior: List of exterior coordinates, the Polyline is defined with these points.
+    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
@@ -52,6 +52,8 @@ class Polyline(VectorGeometry):
         import supervisely as sly
 
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
+        # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
+        # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
         figure = sly.Polyline(exterior)
     """
 
@@ -71,11 +73,7 @@ class Polyline(VectorGeometry):
         created_at: Optional[str] = None,
     ):
         if len(exterior) < 2:
-            raise ValueError(
-                '"{}" field must contain at least two points to create "Polyline" object.'.format(
-                    EXTERIOR
-                )
-            )
+            raise ValueError(f'"{EXTERIOR}" field must contain at least two points to create "Polyline" object.')
 
         super().__init__(
             exterior=exterior,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Tuple, Dict, Optional, Union, Iterable
 from supervisely.geometry.image_rotator import ImageRotator
 
 
@@ -25,10 +25,10 @@ class VectorGeometry(Geometry):
     """
     VectorGeometry is a base class of geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
 
-    :param exterior: List of PointLocation objects, the object contour is defined with these points.
-    :type exterior: List[PointLocation]
-    :param interior: List of PointLocation objects, the object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type interior: List[List[PointLocation]]
+    :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
+    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :param interior: Interior coordinates, object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
+    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
     :param sly_id: VectorGeometry ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
@@ -48,7 +48,11 @@ class VectorGeometry(Geometry):
         import supervisely as sly
 
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+        # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+        # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
         interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+        # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+        # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
 
         figure = sly.Polygon(exterior, interior)
     """
@@ -58,14 +62,13 @@ class VectorGeometry(Geometry):
         exterior: Union[
             List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
         ],
-        interior: List[List[PointLocation]] = [],
+        interior: Union[List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]] = [],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[int] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
-        # @TODO: make exterior as iterable insted of just list
         result_exterior = []
         if not isinstance(exterior, list):
             raise TypeError('Argument "exterior" must be a list of coordinates')
@@ -73,16 +76,36 @@ class VectorGeometry(Geometry):
             if isinstance(p, PointLocation):
                 result_exterior.append(p)
             elif isinstance(p, tuple) and len(p) == 2:
-                result_exterior.append(PointLocation(p[0], p[1]))
+                result_exterior.append(PointLocation(p[1], p[0]))
             elif isinstance(p, list) and len(p) == 2:
-                result_exterior.append(PointLocation(p[0], p[1]))
+                result_exterior.append(PointLocation(p[1], p[0]))
             else:
                 raise TypeError(
                     'Type of items (coordinates) in list "exterior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
                 )
 
+        result_interior = []
+        if not isinstance(interior, list):
+            raise TypeError('Argument "interior" must be a list of lists with coordinates')
+        for coords in interior:
+            if not isinstance(interior, list):
+                raise TypeError('"interior" coords must be a list of coordinates')
+            p_coords = []
+            for p in coords:
+                if isinstance(p, PointLocation):
+                    p_coords.append(p)
+                elif isinstance(p, tuple) and len(p) == 2:
+                    p_coords.append(PointLocation(p[0], p[1]))
+                elif isinstance(p, list) and len(p) == 2:
+                    p_coords.append(PointLocation(p[0], p[1]))
+                else:
+                    raise TypeError(
+                        'Type of items (coordinates) in list "interior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
+                    )
+            result_interior.append(p_coords)
+
         self._exterior = deepcopy(result_exterior)
-        self._interior = deepcopy(interior)
+        self._interior = deepcopy(result_interior)
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
