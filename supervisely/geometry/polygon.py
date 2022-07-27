@@ -5,7 +5,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Tuple
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 
@@ -13,9 +13,21 @@ from supervisely.geometry.rectangle import Rectangle
 from shapely.geometry import mapping, Polygon as ShapelyPolygon
 
 from supervisely.geometry.conversions import shapely_figure_to_coords_list
-from supervisely.geometry.point_location import row_col_list_to_points, points_to_row_col_list
+from supervisely.geometry.point_location import (
+    row_col_list_to_points,
+    points_to_row_col_list,
+)
 from supervisely.geometry.vector_geometry import VectorGeometry
-from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    EXTERIOR,
+    INTERIOR,
+    POINTS,
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    ID,
+    CLASS_ID,
+)
 from supervisely.geometry import validation
 from supervisely.sly_logger import logger
 
@@ -50,27 +62,52 @@ class Polygon(VectorGeometry):
             interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
             figure = sly.Polygon(exterior, interior)
     """
+
     @staticmethod
     def geometry_name():
-        return 'polygon'
+        return "polygon"
 
-    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]] = [],
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        exterior: Union[
+            List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
+        ],
+        interior: List[List[PointLocation]] = [],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
-            logger.warn('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
-            #raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
+            logger.warn(
+                '"{}" field must contain at least 3 points to create "Polygon" object.'.format(
+                    EXTERIOR
+                )
+            )
+            # raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
 
         for element in interior:
             if len(element) < 3:
-                logger.warn('"{}" interior field must contain at least 3 points to create "Polygon" object.'.format(element))
+                logger.warn(
+                    '"{}" interior field must contain at least 3 points to create "Polygon" object.'.format(
+                        element
+                    )
+                )
                 element.extend([element[-1]] * (3 - len(element)))
-        #if any(len(element) < 3 for element in interior):
+        # if any(len(element) < 3 for element in interior):
         #    raise ValueError('"{}" element must contain at least 3 points.'.format(INTERIOR))
 
-        super().__init__(exterior, interior, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login,
-                         updated_at=updated_at, created_at=created_at)
+        super().__init__(
+            exterior,
+            interior,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     @classmethod
     def from_json(cls, data: Dict) -> Polygon:
@@ -112,9 +149,20 @@ class Polygon(VectorGeometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return cls(exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
-                   interior=[row_col_list_to_points(i, flip_row_col_order=True) for i in data[POINTS][INTERIOR]],
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            exterior=row_col_list_to_points(
+                data[POINTS][EXTERIOR], flip_row_col_order=True
+            ),
+            interior=[
+                row_col_list_to_points(i, flip_row_col_order=True)
+                for i in data[POINTS][INTERIOR]
+            ],
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def crop(self, rect: Rectangle) -> List[Polygon]:
         """
@@ -144,9 +192,9 @@ class Polygon(VectorGeometry):
                 PointLocation(row=rect.top, col=rect.left),
                 PointLocation(row=rect.top, col=rect.right),
                 PointLocation(row=rect.bottom, col=rect.right),
-                PointLocation(row=rect.bottom, col=rect.left)
+                PointLocation(row=rect.bottom, col=rect.left),
             ]
-            #points = rect.corners # old implementation with 1 pixel error (right bottom)
+            # points = rect.corners # old implementation with 1 pixel error (right bottom)
             # #@TODO: investigate here (critical issue)
 
             clipping_window_shpl = ShapelyPolygon(points_to_row_col_list(points))
@@ -154,7 +202,7 @@ class Polygon(VectorGeometry):
             intersections_shpl = self_shpl.buffer(0).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_shpl)
         except Exception:
-            logger.warn('Polygon cropping exception, shapely.', exc_info=True)
+            logger.warn("Polygon cropping exception, shapely.", exc_info=True)
             # raise
             # if polygon is invalid, just print warning and skip it
             # @TODO: need more investigation here
@@ -165,12 +213,18 @@ class Polygon(VectorGeometry):
         # Check for bad cropping cases (e.g. empty points list)
         out_polygons = []
         for intersection in intersections:
-            if isinstance(intersection, list) and len(intersection) > 0 and len(intersection[0]) >= 3:
+            if (
+                isinstance(intersection, list)
+                and len(intersection) > 0
+                and len(intersection[0]) >= 3
+            ):
                 exterior = row_col_list_to_points(intersection[0], do_round=True)
                 interiors = []
                 for interior_contour in intersection[1:]:
                     if len(interior_contour) > 2:
-                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
+                        interiors.append(
+                            row_col_list_to_points(interior_contour, do_round=True)
+                        )
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
@@ -188,7 +242,9 @@ class Polygon(VectorGeometry):
         interior = [x[:, ::-1] for x in self.interior_np]
 
         poly_lines = [exterior] + interior
-        cv2.polylines(bitmap, pts=poly_lines, isClosed=True, color=color, thickness=thickness)
+        cv2.polylines(
+            bitmap, pts=poly_lines, isClosed=True, color=color, thickness=thickness
+        )
 
     # @TODO: extend possibilities, consider interior
     # returns area of exterior figure only
@@ -212,7 +268,9 @@ class Polygon(VectorGeometry):
 
     @staticmethod
     def _get_area_by_gauss_formula(rows, cols):
-        return 0.5 * np.abs(np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1)))
+        return 0.5 * np.abs(
+            np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1))
+        )
 
     def approx_dp(self, epsilon: float) -> Polygon:
         """
@@ -230,8 +288,13 @@ class Polygon(VectorGeometry):
             # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
             approx_figure = figure.approx_dp(0.75)
         """
-        exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
-        interior_np = [self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np]
+        exterior_np = self._approx_ring_dp(
+            self.exterior_np, epsilon, closed=True
+        ).tolist()
+        interior_np = [
+            self._approx_ring_dp(x, epsilon, closed=True).tolist()
+            for x in self.interior_np
+        ]
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
         return Polygon(exterior, interior)
@@ -241,4 +304,5 @@ class Polygon(VectorGeometry):
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.bitmap import Bitmap
+
         return [AnyGeometry, Rectangle, Bitmap]
