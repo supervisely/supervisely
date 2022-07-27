@@ -54,7 +54,7 @@ class Polygon(VectorGeometry):
     def geometry_name():
         return 'polygon'
 
-    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]],
+    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]] = [],
                  sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
                  updated_at: Optional[str] = None, created_at: Optional[str] = None):
         if len(exterior) < 3:
