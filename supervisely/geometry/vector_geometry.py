@@ -66,21 +66,22 @@ class VectorGeometry(Geometry):
         created_at: Optional[str] = None,
     ):
         # @TODO: make exterior as iterable insted of just list
+        result_exterior = []
         if not isinstance(exterior, list):
             raise TypeError('Argument "exterior" must be a list of coordinates')
         for p in exterior:
             if isinstance(p, PointLocation):
-                pass
+                result_exterior.append(p)
             elif isinstance(p, tuple) and len(p) == 2:
-                pass
+                result_exterior.append(PointLocation(p[0], p[1]))
             elif isinstance(p, list) and len(p) == 2:
-                pass
+                result_exterior.append(PointLocation(p[0], p[1]))
             else:
                 raise TypeError(
                     'Type of items (coordinates) in list "exterior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
                 )
 
-        self._exterior = deepcopy(exterior)
+        self._exterior = deepcopy(result_exterior)
         self._interior = deepcopy(interior)
         super().__init__(
             sly_id=sly_id,
