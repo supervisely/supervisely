@@ -6,7 +6,7 @@
 from __future__ import annotations
 import cv2
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Tuple
 from supervisely.geometry.point import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 
@@ -14,7 +14,15 @@ from shapely.geometry import mapping, LineString, Polygon as ShapelyPolygon
 from supervisely.geometry.conversions import shapely_figure_to_coords_list
 from supervisely.geometry.point_location import row_col_list_to_points
 from supervisely.geometry.vector_geometry import VectorGeometry
-from supervisely.geometry.constants import EXTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    EXTERIOR,
+    POINTS,
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    ID,
+    CLASS_ID,
+)
 from supervisely.geometry import validation
 from supervisely import logger
 
@@ -23,8 +31,8 @@ class Polyline(VectorGeometry):
     """
     Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
 
-    :param exterior: List of PointLocation objects, the Polyline is defined with these points.
-    :type exterior: List[PointLocation]
+    :param exterior: List of exterior coordinates, the Polyline is defined with these points.
+    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
@@ -44,21 +52,38 @@ class Polyline(VectorGeometry):
         import supervisely as sly
 
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
+        # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
+        # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
         figure = sly.Polyline(exterior)
     """
+
     @staticmethod
     def geometry_name():
-        return 'line'
+        return "line"
 
-    def __init__(self, exterior: List[PointLocation],
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        exterior: Union[
+            List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
+        ],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         if len(exterior) < 2:
-            raise ValueError('"{}" field must contain at least two points to create "Polyline" object.'
-                             .format(EXTERIOR))
+            raise ValueError(f'"{EXTERIOR}" field must contain at least two points to create "Polyline" object.')
 
-        super().__init__(exterior=exterior, interior=[], sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
-                         created_at=created_at)
+        super().__init__(
+            exterior=exterior,
+            interior=[],
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     @classmethod
     def from_json(cls, data: Dict) -> Polyline:
@@ -93,8 +118,16 @@ class Polyline(VectorGeometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return cls(exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            exterior=row_col_list_to_points(
+                data[POINTS][EXTERIOR], flip_row_col_order=True
+            ),
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def crop(self, rect: Rectangle) -> List[Polyline]:
         """
@@ -114,15 +147,21 @@ class Polyline(VectorGeometry):
             crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
         """
         try:
-            clipping_window = [[rect.top, rect.left], [rect.top, rect.right],
-                               [rect.bottom, rect.right], [rect.bottom, rect.left]]
+            clipping_window = [
+                [rect.top, rect.left],
+                [rect.top, rect.right],
+                [rect.bottom, rect.right],
+                [rect.bottom, rect.left],
+            ]
             clipping_window_shpl = ShapelyPolygon(clipping_window)
 
             exterior = self.exterior_np
-            intersections_polygon = LineString(exterior).intersection(clipping_window_shpl)
+            intersections_polygon = LineString(exterior).intersection(
+                clipping_window_shpl
+            )
             mapping_shpl = mapping(intersections_polygon)
         except Exception:
-            logger.warn('Line cropping exception, shapely.', exc_info=False)
+            logger.warn("Line cropping exception, shapely.", exc_info=False)
             raise
 
         res_lines_pts = shapely_figure_to_coords_list(mapping_shpl)
@@ -145,7 +184,9 @@ class Polyline(VectorGeometry):
 
     def _draw_contour_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
         exterior = self.exterior_np[:, ::-1]
-        cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)
+        cv2.polylines(
+            bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness
+        )
 
     @property
     def area(self) -> float:
@@ -180,7 +221,9 @@ class Polyline(VectorGeometry):
             # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
             approx_figure = figure.approx_dp(0.75)
         """
-        exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
+        exterior_np = self._approx_ring_dp(
+            self.exterior_np, epsilon, closed=True
+        ).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         return Polyline(exterior)
 
@@ -190,4 +233,5 @@ class Polyline(VectorGeometry):
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+
         return [AnyGeometry, Rectangle, Bitmap, Polygon]

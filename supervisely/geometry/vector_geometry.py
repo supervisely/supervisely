@@ -5,11 +5,17 @@ from __future__ import annotations
 from copy import deepcopy
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union, Iterable
 from supervisely.geometry.image_rotator import ImageRotator
 
 
-from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS, GEOMETRY_SHAPE, GEOMETRY_TYPE
+from supervisely.geometry.constants import (
+    EXTERIOR,
+    INTERIOR,
+    POINTS,
+    GEOMETRY_SHAPE,
+    GEOMETRY_TYPE,
+)
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely.geometry.rectangle import Rectangle
@@ -19,10 +25,10 @@ class VectorGeometry(Geometry):
     """
     VectorGeometry is a base class of geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
 
-    :param exterior: List of PointLocation objects, the object contour is defined with these points.
-    :type exterior: List[PointLocation]
-    :param interior: List of PointLocation objects, the object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type interior: List[List[PointLocation]]
+    :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
+    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :param interior: Interior coordinates, object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
+    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
     :param sly_id: VectorGeometry ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
@@ -42,25 +48,71 @@ class VectorGeometry(Geometry):
         import supervisely as sly
 
         exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+        # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+        # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
         interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+        # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+        # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
 
         figure = sly.Polygon(exterior, interior)
     """
-    def __init__(self, exterior: List[PointLocation], interior: List[List[PointLocation]],
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
-        if not (isinstance(exterior, list) and all(isinstance(p, PointLocation) for p in exterior)):
-            raise TypeError('Argument "exterior" must be list of "PointLocation" objects!')
+    def __init__(
+        self,
+        exterior: Union[
+            List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
+        ],
+        interior: Union[List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]] = [],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
+        result_exterior = []
+        if not isinstance(exterior, list):
+            raise TypeError('Argument "exterior" must be a list of coordinates')
+        for p in exterior:
+            if isinstance(p, PointLocation):
+                result_exterior.append(p)
+            elif isinstance(p, tuple) and len(p) == 2:
+                result_exterior.append(PointLocation(p[1], p[0]))
+            elif isinstance(p, list) and len(p) == 2:
+                result_exterior.append(PointLocation(p[1], p[0]))
+            else:
+                raise TypeError(
+                    'Type of items (coordinates) in list "exterior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
+                )
 
-        if not isinstance(interior, list) or \
-            not all(isinstance(c, list) for c in interior) or \
-                not all(isinstance(p, PointLocation) for c in interior for p in c):
-            raise TypeError('Argument "interior" must be list of list of "PointLocation" objects!')
+        result_interior = []
+        if not isinstance(interior, list):
+            raise TypeError('Argument "interior" must be a list of lists with coordinates')
+        for coords in interior:
+            if not isinstance(interior, list):
+                raise TypeError('"interior" coords must be a list of coordinates')
+            p_coords = []
+            for p in coords:
+                if isinstance(p, PointLocation):
+                    p_coords.append(p)
+                elif isinstance(p, tuple) and len(p) == 2:
+                    p_coords.append(PointLocation(p[0], p[1]))
+                elif isinstance(p, list) and len(p) == 2:
+                    p_coords.append(PointLocation(p[0], p[1]))
+                else:
+                    raise TypeError(
+                        'Type of items (coordinates) in list "interior" have to be tuple(int, int) or list[int, int] or PointLocation(row, col)'
+                    )
+            result_interior.append(p_coords)
 
-        self._exterior = deepcopy(exterior)
-        self._interior = deepcopy(interior)
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        self._exterior = deepcopy(result_exterior)
+        self._interior = deepcopy(result_interior)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def to_json(self) -> Dict:
         """
@@ -93,8 +145,13 @@ class VectorGeometry(Geometry):
         """
         packed_obj = {
             POINTS: {
-                EXTERIOR: points_to_row_col_list(self._exterior, flip_row_col_order=True),
-                INTERIOR: [points_to_row_col_list(i, flip_row_col_order=True) for i in self._interior]
+                EXTERIOR: points_to_row_col_list(
+                    self._exterior, flip_row_col_order=True
+                ),
+                INTERIOR: [
+                    points_to_row_col_list(i, flip_row_col_order=True)
+                    for i in self._interior
+                ],
             },
             GEOMETRY_SHAPE: self.geometry_name(),
             GEOMETRY_TYPE: self.geometry_name(),
@@ -170,7 +227,9 @@ class VectorGeometry(Geometry):
             #        [2468,  875],
             #        [2679, 1577]])]
         """
-        return [np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior]
+        return [
+            np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior
+        ]
 
     def _transform(self, transform_fn):
         result = deepcopy(self)
@@ -178,7 +237,9 @@ class VectorGeometry(Geometry):
         result._interior = [[transform_fn(p) for p in i] for i in self._interior]
         return result
 
-    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> VectorGeometry:
+    def resize(
+        self, in_size: Tuple[int, int], out_size: Tuple[int, int]
+    ) -> VectorGeometry:
         """
         Resizes current VectorGeometry.
 
@@ -314,8 +375,12 @@ class VectorGeometry(Geometry):
         """
         exterior_np = self.exterior_np
         rows, cols = exterior_np[:, 0], exterior_np[:, 1]
-        return Rectangle(top=round(min(rows).item()), left=round(min(cols).item()), bottom=round(max(rows).item()),
-                         right=round(max(cols).item()))
+        return Rectangle(
+            top=round(min(rows).item()),
+            left=round(min(cols).item()),
+            bottom=round(max(rows).item()),
+            right=round(max(cols).item()),
+        )
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """
@@ -326,7 +391,7 @@ class VectorGeometry(Geometry):
         self._draw_contour_impl(bitmap, color, thickness, config=config)
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """ Draws the figure contour on a given bitmap canvas
+        """Draws the figure contour on a given bitmap canvas
         :param bitmap: np.ndarray
         :param color: [R, G, B]
         :param thickness: (int)
