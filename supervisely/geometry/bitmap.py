@@ -20,6 +20,7 @@ from supervisely.geometry.point_location import PointLocation, row_col_list_to_p
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.constants import BITMAP
+from supervisely.imaging.image import read
 
 
 class SkeletonizeMethod(Enum):
@@ -46,7 +47,7 @@ class Bitmap(BitmapBase):
     """
     Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
 
-    :param data: Bitmap mask data.
+    :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
     :type data: np.ndarray
     :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
     :type origin: PointLocation, optional
@@ -103,6 +104,7 @@ class Bitmap(BitmapBase):
 
      .. image:: https://i.imgur.com/2L3HRPs.jpg
     """
+
     @staticmethod
     def geometry_name():
         return 'bitmap'
@@ -110,8 +112,21 @@ class Bitmap(BitmapBase):
     def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None,
                  sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
                  updated_at: Optional[str] = None, created_at: Optional[str] = None):
+
         if data.dtype != np.bool:
-            raise ValueError('Bitmap mask data must be a boolean numpy array. Instead got {}.'.format(str(data.dtype)))
+            unique, counts = np.unique(data, return_counts=True)
+            if len(unique) != 2:
+                raise ValueError(
+                    f'Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}.')
+
+            if list(unique) not in [[0, 1], [0, 255]]:
+                raise ValueError(
+                    f'Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}.')
+
+            if list(unique) == [0, 1]:
+                data = np.array(data, dtype=bool)
+            elif list(unique) == [0, 255]:
+                data = np.array(data / 255, dtype=bool)
 
         # Call base constructor first to do the basic dimensionality checks.
         super().__init__(data=data, origin=origin, expected_data_dims=2,
@@ -444,3 +459,8 @@ class Bitmap(BitmapBase):
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
         return [AnyGeometry, Polygon, Rectangle]
+
+    @classmethod
+    def from_path(cls, path: str) -> Bitmap:
+        img = read(path)
+        return Bitmap(img[:, :, 0])
