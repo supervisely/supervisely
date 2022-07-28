@@ -65,7 +65,7 @@ setup(
         "jinja2==3.0.3",
         "psutil==5.9.0",
         "jsonpatch==1.32",
-        "MarkupSafe==2.0.1",
+        "MarkupSafe==2.1.1",
         "arel==0.2.0",
         "tqdm==4.62.3",
         "pandas==1.4.2",
