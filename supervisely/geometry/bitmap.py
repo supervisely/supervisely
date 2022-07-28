@@ -47,7 +47,7 @@ class Bitmap(BitmapBase):
     """
     Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
 
-    :param data: Bitmap mask data.
+    :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
     :type data: np.ndarray
     :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
     :type origin: PointLocation, optional
@@ -119,13 +119,9 @@ class Bitmap(BitmapBase):
                 raise ValueError(
                     f'Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}.')
 
-            if list(unique) not in [[0, 1], [0, 255], [False, True]]:
+            if list(unique) not in [[0, 1], [0, 255]]:
                 raise ValueError(
                     f'Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}.')
-
-            if len(data.shape) != 2:
-                raise ValueError(
-                    f'Bitmap mask data must be a 2-dimensional numpy array. Instead got {len(data.shape)} dimensions')
 
             if list(unique) == [0, 1]:
                 data = np.array(data, dtype=bool)
