@@ -14,6 +14,7 @@ RUN pip install --upgrade pip
 RUN pip install requests==2.28.0
 RUN apt-get install -y libmagic-dev
 RUN pip install Werkzeug==2.2.1
+RUN pip install MarkupSafe==2.1.1
 
 RUN pip install supervisely==$tag_ref_name
 RUN pip install supervisely[apps]==$tag_ref_name
