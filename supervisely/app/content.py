@@ -5,11 +5,8 @@ import enum
 import json
 import jsonpatch
 import asyncio
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from fastapi import Request
-    
+from fastapi import Request
+from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 from supervisely.app.singleton import Singleton
@@ -59,7 +56,6 @@ def get_data_dir():
 class _PatchableJson(dict):
     def __init__(self, field: Field, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from supervisely.app.fastapi.websocket import WebsocketManager
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))
         self._lock = asyncio.Lock()
