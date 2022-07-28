@@ -82,9 +82,9 @@ setup(
             "pandas>=1.1.3",
         ],
         "apps": [
-            "uvicorn[standard]==0.17.0",
-            "fastapi==0.74.0",
-            "websockets==10.1",
+            "uvicorn[standard]==0.18.2",
+            "fastapi==0.79.0",
+            "websockets==10.3",
             "jinja2==3.0.3",
             "psutil==5.9.0",
             "jsonpatch==1.32",

@@ -71,6 +71,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 
 from supervisely.geometry.helpers import geometry_to_bitmap
