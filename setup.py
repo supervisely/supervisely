@@ -23,9 +23,8 @@ version = response.json()["tag_name"]
 setup(
     name="supervisely",
     version=version,
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     classifiers=[
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
