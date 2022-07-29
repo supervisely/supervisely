@@ -523,13 +523,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # Using ProjectMeta in JSON format
 
             project_meta_json = api.project.get_meta(lemons_proj_id)
-            updated_meta = api.project.update_meta(kiwis_proj_id, project_meta_json)
+            api.project.update_meta(kiwis_proj_id, project_meta_json)
 
             # Using ProjectMeta object
 
-            path_to_meta = "/path/project/meta.json"
+            project_meta_json = api.project.get_meta(lemons_proj_id)
             project_meta = sly.ProjectMeta.from_json(path_to_meta)
-            updated_meta = api.project.update_meta(kiwis_proj_id, project_meta)
+            api.project.update_meta(kiwis_proj_id, project_meta)
+
+            # Using programmatically created ProjectMeta
+
+            cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+            scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+            project_meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
+            api.project.update_meta(kiwis_proj_id, project_meta)
+
+            # Update ProjectMeta from local `meta.json`
+            from supervisely.io.json import load_json_file
+
+            path_to_meta = "/path/project/meta.json"
+            project_meta_json = load_json_file(path_to_meta)
+            api.project.update_meta(kiwis_proj_id, project_meta)
         """
         if isinstance(meta, ProjectMeta):
             meta = meta.to_json()
