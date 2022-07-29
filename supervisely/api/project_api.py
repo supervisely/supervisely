@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable
+from typing import List, NamedTuple, Dict, Optional, Callable, Union
 
 from typing import TYPE_CHECKING
 
@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
 from collections import defaultdict
-from typing import Dict
 
 from supervisely.api.module_api import (
     ApiField,
@@ -498,14 +497,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def _get_update_method(self):
         return "projects.editInfo"
 
-    def update_meta(self, id: int, meta: Dict) -> None:
+    def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
         """
         Updates given Project with given ProjectMeta.
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param meta: ProjectMeta dict
-        :type meta: dict
+        :param meta: ProjectMeta object or ProjectMeta in JSON format.
+        :type meta: :class:`ProjectMeta` or dict
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -521,9 +520,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            project_meta = api.project.get_meta(lemons_proj_id)
-            updated_meta = api.project.update_meta(kiwis_proj_id, project_meta)
+            # Using ProjectMeta in JSON format
+
+            project_meta_json = api.project.get_meta(lemons_proj_id)
+            api.project.update_meta(kiwis_proj_id, project_meta_json)
+
+            # Using ProjectMeta object
+
+            project_meta_json = api.project.get_meta(lemons_proj_id)
+            project_meta = sly.ProjectMeta.from_json(path_to_meta)
+            api.project.update_meta(kiwis_proj_id, project_meta)
+
+            # Using programmatically created ProjectMeta
+
+            cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+            scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+            project_meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
+            api.project.update_meta(kiwis_proj_id, project_meta)
+
+            # Update ProjectMeta from local `meta.json`
+            from supervisely.io.json import load_json_file
+
+            path_to_meta = "/path/project/meta.json"
+            project_meta_json = load_json_file(path_to_meta)
+            api.project.update_meta(kiwis_proj_id, project_meta)
         """
+        if isinstance(meta, ProjectMeta):
+            meta = meta.to_json()
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
