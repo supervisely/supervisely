@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
+
 class UserInfo(NamedTuple):
+    """
+    """
+
     id: int
     login: str
     role: str
@@ -619,28 +623,28 @@ class UserApi(ModuleApiBase):
         :type user_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :return: Information about Team :class:`Role<supervisely.api.role_api.RoleApi
+        :return: Information about Team :class:`Role<supervisely.api.role_api.RoleApi`
         :rtype: :class:`UserInfo`
         :Usage example:
 
-         .. code-block:: python
+        .. code-block:: python
 
-            import supervisely as sly
+           import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+           api = sly.Api.from_env()
 
-            user_id = 8
-            team_id = 9
-            team_role = api.user.get_team_role(user_id, team_id)
-            print(team_role)
-            # Output: [
-            #     9,
-            #     "alex",
-            #     1,
-            #     "admin"
-            # ]
+           user_id = 8
+           team_id = 9
+           team_role = api.user.get_team_role(user_id, team_id)
+           print(team_role)
+           # Output: [
+           #     9,
+           #     "alex",
+           #     1,
+           #     "admin"
+           # ]
         """
         user_teams = self.get_teams(user_id)
         for member in user_teams:
@@ -726,5 +730,7 @@ class UserApi(ModuleApiBase):
         return response.json()
 
     def get_ssh_keys(self):
+        """
+        """
         response = self._api.post("users.ssh-keys", {})
         return response.json()

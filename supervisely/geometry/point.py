@@ -132,6 +132,8 @@ class Point(Geometry):
 
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'point'
 
     def crop(self, rect: Rectangle) -> List[Point]:
@@ -376,5 +378,7 @@ class Point(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         return [AnyGeometry]

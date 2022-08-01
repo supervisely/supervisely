@@ -937,12 +937,12 @@ class Project:
         return self._name
 
     @property
-    def datasets(self) -> DatasetDict:
+    def datasets(self) -> Project.DatasetDict:
         """
         Project datasets.
 
         :return: Datasets
-        :rtype: :class:`DatasetDict`
+        :rtype: :class:`DatasetDict<supervisely.project.project.Project.DatasetDict>`
         :Usage example:
 
          .. code-block:: python

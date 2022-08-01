@@ -15,8 +15,12 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
+    """
+    """
     @staticmethod
     def info_sequence():
+        """
+        """
         return [ApiField.ID,
                 ApiField.NAME,
                 ApiField.DESCRIPTION,
@@ -37,19 +41,29 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """
+        """
         return 'ModelInfo'
 
     def get_list(self, workspace_id, filters=None):
+        """
+        """
         return self.get_list_all_pages('models.list',  {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
 
     def get_info_by_id(self, id):
+        """
+        """
         return self._get_info_by_id(id, 'models.info')
 
     def download(self, id):
+        """
+        """
         response = self._api.post('models.download', {ApiField.ID: id}, stream=True)
         return response
 
     def download_to_tar(self, workspace_id, name, tar_path, progress_cb=None):
+        """
+        """
         model = self.get_info_by_name(workspace_id, name)
         response = self.download(model.id)
         ensure_base_path(tar_path)
@@ -61,6 +75,8 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
                     progress_cb(read_mb)
 
     def download_to_dir(self, workspace_id, name, directory, progress_cb=None):
+        """
+        """
         model_tar = os.path.join(directory, rand_str(10) + '.tar')
         self.download_to_tar(workspace_id, name, model_tar, progress_cb)
         model_dir = os.path.join(directory, name)
@@ -70,10 +86,13 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         return model_dir
 
     def generate_hash(self, task_id):
+        """"""
         response = self._api.post('models.hash.create', {ApiField.TASK_ID: task_id})
         return response.json()
 
     def upload(self, hash, archive_path, progress_cb=None):
+        """
+        """
         encoder = MultipartEncoder({'hash': hash,
                                     'weights': (os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar')})
 
@@ -85,6 +104,8 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         self._api.post('models.upload', monitor)
 
     def inference_remote_image(self, id, image_hash, ann=None, meta=None, mode=None):
+        """
+        """
         data = {
             "request_type": "inference",
             "meta": meta or ProjectMeta().to_json(),
@@ -100,6 +121,8 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         return response.json()
 
     def inference(self, id, img, ann=None, meta=None, mode=None, ext=None):
+        """
+        """
         data = {
             "request_type": "inference",
             "meta": meta or ProjectMeta().to_json(),
@@ -115,6 +138,8 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         return response.json()
 
     def get_output_meta(self, id, input_meta=None, inference_mode=None):
+        """
+        """
         data = {
             "request_type": "get_out_meta",
             "meta": input_meta or ProjectMeta().to_json(),
@@ -131,20 +156,30 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         return response.json()
 
     def get_deploy_tasks(self, model_id):
+        """
+        """
         response = self._api.post('models.info.deployed', {'id': model_id})
         return [task[ApiField.ID] for task in response.json()]
 
     def get_training_metrics(self, model_id):
+        """
+        """
         response = self._get_response_by_id(id=model_id, method='tasks.train-metrics', id_field=ApiField.MODEL_ID)
         return response.json() if (response is not None) else None
 
     def _clone_api_method_name(self):
+        """
+        """
         return 'models.clone'
 
     def _remove_api_method_name(self):
+        """
+        """
         return 'models.remove'
 
     def create_from_checkpoint(self, task_id, checkpoint_id, model_name, change_name_if_conflict=True):
+        """
+        """
         # FYI: checkpoint has these fields
         # 'modelTitle': 'my_model_name_006',
         # 'status': 'uploaded'

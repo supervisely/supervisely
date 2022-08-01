@@ -8,10 +8,15 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class EntityAnnotationAPI(ModuleApi):
+    """"""
+
     _method_download_bulk = None
+    """"""
     _entity_ids_str = None
+    """"""
 
     def download(self, entity_id):
+        """"""
         raise NotImplementedError()
 
     def _download(self, dataset_id, entity_id):
@@ -33,6 +38,7 @@ class EntityAnnotationAPI(ModuleApi):
         return response.json()
 
     def _append(self, tag_api, object_api, figure_api, project_id, dataset_id, entity_id, tags, objects, figures, key_id_map: KeyIdMap = None):
+        """"""
         if key_id_map is None:
             # create for internal purposes (to link figures and tags to objects)
             key_id_map = KeyIdMap()
@@ -42,6 +48,7 @@ class EntityAnnotationAPI(ModuleApi):
         figure_api.append_bulk(entity_id, figures, key_id_map)
 
     def append(self, entity_id, ann, key_id_map: KeyIdMap = None):
+        """"""
         raise NotImplementedError()
 
     # def append(self, video_id, ann, key_id_map: KeyIdMap = None):

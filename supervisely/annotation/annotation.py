@@ -46,16 +46,27 @@ class AnnotationJsonFields:
     """
     Json fields for :class:`Annotation<supervisely.annotation.annotation.Annotation>`
     """
+
     IMG_DESCRIPTION = 'description'
+    """"""
     IMG_SIZE = 'size'
+    """"""
     IMG_SIZE_WIDTH = 'width'
+    """"""
     IMG_SIZE_HEIGHT = 'height'
+    """"""
     IMG_TAGS = 'tags'
+    """"""
     LABELS = 'objects'
+    """"""
     CUSTOM_DATA = "customBigData"
+    """"""
     PROBABILITY_CLASSES = "probabilityClasses"
+    """"""
     PROBABILITY_LABELS = "probabilityLabels"
+    """"""
     IMAGE_ID = "imageId"
+    """"""
 
 
 class Annotation:
@@ -207,6 +218,8 @@ class Annotation:
 
     @property
     def pixelwise_scores_labels(self):
+        """
+        """
         return self._pixelwise_scores_labels.copy()
 
     @property
@@ -1530,6 +1543,8 @@ class Annotation:
 
     @property
     def custom_data(self):
+        """
+        """
         return self._custom_data.copy()
 
     def filter_labels_by_min_side(self, thresh: int, filter_operator: Optional[operator] = operator.lt,
@@ -1988,8 +2003,8 @@ class Annotation:
         :param mask_path: Saves image to the given path.
         :type mask_path: str
         :param palette: Palette to use when converting image from mode "RGB" to "P".
-        :type palette: Available palettes are `WEB` or `ADAPTIVE`, optional
-        :param colors: Number of colors to use for the `ADAPTIVE` palette.
+        :type palette: Available palettes are WEB or ADAPTIVE, optional
+        :param colors: Number of colors to use for the ADAPTIVE palette.
         :type colors: int, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
@@ -2005,6 +2020,8 @@ class Annotation:
         im.save(mask_path)
 
     def add_bg_object(self, bg_obj_class: ObjClass):
+        """
+        """
         if bg_obj_class not in [label.obj_class for label in self.labels]:
             bg_geometry = Rectangle.from_size(self.img_size)
             bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]

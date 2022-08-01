@@ -670,7 +670,7 @@ Video
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-   video
+    video
 
 Video Annotation
 ----------------

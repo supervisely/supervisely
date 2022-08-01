@@ -14,6 +14,8 @@ from supervisely._utils import batched
 
 
 class AnnotationInfo(NamedTuple):
+    """
+    """
     image_id: int
     image_name: str
     annotation: dict
@@ -516,6 +518,8 @@ class AnnotationApi(ModuleApi):
         self._upload_batch(Annotation.to_json, img_ids, anns, progress_cb)
 
     def _upload_batch(self, func_ann_to_json, img_ids, anns, progress_cb=None):
+        """
+        """
         # img_ids from the same dataset
         if len(img_ids) == 0:
             return
@@ -538,18 +542,28 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(batch))
 
     def get_info_by_id(self, id):
+        """
+        """
         raise NotImplementedError("Method is not supported")
 
     def get_info_by_name(self, parent_id, name):
+        """
+        """
         raise NotImplementedError("Method is not supported")
 
     def exists(self, parent_id, name):
+        """
+        """
         raise NotImplementedError("Method is not supported")
 
     def get_free_name(self, parent_id, name):
+        """
+        """
         raise NotImplementedError("Method is not supported")
 
     def _add_sort_param(self, data):
+        """
+        """
         return data
 
     def copy_batch(
@@ -679,6 +693,8 @@ class AnnotationApi(ModuleApi):
         )
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return AnnotationInfo(**res._asdict())
 

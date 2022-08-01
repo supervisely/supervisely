@@ -138,6 +138,8 @@ class Api:
 
     @classmethod
     def normalize_server_address(cls, server_address):
+        """
+        """
         result = server_address.strip("/")
         if ("http://" not in result) and ("https://" not in result):
             result = "http://" + result
@@ -386,6 +388,8 @@ class Api:
             return "", ""
 
     def pop_header(self, key: str) -> str:
+        """
+        """
         if key not in self.headers:
             raise KeyError(f"Header {key!r} not found")
         return self.headers.pop(key)

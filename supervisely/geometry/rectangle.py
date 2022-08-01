@@ -52,6 +52,8 @@ class Rectangle(Geometry):
     """
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'rectangle'
 
     def __init__(self, top: int, left: int, bottom: int, right: int,
@@ -166,6 +168,8 @@ class Rectangle(Geometry):
         return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
 
     def _transform(self, transform_fn):
+        """
+        """
         transformed_corners = [transform_fn(p) for p in self.corners]
         rows, cols = zip(*points_to_row_col_list(transformed_corners))
         return Rectangle(top=round(min(rows)), left=round(min(cols)), bottom=round(max(rows)), right=round(max(cols)))
@@ -318,9 +322,13 @@ class Rectangle(Geometry):
                          right=self.right)
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
+        """
+        """
         self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         cv2.rectangle(bitmap, pt1=(self.left, self.top), pt2=(self.right, self.bottom), color=color,
                       thickness=thickness)
 
@@ -653,6 +661,8 @@ class Rectangle(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon

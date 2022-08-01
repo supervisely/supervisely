@@ -18,6 +18,8 @@ from supervisely import logger
 
 
 class AppInfo(NamedTuple):
+    """
+    """
     id: int
     created_by_id: int
     module_id: int
@@ -33,8 +35,12 @@ class AppInfo(NamedTuple):
 
 
 class AppApi(TaskApi):
+    """
+    """
     @staticmethod
     def info_sequence():
+        """
+        """
         return [
             ApiField.ID,
             ApiField.CREATED_BY_ID,
@@ -52,17 +58,21 @@ class AppApi(TaskApi):
 
     @staticmethod
     def info_tuple_name():
+        """
+        """
         return 'AppInfo'
 
     def _convert_json_info(self, info: dict, skip_missing=True):
+        """
+        """
         res = super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
         return AppInfo(**res._asdict())
 
     def get_info_by_id(self, id: int) -> AppInfo:
-        '''
+        """
         :param id: int
         :return: application info by numeric id
-        '''
+        """
         return self._get_info_by_id(id, 'apps.info')
 
     def get_list(self,
@@ -75,6 +85,8 @@ class AppApi(TaskApi):
                  session_tags=None,
                  only_running=False,
                  with_shared=True) -> List[AppInfo]:
+        """
+        """
 
         return self.get_list_all_pages(method='apps.list', data={
             "teamId": team_id,
@@ -89,37 +101,59 @@ class AppApi(TaskApi):
         })
 
     def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def _run_plugin_task(self, task_type, agent_id, plugin_id, version, config, input_projects, input_models,
                          result_name):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def run_train(self, agent_id, input_project_id, input_model_id, result_nn_name, train_config=None):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def run_inference(self, agent_id, input_project_id, input_model_id, result_project_name, inference_config=None):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def get_training_metrics(self, task_id):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def deploy_model(self, agent_id, model_id):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def get_import_files_list(self, id):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def download_import_file(self, id, file_path, save_path):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def create_task_detached(self, workspace_id, task_type: str = None):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def upload_files(self, task_id, abs_paths, names, progress_cb=None):
+        """
+        """
         raise RuntimeError("Method is unavailable")
 
     def initialize(self, task_id, template, data=None, state=None):
+        """
+        """
         d = take_with_default(data, {})
         if "notifyDialog" not in d:
             d["notifyDialog"] = None
@@ -133,12 +167,18 @@ class AppApi(TaskApi):
         return resp
 
     def get_url(self, task_id):
+        """
+        """
         return f"/apps/sessions/{task_id}"
 
     def download_git_file(self, app_id, version, file_path, save_path):
+        """
+        """
         raise NotImplementedError()
 
     def download_git_archive(self, ecosystem_item_id, app_id, version, save_path, log_progress=True, ext_logger=None):
+        """
+        """
         payload = {
             ApiField.ECOSYSTEM_ITEM_ID: ecosystem_item_id,
             ApiField.VERSION: version,
@@ -170,6 +210,8 @@ class AppApi(TaskApi):
                     log_size = 0
 
     def get_info(self, module_id, version=None):
+        """
+        """
         data = {ApiField.ID: module_id}
         if version is not None:
             data[ApiField.VERSION] = version

@@ -23,14 +23,20 @@ class Vector3d:
 
     @property
     def x(self):
+        """
+        """
         return self._x
 
     @property
     def y(self):
+        """
+        """
         return self._y
 
     @property
     def z(self):
+        """
+        """
         return self._z
 
     def to_json(self):
@@ -53,6 +59,8 @@ class Vector3d:
         return cls(x, y, z)
 
     def clone(self):
+        """
+        """
         return deepcopy(self)
 
 
@@ -62,6 +70,8 @@ class Cuboid3d(Geometry):
     """
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'cuboid_3d'
 
     def __init__(self, position: Vector3d, rotation: Vector3d, dimensions: Vector3d,
@@ -88,14 +98,20 @@ class Cuboid3d(Geometry):
 
     @property
     def position(self):
+        """
+        """
         return self._position.clone()
 
     @property
     def rotation(self):
+        """
+        """
         return self._rotation.clone()
 
     @property
     def dimensions(self):
+        """
+        """
         return self._dimensions.clone()
 
     def to_json(self):

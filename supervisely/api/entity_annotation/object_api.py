@@ -43,6 +43,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """"""
         return 'ObjectInfo'
 
     def get_info_by_id(self, id: int) -> NamedTuple:
@@ -179,6 +180,7 @@ class ObjectApi(RemoveableBulkModuleApi):
                                                                     ApiField.FILTER: filters or []})
 
     def _append_bulk(self, tag_api, entity_id, project_id, dataset_id, objects, key_id_map: KeyIdMap = None, is_pointcloud=False):
+        """"""
         if len(objects) == 0:
             return []
 

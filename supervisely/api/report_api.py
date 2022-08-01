@@ -11,13 +11,20 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class NotificationType(StrEnum):
+    """
+    """
+
     INFO = 'info'
+    """"""
     NOTE = "note"
+    """"""
     WARNING = "warning"
+    """"""
     ERROR = "error"
+    """"""
 
 
-#@TODO: стандартизовать title/description/name и так жалее у всех одинакого
+# @TODO: стандартизовать title/description/name и так жалее у всех одинакого
 class ReportApi(ModuleApiBase):
     """
     API for working with Reports. :class:`ReportApi<ReportApi>` object is immutable.
@@ -30,13 +37,14 @@ class ReportApi(ModuleApiBase):
 
         report = api.report
     """
+
     def __init__(self, api):
         ModuleApiBase.__init__(self, api)
 
-    #https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template
-    #grid-template: "a a a" 40px "b c c" 40px "b c c" 40px / 1fr 1fr 1fr;
-    #area -a or b or c
-    def create(self, team_id: int, name: str, widgets, layout: Optional[str]=""):
+    # https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template
+    # grid-template: "a a a" 40px "b c c" 40px "b c c" 40px / 1fr 1fr 1fr;
+    # area -a or b or c
+    def create(self, team_id: int, name: str, widgets, layout: Optional[str] = ""):
         """
         Creates report in the given Team.
 
@@ -138,7 +146,10 @@ class ReportApi(ModuleApiBase):
         response = self._api.post('reports.widgets.get', {"reportId": report_id, "widgetId": widget_id})
         return response.json()
 
-    def _change_widget(self, method, report_id, widget_id, widget_type=None, name=None, description=None, area=None, content=None, options=None):
+    def _change_widget(self, method, report_id, widget_id, widget_type=None, name=None, description=None, area=None,
+                       content=None, options=None):
+        """
+        """
         data = dict()
         data[ApiField.ID] = widget_id
         if name is not None:
@@ -156,7 +167,8 @@ class ReportApi(ModuleApiBase):
         response = self._api.post(method, {ApiField.REPORT_ID: report_id, ApiField.WIDGET: data})
         return response.json()
 
-    def update_widget(self, report_id: int, widget_id: int, name: Optional[str] = None, description: Optional[str] = None,
+    def update_widget(self, report_id: int, widget_id: int, name: Optional[str] = None,
+                      description: Optional[str] = None,
                       area=None, content=None, options=None):
         """
         Method description
@@ -179,7 +191,8 @@ class ReportApi(ModuleApiBase):
         :returns: Report Widget
         :rtype:
         """
-        return self._change_widget('reports.widgets.update', report_id, widget_id, name, description, area, content, options)
+        return self._change_widget('reports.widgets.update', report_id, widget_id, name, description, area, content,
+                                   options)
 
     def rewrite_widget(self, report_id: int, widget_id: int, widget_type, name: str = None, description: str = None,
                        area=None, content=None, options=None):
@@ -206,4 +219,5 @@ class ReportApi(ModuleApiBase):
         :returns: Report Widget
         :rtype:
         """
-        return self._change_widget('reports.widgets.rewrite', report_id, widget_id, widget_type, name, description, area, content, options)
+        return self._change_widget('reports.widgets.rewrite', report_id, widget_id, widget_type, name, description,
+                                   area, content, options)

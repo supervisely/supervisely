@@ -30,6 +30,8 @@ from supervisely.io.fs import (
 
 
 class FileInfo(NamedTuple):
+    """
+    """
     team_id: int
     id: int
     user_id: int
@@ -382,6 +384,8 @@ class FileApi(ModuleApiBase):
         shutil.rmtree(temp_dir)
 
     def _upload_legacy(self, team_id, src, dst):
+        """
+        """
         def path_to_bytes_stream(path):
             return open(path, "rb")
 
@@ -739,6 +743,8 @@ class FileApi(ModuleApiBase):
         return None
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         # if res.storage_path is not None:
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))

@@ -73,9 +73,9 @@ def validate_ext(ext: str):
     """
     Raises error if given extension is not supported.
 
-    :param ext: Extension.
+    :param ext: Video extension. Available extensions: avi, mp4, 3gp, flv, webm, wmv, mov, mkv.
     :type ext: str
-    :raises: :class:`UnsupportedVideoFormat` if given extension is not supported.
+    :raises: :class:`UnsupportedVideoFormat` if given video with extension that is not supported.
     :return: None
     :rtype: :class:`NoneType`
     :Usage example:

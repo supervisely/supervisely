@@ -78,18 +78,26 @@ class CuboidFace:
 
     @property
     def a(self):
+        """
+        """
         return self._a
 
     @property
     def b(self):
+        """
+        """
         return self._b
 
     @property
     def c(self):
+        """
+        """
         return self._c
 
     @property
     def d(self):
+        """
+        """
         return self._d
 
     def tolist(self) -> List[int]:
@@ -143,6 +151,8 @@ class Cuboid(Geometry):
     """
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'cuboid'
 
     def __init__(self, points: List[PointLocation], faces: List[CuboidFace], sly_id: Optional[int] = None, class_id: Optional[int] = None,
@@ -306,6 +316,8 @@ class Cuboid(Geometry):
         return [self] if is_all_nodes_inside else []
 
     def _transform(self, transform_fn):
+        """
+        """
         return Cuboid(points=[transform_fn(p) for p in self.points], faces=self.faces)
 
     def rotate(self, rotator: ImageRotator) -> Cuboid:
@@ -475,6 +487,8 @@ class Cuboid(Geometry):
         return self._transform(lambda p: p.flipud(img_size))
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
+        """
+        """
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         for contour in self._contours_list():
             cv2.fillPoly(bmp_to_draw, pts=[np.array(contour, dtype=np.int32)], color=1)
@@ -482,10 +496,14 @@ class Cuboid(Geometry):
         bitmap[bool_mask] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         contours_np_list = [np.array(contour, dtype=np.int32) for contour in self._contours_list()]
         cv2.polylines(bitmap, pts=contours_np_list, isClosed=True, color=color, thickness=thickness)
 
     def _contours_list(self):
+        """
+        """
         return [points_to_row_col_list([self._points[idx] for idx in face.tolist()], flip_row_col_order=True)
                 for face in self._faces]
 

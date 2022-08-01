@@ -16,22 +16,30 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 
 
 class ObjClassJsonFields:
+    """Json fields for :class:`Annotation<supervisely.annotation.obj_class.ObjClass>`"""
+
     ID = 'id'
+    """"""
     NAME = 'title'
+    """"""
     GEOMETRY_TYPE = 'shape'
+    """"""
     COLOR = 'color'
+    """"""
     GEOMETRY_CONFIG = 'geometry_config'
+    """"""
     HOTKEY = 'hotkey'
+    """"""
 
 
 class ObjClass(KeyObject, JsonSerializable):
     """
-    General information about :class:`Label<supervisely.annotation.label.LabelBase>`. :class:`ObjClass` object is immutable.
+    General information about :class:`Label<supervisely.annotation.label.Label>`. :class:`ObjClass` object is immutable.
 
     :param name: Class name.
     :type name: str
     :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
-    :type geometry_type: type
+    :type geometry_type: dict, optional
     :param color: :class:`[R, G, B]`, generates random color by default.
     :type color: List[int, int, int], optional
     :param geometry_config: Additional settings of the geometry.
@@ -53,7 +61,9 @@ class ObjClass(KeyObject, JsonSerializable):
         # More complex ObjClass example
         class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
     """
-    def __init__(self, name: str, geometry_type: type, color: Optional[List[int]] = None, geometry_config: Optional[Dict] = None,
+
+    def __init__(self, name: str, geometry_type: type, color: Optional[List[int]] = None,
+                 geometry_config: Optional[Dict] = None,
                  sly_id: Optional[int] = None, hotkey: Optional[str] = None):
         self._name = name
         self._geometry_type = geometry_type
@@ -80,11 +90,12 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         return self._name
 
-    def key(self):
+    def key(self) -> str:
         """
         Used as a key in ObjClassCollection (like key in dict)
-        Returns:
-            string name of the ObjectClass
+
+        :return: string name of the ObjectClass
+        :rtype: :class:`Str`
         """
         return self.name
 
@@ -111,6 +122,9 @@ class ObjClass(KeyObject, JsonSerializable):
 
     @property
     def geometry_config(self) -> Dict:
+        # """"""
+        # SPHINX ERROR: >>> line = doc.splitlines()[0]
+        # IndexError: list index out of range
         return deepcopy(self._geometry_config)
 
     @property
@@ -260,7 +274,8 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         return isinstance(other, ObjClass) and \
                self.name == other.name and \
-               (self.geometry_type == other.geometry_type or AnyGeometry in [self.geometry_type, other.geometry_type]) and \
+               (self.geometry_type == other.geometry_type or AnyGeometry in [self.geometry_type,
+                                                                             other.geometry_type]) and \
                self.geometry_config == other.geometry_config
 
     def __ne__(self, other: ObjClass) -> bool:
@@ -303,13 +318,19 @@ class ObjClass(KeyObject, JsonSerializable):
 
     @classmethod
     def get_header_ptable(cls):
+        """
+        """
         return ['Name', 'Shape', 'Color', 'Hotkey']  # Is need show geometry settings here?
 
     def get_row_ptable(self):
+        """
+        """
         return [self.name, self.geometry_type.__name__, self.color, self.hotkey]
 
-    def clone(self, name: Optional[str] = None, geometry_type: Optional[Geometry] = None, color: Optional[List[int, int, int]] = None,
-              geometry_config: Optional[Dict] = None, sly_id: Optional[int] = None, hotkey: Optional[str] = None) -> ObjClass:
+    def clone(self, name: Optional[str] = None, geometry_type: Optional[Geometry] = None,
+              color: Optional[List[int, int, int]] = None,
+              geometry_config: Optional[Dict] = None, sly_id: Optional[int] = None,
+              hotkey: Optional[str] = None) -> ObjClass:
         """
         Makes a copy of ObjClass with new fields, if fields are given, otherwise it will use fields of the original ObjClass.
 

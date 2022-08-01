@@ -47,6 +47,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def info_tuple_name():
+        """"""
         return "FigureInfo"
 
     def get_info_by_id(self, id: int) -> NamedTuple:
@@ -95,6 +96,7 @@ class FigureApi(RemoveableBulkModuleApi):
         return self._get_info_by_id(id, 'figures.info')
 
     def create(self, entity_id: int, object_id: int, meta: Dict, geometry_json: Dict, geometry_type, track_id: int=None):
+        """"""
         input_figure = {
             ApiField.META: meta,
             ApiField.OBJECT_ID: object_id,
@@ -242,6 +244,7 @@ class FigureApi(RemoveableBulkModuleApi):
         key_id_map: KeyIdMap,
         field_name=ApiField.ENTITY_ID,
     ):
+        """"""
         if len(figures_json) == 0:
             return
         for (batch_keys, batch_jsons) in zip(

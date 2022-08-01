@@ -23,10 +23,16 @@ from supervisely.geometry.constants import GEOMETRY_TYPE, GEOMETRY_SHAPE
 
 
 class LabelJsonFields:
+    """Json fields for :class:`Annotation<supervisely.annotation.label.Label>`"""
+
     OBJ_CLASS_NAME = 'classTitle'
+    """"""
     OBJ_CLASS_ID = 'classId'
+    """"""
     DESCRIPTION = 'description'
+    """"""
     TAGS = 'tags'
+    """"""
 
 
 class LabelBase:
