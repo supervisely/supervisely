@@ -451,6 +451,8 @@ class GraphNodes(Geometry):
 
     @staticmethod
     def _get_nested_or_default(dict, keys_path, default=None):
+        """
+        """
         result = dict
         for key in keys_path:
             if result is not None:
@@ -458,6 +460,8 @@ class GraphNodes(Geometry):
         return result if result is not None else default
 
     def _draw_contour_impl(self, bitmap, color=None, thickness=1, config=None):
+        """
+        """
         if config is not None:
             # If a config with edges and colors is passed, make sure it is
             # consistent with the our set of points.
@@ -578,6 +582,8 @@ class GraphNodes(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
         return [AnyGeometry, Rectangle]

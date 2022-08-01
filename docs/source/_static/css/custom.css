@@ -1,135 +1,135 @@
-/*class container*/
+/*!*class container*!*/
 
-dt:target {
-    margin-top: 0.0rem;
-    padding-top: 0.0rem
-}
-
-dl.py.class dt.sig.sig-object.py {
-    border-left: none;
-    border-top: 3px solid #02a6f2;
-    padding-left: 10px;
-    position: relative;
-    background: #f3f4f7;
-    border-left: 3px solid #02a6f2;
-    word-wrap: break-word;
-    padding-right: 100px;
-}
-
-/*method container*/
-dd dl.py.method dt.sig.sig-object.py {
-    border-left: none;
-    border-top: none;
-    padding-left: 10px;
-    position: relative;
-    background: #f3f4f7;
-    border-left: 3px solid #02a6f2;
-    word-wrap: break-word;
-    padding-right: 100px;
-}
-
-/*function container*/
-dl.py.function dt.sig.sig-object.py {
-    border-left: none;
-    border-top: none;
-    padding-left: 10px;
-    position: relative;
-    background: #f3f4f7;
-    border-left: 3px solid #02a6f2;
-    word-wrap: break-word;
-    padding-right: 100px;
-}
-
-/*property container*/
-dd dl.py.property dt.sig.sig-object.py {
-    border-left: none;
-    border-top: none;
-    padding-left: 10px;
-    position: relative;
-    background: #f3f4f7;
-    border-left: 3px solid #02a6f2;
-    word-wrap: break-word;
-    padding-right: 100px;
-}
-
-/*exception container*/
-dl.py.exception dt.sig.sig-object.py {
-    border-left: none;
-    border-top: none;
-    padding-left: 10px;
-    position: relative;
-    background: #f3f4f7;
-    border-left: 3px solid #02a6f2;
-    word-wrap: break-word;
-    padding-right: 100px;
-}
-
-/*left side of container*/
-em.property span.pre {
-    font-weight: bold;
-    color: sandybrown;
-    /*text-transform: uppercase;*/
-}
-
-.viewcode-link {
-    right: 20px;
-    position: absolute;
-}
-
-
-.sig-prename.descclassname {
-    display: none;
-}
-
-
-.sig-name.descname {
-    font-weight: bold;
-    color: black;
-}
-
-
-/*display headerlink*/
-h1 > a.headerlink,
-h2 > a.headerlink,
-h3 > a.headerlink,
-h4 > a.headerlink,
-h5 > a.headerlink,
-dl.py > dt.sig.sig-object.py a.headerlink {
-    /* Example: color: dimgrey !important; */
-    color: dimgrey !important;
-    display: initial !important;
-    transition: initial !important;
-}
-
-h1 > a.headerlink:hover,
-h2 > a.headerlink:hover,
-h3 > a.headerlink:hover,
-h4 > a.headerlink:hover,
-h5 > a.headerlink:hover,
-dl.py > dt.sig.sig-object.py a.headerlink:hover {
-    /* Example: color: black !important; */
-    color: dimgrey !important;
-}
-
-h1:hover > a.headerlink,
-h2:hover > a.headerlink,
-h3:hover > a.headerlink,
-h4:hover > a.headerlink,
-h5:hover > a.headerlink,
-dl.py > dt.sig.sig-object.py:hover a.headerlink {
-    opacity: initial !important;
-}
-
-
-/*collapse code block*/
-/*div[class^='highlight'] pre {*/
-/*    white-space: pre;*/
-/*    margin: 0;*/
-/*    padding: 12px 12px;*/
-/*    font-family: Consolas,"Andale Mono WT","Andale Mono","Lucida Console","Lucida Sans Typewriter","DejaVu Sans Mono","Bitstream Vera Sans Mono","Liberation Mono","Nimbus Mono L",Monaco,"Courier New",Courier,monospace;*/
-/*    font-size: 14px;*/
-/*    line-height: 1.5;*/
-/*    display: block;*/
-/*    overflow: auto;*/
-/*    color: #404040;*/
+/*dt:target {*/
+/*    margin-top: 0.0rem;*/
+/*    padding-top: 0.0rem*/
 /*}*/
+
+/*dl.py.class dt.sig.sig-object.py {*/
+/*    border-left: none;*/
+/*    border-top: 3px solid #02a6f2;*/
+/*    padding-left: 10px;*/
+/*    position: relative;*/
+/*    background: #f3f4f7;*/
+/*    border-left: 3px solid #02a6f2;*/
+/*    word-wrap: break-word;*/
+/*    padding-right: 100px;*/
+/*}*/
+
+/*!*method container*!*/
+/*dd dl.py.method dt.sig.sig-object.py {*/
+/*    border-left: none;*/
+/*    border-top: none;*/
+/*    padding-left: 10px;*/
+/*    position: relative;*/
+/*    background: #f3f4f7;*/
+/*    border-left: 3px solid #02a6f2;*/
+/*    word-wrap: break-word;*/
+/*    padding-right: 100px;*/
+/*}*/
+
+/*!*function container*!*/
+/*dl.py.function dt.sig.sig-object.py {*/
+/*    border-left: none;*/
+/*    border-top: none;*/
+/*    padding-left: 10px;*/
+/*    position: relative;*/
+/*    background: #f3f4f7;*/
+/*    border-left: 3px solid #02a6f2;*/
+/*    word-wrap: break-word;*/
+/*    padding-right: 100px;*/
+/*}*/
+
+/*!*property container*!*/
+/*dd dl.py.property dt.sig.sig-object.py {*/
+/*    border-left: none;*/
+/*    border-top: none;*/
+/*    padding-left: 10px;*/
+/*    position: relative;*/
+/*    background: #f3f4f7;*/
+/*    border-left: 3px solid #02a6f2;*/
+/*    word-wrap: break-word;*/
+/*    padding-right: 100px;*/
+/*}*/
+
+/*!*exception container*!*/
+/*dl.py.exception dt.sig.sig-object.py {*/
+/*    border-left: none;*/
+/*    border-top: none;*/
+/*    padding-left: 10px;*/
+/*    position: relative;*/
+/*    background: #f3f4f7;*/
+/*    border-left: 3px solid #02a6f2;*/
+/*    word-wrap: break-word;*/
+/*    padding-right: 100px;*/
+/*}*/
+
+/*!*left side of container*!*/
+/*em.property span.pre {*/
+/*    font-weight: bold;*/
+/*    color: sandybrown;*/
+/*    !*text-transform: uppercase;*!*/
+/*}*/
+
+/*.viewcode-link {*/
+/*    right: 20px;*/
+/*    position: absolute;*/
+/*}*/
+
+
+/*.sig-prename.descclassname {*/
+/*    display: none;*/
+/*}*/
+
+
+/*.sig-name.descname {*/
+/*    font-weight: bold;*/
+/*    color: black;*/
+/*}*/
+
+
+/*!*display headerlink*!*/
+/*h1 > a.headerlink,*/
+/*h2 > a.headerlink,*/
+/*h3 > a.headerlink,*/
+/*h4 > a.headerlink,*/
+/*h5 > a.headerlink,*/
+/*dl.py > dt.sig.sig-object.py a.headerlink {*/
+/*    !* Example: color: dimgrey !important; *!*/
+/*    color: dimgrey !important;*/
+/*    display: initial !important;*/
+/*    transition: initial !important;*/
+/*}*/
+
+/*h1 > a.headerlink:hover,*/
+/*h2 > a.headerlink:hover,*/
+/*h3 > a.headerlink:hover,*/
+/*h4 > a.headerlink:hover,*/
+/*h5 > a.headerlink:hover,*/
+/*dl.py > dt.sig.sig-object.py a.headerlink:hover {*/
+/*    !* Example: color: black !important; *!*/
+/*    color: dimgrey !important;*/
+/*}*/
+
+/*h1:hover > a.headerlink,*/
+/*h2:hover > a.headerlink,*/
+/*h3:hover > a.headerlink,*/
+/*h4:hover > a.headerlink,*/
+/*h5:hover > a.headerlink,*/
+/*dl.py > dt.sig.sig-object.py:hover a.headerlink {*/
+/*    opacity: initial !important;*/
+/*}*/
+
+
+/*!*collapse code block*!*/
+/*!*div[class^='highlight'] pre {*!*/
+/*!*    white-space: pre;*!*/
+/*!*    margin: 0;*!*/
+/*!*    padding: 12px 12px;*!*/
+/*!*    font-family: Consolas,"Andale Mono WT","Andale Mono","Lucida Console","Lucida Sans Typewriter","DejaVu Sans Mono","Bitstream Vera Sans Mono","Liberation Mono","Nimbus Mono L",Monaco,"Courier New",Courier,monospace;*!*/
+/*!*    font-size: 14px;*!*/
+/*!*    line-height: 1.5;*!*/
+/*!*    display: block;*!*/
+/*!*    overflow: auto;*!*/
+/*!*    color: #404040;*!*/
+/*!*}*!*/

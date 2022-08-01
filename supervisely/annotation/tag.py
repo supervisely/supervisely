@@ -14,14 +14,22 @@ from supervisely._utils import take_with_default
 
 
 class TagJsonFields:
-    TAG_NAME = 'name'
-    VALUE = 'value'
-    LABELER_LOGIN = 'labelerLogin'
-    UPDATED_AT = 'updatedAt'
-    CREATED_AT = 'createdAt'
-    ID = 'id'
-    #TAG_META_ID = 'tagId'
+    """Json fields for :class:`Annotation<supervisely.annotation.tag.Tag>`"""
 
+    TAG_NAME = 'name'
+    """"""
+    VALUE = 'value'
+    """"""
+    LABELER_LOGIN = 'labelerLogin'
+    """"""
+    UPDATED_AT = 'updatedAt'
+    """"""
+    CREATED_AT = 'createdAt'
+    """"""
+    ID = 'id'
+    """"""
+    #TAG_META_ID = 'tagId'
+    # """"""
 
 class Tag(KeyObject):
     """
@@ -153,6 +161,8 @@ class Tag(KeyObject):
         return self._meta.name
 
     def key(self):
+        """
+        """
         return self._meta.key()
 
     def to_json(self) -> Dict:
@@ -392,7 +402,11 @@ class Tag(KeyObject):
 
     @classmethod
     def get_header_ptable(cls):
+        """
+        """
         return ['Name', 'Value type', 'Value']
 
     def get_row_ptable(self):
+        """
+        """
         return [self._meta.name, self._meta.value_type, self.value]

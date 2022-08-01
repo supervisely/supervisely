@@ -7,12 +7,20 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class SlidingWindowBorderStrategy(StrEnum):
+    """
+    """
+
     ADD_PADDING = 'add_padding'
+    """"""
     SHIFT_WINDOW = 'shift_window'
+    """"""
     CHANGE_SIZE = 'change_size'
+    """"""
 
 
 class SlidingWindowsFuzzy(SlidingWindows):
+    """
+    """
     def __init__(self, window_shape, min_overlap, strategy=str(SlidingWindowBorderStrategy.SHIFT_WINDOW)):
         super().__init__(window_shape, min_overlap)
         if not SlidingWindowBorderStrategy.has_value(strategy):
@@ -21,6 +29,8 @@ class SlidingWindowsFuzzy(SlidingWindows):
         self.strategy = strategy
 
     def get(self, source_shape):
+        """
+        """
         if self.strategy == str(SlidingWindowBorderStrategy.SHIFT_WINDOW):
             yield from self.get_shift_window(source_shape)
         elif self.strategy == str(SlidingWindowBorderStrategy.ADD_PADDING):
@@ -31,9 +41,13 @@ class SlidingWindowsFuzzy(SlidingWindows):
             raise NotImplementedError("Not implemented SW Strategy: {!r}".format(self.strategy))
 
     def get_shift_window(self, source_shape):
+        """
+        """
         yield from super().get(source_shape)
 
     def get_add_padding(self, source_shape):
+        """
+        """
         source_rect = Rectangle.from_size(source_shape)
         window_rect = Rectangle.from_size(self.window_shape)
         if not source_rect.contains(window_rect):
@@ -46,6 +60,8 @@ class SlidingWindowsFuzzy(SlidingWindows):
                 yield roi
 
     def get_change_size(self, source_shape):
+        """
+        """
         source_rect = Rectangle.from_size(source_shape)
         window_rect = Rectangle.from_size(self.window_shape)
         if not source_rect.contains(window_rect):

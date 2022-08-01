@@ -68,6 +68,8 @@ class Polygon(VectorGeometry):
 
     @staticmethod
     def geometry_name():
+        """
+        """
         return "polygon"
 
     def __init__(
@@ -225,6 +227,8 @@ class Polygon(VectorGeometry):
         return out_polygons
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
@@ -234,6 +238,8 @@ class Polygon(VectorGeometry):
         bitmap[bool_mask] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
 
@@ -264,6 +270,8 @@ class Polygon(VectorGeometry):
 
     @staticmethod
     def _get_area_by_gauss_formula(rows, cols):
+        """
+        """
         return 0.5 * np.abs(
             np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1))
         )
@@ -297,6 +305,8 @@ class Polygon(VectorGeometry):
 
     @classmethod
     def allowed_transforms(cls):
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.bitmap import Bitmap

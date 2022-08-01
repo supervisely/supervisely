@@ -5,8 +5,13 @@ from supervisely.geometry.geometry import Geometry
 
 
 class Pointcloud(Geometry):
+    """
+    """
+
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'point_cloud'
 
     def __init__(self, indices, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
@@ -19,15 +24,21 @@ class Pointcloud(Geometry):
 
     @property
     def indices(self):
+        """
+        """
         return self._indices.copy()
 
     def to_json(self):
+        """
+        """
         res = {INDICES: self.indices}
         self._add_creation_info(res)
         return res
 
     @classmethod
     def from_json(cls, data):
+        """
+        """
         indices = data[INDICES]
 
         labeler_login = data.get(LABELER_LOGIN, None)

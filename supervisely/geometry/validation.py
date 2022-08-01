@@ -3,6 +3,8 @@ from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
 
 
 def _is_2d_typed_coords_valid(coords, individual_coord_types):
+    """
+    """
     return isinstance(coords, (list, tuple)) and all(
         len(point) == 2 and
         all(isinstance(coord, individual_coord_types) for coord in point) for point in coords)

@@ -297,12 +297,16 @@ class PointLocation(JsonSerializable):
 
 
 def _flip_row_col_order(coords):
+    """
+    """
     if not all(len(x) == 2 for x in coords):
         raise ValueError('Flipping row and column order values is only possible within tuples of 2 elements.')
     return [[y, x] for x, y in coords]
 
 
 def _maybe_flip_row_col_order(coords, flip=False):
+    """
+    """
     return _flip_row_col_order(coords) if flip else coords
 
 

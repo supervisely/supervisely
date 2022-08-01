@@ -5,6 +5,8 @@ from supervisely.geometry.validation import is_2d_int_coords_valid
 
 
 class SlidingWindows:
+    """
+    """
     def __init__(self, window_shape, min_overlap):
         if not is_2d_int_coords_valid([window_shape]):
             raise ValueError('window_shape must contains 2 integers.')
@@ -19,6 +21,8 @@ class SlidingWindows:
             raise RuntimeError('Wrong sliding window settings, overlap is too high.')
 
     def get(self, source_shape):
+        """
+        """
         source_rect = Rectangle.from_size(source_shape)
         window_rect = Rectangle.from_size(self.window_shape)
         if not source_rect.contains(window_rect):

@@ -8,5 +8,7 @@ import mimetypes
 
 class ImportStorageApi(ModuleApiBase):
     def get_meta_by_hashes(self, hashes):
+        """
+        """
         response = self._api.post('import-storage.internal.meta.list', {ApiField.HASHES: hashes})
         return response.json()

@@ -8,24 +8,22 @@ import os
 from PIL import ImageFont
 from supervisely.io.fs import get_file_ext, file_exists
 
-
 FONT_EXTENSION = ".ttf"
 DEFAULT_FONT_FILE_NAME = "DejaVuSansMono.ttf"
 _fonts = {}  # (font name, size) -> font
 
 
 def _get_font_path_by_name(font_file_name: str) -> str:
+    """
+    Walk over systems fonts paths and match with given font file name.
+
+    :param font_file_name: Nameame of the font file.
+    :type font_file_name: str
+    :return: Full path of requested by name font or None if file not found in system paths.
+    :rtype: str
+    """
     import matplotlib.font_manager as fontman
 
-    """
-    Walk over systems fonts paths and match with given `font_file_name`.
-    Args:
-        font_file_name: font filename
-
-    Returns:
-        full path of requested by name font or None if file not found in system paths
-
-    """
     fonts_paths_list = fontman.findSystemFonts()
     for path in fonts_paths_list:
         if os.path.basename(path) == font_file_name:
@@ -34,15 +32,17 @@ def _get_font_path_by_name(font_file_name: str) -> str:
 
 
 def load_font(
-    font_file_name: str, font_size: Optional[int] = 12
+        font_file_name: str, font_size: Optional[int] = 12
 ) -> ImageFont.FreeTypeFont:
     """
     Set global font true-type for drawing.
-    Args:
-        font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
-        font_size: selected font size
-    Returns:
-        loaded from file font
+
+    :param font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
+    :type font_file_name: str
+    :param font_size: selected font size
+    :type font_size: int
+    :return: Font object
+    :rtype: PIL.ImageFont.FreeTypeFont
     """
     if get_file_ext(font_file_name) == FONT_EXTENSION:
         font_path = _get_font_path_by_name(font_file_name)
@@ -59,7 +59,7 @@ def load_font(
 
 
 def get_font(
-    font_file_name: Optional[str] = None, font_size: Optional[int] = 12
+        font_file_name: Optional[str] = None, font_size: Optional[int] = 12
 ) -> ImageFont.FreeTypeFont:
     """
     Args:

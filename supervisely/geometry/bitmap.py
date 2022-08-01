@@ -27,9 +27,13 @@ class SkeletonizeMethod(Enum):
     """
     Specifies possible skeletonization methods of :class:`Bitmap<Bitmap>`.
     """
+
     SKELETONIZE = 0
+    """"""
     MEDIAL_AXIS = 1
+    """"""
     THINNING = 2
+    """"""
 
 
 def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
@@ -107,6 +111,8 @@ class Bitmap(BitmapBase):
 
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'bitmap'
 
     def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None,
@@ -142,6 +148,8 @@ class Bitmap(BitmapBase):
 
     @classmethod
     def _impl_json_class_name(cls):
+        """
+        """
         return BITMAP
 
     def rotate(self, rotator: ImageRotator) -> Bitmap:
@@ -225,9 +233,13 @@ class Bitmap(BitmapBase):
         return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
             contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         else:
@@ -455,6 +467,8 @@ class Bitmap(BitmapBase):
 
     @classmethod
     def allowed_transforms(cls):
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
@@ -462,5 +476,13 @@ class Bitmap(BitmapBase):
 
     @classmethod
     def from_path(cls, path: str) -> Bitmap:
+        """
+        Read bitmap from image by pathю
+
+        :param path: Path to image
+        :type path: str
+        :return: Bitmap
+        :rtype: Bitmap
+        """
         img = read(path)
         return Bitmap(img[:, :, 0])

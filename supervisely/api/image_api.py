@@ -28,6 +28,8 @@ from supervisely._utils import batched, generate_free_name
 
 
 class ImageInfo(NamedTuple):
+    """
+    """
     id: int
     name: str
     link: str
@@ -1190,6 +1192,8 @@ class ImageApi(RemoveableBulkModuleApi):
     def _upload_bulk_add(
             self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None
     ):
+        """
+        """
         results = []
 
         if len(names) == 0:
@@ -1237,6 +1241,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
     # @TODO: reimplement
     def _convert_json_info(self, info: dict, skip_missing=True):
+        """
+        """
         if info is None:
             return None
         temp_ext = None
@@ -1268,9 +1274,13 @@ class ImageApi(RemoveableBulkModuleApi):
         return ImageInfo(**res._asdict())
 
     def _remove_batch_api_method_name(self):
+        """
+        """
         return "images.bulk.remove"
 
     def _remove_batch_field_name(self):
+        """
+        """
         return ApiField.IMAGE_IDS
 
     def copy_batch(self, dst_dataset_id: int, ids: List[int], change_name_if_conflict: Optional[bool] = False,
@@ -1523,6 +1533,8 @@ class ImageApi(RemoveableBulkModuleApi):
         return result
 
     def _download_batch_by_hashes(self, hashes):
+        """
+        """
         for batch_hashes in batched(hashes):
             response = self._api.post(
                 "images.bulk.download-by-hash", {ApiField.HASHES: batch_hashes}
@@ -1614,6 +1626,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def _get_free_name(exist_check_fn, name):
+        """
+        """
         res_title = name
         suffix = 1
 

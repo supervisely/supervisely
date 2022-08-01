@@ -71,6 +71,8 @@ class ImageRotator:
 
     @staticmethod
     def _affine_matrix_and_new_canvas_size(imsize, angle_degrees_ccw):
+        """
+        """
         rows, cols = imsize
         bottom, right = rows - 1, cols - 1
         image_center = (bottom / 2.0, right / 2.0)

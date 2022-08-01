@@ -12,28 +12,43 @@ from supervisely.geometry.constants import (
 
 
 class ClosedSurfaceMesh(Geometry):
+    """
+    """
+
     @staticmethod
     def geometry_name():
+        """
+        """
         return "closed_surface_mesh"
 
     def draw(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         raise NotImplementedError('Method "draw" is unavailable for this geometry')
 
     def draw_contour(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         raise NotImplementedError(
             'Method "draw_contour" is unavailable for this geometry'
         )
 
     def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
+        """
+        """
         raise NotImplementedError('Method "convert" is unavailable for this geometry')
 
     def to_json(self):
+        """
+        """
         res = {}
         self._add_creation_info(res)
         return res
 
     @classmethod
     def from_json(cls, data):
+        """
+        """
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)

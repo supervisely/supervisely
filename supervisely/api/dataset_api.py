@@ -10,6 +10,8 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule, Re
 
 
 class DatasetInfo(NamedTuple):
+    """
+    """
     id: int
     name: str
     description: str
@@ -248,9 +250,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return dataset_info
 
     def _get_update_method(self):
+        """
+        """
         return 'datasets.editInfo'
 
     def _remove_api_method_name(self):
+        """
+        """
         return 'datasets.remove'
 
     def copy_batch(self, dst_project_id: int, ids: List[int], new_names: Optional[List[str]] = None,
@@ -436,6 +442,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return new_dataset
 
     def _convert_json_info(self, info: dict, skip_missing=True):
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
             res = res._replace(reference_image_url=res.reference_image_url)

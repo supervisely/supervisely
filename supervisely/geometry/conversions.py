@@ -3,14 +3,20 @@ import itertools
 
 
 def _clear_dupe_start_end_boundary(coords_list):
+    """
+    """
     return coords_list if len(coords_list) < 2 or coords_list[0] != coords_list[-1] else coords_list[:-1]
 
 
 def _clear_dupe_start_end_multi_polygon(multi_polygon):
+    """
+    """
     return [[_clear_dupe_start_end_boundary(boundary) for boundary in polygon] for polygon in multi_polygon]
 
 
 def shapely_figure_to_coords_list(mp) -> list:
+    """
+    """
     mp_type = mp['type']
     if mp_type == 'MultiLineString':
         return mp['coordinates']
