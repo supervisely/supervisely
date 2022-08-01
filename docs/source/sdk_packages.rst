@@ -16,7 +16,6 @@ Annotation
     Annotation
     AnnotationJsonFields
 
-
 .. currentmodule:: supervisely.annotation.label
 
 .. autosummary::
@@ -25,9 +24,7 @@ Annotation
     :template: autosummary/custom-class-template.rst
 
     Label
-    LabelBase
     LabelJsonFields
-
 
 .. currentmodule:: supervisely.annotation.obj_class
 
@@ -39,7 +36,6 @@ Annotation
     ObjClass
     ObjClassJsonFields
 
-
 .. currentmodule:: supervisely.annotation.obj_class_collection
 
 .. autosummary::
@@ -48,7 +44,6 @@ Annotation
     :template: autosummary/custom-class-template.rst
 
     ObjClassCollection
-
 
 .. currentmodule:: supervisely.annotation.tag
 
@@ -60,7 +55,6 @@ Annotation
     Tag
     TagJsonFields
 
-
 .. currentmodule:: supervisely.annotation.tag_collection
 
 .. autosummary::
@@ -69,7 +63,6 @@ Annotation
     :template: autosummary/custom-class-template.rst
 
     TagCollection
-
 
 .. currentmodule:: supervisely.annotation.tag_meta
 
@@ -82,7 +75,6 @@ Annotation
     TagMetaJsonFields
     TagApplicableTo
     TagValueType
-
 
 .. currentmodule:: supervisely.annotation.tag_meta_collection
 
@@ -313,14 +305,17 @@ Augmentation
 Collection
 ----------
 
-.. currentmodule:: supervisely.collection
+.. currentmodule:: supervisely.collection.key_indexed_collection
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    key_indexed_collection
+    DuplicateKeyError
+    KeyObject
+    KeyIndexedCollection
+    MultiKeyIndexedCollection
 
 Decorators
 ----------
@@ -330,7 +325,7 @@ Decorators
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
     profile
 
@@ -339,25 +334,144 @@ Geometry
 **Geometry**
 - All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
 
-.. currentmodule:: supervisely.geometry
+.. currentmodule:: supervisely.geometry.any_geometry
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    any_geometry
-    bitmap
-    bitmap_base
-    cuboid
-    point
-    point_location
-    polygon
-    polyline
-    rectangle
-    rotator
-    vector_geometry
-    graph
+    AnyGeometry
+
+.. currentmodule:: supervisely.geometry.bitmap
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Bitmap
+    SkeletonizeMethod
+
+.. currentmodule:: supervisely.geometry.bitmap_base
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    BitmapBase
+
+.. currentmodule:: supervisely.geometry.cuboid
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Cuboid
+    CuboidFace
+
+.. currentmodule:: supervisely.geometry.cuboid_3d
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Cuboid3d
+    Vector3d
+
+.. currentmodule:: supervisely.geometry.geometry
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Geometry
+
+.. currentmodule:: supervisely.geometry.point
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Point
+
+.. currentmodule:: supervisely.geometry.point_3d
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Point3d
+
+.. currentmodule:: supervisely.geometry.point_location
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointLocation
+
+.. currentmodule:: supervisely.geometry.polygon
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Polygon
+
+.. currentmodule:: supervisely.geometry.polyline
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Polyline
+
+.. currentmodule:: supervisely.geometry.rectangle
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Rectangle
+
+.. currentmodule:: supervisely.geometry.image_rotator
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ImageRotator
+
+.. currentmodule:: supervisely.geometry.vector_geometry
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VectorGeometry
+
+.. currentmodule:: supervisely.geometry.graph
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Node
+    GraphNodes
 
 Imaging
 -------
@@ -369,7 +483,7 @@ Imaging
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
     font
     color
@@ -385,7 +499,7 @@ IO
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
     fs
     json
@@ -398,7 +512,7 @@ Labeling Jobs
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
     utils
 
@@ -411,68 +525,140 @@ Pointcloud
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
     pointcloud
 
 Pointcloud Annotation
 ---------------------
 
-.. currentmodule:: supervisely.pointcloud_annotation
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_annotation
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-   pointcloud_annotation
-   pointcloud_figure
-   pointcloud_object
-   pointcloud_object_Collection
+    PointcloudAnnotation
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_figure
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudFigure
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_object
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudObject
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_object_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudObjectCollection
+
 
 Project
 -------
 **Project**
 - Working with Superrvisely projects on disk.
 
-.. currentmodule:: supervisely.project
+.. currentmodule:: supervisely.project.project
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-   project
-   pointcloud-project
-   project_meta
-   project_type
-   video_project
+    Project
+    Dataset
+    OpenMode
+
+.. currentmodule:: supervisely.project.pointcloud_project
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudProject
+    PointcloudDataset
+
+.. currentmodule:: supervisely.project.project_meta
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ProjectMeta
+    ProjectMetaJsonFields
+
+.. currentmodule:: supervisely.project.project_type
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ProjectType
+
+.. currentmodule:: supervisely.project.video_project
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoProject
+    VideoDataset
+
+.. currentmodule:: supervisely.project.volume_project
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeProject
+    VolumeDataset
 
 Task
 ----
 **Task**
 - Constants defining the directories where a plugin should expect the input and output data to be. Also helpers to stream progress data from a running plugin back to the web instance.
 
-.. currentmodule:: supervisely.task
+.. currentmodule:: supervisely.task.progress
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-   progress
+    Progress
 
 User
 ----
 
-.. currentmodule:: supervisely.user
+.. currentmodule:: supervisely.user.user
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-   user
+    UserRoleName
 
 Video
 -----
@@ -482,26 +668,90 @@ Video
 .. autosummary::
     :toctree: sdk
     :nosignatures:
-    :template: autosummary/custom-class-template.rst
+    :template: autosummary/custom-module-template.rst
 
    video
 
 Video Annotation
 ----------------
 
-.. currentmodule:: supervisely.video_annotation
+.. currentmodule:: supervisely.video_annotation.video_annotation
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-   frame
-   frame_collection
-   key_id_ap
-   video_annotation
-   video_figure
-   video_object
-   video_object_collection
-   video_tag
-   video_tag_collection
+    VideoAnnotation
+
+.. currentmodule:: supervisely.video_annotation.frame
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Frame
+
+.. currentmodule:: supervisely.video_annotation.frame_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    FrameCollection
+
+.. currentmodule:: supervisely.video_annotation.key_id_map
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    KeyIdMap
+
+.. currentmodule:: supervisely.video_annotation.video_figure
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoFigure
+
+.. currentmodule:: supervisely.video_annotation.video_object
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoObject
+
+.. currentmodule:: supervisely.video_annotation.video_object_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      VideoObjectCollection
+
+.. currentmodule:: supervisely.video_annotation.video_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoTag
+
+.. currentmodule:: supervisely.video_annotation.video_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      VideoTagCollection
