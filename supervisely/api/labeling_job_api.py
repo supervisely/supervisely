@@ -81,11 +81,18 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     """
 
     class Status(StrEnum):
+        """Labeling Job status."""
+
         PENDING = 'pending'
+        """"""
         IN_PROGRESS = "in_progress"
+        """"""
         ON_REVIEW = "on_review"
+        """"""
         COMPLETED = "completed"
+        """"""
         STOPPED = 'stopped'
+        """"""
 
     @staticmethod
     def info_sequence():
@@ -188,6 +195,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         ModuleApi.__init__(self, api)
 
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
+        """
+        """
         if info is None:
             return None
         else:
@@ -729,14 +738,14 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         """
         self._api.post('jobs.archive', {ApiField.ID: id})
 
-    def get_status(self, id: int) -> Status:
+    def get_status(self, id: int) -> LabelingJobApi.Status:
         """
         Get status of Labeling Job with given ID.
 
         :param id: Labeling job ID in Supervisely.
         :type id: int
-        :return: Status object
-        :rtype: :class:`Status`
+        :return: Labeling Job Status
+        :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
         :Usage example:
 
          .. code-block:: python
@@ -754,6 +763,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return self.Status(status_str)
 
     def raise_for_status(self, status):
+        """
+        """
         # there is no ERROR status for labeling job
         pass
 
@@ -983,7 +994,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
     def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
         import pandas as pd
-        
+
         """
         Get all activity for given Labeling Job by ID.
 

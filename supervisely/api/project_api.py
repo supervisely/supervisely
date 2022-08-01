@@ -24,14 +24,20 @@ from supervisely.annotation.annotation import TagCollection
 
 
 class ProjectNotFound(Exception):
+    """
+    """
     pass
 
 
 class ExpectedProjectTypeMismatch(Exception):
+    """
+    """
     pass
 
 
 class ProjectInfo(NamedTuple):
+    """
+    """
     id: int
     name: str
     description: str
@@ -398,6 +404,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         with_items=True,
         with_annotations=True,
     ):
+        """
+        """
         if not with_meta and with_annotations:
             raise ValueError(
                 "with_meta parameter must be True if with_annotations parameter is True"
@@ -495,6 +503,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
+        """
+        """
         return "projects.editInfo"
 
     def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
@@ -550,6 +560,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
+        """
+        """
         return "projects.clone"
 
     def get_datasets_count(self, id: int) -> int:
@@ -607,6 +619,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
+        """"""
         return "projects.remove"
 
     def merge_metas(self, src_project_id: int, dst_project_id: int) -> Dict:
@@ -688,6 +701,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return df
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
             res = res._replace(reference_image_url=res.reference_image_url)
@@ -867,6 +882,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def get_or_create(
         self, workspace_id, name, type=ProjectType.IMAGES, description=""
     ):
+        """
+        """
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
             info = self.create(workspace_id, name, type=type, description=description)
@@ -881,6 +898,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         custom_data=None,
         project_type=None,
     ):
+        """
+        """
         if (
             name is None
             and description is None

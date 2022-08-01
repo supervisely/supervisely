@@ -8,6 +8,9 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
 class WorkspaceInfo(NamedTuple):
+    """
+    """
+
     id: int
     name: str
     description: str
@@ -204,8 +207,12 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
+        """
+        """
         return 'workspaces.editInfo'
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> WorkspaceInfo:
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return WorkspaceInfo(**res._asdict())

@@ -15,52 +15,99 @@ class ActivityAction:
     """
     List of Team Actions to sort Team Activity.
     """
+
     LOGIN = 'login'
+    """"""
     LOGOUT = 'logout'
+    """"""
     CREATE_PROJECT = 'create_project'
+    """"""
     UPDATE_PROJECT = 'update_project'
+    """"""
     DISABLE_PROJECT = 'disable_project'
+    """"""
     RESTORE_PROJECT = 'restore_project'
+    """"""
     CREATE_DATASET = 'create_dataset'
+    """"""
     UPDATE_DATASET = 'update_dataset'
+    """"""
     DISABLE_DATASET = 'disable_dataset'
+    """"""
     RESTORE_DATASET = 'restore_dataset'
+    """"""
     CREATE_IMAGE = 'create_image'
+    """"""
     UPDATE_IMAGE = 'update_image'
+    """"""
     DISABLE_IMAGE = 'disable_image'
+    """"""
     RESTORE_IMAGE = 'restore_image'
+    """"""
     CREATE_FIGURE = 'create_figure'
+    """"""
     UPDATE_FIGURE = 'update_figure'
+    """"""
     DISABLE_FIGURE = 'disable_figure'
+    """"""
     RESTORE_FIGURE = 'restore_figure'
+    """"""
     CREATE_CLASS = 'create_class'
+    """"""
     UPDATE_CLASS = 'update_class'
+    """"""
     DISABLE_CLASS = 'disable_class'
+    """"""
     RESTORE_CLASS = 'restore_class'
+    """"""
     CREATE_BACKUP = 'create_backup'
+    """"""
     EXPORT_PROJECT = 'export_project'
+    """"""
     MODEL_TRAIN = 'model_train'
+    """"""
     MODEL_INFERENCE = 'model_inference'
+    """"""
     CREATE_PLUGIN = 'create_plugin'
+    """"""
     DISABLE_PLUGIN = 'disable_plugin'
+    """"""
     RESTORE_PLUGIN = 'restore_plugin'
+    """"""
     CREATE_NODE = 'create_node'
+    """"""
     DISABLE_NODE = 'disable_node'
+    """"""
     RESTORE_NODE = 'restore_node'
+    """"""
     CREATE_WORKSPACE = 'create_workspace'
+    """"""
     DISABLE_WORKSPACE = 'disable_workspace'
+    """"""
     RESTORE_WORKSPACE = 'restore_workspace'
+    """"""
     CREATE_MODEL = 'create_model'
+    """"""
     DISABLE_MODEL = 'disable_model'
+    """"""
     RESTORE_MODEL = 'restore_model'
+    """"""
     ADD_MEMBER = 'add_member'
+    """"""
     REMOVE_MEMBER = 'remove_member'
+    """"""
     LOGIN_TO_TEAM = 'login_to_team'
+    """"""
     ATTACH_TAG = 'attach_tag'
+    """"""
     UPDATE_TAG_VALUE = 'update_tag_value'
+    """"""
     DETACH_TAG = 'detach_tag'
+    """"""
     ANNOTATION_DURATION = 'annotation_duration'
+    """"""
     IMAGE_REVIEW_STATUS_UPDATED = 'image_review_status_updated'
+    """"""
 
     # case #1 - labeler pressed "finish image" button in labeling job
     # action: IMAGE_REVIEW_STATUS_UPDATED -> meta["reviewStatus"] == 'done'
@@ -78,6 +125,8 @@ class ActivityAction:
 
 
 class TeamInfo(NamedTuple):
+    """
+    """
     id: int
     name: str
     description: str
@@ -278,6 +327,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
+        """
+        """
         return 'teams.editInfo'
 
     def get_activity(self, team_id: int,
@@ -427,5 +478,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         return results
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> TeamInfo:
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return TeamInfo(**res._asdict())

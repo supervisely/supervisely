@@ -8,7 +8,6 @@ import numpy as np
 from typing import List, Tuple, Dict, Optional, Union, Iterable
 from supervisely.geometry.image_rotator import ImageRotator
 
-
 from supervisely.geometry.constants import (
     EXTERIOR,
     INTERIOR,
@@ -58,20 +57,20 @@ class VectorGeometry(Geometry):
     """
 
     def __init__(
-        self,
-        exterior: Union[
-            List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
-        ],
-        interior: Union[
-            List[List[PointLocation]],
-            List[List[List[int, int]]],
-            List[List[Tuple[int, int]]],
-        ] = [],
-        sly_id: Optional[int] = None,
-        class_id: Optional[int] = None,
-        labeler_login: Optional[int] = None,
-        updated_at: Optional[str] = None,
-        created_at: Optional[str] = None,
+            self,
+            exterior: Union[
+                List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
+            ],
+            interior: Union[
+                List[List[PointLocation]],
+                List[List[List[int, int]]],
+                List[List[Tuple[int, int]]],
+            ] = [],
+            sly_id: Optional[int] = None,
+            class_id: Optional[int] = None,
+            labeler_login: Optional[int] = None,
+            updated_at: Optional[str] = None,
+            created_at: Optional[str] = None,
     ):
         result_exterior = []
         if not isinstance(exterior, list):
@@ -238,13 +237,15 @@ class VectorGeometry(Geometry):
         ]
 
     def _transform(self, transform_fn):
+        """
+        """
         result = deepcopy(self)
         result._exterior = [transform_fn(p) for p in self._exterior]
         result._interior = [[transform_fn(p) for p in i] for i in self._interior]
         return result
 
     def resize(
-        self, in_size: Tuple[int, int], out_size: Tuple[int, int]
+            self, in_size: Tuple[int, int], out_size: Tuple[int, int]
     ) -> VectorGeometry:
         """
         Resizes current VectorGeometry.
@@ -406,6 +407,8 @@ class VectorGeometry(Geometry):
 
     @staticmethod
     def _approx_ring_dp(ring, epsilon, closed):
+        """
+        """
         new_ring = cv2.approxPolyDP(ring.astype(np.int32), epsilon, closed)
         new_ring = np.squeeze(new_ring, 1)
         if len(new_ring) < 3 and closed:
@@ -413,4 +416,6 @@ class VectorGeometry(Geometry):
         return new_ring
 
     def approx_dp(self, epsilon):
+        """
+        """
         raise NotImplementedError()

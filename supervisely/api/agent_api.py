@@ -9,10 +9,14 @@ from supervisely.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
 
 class AgentNotFound(Exception):
+    """
+    """
     pass
 
 
 class AgentNotRunning(Exception):
+    """
+    """
     pass
 
 
@@ -41,9 +45,14 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         team_id = 8
         agents = api.agent.get_list(team_id)
     """
+
     class Status(Enum):
+        """Agent status."""
+
         WAITING = 'waiting'
+        """"""
         RUNNING = 'running'
+        """"""
 
     @staticmethod
     def info_sequence():
@@ -102,7 +111,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         """
-        return self.get_list_all_pages('agents.list',  {'teamId': team_id, "filter": filters or []})
+        return self.get_list_all_pages('agents.list', {'teamId': team_id, "filter": filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
@@ -126,14 +135,14 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         """
         return self._get_info_by_id(id, 'agent.info')
 
-    def get_status(self, id: int) -> Status:
+    def get_status(self, id: int) -> AgentApi.Status:
         """
         Status object containing status of Agent: waiting or running.
 
         :param id: Agent ID in Supervisely.
         :type id: int
         :return: Agent Status
-        :rtype: :class:`Status<Status>`
+        :rtype: :class:`Status<supervisely.api.agent_api.AgentApi.Status>`
         :Usage example:
 
          .. code-block:: python
@@ -150,4 +159,6 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         return self.Status(status_str)
 
     def raise_for_status(self, status):
+        """
+        """
         pass

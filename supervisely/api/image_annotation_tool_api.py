@@ -14,30 +14,47 @@ from supervisely._utils import batched
 
 class ImageAnnotationToolAction(StrEnum):
     SET_FIGURE = 'figures/setFigure'
+    """"""
     NEXT_IMAGE = 'images/nextImage'
+    """"""
     PREV_IMAGE = 'images/prevImage'
+    """"""
     SET_IMAGE = 'images/setImage'
+    """"""
     ZOOM_TO_FIGURE = 'scene/zoomToObject'
+    """"""
 
 
 class ImageAnnotationToolApi(ModuleApiBase):
     def set_figure(self, session_id, figure_id):
+        """
+        """
         return self._act(session_id, ImageAnnotationToolAction.SET_FIGURE, {ApiField.FIGURE_ID: figure_id})
 
     def next_image(self, session_id, image_id):
+        """
+        """
         return self._act(session_id, ImageAnnotationToolAction.NEXT_IMAGE, {ApiField.IMAGE_ID: image_id})
 
     def prev_image(self, session_id, image_id):
+        """
+        """
         return self._act(session_id, ImageAnnotationToolAction.PREV_IMAGE, {ApiField.IMAGE_ID: image_id})
 
     def set_image(self, session_id, image_id):
+        """
+        """
         return self._act(session_id, ImageAnnotationToolAction.SET_IMAGE, {ApiField.IMAGE_ID: image_id})
 
     def zoom_to_figure(self, session_id, figure_id, zoom_factor=1):
+        """
+        """
         return self._act(session_id, ImageAnnotationToolAction.ZOOM_TO_FIGURE,
                          {ApiField.FIGURE_ID: figure_id, ApiField.ZOOM_FACTOR: zoom_factor})
 
     def _act(self, session_id: int, action: ImageAnnotationToolAction, payload: dict):
+        """
+        """
         data = {ApiField.SESSION_ID: session_id, ApiField.ACTION: str(action), ApiField.PAYLOAD: payload}
         resp = self._api.post('/annotation-tool.run-action', data)
         return resp.json()

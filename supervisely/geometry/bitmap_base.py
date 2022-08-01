@@ -100,10 +100,14 @@ class BitmapBase(Geometry):
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
+        """
+        """
         raise NotImplementedError()
 
     @staticmethod
     def data_2_base64(data: np.ndarray) -> str:
+        """
+        """
         raise NotImplementedError()
 
     def to_json(self) -> Dict:
@@ -300,6 +304,8 @@ class BitmapBase(Geometry):
 
     @staticmethod
     def _resize_mask(mask, out_rows, out_cols):
+        """
+        """
         return resize_inter_nearest(mask.astype(np.uint8), (out_rows, out_cols)).astype(np.bool)
 
     def to_bbox(self) -> Rectangle:

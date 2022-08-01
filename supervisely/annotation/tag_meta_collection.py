@@ -269,6 +269,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
 
 def make_renamed_tag_metas(src_tag_metas: TagMetaCollection, renamer, skip_missing=False) -> TagMetaCollection:
+    """
+    """
     result_tags = []
     for src_tag in src_tag_metas:
         renamed_name = renamer.rename(src_tag.name)

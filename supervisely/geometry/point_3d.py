@@ -6,8 +6,13 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 
 class Point3d(Geometry):
+    """
+    """
+
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'point_3d'
 
     def __init__(self, point: Vector3d,
@@ -21,23 +26,33 @@ class Point3d(Geometry):
 
     @property
     def x(self):
+        """
+        """
         return self._point._x
 
     @property
     def y(self):
+        """
+        """
         return self._point._y
 
     @property
     def z(self):
+        """
+        """
         return self._point._z
 
     def to_json(self):
+        """
+        """
         res = self._point.to_json()
         self._add_creation_info(res)
         return res
 
     @classmethod
     def from_json(cls, data):
+        """
+        """
         point = Vector3d.from_json(data)
 
         labeler_login = data.get(LABELER_LOGIN, None)

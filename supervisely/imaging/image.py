@@ -27,6 +27,8 @@ DEFAULT_IMG_EXT = '.png'
 
 
 class CornerAnchorMode:
+    """
+    """
     TOP_LEFT = "tl"
     TOP_RIGHT = "tr"
     BOTTOM_LEFT = 'bl'
@@ -34,20 +36,32 @@ class CornerAnchorMode:
 
 
 class RotateMode(Enum):
+    """
+    """
+
     KEEP_BLACK = 0
+    """"""
     CROP_BLACK = 1
+    """"""
     SAVE_ORIGINAL_SIZE = 2
+    """"""
 
 
 class ImageExtensionError(Exception):
+    """
+    """
     pass
 
 
 class UnsupportedImageFormat(Exception):
+    """
+    """
     pass
 
 
 class ImageReadException(Exception):
+    """
+    """
     pass
 
 def is_valid_ext(ext: str) -> bool:
@@ -284,7 +298,7 @@ def draw_text_sequence(bitmap: np.ndarray,
                        font: Optional[ImageFont.FreeTypeFont] = None,
                        fill_background: Optional[bool] = True) -> None:
     """
-    Draws text labels on bitmap from left to right with `col_space` spacing between labels.
+    Draws text labels on bitmap from left to right with col_space spacing between labels.
 
     :param bitmap: Image to draw texts in numpy format.
     :type bitmap: np.ndarray

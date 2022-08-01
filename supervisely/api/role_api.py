@@ -42,10 +42,17 @@ class RoleApi(ModuleApiBase):
     """
 
     class DefaultRole(IntEnum):
+        """
+        """
+
         ADMIN = 1
+        """"""
         DEVELOPER = 2
+        """"""
         ANNOTATOR = 3
+        """"""
         VIEWER = 4
+        """"""
 
     @staticmethod
     def info_sequence():
@@ -96,5 +103,7 @@ class RoleApi(ModuleApiBase):
         return self.get_list_all_pages('roles.list', {ApiField.FILTER: filters or []})
 
     def _convert_json_info(self, info: dict, skip_missing=True):
+        """
+        """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return RoleInfo(**res._asdict())

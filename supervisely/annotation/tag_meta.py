@@ -15,9 +15,13 @@ class TagValueType:
     Restricts Tag to have a certain value type.
     """
     NONE = 'none'
+    """"""
     ANY_NUMBER = 'any_number'
+    """"""
     ANY_STRING = 'any_string'
+    """"""
     ONEOF_STRING = 'oneof_string'
+    """"""
 
 
 class TagMetaJsonFields:
@@ -25,23 +29,34 @@ class TagMetaJsonFields:
     Json fields for :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
     """
     ID = 'id'
-    NAME = 'name'
-    VALUE_TYPE = 'value_type'
-    VALUES = 'values'
-    COLOR = 'color'
-    APPLICABLE_TYPE = 'applicable_type'
-    HOTKEY = "hotkey"
-    APPLICABLE_CLASSES = 'classes'
+    """"""
 
+    NAME = 'name'
+    """"""
+    VALUE_TYPE = 'value_type'
+    """"""
+    VALUES = 'values'
+    """"""
+    COLOR = 'color'
+    """"""
+    APPLICABLE_TYPE = 'applicable_type'
+    """"""
+    HOTKEY = "hotkey"
+    """"""
+    APPLICABLE_CLASSES = 'classes'
+    """"""
 
 class TagApplicableTo:
     """
     Defines Tag applicability only to images, objects or both.
     """
-    ALL = 'all' # both images and objects
-    IMAGES_ONLY = 'imagesOnly'
-    OBJECTS_ONLY = 'objectsOnly'
 
+    ALL = 'all' # both images and objects
+    """"""
+    IMAGES_ONLY = 'imagesOnly'
+    """"""
+    OBJECTS_ONLY = 'objectsOnly'
+    """"""
 
 SUPPORTED_TAG_VALUE_TYPES = [TagValueType.NONE, TagValueType.ANY_NUMBER, TagValueType.ANY_STRING, TagValueType.ONEOF_STRING]
 SUPPORTED_APPLICABLE_TO = [TagApplicableTo.ALL, TagApplicableTo.IMAGES_ONLY, TagApplicableTo.OBJECTS_ONLY]
@@ -544,6 +559,8 @@ class TagMeta(KeyObject, JsonSerializable):
         return not self == other
 
     def is_compatible(self, other: TagMeta) -> bool:
+        """
+        """
         return (isinstance(other, TagMeta) and
                 self.name == other.name and
                 self.value_type == other.value_type and
@@ -609,7 +626,11 @@ class TagMeta(KeyObject, JsonSerializable):
 
     @classmethod
     def get_header_ptable(cls):
+        """
+        """
         return ['Name', 'Value type', 'Possible values', 'Hotkey', 'Applicable to', 'Applicable classes']
 
     def get_row_ptable(self):
+        """
+        """
         return [self.name, self.value_type, self.possible_values, self.hotkey, self.applicable_to, self.applicable_classes]

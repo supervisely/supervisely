@@ -10,8 +10,12 @@ from supervisely.geometry.constants import MULTICHANNEL_BITMAP
 
 
 class MultichannelBitmap(BitmapBase):
+    """
+    """
     @staticmethod
     def geometry_name():
+        """
+        """
         return 'multichannelBitmap'
 
     def __init__(self, data, origin: PointLocation = None,
@@ -28,6 +32,8 @@ class MultichannelBitmap(BitmapBase):
 
     @classmethod
     def _impl_json_class_name(cls):
+        """
+        """
         return MULTICHANNEL_BITMAP
 
     def rotate(self, rotator):
@@ -74,9 +80,13 @@ class MultichannelBitmap(BitmapBase):
         return MultichannelBitmap(data=scaled_data, origin=scaled_origin)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         self.to_bbox().get_cropped_numpy_slice(bitmap)[...] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """
+        """
         bbox = self.to_bbox()
         # Not forwarding the config here directly since a Rectangle cannot know
         # about our config format.
@@ -111,4 +121,6 @@ class MultichannelBitmap(BitmapBase):
         return base64.b64encode(zlib.compress(bytes_io.getvalue())).decode('utf-8')
 
     def validate(self, name, settings):
+        """
+        """
         pass  # No need name validation - inner geometry type.
