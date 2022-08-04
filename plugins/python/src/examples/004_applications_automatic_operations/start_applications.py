@@ -21,7 +21,7 @@ api = supervisely.Api.from_env()
 apps_list_in_team = api.app.get_list(team_id=TEAM_ID)
 apps_list_to_launch = [app_info for app_info in apps_list_in_team if app_info.name in APP_NAMES_TO_LAUNCH]
 
-supervisely.logger.info(f'{apps_list_to_launch=}')
+supervisely.logger.info(f'{apps_list_to_launch}')
 
 # launch applications in cycle
 launched_tasks_ids = []
@@ -38,13 +38,13 @@ for current_app in apps_list_to_launch:
     )
 
     launched_tasks_ids.extend(list(map(lambda task_elem: task_elem['taskId'], launched_tasks_list)))  # extract task_ids
-    supervisely.logger.info(f'application {current_app.name=}, {current_app.id=} launched')
+    supervisely.logger.info(f'application {current_app.name}, {current_app.id} launched')
 
 # show launched applications statuses
-supervisely.logger.info(f'{launched_tasks_ids=}')
+supervisely.logger.info(f'{launched_tasks_ids}')
 
 for task_id in launched_tasks_ids:
     task_info = api.task.get_info_by_id(id=task_id)
-    supervisely.logger.info(f'{task_info["status"]=}')
+    supervisely.logger.info(f'{task_info["status"]}')
 
 supervisely.logger.info(f'{len(launched_tasks_ids)} task(-s) launched')
