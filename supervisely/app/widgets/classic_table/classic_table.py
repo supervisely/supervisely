@@ -17,9 +17,9 @@ class PackerUnpacker:
         for row in unpacked_data['data']:
             if len(row) != len(unpacked_data['columns']):
                 raise ValueError('Sizes mismatch:\n'
-                                 f'{len(row)=} != {len(unpacked_data["columns"])=}\n'
-                                 f'{row=}\n'
-                                 f'{unpacked_data["columns"]=}')
+                                 f'{len(row)} != {len(unpacked_data["columns"])}\n'
+                                 f'{row}\n'
+                                 f'{unpacked_data["columns"]}')
 
     @staticmethod
     def unpack_data(data, unpacker_cb):
