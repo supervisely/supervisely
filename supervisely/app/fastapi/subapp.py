@@ -126,8 +126,8 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def init(app: FastAPI, root_dir: str = "."):
-    Jinja2Templates(directory=root_dir)
+def init(app: FastAPI, templates_dir: str = "templates"):
+    Jinja2Templates(directory=templates_dir)
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)

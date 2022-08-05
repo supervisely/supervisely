@@ -1,6 +1,7 @@
 import copy
 import functools
 from enum import Enum
+
 try:
     from typing import Literal
 except ImportError:
@@ -16,14 +17,18 @@ from supervisely.app.widgets import Widget
 
 class ElementButton(Widget):
     class Routes:
-        BUTTON_CLICKED = 'button_clicked_cb'
+        BUTTON_CLICKED = "button_clicked_cb"
 
-    def __init__(self,
-                 text: str = 'Element Button',
-                 button_type: Literal["primary", "info", "warning", "danger", "success"] = "primary",
-                 button_size: Literal["mini", "small", "large"] = None,
-                 plain: bool = False,
-                 widget_id: str = None):
+    def __init__(
+        self,
+        text: str = "Element Button",
+        button_type: Literal[
+            "primary", "info", "warning", "danger", "success"
+        ] = "primary",
+        button_size: Literal["mini", "small", "large"] = None,
+        plain: bool = False,
+        widget_id: str = None,
+    ):
         self._widget_routes = {}
 
         self._text = text
@@ -38,13 +43,12 @@ class ElementButton(Widget):
 
     def get_json_data(self):
         return {
-            'text': self._text,
-            'button_type': self._button_type,
-            'plain': self._plain,
-            'button_size': self._button_size,
-
-            'loading': self._loading,
-            'disabled': self._disabled
+            "text": self._text,
+            "button_type": self._button_type,
+            "plain": self._plain,
+            "button_size": self._button_size,
+            "loading": self._loading,
+            "disabled": self._disabled,
         }
 
     def get_json_state(self):
@@ -57,7 +61,7 @@ class ElementButton(Widget):
     @text.setter
     def text(self, value):
         self._text = value
-        DataJson()[self.widget_id]['text'] = self._text
+        DataJson()[self.widget_id]["text"] = self._text
 
     @property
     def loading(self):
@@ -66,7 +70,7 @@ class ElementButton(Widget):
     @loading.setter
     def loading(self, value):
         self._loading = value
-        DataJson()[self.widget_id]['loading'] = self._loading
+        DataJson()[self.widget_id]["loading"] = self._loading
 
     @property
     def disabled(self):
@@ -75,5 +79,8 @@ class ElementButton(Widget):
     @disabled.setter
     def disabled(self, value):
         self._disabled = value
-        DataJson()[self.widget_id]['disabled'] = self._disabled
+        DataJson()[self.widget_id]["disabled"] = self._disabled
 
+    def click(self, app):
+        route = ElementButton.Routes.BUTTON_CLICKED
+        self.add_route(app, route)
