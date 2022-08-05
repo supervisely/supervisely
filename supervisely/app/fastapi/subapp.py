@@ -128,12 +128,10 @@ def handle_server_errors(app: FastAPI):
 def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     if app is None:
         app = FastAPI()
-    Jinja2Templates(directory=templates_dir)
+    Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
-
-    index_path = os.path.join(Path(__file__).parent.absolute(), "index.html")
 
     @app.get("/")
     async def read_index(request: Request):
