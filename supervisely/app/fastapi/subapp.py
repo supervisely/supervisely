@@ -2,6 +2,7 @@ import os
 import signal
 import psutil
 import sys
+from pathlib import Path
 
 from fastapi import (
     FastAPI,
@@ -132,6 +133,8 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     app.mount("/sly", create())
     handle_server_errors(app)
 
+    index_path = os.path.join(Path(__file__).parent.absolute(), "index.html")
+
     @app.get("/")
     async def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
@@ -140,7 +143,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, templates_dir: str = "templates"):
+    def __init__(self, name="", templates_dir: str = "templates"):
         self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
 
     def get_server(self):
