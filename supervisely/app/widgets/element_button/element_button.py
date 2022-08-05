@@ -83,4 +83,4 @@ class ElementButton(Widget):
 
     def click(self, app):
         route = ElementButton.Routes.BUTTON_CLICKED
-        self.add_route(app, route)
+        return self.add_route(app, route)
