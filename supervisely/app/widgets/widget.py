@@ -6,12 +6,13 @@ import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import Jinja2Templates
-from supervisely.app import App
 
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
-        self._sly_app = App()
+        from supervisely.app import Application
+
+        self._sly_app = Application()
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
