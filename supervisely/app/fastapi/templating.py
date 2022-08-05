@@ -1,4 +1,5 @@
 import typing
+import os
 from os import PathLike
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
@@ -42,6 +43,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             **self.context_widgets,
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
+            "app_name": os.environ.get("APP_NAME", "Supervisely App"),
         }
 
         return super().TemplateResponse(
