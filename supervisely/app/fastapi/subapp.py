@@ -145,3 +145,6 @@ class Application(metaclass=Singleton):
 
     def get_server(self):
         return self._fastapi
+
+    async def __call__(self, scope, receive, send) -> None:
+        await self._fastapi.__call__(scope, receive, send)
