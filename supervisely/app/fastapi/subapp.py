@@ -16,6 +16,8 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from supervisely.app.singleton import Singleton
+
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
@@ -122,7 +124,7 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=templates_dir)
@@ -135,3 +137,11 @@ def init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
     return app
+
+
+class Application(metaclass=Singleton):
+    def __init__(self, templates_dir: str = "templates"):
+        self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
+
+    def get_server(self):
+        return self._fastapi

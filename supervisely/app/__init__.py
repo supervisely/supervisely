@@ -20,14 +20,3 @@ def __getattr__(name):
             'No module named supervisely.app, please install dependencies with "pip install supervisely[apps]"'
         )
     return getattr(sys.modules[__name__], name)
-
-
-from supervisely.app.singleton import Singleton
-
-
-class Application(metaclass=Singleton):
-    def __init__(self, templates_dir: str = "templates"):
-        self._fastapi: FastAPI = fastapi.init(app=None, templates_dir=templates_dir)
-
-    def get_server(self):
-        return self._fastapi
