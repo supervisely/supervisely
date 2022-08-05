@@ -10,6 +10,8 @@ except (ImportError, ModuleNotFoundError) as e:
     _import_failed = True
     pass
 
+# from supervisely.app.application import App
+
 
 def __getattr__(name):
     if _import_failed is True:

@@ -81,6 +81,6 @@ class ElementButton(Widget):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
-    def click(self, app):
+    def click(self):
         route = ElementButton.Routes.BUTTON_CLICKED
-        return self.add_route(app, route)
+        return self.add_event_handler(route)

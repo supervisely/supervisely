@@ -156,6 +156,7 @@ from supervisely.pyscripts_utils import utils as ps
 from supervisely.io import docker_utils
 
 import supervisely.app as app
+from supervisely.app import App 
 from supervisely.app.v1.app_service import AppService
 
 from supervisely.decorators.profile import timeit

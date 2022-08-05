@@ -6,10 +6,12 @@ import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import Jinja2Templates
+from supervisely.app import App
 
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        self._sly_app = App()
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
@@ -49,15 +51,23 @@ class Widget:
 
     def add_route(self, app, route):
         def decorator(f):
-            existing_cb = DataJson()[self.widget_id].get('widget_routes', {}).get(route)
+            existing_cb = DataJson()[self.widget_id].get("widget_routes", {}).get(route)
             if existing_cb is not None:
-                raise Exception(f"Route [{route}] already attached to function with name: {existing_cb}")
+                raise Exception(
+                    f"Route [{route}] already attached to function with name: {existing_cb}"
+                )
 
-            app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
-            DataJson()[self.widget_id].setdefault('widget_routes', {})[route] = f.__name__
+            app.add_api_route(f"/{self.widget_id}/{route}", f, methods=["POST"])
+            DataJson()[self.widget_id].setdefault("widget_routes", {})[
+                route
+            ] = f.__name__
 
             self.update_data()
+
         return decorator
+
+    def add_event_handler(self, route: str):
+        return self.add_route(self._sly_app.get_server(), route)
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()

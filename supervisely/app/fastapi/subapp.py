@@ -23,10 +23,6 @@ from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 
 
-# print(supervisely.__path__)
-# "--reload-include", "*.py,*.html"
-
-
 def create() -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
@@ -126,8 +122,16 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def init(app: FastAPI, templates_dir: str = "templates"):
+def init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+    if app is None:
+        app = FastAPI()
     Jinja2Templates(directory=templates_dir)
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
+
+    @app.get("/")
+    async def read_index(request: Request):
+        return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    return app
