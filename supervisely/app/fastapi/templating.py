@@ -6,6 +6,9 @@ from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 
+js_bundle_version = "2.0.1"
+js_frontend_version = "0.0.17"
+
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
@@ -34,7 +37,12 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> _TemplateResponse:
-        context_with_widgets = {**context, **self.context_widgets}
+        context_with_widgets = {
+            **context,
+            **self.context_widgets,
+            "js_bundle_version": js_bundle_version,
+            "js_frontend_version": js_frontend_version,
+        }
 
         return super().TemplateResponse(
             name, context_with_widgets, status_code, headers, media_type, background
