@@ -19,14 +19,6 @@ class Field(str, enum.Enum):
     CONTEXT = "context"
 
 
-# self._session_dir = "/sessions/{}".format(self.task_id)
-# self._template_path = None
-# debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
-# if debug_app_dir != "":
-#     self._session_dir = debug_app_dir
-# mkdir(self.data_dir)
-
-
 def get_data_dir():
     dir = None
 
