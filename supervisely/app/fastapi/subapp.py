@@ -133,6 +133,14 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     app.mount("/sly", create())
     handle_server_errors(app)
 
+    @app.middleware("http")
+    async def get_state_from_request(request: Request, call_next):
+        from supervisely.app.content import StateJson
+
+        await StateJson.from_request(request)
+        response = await call_next(request)
+        return response
+
     @app.get("/")
     async def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
