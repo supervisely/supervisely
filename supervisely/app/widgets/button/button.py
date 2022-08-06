@@ -1,5 +1,6 @@
 import copy
 import functools
+from functools import wraps
 from enum import Enum
 
 try:
@@ -17,7 +18,7 @@ from supervisely.app.widgets import Widget
 
 class Button(Widget):
     class Routes:
-        BUTTON_CLICKED = "button_clicked_cb"
+        CLICK = "button_clicked_cb"
 
     def __init__(
         self,
@@ -27,6 +28,7 @@ class Button(Widget):
         ] = "primary",
         button_size: Literal["mini", "small", "large"] = None,
         plain: bool = False,
+        show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
     ):
         self._widget_routes = {}
@@ -42,6 +44,7 @@ class Button(Widget):
 
         self._loading = False
         self._disabled = False
+        self._show_loading = show_loading
 
         super().__init__(file_path=__file__)
 
@@ -76,6 +79,11 @@ class Button(Widget):
     def loading(self, value):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()
+
+    @property
+    def show_loading(self):
+        return self._show_loading
 
     @property
     def disabled(self):
@@ -86,6 +94,16 @@ class Button(Widget):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
-    def click(self):
-        route = Button.Routes.BUTTON_CLICKED
-        return self.add_event_handler(route)
+    def click(self, func):
+        @self.add_route(self._sly_app.get_server(), Button.Routes.CLICK)
+        @wraps(func)
+        def add_loading(*args, **kwargs):
+            if self.show_loading:
+                self.loading = True
+            result = func(*args, **kwargs)
+            if self.show_loading:
+                self.loading = False
+            return result
+
+        return add_loading
+    

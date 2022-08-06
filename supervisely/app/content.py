@@ -10,6 +10,7 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 from supervisely.app.singleton import Singleton
+from supervisely.app.fastapi import run_sync
 
 
 class Field(str, enum.Enum):
@@ -79,6 +80,12 @@ class _PatchableJson(dict):
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
+
+    async def send_changes_async(self):
+        await self.synchronize_changes()
+
+    def send_changes(self):
+        run_sync(self.synchronize_changes())
 
     def raise_for_key(self, key: str):
         if key in self:
