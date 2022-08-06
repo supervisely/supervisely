@@ -8,5 +8,6 @@ from supervisely.app.widgets.classic_table.classic_table import ClassicTable
 from supervisely.app.widgets.confusion_matrix.confusion_matrix import ConfusionMatrix
 from supervisely.app.widgets.project_selector.project_selector import ProjectSelector
 from supervisely.app.widgets.element_button.element_button import ElementButton
+from supervisely.app.widgets.button.button import Button
 
 # from supervisely.app.widgets.restart_step.restart_step import RestartStep
