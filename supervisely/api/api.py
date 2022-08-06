@@ -37,7 +37,10 @@ import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
 
 
-from supervisely.io.network_exceptions import process_requests_exception, process_unhandled_request
+from supervisely.io.network_exceptions import (
+    process_requests_exception,
+    process_unhandled_request,
+)
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -80,10 +83,28 @@ class Api:
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
     """
-    def __init__(self, server_address: str, token: str, retry_count: Optional[int] = None, retry_sleep_sec: Optional[int] = None,
-                 external_logger: Optional[logger] = None, ignore_task_id: Optional[bool] = False):
+
+    def __init__(
+        self,
+        server_address: str = None,
+        token: str = None,
+        retry_count: Optional[int] = None,
+        retry_sleep_sec: Optional[int] = None,
+        external_logger: Optional[logger] = None,
+        ignore_task_id: Optional[bool] = False,
+    ):
+        if server_address is None and token is None:
+            server_address = os.environ.get(SERVER_ADDRESS, None)
+            token = os.environ.get(SERVER_ADDRESS, None)
+
+        if server_address is None:
+            raise ValueError(
+                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
         if token is None:
-            raise ValueError("Token is None")
+            raise ValueError(
+                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
         self.server_address = Api.normalize_server_address(server_address)
 
         if retry_count is None:
@@ -138,15 +159,14 @@ class Api:
 
     @classmethod
     def normalize_server_address(cls, server_address):
-        """
-        """
+        """ """
         result = server_address.strip("/")
         if ("http://" not in result) and ("https://" not in result):
             result = "http://" + result
         return result
 
     @classmethod
-    def from_env(cls, retry_count: int=5, ignore_task_id: bool=False) -> Api:
+    def from_env(cls, retry_count: int = 5, ignore_task_id: bool = False) -> Api:
         """
         Initialize API use environment variables.
 
@@ -206,7 +226,13 @@ class Api:
         """
         self.additional_fields[key] = value
 
-    def post(self, method: str, data: Dict, retries: Optional[int]=None, stream: Optional[bool]=False) -> requests.Response:
+    def post(
+        self,
+        method: str,
+        data: Dict,
+        retries: Optional[int] = None,
+        stream: Optional[bool] = False,
+    ) -> requests.Response:
         """
         Performs POST request to server with given parameters.
 
@@ -269,8 +295,14 @@ class Api:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
-    def get(self, method: str, params: Dict, retries: Optional[int] = None, stream: Optional[bool] = False,
-            use_public_api: Optional[bool] = True) -> requests.Response:
+    def get(
+        self,
+        method: str,
+        params: Dict,
+        retries: Optional[int] = None,
+        stream: Optional[bool] = False,
+        use_public_api: Optional[bool] = True,
+    ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
 
@@ -356,7 +388,11 @@ class Api:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
 
     @staticmethod
-    def parse_error(response: requests.Response, default_error: Optional[str]="Error", default_message: Optional[str]="please, contact administrator"):
+    def parse_error(
+        response: requests.Response,
+        default_error: Optional[str] = "Error",
+        default_message: Optional[str] = "please, contact administrator",
+    ):
         """
         Processes error from response.
 
@@ -388,8 +424,7 @@ class Api:
             return "", ""
 
     def pop_header(self, key: str) -> str:
-        """
-        """
+        """ """
         if key not in self.headers:
             raise KeyError(f"Header {key!r} not found")
         return self.headers.pop(key)
