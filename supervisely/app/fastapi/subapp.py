@@ -132,6 +132,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
+    # app.mount("/static", StaticFiles(directory="static"), name="static")
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
