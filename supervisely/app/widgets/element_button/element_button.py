@@ -83,4 +83,4 @@ class ElementButton(Widget):
 
     def click(self):
         route = ElementButton.Routes.BUTTON_CLICKED
-        return self.add_event_handler(route)
+        return self.add_route(self._sly_app.get_server(), route)

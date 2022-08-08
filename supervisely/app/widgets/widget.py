@@ -72,9 +72,6 @@ class Widget:
 
         return decorator
 
-    def add_event_handler(self, route: str):
-        return self.add_route(self._sly_app.get_server(), route)
-
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()
         jinja2_sly_env: Environment = create_env(current_dir)
