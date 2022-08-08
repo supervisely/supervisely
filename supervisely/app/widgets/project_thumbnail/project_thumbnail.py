@@ -1,82 +1,20 @@
-import copy
-import functools
-from functools import wraps
-from enum import Enum
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
-import fastapi
-from varname import varname
-
-from supervisely.app import DataJson
-from supervisely.app.fastapi import run_sync
 from supervisely.app.widgets import Widget
+from supervisely.api.project_api import ProjectInfo
 
 
 class ProjectThumbnail(Widget):
-    def __init__(self, id, info=None):
-        self._id = id
-        self._info = None
+    def __init__(self, info: ProjectInfo):
+        self._info = info
+        self._description = f"{self._info.items_count} {self._info.type}"
         super().__init__(file_path=__file__)
 
     def get_json_data(self):
         return {
-            "text": self._text,
-            "button_type": self._button_type,
-            "plain": self._plain,
-            "button_size": self._button_size,
-            "loading": self._loading,
-            "disabled": self._disabled,
-            "icon": self._icon,
+            "id": self._info.id,
+            "name": self._info.name,
+            "description": self._description,
+            "image_preview_url": self._info.image_preview_url,
         }
 
     def get_json_state(self):
         return None
-
-    @property
-    def text(self):
-        return self._text
-
-    @text.setter
-    def text(self, value):
-        self._text = value
-        DataJson()[self.widget_id]["text"] = self._text
-
-    @property
-    def loading(self):
-        return self._loading
-
-    @loading.setter
-    def loading(self, value):
-        self._loading = value
-        DataJson()[self.widget_id]["loading"] = self._loading
-        DataJson().send_changes()
-
-    @property
-    def show_loading(self):
-        return self._show_loading
-
-    @property
-    def disabled(self):
-        return self._disabled
-
-    @disabled.setter
-    def disabled(self, value):
-        self._disabled = value
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-
-    def click(self, func):
-        @self.add_route(self._sly_app.get_server(), Button.Routes.CLICK)
-        @wraps(func)
-        def add_loading(*args, **kwargs):
-            if self.show_loading:
-                self.loading = True
-            result = func(*args, **kwargs)
-            if self.show_loading:
-                self.loading = False
-            return result
-
-        return add_loading

@@ -95,7 +95,7 @@ class Api:
     ):
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
-            token = os.environ.get(SERVER_ADDRESS, None)
+            token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
             raise ValueError(
