@@ -764,7 +764,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_url)
             # Output: http://supervise.ly/projects/1951/datasets
         """
-        return f"projects/{id}/datasets"
+        res = f"projects/{id}/datasets"
+        if is_development():
+            res = abs_url(res)
+        return res
 
     def update_custom_data(self, id: int, data: Dict) -> Dict:
         """
