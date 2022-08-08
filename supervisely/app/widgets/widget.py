@@ -14,7 +14,10 @@ class Widget:
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
-            self.widget_id = varname(frame=2)
+            try:
+                self.widget_id = varname(frame=2)
+            except Exception as e:
+                self.widget_id = varname(frame=3)
 
         self._register()
 

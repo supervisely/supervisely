@@ -36,7 +36,7 @@ class Apexchart(Widget):
 
     def __init__(
         self,
-        series: dict,
+        series: list,
         options: dict,
         type: str,
         height: Union[int, str] = "300",
