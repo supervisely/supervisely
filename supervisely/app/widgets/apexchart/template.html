@@ -1,0 +1,10 @@
+<div>
+  <sly-apexchart
+    :options="data.{{{widget.widget_id}}}.options"
+    :series="data.{{{widget.widget_id}}}.series"
+    :type="data.{{{widget.widget_id}}}.type"
+    :height="data.{{{widget.widget_id}}}.height"
+    @click="state.{{{widget.widget_id}}}.clicked_value = $event; post('/{{{widget.widget_id}}}/chart_clicked_cb')"
+    @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
+  />
+</div>

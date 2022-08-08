@@ -10,5 +10,6 @@ from supervisely.app.widgets.project_selector.project_selector import ProjectSel
 from supervisely.app.widgets.element_button.element_button import ElementButton
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.project_thumbnail.project_thumbnail import ProjectThumbnail
+from supervisely.app.widgets.apexchart.apexchart import Apexchart
 
 # from supervisely.app.widgets.restart_step.restart_step import RestartStep

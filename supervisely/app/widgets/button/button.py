@@ -1,7 +1,4 @@
-import copy
-import functools
 from functools import wraps
-from enum import Enum
 
 try:
     from typing import Literal
@@ -106,4 +103,3 @@ class Button(Widget):
             return result
 
         return add_loading
-    
