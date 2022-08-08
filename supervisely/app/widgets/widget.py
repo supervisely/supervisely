@@ -52,6 +52,9 @@ class Widget:
         if serialized_data is not None:
             data.setdefault(self.widget_id, {}).update(serialized_data)
 
+    def get_route_path(self, route: str) -> str:
+        return f"/{self.widget_id}/{route}"
+
     def add_route(self, app, route):
         def decorator(f):
             existing_cb = DataJson()[self.widget_id].get("widget_routes", {}).get(route)
@@ -71,7 +74,6 @@ class Widget:
 
     def add_event_handler(self, route: str):
         return self.add_route(self._sly_app.get_server(), route)
-
 
     def to_html(self):
         current_dir = Path(self._file_path).parent.absolute()

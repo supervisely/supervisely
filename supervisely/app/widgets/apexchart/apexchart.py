@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Union, NamedTuple, Any
+from typing import Union, NamedTuple, Any, List
 from functools import wraps
 from supervisely.app.widgets import Widget
-from supervisely.app.content import StateJson
+from supervisely.app.content import StateJson, DataJson
 
 """
 size1 = 10
@@ -71,17 +71,32 @@ class Apexchart(Widget):
         return StateJson()[self.widget_id]["clicked_value"]
 
     def click(self, func):
-        @self._sly_app.get_server().post(f"/{self.widget_id}/{Apexchart.Routes.CLICK}")
+        route_path = self.get_route_path(Apexchart.Routes.CLICK)
+        server = self._sly_app.get_server()
+
+        @server.post(route_path)
         def _click():
             value = self.get_clicked_value()
             series_index = value["seriesIndex"]
-            series_name = self._series[series_index]["name"]
             data_index = value["dataPointIndex"]
+            if series_index == -1 or data_index == -1:
+                return
+            series_name = self._series[series_index]["name"]
             data = self._series[series_index]["data"][data_index]
-
             res = Apexchart.ClickedDataPoint(
                 series_index, series_name, data_index, data, data["x"], data["y"]
             )
             func(res)
 
         return _click
+
+    def add_series(self, name: str, x: list, y: list):
+        if len(x) != len(y):
+            raise ValueError(
+                f"Lists x and y have different lenght, {len(x)} != {len(y)}"
+            )
+        data = [{"x": px, "y": py} for px, py in zip(x, y)]
+        series = {"name": name, "data": data}
+        self._series.append(series)
+        self.update_data()
+        DataJson().send_changes()
