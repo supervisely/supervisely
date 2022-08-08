@@ -1,7 +1,7 @@
 from typing import Union
 from functools import wraps
 from supervisely.app.widgets import Widget
-
+from supervisely.app.content import DataJson, StateJson
 
 """
 size1 = 10
@@ -64,7 +64,17 @@ class Apexchart(Widget):
         def wrapped_click(*args, **kwargs):
             # if self.show_loading:
             # self.loading = True
-            result = func(*args, **kwargs)
+            series_index = StateJson()[self.widget_id]["clicked_value"]["seriesIndex"]
+            datapoint_index = StateJson()[self.widget_id]["clicked_value"][
+                "dataPointIndex"
+            ]
+            print(series_index, datapoint_index)
+            new_kwargs = dict(
+                kwargs,
+                serie_index=series_index,
+                data_point_index=datapoint_index,
+            )
+            result = func(*args, **new_kwargs)
             # if self.show_loading:
             # self.loading = False
             return result
