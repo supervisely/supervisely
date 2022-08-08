@@ -78,6 +78,9 @@ class Widget:
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         return markupsafe.Markup(html)
 
+    def __html__(self):
+        return self.to_html()
+
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
 # https://github.com/pwwang/python-varname

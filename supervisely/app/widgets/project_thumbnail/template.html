@@ -1,4 +1,3 @@
-<!-- <sly-field title="" description="" style="margin-bottom: 0"> -->
 <sly-field title="" :description="data.{{{widget.widget_id}}}.description">
   <a slot="title" target="_blank" :href="data.{{{widget.widget_id}}}.url"
     >{{data.{{{widget.widget_id}}}.name}}</a
@@ -8,4 +7,3 @@
     :options="{ imageUrl: `${data.{{{widget.widget_id}}}.image_preview_url}` }"
   />
 </sly-field>
-<!-- </sly-field> -->
