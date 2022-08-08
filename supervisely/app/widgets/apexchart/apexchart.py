@@ -1,7 +1,8 @@
-from typing import Union
+from __future__ import annotations
+from typing import Union, NamedTuple, Any
 from functools import wraps
 from supervisely.app.widgets import Widget
-from supervisely.app.content import DataJson, StateJson
+from supervisely.app.content import StateJson
 
 """
 size1 = 10
@@ -33,6 +34,14 @@ chart = sly.app.widgets.Apexchart(
 class Apexchart(Widget):
     class Routes:
         CLICK = "chart_clicked_cb"
+
+    class ClickedDataPoint(NamedTuple):
+        series_index: int
+        series_name: str
+        data_index: int
+        data: dict
+        x: Any
+        y: Any
 
     def __init__(
         self,
@@ -66,18 +75,13 @@ class Apexchart(Widget):
         def _click():
             value = self.get_clicked_value()
             series_index = value["seriesIndex"]
-            data_point_index = value["dataPointIndex"]
             series_name = self._series[series_index]["name"]
-            data_point = self._series[series_index]["data"][data_point_index]
+            data_index = value["dataPointIndex"]
+            data = self._series[series_index]["data"][data_index]
 
-            kwargs = dict(
-                series_index=series_index,
-                data_point_index=data_point_index,
-                series_name=series_name,
-                data_point=data_point,
+            res = Apexchart.ClickedDataPoint(
+                series_index, series_name, data_index, data, data["x"], data["y"]
             )
-
-            result = func(**kwargs)
+            func(res)
 
         return _click
-    
