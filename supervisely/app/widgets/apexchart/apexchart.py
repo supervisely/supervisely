@@ -58,25 +58,26 @@ class Apexchart(Widget):
     def get_json_state(self):
         return {"clicked_value": None}
 
-    def click(self, func):
-        @self.add_route(self._sly_app.get_server(), Apexchart.Routes.CLICK)
-        @wraps(func)
-        def wrapped_click(*args, **kwargs):
-            # if self.show_loading:
-            # self.loading = True
-            series_index = StateJson()[self.widget_id]["clicked_value"]["seriesIndex"]
-            datapoint_index = StateJson()[self.widget_id]["clicked_value"][
-                "dataPointIndex"
-            ]
-            print(series_index, datapoint_index)
-            new_kwargs = dict(
-                kwargs,
-                serie_index=series_index,
-                data_point_index=datapoint_index,
-            )
-            result = func(*args, **new_kwargs)
-            # if self.show_loading:
-            # self.loading = False
-            return result
+    def get_clicked_value(self):
+        return StateJson()[self.widget_id]["clicked_value"]
 
-        return wrapped_click
+    def click(self, func):
+        @self._sly_app.get_server().post(f"/{self.widget_id}/{Apexchart.Routes.CLICK}")
+        def _click():
+            value = self.get_clicked_value()
+            series_index = value["seriesIndex"]
+            data_point_index = value["dataPointIndex"]
+            series_name = self._series[series_index]["name"]
+            data_point = self._series[series_index]["data"][data_point_index]
+
+            kwargs = dict(
+                series_index=series_index,
+                data_point_index=data_point_index,
+                series_name=series_name,
+                data_point=data_point,
+            )
+
+            result = func(**kwargs)
+
+        return _click
+    
