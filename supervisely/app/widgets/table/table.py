@@ -210,6 +210,7 @@ class Table(Widget):
     def read_pandas(self, value: pd.DataFrame):
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
 
     def insert_row(self, data, index=-1):
         PackerUnpacker.validate_sizes(
@@ -236,6 +237,9 @@ class Table(Widget):
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")
+        if row_index is None:
+            # click table header
+            return None
         column_name = state[self.widget_id]["selected_row"].get("selectedColumnName")
         column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
         row = state[self.widget_id]["selected_row"].get("selectedRowData", {})
@@ -255,6 +259,8 @@ class Table(Widget):
         @server.post(route_path)
         def _click():
             value_dict = self.get_selected_cell(StateJson())
+            if value_dict is None:
+                return
             datapoint = Table.ClickedDataPoint(**value_dict)
             func(datapoint)
 

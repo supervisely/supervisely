@@ -84,8 +84,8 @@ class Apexchart(Widget):
             series_index = value["seriesIndex"]
             data_index = value["dataPointIndex"]
             if series_index == -1 and data_index != -1:
-                # point index 0
-                return
+                # zero point (0,0) click
+                series_index = 0
             if series_index == -1 or data_index == -1:
                 return
             series_name = self._series[series_index]["name"]
