@@ -7,7 +7,7 @@ from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 
-js_bundle_version = "2.1.2"
+js_bundle_version = "2.1.3"
 js_frontend_version = "0.0.17"
 
 
