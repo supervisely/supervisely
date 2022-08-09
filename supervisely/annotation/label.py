@@ -70,13 +70,18 @@ class LabelBase:
         label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
         # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
     """
-    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None, description: Optional[str] = ""):
+
+    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None,
+                 description: Optional[str] = ""):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
         self._description = description
         self._validate_geometry_type()
         self._validate_geometry()
+
+        if not isinstance(tags, TagCollection):
+            self._tags = TagCollection(tags)
 
     def _validate_geometry(self):
         '''
@@ -167,7 +172,6 @@ class LabelBase:
         """
         return self._geometry
 
-
     @property
     def tags(self) -> TagCollection:
         """
@@ -236,14 +240,14 @@ class LabelBase:
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
-            ** self.geometry.to_json(),
+            **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
         }
-        
+
         if self.obj_class.sly_id is not None:
             res[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
-            
+
         return res
 
     @classmethod
@@ -292,7 +296,8 @@ class LabelBase:
                                f'was not found in the given project meta.')
 
         if obj_class.geometry_type is AnyGeometry:
-            geometry_type_actual = GET_GEOMETRY_FROM_STR(data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE])
+            geometry_type_actual = GET_GEOMETRY_FROM_STR(
+                data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE])
             geometry = geometry_type_actual.from_json(data)
         else:
             geometry = obj_class.geometry_type.from_json(data)
@@ -363,7 +368,8 @@ class LabelBase:
         """
         return self.clone(tags=self._tags.add_items(tags))
 
-    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None, tags: Optional[Union[TagCollection, List[Tag]]] = None,
+    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None,
+              tags: Optional[Union[TagCollection, List[Tag]]] = None,
               description: Optional[str] = None) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -583,7 +589,8 @@ class LabelBase:
         if draw_tags:
             self._draw_tags(bitmap, tags_font)
 
-    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
+    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None,
+                     thickness: Optional[int] = 1,
                      draw_tags: Optional[bool] = False, tags_font: Optional[FreeTypeFont] = None) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
