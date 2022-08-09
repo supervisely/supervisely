@@ -1,15 +1,15 @@
 <div>
   <sly-apexchart
-    :options="data.{{{ widget.widget_id } }}.options"
-    :series="data.{{{ widget.widget_id } }}.series"
-    :type="data.{{{ widget.widget_id } }}.type"
-    :height="data.{{{ widget.widget_id } }}.height"
+    :options="data.{{{ widget.widget_id }}}.options"
+    :series="data.{{{ widget.widget_id }}}.series"
+    :type="data.{{{ widget.widget_id }}}.type"
+    :height="data.{{{ widget.widget_id }}}.height"
     {%
     if
     widget._click_handled
     %}
-    @click="state.{{{ widget.widget_id } }}.clicked_value = $event;
-            post('/{{{ widget.widget_id } }}/chart_clicked_cb')"
+    @click="state.{{{ widget.widget_id }}}.clicked_value = $event;
+            post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
     {%
     endif
     %}
