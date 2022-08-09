@@ -42,6 +42,8 @@ class LineChart(Apexchart):
         stroke_width: int = 2,
         data_labels: bool = False,
         xaxis_type: Literal["numeric", "category", "datetime"] = "numeric",
+        xaxis_title: str = None,
+        yaxis_title: str = None,
         height: Union[int, str] = 300,
     ):
         self._title = title
@@ -51,6 +53,8 @@ class LineChart(Apexchart):
         self._stroke_width = stroke_width
         self._data_labels = data_labels
         self._xaxis_type = xaxis_type
+        self._xaxis_title = xaxis_title
+        self._yaxis_title = yaxis_title
         self._widget_height = height
 
         self._options = {
@@ -61,6 +65,10 @@ class LineChart(Apexchart):
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
         }
+        if self._xaxis_title is not None:
+            self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
+        if self._yaxis_title is not None:
+            self._options["yaxis"] = {"title": {"text": str(self._yaxis_title)}}
 
         super(LineChart, self).__init__(
             series=self._series,
