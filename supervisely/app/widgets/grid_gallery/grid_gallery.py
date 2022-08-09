@@ -182,3 +182,4 @@ class GridGallery(Widget):
     def loading(self, value: bool):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()

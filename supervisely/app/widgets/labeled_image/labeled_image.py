@@ -30,8 +30,6 @@ class LabeledImage(GridGallery):
         )
 
     def set(self, title, image_url, ann: Annotation = None):
+        self.clean_up()
         self.append(image_url=image_url, annotation=ann, title=title)
         DataJson().send_changes()
-
-    def set_image_id(self, image_id):
-        pass
