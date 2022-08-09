@@ -105,7 +105,7 @@ class Table(Widget):
         data=None,
         columns: list = None,
         fixed_cols: int = None,
-        per_page: int = 15,
+        per_page: int = 10,
         page_sizes: List[int] = [10, 15, 30, 50, 100],
         width: str = "auto",  # "200px", or "100%"
         widget_id: str = None,
