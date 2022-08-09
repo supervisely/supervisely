@@ -71,13 +71,13 @@ class LineChart(Apexchart):
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
-            "yaxis": {},
+            "yaxis": {"show": True},
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
-        if self._yaxis_title is not None:
-            self._options["yaxis"]["title"] = {"text": str(self._yaxis_title)}
-        self.update_y_range(self._ymin, self._ymax)
+            # if self._yaxis_title is not None:
+        self._options["yaxis"]["title"] = {"text": self._yaxis_title}
+        self.update_y_range(0, 5)
 
         super(LineChart, self).__init__(
             series=self._series,
@@ -94,5 +94,6 @@ class LineChart(Apexchart):
             self._options["yaxis"]["max"] = self._ymax
 
     def add_series(self, name: str, x: list, y: list):
-        super().add_series(name, x, y)
         self.update_y_range(min(y), max(y))
+        # print(self._options["yaxis"]["min"], self._options["yaxis"]["max"])
+        super().add_series(name, x, y)
