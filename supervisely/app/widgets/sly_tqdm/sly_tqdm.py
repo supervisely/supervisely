@@ -155,7 +155,7 @@ class SlyTqdm(Widget):
 
         self._active_session = None
         self._sly_io = None
-
+        self._hide_on_finish = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _close_active_session(self):
@@ -232,4 +232,16 @@ class SlyTqdm(Widget):
 
 
 class Progress(SlyTqdm):
+    def __init__(
+        self,
+        message: str = None,
+        show_percents: bool = False,
+        hide_on_finish=True,
+        widget_id: str = None,
+    ):
+        self.hide_on_finish = hide_on_finish
+        super().__init__(
+            message=message, show_percents=show_percents, widget_id=widget_id
+        )
+
     pass
