@@ -40,6 +40,7 @@ class LineChart(Apexchart):
         zoom: bool = False,
         stroke_curve: Literal["smooth", "straight"] = "smooth",
         stroke_width: int = 2,
+        markers_size: int = 4,
         data_labels: bool = False,
         xaxis_type: Literal["numeric", "category", "datetime"] = "numeric",
         xaxis_title: str = None,
@@ -51,6 +52,7 @@ class LineChart(Apexchart):
         self._zoom = zoom
         self._stroke_curve = stroke_curve
         self._stroke_width = stroke_width
+        self._markers_size = markers_size
         self._data_labels = data_labels
         self._xaxis_type = xaxis_type
         self._xaxis_title = xaxis_title
@@ -64,6 +66,7 @@ class LineChart(Apexchart):
             "title": {"text": self._title, "align": "left"},
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
+            "markers": {"size": self._markers_size},
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
