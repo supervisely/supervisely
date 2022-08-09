@@ -107,6 +107,7 @@ class Table(Widget):
         fixed_cols: int = None,
         per_page: int = 15,
         page_sizes: List[int] = [10, 15, 30, 50, 100],
+        width: str = "auto",  # "200px", or "100%"
         widget_id: str = None,
     ):
         """
@@ -133,6 +134,7 @@ class Table(Widget):
         self._per_page = per_page
         self._page_sizes = page_sizes
         self._fix_columns = fixed_cols
+        self._width = width
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
