@@ -102,6 +102,7 @@ class Table(Widget):
 
         self._parsed_data = None
         self._data_type = None
+        self._click_handled = False
 
         self._update_table_data(input_data=pd.DataFrame(data=data, columns=columns))
 
@@ -220,6 +221,7 @@ class Table(Widget):
     def click(self, func):
         route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
+        self._click_handled = True
 
         @server.post(route_path)
         def _click():

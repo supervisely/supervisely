@@ -54,7 +54,7 @@ class Apexchart(Widget):
         self._options = options
         self._type = type
         self._height = height
-        self._handle_click = False
+        self._click_handled = False
         super().__init__(file_path=__file__)
 
     def get_json_data(self):
@@ -75,7 +75,7 @@ class Apexchart(Widget):
         route_path = self.get_route_path(Apexchart.Routes.CLICK)
         server = self._sly_app.get_server()
 
-        self._handle_click = True
+        self._click_handled = True
 
         @server.post(route_path)
         def _click():
