@@ -29,7 +29,7 @@ class LabeledImage(GridGallery):
             widget_id=widget_id,
         )
 
-    def set_image(self, title, image_url, ann: Annotation = None):
+    def set(self, title, image_url, ann: Annotation = None):
         self.append(image_url=image_url, annotation=ann, title=title)
         DataJson().send_changes()
 
