@@ -14,7 +14,7 @@ import urllib.parse
 import json
 
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-
+from supervisely._utils import is_development, abs_url, compress_image_url
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
@@ -47,6 +47,14 @@ class ImageInfo(NamedTuple):
     path_original: str
     full_storage_url: str
     tags: list
+
+    @property
+    def preview_url(self):
+        res = self.full_storage_url
+        if is_development():
+            res = abs_url(res)
+        res = compress_image_url(url=res)
+        return res
 
 
 class ImageApi(RemoveableBulkModuleApi):
@@ -1358,7 +1366,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 break
 
         res = self.InfoType(*field_values)
-        return ImageInfo(**res._asdict())
+        d = res._asdict()
+
+        return ImageInfo(**d)
 
     def _remove_batch_api_method_name(self):
         """ """
