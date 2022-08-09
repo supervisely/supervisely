@@ -45,6 +45,7 @@ class LineChart(Apexchart):
         xaxis_type: Literal["numeric", "category", "datetime"] = "numeric",
         xaxis_title: str = None,
         yaxis_title: str = None,
+        yaxis_autorescale: bool = True,
         height: Union[int, str] = 300,
     ):
         self._title = title
@@ -57,6 +58,9 @@ class LineChart(Apexchart):
         self._xaxis_type = xaxis_type
         self._xaxis_title = xaxis_title
         self._yaxis_title = yaxis_title
+        self._yaxis_autorescale = yaxis_autorescale
+        self._ymin = 0
+        self._ymax = 5
         self._widget_height = height
 
         self._options = {
@@ -67,11 +71,13 @@ class LineChart(Apexchart):
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
+            "yaxis": {},
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
         if self._yaxis_title is not None:
-            self._options["yaxis"] = {"title": {"text": str(self._yaxis_title)}}
+            self._options["yaxis"]["title"] = {"text": str(self._yaxis_title)}
+        self.update_y_range(self._ymin, self._ymax)
 
         super(LineChart, self).__init__(
             series=self._series,
@@ -79,3 +85,14 @@ class LineChart(Apexchart):
             type="line",
             height=self._widget_height,
         )
+
+    def update_y_range(self, ymin: int, ymax: int):
+        self._ymin = min(self._ymin, ymin)
+        self._ymax = max(self._ymax, ymax)
+        if self._yaxis_autorescale is False:
+            self._options["yaxis"]["min"] = self._ymin
+            self._options["yaxis"]["max"] = self._ymax
+
+    def add_series(self, name: str, x: list, y: list):
+        super().add_series(name, x, y)
+        self.update_y_range(min(y), max(y))
