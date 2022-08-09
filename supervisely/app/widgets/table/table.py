@@ -4,6 +4,7 @@ import fastapi
 import numpy as np
 import pandas as pd
 from varname import varname
+from typing import NamedTuple, Any, List
 
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
@@ -73,21 +74,43 @@ DATATYPE_TO_UNPACKER = {
     dict: PackerUnpacker.dict_unpacker,
 }
 
+"""
+iris = pd.read_csv(
+    "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+)
+table = sly.app.widgets.Table(data=iris, fixed_cols=2)
+
+@table.click
+def show_image(datapoint: sly.app.widgets.Table.ClickedDataPoint):
+    print("Column name = ", datapoint.column_name)
+    print("Cell value = ", datapoint.cell_value)
+    print("Row = ", datapoint.row)
+
+"""
+
 
 class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
 
+    class ClickedDataPoint(NamedTuple):
+        column_index: int
+        column_name: str
+        cell_value: Any
+        row: dict
+
     def __init__(
         self,
-        data: list = None,
+        data=None,
         columns: list = None,
         fixed_cols: int = None,
+        per_page: int = 15,
+        page_sizes: List[int] = [10, 15, 30, 50, 100],
         widget_id: str = None,
     ):
         """
         :param data: Data of table in different formats:
-        1. Pandas Dataframe
+        1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
         2. Python dict with structure {
                                         'columns_names': ['col_name_1', 'col_name_2', ...],
                                         'values_by_rows': [
@@ -106,6 +129,8 @@ class Table(Widget):
 
         self._update_table_data(input_data=pd.DataFrame(data=data, columns=columns))
 
+        self._per_page = per_page
+        self._page_sizes = page_sizes
         self._fix_columns = fixed_cols
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -114,6 +139,8 @@ class Table(Widget):
         return {
             "table_data": self._parsed_data,
             "table_options": {
+                "perPage": self._per_page,
+                "pageSizes": self._page_sizes,
                 "fixColumns": self._fix_columns,
             },
         }
@@ -206,16 +233,15 @@ class Table(Widget):
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")
-        col_index = state[self.widget_id]["selected_row"].get("selectedColumn")
-        row_data = state[self.widget_id]["selected_row"].get("selectedRowData", {})
+        column_name = state[self.widget_id]["selected_row"].get("selectedColumnName")
+        column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
+        row = state[self.widget_id]["selected_row"].get("selectedRowData", {})
 
         return {
-            "row_index": row_index,
-            "col_index": col_index,
-            "row_data": row_data,
-            "cell_data": list(row_data.items())[int(col_index)]
-            if col_index is not None and row_data is not None
-            else None,
+            "column_index": column_index,
+            "column_name": column_name,
+            "row": row,
+            "cell_value": row[column_name],
         }
 
     def click(self, func):
@@ -225,16 +251,8 @@ class Table(Widget):
 
         @server.post(route_path)
         def _click():
-            value = self.get_selected_cell(StateJson())
-            # series_index = value["seriesIndex"]
-            # data_index = value["dataPointIndex"]
-            # if series_index == -1 or data_index == -1:
-            #     return
-            # series_name = self._series[series_index]["name"]
-            # data = self._series[series_index]["data"][data_index]
-            # res = Apexchart.ClickedDataPoint(
-            #     series_index, series_name, data_index, data, data["x"], data["y"]
-            # )
-            func(value)
+            value_dict = self.get_selected_cell(StateJson())
+            datapoint = Table.ClickedDataPoint(**value_dict)
+            func(datapoint)
 
         return _click

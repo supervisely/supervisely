@@ -23,6 +23,12 @@ chart = sly.app.widgets.LineChart(
     series=[{"name": "Max", "data": s1}, {"name": "Denis", "data": s2}],
     xaxis_type="category",
 )
+
+@chart.click
+def refresh_images_table(datapoint: sly.app.widgets.LineChart.ClickedDataPoint):
+    print(f"Line: {datapoint.series_name}")
+    print(f"x = {datapoint.x}")
+    print(f"y = {datapoint.y}")
 """
 
 
