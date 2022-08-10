@@ -1,14 +1,13 @@
 import os
 import signal
 import functools
+import asyncio
 import psutil
 import sys
 from pathlib import Path
-import threading
-import traceback
+from fastapi.testclient import TestClient
 
-# from fastapi.testclient import TestClient
-from async_asgi_testclient import TestClient
+# from async_asgi_testclient import TestClient
 
 from fastapi import (
     FastAPI,
@@ -91,6 +90,13 @@ def create() -> FastAPI:
 
 def shutdown():
     try:
+        # TODO:
+        # async def goodbye(delay=0.01):
+        #     await asyncio.sleep(delay)
+        # # run_sync
+        # task1 = asyncio.create_task(goodbye(1))
+        # # await task1
+
         logger.info("Shutting down...")
         current_process = psutil.Process(os.getpid())
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
@@ -141,27 +147,30 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
-    # only for debug
-    # app.mount(
-    #     "/static", StaticFiles(directory="static"), name="static"
-    # )
 
-    @app.middleware("http")
-    async def get_state_from_request(request: Request, call_next):
-        from supervisely.app.content import StateJson
+    # @app.middleware("http")
+    # async def get_state_from_request(request: Request, call_next):
+    #     from supervisely.app.content import StateJson
 
-        await StateJson.from_request(request)
-        response = await call_next(request)
-        return response
+    #     await StateJson.from_request(request)
+    #     response = await call_next(request)
+    #     return response
 
+    # @available_after_shutdown(app)
     @app.get("/")
-    @available_after_shutdown(app)
     def read_index(request: Request = None):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
-    @app.on_event("shutdown")
-    def shutdown():
-        read_index()  # save last version of static files
+    # @app.on_event("shutdown")
+    # def shutdown():
+    #     # try:
+    #     #     client = TestClient(app)
+    #     #     responce = client.get("/")
+    #     # except Exception as e:
+    #     #     print(repr(e))
+    #     x = 10
+    #     x += 1
+    #     # read_index(Request())  # save last version of static files
 
     # @app.on_event("shutdown")
     # async def shutdown():
@@ -185,3 +194,8 @@ class Application(metaclass=Singleton):
 
     async def __call__(self, scope, receive, send) -> None:
         await self._fastapi.__call__(scope, receive, send)
+
+    def shutdown(self):
+        from supervisely.app.fastapi import shutdown
+
+        shutdown()
