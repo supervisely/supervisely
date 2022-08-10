@@ -14,6 +14,7 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -91,9 +92,9 @@ def create() -> FastAPI:
 def shutdown():
     try:
         logger.info("Shutting down...")
-        # run_sync(goodbue())
-
+        # process_id = psutil.Process(os.getpid()).ppid()
         current_process = psutil.Process(os.getpid())
+        # current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
@@ -134,16 +135,14 @@ def handle_server_errors(app: FastAPI):
 
 
 def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+    from supervisely.app.fastapi import available_after_shutdown
+
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
-    # only for debug
-    # app.mount(
-    #     "/static", StaticFiles(directory="static"), name="static"
-    # )
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -154,8 +153,16 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return response
 
     @app.get("/")
-    async def read_index(request: Request):
+    @available_after_shutdown(app)
+    def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    @app.on_event("shutdown")
+    def shutdown():
+        client = TestClient(app)
+        responce = client.get("/")
+        x = 10
+        x += 1
 
     return app
 
