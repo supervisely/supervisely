@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from supervisely.app.singleton import Singleton
-
+from supervisely.app.fastapi import available_after_shutdown
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
@@ -135,7 +135,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     # only for debug
     # app.mount(
     #     "/static", StaticFiles(directory="static"), name="static"
-    # )  
+    # )
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -146,8 +146,13 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return response
 
     @app.get("/")
+    @available_after_shutdown(app=app)
     async def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    @app.on_event("shutdown")
+    def shutdown():
+        read_index()  # save last version of static files
 
     return app
 
