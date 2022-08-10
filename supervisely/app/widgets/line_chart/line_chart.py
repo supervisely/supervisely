@@ -46,7 +46,7 @@ class LineChart(Apexchart):
         xaxis_type: Literal["numeric", "category", "datetime"] = "numeric",
         xaxis_title: str = None,
         yaxis_title: str = None,
-        yaxis_autorescale: bool = True,
+        yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
         height: Union[int, str] = 350,
     ):
         self._title = title
