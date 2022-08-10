@@ -104,6 +104,8 @@ from supervisely.api.report_api import NotificationType
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
+from supervisely.api.workspace_api import WorkspaceInfo
+from supervisely.api.team_api import TeamInfo
 
 from supervisely._utils import (
     rand_str,
@@ -119,6 +121,7 @@ from supervisely._utils import (
     is_production,
     compress_image_url,
 )
+import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
 
 from supervisely.aug import aug

@@ -176,3 +176,7 @@ def compress_image_url(
         "/image-converter",
         f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
     )
+
+
+def get_preview_link(title="preview"):
+    return f'<a href="javascript:;">{title}<i class="zmdi zmdi-cast" style="margin-left: 5px"></i></a>'

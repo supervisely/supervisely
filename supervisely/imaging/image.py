@@ -14,30 +14,29 @@ from supervisely.io.fs import ensure_base_path, get_file_ext
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.imaging.font import get_font
-from supervisely._utils import get_bytes_hash
+from supervisely._utils import get_bytes_hash, is_development, abs_url
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-#@TODO: refactoring image->img
+# @TODO: refactoring image->img
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = ['.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif']
-DEFAULT_IMG_EXT = '.png'
+SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif"]
+DEFAULT_IMG_EXT = ".png"
 
 
 class CornerAnchorMode:
-    """
-    """
+    """ """
+
     TOP_LEFT = "tl"
     TOP_RIGHT = "tr"
-    BOTTOM_LEFT = 'bl'
-    BOTTOM_RIGHT = 'br'
+    BOTTOM_LEFT = "bl"
+    BOTTOM_RIGHT = "br"
 
 
 class RotateMode(Enum):
-    """
-    """
+    """ """
 
     KEEP_BLACK = 0
     """"""
@@ -48,21 +47,22 @@ class RotateMode(Enum):
 
 
 class ImageExtensionError(Exception):
-    """
-    """
+    """ """
+
     pass
 
 
 class UnsupportedImageFormat(Exception):
-    """
-    """
+    """ """
+
     pass
 
 
 class ImageReadException(Exception):
-    """
-    """
+    """ """
+
     pass
+
 
 def is_valid_ext(ext: str) -> bool:
     """
@@ -132,8 +132,10 @@ def validate_ext(path: str) -> None:
     _, ext = os.path.splitext(path)
     if not is_valid_ext(ext):
         raise ImageExtensionError(
-            'Unsupported image extension: {!r} for file {!r}. Only the following extensions are supported: {}.'.format(
-                ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
+            "Unsupported image extension: {!r} for file {!r}. Only the following extensions are supported: {}.".format(
+                ext, path, ", ".join(SUPPORTED_IMG_EXTS)
+            )
+        )
 
 
 def validate_format(path: str) -> None:
@@ -165,17 +167,22 @@ def validate_format(path: str) -> None:
         pil_img.load()  # Validate image data. Because 'open' is lazy method.
     except OSError as e:
         raise ImageReadException(
-            'Error has occured trying to read image {!r}. Original exception message: {!r}'.format(path, str(e)))
+            "Error has occured trying to read image {!r}. Original exception message: {!r}".format(
+                path, str(e)
+            )
+        )
 
     img_format = pil_img.format
-    img_ext = '.' + img_format
-    if not is_valid_ext('.' + img_format):
+    img_ext = "." + img_format
+    if not is_valid_ext("." + img_format):
         raise UnsupportedImageFormat(
-            'Unsupported image format {!r} for file {!r}. Only the following formats are supported: {}'.format(
-                img_ext, path, ', '.join(SUPPORTED_IMG_EXTS)))
+            "Unsupported image format {!r} for file {!r}. Only the following formats are supported: {}".format(
+                img_ext, path, ", ".join(SUPPORTED_IMG_EXTS)
+            )
+        )
 
 
-def read(path: str, remove_alpha_channel: Optional[bool]=True) -> np.ndarray:
+def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
     """
     Loads an image from the specified file and returns it in RGB format.
 
@@ -211,10 +218,12 @@ def read(path: str, remove_alpha_channel: Optional[bool]=True) -> np.ndarray:
         elif cnt_channels == 1:
             return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         else:
-            raise ValueError("image has {} channels. Please, contact support...".format(cnt_channels))
+            raise ValueError(
+                "image has {} channels. Please, contact support...".format(cnt_channels)
+            )
 
 
-def read_bytes(image_bytes: str, keep_alpha: Optional[bool]=False) -> np.ndarray:
+def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarray:
     """
     Loads an byte image and returns it in RGB format.
 
@@ -247,11 +256,15 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool]=False) -> np.ndarray
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         return img
     else:
-        img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
+        img = cv2.imdecode(
+            image_np_arr, cv2.IMREAD_COLOR
+        )  # cv2.imdecode returns BGR always
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool]=True) -> None:
+def write(
+    path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = True
+) -> None:
     """
     Saves the image to the specified file. It create directory from path if the directory for this path does not exist.
 
@@ -290,13 +303,15 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool]=True)
     return cv2.imwrite(path, res_img)
 
 
-def draw_text_sequence(bitmap: np.ndarray,
-                       texts: List[str],
-                       anchor_point: Tuple[int, int],
-                       corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
-                       col_space: Optional[int] = 12,
-                       font: Optional[ImageFont.FreeTypeFont] = None,
-                       fill_background: Optional[bool] = True) -> None:
+def draw_text_sequence(
+    bitmap: np.ndarray,
+    texts: List[str],
+    anchor_point: Tuple[int, int],
+    corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
+    col_space: Optional[int] = 12,
+    font: Optional[ImageFont.FreeTypeFont] = None,
+    fill_background: Optional[bool] = True,
+) -> None:
     """
     Draws text labels on bitmap from left to right with col_space spacing between labels.
 
@@ -337,16 +352,20 @@ def draw_text_sequence(bitmap: np.ndarray,
     col_offset = 0
     for text in texts:
         position = anchor_point[0], anchor_point[1] + col_offset
-        _, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background)
+        _, text_width = draw_text(
+            bitmap, text, position, corner_snap, font, fill_background
+        )
         col_offset += text_width + col_space
 
 
-def draw_text(bitmap: np.ndarray,
-              text: str,
-              anchor_point: Tuple[int, int],
-              corner_snap: Optional[CornerAnchorMode]=CornerAnchorMode.TOP_LEFT,
-              font: Optional[ImageFont.FreeTypeFont] = None,
-              fill_background: Optional[bool]=True) -> tuple:
+def draw_text(
+    bitmap: np.ndarray,
+    text: str,
+    anchor_point: Tuple[int, int],
+    corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
+    font: Optional[ImageFont.FreeTypeFont] = None,
+    fill_background: Optional[bool] = True,
+) -> tuple:
     """
     Draws given text on bitmap image.
 
@@ -389,7 +408,7 @@ def draw_text(bitmap: np.ndarray,
     source_img = PILImage.fromarray(bitmap)
     source_img = source_img.convert("RGBA")
 
-    canvas = PILImage.new('RGBA', source_img.size, (0, 0, 0, 0))
+    canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
     drawer = ImageDraw.Draw(canvas, "RGBA")
     text_width, text_height = drawer.textsize(text, font=font)
     rect_top, rect_left = anchor_point
@@ -407,17 +426,20 @@ def draw_text(bitmap: np.ndarray,
     if fill_background:
         rect_right = rect_left + text_width
         rect_bottom = rect_top + text_height
-        drawer.rectangle(((rect_left, rect_top), (rect_right+1, rect_bottom)), fill=(255, 255, 255, 128))
-    drawer.text((rect_left+1, rect_top), text, fill=(0, 0, 0, 255), font=font)
+        drawer.rectangle(
+            ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
+            fill=(255, 255, 255, 128),
+        )
+    drawer.text((rect_left + 1, rect_top), text, fill=(0, 0, 0, 255), font=font)
 
     source_img = PILImage.alpha_composite(source_img, canvas)
     source_img = source_img.convert("RGB")
-    bitmap[:,:,:] = np.array(source_img, dtype=np.uint8)
+    bitmap[:, :, :] = np.array(source_img, dtype=np.uint8)
 
     return (text_height, text_width)
 
 
-#@TODO: not working with alpha channel
+# @TODO: not working with alpha channel
 def write_bytes(img: np.ndarray, ext: str) -> bytes:
     """
     Compresses the image and stores it in the byte object.
@@ -439,19 +461,21 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
         print(type(bytes))
         # Output: <class 'bytes'>
     """
-    ext = ('.' + ext).replace('..', '.')
+    ext = ("." + ext).replace("..", ".")
     if not is_valid_ext(ext):
         raise UnsupportedImageFormat(
-            'Unsupported image format {!r}. Only the following formats are supported: {}'.format(
-                ext, ', '.join(SUPPORTED_IMG_EXTS)))
+            "Unsupported image format {!r}. Only the following formats are supported: {}".format(
+                ext, ", ".join(SUPPORTED_IMG_EXTS)
+            )
+        )
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
     encode_status, img_array = cv2.imencode(ext, img)
     if encode_status is True:
         return img_array.tobytes()
-    raise RuntimeError('Can not encode input image')
+    raise RuntimeError("Can not encode input image")
 
 
-#@TODO: not working with alpha channel
+# @TODO: not working with alpha channel
 def get_hash(img: np.ndarray, ext: str) -> str:
     """
     Hash input image with sha256 algoritm and encode result by using Base64.
@@ -514,7 +538,7 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     """
     img_rect = Rectangle.from_array(img)
     if not img_rect.contains(rect):
-        raise ValueError('Rectangle for crop out of image area!')
+        raise ValueError("Rectangle for crop out of image area!")
     return rect.get_cropped_numpy_slice(img)
 
 
@@ -556,7 +580,7 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
             bottom=rect.height,
             left=rect.width,
             right=rect.width,
-            borderType=cv2.BORDER_CONSTANT
+            borderType=cv2.BORDER_CONSTANT,
         )
         new_rect = rect.translate(drow=rect.height, dcol=rect.width)
         return new_rect.get_cropped_numpy_slice(new_img)
@@ -565,8 +589,13 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
         return rect.get_cropped_numpy_slice(img)
 
 
-def restore_proportional_size(in_size: Tuple[int, int], out_size: Optional[Tuple[int, int]] = None,
-                              frow: Optional[float] = None, fcol: Optional[float] = None, f: Optional[float] = None) -> Tuple[int, int]:
+def restore_proportional_size(
+    in_size: Tuple[int, int],
+    out_size: Optional[Tuple[int, int]] = None,
+    frow: Optional[float] = None,
+    fcol: Optional[float] = None,
+    f: Optional[float] = None,
+) -> Tuple[int, int]:
     """
     Calculate new size of the image.
 
@@ -584,18 +613,29 @@ def restore_proportional_size(in_size: Tuple[int, int], out_size: Optional[Tuple
     :rtype: :class:`Tuple[int, int]`
     """
     if out_size is not None and (frow is not None or fcol is not None) and f is None:
-        raise ValueError('Must be specified output size or scale factors not both of them.')
+        raise ValueError(
+            "Must be specified output size or scale factors not both of them."
+        )
 
     if out_size is not None:
         if out_size[0] == KEEP_ASPECT_RATIO and out_size[1] == KEEP_ASPECT_RATIO:
-            raise ValueError('Must be specified at least 1 dimension of size!')
+            raise ValueError("Must be specified at least 1 dimension of size!")
 
-        if (out_size[0] <= 0 and out_size[0] != KEEP_ASPECT_RATIO) or \
-                (out_size[1] <= 0 and out_size[1] != KEEP_ASPECT_RATIO):
-            raise ValueError('Size dimensions must be greater than 0.')
+        if (out_size[0] <= 0 and out_size[0] != KEEP_ASPECT_RATIO) or (
+            out_size[1] <= 0 and out_size[1] != KEEP_ASPECT_RATIO
+        ):
+            raise ValueError("Size dimensions must be greater than 0.")
 
-        result_row = out_size[0] if out_size[0] > 0 else max(1, round(out_size[1] / in_size[1] * in_size[0]))
-        result_col = out_size[1] if out_size[1] > 0 else max(1, round(out_size[0] / in_size[0] * in_size[1]))
+        result_row = (
+            out_size[0]
+            if out_size[0] > 0
+            else max(1, round(out_size[1] / in_size[1] * in_size[0]))
+        )
+        result_col = (
+            out_size[1]
+            if out_size[1] > 0
+            else max(1, round(out_size[0] / in_size[0] * in_size[1]))
+        )
     else:
         if f is not None:
             if f < 0:
@@ -610,8 +650,13 @@ def restore_proportional_size(in_size: Tuple[int, int], out_size: Optional[Tuple
     return result_row, result_col
 
 
-#@TODO: reimplement, to be more convenient
-def resize(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Optional[float]=None, fcol: Optional[float]=None) -> np.ndarray:
+# @TODO: reimplement, to be more convenient
+def resize(
+    img: np.ndarray,
+    out_size: Optional[Tuple[int, int]] = None,
+    frow: Optional[float] = None,
+    fcol: Optional[float] = None,
+) -> np.ndarray:
     """
     Resize the image to the specified size.
 
@@ -644,11 +689,18 @@ def resize(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Opti
 
                    After
     """
-    result_height, result_width = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
+    result_height, result_width = restore_proportional_size(
+        img.shape[:2], out_size, frow, fcol
+    )
     return cv2.resize(img, (result_width, result_height), interpolation=cv2.INTER_CUBIC)
 
 
-def resize_inter_nearest(img: np.ndarray, out_size: Optional[Tuple[int, int]]=None, frow: Optional[float]=None, fcol: Optional[float]=None) -> np.ndarray:
+def resize_inter_nearest(
+    img: np.ndarray,
+    out_size: Optional[Tuple[int, int]] = None,
+    frow: Optional[float] = None,
+    fcol: Optional[float] = None,
+) -> np.ndarray:
     """
     Resize image to match a certain size. Performs interpolation to up-size or down-size images.
 
@@ -682,11 +734,14 @@ def resize_inter_nearest(img: np.ndarray, out_size: Optional[Tuple[int, int]]=No
                    After
     """
     import skimage.transform
+
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
-    resize_kv_args = dict(order=0, preserve_range=True, mode='constant')
-    if parse_version(skimage.__version__) >= parse_version('0.14.0'):
-        resize_kv_args['anti_aliasing'] = False
-    return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(img.dtype)
+    resize_kv_args = dict(order=0, preserve_range=True, mode="constant")
+    if parse_version(skimage.__version__) >= parse_version("0.14.0"):
+        resize_kv_args["anti_aliasing"] = False
+    return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(
+        img.dtype
+    )
 
 
 def scale(img: np.ndarray, factor: float) -> np.ndarray:
@@ -781,7 +836,11 @@ def flipud(img: np.ndarray) -> np.ndarray:
     return np.flip(img, 0)
 
 
-def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=RotateMode.KEEP_BLACK) -> np.ndarray:
+def rotate(
+    img: np.ndarray,
+    degrees_angle: int,
+    mode: Optional[RotateMode] = RotateMode.KEEP_BLACK,
+) -> np.ndarray:
     """
     Rotates current image.
 
@@ -826,6 +885,7 @@ def rotate(img: np.ndarray, degrees_angle: int, mode: Optional[RotateMode]=Rotat
                    After origin_size mode
     """
     import skimage.transform
+
     rotator = ImageRotator(imsize=img.shape[:2], angle_degrees_ccw=degrees_angle)
     if mode == RotateMode.KEEP_BLACK:
         return rotator.rotate_img(img, use_inter_nearest=False)  # @TODO: order = ???
@@ -845,12 +905,16 @@ def _check_contrast_brightness_inputs(min_value, max_value):
     The function _check_contrast_brightness_inputs checks the input brightness or contrast for correctness.
     """
     if min_value < 0:
-        raise ValueError('Minimum value must be greater than or equal to 0.')
+        raise ValueError("Minimum value must be greater than or equal to 0.")
     if min_value > max_value:
-        raise ValueError('Maximum value must be greater than or equal to minimum value.')
+        raise ValueError(
+            "Maximum value must be greater than or equal to minimum value."
+        )
 
 
-def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
+def random_contrast(
+    image: np.ndarray, min_factor: float, max_factor: float
+) -> np.ndarray:
     """
     Randomly changes contrast of the input image.
 
@@ -890,7 +954,9 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
+def random_brightness(
+    image: np.ndarray, min_factor: float, max_factor: float
+) -> np.ndarray:
     """
     Randomly changes brightness of the input image.
 
@@ -965,7 +1031,9 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
+def random_color_scale(
+    image: np.ndarray, min_factor: float, max_factor: float
+) -> np.ndarray:
     """
     Changes image colors by randomly scaling each of RGB components. The scaling factors are sampled uniformly from the given range.
 
@@ -997,7 +1065,9 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
                    After
     """
     image_float = image.astype(np.float64)
-    scales = np.random.uniform(low=min_factor, high=max_factor, size=(1,1, image.shape[2]))
+    scales = np.random.uniform(
+        low=min_factor, high=max_factor, size=(1, 1, image.shape[2])
+    )
     res_image = image_float * scales
     return np.clip(res_image, 0, 255).astype(np.uint8)
 
@@ -1112,13 +1182,15 @@ def drop_image_alpha_channel(img: np.ndarray) -> np.ndarray:
     :rtype: :class:`np.ndarray`
     """
     if img.shape[2] != 4:
-        raise ValueError('Only 4-channel RGBA images are supported for alpha channel removal. ' +
-                         'Instead got {} channels.'.format(img.shape[2]))
+        raise ValueError(
+            "Only 4-channel RGBA images are supported for alpha channel removal. "
+            + "Instead got {} channels.".format(img.shape[2])
+        )
     return cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
 
 
-#@TODO: refactor from two separate methods to a single one
-#bgra or bgr
+# @TODO: refactor from two separate methods to a single one
+# bgra or bgr
 def np_image_to_data_url(img: np.ndarray) -> str:
     """
     Convert image to url string.
@@ -1137,10 +1209,10 @@ def np_image_to_data_url(img: np.ndarray) -> str:
         print(data_url)
         # Output: 'data:image/png;base64,iVBORw0K...'
     """
-    encode_status, bgra_result_png = cv2.imencode('.png', img)
+    encode_status, bgra_result_png = cv2.imencode(".png", img)
     img_png = bgra_result_png.tobytes()
     img_base64 = base64.b64encode(img_png)
-    data_url = 'data:image/png;base64,{}'.format(str(img_base64, 'utf-8'))
+    data_url = "data:image/png;base64,{}".format(str(img_base64, "utf-8"))
     return data_url
 
 
@@ -1160,14 +1232,14 @@ def data_url_to_numpy(data_url: str) -> np.ndarray:
 
         image_np = sly.image.data_url_to_numpy(data_url)
     """
-    img_base64 = data_url[len('data:image/png;base64,'):]
+    img_base64 = data_url[len("data:image/png;base64,") :]
     img_base64 = base64.b64decode(img_base64)
     image = read_bytes(img_base64)
     return image
 
 
-#only rgb
-def np_image_to_data_url_backup_rgb(img: np.ndarray)-> str:
+# only rgb
+def np_image_to_data_url_backup_rgb(img: np.ndarray) -> str:
     """
     Convert image to url string.
 
@@ -1185,6 +1257,17 @@ def np_image_to_data_url_backup_rgb(img: np.ndarray)-> str:
         print(data_url)
         # Output: 'data:image/png;base64,iVBORw0K...'
     """
-    img_base64 = base64.b64encode(write_bytes(img, 'png'))
-    data_url = 'data:image/png;base64,{}'.format(str(img_base64, 'utf-8'))
+    img_base64 = base64.b64encode(write_bytes(img, "png"))
+    data_url = "data:image/png;base64,{}".format(str(img_base64, "utf-8"))
     return data_url
+
+
+def get_labeling_tool_url(team_id, workspace_id, project_id, dataset_id, image_id):
+    res = f"/app/images/{team_id}/{workspace_id}/{project_id}/{dataset_id}#image-{image_id}"
+    if is_development():
+        res = abs_url(res)
+    return res
+
+
+def get_labeling_tool_link(url, name="open in labeling tool"):
+    return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'

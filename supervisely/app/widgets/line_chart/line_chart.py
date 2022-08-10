@@ -1,6 +1,7 @@
 from typing import Union
 from functools import wraps
 from supervisely.app.widgets.apexchart.apexchart import Apexchart
+from supervisely.app.content import StateJson, DataJson
 
 try:
     from typing import Literal
@@ -46,7 +47,7 @@ class LineChart(Apexchart):
         xaxis_title: str = None,
         yaxis_title: str = None,
         yaxis_autorescale: bool = True,
-        height: Union[int, str] = 300,
+        height: Union[int, str] = 350,
     ):
         self._title = title
         self._series = series
@@ -60,7 +61,7 @@ class LineChart(Apexchart):
         self._yaxis_title = yaxis_title
         self._yaxis_autorescale = yaxis_autorescale
         self._ymin = 0
-        self._ymax = 5
+        self._ymax = 10
         self._widget_height = height
 
         self._options = {
@@ -77,7 +78,6 @@ class LineChart(Apexchart):
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
             # if self._yaxis_title is not None:
         self._options["yaxis"][0]["title"] = {"text": self._yaxis_title}
-        self.update_y_range(0, 5)
 
         super(LineChart, self).__init__(
             series=self._series,
@@ -85,6 +85,7 @@ class LineChart(Apexchart):
             type="line",
             height=self._widget_height,
         )
+        self.update_y_range(self._ymin, self._ymax)
 
     def update_y_range(self, ymin: int, ymax: int):
         self._ymin = min(self._ymin, ymin)
@@ -93,7 +94,10 @@ class LineChart(Apexchart):
             self._options["yaxis"][0]["min"] = self._ymin
             self._options["yaxis"][0]["max"] = self._ymax
 
+            self.update_data()
+            DataJson().send_changes()
+
     def add_series(self, name: str, x: list, y: list):
-        self.update_y_range(min(y), max(y))
         # print(self._options["yaxis"]["min"], self._options["yaxis"]["max"])
         super().add_series(name, x, y)
+        self.update_y_range(min(y), max(y))
