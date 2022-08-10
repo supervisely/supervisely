@@ -37,7 +37,7 @@ type_to_text_color = {
 }
 
 
-class Label(Widget):
+class Text(Widget):
     def __init__(
         self,
         text: str = None,

@@ -14,6 +14,6 @@ from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.widgets.line_chart.line_chart import LineChart
 from supervisely.app.widgets.table.table import Table
 from supervisely.app.widgets.labeled_image.labeled_image import LabeledImage
-from supervisely.app.widgets.label.label import Label
+from supervisely.app.widgets.text.text import Text
 
 # from supervisely.app.widgets.restart_step.restart_step import RestartStep
