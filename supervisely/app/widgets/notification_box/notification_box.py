@@ -29,10 +29,10 @@ class NotificationBox(Widget):
     ):
         self._title = title
         self._description = description
-        if self._title is None and self._description is None:
-            raise ValueError(
-                "Both title and description can not be None at the same time"
-            )
+        # if self._title is None and self._description is None:
+        #     raise ValueError(
+        #         "Both title and description can not be None at the same time"
+        #     )
 
         self.box_type = box_type
         if self.box_type not in [SUCCESS, INFO, WARNING, ERROR]:
@@ -45,7 +45,11 @@ class NotificationBox(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {"title": self._title, "description": self._description, "icon": self.icon}
+        return {
+            "title": self._title,
+            "description": self._description,
+            "icon": self.icon,
+        }
 
     def get_json_state(self):
         return None
@@ -57,7 +61,8 @@ class NotificationBox(Widget):
     @title.setter
     def title(self, value):
         self._title = value
-        DataJson()[self.widget_id]['title'] = self._title
+        DataJson()[self.widget_id]["title"] = self._title
+        DataJson().send_changes()
 
     @property
     def description(self):
@@ -66,4 +71,9 @@ class NotificationBox(Widget):
     @description.setter
     def description(self, value):
         self._description = value
-        DataJson()[self.widget_id]['description'] = self._description
+        DataJson()[self.widget_id]["description"] = self._description
+        DataJson().send_changes()
+
+    def set(self, title: str, description: str):
+        self.title = title
+        self.description = description
