@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import os
+import urllib
 import string
 import re
 import base64
@@ -9,10 +11,9 @@ import numpy as np
 import random
 from datetime import datetime
 import copy
-
+from typing import Optional
 from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
-
 
 random.seed(datetime.now())
 
@@ -23,7 +24,9 @@ def rand_str(length):
 
 
 # @TODO: use in API? or remove
-def generate_free_name(used_names, possible_name, with_ext=False, extend_used_names=False):
+def generate_free_name(
+    used_names, possible_name, with_ext=False, extend_used_names=False
+):
     res_name = possible_name
     new_suffix = 1
     while res_name in set(used_names):
@@ -136,3 +139,44 @@ def validate_img_size(img_size):
             )
         )
     return tuple(img_size)
+
+
+def is_development() -> bool:
+    mode = os.environ.get("ENV", "development")
+    if mode == "production":
+        return False
+    else:
+        return True
+
+
+def is_production() -> bool:
+    return not is_development()
+
+
+def abs_url(relative_url: str) -> str:
+    from supervisely.api.api import SERVER_ADDRESS
+
+    server_address = os.environ.get(SERVER_ADDRESS, "")
+    if server_address == "":
+        logger.warn("SERVER_ADDRESS env variable is not defined")
+    return urllib.parse.urljoin(server_address, relative_url)
+
+
+def compress_image_url(
+    url: str,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    quality: Optional[int] = 70,
+) -> str:
+    if width is None:
+        width = ""
+    if height is None:
+        height = ""
+    return url.replace(
+        "/image-converter",
+        f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
+    )
+
+
+def get_preview_link(title="preview"):
+    return f'<a href="javascript:;">{title}<i class="zmdi zmdi-cast" style="margin-left: 5px"></i></a>'

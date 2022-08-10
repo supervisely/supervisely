@@ -10,20 +10,13 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 from supervisely.app.singleton import Singleton
+from supervisely.app.fastapi import run_sync
 
 
 class Field(str, enum.Enum):
     STATE = "state"
     DATA = "data"
     CONTEXT = "context"
-
-
-# self._session_dir = "/sessions/{}".format(self.task_id)
-# self._template_path = None
-# debug_app_dir = os.environ.get("DEBUG_APP_DIR", "")
-# if debug_app_dir != "":
-#     self._session_dir = debug_app_dir
-# mkdir(self.data_dir)
 
 
 def get_data_dir():
@@ -79,6 +72,12 @@ class _PatchableJson(dict):
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch))
+
+    async def send_changes_async(self):
+        await self.synchronize_changes()
+
+    def send_changes(self):
+        run_sync(self.synchronize_changes())
 
     def raise_for_key(self, key: str):
         if key in self:

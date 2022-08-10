@@ -4,8 +4,10 @@ import fastapi
 import numpy as np
 import pandas as pd
 from varname import varname
+from typing import NamedTuple, Any, List
 
 from supervisely.app import DataJson
+from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 
 
@@ -72,21 +74,45 @@ DATATYPE_TO_UNPACKER = {
     dict: PackerUnpacker.dict_unpacker,
 }
 
+"""
+iris = pd.read_csv(
+    "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+)
+iris.insert(loc=0, column="index", value=np.arange(len(iris)))
+table = sly.app.widgets.Table(data=iris, fixed_cols=1)
 
-class ClassicTable(Widget):
+@table.click
+def show_image(datapoint: sly.app.widgets.Table.ClickedDataPoint):
+    print("Column name = ", datapoint.column_name)
+    print("Cell value = ", datapoint.cell_value)
+    print("Row = ", datapoint.row)
+
+"""
+
+
+class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
 
+    class ClickedDataPoint(NamedTuple):
+        column_index: int
+        column_name: str
+        cell_value: Any
+        row: dict
+
     def __init__(
         self,
-        data: list = None,
+        data=None,
         columns: list = None,
-        fixed_columns_num: int = None,
+        fixed_cols: int = None,
+        per_page: int = 10,
+        page_sizes: List[int] = [10, 15, 30, 50, 100],
+        width: str = "auto",  # "200px", or "100%"
         widget_id: str = None,
     ):
         """
         :param data: Data of table in different formats:
-        1. Pandas Dataframe
+        1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
         2. Python dict with structure {
                                         'columns_names': ['col_name_1', 'col_name_2', ...],
                                         'values_by_rows': [
@@ -101,10 +127,14 @@ class ClassicTable(Widget):
 
         self._parsed_data = None
         self._data_type = None
+        self._click_handled = False
 
         self._update_table_data(input_data=pd.DataFrame(data=data, columns=columns))
 
-        self._fix_columns = fixed_columns_num
+        self._per_page = per_page
+        self._page_sizes = page_sizes
+        self._fix_columns = fixed_cols
+        self._width = width
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -112,6 +142,8 @@ class ClassicTable(Widget):
         return {
             "table_data": self._parsed_data,
             "table_options": {
+                "perPage": self._per_page,
+                "pageSizes": self._page_sizes,
                 "fixColumns": self._fix_columns,
             },
         }
@@ -178,6 +210,7 @@ class ClassicTable(Widget):
     def read_pandas(self, value: pd.DataFrame):
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
 
     def insert_row(self, data, index=-1):
         PackerUnpacker.validate_sizes(
@@ -204,14 +237,35 @@ class ClassicTable(Widget):
 
     def get_selected_cell(self, state):
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")
-        col_index = state[self.widget_id]["selected_row"].get("selectedColumn")
-        row_data = state[self.widget_id]["selected_row"].get("selectedRowData", {})
+        if row_index is None:
+            # click table header
+            return None
+        column_name = state[self.widget_id]["selected_row"].get("selectedColumnName")
+        column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
+        row = state[self.widget_id]["selected_row"].get("selectedRowData", {})
 
         return {
-            "row_index": row_index,
-            "col_index": col_index,
-            "row_data": row_data,
-            "cell_data": list(row_data.items())[int(col_index)]
-            if col_index is not None and row_data is not None
-            else None,
+            "column_index": column_index,
+            "column_name": column_name,
+            "row": row,
+            "cell_value": row[column_name],
         }
+
+    def click(self, func):
+        route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
+        server = self._sly_app.get_server()
+        self._click_handled = True
+
+        @server.post(route_path)
+        def _click():
+            value_dict = self.get_selected_cell(StateJson())
+            if value_dict is None:
+                return
+            datapoint = Table.ClickedDataPoint(**value_dict)
+            func(datapoint)
+
+        return _click
+
+    @staticmethod
+    def get_html_text_as_button(title="preview"):
+        return f"<button>{title}</button>"

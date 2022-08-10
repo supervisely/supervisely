@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://supervise.ly/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
+    />
+    <title>{{{app_name}}}</title>
+  </head>
+
+  <body>
+    <script src="https://supervise.ly/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
+    ></script>
+
+    <div id="sly-app">
+      <sly-app>
+        <template v-slot="{ post, state, data }">
+          {% include 'main.html' %}
+        </template>
+      </sly-app>
+    </div>
+    <!-- Hot reload script -->
+    {% if DEBUG %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}} {%
+    endif %}
+  </body>
+</html>

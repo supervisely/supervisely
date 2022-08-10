@@ -21,23 +21,24 @@ from supervisely.api.module_api import (
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.annotation import TagCollection
+from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class ProjectNotFound(Exception):
-    """
-    """
+    """ """
+
     pass
 
 
 class ExpectedProjectTypeMismatch(Exception):
-    """
-    """
+    """ """
+
     pass
 
 
 class ProjectInfo(NamedTuple):
-    """
-    """
+    """ """
+
     id: int
     name: str
     description: str
@@ -52,6 +53,14 @@ class ProjectInfo(NamedTuple):
     type: str
     reference_image_url: str
     custom_data: dict
+
+    @property
+    def image_preview_url(self):
+        res = self.reference_image_url
+        if is_development():
+            res = abs_url(res)
+        res = compress_image_url(url=res, height=200)
+        return res
 
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
@@ -404,8 +413,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         with_items=True,
         with_annotations=True,
     ):
-        """
-        """
+        """ """
         if not with_meta and with_annotations:
             raise ValueError(
                 "with_meta parameter must be True if with_annotations parameter is True"
@@ -503,8 +511,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
-        """
-        """
+        """ """
         return "projects.editInfo"
 
     def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
@@ -560,8 +567,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta})
 
     def _clone_api_method_name(self):
-        """
-        """
+        """ """
         return "projects.clone"
 
     def get_datasets_count(self, id: int) -> int:
@@ -701,8 +707,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return df
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         if res.reference_image_url is not None:
             res = res._replace(reference_image_url=res.reference_image_url)
@@ -759,7 +764,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_url)
             # Output: http://supervise.ly/projects/1951/datasets
         """
-        return f"projects/{id}/datasets"
+        res = f"projects/{id}/datasets"
+        if is_development():
+            res = abs_url(res)
+        return res
 
     def update_custom_data(self, id: int, data: Dict) -> Dict:
         """
@@ -882,8 +890,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def get_or_create(
         self, workspace_id, name, type=ProjectType.IMAGES, description=""
     ):
-        """
-        """
+        """ """
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
             info = self.create(workspace_id, name, type=type, description=description)
@@ -898,8 +905,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         custom_data=None,
         project_type=None,
     ):
-        """
-        """
+        """ """
         if (
             name is None
             and description is None
