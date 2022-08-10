@@ -1,8 +1,14 @@
 import os
 import signal
+import functools
 import psutil
 import sys
 from pathlib import Path
+import threading
+import traceback
+
+# from fastapi.testclient import TestClient
+from async_asgi_testclient import TestClient
 
 from fastapi import (
     FastAPI,
@@ -18,12 +24,13 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from supervisely.app.singleton import Singleton
-from supervisely.app.fastapi import available_after_shutdown
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
+from supervisely._utils import is_production
+from supervisely.app.fastapi.offline import dump_files_to_supervisely
 
 
 def create() -> FastAPI:
@@ -126,6 +133,8 @@ def handle_server_errors(app: FastAPI):
 
 
 def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+    from supervisely.app.fastapi import available_after_shutdown
+
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
@@ -146,13 +155,23 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return response
 
     @app.get("/")
-    @available_after_shutdown(app=app)
-    async def read_index(request: Request):
+    @available_after_shutdown(app)
+    def read_index(request: Request = None):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
     @app.on_event("shutdown")
     def shutdown():
         read_index()  # save last version of static files
+
+    # @app.on_event("shutdown")
+    # async def shutdown():
+    #     read_index()
+    #     # async with TestClient(app) as client:
+    #     #     response = await client.get("/")
+    #     #     logger.debug(
+    #     #         f"shutdown event: response.status_code == {response.status_code}"
+    #     #     )
+    #     #     print(111)
 
     return app
 
