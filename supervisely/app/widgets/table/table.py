@@ -265,3 +265,7 @@ class Table(Widget):
             func(datapoint)
 
         return _click
+
+    @staticmethod
+    def get_html_text_as_button(title="preview"):
+        return f"<button>{title}</button>"
