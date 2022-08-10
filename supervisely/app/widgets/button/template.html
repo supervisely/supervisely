@@ -1,4 +1,5 @@
 <el-button
+  v-if="!data.{{{widget.widget_id}}}.hide"
   :type="data.{{{widget.widget_id}}}.button_type"
   :plain="data.{{{widget.widget_id}}}.plain"
   :loading="data.{{{widget.widget_id}}}.loading"
