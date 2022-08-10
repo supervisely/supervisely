@@ -1706,7 +1706,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def update_meta(self, id: int, meta: Dict) -> Dict:
         """
-        Updates Image meta by ID.
+        It is possible to add custom JSON data to every image for storing some additional information.
+        Updates Image metadata by ID. Metadata is visible in Labeling Tool.
+        Supervisely also have 2 apps: import metadata and export metadata
 
         :param id: Image ID in Supervisely.
         :type id: int
@@ -1719,27 +1721,28 @@ class ImageApi(RemoveableBulkModuleApi):
 
          .. code-block:: python
 
+            import os
+            import json
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            upd_img_meta = api.image.get_info_by_id(121236920)
-            print(upd_img_meta.upd_img_meta)
+            image_info = api.image.get_info_by_id(id=3212008)
+            print(image_info.meta)
             # Output: {}
 
             new_meta = {'Camera Make': 'Canon', 'Color Space': 'sRGB', 'Focal Length': '16 mm'}
-            new_img_info = api.image.update_meta(121236920, new_meta)
+            new_image_info = api.image.update_meta(id=3212008, meta=new_meta)
 
-            upd_img_meta = api.image.get_info_by_id(121236920)
-            print(json.dumps(upd_img_meta.meta, indent=4))
+            image_info = api.image.get_info_by_id(id=3212008)
+            print(json.dumps(obj=image_info.meta, indent=4))
             # Output: {
             #     "Camera Make": "Canon",
             #     "Color Space": "sRGB",
             #     "Focal Length": "16 mm"
             # }
-
         """
         if type(meta) is not dict:
             raise TypeError("Meta must be dict, not {}".format(type(meta)))
