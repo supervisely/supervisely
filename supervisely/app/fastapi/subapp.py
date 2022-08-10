@@ -1,3 +1,4 @@
+import asyncio
 import os
 import signal
 import psutil
@@ -16,6 +17,7 @@ from fastapi import (
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from supervisely.app.fastapi.utils import run_sync
 
 from supervisely.app.singleton import Singleton
 
@@ -82,9 +84,15 @@ def create() -> FastAPI:
     return app
 
 
+# async def goodbue():
+#     await asyncio.sleep(0.2)
+
+
 def shutdown():
     try:
         logger.info("Shutting down...")
+        # run_sync(goodbue())
+
         current_process = psutil.Process(os.getpid())
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
@@ -135,7 +143,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     # only for debug
     # app.mount(
     #     "/static", StaticFiles(directory="static"), name="static"
-    # )  
+    # )
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -161,3 +169,6 @@ class Application(metaclass=Singleton):
 
     async def __call__(self, scope, receive, send) -> None:
         await self._fastapi.__call__(scope, receive, send)
+
+    def shutdown(self):
+        shutdown()
