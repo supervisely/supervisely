@@ -31,7 +31,7 @@ from supervisely.io.fs import (
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
-from supervisely._utils import batched
+from supervisely._utils import batched, is_development, abs_url
 from supervisely.io.fs import file_exists, ensure_base_path, get_file_name
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
@@ -48,6 +48,7 @@ class OpenMode(Enum):
     """
     Defines the mode of using the :class:`Project<supervisely.project.project.Project>` and :class:`Dataset<supervisely.project.project.Dataset>`.
     """
+
     READ = 1
     CREATE = 2
 
@@ -77,7 +78,8 @@ class Dataset(KeyObject):
          dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
          ds = Dataset(dataset_path, OpenMode.READ)
     """
-    item_dir_name = 'img'
+
+    item_dir_name = "img"
     annotation_class = Annotation
 
     def __init__(self, directory: str, mode: OpenMode):
@@ -164,7 +166,7 @@ class Dataset(KeyObject):
 
             print(ds.img_dir)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img'
-         """
+        """
         return self.img_dir
 
     @property
@@ -206,7 +208,7 @@ class Dataset(KeyObject):
             print(ds.ann_dir)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann'
         """
-        return os.path.join(self.directory, 'ann')
+        return os.path.join(self.directory, "ann")
 
     @property
     def img_info_dir(self):
@@ -424,12 +426,18 @@ class Dataset(KeyObject):
         ann_path = self._item_to_ann.get(item_name, None)
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
-        seg_path = os.path.join(self.seg_dir, f'{item_name}.png')
+        seg_path = os.path.join(self.seg_dir, f"{item_name}.png")
         return seg_path
 
-    def add_item_file(self, item_name: str, item_path: str, ann: Optional[Union[Annotation, str]] = None,
-                      _validate_item: Optional[bool] = True, _use_hardlink: Optional[bool] = False,
-                      img_info: Optional[NamedTuple] = None) -> None:
+    def add_item_file(
+        self,
+        item_name: str,
+        item_path: str,
+        ann: Optional[Union[Annotation, str]] = None,
+        _validate_item: Optional[bool] = True,
+        _use_hardlink: Optional[bool] = False,
+        img_info: Optional[NamedTuple] = None,
+    ) -> None:
         """
         Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -471,8 +479,13 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_np(self, item_name: str, img: np.ndarray, ann: Optional[Union[Annotation, str]] = None,
-                    img_info: Optional[NamedTuple] = None) -> None:
+    def add_item_np(
+        self,
+        item_name: str,
+        img: np.ndarray,
+        ann: Optional[Union[Annotation, str]] = None,
+        img_info: Optional[NamedTuple] = None,
+    ) -> None:
         """
         Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -506,8 +519,13 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_img_info(item_name, img_info)
 
-    def add_item_raw_bytes(self, item_name: str, item_raw_bytes: bytes, ann: Optional[Union[Annotation, str]] = None,
-                           img_info: Optional[NamedTuple] = None) -> None:
+    def add_item_raw_bytes(
+        self,
+        item_name: str,
+        item_raw_bytes: bytes,
+        ann: Optional[Union[Annotation, str]] = None,
+        img_info: Optional[NamedTuple] = None,
+    ) -> None:
         """
         Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
@@ -651,7 +669,7 @@ class Dataset(KeyObject):
         sly_image.write(dst_img_path, img)
 
     def _add_item_file(
-            self, item_name, item_path, _validate_item=True, _use_hardlink=False
+        self, item_name, item_path, _validate_item=True, _use_hardlink=False
     ):
         if item_path is None:
             return
@@ -659,7 +677,7 @@ class Dataset(KeyObject):
         self._add_img_file(item_name, item_path, _validate_item, _use_hardlink)
 
     def _add_img_file(
-            self, item_name, img_path, _validate_img=True, _use_hardlink=False
+        self, item_name, img_path, _validate_img=True, _use_hardlink=False
     ):
         """
         Add given item file to dataset items directory. Generate exception error if item_name already exists in dataset
@@ -673,7 +691,7 @@ class Dataset(KeyObject):
         self._check_add_item_name(item_name)
         dst_img_path = os.path.join(self.item_dir, item_name)
         if (
-                img_path != dst_img_path and img_path is not None
+            img_path != dst_img_path and img_path is not None
         ):  # used only for agent + api during download project + None to optimize internal usage
             hardlink_done = False
             if _use_hardlink:
@@ -816,7 +834,9 @@ class Dataset(KeyObject):
             # Output: img_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg
             # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
         """
-        return ItemPaths(img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name))
+        return ItemPaths(
+            img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name)
+        )
 
     def __len__(self):
         return len(self._item_to_ann)
@@ -874,6 +894,7 @@ class Project:
          project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
          project = Project(project_path, OpenMode.READ)
     """
+
     dataset_class = Dataset
 
     class DatasetDict(KeyIndexedCollection):
@@ -901,6 +922,13 @@ class Project:
             self._read()
         else:
             self._create()
+
+    @staticmethod
+    def get_url(id: int) -> str:
+        res = f"/projects/{id}/datasets"
+        if is_development():
+            res = abs_url(res)
+        return res
 
     @property
     def parent_dir(self) -> str:
@@ -1125,7 +1153,7 @@ class Project:
         return ds
 
     def _add_item_file_to_dataset(
-            self, ds, item_name, item_paths, img_info_path, _validate_item, _use_hardlink
+        self, ds, item_name, item_paths, img_info_path, _validate_item, _use_hardlink
     ):
         """
         Add item file and annotation from given name and path to given dataset items directory. Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -1144,8 +1172,13 @@ class Project:
             _use_hardlink=_use_hardlink,
         )
 
-    def copy_data(self, dst_directory: str, dst_name: Optional[str] = None, _validate_item: Optional[bool] = True,
-                  _use_hardlink: Optional[bool] = False) -> Project:
+    def copy_data(
+        self,
+        dst_directory: str,
+        dst_name: Optional[str] = None,
+        _validate_item: Optional[bool] = True,
+        _use_hardlink: Optional[bool] = False,
+    ) -> Project:
         """
         Makes a copy of the Project.
 
@@ -1179,13 +1212,22 @@ class Project:
                 img_info_path = ds.get_img_info_path(item_name)
 
                 item_paths = ItemPaths(
-                    img_path=item_paths.img_path if os.path.isfile(item_paths.img_path) else None,
-                    ann_path=item_paths.ann_path if os.path.isfile(item_paths.ann_path) else None
+                    img_path=item_paths.img_path
+                    if os.path.isfile(item_paths.img_path)
+                    else None,
+                    ann_path=item_paths.ann_path
+                    if os.path.isfile(item_paths.ann_path)
+                    else None,
                 )
                 img_info_path = img_info_path if os.path.isfile(img_info_path) else None
 
                 self._add_item_file_to_dataset(
-                    new_ds, item_name, item_paths, img_info_path, _validate_item, _use_hardlink
+                    new_ds,
+                    item_name,
+                    item_paths,
+                    img_info_path,
+                    _validate_item,
+                    _use_hardlink,
                 )
         return new_project
 
@@ -1206,17 +1248,23 @@ class Project:
         return parent_dir, pr_name
 
     @staticmethod
-    def to_segmentation_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
-                             inplace: Optional[bool] = False,
-                             target_classes: Optional[List[str]] = None, progress_cb: Optional[Callable] = None,
-                             segmentation_type: Optional[str] = 'semantic') -> None:
+    def to_segmentation_task(
+        src_project_dir: str,
+        dst_project_dir: Optional[str] = None,
+        inplace: Optional[bool] = False,
+        target_classes: Optional[List[str]] = None,
+        progress_cb: Optional[Callable] = None,
+        segmentation_type: Optional[str] = "semantic",
+    ) -> None:
 
         _bg_class_name = "__bg__"
         _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
 
         if dst_project_dir is None and inplace is False:
-            raise ValueError(f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
-                             f"argument (inplace=True) directly")
+            raise ValueError(
+                f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
+                f"argument (inplace=True) directly"
+            )
         if inplace is True and dst_project_dir is not None:
             raise ValueError("dst_project_dir has to be None if inplace is True")
 
@@ -1224,29 +1272,43 @@ class Project:
             if not dir_exists(dst_project_dir):
                 mkdir(dst_project_dir)
             elif not dir_empty(dst_project_dir):
-                raise ValueError(f"Destination directory {dst_project_dir} is not empty")
+                raise ValueError(
+                    f"Destination directory {dst_project_dir} is not empty"
+                )
 
         src_project = Project(src_project_dir, OpenMode.READ)
         dst_meta = src_project.meta.clone()
 
-        dst_meta, dst_mapping = dst_meta.to_segmentation_task(target_classes=target_classes)
+        dst_meta, dst_mapping = dst_meta.to_segmentation_task(
+            target_classes=target_classes
+        )
 
-        if segmentation_type == 'semantic' and dst_meta.obj_classes.get(_bg_class_name) is None:
+        if (
+            segmentation_type == "semantic"
+            and dst_meta.obj_classes.get(_bg_class_name) is None
+        ):
             dst_meta = dst_meta.add_obj_class(_bg_obj_class)
 
         if target_classes is not None:
-            if segmentation_type == 'semantic':
+            if segmentation_type == "semantic":
                 if _bg_class_name not in target_classes:
                     target_classes.append(_bg_class_name)
 
             # check that all target classes are in destination project meta
             for class_name in target_classes:
                 if dst_meta.obj_classes.get(class_name) is None:
-                    raise KeyError(f"Class {class_name} not found in destination project meta")
+                    raise KeyError(
+                        f"Class {class_name} not found in destination project meta"
+                    )
 
-            dst_meta = dst_meta.clone(obj_classes=ObjClassCollection([
-                dst_meta.obj_classes.get(class_name) for class_name in target_classes
-            ]))
+            dst_meta = dst_meta.clone(
+                obj_classes=ObjClassCollection(
+                    [
+                        dst_meta.obj_classes.get(class_name)
+                        for class_name in target_classes
+                    ]
+                )
+            )
 
         if inplace is False:
             dst_project = Project(dst_project_dir, OpenMode.CREATE)
@@ -1260,18 +1322,22 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                seg_ann = ann.to_nonoverlapping_masks(dst_mapping)  # rendered instances and filter classes
+                seg_ann = ann.to_nonoverlapping_masks(
+                    dst_mapping
+                )  # rendered instances and filter classes
 
-                if segmentation_type == 'semantic':
+                if segmentation_type == "semantic":
                     seg_ann = seg_ann.add_bg_object(_bg_obj_class)
 
                     dst_mapping[_bg_obj_class] = _bg_obj_class
-                    seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
+                    seg_ann = seg_ann.to_nonoverlapping_masks(
+                        dst_mapping
+                    )  # get_labels with bg
 
                     seg_ann = seg_ann.to_segmentation_task()
-                elif segmentation_type == 'instance':
+                elif segmentation_type == "instance":
                     pass
-                elif segmentation_type == 'panoptic':
+                elif segmentation_type == "panoptic":
                     raise NotImplementedError
 
                 seg_path = None
@@ -1293,8 +1359,11 @@ class Project:
             src_project.set_meta(dst_meta)
 
     @staticmethod
-    def to_detection_task(src_project_dir: str, dst_project_dir: Optional[str] = None,
-                          inplace: Optional[bool] = False) -> None:
+    def to_detection_task(
+        src_project_dir: str,
+        dst_project_dir: Optional[str] = None,
+        inplace: Optional[bool] = False,
+    ) -> None:
         if dst_project_dir is None and inplace is False:
             raise ValueError(
                 f"Original project in folder {src_project_dir} will be modified. Please, set 'inplace' "
@@ -1336,8 +1405,11 @@ class Project:
             src_project.set_meta(det_meta)
 
     @staticmethod
-    def remove_classes_except(project_dir: str, classes_to_keep: Optional[List[str]] = [],
-                              inplace: Optional[bool] = False) -> None:
+    def remove_classes_except(
+        project_dir: str,
+        classes_to_keep: Optional[List[str]] = [],
+        inplace: Optional[bool] = False,
+    ) -> None:
         """
         Removes classes from Project with the exception of some classes.
 
@@ -1364,8 +1436,11 @@ class Project:
         Project.remove_classes(project_dir, classes_to_remove, inplace)
 
     @staticmethod
-    def remove_classes(project_dir: str, classes_to_remove: Optional[List[str]] = [],
-                       inplace: Optional[bool] = False) -> None:
+    def remove_classes(
+        project_dir: str,
+        classes_to_remove: Optional[List[str]] = [],
+        inplace: Optional[bool] = False,
+    ) -> None:
         """
         Removes given classes from Project.
 
@@ -1409,20 +1484,20 @@ class Project:
 
     @staticmethod
     def _remove_items(
-            project_dir,
-            without_objects=False,
-            without_tags=False,
-            without_objects_and_tags=False,
-            inplace=False,
+        project_dir,
+        without_objects=False,
+        without_tags=False,
+        without_objects_and_tags=False,
+        inplace=False,
     ):
         if inplace is False:
             raise ValueError(
                 f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
             )
         if (
-                without_objects is False
-                and without_tags is False
-                and without_objects_and_tags is False
+            without_objects is False
+            and without_tags is False
+            and without_objects_and_tags is False
         ):
             raise ValueError(
                 "One of the flags (without_objects / without_tags or without_objects_and_tags) have to be defined"
@@ -1434,16 +1509,18 @@ class Project:
                 img_path, ann_path = dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, project.meta)
                 if (
-                        (without_objects and len(ann.labels) == 0)
-                        or (without_tags and len(ann.img_tags) == 0)
-                        or (without_objects_and_tags and ann.is_empty())
+                    (without_objects and len(ann.labels) == 0)
+                    or (without_tags and len(ann.img_tags) == 0)
+                    or (without_objects_and_tags and ann.is_empty())
                 ):
                     items_to_delete.append(item_name)
             for item_name in items_to_delete:
                 dataset.delete_item(item_name)
 
     @staticmethod
-    def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
+    def remove_items_without_objects(
+        project_dir: str, inplace: Optional[bool] = False
+    ) -> None:
         """
         Remove items(images and annotations) without objects from Project.
 
@@ -1460,10 +1537,14 @@ class Project:
             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_objects(project_path)
         """
-        Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
+        Project._remove_items(
+            project_dir=project_dir, without_objects=True, inplace=inplace
+        )
 
     @staticmethod
-    def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
+    def remove_items_without_tags(
+        project_dir: str, inplace: Optional[bool] = False
+    ) -> None:
         """
         Remove items(images and annotations) without tags from Project.
 
@@ -1480,10 +1561,14 @@ class Project:
             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_tags(project_path)
         """
-        Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
+        Project._remove_items(
+            project_dir=project_dir, without_tags=True, inplace=inplace
+        )
 
     @staticmethod
-    def remove_items_without_both_objects_and_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
+    def remove_items_without_both_objects_and_tags(
+        project_dir: str, inplace: Optional[bool] = False
+    ) -> None:
         """
         Remove items(images and annotations) without objects and tags from Project.
 
@@ -1500,14 +1585,17 @@ class Project:
             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_both_objects_and_tags(project_path)
         """
-        Project._remove_items(project_dir=project_dir, without_objects_and_tags=True, inplace=inplace)
+        Project._remove_items(
+            project_dir=project_dir, without_objects_and_tags=True, inplace=inplace
+        )
 
     def get_item_paths(self, item_name) -> ItemPaths:
         raise NotImplementedError("Method available only for dataset")
 
     @staticmethod
-    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> Tuple[
-        List[ItemInfo], List[ItemInfo]]:
+    def get_train_val_splits_by_count(
+        project_dir: str, train_count: int, val_count: int
+    ) -> Tuple[List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val counts.
 
@@ -1554,8 +1642,12 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_tag(project_dir: str, train_tag_name: str, val_tag_name: str,
-                                    untagged: Optional[str] = "ignore") -> Tuple[List[ItemInfo], List[ItemInfo]]:
+    def get_train_val_splits_by_tag(
+        project_dir: str,
+        train_tag_name: str,
+        val_tag_name: str,
+        untagged: Optional[str] = "ignore",
+    ) -> Tuple[List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val tags names.
 
@@ -1598,8 +1690,8 @@ class Project:
                 if ann.img_tags.get(val_tag_name) is not None:
                     val_items.append(info)
                 if (
-                        ann.img_tags.get(train_tag_name) is None
-                        and ann.img_tags.get(val_tag_name) is None
+                    ann.img_tags.get(train_tag_name) is None
+                    and ann.img_tags.get(val_tag_name) is None
                 ):
                     # untagged item
                     if untagged == "ignore":
@@ -1611,8 +1703,9 @@ class Project:
         return train_items, val_items
 
     @staticmethod
-    def get_train_val_splits_by_dataset(project_dir: str, train_datasets: List[str], val_datasets: List[str]) -> Tuple[
-        List[ItemInfo], List[ItemInfo]]:
+    def get_train_val_splits_by_dataset(
+        project_dir: str, train_datasets: List[str], val_datasets: List[str]
+    ) -> Tuple[List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val datasets names.
 
@@ -1653,7 +1746,9 @@ class Project:
         return train_items, val_items
 
 
-def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
+def read_single_project(
+    dir: str, project_class: Optional[Project] = Project
+) -> Project:
     """
     Read project from given directory.
 
@@ -1695,15 +1790,15 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
 
 
 def _download_project(
-        api,
-        project_id,
-        dest_dir,
-        dataset_ids=None,
-        log_progress=False,
-        batch_size=10,
-        only_image_tags=False,
-        save_image_info=False,
-        save_images=True,
+    api,
+    project_id,
+    dest_dir,
+    dataset_ids=None,
+    log_progress=False,
+    batch_size=10,
+    only_image_tags=False,
+    save_image_info=False,
+    save_images=True,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -1751,22 +1846,27 @@ def _download_project(
                     ann_jsons.append(tmp_ann.to_json())
 
             for img_info, name, img_bytes, ann in zip(
-                    batch, image_names, batch_imgs_bytes, ann_jsons
+                batch, image_names, batch_imgs_bytes, ann_jsons
             ):
                 dataset_fs.add_item_raw_bytes(
                     item_name=name,
                     item_raw_bytes=img_bytes if save_images is True else None,
                     ann=ann,
-                    img_info=img_info if save_image_info is True else None
+                    img_info=img_info if save_image_info is True else None,
                 )
 
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
 
 
-def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional[str] = None,
-                   log_progress: Optional[bool] = True,
-                   progress_cb: Optional[Callable] = None) -> Tuple[int, str]:
+def upload_project(
+    dir: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = True,
+    progress_cb: Optional[Callable] = None,
+) -> Tuple[int, str]:
     """
     Uploads project to Supervisely from the given directory.
 
@@ -1843,12 +1943,18 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional
             progress_cb = ds_progress.iters_done_report
 
         if len(img_paths) != 0:
-            uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
+            uploaded_img_infos = api.image.upload_paths(
+                dataset.id, names, img_paths, progress_cb
+            )
         elif len(img_paths) == 0 and len(img_infos) != 0:
             hashes = [img_info.hash for img_info in img_infos]
-            uploaded_img_infos = api.image.upload_hashes(dataset.id, names, hashes, progress_cb)
+            uploaded_img_infos = api.image.upload_hashes(
+                dataset.id, names, hashes, progress_cb
+            )
         else:
-            raise ValueError('Cannot upload Project: img_paths is empty and img_infos_paths is empty')
+            raise ValueError(
+                "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
+            )
 
         image_ids = [img_info.id for img_info in uploaded_img_infos]
 
@@ -1863,11 +1969,19 @@ def upload_project(dir: str, api: Api, workspace_id: int, project_name: Optional
     return project.id, project.name
 
 
-def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]] = None,
-                     log_progress: Optional[bool] = False, batch_size: Optional[int] = 10,
-                     cache: Optional[FileCache] = None, progress_cb: Optional[Callable] = None,
-                     only_image_tags: Optional[bool] = False, save_image_info: Optional[bool] = False,
-                     save_images: bool = True) -> None:
+def download_project(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: Optional[bool] = False,
+    batch_size: Optional[int] = 10,
+    cache: Optional[FileCache] = None,
+    progress_cb: Optional[Callable] = None,
+    only_image_tags: Optional[bool] = False,
+    save_image_info: Optional[bool] = False,
+    save_images: bool = True,
+) -> None:
     """
     Download project from Supervisely to the given directory.
 
@@ -1934,20 +2048,20 @@ def download_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Opti
             progress_cb,
             only_image_tags=only_image_tags,
             save_image_info=save_image_info,
-            save_images=save_images
+            save_images=save_images,
         )
 
 
 def _download_project_optimized(
-        api: Api,
-        project_id,
-        project_dir,
-        datasets_whitelist=None,
-        cache=None,
-        progress_cb=None,
-        only_image_tags=False,
-        save_image_info=False,
-        save_images=True,
+    api: Api,
+    project_id,
+    project_dir,
+    datasets_whitelist=None,
+    cache=None,
+    progress_cb=None,
+    only_image_tags=False,
+    save_image_info=False,
+    save_images=True,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -2008,15 +2122,15 @@ def _maybe_append_image_extension(name, ext):
 
 
 def _download_dataset(
-        api: Api,
-        dataset,
-        dataset_id,
-        cache=None,
-        progress_cb=None,
-        project_meta: ProjectMeta = None,
-        only_image_tags=False,
-        save_image_info=False,
-        save_images=True,
+    api: Api,
+    dataset,
+    dataset_id,
+    cache=None,
+    progress_cb=None,
+    project_meta: ProjectMeta = None,
+    only_image_tags=False,
+    save_image_info=False,
+    save_images=True,
 ):
     images = api.image.get_list(dataset_id)
     images_to_download = images
@@ -2068,7 +2182,7 @@ def _download_dataset(
                     progress_cb(len(images_in_cache))
 
             for batch in batched(
-                    list(zip(images_in_cache, images_cache_paths)), batch_size=50
+                list(zip(images_in_cache, images_cache_paths)), batch_size=50
             ):
                 for img_info, img_cache_path in batch:
                     item_name = _maybe_append_image_extension(
@@ -2084,7 +2198,6 @@ def _download_dataset(
                         _validate_item=False,
                         _use_hardlink=True,
                         img_info=img_info_to_add,
-
                     )
                 if progress_cb is not None:
                     progress_cb(len(batch))
@@ -2096,7 +2209,12 @@ def _download_dataset(
         img_paths = []
         for img_info in images_to_download:
             img_ids.append(img_info.id)
-            img_paths.append(os.path.join(dataset.img_dir, _maybe_append_image_extension(img_info.name, img_info.ext)))
+            img_paths.append(
+                os.path.join(
+                    dataset.img_dir,
+                    _maybe_append_image_extension(img_info.name, img_info.ext),
+                )
+            )
 
         # download annotations
         if only_image_tags is False:
@@ -2120,16 +2238,20 @@ def _download_dataset(
         # download images and write to dataset
         for img_info_batch in batched(images_to_download):
             images_ids_batch = [image_info.id for image_info in img_info_batch]
-            images_nps = api.image.download_nps(dataset_id, images_ids_batch, progress_cb=progress_cb)
+            images_nps = api.image.download_nps(
+                dataset_id, images_ids_batch, progress_cb=progress_cb
+            )
 
             for index, image_np in enumerate(images_nps):
                 img_info = img_info_batch[index]
                 image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
 
-                dataset.add_item_np(item_name=image_name,
-                                    img=image_np if save_images is True else None,
-                                    ann=img_name_to_ann[img_info.id],
-                                    img_info=img_info if save_image_info is True else None)
+                dataset.add_item_np(
+                    item_name=image_name,
+                    img=image_np if save_images is True else None,
+                    ann=img_name_to_ann[img_info.id],
+                    img_info=img_info if save_image_info is True else None,
+                )
 
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]

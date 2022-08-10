@@ -2,6 +2,7 @@ import os
 import signal
 import psutil
 import sys
+from pathlib import Path
 
 from fastapi import (
     FastAPI,
@@ -16,15 +17,13 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from supervisely.app.singleton import Singleton
+
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-
-
-# print(supervisely.__path__)
-# "--reload-include", "*.py,*.html"
 
 
 def create() -> FastAPI:
@@ -126,8 +125,39 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def init(app: FastAPI, root_dir: str = "."):
-    Jinja2Templates(directory=root_dir)
+def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+    if app is None:
+        app = FastAPI()
+    Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
+    # only for debug
+    # app.mount(
+    #     "/static", StaticFiles(directory="static"), name="static"
+    # )  
+
+    @app.middleware("http")
+    async def get_state_from_request(request: Request, call_next):
+        from supervisely.app.content import StateJson
+
+        await StateJson.from_request(request)
+        response = await call_next(request)
+        return response
+
+    @app.get("/")
+    async def read_index(request: Request):
+        return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    return app
+
+
+class Application(metaclass=Singleton):
+    def __init__(self, name="", templates_dir: str = "templates"):
+        self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
+
+    def get_server(self):
+        return self._fastapi
+
+    async def __call__(self, scope, receive, send) -> None:
+        await self._fastapi.__call__(scope, receive, send)

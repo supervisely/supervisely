@@ -2,12 +2,9 @@ from supervisely.app.fastapi.subapp import (
     create,
     shutdown,
     enable_hot_reload_on_debug,
-    init,
+    Application,
 )
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.offline import available_after_shutdown
-
-
-

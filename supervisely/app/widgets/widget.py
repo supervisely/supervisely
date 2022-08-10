@@ -1,19 +1,24 @@
 from pathlib import Path
+from typing import Callable
 
 from varname import varname
 from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.fastapi import Jinja2Templates
+from supervisely.app.fastapi import Jinja2Templates, Application
 
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        self._sly_app = Application()
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
-            self.widget_id = varname(frame=2)
+            try:
+                self.widget_id = varname(frame=2)
+            except Exception as e:
+                self.widget_id = varname(frame=3)
 
         self._register()
 
@@ -47,16 +52,24 @@ class Widget:
         if serialized_data is not None:
             data.setdefault(self.widget_id, {}).update(serialized_data)
 
+    def get_route_path(self, route: str) -> str:
+        return f"/{self.widget_id}/{route}"
+
     def add_route(self, app, route):
         def decorator(f):
-            existing_cb = DataJson()[self.widget_id].get('widget_routes', {}).get(route)
+            existing_cb = DataJson()[self.widget_id].get("widget_routes", {}).get(route)
             if existing_cb is not None:
-                raise Exception(f"Route [{route}] already attached to function with name: {existing_cb}")
+                raise Exception(
+                    f"Route [{route}] already attached to function with name: {existing_cb}"
+                )
 
-            app.add_api_route(f'/{self.widget_id}/{route}', f, methods=["POST"])
-            DataJson()[self.widget_id].setdefault('widget_routes', {})[route] = f.__name__
+            app.add_api_route(f"/{self.widget_id}/{route}", f, methods=["POST"])
+            DataJson()[self.widget_id].setdefault("widget_routes", {})[
+                route
+            ] = f.__name__
 
             self.update_data()
+
         return decorator
 
     def to_html(self):
@@ -64,6 +77,9 @@ class Widget:
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         return markupsafe.Markup(html)
+
+    def __html__(self):
+        return self.to_html()
 
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string

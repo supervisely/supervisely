@@ -1,0 +1,17 @@
+<sly-table
+  v-if="data.{{{widget.widget_id}}}.table_data.data.length > 0"
+  style="width: {{{widget._width}}}"
+  :content="data.{{{widget.widget_id}}}.table_data"
+  :options="data.{{{widget.widget_id}}}.table_options"
+  {%
+  if
+  widget._click_handled
+  %}
+  @input="state.{{{widget.widget_id}}}.selected_row = $event; 
+          post('/{{{widget.widget_id}}}/cell_clicked_cb')"
+  {%
+  endif
+  %}
+>
+</sly-table>
+<div v-else>Table is empty</div>

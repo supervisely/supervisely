@@ -1,10 +1,14 @@
 import typing
+import os
 from os import PathLike
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
 from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
+
+js_bundle_version = "2.1.3"
+js_frontend_version = "0.0.17"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
@@ -34,7 +38,13 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> _TemplateResponse:
-        context_with_widgets = {**context, **self.context_widgets}
+        context_with_widgets = {
+            **context,
+            **self.context_widgets,
+            "js_bundle_version": js_bundle_version,
+            "js_frontend_version": js_frontend_version,
+            "app_name": os.environ.get("APP_NAME", "Supervisely App"),
+        }
 
         return super().TemplateResponse(
             name, context_with_widgets, status_code, headers, media_type, background

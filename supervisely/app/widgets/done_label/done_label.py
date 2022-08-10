@@ -28,4 +28,5 @@ class DoneLabel(Widget):
     @text.setter
     def text(self, value):
         self._text = value
-        DataJson()[self.widget_id]['text'] = self._text
+        DataJson()[self.widget_id]["text"] = self._text
+        DataJson().send_changes()
