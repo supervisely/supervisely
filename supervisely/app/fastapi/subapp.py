@@ -90,6 +90,7 @@ def create() -> FastAPI:
 
 
 def shutdown():
+    # shutdown fastapi
     try:
         logger.info("Shutting down...")
         # process_id = psutil.Process(os.getpid()).ppid()
@@ -98,6 +99,15 @@ def shutdown():
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
+
+
+def shutdown_parent():
+    # shutdown uvicorn after fastapi
+    try:
+        current_process = psutil.Process(os.getpid())
+        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+    except KeyboardInterrupt:
+        pass
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
@@ -144,13 +154,13 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     app.mount("/sly", create())
     handle_server_errors(app)
 
-    @app.middleware("http")
-    async def get_state_from_request(request: Request, call_next):
-        from supervisely.app.content import StateJson
+    # @app.middleware("http")
+    # async def get_state_from_request(request: Request, call_next):
+    #     from supervisely.app.content import StateJson
 
-        await StateJson.from_request(request)
-        response = await call_next(request)
-        return response
+    #     await StateJson.from_request(request)
+    #     response = await call_next(request)
+    #     return response
 
     @app.get("/")
     @available_after_shutdown(app)
@@ -161,8 +171,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     def shutdown():
         client = TestClient(app)
         responce = client.get("/")
-        x = 10
-        x += 1
+        shutdown_parent()
 
     return app
 
