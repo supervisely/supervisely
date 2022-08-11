@@ -103,7 +103,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
-        print("In debug mode ...")
+        logger.debug("In debug mode ...")
         import arel
 
         hot_reload = arel.HotReload(paths=[arel.Path(".")])
@@ -113,7 +113,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         templates.env.globals["DEBUG"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
     else:
-        print("In runtime mode ...")
+        logger.debug("In runtime mode ...")
 
 
 def handle_server_errors(app: FastAPI):
