@@ -1,0 +1,97 @@
+from typing import Union
+from functools import wraps
+from supervisely.app.widgets.apexchart.apexchart import Apexchart
+from supervisely.app.content import StateJson, DataJson
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
+
+class HeatmapChart(Apexchart):
+    def __init__(
+        self,
+        title: str,
+        series: list = [],
+        data_labels: bool = True,
+        xaxis_title: str = None,
+        color_range: Literal["table", "row"] = "row",
+    ):
+        self._title = title
+        self._series = series
+        self._data_labels = data_labels
+        self._xaxis_title = xaxis_title
+        self._widget_height = 350
+        self._color_range = color_range
+        self._distributed = False
+        self._colors = ["#008FFB"]
+        if self._color_range == "row":
+            self._distributed = True
+            self._colors = [
+                "#F3B415",
+                "#F27036",
+                "#663F59",
+                "#6A6E94",
+                "#4E88B4",
+                "#00A7C6",
+                "#18D8D8",
+                "#A9D794",
+                "#46AF78",
+                "#A93F55",
+                "#8C5E58",
+                "#2176FF",
+                "#33A1FD",
+                "#7A918D",
+                "#BAFF29",
+            ]
+
+        self._options = {
+            "chart": {"type": "heatmap"},
+            "legend": {"show": False},
+            "plotOptions": {
+                "heatmap": {
+                    "distributed": self._distributed,
+                    "colorScale": {
+                        "ranges": [
+                            {"from": 0, "to": 0, "name": "", "color": "#DCDCDC"},
+                        ]
+                    },
+                },
+            },
+            "dataLabels": {"enabled": self._data_labels, "style": {"colors": ["#fff"]}},
+            # "colors": ["#008FFB"],
+            "colors": self._colors,
+            "title": {"text": self._title, "align": "left"},
+            "xaxis": {},
+        }
+        if self._xaxis_title is not None:
+            self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
+
+        super(HeatmapChart, self).__init__(
+            series=self._series,
+            options=self._options,
+            type="heatmap",
+            height=self._widget_height,
+        )
+
+    def _update_height(self):
+        self._widget_height = len(self._series) * 40 + 70
+        DataJson()[self.widget_id]["height"] = self._widget_height
+
+    def add_series_batch(self, series: dict):
+        # usage example
+        # lines = []
+        # for class_name, x, y in stats.get_series():
+        #     lines.append({"name": class_name, "x": x, "y": y})
+        for serie in series:
+            name = serie["name"]
+            x = serie["x"]
+            y = serie["y"]
+            super().add_series(name, x, y, send_changes=False)
+        self._update_height()
+        DataJson().send_changes()
+
+    def add_series(self, name: str, x: list, y: list, send_changes=True):
+        super().add_series(name, x, y, send_changes)
+        self._update_height()

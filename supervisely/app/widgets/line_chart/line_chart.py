@@ -76,8 +76,8 @@ class LineChart(Apexchart):
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
-            # if self._yaxis_title is not None:
-        self._options["yaxis"][0]["title"] = {"text": self._yaxis_title}
+        if self._yaxis_title is not None:
+            self._options["yaxis"][0]["title"] = {"text": self._yaxis_title}
 
         super(LineChart, self).__init__(
             series=self._series,
