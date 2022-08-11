@@ -54,7 +54,8 @@ class HeatmapChart(Apexchart):
                 "#2176FF",
                 "#33A1FD",
                 "#7A918D",
-                "#BAFF29",
+                # "#BAFF29",
+                "#bce95c",
             ]
 
         self._options = {
