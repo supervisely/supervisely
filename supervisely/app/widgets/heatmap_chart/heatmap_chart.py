@@ -8,6 +8,15 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+"""
+chart = sly.app.widgets.HeatmapChart(
+    title="Objects count distribution for every class",
+    xaxis_title="Number of objects on image",
+    color_range="row",
+    tooltip="There are {y} images with {x} objects of class {series_name}",
+)
+"""
+
 
 class HeatmapChart(Apexchart):
     def __init__(
