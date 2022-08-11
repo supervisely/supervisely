@@ -26,7 +26,7 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-
+from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
 
 
@@ -165,6 +165,10 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
 
 class Application(metaclass=Singleton):
     def __init__(self, name="", templates_dir: str = "templates"):
+        if is_production():
+            logger.info("Application is running on Supervisely Platform in production mode")
+        else:
+            logger.info("Application is running on localhost in development mode")
         self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
 
     def get_server(self):
