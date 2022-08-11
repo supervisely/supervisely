@@ -97,7 +97,7 @@ class Apexchart(Widget):
 
         return _click
 
-    def add_series(self, name: str, x: list, y: list):
+    def add_series(self, name: str, x: list, y: list, send_changes=True):
         if len(x) != len(y):
             raise ValueError(
                 f"Lists x and y have different lenght, {len(x)} != {len(y)}"
@@ -106,4 +106,5 @@ class Apexchart(Widget):
         series = {"name": name, "data": data}
         self._series.append(series)
         self.update_data()
-        DataJson().send_changes()
+        if send_changes:
+            DataJson().send_changes()
