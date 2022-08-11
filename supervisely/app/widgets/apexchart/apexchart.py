@@ -49,12 +49,14 @@ class Apexchart(Widget):
         options: dict,
         type: str,
         height: Union[int, str] = "300",
+        sly_options={},
     ):
         self._series = series
         self._options = options
         self._type = type
         self._height = height
         self._click_handled = False
+        self._sly_options = sly_options
         super().__init__(file_path=__file__)
 
     def get_json_data(self):
@@ -63,6 +65,7 @@ class Apexchart(Widget):
             "options": self._options,
             "type": self._type,
             "height": self._height,
+            "sly_options": self._sly_options,
         }
 
     def get_json_state(self):

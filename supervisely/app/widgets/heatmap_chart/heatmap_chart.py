@@ -17,6 +17,7 @@ class HeatmapChart(Apexchart):
         data_labels: bool = True,
         xaxis_title: str = None,
         color_range: Literal["table", "row"] = "row",
+        tooltip: str = None,
     ):
         self._title = title
         self._series = series
@@ -26,6 +27,7 @@ class HeatmapChart(Apexchart):
         self._color_range = color_range
         self._distributed = False
         self._colors = ["#008FFB"]
+        self._tooltip = tooltip
         if self._color_range == "row":
             self._distributed = True
             self._colors = [
@@ -67,11 +69,16 @@ class HeatmapChart(Apexchart):
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
 
+        sly_options = {}
+        if self._tooltip is not None:
+            sly_options["tooltip"] = self._tooltip
+
         super(HeatmapChart, self).__init__(
             series=self._series,
             options=self._options,
             type="heatmap",
             height=self._widget_height,
+            sly_options=sly_options,
         )
 
     def _update_height(self):
