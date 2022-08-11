@@ -115,6 +115,7 @@ def available_after_shutdown(app: FastAPI):
             template_response = f(*args, **kwargs)
             try:
                 if sly.utils.is_production():
+                    sly.logger.info(f"Start dumping app UI for offline mode")
                     threading.Thread(
                         target=functools.partial(
                             dump_files_to_supervisely, app, template_response
