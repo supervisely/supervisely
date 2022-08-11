@@ -60,7 +60,6 @@ class HeatmapChart(Apexchart):
                 },
             },
             "dataLabels": {"enabled": self._data_labels, "style": {"colors": ["#fff"]}},
-            # "colors": ["#008FFB"],
             "colors": self._colors,
             "title": {"text": self._title, "align": "left"},
             "xaxis": {},
