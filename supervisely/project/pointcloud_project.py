@@ -217,3 +217,4 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
                 api.pointcloud.add_related_images(rimg_infos)
             if log_progress:
                 ds_progress.iters_done_report(1)
+    return project.id, project_name
