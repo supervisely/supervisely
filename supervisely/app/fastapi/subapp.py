@@ -1,10 +1,8 @@
-import asyncio
 import os
 import signal
 import psutil
 import sys
 from pathlib import Path
-import concurrent.futures
 
 from fastapi import (
     FastAPI,
@@ -28,6 +26,8 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
+
+from async_asgi_testclient import TestClient
 
 
 def create() -> FastAPI:
@@ -86,29 +86,15 @@ def create() -> FastAPI:
     return app
 
 
-# async def goodbue():
-#     await asyncio.sleep(0.2)
-
-
 def shutdown():
-    # shutdown fastapi
     try:
         logger.info("Shutting down...")
-        # process_id = psutil.Process(os.getpid()).ppid()
-        current_process = psutil.Process(os.getpid())
-        # current_process = psutil.Process(process_id)
+        process_id = psutil.Process(os.getpid()).ppid()
+        # process_id = os.getpid()
+        current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
-
-
-def shutdown_parent():
-    # shutdown uvicorn after fastapi
-    try:
-        current_process = psutil.Process(os.getpid())
-        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
-    except KeyboardInterrupt:
-        pass
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
@@ -155,13 +141,13 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     app.mount("/sly", create())
     handle_server_errors(app)
 
-    # @app.middleware("http")
-    # async def get_state_from_request(request: Request, call_next):
-    #     from supervisely.app.content import StateJson
+    @app.middleware("http")
+    async def get_state_from_request(request: Request, call_next):
+        from supervisely.app.content import StateJson
 
-    #     await StateJson.from_request(request)
-    #     response = await call_next(request)
-    #     return response
+        await StateJson.from_request(request)
+        response = await call_next(request)
+        return response
 
     @app.get("/")
     @available_after_shutdown(app)
@@ -171,8 +157,8 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     @app.on_event("shutdown")
     def shutdown():
         client = TestClient(app)
-        responce = client.get("/")
-        # shutdown_parent()
+        resp = run_sync(client.get("/"))
+        assert resp.status_code == 200
 
     return app
 
@@ -180,7 +166,6 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
 class Application(metaclass=Singleton):
     def __init__(self, name="", templates_dir: str = "templates"):
         self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
-        self._run_executors()
 
     def get_server(self):
         return self._fastapi
@@ -189,64 +174,4 @@ class Application(metaclass=Singleton):
         await self._fastapi.__call__(scope, receive, send)
 
     def shutdown(self):
-        client = TestClient(self.get_server())
-        try:
-            responce = client.post("/sly/shutdown")
-        except KeyboardInterrupt:
-            pass
-
-    async def _shutdown(self, signal=None, error=None):
-        """Cleanup tasks tied to the service's shutdown."""
-        if signal:
-            self.logger.info(f"Received exit signal {signal.name}...")
-        self.logger.info("Nacking outstanding messages")
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-
-        [task.cancel() for task in tasks]
-
-        self.logger.info(f"Cancelling {len(tasks)} outstanding tasks")
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        self.logger.info("Shutting down ThreadPoolExecutor")
-        self.executor.shutdown(wait=False)
-
-        self.logger.info(
-            f"Releasing {len(self.executor._threads)} threads from executor"
-        )
-        for thread in self.executor._threads:
-            try:
-                thread._tstate_lock.release()
-            except Exception:
-                pass
-
-        self.logger.info(f"Flushing metrics")
-        self.loop.stop()
-
-        if error is not None:
-            self._error = error
-
-    def _run_executors(self):
-        self.executor = concurrent.futures.ThreadPoolExecutor()
-        self.loop = asyncio.get_event_loop()
-        # May want to catch other signals too
-        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT)
-        for s in signals:
-            self.loop.add_signal_handler(
-                s, lambda s=s: asyncio.create_task(self._shutdown(signal=s))
-            )
-        # comment out the line below to see how unhandled exceptions behave
-        self.loop.set_exception_handler(self.handle_exception)
-
-    def handle_exception(self, loop, context):
-        # context["message"] will always be there; but context["exception"] may not
-        msg = context.get("exception", context["message"])
-        if isinstance(msg, Exception):
-            # self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(msg), 'future_info': context["future"]})
-            self.logger.error(
-                msg, exc_info=True, extra={"future_info": context["future"]}
-            )
-        else:
-            self.logger.error("Caught exception: {}".format(msg))
-
-        self.logger.info("Shutting down...")
-        asyncio.create_task(self._shutdown())
+        shutdown()
