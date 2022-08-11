@@ -13,9 +13,11 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from supervisely.app.fastapi.utils import run_sync
 
 from supervisely.app.singleton import Singleton
 
@@ -24,6 +26,8 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
+
+from async_asgi_testclient import TestClient
 
 
 def create() -> FastAPI:
@@ -85,7 +89,9 @@ def create() -> FastAPI:
 def shutdown():
     try:
         logger.info("Shutting down...")
-        current_process = psutil.Process(os.getpid())
+        process_id = psutil.Process(os.getpid()).ppid()
+        # process_id = os.getpid()
+        current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
@@ -126,16 +132,14 @@ def handle_server_errors(app: FastAPI):
 
 
 def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+    from supervisely.app.fastapi import available_after_shutdown
+
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
     app.mount("/sly", create())
     handle_server_errors(app)
-    # only for debug
-    # app.mount(
-    #     "/static", StaticFiles(directory="static"), name="static"
-    # )  
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -146,8 +150,15 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return response
 
     @app.get("/")
-    async def read_index(request: Request):
+    @available_after_shutdown(app)
+    def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    @app.on_event("shutdown")
+    def shutdown():
+        client = TestClient(app)
+        resp = run_sync(client.get("/"))
+        assert resp.status_code == 200
 
     return app
 
@@ -161,3 +172,6 @@ class Application(metaclass=Singleton):
 
     async def __call__(self, scope, receive, send) -> None:
         await self._fastapi.__call__(scope, receive, send)
+
+    def shutdown(self):
+        shutdown()
