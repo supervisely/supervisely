@@ -163,7 +163,7 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
     project_fs.set_key_id_map(key_id_map)
 
 
-def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=False) -> None:
+def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=False) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:
         project_name = project_fs.name
@@ -217,4 +217,5 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
                 api.pointcloud.add_related_images(rimg_infos)
             if log_progress:
                 ds_progress.iters_done_report(1)
+                
     return project.id, project_name
