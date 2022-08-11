@@ -58,7 +58,20 @@ class HeatmapChart(Apexchart):
             ]
 
         self._options = {
-            "chart": {"type": "heatmap"},
+            "chart": {
+                "type": "heatmap",
+                "toolbar": {
+                    "tools": {
+                        "download": True,
+                        "selection": False,
+                        "zoom": False,
+                        "zoomin": False,
+                        "zoomout": False,
+                        "pan": False,
+                        "reset": False,
+                    },
+                },
+            },
             "legend": {"show": False},
             "plotOptions": {
                 "heatmap": {
@@ -81,6 +94,8 @@ class HeatmapChart(Apexchart):
         sly_options = {}
         if self._tooltip is not None:
             sly_options["tooltip"] = self._tooltip
+            # self._options["tooltip"] = {"followCursor": False}
+            self._options["tooltip"] = {"y": {}}
 
         super(HeatmapChart, self).__init__(
             series=self._series,
@@ -95,6 +110,8 @@ class HeatmapChart(Apexchart):
         DataJson()[self.widget_id]["height"] = self._widget_height
 
     def add_series_batch(self, series: dict):
+        import json
+
         # usage example
         # lines = []
         # for class_name, x, y in stats.get_series():
