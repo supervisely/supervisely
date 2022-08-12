@@ -83,7 +83,6 @@ class Apexchart(Widget):
         @server.post(route_path)
         def _click():
             value = self.get_clicked_value()
-            print(value)
             series_index = value["seriesIndex"]
             data_index = value["dataPointIndex"]
             if series_index == -1 and data_index != -1:
