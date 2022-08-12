@@ -166,7 +166,9 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
 class Application(metaclass=Singleton):
     def __init__(self, name="", templates_dir: str = "templates"):
         if is_production():
-            logger.info("Application is running on Supervisely Platform in production mode")
+            logger.info(
+                "Application is running on Supervisely Platform in production mode"
+            )
         else:
             logger.info("Application is running on localhost in development mode")
         self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
