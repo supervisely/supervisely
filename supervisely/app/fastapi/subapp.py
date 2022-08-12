@@ -145,10 +145,6 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
     async def get_state_from_request(request: Request, call_next):
         from supervisely.app.content import StateJson
 
-        # if request.url.path == "/sly/shutdown":
-        # logger.info("Shutdown is handled in HTTP middleware")
-        # return JSONResponse({"shutdown": ""})
-
         await StateJson.from_request(request)
         response = await call_next(request)
         return response
@@ -163,6 +159,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         client = TestClient(app)
         resp = run_sync(client.get("/"))
         assert resp.status_code == 200
+        logger.info("Application has been shut down successfully")
 
     return app
 
