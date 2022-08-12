@@ -1,9 +1,7 @@
 import copy
 
-import fastapi
 import numpy as np
 import pandas as pd
-from varname import varname
 from typing import NamedTuple, Any, List
 
 from supervisely.app import DataJson
