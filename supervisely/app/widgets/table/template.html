@@ -1,4 +1,5 @@
 <sly-table
+  v-loading="data.{{{widget.widget_id}}}.loading"
   v-if="data.{{{widget.widget_id}}}.table_data.data.length > 0"
   style="width: {{{widget._width}}}"
   :content="data.{{{widget.widget_id}}}.table_data"
