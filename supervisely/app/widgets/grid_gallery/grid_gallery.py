@@ -138,7 +138,10 @@ class GridGallery(Widget):
 
     def clean_up(self):
         self._data = []
+        self._layout = []
+        self._annotations = {}
         self._update()
+        self.update_data()
 
     def _update_layout(self):
         layout = [[] for _ in range(self.columns_number)]
