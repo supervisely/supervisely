@@ -89,8 +89,8 @@ def create() -> FastAPI:
 def shutdown():
     try:
         logger.info("Shutting down...")
-        process_id = psutil.Process(os.getpid()).ppid()
-        # process_id = os.getpid()
+        # process_id = psutil.Process(os.getpid()).ppid()
+        process_id = os.getpid()
         current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
