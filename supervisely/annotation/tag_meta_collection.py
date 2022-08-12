@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Iterator
 from supervisely.annotation.renamer import Renamer
 
 
@@ -266,6 +266,9 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         if len(without_id) > 0 and raise_if_no_id is True:
             raise ValueError("There are TagMetas without id")
         return res
+
+    def __iter__(self) -> Iterator[TagMeta]:
+        return next(self)
 
 
 def make_renamed_tag_metas(src_tag_metas: TagMetaCollection, renamer, skip_missing=False) -> TagMetaCollection:

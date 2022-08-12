@@ -3,7 +3,7 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Iterator
 from supervisely import logger
 from supervisely.annotation.renamer import Renamer
 
@@ -285,8 +285,12 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
                 class_colors_notify += warn_str + '\n\n'
         return class_colors_notify
 
+    def __iter__(self) -> Iterator[ObjClass]:
+        return next(self)
 
-def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer: Renamer, skip_missing: Optional[bool]=False) -> ObjClassCollection:
+
+def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer: Renamer,
+                         skip_missing: Optional[bool] = False) -> ObjClassCollection:
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)
