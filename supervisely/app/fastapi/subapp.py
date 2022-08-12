@@ -176,6 +176,7 @@ class Application(metaclass=Singleton):
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()
+        logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
             app=None, templates_dir=templates_dir, process_id=self._process_id
         )
