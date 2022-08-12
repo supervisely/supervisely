@@ -30,7 +30,7 @@ from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
 
 
-def create() -> FastAPI:
+def create(process_id=None) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     app = FastAPI()
@@ -69,7 +69,7 @@ def create() -> FastAPI:
 
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
-        shutdown()
+        shutdown(process_id)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -86,11 +86,12 @@ def create() -> FastAPI:
     return app
 
 
-def shutdown():
+def shutdown(process_id=None):
     try:
-        logger.info("Shutting down...")
-        process_id = psutil.Process(os.getpid()).ppid()
-        # process_id = os.getpid()
+        logger.info(f"Shutting down [pid argument = {process_id}]...")
+        if process_id is None:
+            # process_id = psutil.Process(os.getpid()).ppid()
+            process_id = os.getpid()
         current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
@@ -131,14 +132,16 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+def _init(
+    app: FastAPI = None, templates_dir: str = "templates", process_id=None
+) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
 
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
-    app.mount("/sly", create())
+    app.mount("/sly", create(process_id))
     handle_server_errors(app)
 
     @app.middleware("http")
@@ -159,6 +162,7 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         client = TestClient(app)
         resp = run_sync(client.get("/"))
         assert resp.status_code == 200
+        logger.info("Application has been shut down successfully")
 
     return app
 
@@ -171,7 +175,12 @@ class Application(metaclass=Singleton):
             )
         else:
             logger.info("Application is running on localhost in development mode")
-        self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
+        self._process_id = os.getpid()
+        logger.info(f"Application PID is {self._process_id}")
+        print("--> ", f"Application PID is {self._process_id}")
+        self._fastapi: FastAPI = _init(
+            app=None, templates_dir=templates_dir, process_id=self._process_id
+        )
 
     def get_server(self):
         return self._fastapi
@@ -180,4 +189,4 @@ class Application(metaclass=Singleton):
         await self._fastapi.__call__(scope, receive, send)
 
     def shutdown(self):
-        shutdown()
+        shutdown(self._process_id)
