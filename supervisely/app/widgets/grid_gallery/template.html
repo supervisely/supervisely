@@ -1,6 +1,7 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/grid_gallery/style.css" />
-
-<div v-if="data.{{{widget.widget_id}}}.content.layout.length > 0">
+<div
+  v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length > 0"
+>
   <div
     v-if="data.{{{widget.widget_id}}}.widget_routes && data.{{{widget.widget_id}}}.widget_routes.image_clicked_cb"
   >
