@@ -133,6 +133,7 @@ class Table(Widget):
         self._page_sizes = page_sizes
         self._fix_columns = fixed_cols
         self._width = width
+        self._loading = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -144,6 +145,7 @@ class Table(Widget):
                 "pageSizes": self._page_sizes,
                 "fixColumns": self._fix_columns,
             },
+            "loading": self._loading,
         }
 
     def get_json_state(self):
@@ -267,3 +269,13 @@ class Table(Widget):
     @staticmethod
     def get_html_text_as_button(title="preview"):
         return f"<button>{title}</button>"
+
+    @property
+    def loading(self):
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()
