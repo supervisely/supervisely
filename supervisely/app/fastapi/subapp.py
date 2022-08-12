@@ -13,9 +13,11 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from supervisely.app.fastapi.utils import run_sync
 
 from supervisely.app.singleton import Singleton
 
@@ -24,9 +26,11 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
+from supervisely._utils import is_production, is_development
+from async_asgi_testclient import TestClient
 
 
-def create() -> FastAPI:
+def create(process_id=None) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     app = FastAPI()
@@ -65,7 +69,7 @@ def create() -> FastAPI:
 
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
-        shutdown()
+        shutdown(process_id)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -82,10 +86,13 @@ def create() -> FastAPI:
     return app
 
 
-def shutdown():
+def shutdown(process_id=None):
     try:
-        logger.info("Shutting down...")
-        current_process = psutil.Process(os.getpid())
+        logger.info(f"Shutting down [pid argument = {process_id}]...")
+        if process_id is None:
+            # process_id = psutil.Process(os.getpid()).ppid()
+            process_id = os.getpid()
+        current_process = psutil.Process(process_id)
         current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
@@ -97,7 +104,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
-        print("In debug mode ...")
+        logger.debug("In debug mode ...")
         import arel
 
         hot_reload = arel.HotReload(paths=[arel.Path(".")])
@@ -107,7 +114,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         templates.env.globals["DEBUG"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
     else:
-        print("In runtime mode ...")
+        logger.debug("In runtime mode ...")
 
 
 def handle_server_errors(app: FastAPI):
@@ -125,17 +132,17 @@ def handle_server_errors(app: FastAPI):
         )
 
 
-def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
+def _init(
+    app: FastAPI = None, templates_dir: str = "templates", process_id=None
+) -> FastAPI:
+    from supervisely.app.fastapi import available_after_shutdown
+
     if app is None:
         app = FastAPI()
     Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
     enable_hot_reload_on_debug(app)
-    app.mount("/sly", create())
+    app.mount("/sly", create(process_id))
     handle_server_errors(app)
-    # only for debug
-    # app.mount(
-    #     "/static", StaticFiles(directory="static"), name="static"
-    # )  
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -146,18 +153,40 @@ def _init(app: FastAPI = None, templates_dir: str = "templates") -> FastAPI:
         return response
 
     @app.get("/")
-    async def read_index(request: Request):
+    @available_after_shutdown(app)
+    def read_index(request: Request):
         return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+
+    @app.on_event("shutdown")
+    def shutdown():
+        client = TestClient(app)
+        resp = run_sync(client.get("/"))
+        assert resp.status_code == 200
+        logger.info("Application has been shut down successfully")
 
     return app
 
 
 class Application(metaclass=Singleton):
     def __init__(self, name="", templates_dir: str = "templates"):
-        self._fastapi: FastAPI = _init(app=None, templates_dir=templates_dir)
+        if is_production():
+            logger.info(
+                "Application is running on Supervisely Platform in production mode"
+            )
+        else:
+            logger.info("Application is running on localhost in development mode")
+        self._process_id = os.getpid()
+        logger.info(f"Application PID is {self._process_id}")
+        print("--> ", f"Application PID is {self._process_id}")
+        self._fastapi: FastAPI = _init(
+            app=None, templates_dir=templates_dir, process_id=self._process_id
+        )
 
     def get_server(self):
         return self._fastapi
 
     async def __call__(self, scope, receive, send) -> None:
         await self._fastapi.__call__(scope, receive, send)
+
+    def shutdown(self):
+        shutdown(self._process_id)

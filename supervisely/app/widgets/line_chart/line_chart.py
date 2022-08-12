@@ -76,8 +76,8 @@ class LineChart(Apexchart):
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
-            # if self._yaxis_title is not None:
-        self._options["yaxis"][0]["title"] = {"text": self._yaxis_title}
+        if self._yaxis_title is not None:
+            self._options["yaxis"][0]["title"] = {"text": self._yaxis_title}
 
         super(LineChart, self).__init__(
             series=self._series,
@@ -87,7 +87,7 @@ class LineChart(Apexchart):
         )
         self.update_y_range(self._ymin, self._ymax)
 
-    def update_y_range(self, ymin: int, ymax: int):
+    def update_y_range(self, ymin: int, ymax: int, send_changes=True):
         self._ymin = min(self._ymin, ymin)
         self._ymax = max(self._ymax, ymax)
         if self._yaxis_autorescale is False:
@@ -95,9 +95,23 @@ class LineChart(Apexchart):
             self._options["yaxis"][0]["max"] = self._ymax
 
             self.update_data()
-            DataJson().send_changes()
+            if send_changes is True:
+                DataJson().send_changes()
 
     def add_series(self, name: str, x: list, y: list):
         # print(self._options["yaxis"]["min"], self._options["yaxis"]["max"])
         super().add_series(name, x, y)
         self.update_y_range(min(y), max(y))
+
+    def add_series_batch(self, series: dict):
+        # usage example
+        # lines = []
+        # for class_name, x, y in stats.get_series():
+        #     lines.append({"name": class_name, "x": x, "y": y})
+        for serie in series:
+            name = serie["name"]
+            x = serie["x"]
+            y = serie["y"]
+            super().add_series(name, x, y, send_changes=False)
+            self.update_y_range(min(y), max(y), send_changes=False)
+        DataJson().send_changes()
