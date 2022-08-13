@@ -121,10 +121,10 @@ class HeatmapChart(Apexchart):
             name = serie["name"]
             x = serie["x"]
             y = serie["y"]
-            super().add_series(name, x, y, send_changes=False)
-        self._update_height()
+            self.add_series(name, x, y, send_changes=False)
         DataJson().send_changes()
 
     def add_series(self, name: str, x: list, y: list, send_changes=True):
-        super().add_series(name, x, y, send_changes)
+        x_str = [str(num) for num in x]
+        super().add_series(name, x_str, y, send_changes)
         self._update_height()
