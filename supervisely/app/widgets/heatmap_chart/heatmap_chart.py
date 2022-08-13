@@ -22,14 +22,14 @@ class HeatmapChart(Apexchart):
     def __init__(
         self,
         title: str,
-        series: list = [],
         data_labels: bool = True,
         xaxis_title: str = None,
         color_range: Literal["table", "row"] = "row",
         tooltip: str = None,
     ):
         self._title = title
-        self._series = series
+        self._series = []
+        self._original_series_x = {}
         self._data_labels = data_labels
         self._xaxis_title = xaxis_title
         self._widget_height = 350
@@ -124,5 +124,11 @@ class HeatmapChart(Apexchart):
 
     def add_series(self, name: str, x: list, y: list, send_changes=True):
         x_str = [str(num) for num in x]
+        self._original_series_x[name] = x.copy()
         super().add_series(name, x_str, y, send_changes)
         self._update_height()
+
+    def get_clicked_datapoint(self):
+        res = super().get_clicked_datapoint()
+        res = res._replace(x=self._original_series_x[res.series_name][res.data_index])
+        return res
