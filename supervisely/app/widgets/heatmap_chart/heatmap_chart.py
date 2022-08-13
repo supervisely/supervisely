@@ -111,8 +111,6 @@ class HeatmapChart(Apexchart):
         DataJson()[self.widget_id]["height"] = self._widget_height
 
     def add_series_batch(self, series: dict):
-        import json
-
         # usage example
         # lines = []
         # for class_name, x, y in stats.get_series():
