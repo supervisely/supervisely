@@ -74,6 +74,22 @@ class Apexchart(Widget):
     def get_clicked_value(self):
         return StateJson()[self.widget_id]["clicked_value"]
 
+    def get_clicked_datapoint(self) -> Apexchart.ClickedDataPoint:
+        value = self.get_clicked_value()
+        series_index = value["seriesIndex"]
+        data_index = value["dataPointIndex"]
+        if series_index == -1 and data_index != -1:
+            # zero point (0,0) click
+            series_index = 0
+        if series_index == -1 or data_index == -1:
+            return
+        series_name = self._series[series_index]["name"]
+        data = self._series[series_index]["data"][data_index]
+        res = Apexchart.ClickedDataPoint(
+            series_index, series_name, data_index, data, data["x"], data["y"]
+        )
+        return res
+
     def click(self, func):
         route_path = self.get_route_path(Apexchart.Routes.CLICK)
         server = self._sly_app.get_server()
@@ -82,19 +98,7 @@ class Apexchart(Widget):
 
         @server.post(route_path)
         def _click():
-            value = self.get_clicked_value()
-            series_index = value["seriesIndex"]
-            data_index = value["dataPointIndex"]
-            if series_index == -1 and data_index != -1:
-                # zero point (0,0) click
-                series_index = 0
-            if series_index == -1 or data_index == -1:
-                return
-            series_name = self._series[series_index]["name"]
-            data = self._series[series_index]["data"][data_index]
-            res = Apexchart.ClickedDataPoint(
-                series_index, series_name, data_index, data, data["x"], data["y"]
-            )
+            res = self.get_clicked_datapoint()
             func(res)
 
         return _click
