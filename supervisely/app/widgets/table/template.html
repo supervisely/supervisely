@@ -8,6 +8,7 @@
   if
   widget._click_handled
   %}
+  :value="state.{{{widget.widget_id}}}.selected_row"
   @input="state.{{{widget.widget_id}}}.selected_row = $event; 
           post('/{{{widget.widget_id}}}/cell_clicked_cb')"
   {%

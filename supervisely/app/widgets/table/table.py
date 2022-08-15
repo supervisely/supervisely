@@ -206,11 +206,14 @@ class Table(Widget):
     def read_json(self, value: dict):
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
+        self.clear_selection()
 
     def read_pandas(self, value: pd.DataFrame):
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
+        self.clear_selection()
 
     def insert_row(self, data, index=-1):
         PackerUnpacker.validate_sizes(
@@ -279,3 +282,7 @@ class Table(Widget):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
+
+    def clear_selection(self):
+        self.update_state()
+        StateJson().send_changes()
