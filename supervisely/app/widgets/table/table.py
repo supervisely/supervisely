@@ -7,6 +7,7 @@ from typing import NamedTuple, Any, List
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
+from supervisely.sly_logger import logger
 
 
 class PackerUnpacker:
@@ -239,13 +240,23 @@ class Table(Widget):
             return popped_row
 
     def get_selected_cell(self, state):
+        logger.debug(
+            "Selected row",
+            extra={"selected_row": state[self.widget_id]["selected_row"]},
+        )
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")
-        if row_index is None:
-            # click table header
-            return None
         column_name = state[self.widget_id]["selected_row"].get("selectedColumnName")
         column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
-        row = state[self.widget_id]["selected_row"].get("selectedRowData", {})
+        row = state[self.widget_id]["selected_row"].get("selectedRowData")
+
+        if (
+            row_index is None
+            or column_name is None
+            or column_index is None
+            or row is None
+        ):
+            # click table header or clear selection
+            return None
 
         return {
             "column_index": column_index,
