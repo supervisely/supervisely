@@ -41,9 +41,11 @@ class Widget:
     def get_json_state(self):
         raise NotImplementedError()
 
-    def update_state(self, state):
+    def update_state(self, state=None):
         serialized_state = self.get_json_state()
         if serialized_state is not None:
+            if state is None:
+                state = StateJson()
             state.setdefault(self.widget_id, {}).update(serialized_state)
 
     def update_data(self):
