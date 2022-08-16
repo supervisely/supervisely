@@ -2,6 +2,7 @@
 <html>
   <head>
     <link
+      type="text/css"
       rel="stylesheet"
       href="https://supervise.ly/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
     />
@@ -14,10 +15,19 @@
       type="module"
       src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
     ></script>
+    <script>
+      window.parent.postMessage('{ "showHeader": false }', "*");
+    </script>
 
     <div id="sly-app">
       <sly-app>
-        <template v-slot="{ post, state, data }">
+        <template v-slot="{ post, state, data, session }">
+          <sly-app-header
+            v-if="session"
+            :session-id="session.id"
+            :data="data"
+            :state="state"
+          ></sly-app-header>
           {% include 'main.html' %}
         </template>
       </sly-app>
