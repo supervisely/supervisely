@@ -167,6 +167,7 @@ from supervisely.io import docker_utils
 import supervisely.app as app
 from supervisely.app.fastapi import Application
 from supervisely.app.v1.app_service import AppService
+import supervisely.nn as nn
 
 from supervisely.decorators.profile import timeit
 from supervisely.decorators.profile import update_fields
