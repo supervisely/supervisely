@@ -112,6 +112,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             global_state = cls()
             global_state.clear()
             global_state.update(copy.deepcopy(d))
+            global_state._last = copy.deepcopy(d)
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
