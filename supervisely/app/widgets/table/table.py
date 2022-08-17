@@ -240,10 +240,10 @@ class Table(Widget):
             return popped_row
 
     def get_selected_cell(self, state):
-        logger.debug(
-            "Selected row",
-            extra={"selected_row": state[self.widget_id]["selected_row"]},
-        )
+        # logger.debug(
+        #     "Selected row",
+        #     extra={"selected_row": state[self.widget_id]["selected_row"]},
+        # )
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")
         column_name = state[self.widget_id]["selected_row"].get("selectedColumnName")
         column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
@@ -295,5 +295,5 @@ class Table(Widget):
         DataJson().send_changes()
 
     def clear_selection(self):
-        self.update_state()
+        StateJson()[self.widget_id]["selected_row"] = {}
         StateJson().send_changes()
