@@ -1,1 +1,1 @@
-from supervisely.nn.serve.serve import Serve
+from supervisely.nn.inference.inference import Inference
