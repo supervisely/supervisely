@@ -7,8 +7,8 @@ from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 
-js_bundle_version = "2.1.8"
-js_frontend_version = "0.0.21"
+js_bundle_version = "2.1.9"
+js_frontend_version = "0.0.22"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
