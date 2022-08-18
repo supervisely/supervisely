@@ -1,18 +1,27 @@
 import os
 from re import L
 from typing import List
-from supervisely._utils import is_production, is_development
+from supervisely._utils import is_production, is_development, rand_str
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.annotation.tag import Tag
+
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.nn.prediction_dto import PredictionMask
-from supervisely.sly_logger import logger
 import supervisely.imaging.image as sly_image
+import supervisely.io.fs as fs
+from supervisely.sly_logger import logger
+
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.app.fastapi.subapp import Application
+from supervisely.api.api import Api
+
+from pydantic import BaseModel
+
+
+class ServeRequestBody(BaseModel):
+    state: dict = {}
+    context: dict = {}
 
 
 class Inference:
@@ -20,6 +29,8 @@ class Inference:
         self._model_dir = model_dir
         self._model_meta = None
         self._confidence = "confidence"
+        self._app: Application = None
+        self._api: Api = None
         if is_production():
             raise NotImplementedError("TBD - download directory")
         elif is_development():
@@ -42,11 +53,20 @@ class Inference:
         return self._model_dir
 
     @property
+    def api(self) -> Api:
+        if self._api is None:
+            self._api = Api()
+        return self._api
+
+    def _get_obj_class_shape(self):
+        raise NotImplementedError("Have to be implemented in child class")
+
+    @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
             classes = []
             for name in self.get_classes():
-                classes.append(ObjClass(name, Bitmap))
+                classes.append(ObjClass(name, self._get_obj_class_shape()))
             self._model_meta = ProjectMeta(classes)
             self.get_confidence_tag_meta()  # @TODO: optimize, create if needed
         return self._model_meta
@@ -57,9 +77,6 @@ class Inference:
             tag_meta = TagMeta(self._confidence, TagValueType.ANY_NUMBER)
             self._model_meta = self._model_meta.add_tag_meta(tag_meta)
         return tag_meta
-
-    def get_inference_settings(self):
-        return {}
 
     def _create_label(self, dto) -> Label:
         raise NotImplementedError("Have to be implemented in child class")
@@ -87,37 +104,60 @@ class Inference:
         ann = ann.add_labels(labels)
         return ann
 
+    def _get_custom_inference_settings() -> str:  # in yaml format
+        return ""
+    
+    deg _get_custom_inference_settings_dict() -> dict:
+        yaml.safe_load(
 
-class InstanceSegmentation(Inference):
-    def get_info(self) -> dict:
-        info = super().get_info()
-        info["task type"] = "instance segmentation"
-        return info
+    def inference_image_id(self, id: int) -> Annotation:
+        image_info = self.api.image.get_info_by_id(id)
+        image_path = os.path.join(__file__, rand_str(10), image_info.name)
+        self.apiapi.image.download_path(id, image_path)
+        ann = self.predict(image_path=image_path)
+        fs.silent_remove(image_path.as_posix())
+        return ann
 
-    def _create_label(self, dto: PredictionMask):
-        obj_class = self.model_meta.get_obj_class(dto.class_name)
-        if obj_class is None:
-            raise KeyError(
-                f"Class {dto.class_name} not found in model classes {self.get_classes()}"
-            )
-        if not dto.mask.any():  # skip empty masks
-            logger.debug(
-                f"Mask of class {dto.class_name} is empty and will be sklipped"
-            )
-            return None
-        geometry = Bitmap(dto.mask)
-        tags = []
-        if dto.score is not None:
-            tags.append(Tag(self.get_confidence_tag_meta(), dto.score))
-        label = Label(geometry, obj_class, tags)
-        return label
+    def validate_inference_settings(state: dict):
+        settings = state.get("settings", {})
 
-    def predict(self, image_path: str) -> list[PredictionMask]:
-        raise NotImplementedError("Have to be implemented in child class")
+        for key, value in self._get_custom_inference_settings().items():
+            if key not in settings:
+                app_logger.warn(
+                    "Field {!r} not found in inference settings. Use default value {!r}".format(
+                        key, value
+                    )
+                )
 
-    def visualize(
-        self, predictions: list[PredictionMask], image_path: str, vis_path: str
-    ):
-        image = sly_image.read(image_path)
-        ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, thickness=2, output_path=vis_path)
+    def serve(self):
+        self._app = Application()
+        server = self._app.get_server()
+
+        @server.post("/get_session_info")
+        def get_session_info():
+            return self.get_info()
+
+        @server.post("/get_custom_inference_settings")
+        def get_custom_inference_settings():
+            return {"settings": self._get_custom_inference_settings()}
+
+        @server.post("/get_output_classes_and_tags")
+        def get_output_classes_and_tags():
+            return self.model_meta.to_json()
+
+        @server.post("/inference_image_id")
+        def inference_image_id(request_body: ServeRequestBody):
+            state = request_body.state
+            logger.debug("Input data", extra={"state": state})
+            image_id = state["image_id"]
+
+            logger.debug("Input data", extra={"state": state})
+            image_id = state["image_id"]
+            ann = self.inference_image_id(image_id)
+            return ann.to_json()
+
+        # @self._app.get_server().post("/get_session_info")
+        # def get_session_info():
+        #     return self.get_info()
+
+        pass

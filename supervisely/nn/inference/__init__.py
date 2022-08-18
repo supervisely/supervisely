@@ -1,1 +1,2 @@
-from supervisely.nn.inference.inference import Inference, InstanceSegmentation
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.inference.instance_segmentation import InstanceSegmentation
