@@ -1,6 +1,7 @@
 import os
 from re import L
 from typing import List
+import yaml
 from supervisely._utils import is_production, is_development, rand_str
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
@@ -68,10 +69,10 @@ class Inference:
             for name in self.get_classes():
                 classes.append(ObjClass(name, self._get_obj_class_shape()))
             self._model_meta = ProjectMeta(classes)
-            self.get_confidence_tag_meta()  # @TODO: optimize, create if needed
+            self._get_confidence_tag_meta()  # @TODO: optimize, create if needed
         return self._model_meta
 
-    def get_confidence_tag_meta(self):
+    def _get_confidence_tag_meta(self):
         tag_meta = self.model_meta.get_tag_meta(self._confidence)
         if tag_meta is None:
             tag_meta = TagMeta(self._confidence, TagValueType.ANY_NUMBER)
@@ -106,9 +107,9 @@ class Inference:
 
     def _get_custom_inference_settings() -> str:  # in yaml format
         return ""
-    
-    deg _get_custom_inference_settings_dict() -> dict:
-        yaml.safe_load(
+
+    def _get_custom_inference_settings_dict(self) -> dict:
+        return yaml.safe_load(self._get_custom_inference_settings())
 
     def inference_image_id(self, id: int) -> Annotation:
         image_info = self.api.image.get_info_by_id(id)
@@ -118,12 +119,12 @@ class Inference:
         fs.silent_remove(image_path.as_posix())
         return ann
 
-    def validate_inference_settings(state: dict):
+    def validate_inference_settings(self, state: dict):
         settings = state.get("settings", {})
 
-        for key, value in self._get_custom_inference_settings().items():
+        for key, value in self._get_custom_inference_settings_dict().items():
             if key not in settings:
-                app_logger.warn(
+                logger.warn(
                     "Field {!r} not found in inference settings. Use default value {!r}".format(
                         key, value
                     )
