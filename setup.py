@@ -70,7 +70,7 @@ setup(
         "tqdm>=4.62.3, <5.0.0",
         "pandas>=1.1.3, <1.4.0", # For compatibility with Python3.7
         "async_asgi_testclient",
-        "yaml",
+        "PyYAML",
     ],
     extras_require={
         "extras": [
