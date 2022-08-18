@@ -1,1 +1,2 @@
-from supervisely.nn.inference.inference import Inference
+import supervisely.nn.inference.inference as inference
+from supervisely.nn.prediction_dto import PredictionMask

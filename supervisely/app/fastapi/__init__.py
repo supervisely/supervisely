@@ -3,6 +3,7 @@ from supervisely.app.fastapi.subapp import (
     shutdown,
     enable_hot_reload_on_debug,
     Application,
+    get_name_from_env,
 )
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager

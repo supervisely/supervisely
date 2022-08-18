@@ -168,7 +168,7 @@ def _init(
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, name="", templates_dir: str = "templates"):
+    def __init__(self, templates_dir: str = "templates"):
         if is_production():
             logger.info(
                 "Application is running on Supervisely Platform in production mode"
@@ -189,3 +189,7 @@ class Application(metaclass=Singleton):
 
     def shutdown(self):
         shutdown(self._process_id)
+
+
+def get_name_from_env(default="Supervisely App"):
+    return os.environ.get("APP_NAME", default)
