@@ -131,6 +131,11 @@ class Inference:
                 )
 
     def serve(self):
+        # if is_production():
+        #     print("prod")
+        # else:
+        #     print("localhostd")
+
         self._app = Application()
         server = self._app.get_server()
 
