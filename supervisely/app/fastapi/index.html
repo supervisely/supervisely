@@ -56,7 +56,7 @@
         <template v-slot="{ post, state, data, session }">
           <sly-app-header
             v-if="session"
-            :session-id="session.id"
+            :session="session"
             :data="data"
             :state="state"
           ></sly-app-header>
