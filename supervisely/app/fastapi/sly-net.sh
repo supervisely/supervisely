@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: check that wireguard-tools is installed
+
 # ./sly-net.sh up XXX https://app.supervise.ly .
 # ./sly-net.sh <up|down> <token> <server_address> <config and keys folder>
 

@@ -168,6 +168,8 @@ def _init(
 
 
 class Application(metaclass=Singleton):
+    VPN_CONFIGURATION_DIR = "~/supervisely-network"
+
     def __init__(self, templates_dir: str = "templates"):
         if is_production():
             logger.info(
@@ -190,49 +192,37 @@ class Application(metaclass=Singleton):
     def shutdown(self):
         shutdown(self._process_id)
 
-    def connect_to_sly_net():
-        # brew install wireguard-tools
+    def connect_to_supervisely_vpn_network(self):
         import shlex
-
         import subprocess
-        from subprocess import PIPE
         import pathlib
 
+        api = Api()
         current_dir = pathlib.Path(__file__).parent.absolute()
-        sh_path = os.path.join(current_dir, "sly-net.sh")
-        client_token = "max-macbook"
-        server_address = os.environ["SERVER_ADDRESS"]
-
-        # "./sly-net.sh <up|down> <token> <server_address> <config and keys folder>"
-        # ./src/sly-net.sh down "max-macbook" https://dev.supervise.ly .
-        # ./src/sly-net.sh up "max-macbook" https://dev.supervise.ly .
-
-        # session = subprocess.Popen(
-        #     shlex.split(f"{sh_path} up {client_token} {server_address} ."),
-        #     stdout=PIPE,
-        #     stderr=PIPE,
-        # )
-        # stdout, stderr = session.communicate()
-        # # if len(stderr) != 0:
-        # # raise RuntimeError(stderr.decode("utf-8"))
-        # output = stdout.decode("utf-8")
-        # print(output)
-
-        import shlex
-        import subprocess
+        script_path = os.path.join(current_dir, "sly-net.sh")
+        network_dir = os.path.expanduser(Application.VPN_CONFIGURATION_DIR)
+        mkdir(network_dir)
 
         process = subprocess.run(
-            shlex.split(f"./src/sly-net.sh up max-macbook https://dev.supervise.ly ."),
+            shlex.split(
+                f"{script_path} up {api.token} {api.server_address} {network_dir}"
+            ),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
         try:
             process.check_returncode()
+            logger.info(
+                "You have been successfully connected to Supervisely VPN Network"
+            )
         except subprocess.CalledProcessError as e:
-            print(repr(e))
-
-    x = 10
+            e.cmd[2] = "***-api-token-***"
+            if "wg0' already exists" in e.stderr:
+                logger.info("You already connected to Supervisely VPN Network")
+                pass
+            else:
+                raise e
 
 
 def get_name_from_env(default="Supervisely App"):
