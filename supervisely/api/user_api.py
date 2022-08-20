@@ -10,13 +10,13 @@ from collections import namedtuple
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
 
 class UserInfo(NamedTuple):
-    """
-    """
+    """ """
 
     id: int
     login: str
@@ -55,7 +55,8 @@ class UserApi(ModuleApiBase):
 
         users = api.user.get_list() # api usage example
     """
-    Membership = namedtuple("Membership", ['id', 'name', 'role_id', 'role'])
+
+    Membership = namedtuple("Membership", ["id", "name", "role_id", "role"])
 
     @staticmethod
     def info_sequence():
@@ -89,7 +90,7 @@ class UserApi(ModuleApiBase):
             ApiField.DISABLED,
             ApiField.LAST_LOGIN,
             ApiField.CREATED_AT,
-            ApiField.UPDATED_AT
+            ApiField.UPDATED_AT,
         ]
 
     @staticmethod
@@ -97,7 +98,7 @@ class UserApi(ModuleApiBase):
         """
         NamedTuple name - **UserInfo**.
         """
-        return 'UserInfo'
+        return "UserInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super(UserApi, self)._convert_json_info(info, skip_missing=skip_missing)
@@ -137,7 +138,7 @@ class UserApi(ModuleApiBase):
             #     "2021-03-24T15:13:01.148Z"
             # ]
         """
-        return self._get_info_by_id(id, 'users.info')
+        return self._get_info_by_id(id, "users.info")
 
     def get_info_by_login(self, login: str) -> UserInfo:
         """
@@ -214,8 +215,11 @@ class UserApi(ModuleApiBase):
             # ]
         """
         filters = [{"field": ApiField.LOGIN, "operator": "=", "value": login}]
-        team_members = self.get_list_all_pages('members.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
-                                               convert_json_info_cb=self._api.user._convert_json_info)
+        team_members = self.get_list_all_pages(
+            "members.list",
+            {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
+            convert_json_info_cb=self._api.user._convert_json_info,
+        )
         return _get_single_item(team_members)
 
     def get_member_info_by_id(self, team_id: int, user_id: int) -> UserInfo:
@@ -255,8 +259,11 @@ class UserApi(ModuleApiBase):
             # ]
         """
         filters = [{"field": ApiField.ID, "operator": "=", "value": user_id}]
-        team_members = self.get_list_all_pages('members.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
-                                               convert_json_info_cb=self._api.user._convert_json_info)
+        team_members = self.get_list_all_pages(
+            "members.list",
+            {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters},
+            convert_json_info_cb=self._api.user._convert_json_info,
+        )
         return _get_single_item(team_members)
 
     def get_list(self, filters: List[Dict[str, str]] = None) -> List[UserInfo]:
@@ -294,10 +301,16 @@ class UserApi(ModuleApiBase):
             #     "2021-03-24T15:13:01.148Z"
             # ]
         """
-        return self.get_list_all_pages('users.list', {ApiField.FILTER: filters or []})
+        return self.get_list_all_pages("users.list", {ApiField.FILTER: filters or []})
 
-    def create(self, login: str, password: str, is_restricted: Optional[bool] = False, name: Optional[str] = "",
-               email: Optional[str] = "") -> UserInfo:
+    def create(
+        self,
+        login: str,
+        password: str,
+        is_restricted: Optional[bool] = False,
+        name: Optional[str] = "",
+        email: Optional[str] = "",
+    ) -> UserInfo:
         """
         Creates new User with given login and password.
 
@@ -339,12 +352,16 @@ class UserApi(ModuleApiBase):
             #     "2021-03-24T16:20:03.110Z"
             # ]
         """
-        response = self._api.post('users.add', {ApiField.LOGIN: login,
-                                                ApiField.PASSWORD: password,
-                                                ApiField.IS_RESTRICTED: is_restricted,
-                                                ApiField.NAME: name,
-                                                ApiField.EMAIL: email,
-                                                })
+        response = self._api.post(
+            "users.add",
+            {
+                ApiField.LOGIN: login,
+                ApiField.PASSWORD: password,
+                ApiField.IS_RESTRICTED: is_restricted,
+                ApiField.NAME: name,
+                ApiField.EMAIL: email,
+            },
+        )
         return self.get_info_by_id(response.json()[ApiField.USER_ID])
 
     def _set_disabled(self, id, disable):
@@ -353,7 +370,7 @@ class UserApi(ModuleApiBase):
         :param id: int
         :param disable: bool
         """
-        self._api.post('users.disable', {ApiField.ID: id, ApiField.DISABLE: disable})
+        self._api.post("users.disable", {ApiField.ID: id, ApiField.DISABLE: disable})
 
     def disable(self, id: int) -> None:
         """
@@ -439,14 +456,16 @@ class UserApi(ModuleApiBase):
             #     ]
             # ]
         """
-        response = self._api.post('users.info', {ApiField.ID: id})
+        response = self._api.post("users.info", {ApiField.ID: id})
         teams_json = response.json()[ApiField.TEAMS]
         teams = []
         for team in teams_json:
-            member = self.Membership(id=team[ApiField.ID],
-                                     name=team[ApiField.NAME],
-                                     role_id=team[ApiField.ROLE_ID],
-                                     role=team[ApiField.ROLE])
+            member = self.Membership(
+                id=team[ApiField.ID],
+                name=team[ApiField.NAME],
+                role_id=team[ApiField.ROLE_ID],
+                role=team[ApiField.ROLE],
+            )
             teams.append(member)
         return teams
 
@@ -478,9 +497,14 @@ class UserApi(ModuleApiBase):
             api.user.add_to_team(user_id, team_id, role_id)
         """
         user = self.get_info_by_id(user_id)
-        response = self._api.post('members.add', {ApiField.LOGIN: user.login,
-                                                  ApiField.TEAM_ID: team_id,
-                                                  ApiField.ROLE_ID: role_id})
+        response = self._api.post(
+            "members.add",
+            {
+                ApiField.LOGIN: user.login,
+                ApiField.TEAM_ID: team_id,
+                ApiField.ROLE_ID: role_id,
+            },
+        )
 
     def remove_from_team(self, user_id: int, team_id: int) -> None:
         """
@@ -506,10 +530,13 @@ class UserApi(ModuleApiBase):
             team_id = 76
             api.user.remove_from_team(user_id, team_id)
         """
-        response = self._api.post('members.remove', {ApiField.ID: user_id,
-                                                     ApiField.TEAM_ID: team_id})
+        response = self._api.post(
+            "members.remove", {ApiField.ID: user_id, ApiField.TEAM_ID: team_id}
+        )
 
-    def update(self, id: int, password: Optional[str] = None, name: Optional[str] = None) -> UserInfo:
+    def update(
+        self, id: int, password: Optional[str] = None, name: Optional[str] = None
+    ) -> UserInfo:
         """
         Updates User info.
 
@@ -556,7 +583,7 @@ class UserApi(ModuleApiBase):
             return
         data[ApiField.ID] = id
 
-        self._api.post('users.editInfo', data)
+        self._api.post("users.editInfo", data)
         return self.get_info_by_id(id)
 
     def change_team_role(self, user_id: int, team_id: int, role_id: int) -> None:
@@ -586,9 +613,14 @@ class UserApi(ModuleApiBase):
             new_role_id = 2
             api.user.change_team_role(user_id, team_id, new_role_id)
         """
-        response = self._api.post('members.editInfo', {ApiField.ID: user_id,
-                                                       ApiField.TEAM_ID: team_id,
-                                                       ApiField.ROLE_ID: role_id})
+        response = self._api.post(
+            "members.editInfo",
+            {
+                ApiField.ID: user_id,
+                ApiField.TEAM_ID: team_id,
+                ApiField.ROLE_ID: role_id,
+            },
+        )
 
     def get_team_members(self, team_id: int) -> List[UserInfo]:
         """
@@ -611,8 +643,11 @@ class UserApi(ModuleApiBase):
             team_id = 9
             team_members = api.user.get_team_members(team_id)
         """
-        team_members = self.get_list_all_pages('members.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: []},
-                                               convert_json_info_cb=self._api.user._convert_json_info)
+        team_members = self.get_list_all_pages(
+            "members.list",
+            {ApiField.TEAM_ID: team_id, ApiField.FILTER: []},
+            convert_json_info_cb=self._api.user._convert_json_info,
+        )
         return team_members
 
     def get_team_role(self, user_id: int, team_id: int) -> UserInfo:
@@ -652,7 +687,9 @@ class UserApi(ModuleApiBase):
                 return member
         return None
 
-    def get_member_activity(self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_member_activity(
+        self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None
+    ) -> DataFrame:
         """
         Get User activity data.
 
@@ -690,11 +727,16 @@ class UserApi(ModuleApiBase):
             # [42 rows x 18 columns]
         """
         import pandas as pd
-        activity = self._api.team.get_activity(team_id, filter_user_id=user_id, progress_cb=progress_cb)
+
+        activity = self._api.team.get_activity(
+            team_id, filter_user_id=user_id, progress_cb=progress_cb
+        )
         df = pd.DataFrame(activity)
         return df
 
-    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> Dict[str, int]:
+    def add_to_team_by_login(
+        self, user_login: str, team_id: int, role_id: int
+    ) -> Dict[str, int]:
         """
         Invite User to Team with given role by login.
 
@@ -724,13 +766,21 @@ class UserApi(ModuleApiBase):
             #     "userId": 8
             # }
         """
-        response = self._api.post('members.add', {ApiField.LOGIN: user_login,
-                                                  ApiField.TEAM_ID: team_id,
-                                                  ApiField.ROLE_ID: role_id})
+        response = self._api.post(
+            "members.add",
+            {
+                ApiField.LOGIN: user_login,
+                ApiField.TEAM_ID: team_id,
+                ApiField.ROLE_ID: role_id,
+            },
+        )
         return response.json()
 
     def get_ssh_keys(self):
-        """
-        """
+        """ """
         response = self._api.post("users.ssh-keys", {})
         return response.json()
+
+    def get_my_info(self):
+        response = self._api.post("users.me", {})
+        return self._convert_json_info(response.json())
