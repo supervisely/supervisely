@@ -45,6 +45,10 @@ def create_debug_task(team_id):
         team_id, module_id, only_running=True, session_name=session_name
     )
     if len(sessions) == 0:
+        # run task
+        api.task.start(
+            agent_id=None,
+        )
         pass
     else:
         task = sessions[0]
