@@ -34,5 +34,14 @@ def connect_to_supervisely_vpn_network():
             raise e
 
 
-def create_development_task():
-    pass
+def create_debug_task(team_id):
+    api = Api()
+    me = api.user.get_my_info()
+    session_name = me.login + "-development"
+    module_id = api.app.get_ecosystem_module_id(
+        "supervisely-ecosystem/while-true-script-v2"
+    )
+    app_info = api.app.get_sessions(
+        team_id, module_id, only_running=True, session_name=session_name
+    )
+    x = 10
