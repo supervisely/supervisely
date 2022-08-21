@@ -41,7 +41,11 @@ def create_debug_task(team_id):
     module_id = api.app.get_ecosystem_module_id(
         "supervisely-ecosystem/while-true-script-v2"
     )
-    app_info = api.app.get_sessions(
+    sessions = api.app.get_sessions(
         team_id, module_id, only_running=True, session_name=session_name
     )
+    if len(sessions) == 0:
+        pass
+    else:
+        task = sessions[0]
     x = 10
