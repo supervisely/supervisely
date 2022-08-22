@@ -36,7 +36,6 @@ class InstanceSegmentation(Inference):
 
     def _get_custom_inference_settings() -> str:  # in yaml format
         settings = """
-# confidence threshold for every object (for debug 0.001)
 confidence_threshold: 0.8
 """
         return settings

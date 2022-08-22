@@ -112,30 +112,31 @@ class Inference:
     def _get_custom_inference_settings_dict(self) -> dict:
         return yaml.safe_load(self._get_custom_inference_settings())
 
-    def inference_image_id(self, id: int) -> Annotation:
-        image_info = self.api.image.get_info_by_id(id)
-        image_path = os.path.join(__file__, rand_str(10), image_info.name)
-        self.apiapi.image.download_path(id, image_path)
-        ann = self.predict(image_path=image_path)
-        fs.silent_remove(image_path.as_posix())
-        return ann
+    # def inference_image_id(self, id: int) -> Annotation:
+    #     image_info = self.api.image.get_info_by_id(id)
+    #     image_path = os.path.join(__file__, rand_str(10), image_info.name)
+    #     self.apiapi.image.download_path(id, image_path)
+    #     ann = self.predict(image_path=image_path)
+    #     fs.silent_remove(image_path.as_posix())
+    #     return ann
 
-    def validate_inference_settings(self, state: dict):
-        settings = state.get("settings", {})
+    # def validate_inference_settings(self, state: dict):
+    #     settings = state.get("settings", {})
 
-        for key, value in self._get_custom_inference_settings_dict().items():
-            if key not in settings:
-                logger.warn(
-                    "Field {!r} not found in inference settings. Use default value {!r}".format(
-                        key, value
-                    )
-                )
+    #     for key, value in self._get_custom_inference_settings_dict().items():
+    #         if key not in settings:
+    #             logger.warn(
+    #                 "Field {!r} not found in inference settings. Use default value {!r}".format(
+    #                     key, value
+    #                 )
+    #             )
 
     @property
     def app(self) -> Application:
         return self._app
 
     def serve(self):
+        # @TODO: use serve anyway
         # if is_production():
         #     print("prod")
         # else:
@@ -144,47 +145,26 @@ class Inference:
         self._app = Application(headless=True)
         server = self._app.get_server()
 
-        # @server.post("/get_session_info")
-        # def get_session_info():
-        #     print("start get_session_info")
-        #     time.sleep(secs=25)
-        #     print("finish get_session_info")
-        #     return {}  # self.get_info()
+        @server.post(f"/get_session_info")
+        def get_session_info():
+            return self.get_info()
 
-        # @server.post("/get_custom_inference_settings")
-        # def get_custom_inference_settings():
-        #     print("start get_custom_inference_settings")
-        #     time.sleep(secs=25)
-        #     print("finish get_custom_inference_settings")
-        #     # self._get_custom_inference_settings()
-        #     return {"settings": ""}
+        @server.post("/get_custom_inference_settings")
+        def get_custom_inference_settings():
+            return self._get_custom_inference_settings()
 
-        # @server.post("/get_output_classes_and_tags")
-        # def get_output_classes_and_tags():
-        #     print("start get_output_classes_and_tags")
-        #     time.sleep(secs=25)
-        #     print("finish get_output_classes_and_tags")
-        #     return ProjectMeta().to_json()  # self.model_meta.to_json()
+        @server.post("/get_output_classes_and_tags")
+        def get_output_classes_and_tags():
+            return self.model_meta.to_json()
 
-        # @server.post("/inference_image_id")
-        # def inference_image_id(request_body: ServeRequestBody):
-        #     return Annotation([256, 256]).to_json()
+        @server.post("/inference_image_id")
+        def inference_image_id(request_body: ServeRequestBody):
+            print(request_body.state)
+            print(request_body.context)
+            raise NotImplementedError()
 
-        # @server.post("/inference_image_id")
-        # def inference_image_id(request_body: ServeRequestBody):
-        # return Annotation([256, 256]).to_json()
-
-        # state = request_body.state
-        # logger.debug("Input data", extra={"state": state})
-        # image_id = state["image_id"]
-
-        # logger.debug("Input data", extra={"state": state})
-        # image_id = state["image_id"]
-        # ann = self.inference_image_id(image_id)
-        # return ann.to_json()
-
-        # @self._app.get_server().post("/get_session_info")
-        # def get_session_info():
-        #     return self.get_info()
+        # inference_image_url
+        # inference_batch_ids
+        # inference_video_id
 
         pass
