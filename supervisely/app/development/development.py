@@ -74,7 +74,7 @@ def create_debug_task(team_id, port="8000"):
             workspace_id=workspaces[0].id,
             task_name=session_name,
             redirect_requests=redirect_requests,
-            proxy_keep_url=True,
+            proxy_keep_url=False,  # to ignore /net/<token>/endpoint
         )
         if type(task) is list:
             task = task[0]
