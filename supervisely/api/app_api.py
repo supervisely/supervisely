@@ -275,10 +275,11 @@ class AppApi(TaskApi):
             data={
                 "teamId": team_id,
                 "filter": [{"field": "moduleId", "operator": "=", "value": module_id}],
-                "onlyRunning": only_running,
+                # "onlyRunning": only_running,
                 "showDisabled": show_disabled,
             },
             convert_json_info_cb=lambda x: x,
+            # validate_total=False,
         )
         if len(infos_json) == 0:
             raise KeyError(f"App [module_id = {module_id}] not found in team {team_id}")

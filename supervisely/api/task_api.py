@@ -520,7 +520,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if app_id is not None:
             data[ApiField.APP_ID] = app_id
         if module_id is not None:
-            data[ApiField.MODEL_ID] = module_id
+            data[ApiField.MODULE_ID] = module_id
         resp = self._api.post(method="tasks.run.app", data=data)
         return resp.json()
 

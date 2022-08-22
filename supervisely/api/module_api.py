@@ -494,7 +494,12 @@ class ModuleApiBase(_JsonConvertibleModule):
         return results
 
     def get_list_all_pages(
-        self, method, data, progress_cb=None, convert_json_info_cb=None
+        self,
+        method,
+        data,
+        progress_cb=None,
+        convert_json_info_cb=None,
+        # validate_total=True,
     ):
         """get_list_all_pages"""
         if convert_json_info_cb is None:
@@ -523,6 +528,7 @@ class ModuleApiBase(_JsonConvertibleModule):
                 results.extend(temp_items)
                 if progress_cb is not None:
                     progress_cb(len(temp_items))
+            # if validate_total is True
             if len(results) != total:
                 raise RuntimeError(
                     "Method {!r}: error during pagination, some items are missed".format(
