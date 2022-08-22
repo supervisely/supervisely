@@ -41,22 +41,21 @@ def create_debug_task(team_id, port="8000"):
     module_id = api.app.get_ecosystem_module_id(
         "supervisely-ecosystem/while-true-script-v2"
     )
-    sessions = api.app.get_sessions(
-        team_id, module_id, only_running=True, session_name=session_name
-    )
+    sessions = api.app.get_sessions(team_id, module_id, session_name=session_name)
     redirect_requests = {"token": api.token, "port": port}
     task = None
     for session in sessions:
         if session["meta"]["redirectRequests"] == redirect_requests:
             task = session
-
+            break
+    workspaces = api.workspace.get_list(team_id)
     if task is None:
         # run task
-        api.task.start(
+        task = api.task.start(
             agent_id=None,
             module_id=module_id,
-            workspace_id=None,
+            workspace_id=workspaces[0].id,
             task_name=session_name,
             redirect_requests=redirect_requests,
         )
-    x = 10
+    return task

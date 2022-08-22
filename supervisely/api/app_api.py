@@ -266,7 +266,7 @@ class AppApi(TaskApi):
         self,
         team_id,
         module_id,
-        only_running=False,
+        # only_running=False,
         show_disabled=False,
         session_name=None,
     ):
