@@ -1,6 +1,7 @@
 import os
 from re import L
 from typing import List
+import time
 import yaml
 from supervisely._utils import is_production, is_development, rand_str
 from supervisely.app.fastapi.subapp import get_name_from_env
@@ -130,37 +131,57 @@ class Inference:
                     )
                 )
 
+    @property
+    def app(self) -> Application:
+        return self._app
+
     def serve(self):
         # if is_production():
         #     print("prod")
         # else:
         #     print("localhostd")
 
-        self._app = Application()
+        self._app = Application(headless=True)
         server = self._app.get_server()
 
-        @server.post("/get_session_info")
-        def get_session_info():
-            return self.get_info()
+        # @server.post("/get_session_info")
+        # def get_session_info():
+        #     print("start get_session_info")
+        #     time.sleep(secs=25)
+        #     print("finish get_session_info")
+        #     return {}  # self.get_info()
 
-        @server.post("/get_custom_inference_settings")
-        def get_custom_inference_settings():
-            return {"settings": self._get_custom_inference_settings()}
+        # @server.post("/get_custom_inference_settings")
+        # def get_custom_inference_settings():
+        #     print("start get_custom_inference_settings")
+        #     time.sleep(secs=25)
+        #     print("finish get_custom_inference_settings")
+        #     # self._get_custom_inference_settings()
+        #     return {"settings": ""}
 
-        @server.post("/get_output_classes_and_tags")
-        def get_output_classes_and_tags():
-            return self.model_meta.to_json()
+        # @server.post("/get_output_classes_and_tags")
+        # def get_output_classes_and_tags():
+        #     print("start get_output_classes_and_tags")
+        #     time.sleep(secs=25)
+        #     print("finish get_output_classes_and_tags")
+        #     return ProjectMeta().to_json()  # self.model_meta.to_json()
 
-        @server.post("/inference_image_id")
-        def inference_image_id(request_body: ServeRequestBody):
-            state = request_body.state
-            logger.debug("Input data", extra={"state": state})
-            image_id = state["image_id"]
+        # @server.post("/inference_image_id")
+        # def inference_image_id(request_body: ServeRequestBody):
+        #     return Annotation([256, 256]).to_json()
 
-            logger.debug("Input data", extra={"state": state})
-            image_id = state["image_id"]
-            ann = self.inference_image_id(image_id)
-            return ann.to_json()
+        # @server.post("/inference_image_id")
+        # def inference_image_id(request_body: ServeRequestBody):
+        # return Annotation([256, 256]).to_json()
+
+        # state = request_body.state
+        # logger.debug("Input data", extra={"state": state})
+        # image_id = state["image_id"]
+
+        # logger.debug("Input data", extra={"state": state})
+        # image_id = state["image_id"]
+        # ann = self.inference_image_id(image_id)
+        # return ann.to_json()
 
         # @self._app.get_server().post("/get_session_info")
         # def get_session_info():

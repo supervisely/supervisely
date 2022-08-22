@@ -6,10 +6,15 @@ from supervisely.io.fs import mkdir
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 
-def connect_to_supervisely_vpn_network():
+def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
     # TODO: wg-quick must be run as root. Please enter the password for max to continue:
     api = Api()
     current_dir = Path(__file__).parent.absolute()
@@ -18,21 +23,32 @@ def connect_to_supervisely_vpn_network():
     mkdir(network_dir)
 
     process = subprocess.run(
-        shlex.split(f"{script_path} up {api.token} {api.server_address} {network_dir}"),
+        shlex.split(
+            f"{script_path} {action} {api.token} {api.server_address} {network_dir}"
+        ),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         universal_newlines=True,
     )
+    text = "connected"
+    if action == "down":
+        text = "disconnected"
     try:
         process.check_returncode()
-        logger.info("You have been successfully connected to Supervisely VPN Network")
+        logger.info(f"You have been successfully {text} to Supervisely VPN Network")
     except subprocess.CalledProcessError as e:
+        print(e.stdout)
+        # TODO: already down "wg-quick: `wg0' is not a WireGuard interface\n"
+
         e.cmd[2] = "***-api-token-***"
         if "wg0' already exists" in e.stderr:
-            logger.info("You already connected to Supervisely VPN Network")
+            logger.info(f"You already {text} to Supervisely VPN Network")
             pass
         else:
             raise e
+
+    # @TODO: check connection with
+    # curl -s "http://10.8.0.1:80"
 
 
 def create_debug_task(team_id, port="8000"):
@@ -48,15 +64,19 @@ def create_debug_task(team_id, port="8000"):
     for session in sessions:
         if session["meta"]["redirectRequests"] == redirect_requests:
             task = session
+            logger.info(f"Debug task already exists: {task['id']}")
             break
     workspaces = api.workspace.get_list(team_id)
     if task is None:
-        # run task
         task = api.task.start(
             agent_id=None,
             module_id=module_id,
             workspace_id=workspaces[0].id,
             task_name=session_name,
             redirect_requests=redirect_requests,
+            proxy_keep_url=True,
         )
+        if type(task) is list:
+            task = task[0]
+        logger.info(f"Debug task has been successfully created: {task['taskId']}")
     return task

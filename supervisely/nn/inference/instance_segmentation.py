@@ -51,4 +51,4 @@ confidence_threshold: 0.8
     ):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, thickness=2, output_path=vis_path)
+        ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
