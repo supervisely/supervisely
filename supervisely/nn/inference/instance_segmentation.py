@@ -30,7 +30,7 @@ class InstanceSegmentation(Inference):
         geometry = Bitmap(dto.mask)
         tags = []
         if dto.score is not None:
-            tags.append(Tag(self.get_confidence_tag_meta(), dto.score))
+            tags.append(Tag(self._get_confidence_tag_meta(), dto.score))
         label = Label(geometry, obj_class, tags)
         return label
 
