@@ -10,6 +10,7 @@ VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 
 def connect_to_supervisely_vpn_network():
+    # TODO: wg-quick must be run as root. Please enter the password for max to continue:
     api = Api()
     current_dir = Path(__file__).parent.absolute()
     script_path = os.path.join(current_dir, "sly-net.sh")
