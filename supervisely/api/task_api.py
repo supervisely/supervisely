@@ -7,7 +7,6 @@ import os
 import time
 from collections import defaultdict, OrderedDict
 import json
-from supervisely.task.progress import Progress
 
 from supervisely.api.module_api import (
     ApiField,
@@ -480,8 +479,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def start(
         self,
         agent_id,
-        app_id,
-        workspace_id,
+        app_id=None,
+        workspace_id=None,
         description="application description",
         params=None,
         log_level="info",
@@ -492,26 +491,37 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         restart_policy="never",
         proxy_keep_url=False,
         module_id=None,
+        redirect_requests={},
     ):
         """ """
-        resp = self._api.post(
-            method="tasks.run.app",
-            data={
-                ApiField.AGENT_ID: agent_id,
-                ApiField.APP_ID: app_id,
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.DESCRIPTION: description,
-                ApiField.PARAMS: take_with_default(params, {"state": {}}),
-                ApiField.LOG_LEVEL: log_level,
-                ApiField.USERS_IDS: take_with_default(users_ids, []),
-                ApiField.APP_VERSION: app_version,
-                ApiField.IS_BRANCH: is_branch,
-                ApiField.TASK_NAME: task_name,
-                ApiField.RESTART_POLICY: restart_policy,
-                ApiField.PROXY_KEEP_URL: proxy_keep_url,
-            },
-        )
+        if app_id is not None and module_id is not None:
+            raise ValueError(
+                "Only one of the arguments (app_id or module_id) have to be defined"
+            )
+        if app_id is None and module_id is None:
+            raise ValueError(
+                "One of the arguments (app_id or module_id) have to be defined"
+            )
 
+        data = {
+            ApiField.AGENT_ID: agent_id,
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.DESCRIPTION: description,
+            ApiField.PARAMS: take_with_default(params, {"state": {}}),
+            ApiField.LOG_LEVEL: log_level,
+            ApiField.USERS_IDS: take_with_default(users_ids, []),
+            ApiField.APP_VERSION: app_version,
+            ApiField.IS_BRANCH: is_branch,
+            ApiField.TASK_NAME: task_name,
+            ApiField.RESTART_POLICY: restart_policy,
+            ApiField.PROXY_KEEP_URL: proxy_keep_url,
+            ApiField.REDIRECT_REQUESTS: redirect_requests,
+        }
+        if app_id is not None:
+            data[ApiField.APP_ID] = app_id
+        if module_id is not None:
+            data[ApiField.MODEL_ID] = module_id
+        resp = self._api.post(method="tasks.run.app", data=data)
         return resp.json()
 
     def stop(self, id):

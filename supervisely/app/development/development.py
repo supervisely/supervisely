@@ -34,7 +34,7 @@ def connect_to_supervisely_vpn_network():
             raise e
 
 
-def create_debug_task(team_id):
+def create_debug_task(team_id, port="8000"):
     api = Api()
     me = api.user.get_my_info()
     session_name = me.login + "-development"
@@ -44,12 +44,19 @@ def create_debug_task(team_id):
     sessions = api.app.get_sessions(
         team_id, module_id, only_running=True, session_name=session_name
     )
-    if len(sessions) == 0:
+    redirect_requests = {"token": api.token, "port": port}
+    task = None
+    for session in sessions:
+        if session["meta"]["redirectRequests"] == redirect_requests:
+            task = session
+
+    if task is None:
         # run task
         api.task.start(
             agent_id=None,
+            module_id=module_id,
+            workspace_id=None,
+            task_name=session_name,
+            redirect_requests=redirect_requests,
         )
-        pass
-    else:
-        task = sessions[0]
     x = 10

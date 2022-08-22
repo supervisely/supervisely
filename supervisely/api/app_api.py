@@ -286,7 +286,6 @@ class AppApi(TaskApi):
             raise KeyError(
                 f"Apps list in team is broken: app [module_id = {module_id}] added to team {team_id} multiple times"
             )
-        print(len(infos_json))
         dev_tasks = []
         sessions = infos_json[0]["tasks"]
         for session in sessions:
