@@ -118,14 +118,6 @@ class Inference:
     def _get_custom_inference_settings_dict(self) -> dict:
         return yaml.safe_load(self._get_custom_inference_settings())
 
-    # def inference_image_id(self, id: int) -> Annotation:
-    #     image_info = self.api.image.get_info_by_id(id)
-    #     image_path = os.path.join(__file__, rand_str(10), image_info.name)
-    #     self.apiapi.image.download_path(id, image_path)
-    #     ann = self.predict(image_path=image_path)
-    #     fs.silent_remove(image_path.as_posix())
-    #     return ann
-
     def get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
         for key, value in self._get_custom_inference_settings_dict().items():
@@ -147,7 +139,7 @@ class Inference:
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
         fs.mkdir(temp_dir)
         for info in infos:
-            paths.append(os.path.join(temp_dir, rand_str(10) + info.name))
+            paths.append(os.path.join(temp_dir, f"{rand_str(10)}_{info.name}"))
         api.image.download_paths(infos[0].dataset_id, ids, paths)
         results = self.inference_images_dir(paths, state)
         fs.remove_dir(temp_dir)
@@ -165,6 +157,40 @@ class Inference:
             )
             annotations.append(ann_json)
         return annotations
+
+    def inference_image_id(self, api: Api, state: dict):
+        logger.debug("Input state", extra={"state": state})
+        settings = self.get_inference_settings(state)
+        image_id = state["image_id"]
+        image_info = api.image.get_info_by_id(image_id)
+        image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
+        api.image.download_path(image_id, image_path)
+        ann_json = self.inference_image_path(
+            image_path=image_path,
+            project_meta=self.model_meta,
+            state=state,
+            settings=settings,
+        )
+        fs.silent_remove(image_path)
+        return ann_json
+
+    def inference_image_url(self, api: Api, state: dict):
+        logger.debug("Input data", extra={"state": state})
+        settings = self.get_inference_settings(state)
+        image_url = state["image_url"]
+        ext = fs.get_file_ext(image_url)
+        if ext == "":
+            ext = ".jpg"
+        image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
+        fs.download(image_url, image_path)
+        ann_json = self.inference_image_path(
+            image_path=image_path,
+            project_meta=self.model_meta,
+            state=state,
+            settings=settings,
+        )
+        fs.silent_remove(image_path)
+        return ann_json
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -193,35 +219,11 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            return {}
-            # state = request_body.state
-            # context = request_body.context
-
-            # logger.debug("Input state", extra={"state": state})
-            # image_id = state["image_id"]
-            # image_info = api.image.get_info_by_id(image_id)
-            # image_path = os.path.join(
-            #     g.my_app.data_dir, sly.rand_str(10) + image_info.name
-            # )
-            # api.image.download_path(image_id, image_path)
-            # ann_json = f.inference_image_path(
-            #     image_path=image_path,
-            #     project_meta=g.meta,
-            #     context=context,
-            #     state=state,
-            #     app_logger=app_logger,
-            # )
-            # sly.fs.silent_remove(image_path)
-            # request_id = context["request_id"]
-            # g.my_app.send_response(request_id, data=ann_json)
-
-            # raise NotImplementedError()
+            return self.inference_image_id(request.api, request.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            print(request.state)
-            print(request.context)
-            raise NotImplementedError()
+            return self.inference_image_url(request.api, request.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
@@ -229,6 +231,4 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            print(request.state)
-            print(request.context)
             raise NotImplementedError()
