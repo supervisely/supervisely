@@ -89,7 +89,10 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_annotation(self, image_path: str) -> Annotation:
-        raise NotImplementedError()
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def visualize(self, predictions: List, image_path: str, vis_path: str):
+        raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
         self, image_path: str, predictions: List
