@@ -16,10 +16,19 @@ VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
     # TODO: already down "wg-quick: `wg0' is not a WireGuard interface\n"
-    # @TODO: check connection with
-    # curl -s "http://10.8.0.1:80"
-    # Connected to Supervisely Net!
     # TODO: wg-quick must be run as root. Please enter the password for max to continue:
+
+    process = subprocess.run(
+        shlex.split("curl --max-time 3 -s http://10.8.0.1:80"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    print(process.stdout)
+    if "Connected to Supervisely Net!" in process.stdout:
+        logger.info(f"You connected to Supervisely VPN Network")
+        return
+
     api = Api()
     current_dir = Path(__file__).parent.absolute()
     script_path = os.path.join(current_dir, "sly-net.sh")
