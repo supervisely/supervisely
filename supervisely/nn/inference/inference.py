@@ -1,7 +1,5 @@
 import os
-from re import L
 from typing import List
-import time
 import yaml
 from supervisely._utils import is_production, is_development, is_debug_with_sly_net
 from supervisely.app.fastapi.subapp import get_name_from_env
@@ -16,15 +14,10 @@ from supervisely.sly_logger import logger
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
+from supervisely.app.fastapi.request import Requst
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
-
-from pydantic import BaseModel
-
-
-class ServeRequestBody(BaseModel):
-    state: dict = {}
-    context: dict = {}
+from supervisely.decorators.inference import process_image_roi
 
 
 class Inference:
@@ -113,6 +106,59 @@ class Inference:
     def _get_custom_inference_settings() -> str:  # in yaml format
         return ""
 
+    @process_image_roi
+    def inference_image_path(image_path, project_meta, context, state):
+        pass
+        # logger.debug("Input path", extra={"path": image_path})
+
+        # settings = state.get("settings", {})
+        # for key, value in g.default_settings.items():
+        #     if key not in settings:
+        #         app_logger.warn(
+        #             "Field {!r} not found in inference settings. Use default value {!r}".format(
+        #                 key, value
+        #             )
+        #         )
+        # debug_visualization = settings.get(
+        #     "debug_visualization", g.default_settings["debug_visualization"]
+        # )
+        # conf_thres = settings.get("conf_thres", g.default_settings["conf_thres"])
+        # iou_thres = settings.get("iou_thres", g.default_settings["iou_thres"])
+
+        # augment = settings.get("augment", g.default_settings["augment"])
+        # inference_mode = settings.get("inference_mode", "full")
+
+        # image = sly.image.read(image_path)  # RGB image
+        # if inference_mode == "sliding_window":
+        #     ann_json, slides_for_vis = nn_utils.sliding_window_inference(
+        #         g.model,
+        #         g.half,
+        #         g.device,
+        #         g.imgsz,
+        #         g.stride,
+        #         image,
+        #         g.meta,
+        #         settings["sliding_window_params"],
+        #         conf_thres=conf_thres,
+        #         iou_thres=iou_thres,
+        #     )
+        #     return {"annotation": ann_json, "data": {"slides": slides_for_vis}}
+        # else:
+        #     ann_json = nn_utils.inference(
+        #         g.model,
+        #         g.half,
+        #         g.device,
+        #         g.imgsz,
+        #         g.stride,
+        #         image,
+        #         g.meta,
+        #         conf_thres=conf_thres,
+        #         iou_thres=iou_thres,
+        #         augment=augment,
+        #         debug_visualization=debug_visualization,
+        #     )
+        #     return ann_json
+
     def _get_custom_inference_settings_dict(self) -> dict:
         return yaml.safe_load(self._get_custom_inference_settings())
 
@@ -165,25 +211,46 @@ class Inference:
             return self.model_meta.to_json()
 
         @server.post("/inference_image_id")
-        def inference_image_id(request_body: ServeRequestBody):
-            print(request_body.state)
-            print(request_body.context)
-            raise NotImplementedError()
+        def inference_image_id(request: Requst):
+            return {}
+            # state = request_body.state
+            # context = request_body.context
+
+            # logger.debug("Input state", extra={"state": state})
+            # image_id = state["image_id"]
+            # image_info = api.image.get_info_by_id(image_id)
+            # image_path = os.path.join(
+            #     g.my_app.data_dir, sly.rand_str(10) + image_info.name
+            # )
+            # api.image.download_path(image_id, image_path)
+            # ann_json = f.inference_image_path(
+            #     image_path=image_path,
+            #     project_meta=g.meta,
+            #     context=context,
+            #     state=state,
+            #     app_logger=app_logger,
+            # )
+            # sly.fs.silent_remove(image_path)
+            # request_id = context["request_id"]
+            # g.my_app.send_response(request_id, data=ann_json)
+
+            # raise NotImplementedError()
 
         @server.post("/inference_image_url")
-        def inference_image_url(request_body: ServeRequestBody):
-            print(request_body.state)
-            print(request_body.context)
+        def inference_image_url(request: Requst):
+            print(request.state)
+            print(request.context)
             raise NotImplementedError()
 
         @server.post("/inference_batch_ids")
-        def inference_batch_ids(request_body: ServeRequestBody):
-            print(request_body.state)
-            print(request_body.context)
+        def inference_batch_ids(request: Requst):
+            print(request.state)
+            print(request.context)
+            print(request.api)
             raise NotImplementedError()
 
         @server.post("/inference_video_id")
-        def inference_video_id(request_body: ServeRequestBody):
-            print(request_body.state)
-            print(request_body.context)
+        def inference_video_id(request: Requst):
+            print(request.state)
+            print(request.context)
             raise NotImplementedError()
