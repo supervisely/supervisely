@@ -119,6 +119,7 @@ from supervisely._utils import (
     get_string_hash,
     is_development,
     is_production,
+    is_debug_with_sly_net,
     compress_image_url,
 )
 import supervisely._utils as utils

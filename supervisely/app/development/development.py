@@ -15,6 +15,10 @@ VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 
 def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
+    # TODO: already down "wg-quick: `wg0' is not a WireGuard interface\n"
+    # @TODO: check connection with
+    # curl -s "http://10.8.0.1:80"
+    # Connected to Supervisely Net!
     # TODO: wg-quick must be run as root. Please enter the password for max to continue:
     api = Api()
     current_dir = Path(__file__).parent.absolute()
@@ -30,25 +34,21 @@ def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
         stderr=subprocess.PIPE,
         universal_newlines=True,
     )
-    text = "connected"
+    text = "connected to"
     if action == "down":
-        text = "disconnected"
+        text = "disconnected from"
     try:
         process.check_returncode()
         logger.info(f"You have been successfully {text} to Supervisely VPN Network")
     except subprocess.CalledProcessError as e:
         print(e.stdout)
-        # TODO: already down "wg-quick: `wg0' is not a WireGuard interface\n"
 
         e.cmd[2] = "***-api-token-***"
         if "wg0' already exists" in e.stderr:
-            logger.info(f"You already {text} to Supervisely VPN Network")
+            logger.info(f"You {text} Supervisely VPN Network")
             pass
         else:
             raise e
-
-    # @TODO: check connection with
-    # curl -s "http://10.8.0.1:80"
 
 
 def create_debug_task(team_id, port="8000"):

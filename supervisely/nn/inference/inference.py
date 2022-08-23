@@ -3,7 +3,7 @@ from re import L
 from typing import List
 import time
 import yaml
-from supervisely._utils import is_production, is_development, rand_str
+from supervisely._utils import is_production, is_development, is_debug_with_sly_net
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -17,6 +17,7 @@ from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
 from supervisely.api.api import Api
+import supervisely.app.development as sly_app_development
 
 from pydantic import BaseModel
 
@@ -34,7 +35,10 @@ class Inference:
         self._app: Application = None
         self._api: Api = None
         if is_production():
-            raise NotImplementedError("TBD - download directory")
+            if is_debug_with_sly_net():
+                pass
+            else:
+                raise NotImplementedError("TBD - download directory")
         elif is_development():
             pass
 
@@ -136,11 +140,12 @@ class Inference:
         return self._app
 
     def serve(self):
-        # @TODO: use serve anyway
-        # if is_production():
-        #     print("prod")
-        # else:
-        #     print("localhostd")
+        if is_debug_with_sly_net():
+            # advanced debug for Supervisely Team
+            logger.warn("Serving is running in advanced development mode")
+            team_id = int(os.environ["context.teamId"])
+            sly_app_development.supervisely_vpn_network(action="up")
+            task = sly_app_development.create_debug_task(team_id, port="8000")
 
         self._app = Application(headless=True)
         server = self._app.get_server()
@@ -163,8 +168,20 @@ class Inference:
             print(request_body.context)
             raise NotImplementedError()
 
-        # inference_image_url
-        # inference_batch_ids
-        # inference_video_id
+        @server.post("/inference_image_url")
+        def inference_image_url(request_body: ServeRequestBody):
+            print(request_body.state)
+            print(request_body.context)
+            raise NotImplementedError()
 
-        pass
+        @server.post("/inference_batch_ids")
+        def inference_batch_ids(request_body: ServeRequestBody):
+            print(request_body.state)
+            print(request_body.context)
+            raise NotImplementedError()
+
+        @server.post("/inference_video_id")
+        def inference_video_id(request_body: ServeRequestBody):
+            print(request_body.state)
+            print(request_body.context)
+            raise NotImplementedError()

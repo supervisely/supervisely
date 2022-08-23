@@ -149,6 +149,14 @@ def is_development() -> bool:
         return True
 
 
+def is_debug_with_sly_net() -> bool:
+    mode = os.environ.get("DEBUG_WITH_SLY_NET")
+    if mode is not None:
+        return True
+    else:
+        return False
+
+
 def is_production() -> bool:
     return not is_development()
 
