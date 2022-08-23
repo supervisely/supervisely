@@ -34,10 +34,8 @@ class InstanceSegmentation(Inference):
         label = Label(geometry, obj_class, tags)
         return label
 
-    def _get_custom_inference_settings() -> str:  # in yaml format
-        settings = """
-confidence_threshold: 0.8
-"""
+    def _get_custom_inference_settings(self) -> str:  # in yaml format
+        settings = """confidence_threshold: 0.8"""
         return settings
 
     def predict(

@@ -157,7 +157,8 @@ class Inference:
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
-            return self._get_custom_inference_settings()
+            settings = self._get_custom_inference_settings()
+            return {"settings": settings}
 
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
