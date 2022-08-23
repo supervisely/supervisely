@@ -3,7 +3,7 @@ from pydantic import BaseModel, root_validator
 from supervisely.api.api import Api
 
 
-class Requst(BaseModel):
+class Request(BaseModel):
     state: dict = {}
     context: dict = {}
     api: Api

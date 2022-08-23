@@ -14,7 +14,7 @@ from supervisely.sly_logger import logger
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.fastapi.request import Requst
+from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
 from supervisely.decorators.inference import process_image_roi
@@ -211,7 +211,7 @@ class Inference:
             return self.model_meta.to_json()
 
         @server.post("/inference_image_id")
-        def inference_image_id(request: Requst):
+        def inference_image_id(request: Request):
             return {}
             # state = request_body.state
             # context = request_body.context
@@ -237,20 +237,20 @@ class Inference:
             # raise NotImplementedError()
 
         @server.post("/inference_image_url")
-        def inference_image_url(request: Requst):
+        def inference_image_url(request: Request):
             print(request.state)
             print(request.context)
             raise NotImplementedError()
 
         @server.post("/inference_batch_ids")
-        def inference_batch_ids(request: Requst):
+        def inference_batch_ids(request: Request):
             print(request.state)
             print(request.context)
             print(request.api)
             raise NotImplementedError()
 
         @server.post("/inference_video_id")
-        def inference_video_id(request: Requst):
+        def inference_video_id(request: Request):
             print(request.state)
             print(request.context)
             raise NotImplementedError()
