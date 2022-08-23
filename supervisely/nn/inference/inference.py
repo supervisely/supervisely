@@ -1,7 +1,12 @@
 import os
-from typing import List
+from typing import List, Dict
 import yaml
-from supervisely._utils import is_production, is_development, is_debug_with_sly_net
+from supervisely._utils import (
+    is_production,
+    is_development,
+    is_debug_with_sly_net,
+    rand_str,
+)
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -14,10 +19,10 @@ from supervisely.sly_logger import logger
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
+from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
-from supervisely.decorators.inference import process_image_roi
 
 
 class Inference:
@@ -84,8 +89,7 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_annotation(self, image_path: str) -> Annotation:
-        predictions = self.predict(image_path)
-        return self._predictions_to_annotation(image_path, predictions)
+        raise NotImplementedError()
 
     def _predictions_to_annotation(
         self, image_path: str, predictions: List
@@ -106,58 +110,10 @@ class Inference:
     def _get_custom_inference_settings() -> str:  # in yaml format
         return ""
 
-    @process_image_roi
-    def inference_image_path(image_path, project_meta, context, state):
-        pass
-        # logger.debug("Input path", extra={"path": image_path})
-
-        # settings = state.get("settings", {})
-        # for key, value in g.default_settings.items():
-        #     if key not in settings:
-        #         app_logger.warn(
-        #             "Field {!r} not found in inference settings. Use default value {!r}".format(
-        #                 key, value
-        #             )
-        #         )
-        # debug_visualization = settings.get(
-        #     "debug_visualization", g.default_settings["debug_visualization"]
-        # )
-        # conf_thres = settings.get("conf_thres", g.default_settings["conf_thres"])
-        # iou_thres = settings.get("iou_thres", g.default_settings["iou_thres"])
-
-        # augment = settings.get("augment", g.default_settings["augment"])
-        # inference_mode = settings.get("inference_mode", "full")
-
-        # image = sly.image.read(image_path)  # RGB image
-        # if inference_mode == "sliding_window":
-        #     ann_json, slides_for_vis = nn_utils.sliding_window_inference(
-        #         g.model,
-        #         g.half,
-        #         g.device,
-        #         g.imgsz,
-        #         g.stride,
-        #         image,
-        #         g.meta,
-        #         settings["sliding_window_params"],
-        #         conf_thres=conf_thres,
-        #         iou_thres=iou_thres,
-        #     )
-        #     return {"annotation": ann_json, "data": {"slides": slides_for_vis}}
-        # else:
-        #     ann_json = nn_utils.inference(
-        #         g.model,
-        #         g.half,
-        #         g.device,
-        #         g.imgsz,
-        #         g.stride,
-        #         image,
-        #         g.meta,
-        #         conf_thres=conf_thres,
-        #         iou_thres=iou_thres,
-        #         augment=augment,
-        #         debug_visualization=debug_visualization,
-        #     )
-        #     return ann_json
+    def inference_image_path(
+        self, image_path, project_meta: ProjectMeta, state: Dict, settings: Dict = None
+    ):
+        raise NotImplementedError()
 
     def _get_custom_inference_settings_dict(self) -> dict:
         return yaml.safe_load(self._get_custom_inference_settings())
@@ -170,20 +126,45 @@ class Inference:
     #     fs.silent_remove(image_path.as_posix())
     #     return ann
 
-    # def validate_inference_settings(self, state: dict):
-    #     settings = state.get("settings", {})
-
-    #     for key, value in self._get_custom_inference_settings_dict().items():
-    #         if key not in settings:
-    #             logger.warn(
-    #                 "Field {!r} not found in inference settings. Use default value {!r}".format(
-    #                     key, value
-    #                 )
-    #             )
+    def get_inference_settings(self, state: dict):
+        settings = state.get("settings", {})
+        for key, value in self._get_custom_inference_settings_dict().items():
+            if key not in settings:
+                logger.warn(
+                    f"Field {key} not found in inference settings. Use default value {value}"
+                )
+                settings[key] = value
+        return settings
 
     @property
     def app(self) -> Application:
         return self._app
+
+    def inference_batch_ids(self, api: Api, state: dict):
+        ids = state["batch_ids"]
+        infos = api.image.get_info_by_id_batch(ids)
+        paths = []
+        temp_dir = os.path.join(get_data_dir(), rand_str(10))
+        fs.mkdir(temp_dir)
+        for info in infos:
+            paths.append(os.path.join(temp_dir, rand_str(10) + info.name))
+        api.image.download_paths(infos[0].dataset_id, ids, paths)
+        results = self.inference_images_dir(paths, state)
+        fs.remove_dir(temp_dir)
+        return results
+
+    def inference_images_dir(self, img_paths: List[str], state: Dict):
+        settings = self.get_inference_settings(state)
+        annotations = []
+        for image_path in img_paths:
+            ann_json = self.inference_image_path(
+                image_path=image_path,
+                project_meta=self.model_meta,
+                state=state,
+                settings=settings,
+            )
+            annotations.append(ann_json)
+        return annotations
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -244,10 +225,7 @@ class Inference:
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            print(request.state)
-            print(request.context)
-            print(request.api)
-            raise NotImplementedError()
+            return self.inference_batch_ids(request.api, request.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):

@@ -1,3 +1,4 @@
+from typing import Dict
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -5,6 +6,9 @@ from supervisely.annotation.tag import Tag
 import supervisely.imaging.image as sly_image
 from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
+from supervisely.annotation.annotation import Annotation
+from supervisely.decorators.inference import process_image_roi
+from supervisely.project.project_meta import ProjectMeta
 
 
 class InstanceSegmentation(Inference):
@@ -35,13 +39,37 @@ class InstanceSegmentation(Inference):
         return label
 
     def _get_custom_inference_settings(self) -> str:  # in yaml format
-        settings = """confidence_threshold: 0.8"""
+        settings = """confidence_threshold: 0.8
+my_value: 0.7"""
         return settings
 
     def predict(
         self, image_path: str, confidence_threshold: float
     ) -> list[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_annotation(
+        self, image_path: str, confidence_threshold: float
+    ) -> Annotation:
+        predictions = self.predict(image_path, confidence_threshold)
+        return self._predictions_to_annotation(image_path, predictions)
+
+    # TODO: add sliding window (naive and advanced implementation)
+    @process_image_roi
+    def inference_image_path(
+        self,
+        image_path: str,
+        project_meta: ProjectMeta,
+        state: Dict,
+        settings: Dict = None,
+    ):
+        if settings is None:
+            settings = self.get_inference_settings(state)
+        logger.debug("Input path", extra={"path": image_path})
+        ann = self.predict_annotation(
+            image_path, confidence_threshold=settings["confidence_threshold"]
+        )
+        return ann.to_json()
 
     def visualize(
         self, predictions: list[PredictionMask], image_path: str, vis_path: str
