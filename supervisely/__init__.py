@@ -172,7 +172,10 @@ import supervisely.nn as nn
 
 from supervisely.decorators.profile import timeit
 from supervisely.decorators.profile import update_fields
-from supervisely.decorators.inference import process_image_roi
+from supervisely.decorators.inference import (
+    process_image_roi,
+    process_image_sliding_window,
+)
 
 import supervisely.script as script
 from supervisely.user.user import UserRoleName

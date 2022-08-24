@@ -7,7 +7,10 @@ import supervisely.imaging.image as sly_image
 from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
 from supervisely.annotation.annotation import Annotation
-from supervisely.decorators.inference import process_image_roi
+from supervisely.decorators.inference import (
+    process_image_roi,
+    process_image_sliding_window,
+)
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -15,6 +18,7 @@ class InstanceSegmentation(Inference):
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "instance segmentation"
+        info["sliding_window_support"] = "basic"  # or "advanced" in the future
         return info
 
     def _get_obj_class_shape(self):
@@ -54,6 +58,7 @@ class InstanceSegmentation(Inference):
         return self._predictions_to_annotation(image_path, predictions)
 
     # TODO: add sliding window (naive and advanced implementation)
+    @process_image_sliding_window
     @process_image_roi
     def inference_image_path(
         self,
