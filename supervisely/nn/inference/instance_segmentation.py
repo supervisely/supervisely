@@ -57,7 +57,6 @@ class InstanceSegmentation(Inference):
         predictions = self.predict(image_path, confidence_threshold)
         return self._predictions_to_annotation(image_path, predictions)
 
-    # TODO: add sliding window (naive and advanced implementation)
     @process_image_sliding_window
     @process_image_roi
     def inference_image_path(

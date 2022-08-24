@@ -222,7 +222,6 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            print(request.state)
             return self.inference_image_id(request.api, request.state)
 
         @server.post("/inference_image_url")
