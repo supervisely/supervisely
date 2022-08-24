@@ -114,7 +114,7 @@ def process_image_roi(func):
             ann_json = scale_ann_to_original_size(
                 ann_json, project_meta, image_size, rectangle
             )
-            silent_remove(image_path)
+            silent_remove(image_crop_path)
         else:
             raise ValueError("image_np or image_path not provided!")
 
@@ -151,10 +151,19 @@ def process_image_sliding_window(func):
         for window in slider.get(img.shape[:2]):
             rectangles.append(window)
 
+        ann = Annotation.from_img_path(image_path)
         results = []
         for rect in rectangles:
             state["rectangle"] = rect.to_json()
             ann_json = func(*args, **kwargs)
-            results.append(ann_json)
+            slice_ann = Annotation.from_json(ann_json, project_meta)
+            ann = ann.add_labels(slice_ann.labels)
+            results.append(
+                {
+                    "rectangle": rect.to_json(),
+                    "labels": [l.to_json() for l in slice_ann.labels],
+                }
+            )
+        return {"annotation": ann.to_json(), "data": {"slides": results}}
 
     return wrapper_inference
