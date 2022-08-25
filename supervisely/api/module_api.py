@@ -738,35 +738,35 @@ class CloneableModuleApi(ModuleApi):
 
 
 class ModuleWithStatus:
-    """ """
+    """ModuleWithStatus"""
 
     def get_status(self, id):
-        """ """
+        """get_status"""
         raise NotImplementedError()
 
     def raise_for_status(self, status):
-        """ """
+        """raise_for_status"""
         raise NotImplementedError()
 
 
 class WaitingTimeExceeded(Exception):
-    """ """
+    """WaitingTimeExceeded"""
 
     pass
 
 
 class UpdateableModule(_JsonConvertibleModule):
-    """ """
+    """UpdateableModule"""
 
     def __init__(self, api):
         self._api = api
 
     def _get_update_method(self):
-        """ """
+        """_get_update_method"""
         raise NotImplementedError()
 
     def update(self, id, name=None, description=None):
-        """ """
+        """update"""
         if name is None and description is None:
             raise ValueError("'name' or 'description' or both have to be specified")
 
@@ -781,7 +781,7 @@ class UpdateableModule(_JsonConvertibleModule):
 
 
 class RemoveableModuleApi(ModuleApi):
-    """ """
+    """RemoveableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """
@@ -791,15 +791,15 @@ class RemoveableModuleApi(ModuleApi):
     """
 
     def _remove_api_method_name(self):
-        """ """
+        """_remove_api_method_name"""
         raise NotImplementedError()
 
     def remove(self, id):
-        """ """
+        """remove"""
         self._api.post(self._remove_api_method_name(), {ApiField.ID: id})
 
     def remove_batch(self, ids, progress_cb=None):
-        """ """
+        """remove_batch"""
         for id in ids:
             self.remove(id)
             if progress_cb is not None:
@@ -807,7 +807,7 @@ class RemoveableModuleApi(ModuleApi):
 
 
 class RemoveableBulkModuleApi(ModuleApi):
-    """ """
+    """RemoveableBulkModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """
@@ -817,15 +817,15 @@ class RemoveableBulkModuleApi(ModuleApi):
     """
 
     def _remove_batch_api_method_name(self):
-        """ """
+        """_remove_batch_api_method_name"""
         raise NotImplementedError()
 
     def _remove_batch_field_name(self):
-        """ """
+        """_remove_batch_field_name"""
         raise NotImplementedError()
 
     def remove_batch(self, ids, progress_cb=None):
-        """ """
+        """remove_batch"""
         for ids_batch in batched(ids):
             self._api.post(
                 self._remove_batch_api_method_name(),
@@ -835,5 +835,5 @@ class RemoveableBulkModuleApi(ModuleApi):
                 progress_cb(len(ids_batch))
 
     def remove(self, id):
-        """ """
+        """remove"""
         self.remove_batch([id])
