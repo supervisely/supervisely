@@ -23,6 +23,7 @@ from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
+from distinctipy import distinctipy
 
 
 class Inference:
@@ -68,11 +69,13 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
+            colors = distinctipy.get_colors(len(self.get_classes()))
             classes = []
-            for name in self.get_classes():
-                classes.append(ObjClass(name, self._get_obj_class_shape()))
+            for name, color in zip(self.get_classes(), colors):
+                rgb = distinctipy.get_rgb256(color)
+                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
             self._model_meta = ProjectMeta(classes)
-            self._get_confidence_tag_meta()  # @TODO: optimize, create if needed
+            self._get_confidence_tag_meta()
         return self._model_meta
 
     def _get_confidence_tag_meta(self):
