@@ -30,59 +30,64 @@ from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
 
 
-def create(process_id=None) -> FastAPI:
+def create(process_id=None, headless=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     app = FastAPI()
     WebsocketManager().set_app(app)
 
-    @app.post("/data")
-    async def send_data(request: Request):
-        data = DataJson()
-        response = JSONResponse(content=dict(data))
-        return response
-
-    @app.post("/state")
-    async def send_state(request: Request):
-        state = StateJson()
-        response = JSONResponse(content=dict(state))
-
-        gettrace = getattr(sys, "gettrace", None)
-        if gettrace is not None and gettrace():
-            response.headers["x-debug-mode"] = "1"
-        return response
-
-    @app.post("/session-info")
-    async def send_session_info(request: Request):
-        server_address = os.environ.get(SERVER_ADDRESS)
-        if server_address is not None:
-            server_address = Api.normalize_server_address(server_address)
-
-        response = JSONResponse(
-            content={
-                TASK_ID: os.environ.get(TASK_ID),
-                SERVER_ADDRESS: server_address,
-                API_TOKEN: os.environ.get(API_TOKEN),
-            }
-        )
-        return response
-
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
         shutdown(process_id)
 
-    @app.websocket("/ws")
-    async def websocket_endpoint(websocket: WebSocket):
-        await WebsocketManager().connect(websocket)
-        try:
-            while True:
-                data = await websocket.receive_text()
-        except WebSocketDisconnect:
-            WebsocketManager().disconnect(websocket)
+    if headless is False:
 
-    import supervisely
+        @app.post("/data")
+        async def send_data(request: Request):
+            data = DataJson()
+            response = JSONResponse(content=dict(data))
+            return response
 
-    app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
+        @app.post("/state")
+        async def send_state(request: Request):
+            state = StateJson()
+            response = JSONResponse(content=dict(state))
+
+            gettrace = getattr(sys, "gettrace", None)
+            if gettrace is not None and gettrace():
+                response.headers["x-debug-mode"] = "1"
+            return response
+
+        @app.post("/session-info")
+        async def send_session_info(request: Request):
+            server_address = os.environ.get(SERVER_ADDRESS)
+            if server_address is not None:
+                server_address = Api.normalize_server_address(server_address)
+
+            response = JSONResponse(
+                content={
+                    TASK_ID: os.environ.get(TASK_ID),
+                    SERVER_ADDRESS: server_address,
+                    API_TOKEN: os.environ.get(API_TOKEN),
+                }
+            )
+            return response
+
+        @app.websocket("/ws")
+        async def websocket_endpoint(websocket: WebSocket):
+            await WebsocketManager().connect(websocket)
+            try:
+                while True:
+                    data = await websocket.receive_text()
+            except WebSocketDisconnect:
+                WebsocketManager().disconnect(websocket)
+
+        import supervisely
+
+        app.mount(
+            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
+        )
+
     return app
 
 
@@ -133,42 +138,53 @@ def handle_server_errors(app: FastAPI):
 
 
 def _init(
-    app: FastAPI = None, templates_dir: str = "templates", process_id=None
+    app: FastAPI = None,
+    templates_dir: str = "templates",
+    headless=False,
+    process_id=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
 
     if app is None:
         app = FastAPI()
-    Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
-    enable_hot_reload_on_debug(app)
-    app.mount("/sly", create(process_id))
+
     handle_server_errors(app)
 
-    @app.middleware("http")
-    async def get_state_from_request(request: Request, call_next):
-        from supervisely.app.content import StateJson
+    if headless is False:
+        Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
+        enable_hot_reload_on_debug(app)
 
-        await StateJson.from_request(request)
-        response = await call_next(request)
-        return response
+    app.mount("/sly", create(process_id, headless))
 
-    @app.get("/")
-    @available_after_shutdown(app)
-    def read_index(request: Request):
-        return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+    if headless is False:
 
-    @app.on_event("shutdown")
-    def shutdown():
-        client = TestClient(app)
-        resp = run_sync(client.get("/"))
-        assert resp.status_code == 200
-        logger.info("Application has been shut down successfully")
+        @app.middleware("http")
+        async def get_state_from_request(request: Request, call_next):
+            from supervisely.app.content import StateJson
+
+            await StateJson.from_request(request)
+            response = await call_next(request)
+            return response
+
+        @app.get("/")
+        @available_after_shutdown(app)
+        def read_index(request: Request):
+            return Jinja2Templates().TemplateResponse(
+                "index.html", {"request": request}
+            )
+
+        @app.on_event("shutdown")
+        def shutdown():
+            client = TestClient(app)
+            resp = run_sync(client.get("/"))
+            assert resp.status_code == 200
+            logger.info("Application has been shut down successfully")
 
     return app
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, name="", templates_dir: str = "templates"):
+    def __init__(self, templates_dir: str = "templates", headless=False):
         if is_production():
             logger.info(
                 "Application is running on Supervisely Platform in production mode"
@@ -178,7 +194,10 @@ class Application(metaclass=Singleton):
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
-            app=None, templates_dir=templates_dir, process_id=self._process_id
+            app=None,
+            templates_dir=templates_dir,
+            headless=headless,
+            process_id=self._process_id,
         )
 
     def get_server(self):
@@ -189,3 +208,7 @@ class Application(metaclass=Singleton):
 
     def shutdown(self):
         shutdown(self._process_id)
+
+
+def get_name_from_env(default="Supervisely App"):
+    return os.environ.get("APP_NAME", default)

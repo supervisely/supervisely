@@ -38,12 +38,14 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         media_type: str = None,
         background: BackgroundTask = None,
     ) -> _TemplateResponse:
+        from supervisely.app.fastapi.subapp import get_name_from_env
+
         context_with_widgets = {
             **context,
             **self.context_widgets,
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
-            "app_name": os.environ.get("APP_NAME", "Supervisely App"),
+            "app_name": get_name_from_env(default="Supervisely App"),
         }
 
         return super().TemplateResponse(

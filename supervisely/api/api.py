@@ -117,6 +117,7 @@ class Api:
         if len(token) != 128:
             raise ValueError("Invalid token {!r}: length != 128".format(token))
 
+        self.token = token
         self.headers = {"x-api-key": token}
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:

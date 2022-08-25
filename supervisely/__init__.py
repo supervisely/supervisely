@@ -119,6 +119,7 @@ from supervisely._utils import (
     get_string_hash,
     is_development,
     is_production,
+    is_debug_with_sly_net,
     compress_image_url,
 )
 import supervisely._utils as utils
@@ -167,10 +168,14 @@ from supervisely.io import docker_utils
 import supervisely.app as app
 from supervisely.app.fastapi import Application
 from supervisely.app.v1.app_service import AppService
+import supervisely.nn as nn
 
 from supervisely.decorators.profile import timeit
 from supervisely.decorators.profile import update_fields
-from supervisely.decorators.inference import process_image_roi
+from supervisely.decorators.inference import (
+    process_image_roi,
+    process_image_sliding_window,
+)
 
 import supervisely.script as script
 from supervisely.user.user import UserRoleName
