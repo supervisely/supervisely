@@ -3,7 +3,7 @@
 from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID, INDICES
 from supervisely.geometry.geometry import Geometry
 
-
+# pointcloud mask (segmentation)
 class Pointcloud(Geometry):
     """
     """

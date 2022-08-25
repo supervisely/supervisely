@@ -9,8 +9,7 @@ from supervisely._utils import camel_to_snake
 
 
 class ApiField:
-    """
-    """
+    """ApiField"""
 
     ID = "id"
     """"""
@@ -428,11 +427,12 @@ class ApiField:
     """"""
     FIGURES_TAGS = "figuresTags"
     """"""
+    REDIRECT_REQUESTS = "redirectRequests"
+    """"""
 
 
 def _get_single_item(items):
-    """
-    """
+    """_get_single_item"""
     if len(items) == 0:
         return None
     if len(items) > 1:
@@ -441,18 +441,15 @@ def _get_single_item(items):
 
 
 class _JsonConvertibleModule:
-    """
-    """
+    """_JsonConvertibleModule"""
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        """
-        """
+        """_convert_json_info"""
         raise NotImplementedError()
 
 
 class ModuleApiBase(_JsonConvertibleModule):
-    """
-    """
+    """ModuleApiBase"""
 
     MAX_WAIT_ATTEMPTS = 999
     """ 
@@ -463,14 +460,12 @@ class ModuleApiBase(_JsonConvertibleModule):
 
     @staticmethod
     def info_sequence():
-        """
-        """
+        """info_sequence"""
         raise NotImplementedError()
 
     @staticmethod
     def info_tuple_name():
-        """
-        """
+        """info_tuple_name"""
         raise NotImplementedError()
 
     def __init_subclass__(cls, **kwargs):
@@ -492,18 +487,21 @@ class ModuleApiBase(_JsonConvertibleModule):
         self._api = api
 
     def _add_sort_param(self, data):
-        """
-        """
+        """_add_sort_param"""
         results = deepcopy(data)
         results[ApiField.SORT] = ApiField.ID
         results[ApiField.SORT_ORDER] = "asc"  # @TODO: move to enum
         return results
 
     def get_list_all_pages(
-            self, method, data, progress_cb=None, convert_json_info_cb=None
+        self,
+        method,
+        data,
+        progress_cb=None,
+        convert_json_info_cb=None,
+        # validate_total=True,
     ):
-        """
-        """
+        """get_list_all_pages"""
         if convert_json_info_cb is None:
             convert_func = self._convert_json_info
         else:
@@ -530,6 +528,7 @@ class ModuleApiBase(_JsonConvertibleModule):
                 results.extend(temp_items)
                 if progress_cb is not None:
                     progress_cb(len(temp_items))
+            # if validate_total is True
             if len(results) != total:
                 raise RuntimeError(
                     "Method {!r}: error during pagination, some items are missed".format(
@@ -541,20 +540,17 @@ class ModuleApiBase(_JsonConvertibleModule):
 
     @staticmethod
     def _get_info_by_name(get_info_by_filters_fn, name):
-        """
-        """
+        """_get_info_by_name"""
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
         return get_info_by_filters_fn(filters)
 
     def get_info_by_id(self, id):
-        """
-        """
+        """get_info_by_id"""
         raise NotImplementedError()
 
     @staticmethod
     def _get_free_name(exist_check_fn, name):
-        """
-        """
+        """_get_free_name"""
         res_title = name
         suffix = 1
         while exist_check_fn(res_title):
@@ -563,8 +559,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         return res_title
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        """
-        """
+        """_convert_json_info"""
 
         def _get_value(dict, field_name, skip_missing):
             if skip_missing is True:
@@ -592,8 +587,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             return self.InfoType(*field_values)
 
     def _get_response_by_id(self, id, method, id_field):
-        """
-        """
+        """_get_response_by_id"""
         try:
             return self._api.post(method, {id_field: id})
         except requests.exceptions.HTTPError as error:
@@ -603,8 +597,7 @@ class ModuleApiBase(_JsonConvertibleModule):
                 raise error
 
     def _get_info_by_id(self, id, method):
-        """
-        """
+        """_get_info_by_id"""
         response = self._get_response_by_id(id, method, id_field=ApiField.ID)
         return (
             self._convert_json_info(response.json()) if (response is not None) else None
@@ -626,8 +619,7 @@ class ModuleApi(ModuleApiBase):
         self._api = api
 
     def get_info_by_name(self, parent_id, name):
-        """
-        """
+        """get_info_by_name"""
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
                 parent_id, module_name
@@ -636,66 +628,55 @@ class ModuleApi(ModuleApiBase):
         )
 
     def _get_info_by_filters(self, parent_id, filters):
-        """
-        """
+        """_get_info_by_filters"""
         items = self.get_list(parent_id, filters)
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
-        """
-        """
+        """get_list"""
         raise NotImplementedError()
 
     def exists(self, parent_id, name):
-        """
-        """
+        """exists"""
         return self.get_info_by_name(parent_id, name) is not None
 
     def get_free_name(self, parent_id, name):
-        """
-        """
+        """get_free_name"""
         return self._get_free_name(
             exist_check_fn=lambda module_name: self.exists(parent_id, module_name),
             name=name,
         )
 
     def _get_effective_new_name(self, parent_id, name, change_name_if_conflict=False):
-        """
-        """
+        """_get_effective_new_name"""
         return self.get_free_name(parent_id, name) if change_name_if_conflict else name
 
 
 # Base class for entities that do not have a parent object in the system.
 class ModuleNoParent(ModuleApiBase):
-    """
-    """
+    """ModuleNoParent"""
 
     def get_info_by_name(self, name):
-        """
-        """
+        """get_info_by_name"""
         return self._get_info_by_name(
             get_info_by_filters_fn=self._get_info_by_filters, name=name
         )
 
     def _get_info_by_filters(self, filters):
-        """
-        """
+        """_get_info_by_filters"""
         items = self.get_list(filters)
         return _get_single_item(items)
 
     def get_list(self, filters=None):
-        """
-        """
+        """get_list"""
         raise NotImplementedError()
 
     def exists(self, name):
-        """
-        """
+        """exists"""
         return self.get_info_by_name(name) is not None
 
     def get_free_name(self, name):
-        """
-        """
+        """get_free_name"""
         return self._get_free_name(
             exist_check_fn=lambda module_name: self.exists(module_name), name=name
         )
@@ -706,8 +687,7 @@ class ModuleNoParent(ModuleApiBase):
 
 
 class CloneableModuleApi(ModuleApi):
-    """
-    """
+    """CloneableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """
@@ -717,13 +697,11 @@ class CloneableModuleApi(ModuleApi):
     """
 
     def _clone_api_method_name(self):
-        """
-        """
+        """_clone_api_method_name"""
         raise NotImplementedError()
 
     def _clone(self, clone_type: dict, dst_workspace_id: int, dst_name: str):
-        """
-        """
+        """_clone"""
         response = self._api.post(
             self._clone_api_method_name(),
             {
@@ -735,27 +713,23 @@ class CloneableModuleApi(ModuleApi):
         return response.json()[ApiField.TASK_ID]
 
     def clone(self, id, dst_workspace_id, dst_name):
-        """
-        """
+        """clone"""
         return self._clone({ApiField.ID: id}, dst_workspace_id, dst_name)
 
     def clone_by_shared_link(self, shared_link, dst_workspace_id, dst_name):
-        """
-        """
+        """clone_by_shared_link"""
         return self._clone(
             {ApiField.SHARED_LINK: shared_link}, dst_workspace_id, dst_name
         )
 
     def clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
-        """
-        """
+        """clone_from_explore"""
         return self._clone(
             {ApiField.EXPLORE_PATH: explore_path}, dst_workspace_id, dst_name
         )
 
     def get_or_clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
-        """
-        """
+        """get_or_clone_from_explore"""
         if not self.exists(dst_workspace_id, dst_name):
             task_id = self.clone_from_explore(explore_path, dst_workspace_id, dst_name)
             self._api.task.wait(task_id, self._api.task.Status.FINISHED)
@@ -764,41 +738,35 @@ class CloneableModuleApi(ModuleApi):
 
 
 class ModuleWithStatus:
-    """
-    """
+    """ModuleWithStatus"""
 
     def get_status(self, id):
-        """
-        """
+        """get_status"""
         raise NotImplementedError()
 
     def raise_for_status(self, status):
-        """
-        """
+        """raise_for_status"""
         raise NotImplementedError()
 
 
 class WaitingTimeExceeded(Exception):
-    """
-    """
+    """WaitingTimeExceeded"""
+
     pass
 
 
 class UpdateableModule(_JsonConvertibleModule):
-    """
-    """
+    """UpdateableModule"""
 
     def __init__(self, api):
         self._api = api
 
     def _get_update_method(self):
-        """
-        """
+        """_get_update_method"""
         raise NotImplementedError()
 
     def update(self, id, name=None, description=None):
-        """
-        """
+        """update"""
         if name is None and description is None:
             raise ValueError("'name' or 'description' or both have to be specified")
 
@@ -813,8 +781,7 @@ class UpdateableModule(_JsonConvertibleModule):
 
 
 class RemoveableModuleApi(ModuleApi):
-    """
-    """
+    """RemoveableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """
@@ -824,18 +791,15 @@ class RemoveableModuleApi(ModuleApi):
     """
 
     def _remove_api_method_name(self):
-        """
-        """
+        """_remove_api_method_name"""
         raise NotImplementedError()
 
     def remove(self, id):
-        """
-        """
+        """remove"""
         self._api.post(self._remove_api_method_name(), {ApiField.ID: id})
 
     def remove_batch(self, ids, progress_cb=None):
-        """
-        """
+        """remove_batch"""
         for id in ids:
             self.remove(id)
             if progress_cb is not None:
@@ -843,8 +807,7 @@ class RemoveableModuleApi(ModuleApi):
 
 
 class RemoveableBulkModuleApi(ModuleApi):
-    """
-    """
+    """RemoveableBulkModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """
@@ -854,18 +817,15 @@ class RemoveableBulkModuleApi(ModuleApi):
     """
 
     def _remove_batch_api_method_name(self):
-        """
-        """
+        """_remove_batch_api_method_name"""
         raise NotImplementedError()
 
     def _remove_batch_field_name(self):
-        """
-        """
+        """_remove_batch_field_name"""
         raise NotImplementedError()
 
     def remove_batch(self, ids, progress_cb=None):
-        """
-        """
+        """remove_batch"""
         for ids_batch in batched(ids):
             self._api.post(
                 self._remove_batch_api_method_name(),
@@ -875,6 +835,5 @@ class RemoveableBulkModuleApi(ModuleApi):
                 progress_cb(len(ids_batch))
 
     def remove(self, id):
-        """
-        """
+        """remove"""
         self.remove_batch([id])

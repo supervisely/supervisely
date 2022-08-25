@@ -7,16 +7,17 @@ import os
 import time
 from collections import defaultdict, OrderedDict
 import json
-from supervisely.task.progress import Progress
 
-from supervisely.api.module_api import ApiField, ModuleApiBase, ModuleWithStatus, WaitingTimeExceeded
+from supervisely.api.module_api import (
+    ApiField,
+    ModuleApiBase,
+    ModuleWithStatus,
+    WaitingTimeExceeded,
+)
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from supervisely.io.fs import get_file_name, ensure_base_path, get_file_hash
 from supervisely.collection.str_enum import StrEnum
-from supervisely._utils import (
-    batched,
-    take_with_default
-)
+from supervisely._utils import batched, take_with_default
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
@@ -46,52 +47,54 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     """
 
     class RestartPolicy(StrEnum):
-        """
-        """
-        NEVER = 'never'
+        """RestartPolicy"""
+
+        NEVER = "never"
         """"""
-        ON_ERROR = 'on_error'
+        ON_ERROR = "on_error"
         """"""
 
     class PluginTaskType(StrEnum):
-        """
-        """
-        TRAIN = 'train'
+        """PluginTaskType"""
+
+        TRAIN = "train"
         """"""
-        INFERENCE = 'inference'
+        INFERENCE = "inference"
         """"""
-        INFERENCE_RPC = 'inference_rpc'
+        INFERENCE_RPC = "inference_rpc"
         """"""
-        SMART_TOOL = 'smarttool'
+        SMART_TOOL = "smarttool"
         """"""
-        CUSTOM = 'custom'
+        CUSTOM = "custom"
         """"""
 
     class Status(StrEnum):
-        """
-        """
-        QUEUED = 'queued'
+        """Status"""
+
+        QUEUED = "queued"
         """"""
-        CONSUMED = 'consumed'
+        CONSUMED = "consumed"
         """"""
-        STARTED = 'started'
+        STARTED = "started"
         """"""
-        DEPLOYED = 'deployed'
+        DEPLOYED = "deployed"
         """"""
-        ERROR = 'error'
+        ERROR = "error"
         """"""
-        FINISHED = 'finished'
+        FINISHED = "finished"
         """"""
-        TERMINATING = 'terminating'
+        TERMINATING = "terminating"
         """"""
-        STOPPED = 'stopped'
+        STOPPED = "stopped"
         """"""
 
     def __init__(self, api):
         ModuleApiBase.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         List of Tasks in the given Workspace.
 
@@ -143,8 +146,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             #     }
             # ]
         """
-        return self.get_list_all_pages('tasks.list',
-                                       {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages(
+            "tasks.list",
+            {ApiField.WORKSPACE_ID: workspace_id, ApiField.FILTER: filters or []},
+        )
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
@@ -199,7 +204,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             #     "agentId": null
             # }
         """
-        return self._get_info_by_id(id, 'tasks.info')
+        return self._get_info_by_id(id, "tasks.info")
 
     def get_status(self, task_id: int) -> Status:
         """
@@ -225,7 +230,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             print(task_status)
             # Output: finished
         """
-        status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
+        status_str = self.get_info_by_id(task_id)[
+            ApiField.STATUS
+        ]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status: Status) -> None:
@@ -238,10 +245,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`NoneType`
         """
         if status is self.Status.ERROR:
-            raise RuntimeError('Task status: ERROR')
+            raise RuntimeError("Task status: ERROR")
 
-    def wait(self, id: int, target_status: Status, wait_attempts: Optional[int] = None,
-             wait_attempt_timeout_sec: Optional[int] = None) -> bool:
+    def wait(
+        self,
+        id: int,
+        target_status: Status,
+        wait_attempts: Optional[int] = None,
+        wait_attempt_timeout_sec: Optional[int] = None,
+    ) -> bool:
         """
         Awaiting achievement by given Task of a given status.
 
@@ -257,22 +269,32 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`bool`
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
-        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
+        effective_wait_timeout = (
+            wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
+        )
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
             if status is target_status:
                 return
             time.sleep(effective_wait_timeout)
-        raise WaitingTimeExceeded('Waiting time exceeded')
+        raise WaitingTimeExceeded("Waiting time exceeded")
 
-    def upload_dtl_archive(self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None):
-        """
-        """
-        encoder = MultipartEncoder({'id': str(task_id).encode('utf-8'),
-                                    'name': get_file_name(archive_path),
-                                    'archive': (
-                                        os.path.basename(archive_path), open(archive_path, 'rb'), 'application/x-tar')})
+    def upload_dtl_archive(
+        self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None
+    ):
+        """upload_dtl_archive"""
+        encoder = MultipartEncoder(
+            {
+                "id": str(task_id).encode("utf-8"),
+                "name": get_file_name(archive_path),
+                "archive": (
+                    os.path.basename(archive_path),
+                    open(archive_path, "rb"),
+                    "application/x-tar",
+                ),
+            }
+        )
 
         def callback(monitor_instance):
             read_mb = monitor_instance.bytes_read / 1024.0 / 1024.0
@@ -280,18 +302,29 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 progress_cb(read_mb)
 
         monitor = MultipartEncoderMonitor(encoder, callback)
-        self._api.post('tasks.upload.dtl_archive', monitor)
+        self._api.post("tasks.upload.dtl_archive", monitor)
 
-    def _deploy_model(self, agent_id, model_id, plugin_id=None, version=None, restart_policy=RestartPolicy.NEVER,
-                      settings=None):
-        """
-        """
-        response = self._api.post('tasks.run.deploy', {ApiField.AGENT_ID: agent_id,
-                                                       ApiField.MODEL_ID: model_id,
-                                                       ApiField.RESTART_POLICY: restart_policy.value,
-                                                       ApiField.SETTINGS: settings or {'gpu_device': 0},
-                                                       ApiField.PLUGIN_ID: plugin_id,
-                                                       ApiField.VERSION: version})
+    def _deploy_model(
+        self,
+        agent_id,
+        model_id,
+        plugin_id=None,
+        version=None,
+        restart_policy=RestartPolicy.NEVER,
+        settings=None,
+    ):
+        """_deploy_model"""
+        response = self._api.post(
+            "tasks.run.deploy",
+            {
+                ApiField.AGENT_ID: agent_id,
+                ApiField.MODEL_ID: model_id,
+                ApiField.RESTART_POLICY: restart_policy.value,
+                ApiField.SETTINGS: settings or {"gpu_device": 0},
+                ApiField.PLUGIN_ID: plugin_id,
+                ApiField.VERSION: version,
+            },
+        )
         return response.json()[ApiField.TASK_ID]
 
     def get_context(self, id: int) -> Dict:
@@ -327,73 +360,105 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             #     }
             # }
         """
-        response = self._api.post('GetTaskContext', {ApiField.ID: id})
+        response = self._api.post("GetTaskContext", {ApiField.ID: id})
         return response.json()
 
     def _convert_json_info(self, info: dict):
-        """
-        """
+        """_convert_json_info"""
         return info
 
-    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
-        """
-        """
-        response = self._api.post('tasks.run.dtl', {ApiField.WORKSPACE_ID: workspace_id,
-                                                    ApiField.CONFIG: dtl_graph,
-                                                    'advanced': {ApiField.AGENT_ID: agent_id}})
+    def run_dtl(
+        self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None
+    ):
+        """run_dtl"""
+        response = self._api.post(
+            "tasks.run.dtl",
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.CONFIG: dtl_graph,
+                "advanced": {ApiField.AGENT_ID: agent_id},
+            },
+        )
         return response.json()[ApiField.TASK_ID]
 
-    def _run_plugin_task(self, task_type, agent_id, plugin_id, version, config, input_projects, input_models,
-                         result_name):
-        """
-        """
-        response = self._api.post('tasks.run.plugin', {'taskType': task_type,
-                                                       ApiField.AGENT_ID: agent_id,
-                                                       ApiField.PLUGIN_ID: plugin_id,
-                                                       ApiField.VERSION: version,
-                                                       ApiField.CONFIG: config,
-                                                       'projects': input_projects,
-                                                       'models': input_models,
-                                                       ApiField.NAME: result_name})
+    def _run_plugin_task(
+        self,
+        task_type,
+        agent_id,
+        plugin_id,
+        version,
+        config,
+        input_projects,
+        input_models,
+        result_name,
+    ):
+        """_run_plugin_task"""
+        response = self._api.post(
+            "tasks.run.plugin",
+            {
+                "taskType": task_type,
+                ApiField.AGENT_ID: agent_id,
+                ApiField.PLUGIN_ID: plugin_id,
+                ApiField.VERSION: version,
+                ApiField.CONFIG: config,
+                "projects": input_projects,
+                "models": input_models,
+                ApiField.NAME: result_name,
+            },
+        )
         return response.json()[ApiField.TASK_ID]
 
-    def run_train(self, agent_id: int, input_project_id: int, input_model_id: int, result_nn_name: str,
-                  train_config: Optional[Dict] = None):
-        """
-        """
+    def run_train(
+        self,
+        agent_id: int,
+        input_project_id: int,
+        input_model_id: int,
+        result_nn_name: str,
+        train_config: Optional[Dict] = None,
+    ):
+        """run_train"""
         model_info = self._api.model.get_info_by_id(input_model_id)
-        return self._run_plugin_task(task_type=TaskApi.PluginTaskType.TRAIN.value,
-                                     agent_id=agent_id,
-                                     plugin_id=model_info.plugin_id,
-                                     version=None,
-                                     input_projects=[input_project_id],
-                                     input_models=[input_model_id],
-                                     result_name=result_nn_name,
-                                     config={} if train_config is None else train_config)
+        return self._run_plugin_task(
+            task_type=TaskApi.PluginTaskType.TRAIN.value,
+            agent_id=agent_id,
+            plugin_id=model_info.plugin_id,
+            version=None,
+            input_projects=[input_project_id],
+            input_models=[input_model_id],
+            result_name=result_nn_name,
+            config={} if train_config is None else train_config,
+        )
 
-    def run_inference(self, agent_id: int, input_project_id: int, input_model_id: int, result_project_name: str,
-                      inference_config: Optional[Dict] = None):
-        """
-        """
+    def run_inference(
+        self,
+        agent_id: int,
+        input_project_id: int,
+        input_model_id: int,
+        result_project_name: str,
+        inference_config: Optional[Dict] = None,
+    ):
+        """run_inference"""
         model_info = self._api.model.get_info_by_id(input_model_id)
-        return self._run_plugin_task(task_type=TaskApi.PluginTaskType.INFERENCE.value,
-                                     agent_id=agent_id,
-                                     plugin_id=model_info.plugin_id,
-                                     version=None,
-                                     input_projects=[input_project_id],
-                                     input_models=[input_model_id],
-                                     result_name=result_project_name,
-                                     config={} if inference_config is None else inference_config)
+        return self._run_plugin_task(
+            task_type=TaskApi.PluginTaskType.INFERENCE.value,
+            agent_id=agent_id,
+            plugin_id=model_info.plugin_id,
+            version=None,
+            input_projects=[input_project_id],
+            input_models=[input_model_id],
+            result_name=result_project_name,
+            config={} if inference_config is None else inference_config,
+        )
 
     def get_training_metrics(self, task_id: int):
-        """
-        """
-        response = self._get_response_by_id(id=task_id, method='tasks.train-metrics', id_field=ApiField.TASK_ID)
+        """get_training_metrics"""
+        response = self._get_response_by_id(
+            id=task_id, method="tasks.train-metrics", id_field=ApiField.TASK_ID
+        )
         return response.json() if (response is not None) else None
 
     def deploy_model(self, agent_id: int, model_id: int) -> int:
-        """
-        """
+        """deploy_model"""
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -403,8 +468,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return task_id
 
     def deploy_model_async(self, agent_id: int, model_id: int) -> int:
-        """
-        """
+        """deploy_model_async"""
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -412,70 +476,102 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             task_id = task_ids[0]
         return task_id
 
-    def start(self, agent_id, app_id, workspace_id, description='application description', params=None,
-              log_level='info',
-              users_ids=None, app_version='', is_branch=False,
-              task_name='pythonSpawned', restart_policy='never', proxy_keep_url=False):
-        """
-        """
-        resp = self._api.post(method='tasks.run.app', data={
+    def start(
+        self,
+        agent_id,
+        app_id=None,
+        workspace_id=None,
+        description="application description",
+        params=None,
+        log_level="info",
+        users_ids=None,
+        app_version="",
+        is_branch=False,
+        task_name="pythonSpawned",
+        restart_policy="never",
+        proxy_keep_url=False,
+        module_id=None,
+        redirect_requests={},
+    ):
+        """start"""
+        if app_id is not None and module_id is not None:
+            raise ValueError(
+                "Only one of the arguments (app_id or module_id) have to be defined"
+            )
+        if app_id is None and module_id is None:
+            raise ValueError(
+                "One of the arguments (app_id or module_id) have to be defined"
+            )
+
+        data = {
             ApiField.AGENT_ID: agent_id,
-            ApiField.APP_ID: app_id,
             ApiField.WORKSPACE_ID: workspace_id,
             ApiField.DESCRIPTION: description,
-            ApiField.PARAMS: take_with_default(params, {'state': {}}),
+            ApiField.PARAMS: take_with_default(params, {"state": {}}),
             ApiField.LOG_LEVEL: log_level,
             ApiField.USERS_IDS: take_with_default(users_ids, []),
             ApiField.APP_VERSION: app_version,
             ApiField.IS_BRANCH: is_branch,
             ApiField.TASK_NAME: task_name,
             ApiField.RESTART_POLICY: restart_policy,
-            ApiField.PROXY_KEEP_URL: proxy_keep_url
-        })
-
+            ApiField.PROXY_KEEP_URL: proxy_keep_url,
+            ApiField.REDIRECT_REQUESTS: redirect_requests,
+        }
+        if app_id is not None:
+            data[ApiField.APP_ID] = app_id
+        if module_id is not None:
+            data[ApiField.MODULE_ID] = module_id
+        resp = self._api.post(method="tasks.run.app", data=data)
         return resp.json()
 
     def stop(self, id):
-        """
-        """
-        response = self._api.post('tasks.stop', {ApiField.ID: id})
+        """stop"""
+        response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
 
     def get_import_files_list(self, id: int) -> Dict or None:
-        """
-        """
-        response = self._api.post('tasks.import.files_list', {ApiField.ID: id})
+        """get_import_files_list"""
+        response = self._api.post("tasks.import.files_list", {ApiField.ID: id})
         return response.json() if (response is not None) else None
 
     def download_import_file(self, id, file_path, save_path):
-        """
-        """
-        response = self._api.post('tasks.import.download_file', {ApiField.ID: id, ApiField.FILENAME: file_path},
-                                  stream=True)
+        """download_import_file"""
+        response = self._api.post(
+            "tasks.import.download_file",
+            {ApiField.ID: id, ApiField.FILENAME: file_path},
+            stream=True,
+        )
 
         ensure_base_path(save_path)
-        with open(save_path, 'wb') as fd:
+        with open(save_path, "wb") as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
     def create_task_detached(self, workspace_id: int, task_type: Optional[str] = None):
-        """
-        """
-        response = self._api.post('tasks.run.python', {ApiField.WORKSPACE_ID: workspace_id,
-                                                       ApiField.SCRIPT: "xxx",
-                                                       ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True}})
+        """create_task_detached"""
+        response = self._api.post(
+            "tasks.run.python",
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.SCRIPT: "xxx",
+                ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True},
+            },
+        )
         return response.json()[ApiField.TASK_ID]
 
     def submit_logs(self, logs) -> None:
-        """
-        """
-        response = self._api.post('tasks.logs.add', {ApiField.LOGS: logs})
+        """submit_logs"""
+        response = self._api.post("tasks.logs.add", {ApiField.LOGS: logs})
         # return response.json()[ApiField.TASK_ID]
 
-    def upload_files(self, task_id: int, abs_paths: List[str], names: List[str],
-                     progress_cb: Optional[Callable] = None) -> None:
-        """
-        """
+    def upload_files(
+        self,
+        task_id: int,
+        abs_paths: List[str],
+        names: List[str],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """upload_files"""
         if len(abs_paths) != len(names):
             raise RuntimeError("Inconsistency: len(abs_paths) != len(names)")
 
@@ -503,8 +599,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 for name in hash_to_name[hash]:
                     files.append({ApiField.NAME: name, ApiField.HASH: hash})
             for batch in batched(files):
-                resp = self._api.post('tasks.files.bulk.add-by-hash',
-                                      {ApiField.TASK_ID: task_id, ApiField.FILES: batch})
+                resp = self._api.post(
+                    "tasks.files.bulk.add-by-hash",
+                    {ApiField.TASK_ID: task_id, ApiField.FILES: batch},
+                )
         if progress_cb is not None:
             progress_cb(len(remote_hashes))
 
@@ -514,12 +612,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 path, name, hash = item
                 if hash in remote_hashes:
                     continue
-                content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
-                content_dict["{}-file".format(idx)] = (name, open(path, 'rb'), '')
+                content_dict["{}".format(idx)] = json.dumps(
+                    {"fullpath": name, "hash": hash}
+                )
+                content_dict["{}-file".format(idx)] = (name, open(path, "rb"), "")
 
             if len(content_dict) > 0:
                 encoder = MultipartEncoder(fields=content_dict)
-                resp = self._api.post('tasks.files.bulk.upload', encoder)
+                resp = self._api.post("tasks.files.bulk.upload", encoder)
                 if progress_cb is not None:
                     progress_cb(len(content_dict))
 
@@ -548,31 +648,33 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     # }
 
     def set_fields(self, task_id: int, fields: List) -> Dict:
-        """
-        """
+        """set_fields"""
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
-                    raise KeyError("Object #{} does not have field {!r}".format(idx, key))
-        data = {
-            ApiField.TASK_ID: task_id,
-            ApiField.FIELDS: fields
-        }
-        resp = self._api.post('tasks.data.set', data)
+                    raise KeyError(
+                        "Object #{} does not have field {!r}".format(idx, key)
+                    )
+        data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
+        resp = self._api.post("tasks.data.set", data)
         return resp.json()
 
     def set_fields_from_dict(self, task_id: int, d: Dict) -> Dict:
-        """
-        """
+        """set_fields_from_dict"""
         fields = []
         for k, v in d.items():
             fields.append({ApiField.FIELD: k, ApiField.PAYLOAD: v})
         return self.set_fields(task_id, fields)
 
-    def set_field(self, task_id: int, field: Dict, payload: Dict, append: Optional[bool] = False,
-                  recursive: Optional[bool] = False) -> Dict:
-        """
-        """
+    def set_field(
+        self,
+        task_id: int,
+        field: Dict,
+        payload: Dict,
+        append: Optional[bool] = False,
+        recursive: Optional[bool] = False,
+    ) -> Dict:
+        """set_field"""
         fields = [
             {
                 ApiField.FIELD: field,
@@ -584,74 +686,76 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return self.set_fields(task_id, fields)
 
     def get_fields(self, task_id, fields: List):
-        """
-        """
-        data = {
-            ApiField.TASK_ID: task_id,
-            ApiField.FIELDS: fields
-        }
-        resp = self._api.post('tasks.data.get', data)
+        """get_fields"""
+        data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
+        resp = self._api.post("tasks.data.get", data)
         return resp.json()["result"]
 
     def get_field(self, task_id: int, field: Dict):
-        """
-        """
+        """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
 
     def _validate_checkpoints_support(self, task_id):
-        """
-        """
+        """_validate_checkpoints_support"""
         info = self.get_info_by_id(task_id)
         if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
-            raise RuntimeError("Task (id={!r}) has type {!r}. "
-                               "Checkpoints are available only for tasks of type {!r}".format())
+            raise RuntimeError(
+                "Task (id={!r}) has type {!r}. "
+                "Checkpoints are available only for tasks of type {!r}".format()
+            )
 
     def list_checkpoints(self, task_id: int):
-        """
-        """
+        """list_checkpoints"""
         self._validate_checkpoints_support(task_id)
-        resp = self._api.post('tasks.checkpoints.list', {ApiField.ID: task_id})
+        resp = self._api.post("tasks.checkpoints.list", {ApiField.ID: task_id})
         return resp.json()
 
     def delete_unused_checkpoints(self, task_id: int) -> Dict:
-        """
-        """
+        """delete_unused_checkpoints"""
         self._validate_checkpoints_support(task_id)
         resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
         return resp.json()
 
     def _set_output(self):
-        """
-        """
+        """_set_output"""
         pass
 
-    def set_output_project(self, task_id: int, project_id: int, project_name: Optional[str] = None) -> Dict:
-        """
-        """
+    def set_output_project(
+        self, task_id: int, project_id: int, project_name: Optional[str] = None
+    ) -> Dict:
+        """set_output_project"""
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id)
             project_name = project.name
 
         output = {
-            ApiField.PROJECT: {
-                ApiField.ID: project_id,
-                ApiField.TITLE: project_name
-            }
+            ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}
         }
-        resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
+        resp = self._api.post(
+            "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
+        )
         return resp.json()
 
     def set_output_report(self, task_id: int, file_id: int, file_name: str) -> Dict:
-        """
-        """
-        return self._set_custom_output(task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt")
+        """set_output_report"""
+        return self._set_custom_output(
+            task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt"
+        )
 
-    def _set_custom_output(self, task_id, file_id, file_name, file_url=None, description="File",
-                           icon="zmdi zmdi-file-text", color="#33c94c", background_color="#d9f7e4",
-                           download=False):
-        """
-        """
+    def _set_custom_output(
+        self,
+        task_id,
+        file_id,
+        file_name,
+        file_url=None,
+        description="File",
+        icon="zmdi zmdi-file-text",
+        color="#33c94c",
+        background_color="#d9f7e4",
+        download=False,
+    ):
+        """_set_custom_output"""
         if file_url is None:
             file_url = self._api.file.get_url(file_id)
 
@@ -660,57 +764,90 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "icon": {
                     "className": icon,
                     "color": color,
-                    "backgroundColor": background_color
+                    "backgroundColor": background_color,
                 },
                 "title": file_name,
                 "titleUrl": file_url,
                 "download": download,
-                "description": description
+                "description": description,
             }
         }
-        resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
+        resp = self._api.post(
+            "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
+        )
         return resp.json()
 
-    def set_output_archive(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str] = None) -> Dict:
-        """
-        """
+    def set_output_archive(
+        self, task_id: int, file_id: int, file_name: str, file_url: Optional[str] = None
+    ) -> Dict:
+        """set_output_archive"""
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
-        return self._set_custom_output(task_id, file_id, file_name,
-                                       file_url=file_url,
-                                       description="Download archive", icon="zmdi zmdi-archive",
-                                       download=True)
+        return self._set_custom_output(
+            task_id,
+            file_id,
+            file_name,
+            file_url=file_url,
+            description="Download archive",
+            icon="zmdi zmdi-archive",
+            download=True,
+        )
 
-    def set_output_file_download(self, task_id: int, file_id: int, file_name: str, file_url: Optional[str] = None,
-                                 download: Optional[bool] = True) -> Dict:
-        """
-        """
+    def set_output_file_download(
+        self,
+        task_id: int,
+        file_id: int,
+        file_name: str,
+        file_url: Optional[str] = None,
+        download: Optional[bool] = True,
+    ) -> Dict:
+        """set_output_file_download"""
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
-        return self._set_custom_output(task_id, file_id, file_name,
-                                       file_url=file_url,
-                                       description="Download file", icon="zmdi zmdi-file",
-                                       download=download)
+        return self._set_custom_output(
+            task_id,
+            file_id,
+            file_name,
+            file_url=file_url,
+            description="Download file",
+            icon="zmdi zmdi-file",
+            download=download,
+        )
 
-    def send_request(self, task_id: int, method: str, data: Dict, context: Optional[Dict] = {},
-                     skip_response: bool = False, timeout: Optional[int] = 60):
-        """
-        """
+    def send_request(
+        self,
+        task_id: int,
+        method: str,
+        data: Dict,
+        context: Optional[Dict] = {},
+        skip_response: bool = False,
+        timeout: Optional[int] = 60,
+    ):
+        """send_request"""
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
-        resp = self._api.post("tasks.request.direct", {ApiField.TASK_ID: task_id,
-                                                       ApiField.COMMAND: method,
-                                                       ApiField.CONTEXT: context,
-                                                       ApiField.STATE: data,
-                                                       'skipResponse': skip_response,
-                                                       'timeout': timeout})
+        resp = self._api.post(
+            "tasks.request.direct",
+            {
+                ApiField.TASK_ID: task_id,
+                ApiField.COMMAND: method,
+                ApiField.CONTEXT: context,
+                ApiField.STATE: data,
+                "skipResponse": skip_response,
+                "timeout": timeout,
+            },
+        )
         return resp.json()
 
     def set_output_directory(self, task_id, file_id, directory_path):
-        """
-        """
-        return self._set_custom_output(task_id, file_id, directory_path, description="Directory",
-                                       icon="zmdi zmdi-folder")
+        """set_output_directory"""
+        return self._set_custom_output(
+            task_id,
+            file_id,
+            directory_path,
+            description="Directory",
+            icon="zmdi zmdi-folder",
+        )
 
     def update_meta(self, id: int, data: dict):
         """
@@ -719,6 +856,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param data: dict — meta data to update
         """
         if type(data) == dict:
-            data.update({'id': id})
+            data.update({"id": id})
 
         self._api.post("tasks.meta.update", data)
