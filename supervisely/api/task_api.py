@@ -47,7 +47,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     """
 
     class RestartPolicy(StrEnum):
-        """ """
+        """RestartPolicy"""
 
         NEVER = "never"
         """"""
@@ -55,7 +55,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class PluginTaskType(StrEnum):
-        """ """
+        """PluginTaskType"""
 
         TRAIN = "train"
         """"""
@@ -69,7 +69,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class Status(StrEnum):
-        """ """
+        """Status"""
 
         QUEUED = "queued"
         """"""
@@ -283,7 +283,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def upload_dtl_archive(
         self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None
     ):
-        """ """
+        """upload_dtl_archive"""
         encoder = MultipartEncoder(
             {
                 "id": str(task_id).encode("utf-8"),
@@ -313,7 +313,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         restart_policy=RestartPolicy.NEVER,
         settings=None,
     ):
-        """ """
+        """_deploy_model"""
         response = self._api.post(
             "tasks.run.deploy",
             {
@@ -364,13 +364,13 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return response.json()
 
     def _convert_json_info(self, info: dict):
-        """ """
+        """_convert_json_info"""
         return info
 
     def run_dtl(
         self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None
     ):
-        """ """
+        """run_dtl"""
         response = self._api.post(
             "tasks.run.dtl",
             {
@@ -392,7 +392,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         input_models,
         result_name,
     ):
-        """ """
+        """_run_plugin_task"""
         response = self._api.post(
             "tasks.run.plugin",
             {
@@ -416,7 +416,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         result_nn_name: str,
         train_config: Optional[Dict] = None,
     ):
-        """ """
+        """run_train"""
         model_info = self._api.model.get_info_by_id(input_model_id)
         return self._run_plugin_task(
             task_type=TaskApi.PluginTaskType.TRAIN.value,
@@ -437,7 +437,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         result_project_name: str,
         inference_config: Optional[Dict] = None,
     ):
-        """ """
+        """run_inference"""
         model_info = self._api.model.get_info_by_id(input_model_id)
         return self._run_plugin_task(
             task_type=TaskApi.PluginTaskType.INFERENCE.value,
@@ -451,14 +451,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def get_training_metrics(self, task_id: int):
-        """ """
+        """get_training_metrics"""
         response = self._get_response_by_id(
             id=task_id, method="tasks.train-metrics", id_field=ApiField.TASK_ID
         )
         return response.json() if (response is not None) else None
 
     def deploy_model(self, agent_id: int, model_id: int) -> int:
-        """ """
+        """deploy_model"""
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -468,7 +468,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return task_id
 
     def deploy_model_async(self, agent_id: int, model_id: int) -> int:
-        """ """
+        """deploy_model_async"""
         task_ids = self._api.model.get_deploy_tasks(model_id)
         if len(task_ids) == 0:
             task_id = self._deploy_model(agent_id, model_id)
@@ -493,7 +493,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         module_id=None,
         redirect_requests={},
     ):
-        """ """
+        """start"""
         if app_id is not None and module_id is not None:
             raise ValueError(
                 "Only one of the arguments (app_id or module_id) have to be defined"
@@ -525,17 +525,17 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return resp.json()
 
     def stop(self, id):
-        """ """
+        """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
 
     def get_import_files_list(self, id: int) -> Dict or None:
-        """ """
+        """get_import_files_list"""
         response = self._api.post("tasks.import.files_list", {ApiField.ID: id})
         return response.json() if (response is not None) else None
 
     def download_import_file(self, id, file_path, save_path):
-        """ """
+        """download_import_file"""
         response = self._api.post(
             "tasks.import.download_file",
             {ApiField.ID: id, ApiField.FILENAME: file_path},
@@ -548,7 +548,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 fd.write(chunk)
 
     def create_task_detached(self, workspace_id: int, task_type: Optional[str] = None):
-        """ """
+        """create_task_detached"""
         response = self._api.post(
             "tasks.run.python",
             {
@@ -560,7 +560,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return response.json()[ApiField.TASK_ID]
 
     def submit_logs(self, logs) -> None:
-        """ """
+        """submit_logs"""
         response = self._api.post("tasks.logs.add", {ApiField.LOGS: logs})
         # return response.json()[ApiField.TASK_ID]
 
@@ -571,7 +571,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         names: List[str],
         progress_cb: Optional[Callable] = None,
     ) -> None:
-        """ """
+        """upload_files"""
         if len(abs_paths) != len(names):
             raise RuntimeError("Inconsistency: len(abs_paths) != len(names)")
 
@@ -648,7 +648,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     # }
 
     def set_fields(self, task_id: int, fields: List) -> Dict:
-        """ """
+        """set_fields"""
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
@@ -660,7 +660,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return resp.json()
 
     def set_fields_from_dict(self, task_id: int, d: Dict) -> Dict:
-        """ """
+        """set_fields_from_dict"""
         fields = []
         for k, v in d.items():
             fields.append({ApiField.FIELD: k, ApiField.PAYLOAD: v})
@@ -674,7 +674,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         append: Optional[bool] = False,
         recursive: Optional[bool] = False,
     ) -> Dict:
-        """ """
+        """set_field"""
         fields = [
             {
                 ApiField.FIELD: field,
@@ -686,18 +686,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return self.set_fields(task_id, fields)
 
     def get_fields(self, task_id, fields: List):
-        """ """
+        """get_fields"""
         data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
         resp = self._api.post("tasks.data.get", data)
         return resp.json()["result"]
 
     def get_field(self, task_id: int, field: Dict):
-        """ """
+        """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
 
     def _validate_checkpoints_support(self, task_id):
-        """ """
+        """_validate_checkpoints_support"""
         info = self.get_info_by_id(task_id)
         if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
             raise RuntimeError(
@@ -706,25 +706,25 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             )
 
     def list_checkpoints(self, task_id: int):
-        """ """
+        """list_checkpoints"""
         self._validate_checkpoints_support(task_id)
         resp = self._api.post("tasks.checkpoints.list", {ApiField.ID: task_id})
         return resp.json()
 
     def delete_unused_checkpoints(self, task_id: int) -> Dict:
-        """ """
+        """delete_unused_checkpoints"""
         self._validate_checkpoints_support(task_id)
         resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
         return resp.json()
 
     def _set_output(self):
-        """ """
+        """_set_output"""
         pass
 
     def set_output_project(
         self, task_id: int, project_id: int, project_name: Optional[str] = None
     ) -> Dict:
-        """ """
+        """set_output_project"""
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id)
             project_name = project.name
@@ -738,7 +738,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return resp.json()
 
     def set_output_report(self, task_id: int, file_id: int, file_name: str) -> Dict:
-        """ """
+        """set_output_report"""
         return self._set_custom_output(
             task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt"
         )
@@ -755,7 +755,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         background_color="#d9f7e4",
         download=False,
     ):
-        """ """
+        """_set_custom_output"""
         if file_url is None:
             file_url = self._api.file.get_url(file_id)
 
@@ -780,7 +780,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def set_output_archive(
         self, task_id: int, file_id: int, file_name: str, file_url: Optional[str] = None
     ) -> Dict:
-        """ """
+        """set_output_archive"""
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(
@@ -801,7 +801,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         file_url: Optional[str] = None,
         download: Optional[bool] = True,
     ) -> Dict:
-        """ """
+        """set_output_file_download"""
         if file_url is None:
             file_url = self._api.file.get_info_by_id(file_id).storage_path
         return self._set_custom_output(
@@ -823,7 +823,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         skip_response: bool = False,
         timeout: Optional[int] = 60,
     ):
-        """ """
+        """send_request"""
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
         resp = self._api.post(
@@ -840,7 +840,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return resp.json()
 
     def set_output_directory(self, task_id, file_id, directory_path):
-        """ """
+        """set_output_directory"""
         return self._set_custom_output(
             task_id,
             file_id,
