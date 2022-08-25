@@ -277,25 +277,34 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         class_colors_notify = None
         for hex_color, class_names in color_names.items():
             if len(class_names) > 1:
-                warn_str = "Classes {!r} have the same RGB color = {!r}".format(class_names, hex2rgb(hex_color))
+                warn_str = "Classes {!r} have the same RGB color = {!r}".format(
+                    class_names, hex2rgb(hex_color)
+                )
                 if logger is not None:
                     logger.warn(warn_str)
                 if class_colors_notify is None:
                     class_colors_notify = ""
-                class_colors_notify += warn_str + '\n\n'
+                class_colors_notify += warn_str + "\n\n"
         return class_colors_notify
 
     def __iter__(self) -> Iterator[ObjClass]:
         return next(self)
 
 
-def make_renamed_classes(src_obj_classes: ObjClassCollection, renamer: Renamer,
-                         skip_missing: Optional[bool] = False) -> ObjClassCollection:
+def make_renamed_classes(
+    src_obj_classes: ObjClassCollection,
+    renamer: Renamer,
+    skip_missing: Optional[bool] = False,
+) -> ObjClassCollection:
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)
         if renamed_name is not None:
             renamed_classes.append(src_cls.clone(name=renamed_name))
         elif not skip_missing:
-            raise KeyError('Object class name {} could not be mapped to a destination name.'.format(src_cls.name))
+            raise KeyError(
+                "Object class name {} could not be mapped to a destination name.".format(
+                    src_cls.name
+                )
+            )
     return ObjClassCollection(items=renamed_classes)

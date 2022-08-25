@@ -71,6 +71,7 @@ setup(
         "pandas>=1.1.3, <1.4.0", # For compatibility with Python3.7
         "async_asgi_testclient",
         "PyYAML",
+        "distinctipy",
     ],
     extras_require={
         "extras": [
