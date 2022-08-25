@@ -18,7 +18,7 @@ from supervisely import logger
 
 
 class AppInfo(NamedTuple):
-    """ """
+    """AppInfo"""
 
     id: int
     created_by_id: int
@@ -35,11 +35,11 @@ class AppInfo(NamedTuple):
 
 
 class AppApi(TaskApi):
-    """ """
+    """AppApi"""
 
     @staticmethod
     def info_sequence():
-        """ """
+        """info_sequence"""
         return [
             ApiField.ID,
             ApiField.CREATED_BY_ID,
@@ -57,11 +57,11 @@ class AppApi(TaskApi):
 
     @staticmethod
     def info_tuple_name():
-        """ """
+        """info_tuple_name"""
         return "AppInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        """ """
+        """_convert_json_info"""
         res = super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
         return AppInfo(**res._asdict())
 
@@ -84,7 +84,7 @@ class AppApi(TaskApi):
         only_running=False,
         with_shared=True,
     ) -> List[AppInfo]:
-        """ """
+        """get_list"""
 
         return self.get_list_all_pages(
             method="apps.list",
@@ -110,7 +110,7 @@ class AppApi(TaskApi):
         )
 
     def run_dtl(self, workspace_id, dtl_graph, agent_id=None):
-        """ """
+        """run_dtl"""
         raise RuntimeError("Method is unavailable")
 
     def _run_plugin_task(
@@ -124,7 +124,7 @@ class AppApi(TaskApi):
         input_models,
         result_name,
     ):
-        """ """
+        """_run_plugin_task"""
         raise RuntimeError("Method is unavailable")
 
     def run_train(
@@ -135,7 +135,7 @@ class AppApi(TaskApi):
         result_nn_name,
         train_config=None,
     ):
-        """ """
+        """run_train"""
         raise RuntimeError("Method is unavailable")
 
     def run_inference(
@@ -146,35 +146,35 @@ class AppApi(TaskApi):
         result_project_name,
         inference_config=None,
     ):
-        """ """
+        """run_inference"""
         raise RuntimeError("Method is unavailable")
 
     def get_training_metrics(self, task_id):
-        """ """
+        """get_training_metrics"""
         raise RuntimeError("Method is unavailable")
 
     def deploy_model(self, agent_id, model_id):
-        """ """
+        """deploy_model"""
         raise RuntimeError("Method is unavailable")
 
     def get_import_files_list(self, id):
-        """ """
+        """get_import_files_list"""
         raise RuntimeError("Method is unavailable")
 
     def download_import_file(self, id, file_path, save_path):
-        """ """
+        """download_import_file"""
         raise RuntimeError("Method is unavailable")
 
     def create_task_detached(self, workspace_id, task_type: str = None):
-        """ """
+        """create_task_detached"""
         raise RuntimeError("Method is unavailable")
 
     def upload_files(self, task_id, abs_paths, names, progress_cb=None):
-        """ """
+        """upload_files"""
         raise RuntimeError("Method is unavailable")
 
     def initialize(self, task_id, template, data=None, state=None):
-        """ """
+        """initialize"""
         d = take_with_default(data, {})
         if "notifyDialog" not in d:
             d["notifyDialog"] = None
@@ -191,11 +191,11 @@ class AppApi(TaskApi):
         return resp
 
     def get_url(self, task_id):
-        """ """
+        """get_url"""
         return f"/apps/sessions/{task_id}"
 
     def download_git_file(self, app_id, version, file_path, save_path):
-        """ """
+        """download_git_file"""
         raise NotImplementedError()
 
     def download_git_archive(
@@ -207,7 +207,7 @@ class AppApi(TaskApi):
         log_progress=True,
         ext_logger=None,
     ):
-        """ """
+        """download_git_archive"""
         payload = {
             ApiField.ECOSYSTEM_ITEM_ID: ecosystem_item_id,
             ApiField.VERSION: version,
@@ -241,7 +241,7 @@ class AppApi(TaskApi):
                     log_size = 0
 
     def get_info(self, module_id, version=None):
-        """ """
+        """get_info"""
         data = {ApiField.ID: module_id}
         if version is not None:
             data[ApiField.VERSION] = version
