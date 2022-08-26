@@ -1296,6 +1296,12 @@ class Annotation:
 
         return self.transform_labels(_flipud_label)
 
+    def _get_thickness(self):
+        h, w = self.img_size
+        step_size = 100
+        size = min(h, w) + (max(h, w) - min(h, w)) * 0.5
+        return int(size) // step_size + 1
+
     def _get_font(self):
         """
         The function get size of font for image with given size
@@ -1325,6 +1331,7 @@ class Annotation:
         color: Optional[List[int, int, int]] = None,
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
+        fill_rectangles: Optional[bool] = True
     ) -> None:
         """
         Draws current Annotation on image. Modifies mask.
@@ -1373,6 +1380,15 @@ class Annotation:
         if draw_tags is True:
             tags_font = self._get_font()
         for label in self._labels:
+            if not fill_rectangles and isinstance(label.geometry, Rectangle):
+                label.draw_contour(
+                    bitmap,
+                    color=color,
+                    thickness=thickness,
+                    draw_tags=draw_tags,
+                    tags_font=tags_font
+                )
+                continue
             label.draw(
                 bitmap,
                 color=color,
@@ -1846,10 +1862,11 @@ class Annotation:
         self,
         bitmap: np.ndarray,
         color: Optional[List[int, int, int]] = None,
-        thickness: Optional[int] = 1,
+        thickness: Optional[int] = None,
         opacity: Optional[float] = 0.5,
         draw_tags: Optional[bool] = False,
         output_path: Optional[str] = None,
+        fill_rectangles: Optional[bool] = True
     ) -> None:
         """
         Draws current Annotation on image with contour. Modifies mask.
@@ -1896,9 +1913,17 @@ class Annotation:
             :width: 600
             :height: 500
         """
+        if thickness is None:
+            thickness = self._get_thickness()
         height, width = bitmap.shape[:2]
         vis_filled = np.zeros((height, width, 3), np.uint8)
-        self.draw(vis_filled, color=color, thickness=thickness, draw_tags=draw_tags)
+        self.draw(
+            vis_filled, 
+            color=color, 
+            thickness=thickness, 
+            draw_tags=draw_tags, 
+            fill_rectangles=fill_rectangles
+        )
         vis = cv2.addWeighted(bitmap, 1, vis_filled, opacity, 0)
         np.copyto(bitmap, vis)
         if thickness > 0:

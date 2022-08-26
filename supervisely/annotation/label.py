@@ -16,6 +16,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.imaging import image as sly_image
+from supervisely.imaging import font as sly_font
 from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
@@ -557,6 +558,13 @@ class LabelBase:
         """
         return self.clone(geometry=self.geometry.flipud(img_size))
 
+    def _get_font(self, img_size):
+        '''
+        The function get size of font for image with given size
+        :return: font for drawing
+        '''
+        return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
+
     def _draw_tags(self, bitmap, font):
         bbox = self.geometry.to_bbox()
         texts = [tag.get_compact_str() for tag in self.tags]
@@ -587,6 +595,8 @@ class LabelBase:
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
+            if tags_font is None:
+                tags_font = self._get_font(bitmap.shape[:2])
             self._draw_tags(bitmap, tags_font)
 
     def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None,
@@ -611,6 +621,8 @@ class LabelBase:
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw_contour(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
         if draw_tags:
+            if tags_font is None:
+                tags_font = self._get_font(bitmap.shape[:2])
             self._draw_tags(bitmap, tags_font)
 
     @property
