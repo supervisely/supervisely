@@ -187,6 +187,8 @@ class ApiField:
     """"""
     SIZEB = (["size"], "sizeb")
     """"""
+    FRAMES = "frames"
+    """"""
     FRAMES_COUNT = (["fileMeta", "framesCount"], "frames_count")
     """"""
     PATH_ORIGINAL = "pathOriginal"
