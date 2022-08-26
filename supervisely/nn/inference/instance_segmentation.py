@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -48,7 +48,7 @@ class InstanceSegmentation(Inference):
 
     def predict(
         self, image_path: str, confidence_threshold: float
-    ) -> list[PredictionMask]:
+    ) -> List[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_annotation(
@@ -75,7 +75,7 @@ class InstanceSegmentation(Inference):
         return ann.to_json()
 
     def visualize(
-        self, predictions: list[PredictionMask], image_path: str, vis_path: str
+        self, predictions: List[PredictionMask], image_path: str, vis_path: str
     ):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
