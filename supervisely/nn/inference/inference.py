@@ -33,12 +33,18 @@ class Inference:
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
+
+        self._headless = False
         if is_production():
-            if is_debug_with_sly_net():
-                pass
+            if os.environ.get("_SPAWN_USER_ID") is None:
+                logger.debug("Running serving on localhost with enabled UI")
             else:
+                logger.debug(
+                    "Running serving on Supervisely platform in production mode"
+                )
                 raise NotImplementedError("TBD - download directory")
         elif is_development():
+            self._headless = True
             pass
 
     def get_classes(self) -> List[str]:
@@ -201,13 +207,15 @@ class Inference:
     def serve(self):
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
-            logger.warn("Serving is running in advanced development mode")
+            logger.warn(
+                "Serving is running in advanced development mode with Supervisely VPN Network"
+            )
             team_id = int(os.environ["context.teamId"])
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
-        self._app = Application(headless=True)  # TODO: headless -> UI
+        self._app = Application(headless=self._headless)
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")
