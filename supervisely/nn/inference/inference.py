@@ -35,6 +35,8 @@ class Inference:
         self._api: Api = None
 
         self._headless = False
+        # self._template_dir = None
+        # self._template_dir = Path(__file__).parent.absolute()
         if is_production():
             if os.environ.get("_SPAWN_USER_ID") is None:
                 logger.debug("Running serving on localhost with enabled UI")
@@ -46,6 +48,9 @@ class Inference:
         elif is_development():
             self._headless = True
             pass
+
+    def _get_templates_dir(self):
+        raise NotImplementedError("Have to be implemented in child class")
 
     def get_classes(self) -> List[str]:
         raise NotImplementedError(
@@ -215,7 +220,9 @@ class Inference:
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
-        self._app = Application(headless=self._headless)
+        self._app = Application(
+            headless=self._headless, templates_dir=self._get_templates_dir()
+        )
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")
