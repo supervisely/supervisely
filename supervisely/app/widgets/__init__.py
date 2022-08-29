@@ -16,5 +16,6 @@ from supervisely.app.widgets.heatmap_chart.heatmap_chart import HeatmapChart
 from supervisely.app.widgets.table.table import Table
 from supervisely.app.widgets.labeled_image.labeled_image import LabeledImage
 from supervisely.app.widgets.text.text import Text
+from supervisely.app.widgets.sidebar.sidebar import Sidebar
 
 # from supervisely.app.widgets.restart_step.restart_step import RestartStep

@@ -19,7 +19,7 @@ from supervisely.sly_logger import logger
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.content import get_data_dir
+from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development

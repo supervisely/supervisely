@@ -144,6 +144,7 @@ def _init(
     process_id=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
+    from supervisely.app.content import StateJson
 
     if app is None:
         app = FastAPI()
@@ -151,6 +152,8 @@ def _init(
     handle_server_errors(app)
 
     if headless is False:
+        if "app_body_padding" not in StateJson():
+            StateJson()["app_body_padding"] = "20px"
         Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
         enable_hot_reload_on_debug(app)
 
@@ -160,8 +163,6 @@ def _init(
 
         @app.middleware("http")
         async def get_state_from_request(request: Request, call_next):
-            from supervisely.app.content import StateJson
-
             await StateJson.from_request(request)
             response = await call_next(request)
             return response
