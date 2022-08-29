@@ -173,14 +173,9 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-
-            try:
-                template = Jinja2Templates().TemplateResponse(
-                    "index.html", {"request": request}
-                )
-            except jinja2.exceptions.TemplateNotFound as e:
-                xx = 10
-            return template
+            return Jinja2Templates().TemplateResponse(
+                "index.html", {"request": request}
+            )
 
         @app.on_event("shutdown")
         def shutdown():

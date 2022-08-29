@@ -9,7 +9,7 @@ class WebsocketManager(metaclass=Singleton):
         self.app = None
         self.path = path
         self.active_connections: List[WebSocket] = []
-    
+
     def set_app(self, app: FastAPI):
         if self.app is not None:
             return
@@ -23,9 +23,11 @@ class WebsocketManager(metaclass=Singleton):
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def broadcast(self, d: dict): 
-        if self.app is None:
-            raise ValueError("WebSocket is not initialized, use Websocket middleware for that")
+    async def broadcast(self, d: dict):
+        # if self.app is None:
+        #     raise ValueError(
+        #         "WebSocket is not initialized, use Websocket middleware for that"
+        #     )
         for connection in self.active_connections:
             await connection.send_json(d)
 

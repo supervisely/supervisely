@@ -11,7 +11,7 @@ from supervisely.app.fastapi import Jinja2Templates, Application
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
-        self._sly_app = Application()
+        # self._sly_app = Application() - do not create app before it is created in main.py or in serving template
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
