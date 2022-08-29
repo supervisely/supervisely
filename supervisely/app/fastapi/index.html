@@ -35,8 +35,7 @@
     <title>{{{app_name}}}</title>
   </head>
 
-  <!-- padding: 20px; background: -->
-  <body>
+  <body style="background-color: #f4f7fe">
     <center>
       <img
         id="app-global-loading-icon"
@@ -61,9 +60,7 @@
             :data="data"
             :state="state"
           ></sly-app-header>
-          <div
-            :style="{backgroundColor: '#f4f7fe', padding: state.app_body_padding}"
-          >
+          <div :style="{padding: state.app_body_padding}">
             {% include 'main.html' %}
           </div>
         </template>

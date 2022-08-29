@@ -13,6 +13,7 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+import jinja2
 from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
@@ -154,7 +155,9 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
+        Jinja2Templates(
+            directory=[str(Path(__file__).parent.absolute()), templates_dir]
+        )
         enable_hot_reload_on_debug(app)
 
     app.mount("/sly", create(process_id, headless))
@@ -170,9 +173,14 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse(
-                "index.html", {"request": request}
-            )
+
+            try:
+                template = Jinja2Templates().TemplateResponse(
+                    "index.html", {"request": request}
+                )
+            except jinja2.exceptions.TemplateNotFound as e:
+                xx = 10
+            return template
 
         @app.on_event("shutdown")
         def shutdown():
