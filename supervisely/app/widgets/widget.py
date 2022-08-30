@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Callable
+import uuid
 
 from varname import varname
 from jinja2 import Environment
@@ -9,6 +10,7 @@ from supervisely.app.content import DataJson, StateJson
 from fastapi import FastAPI
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely._utils import generate_free_name, rand_str
 
 
 class Widget:
@@ -20,7 +22,10 @@ class Widget:
             try:
                 self.widget_id = varname(frame=2)
             except Exception as e:
-                self.widget_id = varname(frame=3)
+                try:
+                    self.widget_id = varname(frame=3)
+                except Exception as e:
+                    self.widget_id = type(self).__name__ + rand_str(10)
 
         self._register()
 
