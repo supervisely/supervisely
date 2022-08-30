@@ -25,10 +25,21 @@ from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
 from distinctipy import distinctipy
 
+try:
+    from typing import Literal
+except ImportError:
+    # for compatibility with python 3.7
+    from typing_extensions import Literal
+
 
 class Inference:
-    def __init__(self, model_dir: str = None):
+    def __init__(
+        self,
+        model_dir: str = None,
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
+    ):
         self._model_dir = model_dir
+        self._device = device
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
