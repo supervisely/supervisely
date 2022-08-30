@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
 from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
+from supervisely.app.widgets_context import JinjaWidgets
 
 js_bundle_version = "2.1.12"
 js_frontend_version = "0.0.24"
@@ -14,7 +15,6 @@ js_frontend_version = "0.0.24"
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
         super().__init__(directory)
-        self.context_widgets = {}
 
     def _create_env(
         self, directory: typing.Union[str, PathLike]
@@ -42,7 +42,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
 
         context_with_widgets = {
             **context,
-            **self.context_widgets,
+            **JinjaWidgets().context,
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
             "app_name": get_name_from_env(default="Supervisely App"),

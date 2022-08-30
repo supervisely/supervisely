@@ -6,7 +6,9 @@ from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.fastapi import Jinja2Templates, Application
+
+# from supervisely.app.fastapi import Jinja2Templates, Application
+from supervisely.app.widgets_context import JinjaWidgets
 
 
 class Widget:
@@ -32,8 +34,9 @@ class Widget:
         state.raise_for_key(self.widget_id)
         self.update_state(state=state)
 
-        templates = Jinja2Templates()
-        templates.context_widgets[self.widget_id] = self
+        JinjaWidgets().context[self.widget_id] = self
+        # templates = Jinja2Templates()
+        # templates.context_widgets[self.widget_id] = self
 
     def get_json_data(self):
         raise NotImplementedError()
