@@ -1,6 +1,7 @@
 from typing import List
-from supervisely.app import DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from supervisely.sly_logger import logger
 
 
 class Card(Widget):
@@ -31,3 +32,29 @@ class Card(Widget):
 
     def get_json_state(self):
         return {"disabled": self._disabled, "collapsed": self._collapsed}
+
+    def collapse(self):
+        if self._collapsable is False:
+            logger.warn(f"Card {self.widget_id} can not be collapsed")
+            return
+        self._collapsed = True
+        StateJson()[self.widget_id]["collapsed"] = self._collapsed
+        StateJson().send_changes()
+
+    def uncollapse(self):
+        if self._collapsable is False:
+            logger.warn(f"Card {self.widget_id} can not be uncollapsed")
+            return
+        self._collapsed = False
+        StateJson()[self.widget_id]["collapsed"] = self._collapsed
+        StateJson().send_changes()
+
+    def lock(self, message="Card content is locked"):
+        self._disabled = {"disabled": True, "message": message}
+        StateJson()[self.widget_id]["disabled"] = self._disabled
+        StateJson().send_changes()
+
+    def unlock(self):
+        self._disabled["disabled"] = False
+        StateJson()[self.widget_id]["disabled"] = self._disabled
+        StateJson().send_changes()
