@@ -1,0 +1,5 @@
+{% for item in widget._widgets %} {% if loop.last %}
+<div>{{{item}}}</div>
+{% else %}
+<div style="margin-bottom: {{{widget._gap}}}px">{{{item}}}</div>
+{% endif %} {% endfor %}

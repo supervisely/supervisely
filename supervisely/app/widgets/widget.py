@@ -6,14 +6,14 @@ from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
-
-# from supervisely.app.fastapi import Jinja2Templates, Application
+from fastapi import FastAPI
+from supervisely.app.fastapi import _MainServer
 from supervisely.app.widgets_context import JinjaWidgets
 
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
-        # self._sly_app = Application() - do not create app before it is created in main.py or in serving template
+        self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:

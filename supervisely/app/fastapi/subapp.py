@@ -148,7 +148,7 @@ def _init(
     from supervisely.app.content import StateJson
 
     if app is None:
-        app = FastAPI()
+        app = _MainServer().get_server()
 
     handle_server_errors(app)
 
@@ -185,6 +185,14 @@ def _init(
             logger.info("Application has been shut down successfully")
 
     return app
+
+
+class _MainServer(metaclass=Singleton):
+    def __init__(self):
+        self._server = FastAPI()
+
+    def get_server(self) -> FastAPI:
+        return self._server
 
 
 class Application(metaclass=Singleton):
