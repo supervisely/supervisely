@@ -7,7 +7,7 @@ class Sidebar(Widget):
         self,
         left_pane: Widget,
         right_pane: Widget,
-        width_percent: int = 30,
+        width_percent: int = 25,
         widget_id: str = None,
     ):
         super().__init__(widget_id=widget_id, file_path=__file__)
