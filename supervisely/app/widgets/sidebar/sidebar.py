@@ -16,6 +16,7 @@ class Sidebar(Widget):
         self._width_percent = width_percent
         self._options = {"sidebarWidth": self._width_percent}
         StateJson()["app_body_padding"] = "0px"
+        StateJson()["menuIndex"] = "1"
 
     def get_json_data(self):
         return {}
