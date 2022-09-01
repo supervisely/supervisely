@@ -63,6 +63,13 @@ class Inference:
     def _get_templates_dir(self):
         raise NotImplementedError("Have to be implemented in child class")
 
+    def load_on_device(
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
+    ):
+        raise NotImplementedError(
+            "Have to be implemented in child class after inheritance"
+        )
+
     def get_classes(self) -> List[str]:
         raise NotImplementedError(
             "Have to be implemented in child class after inheritance"
