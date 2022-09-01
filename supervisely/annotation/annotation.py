@@ -1924,8 +1924,9 @@ class Annotation:
             draw_tags=draw_tags, 
             fill_rectangles=fill_rectangles
         )
-        vis = cv2.addWeighted(bitmap, 1, vis_filled, opacity, 0)
-        np.copyto(bitmap, vis)
+        non_empty_pixels = np.tile(np.any(vis_filled != 0, axis=2)[:,:,np.newaxis], (1, 1, 3))
+        mixes_bitmap = np.where(non_empty_pixels, vis_filled * opacity + bitmap * (1 - opacity), bitmap).astype(np.uint8)
+        np.copyto(bitmap, mixes_bitmap)
         if thickness > 0:
             self.draw_contour(
                 bitmap, color=color, thickness=thickness, draw_tags=draw_tags
