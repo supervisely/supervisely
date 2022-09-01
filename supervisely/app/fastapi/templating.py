@@ -9,7 +9,7 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
 js_bundle_version = "2.1.13"
-js_frontend_version = "0.0.24"
+js_frontend_version = "0.0.25"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
