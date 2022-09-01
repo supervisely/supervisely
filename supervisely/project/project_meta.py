@@ -111,9 +111,11 @@ class ProjectMeta(JsonSerializable):
             self._obj_classes = ObjClassCollection()
         elif isinstance(obj_classes, (list, ObjClassCollection)):
             existing_colors = [obj_class.color for obj_class in obj_classes]
-            distinct_colors = [get_rgb256(color) for color in get_colors(len(existing_colors), exclude_colors=existing_colors)]
-            for obj_class, color in zip(obj_classes, distinct_colors):
-                obj_class._color = color
+            # distinct_colors = existing_colors
+            distinct_colors = [get_rgb256(color) for color in get_colors(n_colors=len(existing_colors), n_attempts=1)]
+            if existing_colors != distinct_colors:
+                for obj_class, color in zip(obj_classes, distinct_colors):
+                    obj_class._color = color
             self._obj_classes = ObjClassCollection(obj_classes)
         else:
             raise TypeError(f"obj_classes argument has unknown type {type(obj_classes)}")
