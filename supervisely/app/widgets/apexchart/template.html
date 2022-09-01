@@ -11,7 +11,7 @@
     widget._click_handled
     %}
     @click="state.{{{ widget.widget_id }}}.clicked_value = $event;
-    post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
+            post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
     {%
     endif
     %}
