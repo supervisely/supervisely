@@ -67,7 +67,7 @@ class ObjClass(KeyObject, JsonSerializable):
                  sly_id: Optional[int] = None, hotkey: Optional[str] = None):
         self._name = name
         self._geometry_type = geometry_type
-        self._color = random_rgb() if color is None else deepcopy(color)
+        self._color = color
         self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
@@ -142,12 +142,14 @@ class ObjClass(KeyObject, JsonSerializable):
             print(class_lemon.color)
             # Output: [255,120,0]
         """
+        if self._color is None:
+            self._color = random_rgb()
         return deepcopy(self._color)
 
     @property
     def sly_id(self) -> int:
         """
-       Class ID in Supervisely server.
+        Class ID in Supervisely server.
 
         :return: ID
         :rtype: :class:`int`

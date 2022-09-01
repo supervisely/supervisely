@@ -5,7 +5,7 @@ from __future__ import annotations
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.tag_meta import TagMeta
 from typing import List, Dict, Optional, Tuple, Union
-
+from distinctipy.distinctipy import get_colors, get_rgb256
 
 from supervisely.io.json import JsonSerializable
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -106,16 +106,18 @@ class ProjectMeta(JsonSerializable):
     """
     def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
                  project_type: Optional[ProjectType] = None):
-        
+
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
-        elif isinstance(obj_classes, list):
+        elif isinstance(obj_classes, (list, ObjClassCollection)):
+            existing_colors = [obj_class.color for obj_class in obj_classes]
+            distinct_colors = [get_rgb256(color) for color in get_colors(len(existing_colors), exclude_colors=existing_colors)]
+            for obj_class, color in zip(obj_classes, distinct_colors):
+                obj_class._color = color
             self._obj_classes = ObjClassCollection(obj_classes)
-        elif isinstance(obj_classes, ObjClassCollection):
-            self._obj_classes = obj_classes
         else:
             raise TypeError(f"obj_classes argument has unknown type {type(obj_classes)}")
-        
+
         if tag_metas is None:
             self._tag_metas = TagMetaCollection()
         elif isinstance(tag_metas, list):
@@ -124,7 +126,7 @@ class ProjectMeta(JsonSerializable):
             self._tag_metas = tag_metas
         else:
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
-                
+
         self._project_type = project_type
 
     @property

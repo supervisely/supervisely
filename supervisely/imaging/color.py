@@ -11,6 +11,8 @@ def _validate_color(color):
     Checks input color for compliance with the required format
     :param: color: color (RGB tuple of integers)
     """
+    if color is None:
+        return
     if not isinstance(color, (list, tuple)):
         raise ValueError('Color has to be list, or tuple')
     if len(color) != 3:
