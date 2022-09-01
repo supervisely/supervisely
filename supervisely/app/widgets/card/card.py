@@ -18,7 +18,7 @@ class Card(Widget):
         self._collapsable = collapsable
         self._collapsed = False
         self._container = container
-        self._options = {"collapsable": self._collapsable}
+        self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}
         self._disabled = {"disabled": False, "message": ""}
         super().__init__(widget_id=widget_id, file_path=__file__)
 
