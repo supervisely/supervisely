@@ -83,6 +83,12 @@ def upload_to_supervisely(static_dir_path):
 
 def dump_files_to_supervisely(app: FastAPI, template_response):
     try:
+        if os.getenv("TASK_ID") is None:
+            sly.logger.debug(
+                f"Debug mode: saving app files for offline usage is skipped"
+            )
+            return
+
         if (
             os.getenv("_SUPERVISELY_OFFLINE_FILES_UPLOADED", "False") == "True"
             and template_response.context.get("request") is not None

@@ -1,24 +1,31 @@
 from pathlib import Path
 from typing import Callable
+import uuid
 
 from varname import varname
 from jinja2 import Environment
 import markupsafe
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.fastapi import Jinja2Templates, Application
+from fastapi import FastAPI
+from supervisely.app.fastapi import _MainServer
+from supervisely.app.widgets_context import JinjaWidgets
+from supervisely._utils import generate_free_name, rand_str
 
 
 class Widget:
     def __init__(self, widget_id: str = None, file_path: str = __file__):
-        self._sly_app = Application()
+        self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
         if self.widget_id is None:
             try:
                 self.widget_id = varname(frame=2)
             except Exception as e:
-                self.widget_id = varname(frame=3)
+                try:
+                    self.widget_id = varname(frame=3)
+                except Exception as e:
+                    self.widget_id = type(self).__name__ + rand_str(10)
 
         self._register()
 
@@ -32,8 +39,9 @@ class Widget:
         state.raise_for_key(self.widget_id)
         self.update_state(state=state)
 
-        templates = Jinja2Templates()
-        templates.context_widgets[self.widget_id] = self
+        JinjaWidgets().context[self.widget_id] = self
+        # templates = Jinja2Templates()
+        # templates.context_widgets[self.widget_id] = self
 
     def get_json_data(self):
         raise NotImplementedError()

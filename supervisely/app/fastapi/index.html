@@ -4,7 +4,7 @@
     <link
       type="text/css"
       rel="stylesheet"
-      href="https://supervise.ly/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
+      href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
     />
     <style>
       #app-global-loading-icon {
@@ -35,14 +35,14 @@
     <title>{{{app_name}}}</title>
   </head>
 
-  <body>
+  <body style="background-color: #f4f7fe">
     <center>
       <img
         id="app-global-loading-icon"
         src="data:image/png;base64,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"
       />
     </center>
-    <script src="https://supervise.ly/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
     <script
       type="module"
       src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
@@ -60,7 +60,9 @@
             :data="data"
             :state="state"
           ></sly-app-header>
-          {% include 'main.html' %}
+          <div :style="{padding: state.app_body_padding}">
+            {% include 'main.html' %}
+          </div>
         </template>
       </sly-app>
     </div>

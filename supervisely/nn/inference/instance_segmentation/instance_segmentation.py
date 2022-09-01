@@ -1,4 +1,6 @@
 from typing import Dict, List
+from pathlib import Path
+import os
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -15,6 +17,12 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class InstanceSegmentation(Inference):
+    def _get_templates_dir(self):
+        template_dir = os.path.join(
+            Path(__file__).parent.absolute(), "dashboard_templates"
+        )
+        return template_dir
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "instance segmentation"
