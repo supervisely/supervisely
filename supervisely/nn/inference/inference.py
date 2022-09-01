@@ -19,27 +19,56 @@ from supervisely.sly_logger import logger
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.content import get_data_dir
+from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
 from distinctipy import distinctipy
 
+try:
+    from typing import Literal
+except ImportError:
+    # for compatibility with python 3.7
+    from typing_extensions import Literal
+
 
 class Inference:
-    def __init__(self, model_dir: str = None):
+    def __init__(
+        self,
+        model_dir: str = None,
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
+    ):
         self._model_dir = model_dir
+        self._device = device
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
+
+        self._headless = False
+        # self._template_dir = None
+        # self._template_dir = Path(__file__).parent.absolute()
         if is_production():
-            if is_debug_with_sly_net():
-                pass
+            if os.environ.get("_SPAWN_USER_ID") is None:
+                logger.debug("Running serving on localhost with enabled UI")
             else:
+                logger.debug(
+                    "Running serving on Supervisely platform in production mode"
+                )
                 raise NotImplementedError("TBD - download directory")
         elif is_development():
+            self._headless = True
             pass
+
+    def _get_templates_dir(self):
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def load_on_device(
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
+    ):
+        raise NotImplementedError(
+            "Have to be implemented in child class after inheritance"
+        )
 
     def get_classes(self) -> List[str]:
         raise NotImplementedError(
@@ -201,13 +230,17 @@ class Inference:
     def serve(self):
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
-            logger.warn("Serving is running in advanced development mode")
+            logger.warn(
+                "Serving is running in advanced development mode with Supervisely VPN Network"
+            )
             team_id = int(os.environ["context.teamId"])
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
-        self._app = Application(headless=True)  # TODO: headless -> UI
+        self._app = Application(
+            headless=self._headless, templates_dir=self._get_templates_dir()
+        )
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")

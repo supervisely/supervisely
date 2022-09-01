@@ -13,6 +13,7 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+import jinja2
 from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
@@ -109,7 +110,6 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
-        logger.debug("In debug mode ...")
         import arel
 
         hot_reload = arel.HotReload(paths=[arel.Path(".")])
@@ -118,6 +118,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         app.add_event_handler("shutdown", hot_reload.shutdown)
         templates.env.globals["DEBUG"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
+        logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
     else:
         logger.debug("In runtime mode ...")
 
@@ -144,14 +145,19 @@ def _init(
     process_id=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
+    from supervisely.app.content import StateJson
 
     if app is None:
-        app = FastAPI()
+        app = _MainServer().get_server()
 
     handle_server_errors(app)
 
     if headless is False:
-        Jinja2Templates(directory=[Path(__file__).parent.absolute(), templates_dir])
+        if "app_body_padding" not in StateJson():
+            StateJson()["app_body_padding"] = "20px"
+        Jinja2Templates(
+            directory=[str(Path(__file__).parent.absolute()), templates_dir]
+        )
         enable_hot_reload_on_debug(app)
 
     app.mount("/sly", create(process_id, headless))
@@ -160,8 +166,6 @@ def _init(
 
         @app.middleware("http")
         async def get_state_from_request(request: Request, call_next):
-            from supervisely.app.content import StateJson
-
             await StateJson.from_request(request)
             response = await call_next(request)
             return response
@@ -181,6 +185,14 @@ def _init(
             logger.info("Application has been shut down successfully")
 
     return app
+
+
+class _MainServer(metaclass=Singleton):
+    def __init__(self):
+        self._server = FastAPI()
+
+    def get_server(self) -> FastAPI:
+        return self._server
 
 
 class Application(metaclass=Singleton):

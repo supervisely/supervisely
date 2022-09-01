@@ -1,0 +1,32 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/sidebar/style.css" />
+
+<sly-sidebar :options="{{{widget._options}}}">
+  <!-- <div slot="sidebar">{{{widget._left_pane}}}</div> -->
+  <div slot="sidebar">
+    <el-menu mode="vertical" default-active="1" class="el-menu-vertical-demo">
+      <el-menu-item-group title="Group One">
+        <el-menu-item index="1" @click="state.menuIndex = '1'">
+          <i class="zmdi zmdi-bike" style="margin-right: 5px"></i>Navigator One
+        </el-menu-item>
+        <el-menu-item index="2" @click="state.menuIndex = '2'"
+          ><i class="el-icon-message"></i>Navigator Two</el-menu-item
+        >
+      </el-menu-item-group>
+      <el-menu-item-group title="Group Two">
+        <el-menu-item index="3" @click="state.menuIndex = '3'"
+          ><i class="el-icon-message"></i>Navigator Three</el-menu-item
+        >
+        <el-menu-item index="4" @click="state.menuIndex = '4'"
+          ><i class="el-icon-message"></i>Navigator Four</el-menu-item
+        >
+      </el-menu-item-group>
+    </el-menu>
+  </div>
+  <!-- <div>{{{widget._right_pane}}}</div> -->
+  <div>
+    <div v-if="state.menuIndex === '1'">{{{widget._right_pane}}}</div>
+    <div v-if="state.menuIndex === '2'">222</div>
+    <div v-if="state.menuIndex === '3'">333</div>
+    <div v-if="state.menuIndex === '4'">444</div>
+  </div>
+</sly-sidebar>
