@@ -5,7 +5,7 @@ from __future__ import annotations
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.tag_meta import TagMeta
 from typing import List, Dict, Optional, Tuple, Union
-from distinctipy.distinctipy import get_colors, get_rgb256
+from distinctipy.distinctipy import distinct_color
 
 from supervisely.io.json import JsonSerializable
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -16,6 +16,7 @@ from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging.color import COLORS_1096
 
 
 class ProjectMetaJsonFields:
@@ -104,20 +105,24 @@ class ProjectMeta(JsonSerializable):
         scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
         meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
     """
-    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
+
+    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
+                 tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
                  project_type: Optional[ProjectType] = None):
 
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
         elif isinstance(obj_classes, (list, ObjClassCollection)):
             non_colored_classes = [obj_class for obj_class in obj_classes if not obj_class.has_color()]
-            existing_colors = [obj_class._color for obj_class in obj_classes if obj_class.has_color()]
-            distinct_colors = [get_rgb256(color) for color in get_colors(n_colors=len(non_colored_classes), exclude_colors=existing_colors, n_attempts=1)]
+            existing_colors = [obj_class.color for obj_class in obj_classes if obj_class.has_color()]
+            # distinct_colors = [color for color in get_colors(n_colors=len(non_colored_classes), exclude_colors=existing_colors, n_attempts=1000, pastel_factor=0)]
 
-            for obj_class, color in zip(non_colored_classes, distinct_colors):
+            for obj_class, color in zip(non_colored_classes, COLORS_1096[:len(non_colored_classes)]):
                 if not obj_class.has_color():
+                    if color in existing_colors:
+                        color = distinct_color(exclude_colors=existing_colors, n_attempts=100)
                     obj_class._color = color
-
+                    existing_colors.append(color)
             self._obj_classes = ObjClassCollection(obj_classes)
         else:
             raise TypeError(f"obj_classes argument has unknown type {type(obj_classes)}")
@@ -413,8 +418,9 @@ class ProjectMeta(JsonSerializable):
         return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
                           tag_metas=self._tag_metas.merge(other._tag_metas))
 
-    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
-              project_type: Optional[str]=None) -> ProjectMeta:
+    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
+              tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
+              project_type: Optional[str] = None) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
 
@@ -1017,7 +1023,8 @@ class ProjectMeta(JsonSerializable):
     def __ne__(self, other: ProjectMeta):
         return not self == other
 
-    def to_segmentation_task(self, keep_geometries: Optional[List]=[Polygon, Bitmap], target_classes=None) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+    def to_segmentation_task(self, keep_geometries: Optional[List] = [Polygon, Bitmap], target_classes=None) -> Tuple[
+        ProjectMeta, Dict[ObjClass, ObjClass]]:
         """
         Convert project meta classes geometries with keep_geometries types to Bitmaps and create new ProjectMeta.
 
@@ -1102,7 +1109,8 @@ class ProjectMeta(JsonSerializable):
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
-    def to_detection_task(self, convert_classes: Optional[bool]=False) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+    def to_detection_task(self, convert_classes: Optional[bool] = False) -> Tuple[
+        ProjectMeta, Dict[ObjClass, ObjClass]]:
         """
         Convert project meta classes geometries to Rectangles or skip them and create new ProjectMeta.
 
@@ -1182,5 +1190,3 @@ class ProjectMeta(JsonSerializable):
                     mapping[obj_class] = None
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
-
-
