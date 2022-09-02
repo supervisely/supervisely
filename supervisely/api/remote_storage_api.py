@@ -7,8 +7,7 @@ import mimetypes
 
 
 class Provider(StrEnum):
-    """
-    """
+    """ """
 
     S3 = "s3"
     """"""
@@ -22,10 +21,10 @@ class Provider(StrEnum):
     @staticmethod
     def validate_path(path):
         if (
-                not path.startswith(str(Provider.S3))
-                and not path.startswith(str(Provider.GOOGLE))
-                and not path.startswith(str(Provider.AZURE))
-                and not path.startswith(str(Provider.FS))
+            not path.startswith(str(Provider.S3))
+            and not path.startswith(str(Provider.GOOGLE))
+            and not path.startswith(str(Provider.AZURE))
+            and not path.startswith(str(Provider.FS))
         ):
             raise ValueError(
                 "Incorrect cloud path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
@@ -33,17 +32,16 @@ class Provider(StrEnum):
 
 
 class RemoteStorageApi(ModuleApiBase):
-    """
-    """
+    """ """
+
     def _convert_json_info(self, info: dict):
-        """
-        """
+        """ """
         return info
 
     def list(self, path, recursive=True, files=True, folders=True):
-        """
-        """
+        """ """
         Provider.validate_path(path)
+        path = path.rstrip("/") + "/"
         resp = self._api.get(
             "remote-storage.list",
             {
@@ -112,8 +110,7 @@ class RemoteStorageApi(ModuleApiBase):
         return self._upload_paths_batch([local_path], [remote_path])
 
     def _upload_paths_batch(self, local_paths, remote_paths):
-        """
-        """
+        """ """
         if len(local_paths) != len(remote_paths):
             raise ValueError(
                 "Inconsistency in paths, len(local_paths) != len(remote_paths)"
