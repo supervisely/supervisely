@@ -17,7 +17,12 @@ from supervisely.function_wrapper import function_wrapper
 from supervisely._utils import take_with_default
 from supervisely.sly_logger import logger as default_logger
 from supervisely.sly_logger import EventType
-from supervisely.app.v1.constants import STATE, CONTEXT, STOP_COMMAND, IMAGE_ANNOTATION_EVENTS
+from supervisely.app.v1.constants import (
+    STATE,
+    CONTEXT,
+    STOP_COMMAND,
+    IMAGE_ANNOTATION_EVENTS,
+)
 from supervisely.api.api import Api
 from supervisely.io.fs import file_exists, mkdir, list_files, get_file_name_with_ext
 from supervisely.io.json import load_json_file
@@ -37,29 +42,40 @@ class AppCommandNotFound(Exception):
     pass
 
 
-REQUEST_ID = 'request_id'
-SERVER_ADDRESS = 'SERVER_ADDRESS'
-API_TOKEN = 'API_TOKEN'
+REQUEST_ID = "request_id"
+SERVER_ADDRESS = "SERVER_ADDRESS"
+API_TOKEN = "API_TOKEN"
 REQUEST_DATA = "request_data"
 AGENT_TOKEN = "AGENT_TOKEN"
 
 
 def _default_stop(api: Api, task_id, context, state, app_logger):
-    app_logger.info('Stop app', extra={'event_type': EventType.APP_FINISHED})
+    app_logger.info("Stop app", extra={"event_type": EventType.APP_FINISHED})
 
 
 class AppService:
     NETW_CHUNK_SIZE = 1048576
-    QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
+    QUEUE_MAX_SIZE = (
+        2000  # Maximum number of in-flight requests to avoid exhausting server memory.
+    )
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]
 
-    def __init__(self, logger=None, task_id=None, server_address=None, agent_token=None, ignore_errors=False,
-                 ignore_task_id=False):
+    def __init__(
+        self,
+        logger=None,
+        task_id=None,
+        server_address=None,
+        agent_token=None,
+        ignore_errors=False,
+        ignore_task_id=False,
+    ):
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
         self.task_id = take_with_default(task_id, int(os.environ["TASK_ID"]))
-        self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
+        self.server_address = take_with_default(
+            server_address, os.environ[SERVER_ADDRESS]
+        )
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
@@ -77,14 +93,21 @@ class AppService:
         mkdir(self.cache_dir)
         self.cache = FileCache(name="FileCache", storage_root=self.cache_dir)
 
-        self.api = AgentAPI(token=self.agent_token, server_address=self.server_address, ext_logger=self.logger)
-        self.api.add_to_metadata('x-task-id', str(self.task_id))
+        self.api = AgentAPI(
+            token=self.agent_token,
+            server_address=self.server_address,
+            ext_logger=self.logger,
+        )
+        self.api.add_to_metadata("x-task-id", str(self.task_id))
 
         self.callbacks = {}
         self.periodic_items = {}
 
         self.processing_queue = queue.Queue()  # (maxsize=self.QUEUE_MAX_SIZE)
-        self.logger.debug('App is created', extra={"task_id": self.task_id, "server_address": self.server_address})
+        self.logger.debug(
+            "App is created",
+            extra={"task_id": self.task_id, "server_address": self.server_address},
+        )
 
         self._ignore_stop_for_debug = False
         self._error = None
@@ -97,7 +120,9 @@ class AppService:
         # May want to catch other signals too
         signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT)
         for s in signals:
-            self.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(self._shutdown(signal=s)))
+            self.loop.add_signal_handler(
+                s, lambda s=s: asyncio.create_task(self._shutdown(signal=s))
+            )
         # comment out the line below to see how unhandled exceptions behave
         self.loop.set_exception_handler(self.handle_exception)
 
@@ -106,7 +131,9 @@ class AppService:
         msg = context.get("exception", context["message"])
         if isinstance(msg, Exception):
             # self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(msg), 'future_info': context["future"]})
-            self.logger.error(msg, exc_info=True, extra={'future_info': context["future"]})
+            self.logger.error(
+                msg, exc_info=True, extra={"future_info": context["future"]}
+            )
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
@@ -127,7 +154,9 @@ class AppService:
 
     @property
     def app_url(self):
-        return self._app_url
+        from supervisely._utils import abs_url
+
+        return abs_url(self._app_url)
 
     def _add_callback(self, callback_name, func):
         self.callbacks[callback_name] = func
@@ -158,12 +187,12 @@ class AppService:
             then = time.time()
 
             try:
-                f(api=self.public_api,
-                  task_id=self.task_id)
+                f(api=self.public_api, task_id=self.task_id)
             except Exception as ex:
                 tb = traceback.format_exc()
-                self.logger.error(f"Exception in periodic function: {f.__name__}\n"
-                                  f"{tb}")
+                self.logger.error(
+                    f"Exception in periodic function: {f.__name__}\n" f"{tb}"
+                )
                 self.logger.info("App will be stopped due to error")
 
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
@@ -181,7 +210,10 @@ class AppService:
 
         for f, seconds in self.periodic_items.items():
             asyncio.ensure_future(
-                self.loop.run_in_executor(self.executor, self.call_periodic_function_sync, f, seconds), loop=self.loop
+                self.loop.run_in_executor(
+                    self.executor, self.call_periodic_function_sync, f, seconds
+                ),
+                loop=self.loop,
             )
             # self.loop.create_task(self.call_periodic_function(seconds, f))
 
@@ -216,8 +248,13 @@ class AppService:
                 context["request_id"] = request_msg.get("request_id", "")
             command = request_msg["command"]
             user_api_token = request_msg["api_token"]
-            user_public_api = Api(self.server_address, user_api_token, retry_count=5, external_logger=self.logger,
-                                  ignore_task_id=self._ignore_task_id)
+            user_public_api = Api(
+                self.server_address,
+                user_api_token,
+                retry_count=5,
+                external_logger=self.logger,
+                ignore_task_id=self._ignore_task_id,
+            )
             self.logger.trace("Event", extra={"request_msg": request_msg})
 
             if command == STOP_COMMAND:
@@ -225,7 +262,9 @@ class AppService:
                 self.stop_event.set()
 
             if command == STOP_COMMAND and command not in self.callbacks:
-                _default_stop(user_public_api, self.task_id, context, state, self.logger)
+                _default_stop(
+                    user_public_api, self.task_id, context, state, self.logger
+                )
                 if self._ignore_stop_for_debug is False:
                     # self.stop()
                     asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
@@ -233,55 +272,77 @@ class AppService:
                 else:
                     self.logger.info("STOP event is ignored ...")
             elif command in AppService.DEFAULT_EVENTS and command not in self.callbacks:
-                raise AppCommandNotFound("App received default command {!r}. Use decorator \"callback\" to handle it."
-                                         .format(command))
+                raise AppCommandNotFound(
+                    'App received default command {!r}. Use decorator "callback" to handle it.'.format(
+                        command
+                    )
+                )
             elif command not in self.callbacks:
-                raise AppCommandNotFound("App received unhandled command {!r}. Use decorator \"callback\" to handle it."
-                                         .format(command))
+                raise AppCommandNotFound(
+                    'App received unhandled command {!r}. Use decorator "callback" to handle it.'.format(
+                        command
+                    )
+                )
 
             if command == STOP_COMMAND:
                 if self._ignore_stop_for_debug is False:
-                    self.callbacks[command](api=user_public_api,
-                                            task_id=self.task_id,
-                                            context=context,
-                                            state=state,
-                                            app_logger=self.logger)
+                    self.callbacks[command](
+                        api=user_public_api,
+                        task_id=self.task_id,
+                        context=context,
+                        state=state,
+                        app_logger=self.logger,
+                    )
                     asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
                     return
                 else:
                     self.logger.info("STOP event is ignored ...")
             else:
-                self.callbacks[command](api=user_public_api,
-                                        task_id=self.task_id,
-                                        context=context,
-                                        state=state,
-                                        app_logger=self.logger)
+                self.callbacks[command](
+                    api=user_public_api,
+                    task_id=self.task_id,
+                    context=context,
+                    state=state,
+                    app_logger=self.logger,
+                )
         except AppCommandNotFound as e:
             self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
             if self._ignore_errors is False:
-                self.logger.error(traceback.format_exc(), exc_info=True, extra={
-                    'main_name': command,
-                    'exc_str': repr(e),
-                    'event_type': EventType.TASK_CRASHED
-                })
+                self.logger.error(
+                    traceback.format_exc(),
+                    exc_info=True,
+                    extra={
+                        "main_name": command,
+                        "exc_str": repr(e),
+                        "event_type": EventType.TASK_CRASHED,
+                    },
+                )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
-                self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': repr(e)})
+                self.logger.error(
+                    traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)}
+                )
                 if self.has_ui:
-                    self.show_modal_window("Oops! Something went wrong, please try again or contact tech support."
-                                           " Find more info in the app logs.", level="error")
+                    self.show_modal_window(
+                        "Oops! Something went wrong, please try again or contact tech support."
+                        " Find more info in the app logs.",
+                        level="error",
+                    )
 
     def consume_sync(self):
         while True:
             request_msg = self.processing_queue.get()
             to_log = _remove_sensitive_information(request_msg)
-            self.logger.debug('FULL_TASK_MESSAGE', extra={'task_msg': to_log})
+            self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
-                self.loop.run_in_executor(self.executor, self.handle_message_sync, request_msg), loop=self.loop
+                self.loop.run_in_executor(
+                    self.executor, self.handle_message_sync, request_msg
+                ),
+                loop=self.loop,
             )
 
     async def consume(self):
@@ -296,24 +357,30 @@ class AppService:
                 event_obj["api_token"] = os.environ[API_TOKEN]
                 self.processing_queue.put(event_obj)
 
-        for gen_event in self.api.get_endless_stream('GetGeneralEventsStream', api_proto.GeneralEvent,
-                                                     api_proto.Empty()):
+        for gen_event in self.api.get_endless_stream(
+            "GetGeneralEventsStream", api_proto.GeneralEvent, api_proto.Empty()
+        ):
             try:
                 data = {}
-                if gen_event.data is not None and gen_event.data != b'':
-                    data = json.loads(gen_event.data.decode('utf-8'))
+                if gen_event.data is not None and gen_event.data != b"":
+                    data = json.loads(gen_event.data.decode("utf-8"))
 
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.processing_queue.put(event_obj)
             except Exception as error:
-                self.logger.warning('App exception: ', extra={"error_message": repr(error)})
+                self.logger.warning(
+                    "App exception: ", extra={"error_message": repr(error)}
+                )
 
-        raise ConnectionClosedByServerException('Requests stream to a deployed model closed by the server.')
+        raise ConnectionClosedByServerException(
+            "Requests stream to a deployed model closed by the server."
+        )
 
     async def publish(self, initial_events=None):
         self.logger.info("Starting publisher")
         asyncio.ensure_future(
-            self.loop.run_in_executor(self.executor, self.publish_sync, initial_events), loop=self.loop
+            self.loop.run_in_executor(self.executor, self.publish_sync, initial_events),
+            loop=self.loop,
         )
 
     def run(self, template_path=None, data=None, state=None, initial_events=None):
@@ -327,15 +394,19 @@ class AppService:
             template_path = os.path.join(self.repo_dir, "src/gui.html")
 
         if not file_exists(template_path):
-            self.logger.info("App will be running without GUI", extra={"app_url": self.app_url})
+            self.logger.info(
+                "App will be running without GUI", extra={"app_url": self.app_url}
+            )
             template = ""
         else:
-            with open(template_path, 'r') as file:
+            with open(template_path, "r") as file:
                 template = file.read()
             self.has_ui = True
 
         self.public_api.app.initialize(self.task_id, template, data, state)
-        self.logger.info("Application session is initialized", extra={"app_url": self.app_url})
+        self.logger.info(
+            "Application session is initialized", extra={"app_url": self.app_url}
+        )
 
         try:
             self._run_executors()
@@ -356,7 +427,10 @@ class AppService:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.processing_queue.put(event_obj)
         else:
-            self.logger.info('Stop app (force, no wait)', extra={'event_type': EventType.APP_FINISHED})
+            self.logger.info(
+                "Stop app (force, no wait)",
+                extra={"event_type": EventType.APP_FINISHED},
+            )
             # asyncio.create_task(self._shutdown())
             asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
 
@@ -365,8 +439,7 @@ class AppService:
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
-        tasks = [t for t in asyncio.all_tasks() if t is not
-                 asyncio.current_task()]
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
 
         [task.cancel() for task in tasks]
 
@@ -376,7 +449,9 @@ class AppService:
         self.logger.info("Shutting down ThreadPoolExecutor")
         self.executor.shutdown(wait=False)
 
-        self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
+        self.logger.info(
+            f"Releasing {len(self.executor._threads)} threads from executor"
+        )
         for thread in self.executor._threads:
             try:
                 thread._tstate_lock.release()
@@ -390,16 +465,20 @@ class AppService:
             self._error = error
 
     def send_response(self, request_id, data):
-        out_bytes = json.dumps(data).encode('utf-8')
-        self.api.put_stream_with_data('SendGeneralEventData',
-                                      api_proto.Empty,
-                                      send_from_memory_generator(out_bytes, 1048576),
-                                      addit_headers={'x-request-id': request_id})
+        out_bytes = json.dumps(data).encode("utf-8")
+        self.api.put_stream_with_data(
+            "SendGeneralEventData",
+            api_proto.Empty,
+            send_from_memory_generator(out_bytes, 1048576),
+            addit_headers={"x-request-id": request_id},
+        )
 
     def show_modal_window(self, message, level="info"):
         all_levels = ["warning", "info", "error"]
         if level not in all_levels:
-            raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
+            raise ValueError(
+                "Unknown level {!r}. Supported levels: {}".format(level, all_levels)
+            )
 
         if level == "info":
             self.logger.info(message)
@@ -408,26 +487,29 @@ class AppService:
         elif level == "error":
             self.logger.error(message, exc_info=True)
 
-        self.public_api.app.set_field(self.task_id, "data.notifyDialog", {
-            "type": level,
-            "message": message
-        })
+        self.public_api.app.set_field(
+            self.task_id, "data.notifyDialog", {"type": level, "message": message}
+        )
 
     def get_template_path(self):
         if self._template_path is not None:
             return self._template_path
-        config_path = os.path.join(self.repo_dir, os.environ.get("CONFIG_DIR", ""), 'config.json')
+        config_path = os.path.join(
+            self.repo_dir, os.environ.get("CONFIG_DIR", ""), "config.json"
+        )
         if file_exists(config_path):
             config = load_json_file(config_path)
-            self._template_path = config.get('gui_template', None)
+            self._template_path = config.get("gui_template", None)
             if self._template_path is None:
                 self.logger.info("there is no gui_template field in config.json")
             else:
                 self._template_path = os.path.join(self.repo_dir, self._template_path)
                 if not file_exists(self._template_path):
-                    self._template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+                    self._template_path = os.path.join(
+                        os.path.dirname(sys.argv[0]), "gui.html"
+                    )
         if self._template_path is None:
-            self._template_path = os.path.join(os.path.dirname(sys.argv[0]), 'gui.html')
+            self._template_path = os.path.join(os.path.dirname(sys.argv[0]), "gui.html")
         if file_exists(self._template_path):
             return self._template_path
         return None
@@ -439,7 +521,7 @@ class AppService:
         def _my_replace_function(match):
             to_replace = match.group(0)
             part_path = match.group(1)
-            with open(os.path.join(root_source_dir, part_path), 'r') as file:
+            with open(os.path.join(root_source_dir, part_path), "r") as file:
                 part = file.read()
             return part
 
@@ -447,11 +529,13 @@ class AppService:
         if template_path is None:
             self.logger.warning("HTML Template for compilation not found")
             return
-        with open(template_path, 'r') as file:
+        with open(template_path, "r") as file:
             template = file.read()
 
         regex = r"{\%.*include.*'(.*)'.*\%}"
-        result = re.sub(regex, lambda m: _my_replace_function(m), template, 0, re.MULTILINE)
+        result = re.sub(
+            regex, lambda m: _my_replace_function(m), template, 0, re.MULTILINE
+        )
         res_path = os.path.join(self.data_dir, "gui.html")
         with open(os.path.join(self.data_dir, "gui.html"), "w") as file:
             file.write(result)
@@ -470,11 +554,14 @@ class AppService:
                         f"please, contact support: task_id={self.task_id}, {repr(e)}",
                         exc_info=True,
                         extra={
-                            'exc_str': str(e),
-                        }
+                            "exc_str": str(e),
+                        },
                     )
-                    self.show_modal_window(f"Oops! Something went wrong, please try again or contact tech support."
-                                           f" Find more info in the app logs. Error: {repr(e)}", level="error")
+                    self.show_modal_window(
+                        f"Oops! Something went wrong, please try again or contact tech support."
+                        f" Find more info in the app logs. Error: {repr(e)}",
+                        level="error",
+                    )
 
             return wrapper
 
