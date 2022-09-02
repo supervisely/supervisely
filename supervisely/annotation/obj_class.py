@@ -378,3 +378,6 @@ class ObjClass(KeyObject, JsonSerializable):
 
     def __hash__(self):
         return hash((self.name, self.geometry_type.geometry_name()))
+
+    def has_color(self):
+        return self._color is not None
