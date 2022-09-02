@@ -7,16 +7,16 @@ import mimetypes
 
 
 class Provider(StrEnum):
-    """ """
+    """Provider"""
 
     S3 = "s3"
-    """"""
+    """S3"""
     GOOGLE = "google"
-    """"""
+    """GOOGLE"""
     AZURE = "azure"
-    """"""
+    """AZURE"""
     FS = "fs"
-    """"""
+    """FS"""
 
     @staticmethod
     def validate_path(path):
@@ -32,14 +32,14 @@ class Provider(StrEnum):
 
 
 class RemoteStorageApi(ModuleApiBase):
-    """ """
+    """RemoteStorageApi"""
 
     def _convert_json_info(self, info: dict):
-        """ """
+        """_convert_json_info"""
         return info
 
     def list(self, path, recursive=True, files=True, folders=True):
-        """ """
+        """list"""
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
         resp = self._api.get(
@@ -110,7 +110,7 @@ class RemoteStorageApi(ModuleApiBase):
         return self._upload_paths_batch([local_path], [remote_path])
 
     def _upload_paths_batch(self, local_paths, remote_paths):
-        """ """
+        """_upload_paths_batch"""
         if len(local_paths) != len(remote_paths):
             raise ValueError(
                 "Inconsistency in paths, len(local_paths) != len(remote_paths)"
