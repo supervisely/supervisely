@@ -19,6 +19,14 @@
         </el-menu-item>
         {% endfor %}
       </el-menu-item-group>
+      {% endfor %} {% for item in widget._items %}
+      <el-menu-item
+        index="{{{item.index}}}"
+        @click="state.{{{widget.widget_id}}}.menuIndex = '{{{item.index}}}'"
+      >
+        <i class="zmdi zmdi-bike" style="margin-right: 5px"></i>
+        {{{item.title}}}
+      </el-menu-item>
       {% endfor %}
     </el-menu>
   </div>
@@ -27,7 +35,11 @@
     <div v-if="state.{{{widget.widget_id}}}.menuIndex === '{{{item.title}}}'">
       {{{item.content}}}
     </div>
-    {% endfor %} {% endfor %}
+    {% endfor %} {% endfor %} {% for item in widget._items %}
+    <div v-if="state.{{{widget.widget_id}}}.menuIndex === '{{{item.title}}}'">
+      {{{item.content}}}
+    </div>
+    {% endfor %}
   </div>
 </sly-sidebar>
 
