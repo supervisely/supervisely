@@ -2,7 +2,11 @@
 
 <sly-sidebar :options="{{{widget._options}}}">
   <div slot="sidebar">
-    <el-menu mode="vertical" default-active="1" class="el-menu-vertical-demo">
+    <el-menu
+      mode="vertical"
+      :default-active="state.{{{widget.widget_id}}}.menuIndex"
+      class="el-menu-vertical-demo"
+    >
       <el-menu-item-group
         v-for="group in data.{{{widget.widget_id}}}.groups"
         :title="group.title"
