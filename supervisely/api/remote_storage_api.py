@@ -7,16 +7,16 @@ import mimetypes
 
 
 class Provider(StrEnum):
-    """ """
+    """Provider"""
 
     S3 = "s3"
-    """"""
+    """S3"""
     GOOGLE = "google"
-    """"""
+    """GOOGLE"""
     AZURE = "azure"
-    """"""
+    """AZURE"""
     FS = "fs"
-    """"""
+    """FS"""
 
     @staticmethod
     def validate_path(path):
@@ -32,14 +32,33 @@ class Provider(StrEnum):
 
 
 class RemoteStorageApi(ModuleApiBase):
-    """ """
+    """RemoteStorageApi"""
 
     def _convert_json_info(self, info: dict):
-        """ """
+        """_convert_json_info"""
         return info
 
-    def list(self, path, recursive=True, files=True, folders=True):
-        """ """
+    def list(self, path: str, recursive: bool = True, files: bool = True, folders: bool = True, limit: int = 10000, start_after: str = "") -> dict:
+        """
+        List files and directories for given remote path.
+
+        :param path: Remote path with items that you want to list.
+        :type path: str
+        :param recursive: List remote path revursively.
+        :type recursive: bool
+        :param files: List files in the given path.
+        :type files: bool
+        :param folders: List folders in the given path.
+        :type folders: bool
+        :param limit: Limit of files to list. 10000 is the maximum limit.
+        :type limit: int
+        :param start_after: Start listing path after given file name.
+        :type start_after: str
+        :returns: List of files in the given remote path
+        :rtype: dict
+
+        """
+        
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
         resp = self._api.get(
@@ -49,6 +68,8 @@ class RemoteStorageApi(ModuleApiBase):
                 "recursive": recursive,
                 "files": files,
                 "folders": folders,
+                "limit": limit,
+                "startAfter": start_after
             },
         )
         return resp.json()
@@ -110,7 +131,8 @@ class RemoteStorageApi(ModuleApiBase):
         return self._upload_paths_batch([local_path], [remote_path])
 
     def _upload_paths_batch(self, local_paths, remote_paths):
-        """ """
+        """_upload_paths_batch"""
+        
         if len(local_paths) != len(remote_paths):
             raise ValueError(
                 "Inconsistency in paths, len(local_paths) != len(remote_paths)"
