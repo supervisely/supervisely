@@ -23,10 +23,11 @@
     </el-menu>
   </div>
   <div>
-    <div v-if="state.menuIndex === '1'">111</div>
-    <div v-if="state.menuIndex === '2'">222</div>
-    <div v-if="state.menuIndex === '3'">333</div>
-    <div v-if="state.menuIndex === '4'">444</div>
+    {% for group in widget._groups %} {% for item in group.items %}
+    <div v-if="state.{{{widget.widget_id}}}.menuIndex === '{{{item.title}}}'">
+      {{{item.content}}}
+    </div>
+    {% endfor %} {% endfor %}
   </div>
 </sly-sidebar>
 
