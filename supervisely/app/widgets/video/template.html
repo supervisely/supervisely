@@ -1,0 +1,54 @@
+<el-button
+  v-if="!data.{{{widget.widget_id}}}.hide"
+  :type="data.{{{widget.widget_id}}}.button_type"
+  :plain="data.{{{widget.widget_id}}}.plain"
+  :loading="data.{{{widget.widget_id}}}.loading"
+  :size="data.{{{widget.widget_id}}}.button_size"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
+  @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
+>
+  <span v-html="data.{{{widget.widget_id}}}.icon"></span>
+  <span v-html="data.{{{widget.widget_id}}}.text"></span>
+</el-button>
+
+
+<sly-video
+  :loading="data.{{{widget.widget_id}}}.loading"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
+  @click="post('/{{{widget.widget_id}}}/play_clicked_cb')"
+>
+
+</sly-video>
+
+<div>
+  <div class="fflex" style="justify-content: space-between;">
+    <div class="fflex">
+      <span class="mr5">VideoId:</span>
+      <el-input v-model="data.{{{widget.widget_id}}}.video_id" style="width: 200px;" />
+      <el-button @click="() => { const vidId = parseInt(state.inputVideoId, 10); if (Number.isFinite(vidId)) state.videoId = vidId;}">
+        Load
+      </el-button>
+    </div>
+    <div class="fflex">
+      <span class="mr5">Frame</span>
+      <el-input-number v-model="data.{{{widget.widget_id}}}.frame" />
+
+      <el-button class="ml5" @click="data.{{{widget.widget_id}}}.disabled = !data.{{{widget.widget_id}}}.disabled">{{ state.disabled ? 'Enable' : 'Disable' }}</el-button>
+      <el-button class="ml5" @click="state.options.intervalsNavigation = !state.options.intervalsNavigation ">
+        {{ state.options.intervalsNavigation  ? 'Frame' : 'Intervals' }}
+      </el-button>
+    </div>
+  </div>
+
+  <div>Play/Pause frame: {{ state.playPauseFrame }}</div>
+
+  <sly-video
+    :intervals="state.intervals"
+    :disabled="state.disabled"
+    :video-id="state.videoId"
+    :frame.sync="state.currentFrame"
+    :options="state.options"
+    @play="state.playPauseFrame = $event"
+    @pause="state.playPauseFrame = $event"
+  />
+</div>
