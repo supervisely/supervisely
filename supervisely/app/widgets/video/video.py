@@ -1,4 +1,5 @@
 import copy
+from functools import wraps
 from typing import List
 import fastapi
 
@@ -10,7 +11,7 @@ from supervisely.app.widgets import Widget
 class Video(Widget):
     class Routes:
         PLAY_CLICKED = "play_clicked_cb"
-        STOP_CLICKED = "stop_clicked_cb"
+        PAUSE_CLICKED = "stop_clicked_cb"
         FRAME_CHANGE_START = "frame_changed_start_cb"
         FRAME_CHANGE_END = "frame_changed_end_cb"
 
@@ -128,3 +129,29 @@ class Video(Widget):
     def disabled(self, value):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
+
+    # def click_play(self, func):
+    #     @self.add_route(self._sly_app.get_server(), Video.Routes.PLAY_CLICKED)
+    #     @wraps(func)
+    #     def add_loading(*args, **kwargs):
+    #         if self.show_loading:
+    #             self.loading = True
+    #         result = func(*args, **kwargs)
+    #         if self.show_loading:
+    #             self.loading = False
+    #         return result
+    #
+    #     return add_loading
+    #
+    # def click_pause(self, func):
+    #     @self.add_route(self._sly_app.get_server(), Video.Routes.PAUSE_CLICKED)
+    #     @wraps(func)
+    #     def add_loading(*args, **kwargs):
+    #         if self.show_loading:
+    #             self.loading = True
+    #         result = func(*args, **kwargs)
+    #         if self.show_loading:
+    #             self.loading = False
+    #         return result
+    #
+    #     return add_loading
