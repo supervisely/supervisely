@@ -8,7 +8,11 @@ from supervisely.app.widgets import Widget
 class Menu(Widget):
     class Item:
         def __init__(
-            self, title: str, content: Widget, index: str = None, icon: str = None
+            self,
+            title: str,
+            content: Widget = None,
+            index: str = None,
+            icon: str = None,
         ) -> Menu.Item:
             self.title = title
             self.index = index

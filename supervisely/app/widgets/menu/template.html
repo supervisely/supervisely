@@ -7,6 +7,36 @@
       :default-active="state.{{{widget.widget_id}}}.menuIndex"
       class="el-menu-vertical-demo"
     >
+      {% for group in widget._groups %}
+      <el-menu-item-group title="{{{group.title}}}">
+        {% for item in group.items %}
+        <el-menu-item
+          index="{{{item.index}}}"
+          @click="state.{{{widget.widget_id}}}.menuIndex = '{{{item.index}}}'"
+        >
+          <i class="zmdi zmdi-bike" style="margin-right: 5px"></i>
+          {{{item.title}}}
+        </el-menu-item>
+        {% endfor %}
+      </el-menu-item-group>
+      {% endfor %}
+    </el-menu>
+  </div>
+  <div>
+    <div v-if="state.menuIndex === '1'">111</div>
+    <div v-if="state.menuIndex === '2'">222</div>
+    <div v-if="state.menuIndex === '3'">333</div>
+    <div v-if="state.menuIndex === '4'">444</div>
+  </div>
+</sly-sidebar>
+
+<!-- <sly-sidebar :options="{{{widget._options}}}">
+  <div slot="sidebar">
+    <el-menu
+      mode="vertical"
+      :default-active="state.{{{widget.widget_id}}}.menuIndex"
+      class="el-menu-vertical-demo"
+    >
       <el-menu-item-group
         v-for="group in data.{{{widget.widget_id}}}.groups"
         :title="group.title"
@@ -21,11 +51,10 @@
       </el-menu-item-group>
     </el-menu>
   </div>
-  <!-- <div>{{{widget._right_pane}}}</div> -->
   <div>
     <div v-if="state.menuIndex === '1'">{{{widget._right_pane}}}</div>
     <div v-if="state.menuIndex === '2'">222</div>
     <div v-if="state.menuIndex === '3'">333</div>
     <div v-if="state.menuIndex === '4'">444</div>
   </div>
-</sly-sidebar>
+</sly-sidebar> -->
