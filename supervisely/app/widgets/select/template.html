@@ -1,0 +1,30 @@
+<el-select
+  v-model="state.{{{widget.widget_id}}}.value"
+  :placeholder="state.{{{widget.widget_id}}}.placeholder"
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+>
+  <div v-if="data.{{{widget.widget_id}}}.items">
+    <el-option
+      v-for="item in data.{{{widget.widget_id}}}.items"
+      :key="item.value"
+      :label="item.label"
+      :value="item.value"
+    >
+    </el-option>
+  </div>
+  <div v-else>
+    <el-option-group
+      v-for="group in data.{{{widget.widget_id}}}.groups"
+      :key="group.label"
+      :label="group.label"
+    >
+      <el-option
+        v-for="item in group.options"
+        :key="item.value"
+        :label="item.label"
+        :value="item.value"
+      >
+      </el-option>
+    </el-option-group>
+  </div>
+</el-select>

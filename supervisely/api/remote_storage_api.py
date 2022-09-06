@@ -21,10 +21,10 @@ class Provider(StrEnum):
     @staticmethod
     def validate_path(path):
         if (
-                not path.startswith(str(Provider.S3))
-                and not path.startswith(str(Provider.GOOGLE))
-                and not path.startswith(str(Provider.AZURE))
-                and not path.startswith(str(Provider.FS))
+            not path.startswith(str(Provider.S3))
+            and not path.startswith(str(Provider.GOOGLE))
+            and not path.startswith(str(Provider.AZURE))
+            and not path.startswith(str(Provider.FS))
         ):
             raise ValueError(
                 "Incorrect cloud path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
@@ -58,6 +58,7 @@ class RemoteStorageApi(ModuleApiBase):
         :rtype: dict
 
         """
+        
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
         resp = self._api.get(
@@ -131,6 +132,7 @@ class RemoteStorageApi(ModuleApiBase):
 
     def _upload_paths_batch(self, local_paths, remote_paths):
         """_upload_paths_batch"""
+        
         if len(local_paths) != len(remote_paths):
             raise ValueError(
                 "Inconsistency in paths, len(local_paths) != len(remote_paths)"
