@@ -19,5 +19,4 @@ from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.sidebar.sidebar import Sidebar
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
-
-# from supervisely.app.widgets.restart_step.restart_step import RestartStep
+from supervisely.app.widgets.select.select import Select
