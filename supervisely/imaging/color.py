@@ -5,6 +5,36 @@ import random
 import colorsys
 from typing import List
 
+
+# from distinctipy.distinctipy import get_hex, color_swatch, get_colors, distinct_color
+
+# color_palettes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 70, 90, 100]
+
+# generate all colors
+# color_dict = {n: get_colors(n, n_attempts=5000) for n in nums}
+# for colors in color_dict.values():
+#     converted_cols = [[col[0] / 255, col[1] / 255, col[2] / 255] for col in colors]
+#     color_swatch(colors)
+# ---------------------------
+# generate colors 1 by 1
+# color_dict = {}
+# for num in nums:
+#     used_colors = []
+#     color_dict[num] = []
+#     for _ in range(num):
+#         col = distinct_color(exclude_colors=used_colors, n_attempts=5000)
+#         while col in [(0, 0, 0), (1, 1, 1)]:
+#             used_colors.append(col)
+#             col = distinct_color(exclude_colors=used_colors, n_attempts=5000)
+#
+#         used_colors.append(col)
+#         color_dict[num].append(col)
+#
+# for colors in color_dict.values():
+#     color_swatch(colors)
+# ---------------------------
+
+
 COLORS_1096 = [
     (255, 0, 0),
     (255, 255, 0),
