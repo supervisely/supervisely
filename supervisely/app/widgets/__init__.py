@@ -21,3 +21,4 @@ from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
 from supervisely.app.widgets.select.select import Select
 from supervisely.app.widgets.menu.menu import Menu
+from supervisely.app.widgets.field.field import Field
