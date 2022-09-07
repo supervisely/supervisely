@@ -8,7 +8,7 @@ from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
-js_bundle_version = "2.1.13"
+js_bundle_version = "2.1.14"
 js_frontend_version = "0.0.25"
 
 

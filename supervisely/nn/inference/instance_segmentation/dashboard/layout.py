@@ -12,14 +12,15 @@ ttt = Text(text="some text", status="warning")
 # sidebar = sly.app.widgets.Sidebar(left_pane=l, right_pane=item)
 
 g1_items = [
-    Menu.Item(title="m1", content=r),
-    Menu.Item(title="m2", content=l),
+    Menu.Item(title="Status", content=r, icon="zmdi zmdi-info"),
+    Menu.Item(title="Classes", content=l, icon="zmdi zmdi-shape"),
+    Menu.Item(title="Monitoring", content=l, icon="zmdi zmdi-chart"),
 ]
 g2_items = [
     Menu.Item(title="m3", content=ttt),
     Menu.Item(title="m4"),
 ]
-g1 = Menu.Group("g1", g1_items)
-g2 = Menu.Group("g2", g2_items)
+g1 = Menu.Group("Model", g1_items)
+g2 = Menu.Group("Preview prediction", g2_items)
 menu = Menu(groups=[g1, g2])
 # menu = sly.app.widgets.Menu(items=g1_items)
