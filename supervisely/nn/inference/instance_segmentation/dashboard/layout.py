@@ -14,7 +14,7 @@ ttt = Text(text="some text", status="warning")
 g1 = Menu.Group(
     "Model",
     [
-        Menu.Item(title="Status", content=r, icon="zmdi zmdi-info"),
+        Menu.Item(title="Deployment", content=r, icon="zmdi zmdi-dns"),
         Menu.Item(title="Classes", content=l, icon="zmdi zmdi-shape"),
         Menu.Item(title="Monitoring", content=l, icon="zmdi zmdi-chart"),
     ],
