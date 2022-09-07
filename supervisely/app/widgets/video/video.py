@@ -36,10 +36,10 @@ class Video(Widget):
 
         #############################
         # video settings
-        self._sound_volume: int = 0
-        self._playback_rate: int = 0
-        self._skip_frames_size: int = 0
-        self._intervals_navigation: bool = True
+        self._sound_volume: int = 1
+        self._playback_rate: int = 1
+        self._skip_frames_size: int = 10
+        self._intervals_navigation: bool = False
         #############################
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -134,10 +134,10 @@ class Video(Widget):
     #     @self.add_route(self._sly_app.get_server(), Video.Routes.PLAY_CLICKED)
     #     @wraps(func)
     #     def add_loading(*args, **kwargs):
-    #         if self.show_loading:
+    #         if self._loading:
     #             self.loading = True
     #         result = func(*args, **kwargs)
-    #         if self.show_loading:
+    #         if self._loading:
     #             self.loading = False
     #         return result
     #
@@ -147,10 +147,10 @@ class Video(Widget):
     #     @self.add_route(self._sly_app.get_server(), Video.Routes.PAUSE_CLICKED)
     #     @wraps(func)
     #     def add_loading(*args, **kwargs):
-    #         if self.show_loading:
+    #         if self._loading:
     #             self.loading = True
     #         result = func(*args, **kwargs)
-    #         if self.show_loading:
+    #         if self._loading:
     #             self.loading = False
     #         return result
     #
