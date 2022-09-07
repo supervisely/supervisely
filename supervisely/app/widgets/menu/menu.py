@@ -7,6 +7,16 @@ from supervisely.app.widgets import Widget
 
 """
 
+l = sly.app.widgets.Text(text="left part", status="success")
+items = [
+    sly.app.widgets.Select.Item(label="CPU", value="cpu"),
+    sly.app.widgets.Select.Item(label="GPU 0", value="cuda:0"),
+    sly.app.widgets.Select.Item(value="option3"),
+]
+r = sly.app.widgets.Select(items=items, filterable=True, placeholder="select me")
+
+# sidebar = sly.app.widgets.Sidebar(left_pane=l, right_pane=item)
+
 g1_items = [
     sly.app.widgets.Menu.Item(title="m1", content=r),
     sly.app.widgets.Menu.Item(title="m2", content=l),
@@ -17,8 +27,8 @@ g2_items = [
 ]
 g1 = sly.app.widgets.Menu.Group("g1", g1_items)
 g2 = sly.app.widgets.Menu.Group("g2", g2_items)
-# menu = sly.app.widgets.Menu(groups=[g1, g2])
-menu = sly.app.widgets.Menu(items=g1_items)
+menu = sly.app.widgets.Menu(groups=[g1, g2])
+# menu = sly.app.widgets.Menu(items=g1_items)
 
 """
 
