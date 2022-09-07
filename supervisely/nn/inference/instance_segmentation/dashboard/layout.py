@@ -11,16 +11,35 @@ r = Select(items=items, filterable=True, placeholder="select me")
 ttt = Text(text="some text", status="warning")
 # sidebar = sly.app.widgets.Sidebar(left_pane=l, right_pane=item)
 
-g1_items = [
-    Menu.Item(title="Status", content=r, icon="zmdi zmdi-info"),
-    Menu.Item(title="Classes", content=l, icon="zmdi zmdi-shape"),
-    Menu.Item(title="Monitoring", content=l, icon="zmdi zmdi-chart"),
-]
-g2_items = [
-    Menu.Item(title="m3", content=ttt),
-    Menu.Item(title="m4"),
-]
-g1 = Menu.Group("Model", g1_items)
-g2 = Menu.Group("Preview prediction", g2_items)
-menu = Menu(groups=[g1, g2])
+g1 = Menu.Group(
+    "Model",
+    [
+        Menu.Item(title="Status", content=r, icon="zmdi zmdi-info"),
+        Menu.Item(title="Classes", content=l, icon="zmdi zmdi-shape"),
+        Menu.Item(title="Monitoring", content=l, icon="zmdi zmdi-chart"),
+    ],
+)
+g2 = Menu.Group(
+    "Preview predictions",
+    [
+        Menu.Item(title="Image", content=ttt, icon="zmdi zmdi-image"),
+        Menu.Item(title="Video", content=ttt, icon="zmdi zmdi-youtube-play"),
+    ],
+)
+g3 = Menu.Group(
+    "Inference",
+    [
+        Menu.Item(
+            title="Apply to images project",
+            content=ttt,
+            icon="zmdi zmdi-collection-folder-image",
+        ),
+        Menu.Item(
+            title="Apply to videos project",
+            content=ttt,
+            icon="zmdi zmdi-collection-video",
+        ),
+    ],
+)
+menu = Menu(groups=[g1, g2, g3])
 # menu = sly.app.widgets.Menu(items=g1_items)
