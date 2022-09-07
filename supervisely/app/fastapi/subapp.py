@@ -55,7 +55,7 @@ def create(process_id=None, headless=False) -> FastAPI:
             response = JSONResponse(content=dict(state))
 
             gettrace = getattr(sys, "gettrace", None)
-            if gettrace is not None and gettrace():
+            if (gettrace is not None and gettrace()) or is_development():
                 response.headers["x-debug-mode"] = "1"
             return response
 
