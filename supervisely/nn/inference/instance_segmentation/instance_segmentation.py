@@ -90,6 +90,12 @@ class InstanceSegmentation(Inference):
         ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
 
     def serve(self):
-        import supervisely.nn.inference.instance_segmentation.dashboard.layout as layout
+        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+
+        @deploy_ui.deploy.click
+        def deploy_model():
+            device = deploy_ui.device.get_value()
+            self.load_on_device(device)
 
         super().serve()
