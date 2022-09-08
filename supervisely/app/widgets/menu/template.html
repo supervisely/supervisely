@@ -35,10 +35,12 @@
   <div>
     {% for group in widget._groups %} {% for item in group.items %}
     <div v-if="state.{{{widget.widget_id}}}.menuIndex === '{{{item.title}}}'">
+      <!-- <h2>{{{item.heading}}}</h2> -->
       {{{item.content}}}
     </div>
     {% endfor %} {% endfor %} {% for item in widget._items %}
     <div v-if="state.{{{widget.widget_id}}}.menuIndex === '{{{item.title}}}'">
+      <!-- <h2>{{{item.heading}}}</h2> -->
       {{{item.content}}}
     </div>
     {% endfor %}

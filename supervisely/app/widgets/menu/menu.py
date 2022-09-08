@@ -38,11 +38,13 @@ class Menu(Widget):
         def __init__(
             self,
             title: str,
+            # heading: str = None,
             content: Widget = None,
             index: str = None,
             icon: str = None,
         ) -> Menu.Item:
             self.title = title
+            # self.heading = title if heading is None else heading
             self.index = index
             self.content = content
             if index is None:
@@ -50,7 +52,12 @@ class Menu(Widget):
             self.icon = icon
 
         def to_json(self):
-            return {"title": self.title, "index": self.index, "icon": self.icon}
+            return {
+                "title": self.title,
+                # "heading": self.heading,
+                "index": self.index,
+                "icon": self.icon,
+            }
 
     class Group:
         def __init__(self, title: str, items: List[Menu.Item] = None) -> Menu.Group:
