@@ -93,7 +93,7 @@ class InstanceSegmentation(Inference):
         import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
         import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
 
-        @deploy_ui.deploy.click
+        @deploy_ui.deploy_btn.click
         def deploy_model():
             device = deploy_ui.device.get_value()
             self.load_on_device(device)
