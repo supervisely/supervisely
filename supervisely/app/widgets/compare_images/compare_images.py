@@ -28,21 +28,32 @@ class CompareImages(GridGallery):
             widget_id=widget_id,
         )
 
-    def _clean_left(self):
-        for idx, img in enumerate(self._data):
-            if img.get("position") == "left":
-                del self._data[idx]
-                break
-        DataJson()[self.widget_id]["content"]["layout"][0] = []
-        self._update()
-        self.update_data()
+    # def _clean_left(self):
+    #     for idx, img in enumerate(self._data):
+    #         if img.get("position") == "left":
+    #             del self._data[idx]
+    #             break
+    #     DataJson()[self.widget_id]["content"]["layout"][0] = []
+    #     self._update()
+    #     self.update_data()
+    #
+    # def _clean_right(self):
+    #     for idx, img in enumerate(self._data):
+    #         if img.get("position") == "right":
+    #             del self._data[idx]
+    #             break
+    #     DataJson()[self.widget_id]["content"]["layout"][1] = []
+    #     self._update()
+    #     self.update_data()
 
-    def _clean_right(self):
+
+    def _clean_img(self, position):
+        col_idx = 0 if position == "left" else 1
         for idx, img in enumerate(self._data):
-            if img.get("position") == "right":
+            if img.get("position") == position:
                 del self._data[idx]
                 break
-        DataJson()[self.widget_id]["content"]["layout"][1] = []
+        DataJson()[self.widget_id]["content"]["layout"][col_idx] = []
         self._update()
         self.update_data()
 
@@ -70,12 +81,12 @@ class CompareImages(GridGallery):
 
     def set_left(self, title, image_url, ann: Annotation = None):
         if len(DataJson()[self.widget_id]["content"]["layout"]) != 0:
-            self._clean_left()
+            self._clean_img(position="left")
         self._update_image(image_url=image_url, annotation=ann, title=title, column_index=0, position="left")
         DataJson().send_changes()
 
     def set_right(self, title, image_url, ann: Annotation = None):
         if len(DataJson()[self.widget_id]["content"]["layout"]) != 0:
-            self._clean_right()
+            self._clean_img(position="right")
         self._update_image(image_url=image_url, annotation=ann, title=title, column_index=1, position="right")
         DataJson().send_changes()
