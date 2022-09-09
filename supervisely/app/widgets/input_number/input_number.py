@@ -3,9 +3,6 @@ from supervisely.app.widgets import Widget
 
 
 class InputNumber(Widget):
-    class Routes:
-        CLICK = "button_clicked_cb"
-
     def __init__(
         self,
         value: int = 1,
@@ -15,7 +12,8 @@ class InputNumber(Widget):
         size: str = "small",
         controls: bool = True,
         debounce: int = 300,
-        show_loading: bool = True
+        show_loading: bool = True,
+        widget_id: str = None
     ):
         self._value = value
         self._min = min
@@ -28,13 +26,11 @@ class InputNumber(Widget):
         self._loading = False
         self._disabled = False
         self._show_loading = show_loading
-        self._hide = False
 
-        super().__init__(file_path=__file__)
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            "value": self._value,
             "min": self._min,
             "max": self._max,
             "step": self._step,
@@ -44,7 +40,7 @@ class InputNumber(Widget):
         }
 
     def get_json_state(self):
-        return None
+        return {"value": self._value}
 
     @property
     def value(self):
@@ -95,13 +91,3 @@ class InputNumber(Widget):
     def disabled(self, value):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
-
-    def hide(self):
-        self._hide = True
-        DataJson()[self.widget_id]["hide"] = self._hide
-        DataJson().send_changes()
-
-    def show(self):
-        self._hide = False
-        DataJson()[self.widget_id]["hide"] = self._hide
-        DataJson().send_changes()
