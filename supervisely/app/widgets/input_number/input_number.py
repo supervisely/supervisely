@@ -21,7 +21,6 @@ class InputNumber(Widget):
         self._size = size
         self._controls = controls
         self._debounce = debounce
-        self._disabled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -64,12 +63,3 @@ class InputNumber(Widget):
     def max(self, value):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
-
-    @property
-    def disabled(self):
-        return self._disabled
-
-    @disabled.setter
-    def disabled(self, value):
-        self._disabled = value
-        DataJson()[self.widget_id]["disabled"] = self._disabled
