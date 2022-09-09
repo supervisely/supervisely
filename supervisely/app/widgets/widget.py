@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Callable
-import uuid
+from bs4 import BeautifulSoup
+import re
 
 from varname import varname
 from jinja2 import Environment
@@ -33,8 +33,38 @@ class Hidable:
     def get_json_state(self):
         raise {}
 
+    def _wrap_hide_html(self, widget_id, html):
+        return f'<div v-if="!data.{widget_id}.hide">{html}</div>'
 
-class Widget(Hidable):
+
+class Disableable:
+    def __init__(self):
+        self._disabled = False
+
+    def disable(self):
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def get_json_data(self):
+        return {"disabled": self._disabled}
+
+    def get_json_state(self):
+        raise {}
+
+    def _wrap_disable_html(self, widget_id, html):
+        soup = BeautifulSoup(html)
+        re.compile("^http")
+        results = soup.find_all(re.compile("^el-"))
+        return xxx
+
+
+class Widget(Hidable, Disableable):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()
@@ -85,8 +115,9 @@ class Widget(Hidable):
         if widget_data is None:
             widget_data = {}
         hidable_data = super().get_json_data()
+        disableable_data = super().get_json_data()
 
-        serialized_data = {**widget_data, **hidable_data}
+        serialized_data = {**widget_data, **hidable_data, **disableable_data}
         if serialized_data is not None:
             data.setdefault(self.widget_id, {}).update(serialized_data)
 
@@ -114,10 +145,8 @@ class Widget(Hidable):
         current_dir = Path(self._file_path).parent.absolute()
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
-
-        # hidable v-if
-        # @TODO: reimplement with jinja2 templating
-        res = f'<div v-if="!data.{self.widget_id}.hide">{html}</div>'
+        res = self._wrap_disable_html(self.widget_id, html)
+        res = self._wrap_hide_html(self.widget_id, res)
         return markupsafe.Markup(res)
 
     def __html__(self):
