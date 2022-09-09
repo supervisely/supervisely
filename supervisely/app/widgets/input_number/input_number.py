@@ -9,7 +9,7 @@ class InputNumber(Widget):
 
     def __init__(
         self,
-        value: int,
+        value: int = 1,
         min: int = 1,
         max: int = 100,
         step: int = 1,
