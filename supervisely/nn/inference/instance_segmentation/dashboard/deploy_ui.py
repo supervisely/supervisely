@@ -19,12 +19,12 @@ show_btn = Button("Show")
 
 @hide_btn.click
 def hide():
-    device.hide()
+    device.enable()
 
 
 @show_btn.click
 def show():
-    device.show()
+    device.disable()
 
 
 device_field = Field(

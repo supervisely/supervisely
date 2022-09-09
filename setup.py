@@ -72,6 +72,7 @@ setup(
         "async_asgi_testclient",
         "PyYAML",
         "distinctipy",
+        "beautifulsoup4",
     ],
     extras_require={
         "extras": [
