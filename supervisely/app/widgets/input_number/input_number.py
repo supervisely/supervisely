@@ -1,4 +1,4 @@
-from supervisely.app import DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
 
@@ -49,7 +49,7 @@ class InputNumber(Widget):
     @value.setter
     def value(self, value):
         self._value = value
-        DataJson()[self.widget_id]["value"] = self._value
+        StateJson()[self.widget_id]["value"] = self._value
 
     @property
     def min(self):
