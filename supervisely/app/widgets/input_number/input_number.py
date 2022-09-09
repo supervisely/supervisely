@@ -12,7 +12,6 @@ class InputNumber(Widget):
         size: str = "small",
         controls: bool = True,
         debounce: int = 300,
-        show_loading: bool = True,
         widget_id: str = None
     ):
         self._value = value
@@ -23,9 +22,7 @@ class InputNumber(Widget):
         self._controls = controls
         self._debounce = debounce
 
-        self._loading = False
         self._disabled = False
-        self._show_loading = show_loading
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -68,20 +65,6 @@ class InputNumber(Widget):
     def max(self, value):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
-
-    @property
-    def loading(self):
-        return self._loading
-
-    @loading.setter
-    def loading(self, value):
-        self._loading = value
-        DataJson()[self.widget_id]["loading"] = self._loading
-        DataJson().send_changes()
-
-    @property
-    def show_loading(self):
-        return self._show_loading
 
     @property
     def disabled(self):
