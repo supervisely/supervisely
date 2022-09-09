@@ -1,4 +1,3 @@
-import math
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
