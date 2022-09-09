@@ -59,9 +59,11 @@ class Disableable:
 
     def _wrap_disable_html(self, widget_id, html):
         soup = BeautifulSoup(html)
-        re.compile("^http")
         results = soup.find_all(re.compile("^el-"))
-        return xxx
+        for tag in results:
+            if not tag.has_attr("disabled") and not tag.has_attr(":disabled"):
+                tag[":disabled"] = f"data.{widget_id}.disabled"
+        return str(soup)
 
 
 class Widget(Hidable, Disableable):
