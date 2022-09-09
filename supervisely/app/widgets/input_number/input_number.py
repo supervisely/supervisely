@@ -21,7 +21,6 @@ class InputNumber(Widget):
         self._size = size
         self._controls = controls
         self._debounce = debounce
-
         self._disabled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
