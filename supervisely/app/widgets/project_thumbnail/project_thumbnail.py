@@ -4,11 +4,11 @@ from supervisely.project.project import Project
 
 
 class ProjectThumbnail(Widget):
-    def __init__(self, info: ProjectInfo):
+    def __init__(self, info: ProjectInfo, widget_id: str = None):
         self._info = info
         self._description = f"{self._info.items_count} {self._info.type}"
         self._url = Project.get_url(self._info.id)
-        super().__init__(file_path=__file__)
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {

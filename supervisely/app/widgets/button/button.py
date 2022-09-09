@@ -42,7 +42,6 @@ class Button(Widget):
         self._loading = False
         self._disabled = False
         self._show_loading = show_loading
-        self._hide = False
 
         super().__init__(file_path=__file__)
 
@@ -54,7 +53,6 @@ class Button(Widget):
             "button_size": self._button_size,
             "loading": self._loading,
             "disabled": self._disabled,
-            "hide": self._hide,
             "icon": self._icon,
         }
 
@@ -92,16 +90,6 @@ class Button(Widget):
     def disabled(self, value):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
-
-    def hide(self):
-        self._hide = True
-        DataJson()[self.widget_id]["hide"] = self._hide
-        DataJson().send_changes()
-
-    def show(self):
-        self._hide = False
-        DataJson()[self.widget_id]["hide"] = self._hide
-        DataJson().send_changes()
 
     def click(self, func):
         @self.add_route(self._sly_app.get_server(), Button.Routes.CLICK)
