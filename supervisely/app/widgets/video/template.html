@@ -1,10 +1,19 @@
 <sly-video
-  :video-id="state.{{{widget.widget_id}}}.videoId"
-  :frame.sync="state.{{{widget.widget_id}}}.currentFrame"
-  :intervals="state.{{{widget.widget_id}}}.intervals"
-  :options="state.{{{widget.widget_id}}}.options"
-  :disabled="state.{{{widget.widget_id}}}.disabled"
-/>
+        {%
+        if
+        widget._changes_handled
+        %}
+        @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"
+        {%
+        endif
+        %}
 
-<!-- @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
-@pause="post('/{{{widget.widget_id}}}/stop_clicked_cb')" -->
+        :video-id="data.{{{widget.widget_id}}}.videoId"
+        :frame.sync="state.{{{widget.widget_id}}}.currentFrame"
+        :intervals="data.{{{widget.widget_id}}}.intervals"
+        :options="state.{{{widget.widget_id}}}.options"
+        @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
+        @pause="post('/{{{widget.widget_id}}}/stop_clicked_cb')"/>
+<!--        @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"-->
+<!--        @frame-change-end="post('/{{{widget.widget_id}}}/frame_changed_end_cb')"-->
+<!--/>-->
