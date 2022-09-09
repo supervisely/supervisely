@@ -19,7 +19,7 @@ from supervisely.project.project_meta import ProjectMeta
 class InstanceSegmentation(Inference):
     def _get_templates_dir(self):
         template_dir = os.path.join(
-            Path(__file__).parent.absolute(), "dashboard_templates"
+            Path(__file__).parent.absolute(), "dashboard/templates"
         )
         return template_dir
 
@@ -88,3 +88,14 @@ class InstanceSegmentation(Inference):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
+
+    def serve(self):
+        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+
+        @deploy_ui.deploy_btn.click
+        def deploy_model():
+            device = deploy_ui.device.get_value()
+            self.load_on_device(device)
+
+        super().serve()

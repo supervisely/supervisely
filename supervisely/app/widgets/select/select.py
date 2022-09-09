@@ -82,6 +82,7 @@ class Select(Widget):
         self._groups = groups
         self._filterable = filterable
         self._placeholder = placeholder
+        self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -113,6 +114,7 @@ class Select(Widget):
     def value_changed(self, func):
         route_path = self.get_route_path(Select.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
+        self._changes_handled = True
 
         @server.post(route_path)
         def _click():

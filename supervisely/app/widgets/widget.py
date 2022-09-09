@@ -13,8 +13,30 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely._utils import generate_free_name, rand_str
 
 
-class Widget:
+class Hidable:
+    def __init__(self):
+        self._hide = False
+
+    def hide(self):
+        self._hide = True
+        DataJson()[self.widget_id]["hide"] = self._hide
+        DataJson().send_changes()
+
+    def show(self):
+        self._hide = False
+        DataJson()[self.widget_id]["hide"] = self._hide
+        DataJson().send_changes()
+
+    def get_json_data(self):
+        return {"hide": self._hide}
+
+    def get_json_state(self):
+        raise {}
+
+
+class Widget(Hidable):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        super().__init__()
         self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
@@ -58,7 +80,13 @@ class Widget:
 
     def update_data(self):
         data = DataJson()
-        serialized_data = self.get_json_data()
+
+        widget_data = self.get_json_data()
+        if widget_data is None:
+            widget_data = {}
+        hidable_data = super().get_json_data()
+
+        serialized_data = {**widget_data, **hidable_data}
         if serialized_data is not None:
             data.setdefault(self.widget_id, {}).update(serialized_data)
 
@@ -86,10 +114,15 @@ class Widget:
         current_dir = Path(self._file_path).parent.absolute()
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
-        return markupsafe.Markup(html)
+
+        # hidable v-if
+        # @TODO: reimplement with jinja2 templating
+        res = f'<div v-if="!data.{self.widget_id}.hide">{html}</div>'
+        return markupsafe.Markup(res)
 
     def __html__(self):
-        return self.to_html()
+        res = self.to_html()
+        return res
 
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
