@@ -106,8 +106,3 @@ class InputNumber(Widget):
         self._hide = False
         DataJson()[self.widget_id]["hide"] = self._hide
         DataJson().send_changes()
-
-    # def click(self):
-    #     @self.add_route(self._sly_app.get_server(), InputNumber.Routes.CLICK)
-    #     self._value+= 1
-    #     return self._value
