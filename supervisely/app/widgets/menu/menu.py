@@ -74,6 +74,7 @@ class Menu(Widget):
         self,
         items: List[Menu.Item] = None,
         groups: List[Menu.Group] = None,
+        index: str = None,
         width_percent: int = 25,
         widget_id: str = None,
     ):
@@ -93,8 +94,13 @@ class Menu(Widget):
             self._groups = []
         self._width_percent = width_percent
         self._options = {"sidebarWidth": self._width_percent}
+        self._index = index
+        if self._index is None:
+            self._index = self._get_default_index()
+        else:
+            self._validate_index()
+
         StateJson()["app_body_padding"] = "0px"
-        StateJson()["menuIndex"] = "1"
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -105,10 +111,25 @@ class Menu(Widget):
             res["groups"] = [g.to_json() for g in self._groups]
         return res
 
-    def get_json_state(self):
-        index = None
+    def _validate_index(self):
+        for item in self._items:
+            if self._index == item.index:
+                return
+
+        for group in self._groups:
+            for item in group.items:
+                if self._index == item.index:
+                    return
+
+        raise ValueError(
+            f"Index {self._index} not found, there is no item in menu with such index"
+        )
+
+    def _get_default_index(self):
         if len(self._items) > 0:
-            index = self._items[0].index
+            return self._items[0].index
         if len(self._groups) > 0:
-            index = self._groups[0].items[0].index
-        return {"menuIndex": index}
+            return self._groups[0].items[0].index
+
+    def get_json_state(self):
+        return {"menuIndex": self._index}
