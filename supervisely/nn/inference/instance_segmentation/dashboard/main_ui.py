@@ -1,6 +1,11 @@
 from supervisely.app.widgets import Text, Select, Menu, Field, Container, Button
 from supervisely.imaging.color import hex2rgb
-import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+from supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui import (
+    deploy_layout,
+)
+from supervisely.nn.inference.instance_segmentation.dashboard.classes_ui import (
+    classes_layout,
+)
 
 l = Text(text="left part", status="success")
 
@@ -12,9 +17,9 @@ g1 = Menu.Group(
     "Model",
     [
         Menu.Item(
-            title="Deployment / Run", content=deploy_ui.layout, icon="zmdi zmdi-dns"
+            title="Deployment / Run", content=deploy_layout, icon="zmdi zmdi-dns"
         ),
-        Menu.Item(title="Classes", content=l, icon="zmdi zmdi-shape"),
+        Menu.Item(title="Classes", content=classes_layout, icon="zmdi zmdi-shape"),
         Menu.Item(title="Monitoring", content=l, icon="zmdi zmdi-chart"),
     ],
 )
@@ -40,5 +45,5 @@ g3 = Menu.Group(
         ),
     ],
 )
-menu = Menu(groups=[g1, g2, g3])
+menu = Menu(groups=[g1, g2, g3], index="Classes")
 # menu = sly.app.widgets.Menu(items=g1_items)

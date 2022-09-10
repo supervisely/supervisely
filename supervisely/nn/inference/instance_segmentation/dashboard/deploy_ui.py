@@ -44,4 +44,4 @@ device_field = Field(
 # how to hide widget?
 deploy_status = Text("Model has been successfully deployed", "success")
 
-layout = Container([device_field, deploy_btn, deploy_status, hide_btn, show_btn])
+deploy_layout = Container([device_field, deploy_btn, deploy_status, hide_btn, show_btn])
