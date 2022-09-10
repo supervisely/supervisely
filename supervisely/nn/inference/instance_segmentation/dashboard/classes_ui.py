@@ -1,4 +1,12 @@
-from supervisely.app.widgets import Card, Text, Select, Field, Container, ObjClassView
+from supervisely.app.widgets import (
+    Card,
+    Text,
+    Select,
+    Field,
+    Container,
+    ObjClassView,
+    Checkbox,
+)
 from supervisely.annotation.obj_class import ObjClass
 
 
@@ -18,27 +26,31 @@ from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 model_classes = Container(
     [
-        ObjClassView(ObjClass("person AnyGeometry", AnyGeometry)),
-        ObjClassView(ObjClass("person Rectangle", Rectangle)),
-        ObjClassView(ObjClass("person Polygon", Polygon)),
-        ObjClassView(ObjClass("person Bitmap", Bitmap)),
-        ObjClassView(ObjClass("person Point", Point)),
-        ObjClassView(ObjClass("person Polyline", Polyline)),
-        ObjClassView(ObjClass("person Cuboid", Cuboid)),
+        Checkbox(ObjClassView(ObjClass("person AnyGeometry", AnyGeometry))),
+        Checkbox(ObjClassView(ObjClass("person Rectangle", Rectangle))),
+        Checkbox(ObjClassView(ObjClass("person Polygon", Polygon))),
+        Checkbox(ObjClassView(ObjClass("person Bitmap", Bitmap))),
+        Checkbox(ObjClassView(ObjClass("person Point", Point))),
+        Checkbox(ObjClassView(ObjClass("person Polyline", Polyline))),
+        Checkbox(ObjClassView(ObjClass("person Cuboid", Cuboid))),
         # ObjClassView(ObjClass("person", GraphNodes, geometry_config={"1": "2"})),
-        ObjClassView(ObjClass("person Point3d", Point3d)),
-        ObjClassView(ObjClass("person Cuboid3d", Cuboid3d)),
-        ObjClassView(ObjClass("person Pointcloud", Pointcloud)),
-        ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh)),
-        ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap)),
-        ObjClassView(ObjClass("person Cuboid3d", Cuboid3d)),
-        ObjClassView(ObjClass("person Pointcloud", Pointcloud)),
-        ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh)),
-        ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap)),
+        Checkbox(ObjClassView(ObjClass("person Point3d", Point3d))),
+        Checkbox(ObjClassView(ObjClass("person Cuboid3d", Cuboid3d))),
+        Checkbox(ObjClassView(ObjClass("person Pointcloud", Pointcloud))),
+        Checkbox(ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh))),
+        Checkbox(
+            ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap))
+        ),
+        Checkbox(ObjClassView(ObjClass("person Cuboid3d", Cuboid3d))),
+        Checkbox(ObjClassView(ObjClass("person Pointcloud", Pointcloud))),
+        Checkbox(ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh))),
+        Checkbox(
+            ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap))
+        ),
     ],
     direction="horizontal",
     overflow="wrap",
-    grid_cell_width="20%",
+    grid_cell_width="25%",
 )
 
 classes_card = Card(
