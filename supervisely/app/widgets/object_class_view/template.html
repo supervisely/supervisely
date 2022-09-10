@@ -1,0 +1,35 @@
+<div>
+  <link rel="stylesheet" href="./sly/css/app/widgets/object_class_view/style.css" />
+  <div class="icon-text-line">
+    <i
+      class="zmdi zmdi-circle"
+      style="margin-right: 10px"
+      :style="{color: data.{{{widget.widget_id}}}.color}"
+    ></i>
+    <div style="width: 20px;">
+      <!-- :style="{color: data.{{{widget.widget_id}}}.color}" -->
+      <img 
+        v-if="data.{{{widget.widget_id}}}.icon8" 
+        style="height: 15px; margin-right: 5px"
+        :src="data.{{{widget.widget_id}}}.icon8">
+      </img>
+      <!-- :style="{color: data.{{{widget.widget_id}}}.color}" -->
+      <i
+        v-if="data.{{{widget.widget_id}}}.icon"
+        :class="data.{{{widget.widget_id}}}.icon"
+        style="margin-right: 5px"
+      ></i>
+    </div>
+    <span>{{data.{{{widget.widget_id}}}.title}}</span>
+    <!-- <div style="color: #777777">{{data.{{{widget.widget_id}}}.title}}</div> -->
+  </div>
+</div>
+
+<!-- tooltip with shape -->
+<!-- crop long text -->
+<!-- class="icon-cell" -->
+<!-- #app_convert_class_shape .icon-cell {
+        display: flex;
+        align-items: center;
+        } -->
+<!-- .icons8-polygon -->
