@@ -1,5 +1,4 @@
-from functools import wraps
-from typing import List, NamedTuple
+from typing import List
 
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -11,7 +10,6 @@ class Video(Widget):
         PAUSE_CLICKED = "stop_clicked_cb"
         FRAME_CHANGE_START = "frame_changed_start_cb"
         FRAME_CHANGE_END = "frame_changed_end_cb"
-        VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
@@ -24,7 +22,7 @@ class Video(Widget):
         self._frame = frame
         self._intervals = intervals
         self._loading: bool = False
-
+        self._playing: bool = False
         self._changes_handled = False
 
         #############################
@@ -59,6 +57,16 @@ class Video(Widget):
         return self._video_id
 
     @property
+    def frame(self):
+        return self._frame
+
+    @frame.setter
+    def frame(self, value):
+        self._frame = value
+        StateJson()[self.widget_id]["currentFrame"] = self._frame
+        StateJson().send_changes()
+
+    @property
     def loading(self):
         return self._loading
 
@@ -68,13 +76,23 @@ class Video(Widget):
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
 
+    @property
+    def playing(self):
+        return self._playing
+
+    @playing.setter
+    def playing(self, value: bool):
+        self._playing = value
+        DataJson()[self.widget_id]["playing"] = self._playing
+        DataJson().send_changes()
+
     def get_current_frame(self):
         return StateJson()[self.widget_id]["currentFrame"]
 
     def play_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)
         server = self._sly_app.get_server()
-        # self._changes_handled = True
+        self._playing: bool = True
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -84,7 +102,7 @@ class Video(Widget):
     def pause_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PAUSE_CLICKED)
         server = self._sly_app.get_server()
-        # self._changes_handled = True
+        self._playing: bool = False
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -97,7 +115,10 @@ class Video(Widget):
         self._changes_handled = True
         @server.post(route_path)
         def _click():
-            res = self.get_current_frame()
+            res = self.frame
+            if res < 0:
+                res = 0
+                self.frame = 0
             func(res)
         return _click
 
@@ -107,6 +128,7 @@ class Video(Widget):
         self._changes_handled = True
         @server.post(route_path)
         def _click():
-            res = self.get_current_frame()
-            func(res)
+            self.frame = self.get_current_frame()
+            if self.frame < 0: self.frame = 0
+            func(self.frame)
         return _click

@@ -4,6 +4,7 @@
         widget._changes_handled
         %}
         @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"
+        @frame-change-end="post('/{{{widget.widget_id}}}/frame_changed_end_cb')"
         {%
         endif
         %}
@@ -13,7 +14,6 @@
         :intervals="data.{{{widget.widget_id}}}.intervals"
         :options="state.{{{widget.widget_id}}}.options"
         @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
-        @pause="post('/{{{widget.widget_id}}}/stop_clicked_cb')"/>
-<!--        @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"-->
-<!--        @frame-change-end="post('/{{{widget.widget_id}}}/frame_changed_end_cb')"-->
-<!--/>-->
+        @pause="post('/{{{widget.widget_id}}}/stop_clicked_cb')"
+        @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
+/>
