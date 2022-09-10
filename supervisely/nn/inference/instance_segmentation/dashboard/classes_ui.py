@@ -61,6 +61,6 @@ classes_layout = Container(
         classes_card,
     ],
     direction="horizontal",
-    overflow="wrap",
-    wrap_grid_cell_width="25%",
+    overflow="scroll",
+    # grid_cell_width="25%",
 )
