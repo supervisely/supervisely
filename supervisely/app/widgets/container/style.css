@@ -1,0 +1,11 @@
+.container {
+    display: flex;     
+}
+
+.container.scroll {
+    overflow-x: auto;
+}
+
+.container.wrap {
+    flex-wrap: wrap;
+}

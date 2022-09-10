@@ -15,11 +15,15 @@ class Container(Widget):
         direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 10,
         fractions: List[int] = None,
+        overflow: Literal["scroll", "wrap"] = "wrap",
+        wrap_grid_cell_width: Literal["20%", "300px"] = None,
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
+        self._overflow = overflow
+        self._wrap_grid_cell_width = wrap_grid_cell_width
         if self._direction == "vertical" and fractions is not None:
             raise ValueError("fractions can be defined only with horizontal direction")
 
@@ -32,7 +36,13 @@ class Container(Widget):
         if direction == "horizontal":
             self._flex_direction = "row"
             if self._fractions is None:
-                self._fractions = [1] * len(self._widgets)
+                if self._wrap_grid_cell_width is None:
+                    self._fractions = ["1 1 auto"] * len(self._widgets)
+                else:
+                    self._fractions = [
+                        f"1 1 calc({self._wrap_grid_cell_width} - {self._gap}px)"
+                    ] * len(self._widgets)
+                # self._fractions = ["1"] * len(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):

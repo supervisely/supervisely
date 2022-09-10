@@ -58,6 +58,9 @@ class ObjClassView(Widget):
         res = self._obj_class.to_json()
         res["icon"] = type_to_zmdi_icon.get(self._obj_class.geometry_type)
         res["icon8"] = type_to_icons8_icon.get(self._obj_class.geometry_type)
+        if res["shape"] == Bitmap.geometry_name():
+            res["shape"] = res["shape"] + " (mask)"
+
         return res
 
     def get_json_state(self):

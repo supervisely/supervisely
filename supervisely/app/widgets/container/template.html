@@ -1,9 +1,36 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/container/style.css" />
 <div
-  style="display: flex; flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px"
+  {%
+  if
+  widget._flex_direction == 'vertical'
+  %}
+  class="container"
+  {%
+  else
+  %}
+      {%
+      if
+      widget._overflow == 'scroll'
+      %}
+      class="container scroll"
+      {%
+      else
+      %}
+      class="container wrap"
+      {%
+      endif
+      %}
+  {%
+  endif
+  %}
+  style="flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px"
 >
-  {% for item in widget._widgets %} {% if widget._fractions is none %}
-  <div>{{{item}}}</div>
-  {% else %}
-  <div style="flex: {{{widget._fractions[loop.index0]}}}">{{{item}}}</div>
-  {% endif %} {% endfor %}
+  {% for item in widget._widgets %} 
+    {% if widget._fractions is none %}
+      <div>{{{item}}}</div>
+    {% else %}
+      <div style="flex: {{{widget._fractions[loop.index0]}}}">{{{item}}}</div>
+    {% endif %} 
+  {% endfor %}
 </div>
+
