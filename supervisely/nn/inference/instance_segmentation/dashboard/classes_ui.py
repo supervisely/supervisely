@@ -16,27 +16,28 @@ from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
-# model_classes = Container(
-#     [
-#         ObjClassView(ObjClass("person", AnyGeometry)),
-#         ObjClassView(ObjClass("person", Rectangle)),
-#         ObjClassView(ObjClass("person", Polygon)),
-#         ObjClassView(ObjClass("person", Bitmap)),
-#         ObjClassView(ObjClass("person", Point)),
-#         ObjClassView(ObjClass("person", Polyline)),
-#         ObjClassView(ObjClass("person", Cuboid)),
-#         # ObjClassView(ObjClass("person", GraphNodes, geometry_config={"1": "2"})),
-#         ObjClassView(ObjClass("person", Point3d)),
-#         ObjClassView(ObjClass("person", Cuboid3d)),
-#         ObjClassView(ObjClass("person", Pointcloud)),
-#         ObjClassView(ObjClass("person", ClosedSurfaceMesh)),
-#         ObjClassView(ObjClass("person", MultichannelBitmap)),
-#     ]
-# )
+model_classes = Container(
+    [
+        ObjClassView(ObjClass("person", AnyGeometry)),
+        ObjClassView(ObjClass("person", Rectangle)),
+        ObjClassView(ObjClass("person", Polygon)),
+        ObjClassView(ObjClass("person", Bitmap)),
+        ObjClassView(ObjClass("person", Point)),
+        ObjClassView(ObjClass("person", Polyline)),
+        ObjClassView(ObjClass("person", Cuboid)),
+        # ObjClassView(ObjClass("person", GraphNodes, geometry_config={"1": "2"})),
+        ObjClassView(ObjClass("person", Point3d)),
+        ObjClassView(ObjClass("person", Cuboid3d)),
+        ObjClassView(ObjClass("person", Pointcloud)),
+        ObjClassView(ObjClass("person", ClosedSurfaceMesh)),
+        ObjClassView(ObjClass("person", MultichannelBitmap)),
+    ]
+)
 
 classes_card = Card(
     "Model classes",
-    "Model predicts the following classes",  # container=model_classes
+    "Model predicts the following classes",
+    container=model_classes,
 )
 
 classes_layout = Container(
@@ -60,6 +61,6 @@ classes_layout = Container(
         classes_card,
     ],
     direction="horizontal",
-    overflow="scroll",
-    # wrap_grid_cell_width="25%",
+    overflow="wrap",
+    wrap_grid_cell_width="25%",
 )
