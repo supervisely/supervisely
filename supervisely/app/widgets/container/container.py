@@ -42,6 +42,9 @@ class Container(Widget):
                     "grid_cell_width argument can only be defined if direction is 'horizontal'"
                 )
 
+        if self._direction == "horizontal" and self._overflow is None:
+            self._overflow = "wrap"
+
         if self._grid_cell_width is not None and self._overflow != "wrap":
             raise ValueError(
                 "grid_cell_width argument can only be defined if overflow is 'wrap'"
