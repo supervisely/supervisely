@@ -26,27 +26,21 @@ from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 model_classes = Container(
     [
-        Checkbox(ObjClassView(ObjClass("person AnyGeometry", AnyGeometry))),
-        Checkbox(ObjClassView(ObjClass("person Rectangle", Rectangle))),
-        Checkbox(ObjClassView(ObjClass("person Polygon", Polygon))),
-        Checkbox(ObjClassView(ObjClass("person Bitmap", Bitmap))),
-        Checkbox(ObjClassView(ObjClass("person Point", Point))),
-        Checkbox(ObjClassView(ObjClass("person Polyline", Polyline))),
-        Checkbox(ObjClassView(ObjClass("person Cuboid", Cuboid))),
+        Checkbox(ObjClassView(ObjClass("person", AnyGeometry))),
+        Checkbox(ObjClassView(ObjClass("person", Rectangle))),
+        Checkbox(ObjClassView(ObjClass("person", Polygon))),
+        Checkbox(ObjClassView(ObjClass("person", Bitmap))),
+        Checkbox(ObjClassView(ObjClass("person", Point))),
+        Checkbox(ObjClassView(ObjClass("person", Polyline))),
+        Checkbox(ObjClassView(ObjClass("person", Cuboid))),
         # ObjClassView(ObjClass("person", GraphNodes, geometry_config={"1": "2"})),
-        Checkbox(ObjClassView(ObjClass("person Point3d", Point3d))),
-        Checkbox(ObjClassView(ObjClass("person Cuboid3d", Cuboid3d))),
-        Checkbox(ObjClassView(ObjClass("person Pointcloud", Pointcloud))),
-        Checkbox(ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh))),
-        Checkbox(
-            ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap))
-        ),
-        Checkbox(ObjClassView(ObjClass("person Cuboid3d", Cuboid3d))),
-        Checkbox(ObjClassView(ObjClass("person Pointcloud", Pointcloud))),
-        Checkbox(ObjClassView(ObjClass("person ClosedSurfaceMesh", ClosedSurfaceMesh))),
-        Checkbox(
-            ObjClassView(ObjClass("person MultichannelBitmap", MultichannelBitmap))
-        ),
+        Checkbox(ObjClassView(ObjClass("person", Point3d))),
+        Checkbox(ObjClassView(ObjClass("person", Cuboid3d))),
+        Checkbox(ObjClassView(ObjClass("person", Pointcloud))),
+        Checkbox(ObjClassView(ObjClass("person", Cuboid3d))),
+        Checkbox(ObjClassView(ObjClass("person", Pointcloud))),
+        Checkbox(ObjClassView(ObjClass("person", ClosedSurfaceMesh))),
+        Checkbox(ObjClassView(ObjClass("person", MultichannelBitmap))),
     ],
     direction="horizontal",
     # overflow="scroll"
