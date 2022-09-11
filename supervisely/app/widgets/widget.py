@@ -1,6 +1,7 @@
 from pathlib import Path
 from bs4 import BeautifulSoup
 import re
+import time
 
 from varname import varname
 from jinja2 import Environment
@@ -147,8 +148,12 @@ class Widget(Hidable, Disableable):
         current_dir = Path(self._file_path).parent.absolute()
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
+        # st = time.time()
         res = self._wrap_disable_html(self.widget_id, html)
+        # print("---> Time (_wrap_disable_html): ", time.time() - st, " seconds")
+        # st = time.time()
         res = self._wrap_hide_html(self.widget_id, res)
+        # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
         return markupsafe.Markup(res)
 
     def __html__(self):
