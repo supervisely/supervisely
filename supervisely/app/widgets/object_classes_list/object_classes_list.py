@@ -37,7 +37,7 @@ class ObjectClassesList(Widget):
         self._content = Grid(
             widgets=list(self._name_to_checkbox.values()),
             columns=self._columns,
-            widget_id=rand_str(10),
+            widget_id=generate_id(),
         )
         super().__init__(widget_id=widget_id, file_path=__file__)
 

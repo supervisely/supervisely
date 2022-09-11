@@ -2,6 +2,7 @@ from typing import List
 from supervisely.app.widgets import Widget, Container, generate_id
 from supervisely.sly_logger import logger
 from supervisely._utils import batched, rand_str
+from supervisely.app.widgets.empty.empty import Empty
 
 
 class Grid(Widget):
@@ -34,12 +35,15 @@ class Grid(Widget):
             )
         else:
             rows = []
+            num_empty = len(self._widgets) % self._columns
+            self._widgets.extend([Empty()] * num_empty)
             for batch in batched(self._widgets, batch_size=self._columns):
                 rows.append(
                     Container(
                         direction="horizontal",
                         widgets=batch,
                         gap=self._gap,
+                        fractions=[1] * len(batch),
                         widget_id=generate_id(),
                     )
                 )

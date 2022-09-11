@@ -30,3 +30,4 @@ from supervisely.app.widgets.grid.grid import Grid
 from supervisely.app.widgets.object_classes_list.object_classes_list import (
     ObjectClassesList,
 )
+from supervisely.app.widgets.empty.empty import Empty
