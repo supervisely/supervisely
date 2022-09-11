@@ -15,14 +15,14 @@ class Container(Widget):
         direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 10,
         fractions: List[int] = None,
-        overflow: Literal["scroll", "wrap"] = None,
+        # overflow: Literal["scroll", "wrap"] = None,
         # grid_cell_width: Literal["20%", "300px"] = None,
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
-        self._overflow = overflow
+        self._overflow = "scroll"
         self._grid_cell_width = None  # grid_cell_width
         if self._direction == "vertical" and fractions is not None:
             raise ValueError("fractions can be defined only with horizontal direction")
@@ -33,6 +33,7 @@ class Container(Widget):
             )
 
         if self._direction == "vertical":
+            self._overflow = None
             if self._overflow is not None:
                 raise ValueError(
                     "overflow argument can only be defined if direction is 'horizontal'"

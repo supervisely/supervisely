@@ -28,14 +28,17 @@ class ObjectClassesList(Widget):
             self._name_to_view[obj_class.name] = ObjectClassView(
                 obj_class, widget_id=generate_id()
             )
-            self._name_to_checkbox[obj_class.name] = Checkbox(
-                self._name_to_view[obj_class.name],
-                checked=True,
-                widget_id=generate_id(),
-            )
+            grid_items = list(self._name_to_view.values())
+            if self._selectable is True:
+                self._name_to_checkbox[obj_class.name] = Checkbox(
+                    self._name_to_view[obj_class.name],
+                    checked=True,
+                    widget_id=generate_id(),
+                )
+                grid_items = list(self._name_to_checkbox.values())
 
         self._content = Grid(
-            widgets=list(self._name_to_checkbox.values()),
+            widgets=grid_items,
             columns=self._columns,
             widget_id=generate_id(),
         )

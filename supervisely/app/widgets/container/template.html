@@ -14,9 +14,14 @@
       %}
       class="container scroll"
       {%
-      else
+      elif
+      widget._overflow == 'wrap'
       %}
       class="container wrap"
+      {%
+      else
+      %}
+      class="container"
       {%
       endif
       %}

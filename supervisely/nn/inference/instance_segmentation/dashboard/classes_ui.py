@@ -66,7 +66,7 @@ _classes = [
     ObjClass("person14", MultichannelBitmap),
 ]
 
-model_classes = ObjectClassesList(object_classes=_classes, columns=3)
+model_classes = ObjectClassesList(object_classes=_classes, columns=3, selectable=True)
 
 text = Text("123")
 classes_card = Card(
@@ -96,6 +96,5 @@ classes_layout = Container(
         # classes_card,
     ],
     direction="horizontal",
-    overflow="scroll",
     # grid_cell_width="25%",
 )
