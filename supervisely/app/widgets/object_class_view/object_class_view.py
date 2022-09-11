@@ -61,7 +61,7 @@ type_to_shape_text = {
 }
 
 
-class ObjClassView(Widget):
+class ObjectClassView(Widget):
     def __init__(
         self,
         obj_class: ObjClass,

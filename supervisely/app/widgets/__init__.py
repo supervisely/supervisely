@@ -24,5 +24,5 @@ from supervisely.app.widgets.menu.menu import Menu
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.input_number.input_number import InputNumber
 from supervisely.app.widgets.video.video import Video
-from supervisely.app.widgets.object_class_view.object_class_view import ObjClassView
+from supervisely.app.widgets.object_class_view.object_class_view import ObjectClassView
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
