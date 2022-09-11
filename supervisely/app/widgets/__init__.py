@@ -1,4 +1,4 @@
-from supervisely.app.widgets.widget import Widget
+from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
 from supervisely.app.widgets.done_label.done_label import DoneLabel
@@ -26,3 +26,7 @@ from supervisely.app.widgets.input_number.input_number import InputNumber
 from supervisely.app.widgets.video.video import Video
 from supervisely.app.widgets.object_class_view.object_class_view import ObjectClassView
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
+from supervisely.app.widgets.grid.grid import Grid
+from supervisely.app.widgets.object_classes_list.object_classes_list import (
+    ObjectClassesList,
+)

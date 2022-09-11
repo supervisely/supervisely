@@ -2,7 +2,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 import re
 import time
-
+import uuid
+from typing import Union
 from varname import varname
 from jinja2 import Environment
 import markupsafe
@@ -67,6 +68,10 @@ class Disableable:
         return str(soup)
 
 
+def generate_id():
+    return "auto" + uuid.uuid4().hex
+
+
 class Widget(Hidable, Disableable):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
@@ -76,10 +81,10 @@ class Widget(Hidable, Disableable):
         if self.widget_id is None:
             try:
                 self.widget_id = varname(frame=2)
-            except Exception as e:
+            except Exception as e:  # Caller doesn\\\'t assign the result directly to variable(s).
                 try:
                     self.widget_id = varname(frame=3)
-                except Exception as e:
+                except Exception as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
                     self.widget_id = type(self).__name__ + rand_str(10)
 
         self._register()
