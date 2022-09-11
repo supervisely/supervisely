@@ -1,7 +1,9 @@
 from pathlib import Path
 from bs4 import BeautifulSoup
 import re
-
+import time
+import uuid
+from typing import Union
 from varname import varname
 from jinja2 import Environment
 import markupsafe
@@ -58,12 +60,16 @@ class Disableable:
         raise {}
 
     def _wrap_disable_html(self, widget_id, html):
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, features="html.parser")
         results = soup.find_all(re.compile("^el-"))
         for tag in results:
             if not tag.has_attr("disabled") and not tag.has_attr(":disabled"):
                 tag[":disabled"] = f"data.{widget_id}.disabled"
         return str(soup)
+
+
+def generate_id():
+    return "auto" + uuid.uuid4().hex
 
 
 class Widget(Hidable, Disableable):
@@ -75,10 +81,10 @@ class Widget(Hidable, Disableable):
         if self.widget_id is None:
             try:
                 self.widget_id = varname(frame=2)
-            except Exception as e:
+            except Exception as e:  # Caller doesn\\\'t assign the result directly to variable(s).
                 try:
                     self.widget_id = varname(frame=3)
-                except Exception as e:
+                except Exception as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
                     self.widget_id = type(self).__name__ + rand_str(10)
 
         self._register()
@@ -147,8 +153,12 @@ class Widget(Hidable, Disableable):
         current_dir = Path(self._file_path).parent.absolute()
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
+        # st = time.time()
         res = self._wrap_disable_html(self.widget_id, html)
+        # print("---> Time (_wrap_disable_html): ", time.time() - st, " seconds")
+        # st = time.time()
         res = self._wrap_hide_html(self.widget_id, res)
+        # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
         return markupsafe.Markup(res)
 
     def __html__(self):

@@ -37,14 +37,20 @@ class SkeletonizeMethod(Enum):
 
 
 def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
-    rows = list(np.any(raw_mask, axis=1).tolist())  # Redundant conversion to list to help PyCharm static analysis.
+    rows = list(
+        np.any(raw_mask, axis=1).tolist()
+    )  # Redundant conversion to list to help PyCharm static analysis.
     cols = list(np.any(raw_mask, axis=0).tolist())
     top_margin = rows.index(True)
     bottom_margin = rows[::-1].index(True)
     left_margin = cols.index(True)
     right_margin = cols[::-1].index(True)
-    return Rectangle(top=top_margin, left=left_margin, bottom=len(rows) - 1 - bottom_margin,
-                     right=len(cols) - 1 - right_margin)
+    return Rectangle(
+        top=top_margin,
+        left=left_margin,
+        bottom=len(rows) - 1 - bottom_margin,
+        right=len(cols) - 1 - right_margin,
+    )
 
 
 class Bitmap(BitmapBase):
@@ -111,23 +117,31 @@ class Bitmap(BitmapBase):
 
     @staticmethod
     def geometry_name():
-        """
-        """
-        return 'bitmap'
+        """geometry_name"""
+        return "bitmap"
 
-    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        data: np.ndarray,
+        origin: Optional[PointLocation] = None,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
 
         if data.dtype != np.bool:
             unique, counts = np.unique(data, return_counts=True)
             if len(unique) != 2:
                 raise ValueError(
-                    f'Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}.')
+                    f"Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}."
+                )
 
             if list(unique) not in [[0, 1], [0, 255]]:
                 raise ValueError(
-                    f'Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}.')
+                    f"Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}."
+                )
 
             if list(unique) == [0, 1]:
                 data = np.array(data, dtype=bool)
@@ -135,21 +149,31 @@ class Bitmap(BitmapBase):
                 data = np.array(data / 255, dtype=bool)
 
         # Call base constructor first to do the basic dimensionality checks.
-        super().__init__(data=data, origin=origin, expected_data_dims=2,
-                         sly_id=sly_id, class_id=class_id,
-                         labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(
+            data=data,
+            origin=origin,
+            expected_data_dims=2,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
         # Crop the empty margins of the boolean mask right away.
         if not np.any(data):
-            raise ValueError('Creating a bitmap with an empty mask (no pixels set to True) is not supported.')
+            raise ValueError(
+                "Creating a bitmap with an empty mask (no pixels set to True) is not supported."
+            )
         data_tight_bbox = _find_mask_tight_bbox(self._data)
-        self._origin = self._origin.translate(drow=data_tight_bbox.top, dcol=data_tight_bbox.left)
+        self._origin = self._origin.translate(
+            drow=data_tight_bbox.top, dcol=data_tight_bbox.left
+        )
         self._data = data_tight_bbox.get_cropped_numpy_slice(self._data)
 
     @classmethod
     def _impl_json_class_name(cls):
-        """
-        """
+        """_impl_json_class_name"""
         return BITMAP
 
     def rotate(self, rotator: ImageRotator) -> Bitmap:
@@ -177,7 +201,9 @@ class Bitmap(BitmapBase):
         self.draw(full_img_mask, 1)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
-        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(
+            np.bool
+        )
         return Bitmap(data=new_mask)
 
     def crop(self, rect: Rectangle) -> List[Bitmap]:
@@ -200,11 +226,18 @@ class Bitmap(BitmapBase):
             return []
         else:
             [cropped_bbox] = maybe_cropped_bbox
-            cropped_bbox_relative = cropped_bbox.translate(drow=-self.origin.row, dcol=-self.origin.col)
+            cropped_bbox_relative = cropped_bbox.translate(
+                drow=-self.origin.row, dcol=-self.origin.col
+            )
             cropped_mask = cropped_bbox_relative.get_cropped_numpy_slice(self._data)
             if not np.any(cropped_mask):
                 return []
-            return [Bitmap(data=cropped_mask, origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left))]
+            return [
+                Bitmap(
+                    data=cropped_mask,
+                    origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left),
+                )
+            ]
 
     def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Bitmap:
         """
@@ -226,27 +259,33 @@ class Bitmap(BitmapBase):
             # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
             resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
-        scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data.astype(np.uint8), in_size,
-                                                              out_size)
+        scaled_origin, scaled_data = resize_origin_and_bitmap(
+            self._origin, self._data.astype(np.uint8), in_size, out_size
+        )
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
         #  it in the resulting bitmap.
         return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
+        """_draw_impl"""
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
-        if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
-            contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        """_draw_contour_impl"""
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+            contours, _ = cv2.findContours(
+                self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+            )
         else:
-            _, contours, _ = cv2.findContours(self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            _, contours, _ = cv2.findContours(
+                self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+            )
         if contours is not None:
             for cont in contours:
-                cont[:, :] += (self.origin.col, self.origin.row)  # cont with shape (rows, ?, 2)
+                cont[:, :] += (
+                    self.origin.col,
+                    self.origin.row,
+                )  # cont with shape (rows, ?, 2)
             cv2.drawContours(bitmap, contours, -1, color, thickness=thickness)
 
     @property
@@ -296,7 +335,7 @@ class Bitmap(BitmapBase):
         elif len(imdecoded.shape) == 2:
             mask = imdecoded.astype(bool)  # flat 2d mask
         else:
-            raise RuntimeError('Wrong internal mask format.')
+            raise RuntimeError("Wrong internal mask format.")
         return mask
 
     @staticmethod
@@ -336,9 +375,9 @@ class Bitmap(BitmapBase):
         img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
         img_pil.putpalette([0, 0, 0, 255, 255, 255])
         bytes_io = io.BytesIO()
-        img_pil.save(bytes_io, format='PNG', transparency=0, optimize=0)
+        img_pil.save(bytes_io, format="PNG", transparency=0, optimize=0)
         bytes_enc = bytes_io.getvalue()
-        return base64.b64encode(zlib.compress(bytes_enc)).decode('utf-8')
+        return base64.b64encode(zlib.compress(bytes_enc)).decode("utf-8")
 
     def skeletonize(self, method_id: SkeletonizeMethod) -> Bitmap:
         """
@@ -358,6 +397,7 @@ class Bitmap(BitmapBase):
             thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
         """
         from skimage import morphology as skimage_morphology
+
         if method_id == SkeletonizeMethod.SKELETONIZE:
             method = skimage_morphology.skeletonize
         elif method_id == SkeletonizeMethod.MEDIAL_AXIS:
@@ -365,7 +405,7 @@ class Bitmap(BitmapBase):
         elif method_id == SkeletonizeMethod.THINNING:
             method = skimage_morphology.thin
         else:
-            raise NotImplementedError('Method {!r} does\'t exist.'.format(method_id))
+            raise NotImplementedError("Method {!r} does't exist.".format(method_id))
 
         mask_u8 = self.data.astype(np.uint8)
         res_mask = method(mask_u8).astype(bool)
@@ -384,17 +424,17 @@ class Bitmap(BitmapBase):
             figure_contours = figure.to_contours()
         """
         origin, mask = self.origin, self.data
-        if StrictVersion(cv2.__version__) >= StrictVersion('4.0.0'):
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
             contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
                 mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
-                method=cv2.CHAIN_APPROX_SIMPLE
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
         else:
             _, contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
                 mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
-                method=cv2.CHAIN_APPROX_SIMPLE
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
         if (hier is None) or (contours is None):
             return []
@@ -409,8 +449,15 @@ class Bitmap(BitmapBase):
                     internals.append(contours[child_idx][:, 0])
                     child_idx = hier[0][child_idx][0]
                 if len(external) > 2:
-                    new_poly = Polygon(exterior=row_col_list_to_points(external, flip_row_col_order=True),
-                                       interior=[row_col_list_to_points(x, flip_row_col_order=True) for x in internals])
+                    new_poly = Polygon(
+                        exterior=row_col_list_to_points(
+                            external, flip_row_col_order=True
+                        ),
+                        interior=[
+                            row_col_list_to_points(x, flip_row_col_order=True)
+                            for x in internals
+                        ],
+                    )
                     res.append(new_poly)
 
         offset_row, offset_col = origin.row, origin.col
@@ -457,21 +504,27 @@ class Bitmap(BitmapBase):
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
         full_size_mask = np.full(full_size, False, bool)
-        full_size_mask[origin.row:origin.row + mask.shape[0], origin.col:origin.col + mask.shape[1]] = mask
+        full_size_mask[
+            origin.row : origin.row + mask.shape[0],
+            origin.col : origin.col + mask.shape[1],
+        ] = mask
 
         new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
         if new_mask.sum() == 0:
             return []
-        new_mask = new_mask[origin.row:origin.row + mask.shape[0], origin.col:origin.col + mask.shape[1]]
+        new_mask = new_mask[
+            origin.row : origin.row + mask.shape[0],
+            origin.col : origin.col + mask.shape[1],
+        ]
         return Bitmap(data=new_mask, origin=origin.clone())
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
+        """allowed_transforms"""
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
+
         return [AnyGeometry, Polygon, Rectangle]
 
     @classmethod

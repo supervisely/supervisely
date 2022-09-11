@@ -44,20 +44,48 @@ type_to_icons8_icon = {
     # Point3d: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAABqUlEQVRYhe3TsWtUQRDH8U/UHEQwFzQqGhGsLAKChY0pUtiLiiD+B6L+CSLYmNjam04btdLGTgStgo0iUUs5IwcWXrBR8Cx2l6yX9+4luTuC8L6w3DEzO/N7M7PU1NT8h5zBfbzDD/zEJzzA/CgLH8IjdCvOCxwfdvET+BwLfMMdnEYTe3EKt7AaY1ajbSCO4TE6+B0TP8X+Pnea8U4XX3B4kOLf/dvaJ9i9ibu7MhEPtysgJXiGGRzEROZv4B6+ooWFaEs00cYfnNyOgE4UMFPiX7Rx+e72xNy2vjPPcVXoTl8msJQlbZbEtaL/LObi/1ZPzGyByFeYLis+Jsy5K7zr830Ut2PcXCagXZBvXzwXsBLj3mC8KOmVGPARB8pURopGsFhxZyoTca0o4GV0Xq5IBHuExUvFF6KtikvWu7CB9Oyqvj4nCdgskzG+kwz5jNNcfm0h4VYZ6zXkAj7E33MjFJByvy9y3hTasyIszLCZEha8i+tFAQ28zURcFGY2KJPC8qXiy0qeIRzNRIziLONIleIGbghPZW0IRdfwWmh76ZfX1NTsGH8BaEidOSWP5WoAAAAASUVORK5CYII=",
 }
 
+type_to_shape_text = {
+    AnyGeometry: "any shape",
+    Rectangle: "rectangle",
+    Polygon: "polygon",
+    Bitmap: "bitmap (mask)",
+    Polyline: "polyline",
+    Point: "point",
+    Cuboid: "cuboid",  #
+    Cuboid3d: "cuboid 3d",
+    Pointcloud: "pointcloud",  #  # "zmdi zmdi-border-clear"
+    MultichannelBitmap: "n-channel mask",  # "zmdi zmdi-collection-item"
+    Point3d: "point 3d",  # "zmdi zmdi-select-all"
+    GraphNodes: "keypoints",
+    ClosedSurfaceMesh: "volume (3d mask)",
+}
 
-class ObjClassView(Widget):
+
+class ObjectClassView(Widget):
     def __init__(
         self,
         obj_class: ObjClass,
+        show_shape_text: bool = True,
+        show_shape_icon: bool = False,
         widget_id: str = None,
     ):
         self._obj_class = obj_class
+        self._show_shape_text = show_shape_text
+        self._show_shape_icon = show_shape_icon
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         res = self._obj_class.to_json()
-        res["icon"] = type_to_zmdi_icon.get(self._obj_class.geometry_type)
-        res["icon8"] = type_to_icons8_icon.get(self._obj_class.geometry_type)
+        res["icon"] = None
+        res["icon8"] = None
+        if self._show_shape_icon is True:
+            res["icon"] = type_to_zmdi_icon.get(self._obj_class.geometry_type)
+            res["icon8"] = type_to_icons8_icon.get(self._obj_class.geometry_type)
+        res["shape_text"] = None
+        if self._show_shape_text is True:
+            res["shape_text"] = type_to_shape_text.get(
+                self._obj_class.geometry_type
+            ).upper()
         return res
 
     def get_json_state(self):

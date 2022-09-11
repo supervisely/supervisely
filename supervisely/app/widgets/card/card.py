@@ -10,14 +10,14 @@ class Card(Widget):
         title: str = None,
         description: str = None,
         collapsable: bool = False,
-        container: Widget = None,
+        content: Widget = None,
         widget_id: str = None,
     ):
         self._title = title
         self._description = description
         self._collapsable = collapsable
         self._collapsed = False
-        self._container = container
+        self._content = content
         self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}
         self._disabled = {"disabled": False, "message": ""}
         super().__init__(widget_id=widget_id, file_path=__file__)
