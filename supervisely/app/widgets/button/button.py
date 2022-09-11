@@ -21,12 +21,13 @@ class Button(Widget):
         self,
         text: str = "Button",
         button_type: Literal[
-            "primary", "info", "warning", "danger", "success"
+            "primary", "info", "warning", "danger", "success", "text"
         ] = "primary",
         button_size: Literal["mini", "small", "large"] = None,
         plain: bool = False,
         show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
+        widget_id=None,
     ):
         self._widget_routes = {}
 
@@ -43,7 +44,7 @@ class Button(Widget):
         self._disabled = False
         self._show_loading = show_loading
 
-        super().__init__(file_path=__file__)
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
