@@ -57,7 +57,7 @@ model_classes = Container(
 classes_card = Card(
     "Model classes",
     "Model predicts the following classes",
-    container=model_classes,
+    content=model_classes,
 )
 
 classes_layout = Container(
