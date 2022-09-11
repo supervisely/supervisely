@@ -96,5 +96,4 @@ classes_layout = Container(
         # classes_card,
     ],
     direction="horizontal",
-    # grid_cell_width="25%",
 )
