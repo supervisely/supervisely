@@ -49,6 +49,7 @@ model_classes = Container(
         ),
     ],
     direction="horizontal",
+    # overflow="scroll"
     overflow="wrap",
     # grid_cell_width="25%",
 )

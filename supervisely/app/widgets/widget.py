@@ -58,7 +58,7 @@ class Disableable:
         raise {}
 
     def _wrap_disable_html(self, widget_id, html):
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, features="html.parser")
         results = soup.find_all(re.compile("^el-"))
         for tag in results:
             if not tag.has_attr("disabled") and not tag.has_attr(":disabled"):
