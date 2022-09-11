@@ -50,7 +50,7 @@ model_classes = Container(
     ],
     direction="horizontal",
     overflow="wrap",
-    grid_cell_width="25%",
+    # grid_cell_width="25%",
 )
 
 classes_card = Card(
