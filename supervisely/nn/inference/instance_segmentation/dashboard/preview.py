@@ -12,8 +12,8 @@ t_url = Text("url")
 t_sly = Text("sly")
 t_upload = Text("upload")
 
-team_selector = SelectTeam()
-workspace_selector = SelectWorkspace()
+# selector = SelectTeam()
+selector = SelectWorkspace()
 
 # select image
 # select dataset
@@ -25,7 +25,7 @@ workspace_selector = SelectWorkspace()
 
 image_source = Select(
     items=[
-        Select.Item(value="url", label="Image URL", content=workspace_selector),
+        Select.Item(value="url", label="Image URL", content=selector),
         Select.Item(value="sly", label="Image in Supervisely", content=t_sly),
         # Select.Item(value="demo", label="Demo image"), ???
         Select.Item(value="upload", label="Upload your image", content=t_upload),

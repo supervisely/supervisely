@@ -78,22 +78,6 @@ classes_card = Card(
 classes_layout = Container(
     [
         classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
-        # classes_card,
     ],
-    direction="horizontal",
+    direction="vertical",
 )
