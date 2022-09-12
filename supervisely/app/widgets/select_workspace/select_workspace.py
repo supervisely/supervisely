@@ -16,9 +16,9 @@ class SelectWorkspace(Widget):
         self,
         default_id: int = None,  # try automatically from env if None
         team_id: int = None,
-        size: Literal["large", "small", "mini"] = None,
-        show_label: bool = True,
         show_team_selector: bool = True,
+        show_label: bool = True,
+        size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
         self._default_id = os.environ.get("context.workspaceId", default_id)
