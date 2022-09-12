@@ -8,6 +8,7 @@ except ImportError:
 
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
+from supervisely.sly_logger import logger
 
 
 class SelectWorkspace(Widget):
@@ -17,6 +18,7 @@ class SelectWorkspace(Widget):
         team_id: int = None,
         size: Literal["large", "small", "mini"] = None,
         show_label: bool = True,
+        show_team_selector: bool = True,
         widget_id: str = None,
     ):
         self._default_id = os.environ.get("context.workspaceId", default_id)
@@ -30,24 +32,25 @@ class SelectWorkspace(Widget):
             if self._default_id is not None:
                 ws_info = Api().workspace.get_info_by_id(self._default_id)
                 self._team_id = ws_info.team_id
-            else:
+            elif self._show_team_selector is False:
                 raise ValueError(
-                    "team_id has to be defined as argument or as in env variable 'context.teamId'"
+                    "team_id has to be defined as argument or as in env variable 'context.teamId' or 'show_team_selector' argument has to be True"
                 )
 
         self._size = size
         self._show_label = show_label
+        self._show_team_selector = show_team_selector
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
         res = {
             "options": {
                 "showLabel": self._show_label,
-                "showTeam": False,
+                "showTeam": self._show_team_selector,
                 "showWorkspace": True,
                 "filterable": True,
                 "onlyAvailable": True,
-            }
+            },
         }
         if self._size is not None:
             res["options"]["size"] = self._size
