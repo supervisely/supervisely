@@ -104,7 +104,7 @@ class Video(Widget):
             func(res)
         return _click
 
-    def frame_change_start(self, func):
+    def frame_change_started(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_START)
         server = self._sly_app.get_server()
         self._frame_change_started_handled = True
@@ -114,7 +114,7 @@ class Video(Widget):
             func(res)
         return _click
 
-    def frame_change_end(self, func):
+    def frame_change_finished(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_END)
         server = self._sly_app.get_server()
         self._frame_change_finished_handled = True
