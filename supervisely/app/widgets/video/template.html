@@ -1,8 +1,8 @@
 <sly-video
-        {% if widget._changes_handled_start %}
+        {% if widget._frame_changed_start_handled %}
         @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"
         {% endif %}
-        {% if widget._changes_handled_end %}
+        {% if widget._frame_changed_end_handled %}
         @frame-change-end="post('/{{{widget.widget_id}}}/frame_changed_end_cb')"
         {% endif %}
 
@@ -11,10 +11,10 @@
         :intervals="data.{{{widget.widget_id}}}.intervals"
         :options="state.{{{widget.widget_id}}}.options"
 
-        {% if widget._changes_handled_play %}
+        {% if widget._play_clicked_handled %}
         @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
         {% endif %}
-        {% if widget._changes_handled_pause %}
-        @pause="post('/{{{widget.widget_id}}}/stop_clicked_cb')"
+        {% if widget._pause_clicked_handled %}
+        @pause="post('/{{{widget.widget_id}}}/pause_clicked_cb')"
         {% endif %}
 />

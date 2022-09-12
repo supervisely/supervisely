@@ -7,7 +7,7 @@ from supervisely.app.widgets import Widget
 class Video(Widget):
     class Routes:
         PLAY_CLICKED = "play_clicked_cb"
-        PAUSE_CLICKED = "stop_clicked_cb"
+        PAUSE_CLICKED = "pause_clicked_cb"
         FRAME_CHANGE_START = "frame_changed_start_cb"
         FRAME_CHANGE_END = "frame_changed_end_cb"
 
@@ -93,7 +93,7 @@ class Video(Widget):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)
         server = self._sly_app.get_server()
         self._playing: bool = True
-        self._changes_handled_play = True
+        self._play_clicked_handled = True
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -104,7 +104,7 @@ class Video(Widget):
         route_path = self.get_route_path(Video.Routes.PAUSE_CLICKED)
         server = self._sly_app.get_server()
         self._playing: bool = False
-        self._changes_handled_pause = True
+        self._pause_clicked_handled = True
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -114,7 +114,7 @@ class Video(Widget):
     def frame_change_start(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_START)
         server = self._sly_app.get_server()
-        self._changes_handled_start = True
+        self._frame_changed_start_handled = True
         @server.post(route_path)
         def _click():
             res = self.frame
@@ -127,7 +127,7 @@ class Video(Widget):
     def frame_change_end(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_END)
         server = self._sly_app.get_server()
-        self._changes_handled_end = True
+        self._frame_changed_end_handled = True
         @server.post(route_path)
         def _click():
             self.frame = self.get_current_frame()
