@@ -1,16 +1,16 @@
 from supervisely.app.widgets import Text, Select, Field, OneOf
 
 
-t1 = Text("url")
-t2 = Text("sly")
-t3 = Text("upload")
+t_url = Text("url")
+t_sly = Text("sly")
+t_upload = Text("upload")
 
 image_source = Select(
     items=[
-        Select.Item(value="url", label="Image URL", content=t1),
+        Select.Item(value="url", label="Image URL", content=t_url),
         # Select.Item(value="demo", label="Demo image"), ???
-        Select.Item(value="sly", label="Image in Supervisely", content=t2),
-        Select.Item(value="upload", label="Upload your image", content=t3),
+        Select.Item(value="sly", label="Image in Supervisely", content=t_sly),
+        Select.Item(value="upload", label="Upload your image", content=t_upload),
     ],
 )
 
