@@ -21,10 +21,11 @@ class SelectWorkspace(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        self._default_id = os.environ.get("context.workspaceId", default_id)
+        self._default_id = default_id
+        if self._default_id is None:
+            self._default_id = os.environ.get("context.workspaceId")
         if self._default_id is not None:
             self._default_id = int(self._default_id)
-
         self._team_id = team_id
         if self._team_id is None:
             self._team_id = int(os.environ.get("context.teamId"))
