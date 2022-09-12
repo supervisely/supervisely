@@ -12,6 +12,49 @@ from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 
 
+"""
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.cuboid import Cuboid
+from supervisely.geometry.point import Point
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.geometry.point_3d import Point3d
+from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+
+_classes = [
+    ObjClass("person1", AnyGeometry),
+    ObjClass("person2", Rectangle),
+    ObjClass("person3", Polygon),
+    ObjClass("person4", Bitmap),
+    ObjClass("person5", Point),
+    ObjClass("person6", Polyline),
+    ObjClass("person7", Cuboid),
+    ObjClass("person8", Point3d),
+    ObjClass("person9", Cuboid3d),
+    ObjClass("person10", Pointcloud),
+    ObjClass("person11", Cuboid3d),
+    ObjClass("person12", Pointcloud),
+    ObjClass("person13", ClosedSurfaceMesh),
+    ObjClass("person14", MultichannelBitmap),
+]
+
+model_classes = ObjectClassesList(object_classes=_classes, columns=3, selectable=True)
+
+text = Text("123")
+classes_card = Card(
+    "Model classes",
+    "Model predicts the following classes",
+    content=model_classes,
+)
+"""
+
+
 class ObjectClassesList(Widget):
     def __init__(
         self,
