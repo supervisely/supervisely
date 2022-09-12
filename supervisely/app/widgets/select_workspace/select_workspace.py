@@ -22,21 +22,27 @@ class SelectWorkspace(Widget):
         widget_id: str = None,
     ):
         self._default_id = default_id
+        self._team_id = team_id
+
         if self._default_id is None:
             self._default_id = os.environ.get("context.workspaceId")
         if self._default_id is not None:
             self._default_id = int(self._default_id)
-        self._team_id = team_id
+
+        # @TODO: reimplement
         if self._team_id is None:
             self._team_id = int(os.environ.get("context.teamId"))
+
         if self._team_id is None:
             if self._default_id is not None:
                 ws_info = Api().workspace.get_info_by_id(self._default_id)
                 self._team_id = ws_info.team_id
-            elif self._show_team_selector is False:
-                raise ValueError(
-                    "team_id has to be defined as argument or as in env variable 'context.teamId' or 'show_team_selector' argument has to be True"
-                )
+            else:
+
+                if self._show_team_selector is False:
+                    raise ValueError(
+                        "team_id has to be defined as argument or as in env variable 'context.teamId' or 'show_team_selector' argument has to be True"
+                    )
 
         self._size = size
         self._show_label = show_label

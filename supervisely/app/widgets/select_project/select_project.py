@@ -20,15 +20,21 @@ class SelectProject(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        self._default_id = os.environ.get("modal.state.slyProjectId", default_id)
+        self._default_id = default_id
+        if self._default_id is None:
+            self._default_id = os.environ.get("modal.state.slyProjectId")
         if self._default_id is not None:
             self._default_id = int(self._default_id)
+
+        self._workspace_id = workspace_id
+        if self._default_id is not None:
             api = Api()
             project_info = api.project.get_info_by_id(self._default_id)
             if project_info is None:
                 raise ValueError("Project with id {self._default_id} not found")
-            workspace_id = project_info.workspace_id
-            team_id = api.workspace.get_info_by_id(workspace_id).team_id
+            self._workspace_id = project_info.workspace_id
+
+        self._tw = SelectWorkspace(default_id=self._workspace_id, team_id=)
 
         self._size = size
         self._show_label = show_label

@@ -5,6 +5,7 @@ from supervisely.app.widgets import (
     OneOf,
     SelectTeam,
     SelectWorkspace,
+    SelectProject,
 )
 
 
@@ -12,8 +13,10 @@ t_url = Text("url")
 t_sly = Text("sly")
 t_upload = Text("upload")
 
-# selector = SelectTeam()
-selector = SelectWorkspace()
+selector = SelectTeam()
+# selector = SelectWorkspace()
+# selector = SelectProject()
+
 
 # select image
 # select dataset
