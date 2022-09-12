@@ -6,6 +6,9 @@ from supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui import (
 from supervisely.nn.inference.instance_segmentation.dashboard.classes_ui import (
     classes_layout,
 )
+from supervisely.nn.inference.instance_segmentation.dashboard.preview_image import (
+    preview_image_layout,
+)
 
 l = Text(text="left part", status="success")
 
@@ -26,7 +29,7 @@ g1 = Menu.Group(
 g2 = Menu.Group(
     "Preview predictions",
     [
-        Menu.Item(title="Image", content=ttt, icon="zmdi zmdi-image"),
+        Menu.Item(title="Image", content=preview_image_layout, icon="zmdi zmdi-image"),
         Menu.Item(title="Video", content=ttt, icon="zmdi zmdi-youtube-play"),
     ],
 )
@@ -45,5 +48,5 @@ g3 = Menu.Group(
         ),
     ],
 )
-menu = Menu(groups=[g1, g2, g3], index="Classes")
+menu = Menu(groups=[g1, g2, g3], index="Image")
 # menu = sly.app.widgets.Menu(items=g1_items)
