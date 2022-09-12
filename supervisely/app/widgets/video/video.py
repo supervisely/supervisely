@@ -15,12 +15,12 @@ class Video(Widget):
         self,
         video_id: int = None,
         frame: int = 0,
-        intervals: List[List[int]] = [],
+        # intervals: List[List[int]] = [],
         widget_id: str = None,
     ):
         self._video_id = video_id
         self._frame = frame
-        self._intervals = intervals
+        self._intervals = []
         self._loading: bool = False
         self._playing: bool = False
         self._changes_handled = False
@@ -93,6 +93,7 @@ class Video(Widget):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)
         server = self._sly_app.get_server()
         self._playing: bool = True
+        self._changes_handled_play = True
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -103,6 +104,7 @@ class Video(Widget):
         route_path = self.get_route_path(Video.Routes.PAUSE_CLICKED)
         server = self._sly_app.get_server()
         self._playing: bool = False
+        self._changes_handled_pause = True
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
@@ -112,7 +114,7 @@ class Video(Widget):
     def frame_change_start(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_START)
         server = self._sly_app.get_server()
-        self._changes_handled = True
+        self._changes_handled_start = True
         @server.post(route_path)
         def _click():
             res = self.frame
@@ -125,7 +127,7 @@ class Video(Widget):
     def frame_change_end(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_END)
         server = self._sly_app.get_server()
-        self._changes_handled = True
+        self._changes_handled_end = True
         @server.post(route_path)
         def _click():
             self.frame = self.get_current_frame()
