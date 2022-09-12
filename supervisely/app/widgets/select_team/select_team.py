@@ -13,8 +13,8 @@ class SelectTeam(Widget):
     def __init__(
         self,
         default_id: int = None,  # try automatically from env if None
-        size: Literal["large", "small", "mini"] = None,
         show_label: bool = True,
+        size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
         self._default_id = os.environ.get("context.teamId", default_id)
