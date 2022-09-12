@@ -1,5 +1,3 @@
-from typing import List
-
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
@@ -34,6 +32,8 @@ class Video(Widget):
         self._playback_rate: int = 1
         self._skip_frames_size: int = 10
         self._intervals_navigation: bool = False
+        self._responsive_height: bool = True
+        self._enable_zoom: bool = False
         #############################
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -51,7 +51,9 @@ class Video(Widget):
                 "soundVolume": self._sound_volume,
                 "playbackRate": self._playback_rate,
                 "skipFramesSize": self._skip_frames_size,
-                "intervalsNavigation": self._intervals_navigation
+                "intervalsNavigation": self._intervals_navigation,
+                "responsiveHeight": self._responsive_height,
+                "enableZoom": self._enable_zoom
             }
         }
 
@@ -85,7 +87,6 @@ class Video(Widget):
     def play_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)
         server = self._sly_app.get_server()
-        self._playing: bool = True
         self._play_clicked_handled = True
         @server.post(route_path)
         def _click():
@@ -96,7 +97,6 @@ class Video(Widget):
     def pause_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PAUSE_CLICKED)
         server = self._sly_app.get_server()
-        self._playing: bool = False
         self._pause_clicked_handled = True
         @server.post(route_path)
         def _click():
