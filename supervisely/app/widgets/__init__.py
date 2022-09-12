@@ -31,3 +31,4 @@ from supervisely.app.widgets.object_classes_list.object_classes_list import (
     ObjectClassesList,
 )
 from supervisely.app.widgets.empty.empty import Empty
+from supervisely.app.widgets.one_of.one_of import OneOf

@@ -41,11 +41,14 @@ class Select(Widget):
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        def __init__(self, value, label: str = None) -> Select.Item:
+        def __init__(
+            self, value, label: str = None, content: Widget = None
+        ) -> Select.Item:
             self.value = value
             self.label = label
             if label is None:
                 self.label = str(self.value)
+            self.content = content
 
         def to_json(self):
             return {"label": self.label, "value": self.value}
@@ -122,3 +125,12 @@ class Select(Widget):
             func(res)
 
         return _click
+
+    def get_items(self) -> List[Select.Item]:
+        res = []
+        if self._items is not None:
+            res.extend(self._items)
+        if self._groups is not None:
+            for group in self._groups:
+                res.extend(group.items)
+        return res

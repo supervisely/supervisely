@@ -1,0 +1,9 @@
+<div>
+  {% for item in widget._conditional_widget.get_items() %}
+  <div
+    v-if="state.{{{widget._conditional_widget.widget_id}}}.value === '{{{item.value}}}'"
+  >
+    {{{item.content}}}
+  </div>
+  {% endfor %}
+</div>
