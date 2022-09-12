@@ -1,9 +1,9 @@
 <sly-video
-        {% if widget._frame_changed_start_handled %}
-        @frame-change-start="post('/{{{widget.widget_id}}}/frame_changed_start_cb')"
+        {% if widget._frame_change_started_handled %}
+        @frame-change-start="post('/{{{widget.widget_id}}}/frame_change_started_cb')"
         {% endif %}
-        {% if widget._frame_changed_end_handled %}
-        @frame-change-end="post('/{{{widget.widget_id}}}/frame_changed_end_cb')"
+        {% if widget._frame_change_finished_handled %}
+        @frame-change-end="post('/{{{widget.widget_id}}}/frame_change_finished_cb')"
         {% endif %}
 
         :video-id="data.{{{widget.widget_id}}}.videoId"
