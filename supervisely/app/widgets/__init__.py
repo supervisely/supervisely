@@ -34,3 +34,5 @@ from supervisely.app.widgets.empty.empty import Empty
 from supervisely.app.widgets.one_of.one_of import OneOf
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.app.widgets.input.input import Input
+from supervisely.app.widgets.select_team.select_team import SelectTeam
+from supervisely.app.widgets.select_workspace.select_workspace import SelectWorkspace
