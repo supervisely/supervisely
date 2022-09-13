@@ -1,4 +1,3 @@
-import os
 from typing import Dict
 
 try:
@@ -6,58 +5,67 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app.widgets import Widget
+from supervisely.app import StateJson
+from supervisely.app.widgets import Widget, SelectTeam, generate_id
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
+from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectWorkspace(Widget):
     def __init__(
         self,
-        default_id: int = None,  # try automatically from env if None
+        default_id: int = None,
         team_id: int = None,
-        show_team_selector: bool = True,
+        compact: bool = False,
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        self._api = Api()
         self._default_id = default_id
         self._team_id = team_id
-
-        if self._default_id is None:
-            self._default_id = os.environ.get("context.workspaceId")
-        if self._default_id is not None:
-            self._default_id = int(self._default_id)
-
-        # @TODO: reimplement
-        if self._team_id is None:
-            self._team_id = int(os.environ.get("context.teamId"))
-
-        if self._team_id is None:
-            if self._default_id is not None:
-                ws_info = Api().workspace.get_info_by_id(self._default_id)
-                self._team_id = ws_info.team_id
-            else:
-
-                if self._show_team_selector is False:
-                    raise ValueError(
-                        "team_id has to be defined as argument or as in env variable 'context.teamId' or 'show_team_selector' argument has to be True"
-                    )
-
-        self._size = size
+        self._compact = compact
         self._show_label = show_label
-        self._show_team_selector = show_team_selector
+        self._size = size
+        self._team_selector = None
+
+        self._default_id = _get_int_or_env(self._default_id, "context.workspaceId")
+        if self._default_id is not None:
+            info = self._api.workspace.get_info_by_id(
+                self._default_id, raise_error=True
+            )
+            self._team_id = info.team_id
+        self._team_id = _get_int_or_env(self._team_id, "context.teamId")
+
+        if compact is True:
+            if self._team_id is None:
+                raise ValueError(
+                    '"team_id" have to be passed as argument or "compact" has to be False'
+                )
+        else:
+            if self._show_label is False:
+                logger.warn(
+                    "show_label can not be false if compact is True and default_id / team_id are not defined"
+                )
+            self._show_label = True
+            self._team_selector = SelectTeam(
+                default_id=self._team_id,
+                show_label=True,
+                widget_id=generate_id(),
+            )
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        res = {
-            "options": {
-                "showLabel": self._show_label,
-                "showTeam": self._show_team_selector,
-                "showWorkspace": True,
-                "filterable": True,
-                "onlyAvailable": True,
-            },
+        res = {}
+        res["teamId"] = self._team_id
+        res["options"] = {
+            "showLabel": self._show_label,
+            "compact": self._compact,
+            "filterable": True,
+            "showWorkspace": True,
+            "showTeam": False,
+            "onlyAvailable": True,
         }
         if self._size is not None:
             res["options"]["size"] = self._size
@@ -65,6 +73,8 @@ class SelectWorkspace(Widget):
 
     def get_json_state(self) -> Dict:
         return {
-            "teamId": self._team_id,
             "workspaceId": self._default_id,
         }
+
+    def get_selected_id(self):
+        return StateJson()[self.widget_id]["workspaceId"]

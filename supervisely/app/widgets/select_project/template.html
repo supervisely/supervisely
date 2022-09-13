@@ -1,9 +1,9 @@
 {% if widget._compact == false %}
-  {{{widget._tw_selector}}}
+  {{{widget._ws_selector}}}
 {% endif %}
 <sly-select-project
     {% if widget._compact == false %}
-    :workspace-id="data.{{{widget._tw_selector.widget_id}}}.workspaceId"
+    :workspace-id="data.{{{widget._ws_selector.widget_id}}}.workspaceId"
     {% else %}
     :workspace-id="data.{{{widget.widget_id}}}.workspaceId"
     {% endif %}
