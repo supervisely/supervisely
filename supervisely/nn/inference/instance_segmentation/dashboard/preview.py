@@ -7,15 +7,16 @@ from supervisely.app.widgets import (
     SelectWorkspace,
     SelectProject,
 )
-
+from supervisely.project.project_type import ProjectType
 
 t_url = Text("url")
 t_sly = Text("sly")
 t_upload = Text("upload")
 
-selector = SelectTeam()
+# selector = SelectTeam()
 # selector = SelectWorkspace()
-# selector = SelectProject()
+
+selector = SelectProject(compact=True, project_types=[ProjectType.VIDEOS])
 
 
 # select image
