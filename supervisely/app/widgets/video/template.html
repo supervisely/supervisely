@@ -12,7 +12,7 @@
         :frame.sync="state.{{{widget.widget_id}}}.currentFrame"
         :intervals="data.{{{widget.widget_id}}}.intervals"
         v-loading="data.{{{widget.widget_id}}}.loading"
-        :options="state.{{{widget.widget_id}}}.options"
+        :options="data.{{{widget.widget_id}}}.options"
 
         {% if widget._play_clicked_handled %}
             @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"

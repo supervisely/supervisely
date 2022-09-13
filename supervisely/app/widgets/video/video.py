@@ -39,13 +39,7 @@ class Video(Widget):
         return {
             "videoId": self._video_id,
             "intervals": self._intervals,
-            "loading": self._loading
-        }
-
-    def get_json_state(self):
-        return {
-            "currentFrame": 0,
-            "startFrame": 0,
+            "loading": self._loading,
             "options": {
                 "soundVolume": self._sound_volume,
                 "playbackRate": self._playback_rate,
@@ -54,6 +48,12 @@ class Video(Widget):
                 "responsiveHeight": self._responsive_height,
                 "enableZoom": self._enable_zoom
             }
+        }
+
+    def get_json_state(self):
+        return {
+            "currentFrame": 0,
+            "startFrame": 0
         }
 
     @property
