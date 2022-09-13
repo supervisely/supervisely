@@ -16,97 +16,97 @@ class ActivityAction:
     List of Team Actions to sort Team Activity.
     """
 
-    LOGIN = 'login'
+    LOGIN = "login"
     """"""
-    LOGOUT = 'logout'
+    LOGOUT = "logout"
     """"""
-    CREATE_PROJECT = 'create_project'
+    CREATE_PROJECT = "create_project"
     """"""
-    UPDATE_PROJECT = 'update_project'
+    UPDATE_PROJECT = "update_project"
     """"""
-    DISABLE_PROJECT = 'disable_project'
+    DISABLE_PROJECT = "disable_project"
     """"""
-    RESTORE_PROJECT = 'restore_project'
+    RESTORE_PROJECT = "restore_project"
     """"""
-    CREATE_DATASET = 'create_dataset'
+    CREATE_DATASET = "create_dataset"
     """"""
-    UPDATE_DATASET = 'update_dataset'
+    UPDATE_DATASET = "update_dataset"
     """"""
-    DISABLE_DATASET = 'disable_dataset'
+    DISABLE_DATASET = "disable_dataset"
     """"""
-    RESTORE_DATASET = 'restore_dataset'
+    RESTORE_DATASET = "restore_dataset"
     """"""
-    CREATE_IMAGE = 'create_image'
+    CREATE_IMAGE = "create_image"
     """"""
-    UPDATE_IMAGE = 'update_image'
+    UPDATE_IMAGE = "update_image"
     """"""
-    DISABLE_IMAGE = 'disable_image'
+    DISABLE_IMAGE = "disable_image"
     """"""
-    RESTORE_IMAGE = 'restore_image'
+    RESTORE_IMAGE = "restore_image"
     """"""
-    CREATE_FIGURE = 'create_figure'
+    CREATE_FIGURE = "create_figure"
     """"""
-    UPDATE_FIGURE = 'update_figure'
+    UPDATE_FIGURE = "update_figure"
     """"""
-    DISABLE_FIGURE = 'disable_figure'
+    DISABLE_FIGURE = "disable_figure"
     """"""
-    RESTORE_FIGURE = 'restore_figure'
+    RESTORE_FIGURE = "restore_figure"
     """"""
-    CREATE_CLASS = 'create_class'
+    CREATE_CLASS = "create_class"
     """"""
-    UPDATE_CLASS = 'update_class'
+    UPDATE_CLASS = "update_class"
     """"""
-    DISABLE_CLASS = 'disable_class'
+    DISABLE_CLASS = "disable_class"
     """"""
-    RESTORE_CLASS = 'restore_class'
+    RESTORE_CLASS = "restore_class"
     """"""
-    CREATE_BACKUP = 'create_backup'
+    CREATE_BACKUP = "create_backup"
     """"""
-    EXPORT_PROJECT = 'export_project'
+    EXPORT_PROJECT = "export_project"
     """"""
-    MODEL_TRAIN = 'model_train'
+    MODEL_TRAIN = "model_train"
     """"""
-    MODEL_INFERENCE = 'model_inference'
+    MODEL_INFERENCE = "model_inference"
     """"""
-    CREATE_PLUGIN = 'create_plugin'
+    CREATE_PLUGIN = "create_plugin"
     """"""
-    DISABLE_PLUGIN = 'disable_plugin'
+    DISABLE_PLUGIN = "disable_plugin"
     """"""
-    RESTORE_PLUGIN = 'restore_plugin'
+    RESTORE_PLUGIN = "restore_plugin"
     """"""
-    CREATE_NODE = 'create_node'
+    CREATE_NODE = "create_node"
     """"""
-    DISABLE_NODE = 'disable_node'
+    DISABLE_NODE = "disable_node"
     """"""
-    RESTORE_NODE = 'restore_node'
+    RESTORE_NODE = "restore_node"
     """"""
-    CREATE_WORKSPACE = 'create_workspace'
+    CREATE_WORKSPACE = "create_workspace"
     """"""
-    DISABLE_WORKSPACE = 'disable_workspace'
+    DISABLE_WORKSPACE = "disable_workspace"
     """"""
-    RESTORE_WORKSPACE = 'restore_workspace'
+    RESTORE_WORKSPACE = "restore_workspace"
     """"""
-    CREATE_MODEL = 'create_model'
+    CREATE_MODEL = "create_model"
     """"""
-    DISABLE_MODEL = 'disable_model'
+    DISABLE_MODEL = "disable_model"
     """"""
-    RESTORE_MODEL = 'restore_model'
+    RESTORE_MODEL = "restore_model"
     """"""
-    ADD_MEMBER = 'add_member'
+    ADD_MEMBER = "add_member"
     """"""
-    REMOVE_MEMBER = 'remove_member'
+    REMOVE_MEMBER = "remove_member"
     """"""
-    LOGIN_TO_TEAM = 'login_to_team'
+    LOGIN_TO_TEAM = "login_to_team"
     """"""
-    ATTACH_TAG = 'attach_tag'
+    ATTACH_TAG = "attach_tag"
     """"""
-    UPDATE_TAG_VALUE = 'update_tag_value'
+    UPDATE_TAG_VALUE = "update_tag_value"
     """"""
-    DETACH_TAG = 'detach_tag'
+    DETACH_TAG = "detach_tag"
     """"""
-    ANNOTATION_DURATION = 'annotation_duration'
+    ANNOTATION_DURATION = "annotation_duration"
     """"""
-    IMAGE_REVIEW_STATUS_UPDATED = 'image_review_status_updated'
+    IMAGE_REVIEW_STATUS_UPDATED = "image_review_status_updated"
     """"""
 
     # case #1 - labeler pressed "finish image" button in labeling job
@@ -125,8 +125,8 @@ class ActivityAction:
 
 
 class TeamInfo(NamedTuple):
-    """
-    """
+    """ """
+
     id: int
     name: str
     description: str
@@ -182,7 +182,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             ApiField.DESCRIPTION,
             ApiField.ROLE,
             ApiField.CREATED_AT,
-            ApiField.UPDATED_AT
+            ApiField.UPDATED_AT,
         ]
 
     @staticmethod
@@ -190,7 +190,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         """
         NamedTuple name - **TeamInfo**.
         """
-        return 'TeamInfo'
+        return "TeamInfo"
 
     def __init__(self, api):
         ModuleNoParent.__init__(self, api)
@@ -249,9 +249,9 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  updated_at='2020-04-02T08:59:03.717Z')
             # ]
         """
-        return self.get_list_all_pages('teams.list', {ApiField.FILTER: filters or []})
+        return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
 
-    def get_info_by_id(self, id: int) -> TeamInfo:
+    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> TeamInfo:
         """
         Get Team information by ID.
 
@@ -288,10 +288,18 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #          created_at='2020-04-15T10:50:41.926Z',
             #          updated_at='2020-04-15T10:50:41.926Z')
         """
-        return self._get_info_by_id(id, 'teams.info')
 
-    def create(self, name: str, description: Optional[str] = "",
-               change_name_if_conflict: Optional[bool] = False) -> TeamInfo:
+        info = self._get_info_by_id(id, "teams.info")
+        if info is None and raise_error is True:
+            raise KeyError(f"Team with id={id} not found in your account")
+        return info
+
+    def create(
+        self,
+        name: str,
+        description: Optional[str] = "",
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> TeamInfo:
         """
         Creates Team with given name.
 
@@ -322,21 +330,30 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  created_at='2021-03-11T11:18:46.576Z',
             #                  updated_at='2021-03-11T11:18:46.576Z')
         """
-        effective_name = self._get_effective_new_name(name=name, change_name_if_conflict=change_name_if_conflict)
-        response = self._api.post('teams.add', {ApiField.NAME: effective_name, ApiField.DESCRIPTION: description})
+        effective_name = self._get_effective_new_name(
+            name=name, change_name_if_conflict=change_name_if_conflict
+        )
+        response = self._api.post(
+            "teams.add",
+            {ApiField.NAME: effective_name, ApiField.DESCRIPTION: description},
+        )
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
-        """
-        """
-        return 'teams.editInfo'
+        """ """
+        return "teams.editInfo"
 
-    def get_activity(self, team_id: int,
-                     filter_user_id: Optional[int] = None, filter_project_id: Optional[int] = None,
-                     filter_job_id: Optional[int] = None,
-                     filter_actions: Optional[List] = None, progress_cb: Optional[Callable] = None,
-                     start_date: Optional[str] = None,
-                     end_date: Optional[str] = None) -> List[Dict]:
+    def get_activity(
+        self,
+        team_id: int,
+        filter_user_id: Optional[int] = None,
+        filter_project_id: Optional[int] = None,
+        filter_job_id: Optional[int] = None,
+        filter_actions: Optional[List] = None,
+        progress_cb: Optional[Callable] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> List[Dict]:
         """
         Get Team activity by ID.
 
@@ -424,16 +441,31 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         filters = []
         if filter_user_id is not None:
-            filters.append({"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id})
+            filters.append(
+                {"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id}
+            )
         if filter_project_id is not None:
-            filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": filter_project_id})
+            filters.append(
+                {
+                    "field": ApiField.PROJECT_ID,
+                    "operator": "=",
+                    "value": filter_project_id,
+                }
+            )
         if filter_job_id is not None:
-            filters.append({"field": ApiField.JOB_ID, "operator": "=", "value": filter_job_id})
+            filters.append(
+                {"field": ApiField.JOB_ID, "operator": "=", "value": filter_job_id}
+            )
         if filter_actions is not None:
             if type(filter_actions) is not list:
                 raise TypeError(
-                    "type(filter_actions) is {!r}. But has to be of type {!r}".format(type(filter_actions), list))
-            filters.append({"field": ApiField.TYPE, "operator": "in", "value": filter_actions})
+                    "type(filter_actions) is {!r}. But has to be of type {!r}".format(
+                        type(filter_actions), list
+                    )
+                )
+            filters.append(
+                {"field": ApiField.TYPE, "operator": "in", "value": filter_actions}
+            )
 
         def _add_dt_filter(filters, dt, op):
             dt_iso = None
@@ -444,41 +476,48 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             elif type(dt) is datetime:
                 dt_iso = dt.isoformat()
             else:
-                raise TypeError('DT type must be string in ISO8601 format or datetime, not {}'.format(type(dt)))
+                raise TypeError(
+                    "DT type must be string in ISO8601 format or datetime, not {}".format(
+                        type(dt)
+                    )
+                )
             filters.append({"field": ApiField.DATE, "operator": op, "value": dt_iso})
 
         _add_dt_filter(filters, start_date, ">=")
         _add_dt_filter(filters, end_date, "<=")
 
-        method = 'teams.activity'
+        method = "teams.activity"
         data = {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters}
         first_response = self._api.post(method, data)
         first_response = first_response.json()
 
-        total = first_response['total']
-        per_page = first_response['perPage']
-        pages_count = first_response['pagesCount']
-        results = first_response['entities']
+        total = first_response["total"]
+        per_page = first_response["perPage"]
+        pages_count = first_response["pagesCount"]
+        results = first_response["entities"]
 
         if progress_cb is not None:
             progress_cb(len(results), total)
-        if pages_count == 1 and len(first_response['entities']) == total:
+        if pages_count == 1 and len(first_response["entities"]) == total:
             pass
         else:
             for page_idx in range(2, pages_count + 1):
-                temp_resp = self._api.post(method, {**data, 'page': page_idx, 'per_page': per_page})
-                temp_items = temp_resp.json()['entities']
+                temp_resp = self._api.post(
+                    method, {**data, "page": page_idx, "per_page": per_page}
+                )
+                temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
                 if progress_cb is not None:
                     progress_cb(len(results), total)
             if len(results) != total:
-                logger.warn(f"Method '{method}': new events were created during pagination, "
-                            f"downloaded={len(results)}, total={total}")
+                logger.warn(
+                    f"Method '{method}': new events were created during pagination, "
+                    f"downloaded={len(results)}, total={total}"
+                )
 
         return results
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> TeamInfo:
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return TeamInfo(**res._asdict())

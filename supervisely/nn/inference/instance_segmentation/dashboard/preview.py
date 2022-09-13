@@ -16,7 +16,7 @@ t_upload = Text("upload")
 # selector = SelectTeam()
 # selector = SelectWorkspace()
 
-selector = SelectProject(compact=True, project_types=[ProjectType.VIDEOS])
+selector = SelectProject(compact=False, project_types=[ProjectType.VIDEOS])
 
 
 # select image
