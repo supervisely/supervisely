@@ -1,6 +1,11 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 class Input(Widget):
     def __init__(
@@ -9,9 +14,8 @@ class Input(Widget):
             minlength: int = 0,
             maxlength: int = 1000,
             placeholder: str = "",
-            size: str = "small",  # "large"|"small"|"mini"
+            size: Literal["large", "small", "mini"] = None,
             readonly: bool = False,  # native html input attribute
-            resize: str = "none",  # "none"|"both"|"horizontal"|"vertical"
             widget_id: str = None
     ):
         self._value = value
@@ -21,7 +25,6 @@ class Input(Widget):
         self._placeholder = placeholder
         self._size = size
         self._readonly = readonly
-        self._resize = resize
         self._widget_id = widget_id
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -33,7 +36,6 @@ class Input(Widget):
             "placeholder": self._placeholder,
             "size": self._size,
             "readonly": self._readonly,
-            "resize": self._resize,
         }
 
     def get_json_state(self):
