@@ -68,6 +68,7 @@ class Button(Widget):
     def text(self, value):
         self._text = value
         DataJson()[self.widget_id]["text"] = self._text
+        DataJson().send_changes()
 
     @property
     def loading(self):

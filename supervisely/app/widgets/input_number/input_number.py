@@ -45,6 +45,8 @@ class InputNumber(Widget):
     def value(self, value):
         self._value = value
         StateJson()[self.widget_id]["value"] = self._value
+        StateJson().send_changes()
+
 
     @property
     def min(self):
@@ -54,6 +56,8 @@ class InputNumber(Widget):
     def min(self, value):
         self._min = value
         DataJson()[self.widget_id]["min"] = self._min
+        DataJson().send_changes()
+
 
     @property
     def max(self):
@@ -63,3 +67,5 @@ class InputNumber(Widget):
     def max(self, value):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
+        DataJson().send_changes()
+
