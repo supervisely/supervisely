@@ -73,10 +73,10 @@ class SelectProject(Widget):
         res = {}
         res["workspaceId"] = self._ws_id
         res["options"] = {
-            "availableTypes": [ptype.value for ptype in self._project_types],
             "showLabel": self._show_label,
             "compact": self._compact,
             "filterable": True,
+            "availableTypes": [ptype.value for ptype in self._project_types],
         }
         if self._size is not None:
             res["options"]["size"] = self._size

@@ -3,7 +3,7 @@
 {% endif %}
 <sly-select-project
     {% if widget._compact == false %}
-    :workspace-id="data.{{{widget._ws_selector.widget_id}}}.workspaceId"
+    :workspace-id="state.{{{widget._ws_selector.widget_id}}}.workspaceId"
     {% else %}
     :workspace-id="data.{{{widget.widget_id}}}.workspaceId"
     {% endif %}
