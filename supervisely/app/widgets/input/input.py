@@ -19,7 +19,6 @@ class Input(Widget):
             widget_id: str = None
     ):
         self._value = value
-        self._type = "text"
         self._minlength = minlength
         self._maxlength = maxlength
         self._placeholder = placeholder
@@ -46,34 +45,15 @@ class Input(Widget):
         StateJson().send_changes()
 
     def get_value(self):
-        return StateJson()[self.widget_id]["currentFrame"]
+        return StateJson()[self.widget_id]["value"]
 
-    @property
-    def minlength(self):
-        return self._minlength
+    def is_readonly(self):
+        return DataJson()[self.widget_id]["readonly"]
 
-    @minlength.setter
-    def minlength(self, value):
-        self._minlength = value
-        DataJson()[self.widget_id]["minlength"] = self._minlength
+    def enable_readonly(self):
+        DataJson()[self.widget_id]["readonly"] = True
         DataJson().send_changes()
 
-    @property
-    def maxlength(self):
-        return self._maxlength
-
-    @maxlength.setter
-    def maxlength(self, value):
-        self._maxlength = value
-        DataJson()[self.widget_id]["maxlength"] = self._maxlength
-        DataJson().send_changes()
-
-    @property
-    def readonly(self):
-        return self._readonly
-
-    @readonly.setter
-    def readonly(self, value):
-        self._readonly = value
-        DataJson()[self.widget_id]["readonly"] = self._readonly
+    def disable_readonly(self):
+        DataJson()[self.widget_id]["readonly"] = False
         DataJson().send_changes()
