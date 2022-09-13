@@ -1,7 +1,7 @@
 <sly-video
         {% if widget._frame_change_started_handled %}
-            @frame-change-start="post('/{{{widget.widget_id}}}/frame_change_started_cb');
-                state.{{{widget.widget_id}}}.startFrame=state.{{{widget.widget_id}}}.currentFrame"
+            @frame-change-start="state.{{{widget.widget_id}}}.startFrame=state.{{{widget.widget_id}}}.currentFrame;
+            post('/{{{widget.widget_id}}}/frame_change_started_cb')"
         {% endif %}
 
         {% if widget._frame_change_finished_handled %}
