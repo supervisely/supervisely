@@ -7,6 +7,7 @@ from supervisely.app.widgets import (
     SelectWorkspace,
     SelectProject,
 )
+from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.project.project_type import ProjectType
 
 t_url = Text("url")
@@ -15,8 +16,8 @@ t_upload = Text("upload")
 
 # selector = SelectTeam()
 # selector = SelectWorkspace()
-
-selector = SelectProject(compact=False, project_types=[ProjectType.VIDEOS])
+# selector = SelectProject(compact=False, project_types=[ProjectType.VIDEOS])
+selector = SelectDataset(compact=False, multiselect=True)
 
 
 # select image

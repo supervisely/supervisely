@@ -36,3 +36,4 @@ from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.app.widgets.select_team.select_team import SelectTeam
 from supervisely.app.widgets.select_workspace.select_workspace import SelectWorkspace
 from supervisely.app.widgets.select_project.select_project import SelectProject
+from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
