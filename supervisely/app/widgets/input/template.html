@@ -7,38 +7,3 @@
         :readonly="data.{{{widget.widget_id}}}.readonly"
 >
 </el-input>
-
-
-<div class="select-list-widget select-list-widget-wrapper" :set="state.selected = null">
-    <div
-            class="select-list-widget-item fflex"
-            v-for="itm in state.items"
-            :class="{ active: state.selected === itm.key }"
-            :key="itm.key"
-            @click="state.selected = itm.key"
-    >
-        <span>{{ itm.label }}</span>
-        <i class="zmdi zmdi-close" @clic="state.selected = null" v-if="state.selected === itm.key"></i>
-    </div>
-</div>
-
-<style>
-    .select-list-widget.select-list-widget-wrapper {
-        width: 25%;
-    }
-
-    .select-list-widget .select-list-widget-item {
-        color: #000;
-        background: #fff;
-        padding: 2px 5px;
-        cursor: pointer;
-        border-radius: 4px;
-        margin-bottom: 3px;
-        justify-content: space-between;
-    }
-
-    .select-list-widget .select-list-widget-item.active {
-        background: #20a0ff;
-        color: #fff;
-    }
-</style>
