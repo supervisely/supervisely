@@ -14,8 +14,8 @@ class Input(Widget):
             minlength: int = 0,
             maxlength: int = 1000,
             placeholder: str = "",
-            size: Literal["large", "small", "mini"] = None,
-            readonly: bool = False,  # native html input attribute
+            size: Literal["mini", "small", "large"] = None,
+            readonly: bool = False,
             widget_id: str = None
     ):
         self._value = value
@@ -41,15 +41,12 @@ class Input(Widget):
     def get_json_state(self):
         return {"value": self._value}
 
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-        StateJson()[self.widget_id]["value"] = self._value
+    def set_value(self, value):
+        StateJson()[self.widget_id]["value"] = value
         StateJson().send_changes()
+
+    def get_value(self):
+        return StateJson()[self.widget_id]["currentFrame"]
 
     @property
     def minlength(self):
