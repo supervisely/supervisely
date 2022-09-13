@@ -1,9 +1,11 @@
 <sly-video
         {% if widget._frame_change_started_handled %}
-        @frame-change-start="post('/{{{widget.widget_id}}}/frame_change_started_cb')"
+            @frame-change-start="post('/{{{widget.widget_id}}}/frame_change_started_cb');
+                state.{{{widget.widget_id}}}.startFrame=state.{{{widget.widget_id}}}.currentFrame"
         {% endif %}
+
         {% if widget._frame_change_finished_handled %}
-        @frame-change-end="post('/{{{widget.widget_id}}}/frame_change_finished_cb')"
+            @frame-change-end="post('/{{{widget.widget_id}}}/frame_change_finished_cb')"
         {% endif %}
 
         :video-id="data.{{{widget.widget_id}}}.videoId"
@@ -13,9 +15,9 @@
         :options="state.{{{widget.widget_id}}}.options"
 
         {% if widget._play_clicked_handled %}
-        @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
+            @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
         {% endif %}
         {% if widget._pause_clicked_handled %}
-        @pause="post('/{{{widget.widget_id}}}/pause_clicked_cb')"
+            @pause="post('/{{{widget.widget_id}}}/pause_clicked_cb')"
         {% endif %}
 />

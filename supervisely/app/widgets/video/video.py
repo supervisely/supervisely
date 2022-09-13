@@ -12,12 +12,10 @@ class Video(Widget):
     def __init__(
         self,
         video_id: int = None,
-        frame: int = 0,
         # intervals: List[List[int]] = [],
         widget_id: str = None,
     ):
         self._video_id = video_id
-        self._frame = frame
         self._intervals = []
         self._loading: bool = False
 
@@ -46,7 +44,8 @@ class Video(Widget):
 
     def get_json_state(self):
         return {
-            "currentFrame": self._frame,
+            "currentFrame": 0,
+            "startFrame": 0,
             "options": {
                 "soundVolume": self._sound_volume,
                 "playbackRate": self._playback_rate,
@@ -62,16 +61,6 @@ class Video(Widget):
         return self._video_id
 
     @property
-    def frame(self):
-        return self._frame
-
-    @frame.setter
-    def frame(self, value):
-        self._frame = value
-        StateJson()[self.widget_id]["currentFrame"] = self._frame
-        StateJson().send_changes()
-
-    @property
     def loading(self):
         return self._loading
 
@@ -80,6 +69,10 @@ class Video(Widget):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
+
+    def set_current_frame(self, value):
+        StateJson()[self.widget_id]["currentFrame"] = value
+        StateJson().send_changes()
 
     def get_current_frame(self):
         return max(0, StateJson()[self.widget_id]["currentFrame"])
@@ -110,7 +103,7 @@ class Video(Widget):
         self._frame_change_started_handled = True
         @server.post(route_path)
         def _click():
-            res = self.frame
+            res = max(0, StateJson()[self.widget_id]["startFrame"])
             func(res)
         return _click
 
@@ -120,6 +113,6 @@ class Video(Widget):
         self._frame_change_finished_handled = True
         @server.post(route_path)
         def _click():
-            self.frame = self.get_current_frame()
-            func(self.frame)
+            res = self.get_current_frame()
+            func(res)
         return _click
