@@ -1326,7 +1326,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
             for info_json in response.json():
                 info_json_copy = info_json.copy()
-                info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
+                if ApiField.MIME in info_json:
+                    info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
+                else:
+                    info_json_copy[ApiField.EXT] = "jpg"
                 # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                 results.append(self._convert_json_info(info_json_copy))
 
