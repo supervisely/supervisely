@@ -130,10 +130,7 @@ def handle_server_errors(app: FastAPI):
             request,
             HTTPException(
                 status_code=500,
-                detail={
-                    # "title": "error title",
-                    "message": repr(exc)
-                },
+                detail={"title": "Oops! Something went wrong", "message": repr(exc)},
             ),
         )
 
