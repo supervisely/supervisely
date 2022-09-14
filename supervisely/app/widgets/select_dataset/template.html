@@ -3,7 +3,7 @@
 {% endif %}
 <sly-select-dataset 
   {% if widget._multiselect == true %}
-  :disabled="" widget.@@@@TODO@@@@!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  v-show="state.{{{widget._all_datasets_checkbox.widget_id}}}.checked === false"
   {% endif %}
   {% if widget._compact == false %}
   :project-id="state.{{{widget._project_selector.widget_id}}}.projectId"
@@ -17,6 +17,6 @@
   v-if="data.{{{widget.widget_id}}}.options.multiple === true"
   style="margin-top: 10px;"
 >
-  {{{self._all_datasets_checkbox}}}
+  {{{widget._all_datasets_checkbox}}}
 </div>
 
