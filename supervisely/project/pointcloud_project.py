@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # dict
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Callable
 from supervisely.api.api import Api
 from collections import namedtuple
 import os
@@ -90,7 +90,8 @@ class PointcloudProject(VideoProject):
 
 
 def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
-                                download_items: Optional[bool]=True, log_progress: Optional[bool]=False) -> None:
+                                download_items: Optional[bool]=True, log_progress: Optional[bool]=False,
+                                progress_cb: Optional[Callable] = None) -> None:
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -111,7 +112,6 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
         dataset_fs = project_fs.create_dataset(dataset.name)
         pointclouds = api.pointcloud.get_list(dataset.id)
 
-        ds_progress = None
         if log_progress:
             ds_progress = Progress('Downloading dataset: {!r}'.format(dataset.name), total_cnt=len(pointclouds))
         for batch in batched(pointclouds, batch_size=LOG_BATCH_SIZE):
@@ -157,8 +157,10 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
                                          pointcloud_file_path,
                                          ann=PointcloudAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
                                          _validate_item=False)
-
-            ds_progress.iters_done_report(len(batch))
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 

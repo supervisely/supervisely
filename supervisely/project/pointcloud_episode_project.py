@@ -5,7 +5,7 @@ import os
 from collections import namedtuple
 from supervisely.api.api import Api
 from supervisely.annotation.annotation import Annotation
-from typing import Tuple, List, Dict, Optional
+from typing import Tuple, List, Dict, Optional, Callable
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
@@ -90,9 +90,10 @@ class PointcloudEpisodeProject(PointcloudProject):
 
 def download_pointcloud_episode_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
                                         download_pcd: Optional[bool]=True,
-                                        download_realated_images: Optional[bool]=True,
+                                        download_related_images: Optional[bool]=True,
                                         download_annotations: Optional[bool]=True,
-                                        log_progress: Optional[bool]=False, batch_size: Optional[int]=10) -> None:
+                                        log_progress: Optional[bool]=False, batch_size: Optional[int]=10,
+                                        progress_cb: Optional[Callable] = None) -> None:
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -135,7 +136,7 @@ def download_pointcloud_episode_project(api: Api, project_id: int, dest_dir: str
                 else:
                     touch(pointcloud_file_path)
 
-                if download_realated_images:
+                if download_related_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
                     related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
                     for rimage_info in related_images:
@@ -151,6 +152,8 @@ def download_pointcloud_episode_project(api: Api, project_id: int, dest_dir: str
                 dataset_fs.add_item_file(pointcloud_name,
                                          pointcloud_file_path,
                                          _validate_item=False)
+            if progress_cb is not None:
+                progress_cb(len(batch))
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
 
