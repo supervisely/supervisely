@@ -99,7 +99,12 @@ class Button(Widget):
         def add_loading(*args, **kwargs):
             if self.show_loading:
                 self.loading = True
-            result = func(*args, **kwargs)
+            try:
+                result = func(*args, **kwargs)
+            except Exception as e:
+                if self.show_loading and self.loading:
+                    self.loading = False
+                raise e
             if self.show_loading:
                 self.loading = False
             return result
