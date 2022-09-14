@@ -1,14 +1,12 @@
 <el-select
   v-model="state.{{{widget.widget_id}}}.value"
-  :placeholder="state.{{{widget.widget_id}}}.placeholder"
-  {%
-  if
-  widget._changes_handled
-  %}
+  {% if widget._changes_handled == true %}
   @change="post('/{{{widget.widget_id}}}/value_changed')"
-  {%
-  endif
-  %}
+  {% endif %}
+  {% if widget._size is not none %}
+  :size="data.{{{widget.widget_id}}}.size"
+  {% endif %}
+  :placeholder="data.{{{widget.widget_id}}}.placeholder"
 >
   <div v-if="data.{{{widget.widget_id}}}.items">
     <el-option

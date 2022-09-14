@@ -8,8 +8,7 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
 class WorkspaceInfo(NamedTuple):
-    """
-    """
+    """ """
 
     id: int
     name: str
@@ -66,7 +65,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             ApiField.DESCRIPTION,
             ApiField.TEAM_ID,
             ApiField.CREATED_AT,
-            ApiField.UPDATED_AT
+            ApiField.UPDATED_AT,
         ]
 
     @staticmethod
@@ -74,13 +73,15 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         """
         NamedTuple name - **WorkspaceInfo**.
         """
-        return 'WorkspaceInfo'
+        return "WorkspaceInfo"
 
     def __init__(self, api):
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[WorkspaceInfo]:
+    def get_list(
+        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[WorkspaceInfo]:
         """
         List of Workspaces in the given Team.
 
@@ -134,9 +135,14 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             #                       updated_at='2020-05-20T15:01:54.172Z')
             # ]
         """
-        return self.get_list_all_pages('workspaces.list', {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages(
+            "workspaces.list",
+            {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []},
+        )
 
-    def get_info_by_id(self, id: int) -> WorkspaceInfo:
+    def get_info_by_id(
+        self, id: int, raise_error: Optional[bool] = False
+    ) -> WorkspaceInfo:
         """
         Get Workspace information by ID.
 
@@ -163,10 +169,18 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             #                       created_at='2020-11-09T18:21:08.202Z',
             #                       updated_at='2020-11-09T18:21:08.202Z')
         """
-        return self._get_info_by_id(id, 'workspaces.info')
+        info = self._get_info_by_id(id, "workspaces.info")
+        if info is None and raise_error is True:
+            raise KeyError(f"Workspace with id={id} not found in your account")
+        return info
 
-    def create(self, team_id: int, name: str, description: Optional[str] = "",
-               change_name_if_conflict: Optional[bool] = False) -> WorkspaceInfo:
+    def create(
+        self,
+        team_id: int,
+        name: str,
+        description: Optional[str] = "",
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> WorkspaceInfo:
         """
         Create Workspace with given name in the given Team.
 
@@ -200,19 +214,25 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             #                       updated_at='2021-03-11T12:24:21.773Z')
         """
         effective_name = self._get_effective_new_name(
-            parent_id=team_id, name=name, change_name_if_conflict=change_name_if_conflict)
-        response = self._api.post('workspaces.add', {ApiField.TEAM_ID: team_id,
-                                                     ApiField.NAME: effective_name,
-                                                     ApiField.DESCRIPTION: description})
+            parent_id=team_id,
+            name=name,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+        response = self._api.post(
+            "workspaces.add",
+            {
+                ApiField.TEAM_ID: team_id,
+                ApiField.NAME: effective_name,
+                ApiField.DESCRIPTION: description,
+            },
+        )
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
-        """
-        """
-        return 'workspaces.editInfo'
+        """ """
+        return "workspaces.editInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> WorkspaceInfo:
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return WorkspaceInfo(**res._asdict())

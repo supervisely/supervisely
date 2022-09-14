@@ -501,7 +501,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         data,
         progress_cb=None,
         convert_json_info_cb=None,
-        # validate_total=True,
+        limit: int = None,
     ):
         """get_list_all_pages"""
         if convert_json_info_cb is None:
@@ -516,10 +516,16 @@ class ModuleApiBase(_JsonConvertibleModule):
         per_page = first_response["perPage"]
         pages_count = first_response["pagesCount"]
 
+        limit_exceeded = False
         results = first_response["entities"]
+        if limit is not None and len(results) > limit:
+            limit_exceeded = True
+
         if progress_cb is not None:
             progress_cb(len(results))
-        if pages_count == 1 and len(first_response["entities"]) == total:
+        if (
+            pages_count == 1 and len(first_response["entities"]) == total
+        ) or limit_exceeded is True:
             pass
         else:
             for page_idx in range(2, pages_count + 1):
@@ -530,14 +536,19 @@ class ModuleApiBase(_JsonConvertibleModule):
                 results.extend(temp_items)
                 if progress_cb is not None:
                     progress_cb(len(temp_items))
-            # if validate_total is True
-            if len(results) != total:
+                if limit is not None and len(results) > limit:
+                    limit_exceeded = True
+                    break
+
+            if len(results) != total and limit is None:
                 raise RuntimeError(
                     "Method {!r}: error during pagination, some items are missed".format(
                         method
                     )
                 )
 
+        if limit is not None:
+            results = results[:limit]
         return [convert_func(item) for item in results]
 
     @staticmethod

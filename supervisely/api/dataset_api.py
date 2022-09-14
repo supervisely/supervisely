@@ -153,7 +153,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []},
         )
 
-    def get_info_by_id(self, id: int) -> DatasetInfo:
+    def get_info_by_id(
+        self, id: int, raise_error: Optional[bool] = False
+    ) -> DatasetInfo:
         """
         Get Datasets information by ID.
 
@@ -175,7 +177,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             ds_info = api.dataset.get_info_by_id(dataset_id)
         """
-        return self._get_info_by_id(id, "datasets.info")
+        info = self._get_info_by_id(id, "datasets.info")
+        if info is None and raise_error is True:
+            raise KeyError(f"Dataset with id={id} not found in your account")
+        return info
 
     def create(
         self,

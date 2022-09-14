@@ -27,18 +27,18 @@ def show():
     device.disable()
 
 
+# icon = Field.Icon(
+#     zmdi_class="zmdi zmdi-memory",
+#     # color_rgb=hex2rgb("#4977ff"),
+#     # bg_color_rgb=hex2rgb("#ddf2ff"),
+#     # color_rgb=hex2rgb("#2cd26e"),
+#     # bg_color_rgb=hex2rgb("#d8f8e7"),
+#     bg_color_rgb=hex2rgb("#2cd26e"),
+# )
 device_field = Field(
     content=device,
     title="Select device",
     description="Model will be loaded (deployed) on selected device: CPU or GPU",
-    icon=Field.Icon(
-        zmdi_class="zmdi zmdi-memory",
-        # color_rgb=hex2rgb("#4977ff"),
-        # bg_color_rgb=hex2rgb("#ddf2ff"),
-        # color_rgb=hex2rgb("#2cd26e"),
-        # bg_color_rgb=hex2rgb("#d8f8e7"),
-        bg_color_rgb=hex2rgb("#2cd26e"),
-    ),
 )
 
 # how to hide widget?

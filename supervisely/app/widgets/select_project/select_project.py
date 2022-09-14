@@ -1,56 +1,69 @@
-from typing import Dict
+from typing import Dict, List
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
+from supervisely.app.widgets import (
+    Widget,
+    SelectWorkspace,
+    generate_id,
+)
 from supervisely.app import StateJson
-from supervisely.app.widgets import Widget, SelectTeam, generate_id
 from supervisely.api.api import Api
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
-class SelectWorkspace(Widget):
+class SelectProject(Widget):
     def __init__(
         self,
         default_id: int = None,
-        team_id: int = None,
+        workspace_id: int = None,
         compact: bool = False,
+        project_types: List[ProjectType] = [],
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
         self._api = Api()
         self._default_id = default_id
-        self._team_id = team_id
+        self._ws_id = workspace_id
+        self._team_id = None
         self._compact = compact
+        self._project_types = project_types
         self._show_label = show_label
         self._size = size
-        self._team_selector = None
+        self._ws_selector = None
 
-        self._default_id = _get_int_or_env(self._default_id, "context.workspaceId")
+        self._default_id = _get_int_or_env(self._default_id, "modal.state.slyProjectId")
         if self._default_id is not None:
-            info = self._api.workspace.get_info_by_id(
-                self._default_id, raise_error=True
-            )
+            info = self._api.project.get_info_by_id(self._default_id, raise_error=True)
+            self._ws_id = info.workspace_id
+        self._ws_id = _get_int_or_env(self._ws_id, "context.workspaceId")
+
+        if self._ws_id is not None:
+            info = self._api.workspace.get_info_by_id(self._ws_id)
             self._team_id = info.team_id
         self._team_id = _get_int_or_env(self._team_id, "context.teamId")
 
         if compact is True:
-            if self._team_id is None:
+            if self._ws_id is None:
                 raise ValueError(
-                    '"team_id" have to be passed as argument or "compact" has to be False'
+                    '"workspace_id" have to be passed as argument or "compact" has to be False'
                 )
         else:
             # if self._show_label is False:
             #     logger.warn(
-            #         "show_label can not be false if compact is True and default_id / team_id are not defined"
+            #         "show_label can not be false if compact is True and default_id / workspace_id are not defined"
             #     )
             self._show_label = True
-            self._team_selector = SelectTeam(
-                default_id=self._team_id,
+            self._ws_selector = SelectWorkspace(
+                default_id=self._ws_id,
+                team_id=self._team_id,
+                compact=False,
                 show_label=True,
                 size=self._size,
                 widget_id=generate_id(),
@@ -59,14 +72,12 @@ class SelectWorkspace(Widget):
 
     def get_json_data(self) -> Dict:
         res = {}
-        res["teamId"] = self._team_id
+        res["workspaceId"] = self._ws_id
         res["options"] = {
             "showLabel": self._show_label,
             "compact": self._compact,
             "filterable": True,
-            "showWorkspace": True,
-            "showTeam": False,
-            "onlyAvailable": True,
+            "availableTypes": [ptype.value for ptype in self._project_types],
         }
         if self._size is not None:
             res["options"]["size"] = self._size
@@ -74,8 +85,8 @@ class SelectWorkspace(Widget):
 
     def get_json_state(self) -> Dict:
         return {
-            "workspaceId": self._default_id,
+            "projectId": self._default_id,
         }
 
     def get_selected_id(self):
-        return StateJson()[self.widget_id]["workspaceId"]
+        return StateJson()[self.widget_id]["projectId"]

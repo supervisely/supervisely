@@ -1,3 +1,4 @@
+from select import select
 from supervisely.app.widgets import (
     Text,
     Select,
@@ -5,15 +6,21 @@ from supervisely.app.widgets import (
     OneOf,
     SelectTeam,
     SelectWorkspace,
+    SelectProject,
+    SelectItem,
 )
-
+from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
+from supervisely.project.project_type import ProjectType
 
 t_url = Text("url")
 t_sly = Text("sly")
 t_upload = Text("upload")
 
-team_selector = SelectTeam()
-workspace_selector = SelectWorkspace()
+# selector = SelectTeam()
+# selector = SelectWorkspace()
+# selector = SelectProject(compact=False, project_types=[ProjectType.VIDEOS])
+# selector = SelectDataset(compact=False, multiselect=True)
+selector = SelectItem(compact=False)
 
 # select image
 # select dataset
@@ -25,7 +32,7 @@ workspace_selector = SelectWorkspace()
 
 image_source = Select(
     items=[
-        Select.Item(value="url", label="Image URL", content=workspace_selector),
+        Select.Item(value="url", label="Image URL", content=selector),
         Select.Item(value="sly", label="Image in Supervisely", content=t_sly),
         # Select.Item(value="demo", label="Demo image"), ???
         Select.Item(value="upload", label="Upload your image", content=t_upload),
