@@ -13,18 +13,12 @@ device = Select(
 )
 
 deploy_btn = Button("Deploy model on device", icon="zmdi zmdi-flash")
-hide_btn = Button("Hide")
-show_btn = Button("Show")
+show_error_btn = Button("Show error dialog")
 
 
-@hide_btn.click
-def hide():
-    device.enable()
-
-
-@show_btn.click
-def show():
-    device.disable()
+@show_error_btn.click
+def show_error():
+    raise ValueError(123)
 
 
 # icon = Field.Icon(
@@ -44,4 +38,4 @@ device_field = Field(
 # how to hide widget?
 deploy_status = Text("Model has been successfully deployed", "success")
 
-deploy_layout = Container([device_field, deploy_btn, deploy_status, hide_btn, show_btn])
+deploy_layout = Container([device_field, deploy_btn, deploy_status, show_error_btn])
