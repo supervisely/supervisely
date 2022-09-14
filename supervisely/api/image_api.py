@@ -142,6 +142,7 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
+        limit: int = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given Dataset.
@@ -213,6 +214,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.SORT: sort,
                 ApiField.SORT_ORDER: sort_order,
             },
+            limit=limit,
         )
 
     def get_filtered_list(
