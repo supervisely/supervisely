@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Dict
 
 try:
@@ -14,6 +13,9 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectDataset(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         default_id: int = None,
@@ -33,6 +35,7 @@ class SelectDataset(Widget):
         self._size = size
         self._team_selector = None
         self._all_datasets_checkbox = None
+        self._changes_handled = False
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyDatasetId")
         if self._default_id is not None:
@@ -46,14 +49,15 @@ class SelectDataset(Widget):
                     '"project_id" have to be passed as argument or "compact" has to be False'
                 )
         else:
-            if self._show_label is False:
-                logger.warn(
-                    "show_label can not be false if compact is True and default_id / project_id are not defined"
-                )
+            # if self._show_label is False:
+            #     logger.warn(
+            #         "show_label can not be false if compact is True and default_id / project_id are not defined"
+            #     )
             self._show_label = True
             self._project_selector = SelectProject(
                 default_id=self._project_id,
                 show_label=True,
+                size=self._size,
                 widget_id=generate_id(),
             )
 
@@ -105,3 +109,23 @@ class SelectDataset(Widget):
             return ids
         else:
             return StateJson()[self.widget_id]["datasets"]
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(SelectDataset.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            if self._multiselect is True:
+                value = self.get_selected_ids()
+                if value == "":
+                    value = None
+                func(value)
+            else:
+                value = self.get_selected_id()
+                if value == "":
+                    value = None
+                func(value)
+
+        return _click

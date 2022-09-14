@@ -1,3 +1,4 @@
+from select import select
 from supervisely.app.widgets import (
     Text,
     Select,
@@ -6,6 +7,7 @@ from supervisely.app.widgets import (
     SelectTeam,
     SelectWorkspace,
     SelectProject,
+    SelectItem,
 )
 from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.project.project_type import ProjectType
@@ -17,8 +19,8 @@ t_upload = Text("upload")
 # selector = SelectTeam()
 # selector = SelectWorkspace()
 # selector = SelectProject(compact=False, project_types=[ProjectType.VIDEOS])
-selector = SelectDataset(compact=False, multiselect=True)
-
+# selector = SelectDataset(compact=False, multiselect=True)
+selector = SelectItem(compact=False)
 
 # select image
 # select dataset

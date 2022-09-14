@@ -12,6 +12,9 @@
   {% endif %}
   :datasets.sync="state.{{{widget.widget_id}}}.datasets"
   :options="data.{{{widget.widget_id}}}.options"
+  {% if widget._changes_handled == true %}
+  @update:datasets="state.{{{widget.widget_id}}}.datasets = $event; post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
 ></sly-select-dataset>
 <div 
   v-if="data.{{{widget.widget_id}}}.options.multiple === true"

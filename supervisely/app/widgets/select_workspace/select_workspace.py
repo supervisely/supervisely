@@ -44,14 +44,15 @@ class SelectWorkspace(Widget):
                     '"team_id" have to be passed as argument or "compact" has to be False'
                 )
         else:
-            if self._show_label is False:
-                logger.warn(
-                    "show_label can not be false if compact is True and default_id / team_id are not defined"
-                )
+            # if self._show_label is False:
+            #     logger.warn(
+            #         "show_label can not be false if compact is True and default_id / team_id are not defined"
+            #     )
             self._show_label = True
             self._team_selector = SelectTeam(
                 default_id=self._team_id,
                 show_label=True,
+                size=self._size,
                 widget_id=generate_id(),
             )
         super().__init__(widget_id=widget_id, file_path=__file__)
