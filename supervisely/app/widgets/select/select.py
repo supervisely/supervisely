@@ -1,7 +1,12 @@
 from __future__ import annotations
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 from typing import List, Dict
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 # r = sly.app.widgets.Text(text="right part", status="error")
 # items = [
@@ -71,6 +76,7 @@ class Select(Widget):
         groups: List[Select.Group] = None,
         filterable: bool = False,
         placeholder: str = "select",
+        size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ) -> Select:
         if items is None and groups is None:
@@ -86,14 +92,20 @@ class Select(Widget):
         self._filterable = filterable
         self._placeholder = placeholder
         self._changes_handled = False
+        self._size = size
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_first_value(self) -> Select.Item:
-        if self._items is not None:
+        if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if self._groups is not None:
+        if (
+            self._groups is not None
+            and len(self._groups) > 0
+            and len(self._groups[0]) > 0
+        ):
             return self._groups[0].items[0]
+        return None
 
     def get_json_data(self) -> Dict:
         res = {
@@ -106,10 +118,16 @@ class Select(Widget):
             res["items"] = [item.to_json() for item in self._items]
         if self._groups is not None:
             res["groups"] = [group.to_json() for group in self._groups]
+        if self._size is not None:
+            res["size"] = self._size
         return res
 
     def get_json_state(self) -> Dict:
-        return {"value": self._get_first_value().value}
+        first_item = self._get_first_value()
+        value = None
+        if first_item is not None:
+            value = first_item.value
+        return {"value": value}
 
     def get_value(self):
         return StateJson()[self.widget_id]["value"]
@@ -134,3 +152,11 @@ class Select(Widget):
             for group in self._groups:
                 res.extend(group.items)
         return res
+
+    def set(self, items: List[Select.Item] = None, groups: List[Select.Group] = None):
+        self._items = items
+        self._groups = groups
+        self.update_data()
+        self.update_state()
+        DataJson().send_changes()
+        StateJson().send_changes()
