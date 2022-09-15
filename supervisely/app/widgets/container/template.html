@@ -34,7 +34,9 @@
     {% if widget._fractions is none %}
       <div>{{{item}}}</div>
     {% else %}
-      <div style="flex: {{{widget._fractions[loop.index0]}}}">{{{item}}}</div>
+      <div style="flex: {{{widget._fractions[loop.index0]}}}; display: flex;">
+        {{{item}}}
+      </div>
     {% endif %} 
   {% endfor %}
 </div>
