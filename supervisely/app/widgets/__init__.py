@@ -39,3 +39,4 @@ from supervisely.app.widgets.select_workspace.select_workspace import SelectWork
 from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.app.widgets.select_item.select_item import SelectItem
+from supervisely.app.widgets.slider.slider import Slider

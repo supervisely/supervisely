@@ -5,8 +5,8 @@ from supervisely.app.widgets import Widget
 class InputNumber(Widget):
     def __init__(
         self,
-        value: int = 1,
-        min: int = 1,
+        value: int = 0,
+        min: int = 0,
         max: int = 100,
         step: int = 1,
         size: str = "small",
