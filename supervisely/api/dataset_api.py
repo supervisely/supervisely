@@ -12,6 +12,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
     RemoveableModuleApi,
 )
+from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class DatasetInfo(NamedTuple):
@@ -27,6 +28,14 @@ class DatasetInfo(NamedTuple):
     created_at: str
     updated_at: str
     reference_image_url: str
+
+    @property
+    def image_preview_url(self):
+        res = self.reference_image_url
+        if is_development():
+            res = abs_url(res)
+        res = compress_image_url(url=res, height=200)
+        return res
 
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
