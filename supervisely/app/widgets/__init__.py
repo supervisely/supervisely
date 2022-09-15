@@ -41,3 +41,4 @@ from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.app.widgets.select_item.select_item import SelectItem
 from supervisely.app.widgets.identity.identity import Identity
 from supervisely.app.widgets.dataset_thumbnail.dataset_thumbnail import DatasetThumbnail
+from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMeta
