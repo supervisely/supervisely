@@ -64,33 +64,33 @@ class Tag(Widget):
     def set_type(self, value: str):
         if value not in ["primary", "gray", "success", "warning", "danger"]:
             return
-        StateJson()[self.widget_id]["value"] = value
-        StateJson().send_changes()
+        DataJson()[self.widget_id]["value"] = value
+        DataJson().send_changes()
 
     def get_type(self):
-        return StateJson()[self.widget_id]["value"]
+        return DataJson()[self.widget_id]["value"]
 
     def is_closable(self):
-        return StateJson()[self.widget_id]["closable"]
+        return DataJson()[self.widget_id]["closable"]
 
     def enable_closable(self):
-        StateJson()[self.widget_id]["closable"] = True
-        StateJson().send_changes()
+        DataJson()[self.widget_id]["closable"] = True
+        DataJson().send_changes()
 
     def disable_closable(self):
-        StateJson()[self.widget_id]["closable"] = False
-        StateJson().send_changes()
+        DataJson()[self.widget_id]["closable"] = False
+        DataJson().send_changes()
 
     def is_highlighted(self):
-        return StateJson()[self.widget_id]["hit"]
+        return DataJson()[self.widget_id]["hit"]
 
-    def enable_borderhighlighting(self):
-        StateJson()[self.widget_id]["hit"] = True
-        StateJson().send_changes()
+    def enable_border_highlighting(self):
+        DataJson()[self.widget_id]["hit"] = True
+        DataJson().send_changes()
 
-    def disable_borderhighlighting(self):
-        StateJson()[self.widget_id]["hit"] = False
-        StateJson().send_changes()
+    def disable_border_highlighting(self):
+        DataJson()[self.widget_id]["hit"] = False
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Tag.Routes.VALUE_CHANGED)
