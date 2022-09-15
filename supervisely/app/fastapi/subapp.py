@@ -19,9 +19,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from supervisely.app.fastapi.utils import run_sync
-
 from supervisely.app.singleton import Singleton
-
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
@@ -29,6 +27,11 @@ from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from supervisely.app.widgets import Widget
 
 
 def create(process_id=None, headless=False) -> FastAPI:
@@ -193,7 +196,21 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, templates_dir: str = "templates", headless=False):
+    def __init__(self, layout: "Widget" = None, templates_dir: str = None):
+        headless = False
+        if layout is None and templates_dir is None:
+            templates_dir: str = "templates"  # for back compatibility
+            headless = True
+        if layout is not None and templates_dir is not None:
+            raise ValueError(
+                "Only one of the arguments has to be defined: 'layout' or 'templates_dir'. 'layout' argument is recommended."
+            )
+        if layout is not None:
+            templates_dir = os.path.join(Path(__file__).parent.absolute(), "templates")
+            from supervisely.app.widgets import Identity
+
+            main_layout = Identity(layout, widget_id="__app_main_layout__")
+
         if is_production():
             logger.info(
                 "Application is running on Supervisely Platform in production mode"

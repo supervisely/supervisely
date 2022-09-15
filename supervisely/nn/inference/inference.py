@@ -238,9 +238,8 @@ class Inference:
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
-        self._app = Application(
-            headless=self._headless, templates_dir=self._get_templates_dir()
-        )
+        # headless=self._headless,
+        self._app = Application(templates_dir=self._get_templates_dir())
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")
