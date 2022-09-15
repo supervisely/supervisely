@@ -1,0 +1,18 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/select_list/style.css"/>
+<link rel="stylesheet" href="style.css"/>
+<div class="select-list-widget select-list-widget-wrapper">
+    <div
+            class="select-list-widget-item fflex"
+            v-for="item in state.{{{widget.widget_id}}}.items"
+            :class="{ active: state.{{{widget.widget_id}}}.selected === item.key }"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+            @click="state.{{{widget.widget_id}}}.selected = item.key"
+    >
+        <span>{{ item.value }}</span>
+
+        <i class="zmdi zmdi-close" @click.stop="state.{{{widget.widget_id}}}.selected = null"
+           v-if="state.{{{widget.widget_id}}}.selected === item.key"></i>
+    </div>
+</div>

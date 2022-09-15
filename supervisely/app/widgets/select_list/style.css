@@ -1,0 +1,23 @@
+.select-list-widget.select-list-widget-wrapper {
+    width: 25%;
+}
+
+.select-list-widget .select-list-widget-item {
+    color: #000;
+    background: #fff;
+    padding: 2px 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 3px;
+    justify-content: space-between;
+}
+
+.select-list-widget .select-list-widget-item.active {
+    background: #20a0ff;
+    color: #fff;
+}
+
+.select-list-widget .select-list-widget-item:hover {
+    background: lightblue;
+    color: white;
+}
