@@ -36,7 +36,17 @@ class Hidable:
         raise {}
 
     def _wrap_hide_html(self, widget_id, html):
-        return f'<div v-if="!data.{widget_id}.hide">{html}</div>'
+        soup = BeautifulSoup(html, features="html.parser")
+        for item in soup:
+            if hasattr(item.__class__, "has_attr") and callable(
+                getattr(item.__class__, "has_attr")
+            ):
+                if item.has_attr("v-if"):
+                    item["v-if"] = f'({item["v-if"]}) || !data.{widget_id}.hide'
+                else:
+                    item["v-if"] = f"!data.{widget_id}.hide"
+        # return f'<div v-if="!data.{widget_id}.hide">{html}</div>'
+        return str(soup)
 
 
 class Disableable:
@@ -154,12 +164,12 @@ class Widget(Hidable, Disableable):
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         # st = time.time()
-        res = self._wrap_disable_html(self.widget_id, html)
+        html = self._wrap_disable_html(self.widget_id, html)
         # print("---> Time (_wrap_disable_html): ", time.time() - st, " seconds")
         # st = time.time()
-        res = self._wrap_hide_html(self.widget_id, res)
+        html = self._wrap_hide_html(self.widget_id, html)
         # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
-        return markupsafe.Markup(res)
+        return markupsafe.Markup(html)
 
     def __html__(self):
         res = self.to_html()
