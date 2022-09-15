@@ -27,6 +27,7 @@ from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
+from supervisely.app.widgets_context import JinjaWidgets
 
 from typing import TYPE_CHECKING
 
@@ -197,6 +198,9 @@ class _MainServer(metaclass=Singleton):
 
 class Application(metaclass=Singleton):
     def __init__(self, layout: "Widget" = None, templates_dir: str = None):
+        self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
+        JinjaWidgets().context["__favicon__"] = self._favicon
+
         headless = False
         if layout is None and templates_dir is None:
             templates_dir: str = "templates"  # for back compatibility
