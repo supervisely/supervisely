@@ -13,6 +13,9 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+
+# from supervisely.app.fastapi.request import Request
+
 import jinja2
 from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
@@ -90,9 +93,7 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         import supervisely
 
-        app.mount(
-            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
-        )
+        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
 
     return app
 
@@ -158,9 +159,7 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(
-            directory=[str(Path(__file__).parent.absolute()), templates_dir]
-        )
+        Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
         enable_hot_reload_on_debug(app)
 
     app.mount("/sly", create(process_id, headless))
@@ -169,16 +168,18 @@ def _init(
 
         @app.middleware("http")
         async def get_state_from_request(request: Request, call_next):
+
             await StateJson.from_request(request)
+            if not ("application/json" not in request.headers.get("Content-Type", "")):
+                content = await request.json()
+                request.sly_api_token = content["context"].get("apiToken")
             response = await call_next(request)
             return response
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse(
-                "index.html", {"request": request}
-            )
+            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
         @app.on_event("shutdown")
         def shutdown():
@@ -218,9 +219,7 @@ class Application(metaclass=Singleton):
             main_layout = Identity(layout, widget_id="__app_main_layout__")
 
         if is_production():
-            logger.info(
-                "Application is running on Supervisely Platform in production mode"
-            )
+            logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()
