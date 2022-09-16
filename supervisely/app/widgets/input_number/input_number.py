@@ -4,15 +4,15 @@ from supervisely.app.widgets import Widget
 
 class InputNumber(Widget):
     def __init__(
-        self,
-        value: int = 0,
-        min: int = 0,
-        max: int = 100,
-        step: int = 1,
-        size: str = "small",
-        controls: bool = True,
-        debounce: int = 300,
-        widget_id: str = None
+            self,
+            value: int = None,
+            min: int = 0,
+            max: int = 100,
+            step: int = 1,
+            size: str = "small",
+            controls: bool = True,
+            debounce: int = 300,
+            widget_id: str = None
     ):
         self._value = value
         self._min = min
@@ -22,7 +22,23 @@ class InputNumber(Widget):
         self._controls = controls
         self._debounce = debounce
 
+        self._validate_value(value)
+        self._validate_min_max(min, max)
+
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def _validate_value(self, value):
+        if value is None or value < self._min:
+            self._value = self._min
+            return
+        elif value > self._max:
+            self._value = self._max
+        if not isinstance(value, int):
+            raise ValueError(f"value = '{value}', should be 'int', not '{type(value)}'")
+
+    def _validate_min_max(self, min_val: int, max_val: int):
+        if min_val > max_val:
+            raise ValueError(f"Minimum value: '{min_val}' can't be bigger than maximum value: '{max_val}'")
 
     def get_json_data(self):
         return {
@@ -43,10 +59,10 @@ class InputNumber(Widget):
 
     @value.setter
     def value(self, value):
+        self._validate_value(value)
         self._value = value
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
-
 
     @property
     def min(self):
@@ -54,10 +70,10 @@ class InputNumber(Widget):
 
     @min.setter
     def min(self, value):
+        self._validate_min_max(value, self.max)
         self._min = value
         DataJson()[self.widget_id]["min"] = self._min
         DataJson().send_changes()
-
 
     @property
     def max(self):
@@ -65,7 +81,7 @@ class InputNumber(Widget):
 
     @max.setter
     def max(self, value):
+        self._validate_min_max(self.min, value)
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
         DataJson().send_changes()
-

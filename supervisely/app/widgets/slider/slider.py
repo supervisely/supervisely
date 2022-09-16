@@ -61,7 +61,7 @@ class Slider(Widget):
                 self._value[0] = self._max
                 self._value[1] = self._max
         else:
-            raise ValueError(f"value = '{value}', should be 'int' or 'List[int, int]'")
+            raise ValueError(f"value = '{value}', should be 'int' or 'list', not '{type(value)}'")
 
     def get_json_data(self):
         return {
