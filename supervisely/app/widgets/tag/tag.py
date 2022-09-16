@@ -8,15 +8,12 @@ except ImportError:
 
 
 class Tag(Widget):
-    class Routes:
-        VALUE_CHANGED = "value_changed"
-
     def __init__(
-        self,
-        value: str = "",
-        type: Literal["primary", "gray", "success", "warning", "danger"] = None,
-        hit: bool = False,
-        widget_id: str = None
+            self,
+            value: str = "",
+            type: Literal["primary", "gray", "success", "warning", "danger"] = None,
+            hit: bool = False,
+            widget_id: str = None
     ):
         self._value = value
         self._type = type
