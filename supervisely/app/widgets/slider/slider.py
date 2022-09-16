@@ -2,11 +2,6 @@ from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from typing import Union, List
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
 
 class Slider(Widget):
     def __init__(
