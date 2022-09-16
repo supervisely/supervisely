@@ -11,6 +11,7 @@ class Card(Widget):
         description: str = None,
         collapsable: bool = False,
         content: Widget = None,
+        lock_message="Card content is locked",
         widget_id: str = None,
     ):
         self._title = title
@@ -19,7 +20,8 @@ class Card(Widget):
         self._collapsed = False
         self._content = content
         self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}
-        self._disabled = {"disabled": False, "message": ""}
+        self._lock_message = lock_message
+        self._disabled = {"disabled": False, "message": self._lock_message}
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -49,8 +51,10 @@ class Card(Widget):
         StateJson()[self.widget_id]["collapsed"] = self._collapsed
         StateJson().send_changes()
 
-    def lock(self, message="Card content is locked"):
-        self._disabled = {"disabled": True, "message": message}
+    def lock(self, message: str = None):
+        if message is not None:
+            self._lock_message = message
+        self._disabled = {"disabled": True, "message": self._lock_message}
         StateJson()[self.widget_id]["disabled"] = self._disabled
         StateJson().send_changes()
 
