@@ -42,11 +42,11 @@ class Switch(Widget):
     def is_switched(self):
         return StateJson()[self.widget_id]["switched"]
 
-    def set_on(self):
+    def on(self):
         StateJson()[self.widget_id]["switched"] = True
         StateJson().send_changes()
 
-    def set_off(self):
+    def off(self):
         StateJson()[self.widget_id]["switched"] = False
         StateJson().send_changes()
 
