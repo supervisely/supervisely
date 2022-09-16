@@ -3,7 +3,13 @@ from typing import Dict, List
 
 
 """
-
+<div 
+    {% if not loop.last %}
+    style="margin-bottom: {{{widget._gap}}}px;"
+    {% endif %}
+>
+    {{{w}}}
+</div>
 """
 
 
