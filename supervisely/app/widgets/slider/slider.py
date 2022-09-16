@@ -30,7 +30,38 @@ class Slider(Widget):
         self._range = False if show_input else range
         self._vertical = vertical
         self._height = f"{height}px" if vertical else None
+
+        self._validate_min_max(min, max)
+        self._validate_default_value(value)
+
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def _validate_min_max(self, min_val: int, max_val: int):
+        if min_val > max_val:
+            raise ValueError(f"Minimum value: '{min_val}' can't be bigger than maximum value: '{max_val}'")
+
+    def _validate_default_value(self, value: Union[int, List[int]]):
+        if isinstance(value, int):
+            if self._range:
+                raise ValueError(f"value = '{value}', should be 'list' if range is True")
+            if value < self._min:
+                self._value = self._min
+            elif value > self._max:
+                self._value = self._max
+        elif isinstance(value, list):
+            if not self._range:
+                raise ValueError(f"value = '{value}', should be 'int' if range is False")
+            if value[0] < self._min and value[1] > self._max:
+                self._value = self._min
+                self._value = self._max
+            elif value[0] < self._min and value[1] < self._min:
+                self._value[0] = self._min
+                self._value[1] = self._min
+            elif value[0] > self._max and value[1] > self._max:
+                self._value[0] = self._max
+                self._value[1] = self._max
+        else:
+            raise ValueError(f"value = '{value}', should be 'int' or 'List[int, int]'")
 
     def get_json_data(self):
         return {
@@ -49,7 +80,8 @@ class Slider(Widget):
     def get_json_state(self):
         return {"value": self._value}
 
-    def set_value(self, value: int):
+    def set_value(self, value: Union[int, List[int]]):
+        self._validate_default_value(value)
         StateJson()[self.widget_id]["value"] = value
         StateJson().send_changes()
 
@@ -57,6 +89,7 @@ class Slider(Widget):
         return StateJson()[self.widget_id]["value"]
 
     def set_min(self, value: int):
+        self._validate_min_max(value, self.get_max())
         DataJson()[self.widget_id]["min"] = value
         DataJson().send_changes()
 
@@ -64,6 +97,7 @@ class Slider(Widget):
         return DataJson()[self.widget_id]["min"]
 
     def set_max(self, value: int):
+        self._validate_min_max(self.get_min(), value)
         DataJson()[self.widget_id]["max"] = value
         DataJson().send_changes()
 
