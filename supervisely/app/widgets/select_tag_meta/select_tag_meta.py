@@ -85,14 +85,20 @@ class SelectTagMeta(Widget):
             raise RuntimeError(
                 "Tag selector allows multiselect, please use 'get_selected_names' method instead of 'get_selected_name'"
             )
-        return StateJson()["tags"]
+        if StateJson()[self.widget_id]["tags"] == "":
+            return None
+        return StateJson()[self.widget_id]["tags"]
 
     def get_selected_names(self) -> List[str]:
         if self._multiselect is False:
             raise RuntimeError(
                 "Tag selector does not allow multiselect, please use 'get_selected_name' method instead of 'get_selected_names'"
             )
-        return StateJson()["tags"]
+        if StateJson()[self.widget_id]["tags"] is None:
+            return None
+        if StateJson()[self.widget_id]["tags"] == []:
+            return None
+        return StateJson()[self.widget_id]["tags"]
 
     def get_tag_meta_by_name(self, name: str) -> TagMeta:
         if self._project_meta is None or name not in self._project_meta.tag_metas:
