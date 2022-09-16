@@ -12,43 +12,23 @@ class Tag(Widget):
         VALUE_CHANGED = "value_changed"
 
     def __init__(
-            self,
-            value: str = "",
-            type: Literal["primary", "gray", "success", "warning", "danger"] = None,
-            closable: bool = False,
-            close_transition: bool = False,
-            hit: bool = False,
-            color: str = None,
-            widget_id: str = None
+        self,
+        value: str = "",
+        type: Literal["primary", "gray", "success", "warning", "danger"] = None,
+        hit: bool = False,
+        widget_id: str = None
     ):
         self._value = value
         self._type = type
-        self._closable = closable
-        self._close_transition = close_transition
         self._hit = hit
-        self._color = color
-        self._changes_handled = False
         self._widget_id = None
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    # def to_json(self):
-    #     return {
-    #         "name": self._value,
-    #         "type": self._type,
-    #         "closable": self._closable,
-    #         "closeTransition": self._close_transition,
-    #         "hit": self._hit,
-    #         "color": self._widget_id
-    #     }
-
     def get_json_data(self):
         return {
             "type": self._type,
-            "closable": self._closable,
-            "closeTransition": self._close_transition,
             "hit": self._hit,
-            "color": self._widget_id,
         }
 
     def get_json_state(self):
@@ -70,17 +50,6 @@ class Tag(Widget):
     def get_type(self):
         return DataJson()[self.widget_id]["value"]
 
-    def is_closable(self):
-        return DataJson()[self.widget_id]["closable"]
-
-    def enable_closable(self):
-        DataJson()[self.widget_id]["closable"] = True
-        DataJson().send_changes()
-
-    def disable_closable(self):
-        DataJson()[self.widget_id]["closable"] = False
-        DataJson().send_changes()
-
     def is_highlighted(self):
         return DataJson()[self.widget_id]["hit"]
 
@@ -91,14 +60,3 @@ class Tag(Widget):
     def disable_border_highlighting(self):
         DataJson()[self.widget_id]["hit"] = False
         DataJson().send_changes()
-
-    def value_changed(self, func):
-        route_path = self.get_route_path(Tag.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-        @server.post(route_path)
-        def _click():
-            res = self.is_closable()
-            print(res)
-            func(res)
-        return _click

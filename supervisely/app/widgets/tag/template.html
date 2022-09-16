@@ -1,18 +1,6 @@
 <el-tag
-        {%
-        if
-        widget._changes_handled
-        %}
-        @change="post('/{{{widget.widget_id}}}/value_changed')"
-        {%
-        endif
-        %}
-
         :type="data.{{{widget.widget_id}}}.type"
-        :closable="data.{{{widget.widget_id}}}.closable"
-        :close-transition="data.{{{widget.widget_id}}}.closeTransition"
         :hit="data.{{{widget.widget_id}}}.hit"
-        :color="data.{{{widget.widget_id}}}.color"
 >
     {{ state.{{{widget.widget_id}}}.value }}
 </el-tag>
