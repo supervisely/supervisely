@@ -50,14 +50,10 @@ class SelectTagMeta(Widget):
                 raise ValueError(
                     "Argument 'project_id' or environment variables 'context.projectId' or 'context.datasetId' has to be defined"
                 )
-            dataset_info = self._api.dataset.get_info_by_id(
-                dataset_id, raise_error=True
-            )
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
             self._project_id = dataset_info.project_id
 
-        self._project_info = self._api.project.get_info_by_id(
-            self._project_id, raise_error=True
-        )
+        self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -100,14 +96,10 @@ class SelectTagMeta(Widget):
 
     def get_tag_meta_by_name(self, name: str) -> TagMeta:
         if self._project_meta is None or name not in self._project_meta.tag_metas:
-            self._project_meta = ProjectMeta.from_json(
-                self._api.project.get_meta(self._project_id)
-            )
+            self._project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
         tag_meta = self._project_meta.tag_metas.get(name)
         if tag_meta is None:
-            raise ValueError(
-                f"Tag with name {name} not found in project {self._project_id}"
-            )
+            raise ValueError(f"Tag with name {name} not found in project {self._project_id}")
         return tag_meta
 
     def get_selected_item(self) -> TagMeta:
@@ -118,3 +110,18 @@ class SelectTagMeta(Widget):
         names = self.get_selected_names()
         results = [self.get_tag_meta_by_name(name) for name in names]
         return results
+
+    def set_name(self, name: str):
+        if self._multiselect is True:
+            self.set_names([name])
+        else:
+            StateJson()[self.widget_id]["tags"] = name
+            StateJson().send_changes()
+
+    def set_names(self, names: List[str]):
+        if self._multiselect is False:
+            raise RuntimeError(
+                "Tag selector does not allow multiselect, please use 'set_name' method instead of 'set_names'"
+            )
+        StateJson()[self.widget_id]["tags"] = names
+        StateJson().send_changes()
