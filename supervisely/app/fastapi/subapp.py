@@ -28,6 +28,7 @@ from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.app.exceptions import DialogWindowError
 
 from typing import TYPE_CHECKING
 
@@ -130,12 +131,13 @@ def enable_hot_reload_on_debug(app: FastAPI):
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
+        details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+        if isinstance(exc, DialogWindowError):
+            details["title"] = exc.title
+            details["message"] = exc.description
         return await http_exception_handler(
             request,
-            HTTPException(
-                status_code=500,
-                detail={"title": "Oops! Something went wrong", "message": repr(exc)},
-            ),
+            HTTPException(status_code=500, detail=details),
         )
 
 
