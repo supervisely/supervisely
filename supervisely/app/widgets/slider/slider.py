@@ -19,7 +19,7 @@ class Slider(Widget):
             show_input_controls: bool = False,
             show_stops: bool = False,
             show_tooltip: bool = True,
-            range: bool = False,
+            range: bool = False,  # requires value to be List[int, int]
             vertical: bool = False,
             height: int = None,
             widget_id: str = None
@@ -39,16 +39,16 @@ class Slider(Widget):
 
     def get_json_data(self):
         return {
-        "min": self._min,
-        "max": self._max,
-        "step": self._step,
-        "showInput": self._show_input,
-        "showInputControls": self._show_input_controls,
-        "showStops": self._show_stops,
-        "showTooltip": self._show_tooltip,
-        "range": self._range,
-        "vertical": self._vertical,
-        "height": self._height
+            "min": self._min,
+            "max": self._max,
+            "step": self._step,
+            "showInput": self._show_input,
+            "showInputControls": self._show_input_controls,
+            "showStops": self._show_stops,
+            "showTooltip": self._show_tooltip,
+            "range": self._range,
+            "vertical": self._vertical,
+            "height": self._height
         }
 
     def get_json_state(self):
