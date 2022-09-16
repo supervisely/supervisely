@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import pandas as pd
+import re
 from typing import NamedTuple, Any, List
 
 from supervisely.app import DataJson
@@ -93,11 +94,16 @@ class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
 
-    class ClickedDataPoint(NamedTuple):
-        column_index: int
-        column_name: str
-        cell_value: Any
-        row: dict
+    class ClickedDataPoint:
+        def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
+            self.column_index = column_index
+            self.column_name = column_name
+            self.cell_value = cell_value
+            self.row = row
+            self.button_name = None
+            search = re.search(r"<button>(.*?)</button>", self.cell_value)
+            if search is not None:
+                self.button_name = search.group(1)
 
     def __init__(
         self,
@@ -154,17 +160,13 @@ class Table(Widget):
 
     def _update_table_data(self, input_data):
         if input_data is not None:
-            self._parsed_data = copy.deepcopy(
-                self._get_unpacked_data(input_data=input_data)
-            )
+            self._parsed_data = copy.deepcopy(self._get_unpacked_data(input_data=input_data))
         else:
             self._parsed_data = {"columns": [], "data": []}
             self._data_type = dict
 
     def _get_packed_data(self, input_data, data_type):
-        return PackerUnpacker.pack_data(
-            data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type]
-        )
+        return PackerUnpacker.pack_data(data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type])
 
     def _get_unpacked_data(self, input_data):
         input_data_type = type(input_data)
@@ -217,9 +219,7 @@ class Table(Widget):
         self.clear_selection()
 
     def insert_row(self, data, index=-1):
-        PackerUnpacker.validate_sizes(
-            {"columns": self._parsed_data["columns"], "data": [data]}
-        )
+        PackerUnpacker.validate_sizes({"columns": self._parsed_data["columns"], "data": [data]})
 
         table_data = self._parsed_data["data"]
         index = len(table_data) if index > len(table_data) or index < 0 else index
@@ -249,12 +249,7 @@ class Table(Widget):
         column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
         row = state[self.widget_id]["selected_row"].get("selectedRowData")
 
-        if (
-            row_index is None
-            or column_name is None
-            or column_index is None
-            or row is None
-        ):
+        if row_index is None or column_name is None or column_index is None or row is None:
             # click table header or clear selection
             return None
 
@@ -282,6 +277,10 @@ class Table(Widget):
 
     @staticmethod
     def get_html_text_as_button(title="preview"):
+        return f"<button>{title}</button>"
+
+    @staticmethod
+    def create_button(title) -> str:
         return f"<button>{title}</button>"
 
     @property
