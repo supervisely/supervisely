@@ -1,5 +1,12 @@
-<div style="display: flex; gap: {{{widget._gap}}}px">
+<div
+  {% if widget._center_content == true %}
+  style="display: flex; gap: {{{widget._gap}}}px; justify-content: center;"
+  {% else %}
+  style="display: flex; gap: {{{widget._gap}}}px;"
+  {% endif %}
+>
   {% for w in widget._widgets %}
-  <div>{{{w}}}</div>
+  <div v-if="data.{{{widget.widget_id}}}.center === true">{{{w}}}</div>
+  <div v-if="data.{{{widget.widget_id}}}.center === false">{{{w}}}</div>
   {% endfor %}
 </div>
