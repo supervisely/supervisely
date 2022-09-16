@@ -6,15 +6,15 @@ from typing import Tuple, List, Dict, Optional
 import os
 from supervisely import logger as default_logger
 from supervisely.io.fs import get_file_name, get_file_ext
-from supervisely._utils import rand_str
+from supervisely._utils import rand_str, is_development, abs_url
 
 
 # Do NOT use directly for video extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-ALLOWED_VIDEO_EXTENSIONS = ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv']
+ALLOWED_VIDEO_EXTENSIONS = [".avi", ".mp4", ".3gp", ".flv", ".webm", ".wmv", ".mov", ".mkv"]
 
 
-_SUPPORTED_CONTAINERS = {'mp4', 'webm', 'ogg', 'ogv'}
-_SUPPORTED_CODECS = {'h264', 'vp8', 'vp9'}
+_SUPPORTED_CONTAINERS = {"mp4", "webm", "ogg", "ogv"}
+_SUPPORTED_CODECS = {"h264", "vp8", "vp9"}
 
 
 class VideoExtensionError(Exception):
@@ -89,8 +89,11 @@ def validate_ext(ext: str):
         # Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
     """
     if not is_valid_ext(ext):
-        raise UnsupportedVideoFormat('Unsupported video extension: {}. Only the following extensions are supported: {}.'
-                                     .format(ext, ALLOWED_VIDEO_EXTENSIONS))
+        raise UnsupportedVideoFormat(
+            "Unsupported video extension: {}. Only the following extensions are supported: {}.".format(
+                ext, ALLOWED_VIDEO_EXTENSIONS
+            )
+        )
 
 
 def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
@@ -113,6 +116,7 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
         # Output: ((720, 1280), 152)
     """
     import skvideo.io
+
     vreader = skvideo.io.FFmpegReader(path)
     vlength = vreader.getShape()[0]
     img_height = vreader.getShape()[1]
@@ -146,7 +150,10 @@ def validate_format(path: str) -> None:
         get_image_size_and_frames_count(path)
     except Exception as e:
         raise VideoReadException(
-            'Error has occured trying to read video {!r}. Original exception message: {!r}'.format(path, str(e)))
+            "Error has occured trying to read video {!r}. Original exception message: {!r}".format(
+                path, str(e)
+            )
+        )
 
     validate_ext(os.path.splitext(path)[1])
 
@@ -159,8 +166,8 @@ def _check_video_requires_processing(video_info, stream_info):
     :return: bool
     """
     need_process_container = True
-    for name in video_info["meta"]["formatName"].split(','):
-        name = name.strip().split('.')[-1]
+    for name in video_info["meta"]["formatName"].split(","):
+        name = name.strip().split(".")[-1]
         if name in _SUPPORTED_CONTAINERS:
             need_process_container = False
             break
@@ -208,7 +215,7 @@ def get_video_streams(all_streams: List[Dict]) -> List:
     return video_streams
 
 
-def warn_video_requires_processing(file_name: str, logger: Optional[default_logger]=None) -> None:
+def warn_video_requires_processing(file_name: str, logger: Optional[default_logger] = None) -> None:
     """
     Create logger if it was not there and displays message about the need for transcoding.
 
@@ -221,7 +228,11 @@ def warn_video_requires_processing(file_name: str, logger: Optional[default_logg
     """
     if logger is None:
         logger = default_logger
-    logger.warning("Video Stream {!r} is skipped: requires transcoding. Transcoding is supported only in Enterprise Edition (EE)".format(file_name))
+    logger.warning(
+        "Video Stream {!r} is skipped: requires transcoding. Transcoding is supported only in Enterprise Edition (EE)".format(
+            file_name
+        )
+    )
 
 
 def gen_video_stream_name(file_name: str, stream_index: int) -> str:
@@ -242,10 +253,12 @@ def gen_video_stream_name(file_name: str, stream_index: int) -> str:
         print(stream_name)
         # Output: my_video_stream_2_CULxO.mp4
     """
-    return "{}_stream_{}_{}{}".format(get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name))
+    return "{}_stream_{}_{}{}".format(
+        get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name)
+    )
 
 
-def get_info(video_path: str, cpu_count: Optional[int]=None) -> Dict:
+def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     """
     Get information about video from given path.
 
@@ -308,54 +321,86 @@ def get_info(video_path: str, cpu_count: Optional[int]=None) -> Dict:
         cpu_count = os.cpu_count()
 
     current_dir = pathlib.Path(__file__).parent.absolute()
-    session = subprocess.Popen(['sh', os.path.join(current_dir, 'get_video_info.sh'), video_path, str(cpu_count)], stdout=PIPE, stderr=PIPE)
+    session = subprocess.Popen(
+        ["sh", os.path.join(current_dir, "get_video_info.sh"), video_path, str(cpu_count)],
+        stdout=PIPE,
+        stderr=PIPE,
+    )
     stdout, stderr = session.communicate()
     if len(stderr) != 0:
         raise RuntimeError(stderr.decode("utf-8"))
-    video_meta = ast.literal_eval(stdout.decode('utf-8'))
+    video_meta = ast.literal_eval(stdout.decode("utf-8"))
 
     frames_to_timecodes = []
     has_video = False
     audio_stream_info = None
 
-    for frame in video_meta['frames']:
-        if frame['stream_index'] == 0:
-            frames_to_timecodes.append(float(frame.get('pkt_pts_time', frame.get('pts_time'))))
+    for frame in video_meta["frames"]:
+        if frame["stream_index"] == 0:
+            frames_to_timecodes.append(float(frame.get("pkt_pts_time", frame.get("pts_time"))))
 
     stream_infos = []
-    for stream in video_meta['streams']:
-        if stream['codec_type'] == 'video':
+    for stream in video_meta["streams"]:
+        if stream["codec_type"] == "video":
             has_video = True
-            stream_info = {'index': stream['index'], 'width': stream['width'], 'height': stream['height'],
-                           'duration': float(stream['duration']), 'rotation': 0, 'codecName': stream['codec_name'],
-                           'codecType': stream['codec_type'], 'startTime': int(float(stream['start_time'])),
-                           'framesCount': len(frames_to_timecodes), 'framesToTimecodes': frames_to_timecodes}
-            side_data_list = stream.get('side_data_list', None)
+            stream_info = {
+                "index": stream["index"],
+                "width": stream["width"],
+                "height": stream["height"],
+                "duration": float(stream["duration"]),
+                "rotation": 0,
+                "codecName": stream["codec_name"],
+                "codecType": stream["codec_type"],
+                "startTime": int(float(stream["start_time"])),
+                "framesCount": len(frames_to_timecodes),
+                "framesToTimecodes": frames_to_timecodes,
+            }
+            side_data_list = stream.get("side_data_list", None)
             if side_data_list:
                 for data in side_data_list:
-                    rotation = data.get('rotation', None)
+                    rotation = data.get("rotation", None)
                 if rotation:
-                    stream_info['rotation'] = rotation
-                    width, height = rotate_dimensions(stream_info['width'], stream_info['height'], rotation)
-                    stream_info['originalWidth'] = stream_info['width']
-                    stream_info['originalHeight'] = stream_info['height']
-                    stream_info['width'] = width
-                    stream_info['height'] = height
-        elif stream['codec_type'] == 'audio':
-            stream_info = {'index': stream['index'], 'channels': stream['channels'],
-                           'duration': float(stream['duration']), 'codecName': stream['codec_name'],
-                           'codecType': stream['codec_type'], 'startTime': int(float(stream['start_time'])),
-                           'sampleRate': int(stream['sample_rate'])}
+                    stream_info["rotation"] = rotation
+                    width, height = rotate_dimensions(
+                        stream_info["width"], stream_info["height"], rotation
+                    )
+                    stream_info["originalWidth"] = stream_info["width"]
+                    stream_info["originalHeight"] = stream_info["height"]
+                    stream_info["width"] = width
+                    stream_info["height"] = height
+        elif stream["codec_type"] == "audio":
+            stream_info = {
+                "index": stream["index"],
+                "channels": stream["channels"],
+                "duration": float(stream["duration"]),
+                "codecName": stream["codec_name"],
+                "codecType": stream["codec_type"],
+                "startTime": int(float(stream["start_time"])),
+                "sampleRate": int(stream["sample_rate"]),
+            }
         else:
             continue
         stream_infos.append(stream_info)
 
     if has_video is False:
-        raise ValueError('No video streams found')
+        raise ValueError("No video streams found")
 
-    result = {'streams': stream_infos,
-              'formatName': video_meta['format']['format_name'],
-              'duration': float(video_meta['format']['duration']),
-              'size': video_meta['format']['size']}
+    result = {
+        "streams": stream_infos,
+        "formatName": video_meta["format"]["format_name"],
+        "duration": float(video_meta["format"]["duration"]),
+        "size": video_meta["format"]["size"],
+    }
 
     return result
+
+
+def get_labeling_tool_url(dataset_id, video_id):
+    res = f"/app/videos_v2/?datasetId={dataset_id}&videoId={video_id}&videoFrame=0"
+    if is_development():
+        res = abs_url(res)
+    return res
+
+
+def get_labeling_tool_link(url, name="open in labeling tool"):
+    return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'

@@ -42,7 +42,7 @@ class Hidable:
                 getattr(item.__class__, "has_attr")
             ):
                 if item.has_attr("v-if"):
-                    item["v-if"] = f'({item["v-if"]}) || !data.{widget_id}.hide'
+                    item["v-if"] = f'({item["v-if"]}) && data.{widget_id}.hide === false'
                 else:
                     item["v-if"] = f"!data.{widget_id}.hide"
         # return f'<div v-if="!data.{widget_id}.hide">{html}</div>'
