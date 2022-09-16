@@ -1,5 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from supervisely.api.api import Api
 
 
 class Video(Widget):
@@ -46,19 +47,21 @@ class Video(Widget):
                 "skipFramesSize": self._skip_frames_size,
                 "intervalsNavigation": self._intervals_navigation,
                 "responsiveHeight": self._responsive_height,
-                "enableZoom": self._enable_zoom
-            }
+                "enableZoom": self._enable_zoom,
+            },
         }
 
     def get_json_state(self):
-        return {
-            "currentFrame": 0,
-            "startFrame": 0
-        }
+        return {"currentFrame": 0, "startFrame": 0}
 
     @property
     def video_id(self):
         return self._video_id
+
+    def set_video(self, id: int):
+        self._video_id = id
+        DataJson()[self.widget_id]["videoId"] = self._video_id
+        DataJson().send_changes()
 
     @property
     def loading(self):
@@ -81,38 +84,46 @@ class Video(Widget):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)
         server = self._sly_app.get_server()
         self._play_clicked_handled = True
+
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
             func(res)
+
         return _click
 
     def pause_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PAUSE_CLICKED)
         server = self._sly_app.get_server()
         self._pause_clicked_handled = True
+
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
             func(res)
+
         return _click
 
     def frame_change_started(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_START)
         server = self._sly_app.get_server()
         self._frame_change_started_handled = True
+
         @server.post(route_path)
         def _click():
             res = max(0, StateJson()[self.widget_id]["startFrame"])
             func(res)
+
         return _click
 
     def frame_change_finished(self, func):
         route_path = self.get_route_path(Video.Routes.FRAME_CHANGE_END)
         server = self._sly_app.get_server()
         self._frame_change_finished_handled = True
+
         @server.post(route_path)
         def _click():
             res = self.get_current_frame()
             func(res)
+
         return _click
