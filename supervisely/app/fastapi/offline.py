@@ -85,7 +85,7 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
     try:
         if os.getenv("TASK_ID") is None:
             sly.logger.debug(
-                f"Debug mode: saving app files for offline usage is skipped"
+                "Debug mode: saving app files for offline usage is skipped"
             )
             return
 
@@ -95,7 +95,7 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
         ):
             return
         os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "True"
-        sly.logger.info(f"Saving app files for offline usage")
+        sly.logger.info("Saving app files for offline usage")
 
         app_template_path = pathlib.Path(tempfile.mkdtemp())
         app_static_paths = get_static_paths_by_mounted_object(mount=app)
@@ -121,7 +121,7 @@ def available_after_shutdown(app: FastAPI):
             template_response = f(*args, **kwargs)
             try:
                 if sly.utils.is_production():
-                    sly.logger.info(f"Start dumping app UI for offline mode")
+                    sly.logger.info("Start dumping app UI for offline mode")
                     threading.Thread(
                         target=functools.partial(
                             dump_files_to_supervisely, app, template_response
