@@ -11,11 +11,11 @@ class Switch(Widget):
     def __init__(
             self,
             switched: bool = False,
-            width: int = 58,
+            width: int = 58,  # default value 46 for empty text
             on_text: str = "ON",
             off_text: str = "OFF",
-            on_color: str = None,
-            off_color: str = None,
+            on_color: str = None,  # default: "#20a0ff"
+            off_color: str = None,  # default: "#bfcbd9"
             widget_id: str = None,
     ):
         self._switched = switched
@@ -50,12 +50,8 @@ class Switch(Widget):
         StateJson()[self.widget_id]["switched"] = False
         StateJson().send_changes()
 
-    # def get_width(self):
-    #     return DataJson()[self.widget_id]["width"]
-    #
-    # def set_width(self, value: int):
-    #     DataJson()[self.widget_id]["width"] = value
-    #     DataJson().send_changes()
+    def get_width(self):
+        return DataJson()[self.widget_id]["width"]
 
     def get_on_text(self):
         return DataJson()[self.widget_id]["onText"]
@@ -89,9 +85,11 @@ class Switch(Widget):
         route_path = self.get_route_path(Switch.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
+
         @server.post(route_path)
         def _click():
             res = self.is_switched()
             print(res)
             func(res)
+
         return _click
