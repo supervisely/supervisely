@@ -5,11 +5,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-import fastapi
-from varname import varname
-
 from supervisely.app import DataJson
-from supervisely.app.fastapi import run_sync
 from supervisely.app.widgets import Widget
 
 
