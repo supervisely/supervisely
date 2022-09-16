@@ -78,8 +78,12 @@ class Disableable:
         return str(soup)
 
 
-def generate_id():
-    return "auto" + uuid.uuid4().hex
+def generate_id(cls_name=""):
+    suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
+    if cls_name == "":
+        return "autoId" + suffix
+    else:
+        return cls_name + "AutoId" + suffix
 
 
 class Widget(Hidable, Disableable):
@@ -88,14 +92,26 @@ class Widget(Hidable, Disableable):
         self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
-        if self.widget_id is None:
-            try:
-                self.widget_id = varname(frame=2)
-            except Exception as e:  # Caller doesn\\\'t assign the result directly to variable(s).
+
+        if (
+            widget_id is not None
+            and JinjaWidgets().auto_widget_id is True
+            and ("autoId" in widget_id or "AutoId" in widget_id)
+        ):
+            # regenerate id with class name at the beggining
+            self.widget_id = generate_id(type(self).__name__)
+
+        if widget_id is None:
+            if JinjaWidgets().auto_widget_id is True:
+                self.widget_id = generate_id(type(self).__name__)
+            else:
                 try:
-                    self.widget_id = varname(frame=3)
-                except Exception as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
-                    self.widget_id = type(self).__name__ + rand_str(10)
+                    self.widget_id = varname(frame=2)
+                except Exception as e:  # Caller doesn\\\'t assign the result directly to variable(s).
+                    try:
+                        self.widget_id = varname(frame=3)
+                    except Exception as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
+                        self.widget_id = generate_id(type(self).__name__)
 
         self._register()
 
@@ -151,9 +167,7 @@ class Widget(Hidable, Disableable):
                 )
 
             app.add_api_route(f"/{self.widget_id}/{route}", f, methods=["POST"])
-            DataJson()[self.widget_id].setdefault("widget_routes", {})[
-                route
-            ] = f.__name__
+            DataJson()[self.widget_id].setdefault("widget_routes", {})[route] = f.__name__
 
             self.update_data()
 

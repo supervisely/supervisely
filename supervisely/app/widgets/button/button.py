@@ -20,13 +20,12 @@ class Button(Widget):
     def __init__(
         self,
         text: str = "Button",
-        button_type: Literal[
-            "primary", "info", "warning", "danger", "success", "text"
-        ] = "primary",
+        button_type: Literal["primary", "info", "warning", "danger", "success", "text"] = "primary",
         button_size: Literal["mini", "small", "large"] = None,
         plain: bool = False,
         show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
+        icon_gap: int = 5,
         widget_id=None,
     ):
         self._widget_routes = {}
@@ -35,10 +34,11 @@ class Button(Widget):
         self._button_type = button_type
         self._button_size = button_size
         self._plain = plain
+        self._icon_gap = icon_gap
         if icon is None:
             self._icon = ""
         else:
-            self._icon = f'<i class="{icon}" style="margin-right: 5px"></i>'
+            self._icon = f'<i class="{icon}" style="margin-right: {icon_gap}px"></i>'
 
         self._loading = False
         self._disabled = False
