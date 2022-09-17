@@ -170,9 +170,9 @@ def _init(
         async def get_state_from_request(request: Request, call_next):
 
             await StateJson.from_request(request)
-            if not ("application/json" not in request.headers.get("Content-Type", "")):
-                content = await request.json()
-                request.sly_api_token = content["context"].get("apiToken")
+            # if not ("application/json" not in request.headers.get("Content-Type", "")):
+            #     content = await request.json()
+            #     request.sly_api_token = content["context"].get("apiToken")
             response = await call_next(request)
             return response
 

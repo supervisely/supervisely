@@ -89,35 +89,15 @@ class Button(Widget):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
-    # def click(self, func):
-    #     @self.add_route(self._sly_app.get_server(), Button.Routes.CLICK)
-    #     @wraps(func)
-    #     def add_loading(*args, **kwargs):
-    #         if self.show_loading:
-    #             self.loading = True
-    #         try:
-    #             result = func(*args, **kwargs)
-    #         except Exception as e:
-    #             if self.show_loading and self.loading:
-    #                 self.loading = False
-    #             raise e
-    #         if self.show_loading:
-    #             self.loading = False
-    #         return result
-
-    #     return add_loading
-
     def click(self, func):
-        # from fastapi import Request
-        # from supervisely.app.fastapi import run_sync
+        from fastapi import Request
 
         route_path = self.get_route_path(Button.Routes.CLICK)
         server = self._sly_app.get_server()
 
         @server.post(route_path)
-        def _click():
-            # r: Request
-            # data = run_sync(r.json()) #@TODO
+        def _click(r: Request):
+            # maybe work with headers and store some values there
             if self.show_loading:
                 self.loading = True
             try:
