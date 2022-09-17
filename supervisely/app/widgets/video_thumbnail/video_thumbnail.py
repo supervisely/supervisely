@@ -21,7 +21,7 @@ class VideoThumbnail(Widget):
             "description": self._description,
             "url": self._url,
             "link": self._open_link,
-            "image_preview_url": "",
+            "image_preview_url": self._info.image_preview_url,
         }
 
     def get_json_state(self):

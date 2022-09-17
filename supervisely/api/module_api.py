@@ -431,6 +431,8 @@ class ApiField:
     """"""
     REDIRECT_REQUESTS = "redirectRequests"
     """"""
+    PROCESSING_PATH = "processingPath"
+    """"""
 
 
 def _get_single_item(items):
@@ -529,9 +531,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             pass
         else:
             for page_idx in range(2, pages_count + 1):
-                temp_resp = self._api.post(
-                    method, {**data, "page": page_idx, "per_page": per_page}
-                )
+                temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
                 if progress_cb is not None:
@@ -542,9 +542,7 @@ class ModuleApiBase(_JsonConvertibleModule):
 
             if len(results) != total and limit is None:
                 raise RuntimeError(
-                    "Method {!r}: error during pagination, some items are missed".format(
-                        method
-                    )
+                    "Method {!r}: error during pagination, some items are missed".format(method)
                 )
 
         if limit is not None:
@@ -612,9 +610,7 @@ class ModuleApiBase(_JsonConvertibleModule):
     def _get_info_by_id(self, id, method):
         """_get_info_by_id"""
         response = self._get_response_by_id(id, method, id_field=ApiField.ID)
-        return (
-            self._convert_json_info(response.json()) if (response is not None) else None
-        )
+        return self._convert_json_info(response.json()) if (response is not None) else None
 
 
 class ModuleApi(ModuleApiBase):
@@ -671,9 +667,7 @@ class ModuleNoParent(ModuleApiBase):
 
     def get_info_by_name(self, name):
         """get_info_by_name"""
-        return self._get_info_by_name(
-            get_info_by_filters_fn=self._get_info_by_filters, name=name
-        )
+        return self._get_info_by_name(get_info_by_filters_fn=self._get_info_by_filters, name=name)
 
     def _get_info_by_filters(self, filters):
         """_get_info_by_filters"""
@@ -731,15 +725,11 @@ class CloneableModuleApi(ModuleApi):
 
     def clone_by_shared_link(self, shared_link, dst_workspace_id, dst_name):
         """clone_by_shared_link"""
-        return self._clone(
-            {ApiField.SHARED_LINK: shared_link}, dst_workspace_id, dst_name
-        )
+        return self._clone({ApiField.SHARED_LINK: shared_link}, dst_workspace_id, dst_name)
 
     def clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
         """clone_from_explore"""
-        return self._clone(
-            {ApiField.EXPLORE_PATH: explore_path}, dst_workspace_id, dst_name
-        )
+        return self._clone({ApiField.EXPLORE_PATH: explore_path}, dst_workspace_id, dst_name)
 
     def get_or_clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
         """get_or_clone_from_explore"""

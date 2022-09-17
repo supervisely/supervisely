@@ -19,7 +19,7 @@ from supervisely.sly_logger import logger
 from supervisely.io.fs import get_file_hash
 
 from supervisely.io.fs import ensure_base_path
-from supervisely._utils import batched
+from supervisely._utils import batched, is_development, abs_url
 from supervisely.video.video import get_video_streams, gen_video_stream_name
 
 from supervisely.task.progress import Progress
@@ -43,6 +43,7 @@ class VideoInfo(NamedTuple):
     tags: list
     file_meta: dict
     custom_data: dict
+    processing_path: str
 
     @property
     def duration(self) -> float:
@@ -57,6 +58,13 @@ class VideoInfo(NamedTuple):
     @property
     def frames_count_compact(self) -> str:
         return numerize(self.frames_count)
+
+    @property
+    def image_preview_url(self):
+        res = f"/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/image-converter/videoframe/33p/{self.processing_path}?videoStreamIndex=0"
+        if is_development():
+            res = abs_url(res)
+        return res
 
 
 class VideoApi(RemoveableBulkModuleApi):
@@ -135,6 +143,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.FILE_META,
             ApiField.CUSTOM_DATA,
+            ApiField.PROCESSING_PATH,
         ]
 
     @staticmethod
@@ -159,7 +168,10 @@ class VideoApi(RemoveableBulkModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         res = super(VideoApi, self)._convert_json_info(info, skip_missing=skip_missing)
-        return VideoInfo(**res._asdict())
+        # processing_path = info.get("processingPath", "")
+        d = res._asdict()
+        # d["processing_path"] = processing_path
+        return VideoInfo(**d)
 
     def get_list(
         self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None
