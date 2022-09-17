@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import List, Tuple, NamedTuple, Dict, Optional, Callable
 from requests import Response
-
+import datetime
 import json
 import urllib.parse
 from functools import partial
@@ -45,8 +45,14 @@ class VideoInfo(NamedTuple):
     custom_data: dict
 
     @property
-    def duration(self, ndigits=2):
+    def duration(self) -> float:
+        # in seconds
+        ndigits = 0
         return round(self.file_meta.get("duration"), ndigits=ndigits)
+
+    @property
+    def duration_hms(self) -> str:
+        return str(datetime.timedelta(seconds=self.duration))
 
     @property
     def frames_count_compact(self) -> str:
