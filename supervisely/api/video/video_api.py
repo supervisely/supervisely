@@ -279,7 +279,7 @@ class VideoApi(RemoveableBulkModuleApi):
             "videos.list", {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}
         )
 
-    def get_info_by_id(self, id: int) -> VideoInfo:
+    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
         """
         Get Video information by ID.
 
@@ -326,7 +326,10 @@ class VideoApi(RemoveableBulkModuleApi):
             #     "2021-03-23T13:16:43.300Z"
             # ]
         """
-        return self._get_info_by_id(id, "videos.info")
+        info = self._get_info_by_id(id, "videos.info")
+        if info is None and raise_error is True:
+            raise KeyError(f"Video with id={id} not found in your account")
+        return info
 
     def get_destination_ids(self, id: int) -> Tuple[int, int]:
         """
