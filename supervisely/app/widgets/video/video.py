@@ -2,6 +2,7 @@ from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
 
+
 class Video(Widget):
     class Routes:
         PLAY_CLICKED = "play_clicked_cb"
@@ -90,7 +91,7 @@ class Video(Widget):
     def get_current_frame(self):
         if self._video_info is None:
             raise ValueError("VideoID is not defined yet, use 'set_video' method")
-        return max(0, StateJson()[self.widget_id]["currentFrame"])
+        return max(0, int(StateJson()[self.widget_id]["currentFrame"]))
 
     def play_clicked(self, func):
         route_path = self.get_route_path(Video.Routes.PLAY_CLICKED)

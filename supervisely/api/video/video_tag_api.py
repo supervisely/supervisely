@@ -125,4 +125,5 @@ class VideoTagApi(TagApi):
             request_data[ApiField.FRAME_RANGE] = frame_range
 
         resp = self._api.post("videos.tags.add", request_data)
+        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296671}
         return resp.json()
