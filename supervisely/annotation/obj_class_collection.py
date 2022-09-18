@@ -290,6 +290,13 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     def __iter__(self) -> Iterator[ObjClass]:
         return next(self)
 
+    def refresh_ids_from(self, classes: ObjClassCollection):
+        for new_class in classes:
+            my_class = self.get(new_class.name)
+            if my_class is None:
+                continue
+            my_class._set_id(new_class.sly_id)
+
 
 def make_renamed_classes(
     src_obj_classes: ObjClassCollection,

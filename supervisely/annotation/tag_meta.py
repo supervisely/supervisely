@@ -14,13 +14,14 @@ class TagValueType:
     """
     Restricts Tag to have a certain value type.
     """
-    NONE = 'none'
+
+    NONE = "none"
     """"""
-    ANY_NUMBER = 'any_number'
+    ANY_NUMBER = "any_number"
     """"""
-    ANY_STRING = 'any_string'
+    ANY_STRING = "any_string"
     """"""
-    ONEOF_STRING = 'oneof_string'
+    ONEOF_STRING = "oneof_string"
     """"""
 
 
@@ -28,38 +29,50 @@ class TagMetaJsonFields:
     """
     Json fields for :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
     """
-    ID = 'id'
+
+    ID = "id"
     """"""
 
-    NAME = 'name'
+    NAME = "name"
     """"""
-    VALUE_TYPE = 'value_type'
+    VALUE_TYPE = "value_type"
     """"""
-    VALUES = 'values'
+    VALUES = "values"
     """"""
-    COLOR = 'color'
+    COLOR = "color"
     """"""
-    APPLICABLE_TYPE = 'applicable_type'
+    APPLICABLE_TYPE = "applicable_type"
     """"""
     HOTKEY = "hotkey"
     """"""
-    APPLICABLE_CLASSES = 'classes'
+    APPLICABLE_CLASSES = "classes"
     """"""
+
 
 class TagApplicableTo:
     """
     Defines Tag applicability only to images, objects or both.
     """
 
-    ALL = 'all' # both images and objects
+    ALL = "all"  # both images and objects
     """"""
-    IMAGES_ONLY = 'imagesOnly'
+    IMAGES_ONLY = "imagesOnly"
     """"""
-    OBJECTS_ONLY = 'objectsOnly'
+    OBJECTS_ONLY = "objectsOnly"
     """"""
 
-SUPPORTED_TAG_VALUE_TYPES = [TagValueType.NONE, TagValueType.ANY_NUMBER, TagValueType.ANY_STRING, TagValueType.ONEOF_STRING]
-SUPPORTED_APPLICABLE_TO = [TagApplicableTo.ALL, TagApplicableTo.IMAGES_ONLY, TagApplicableTo.OBJECTS_ONLY]
+
+SUPPORTED_TAG_VALUE_TYPES = [
+    TagValueType.NONE,
+    TagValueType.ANY_NUMBER,
+    TagValueType.ANY_STRING,
+    TagValueType.ONEOF_STRING,
+]
+SUPPORTED_APPLICABLE_TO = [
+    TagApplicableTo.ALL,
+    TagApplicableTo.IMAGES_ONLY,
+    TagApplicableTo.OBJECTS_ONLY,
+]
 
 
 class TagMeta(KeyObject, JsonSerializable):
@@ -104,12 +117,24 @@ class TagMeta(KeyObject, JsonSerializable):
         # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
         meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
     """
-    def __init__(self, name: str, value_type: str, possible_values: Optional[List[str]] = None, color: Optional[List[int]]=None,
-                 sly_id: Optional[int]=None, hotkey: Optional[str] = None, applicable_to: Optional[str] = None,
-                 applicable_classes: Optional[List[str]]=None):
+
+    def __init__(
+        self,
+        name: str,
+        value_type: str,
+        possible_values: Optional[List[str]] = None,
+        color: Optional[List[int]] = None,
+        sly_id: Optional[int] = None,
+        hotkey: Optional[str] = None,
+        applicable_to: Optional[str] = None,
+        applicable_classes: Optional[List[str]] = None,
+    ):
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
-            raise ValueError("value_type = {!r} is unknown, should be one of {}"
-                             .format(value_type, SUPPORTED_TAG_VALUE_TYPES))
+            raise ValueError(
+                "value_type = {!r} is unknown, should be one of {}".format(
+                    value_type, SUPPORTED_TAG_VALUE_TYPES
+                )
+            )
 
         self._name = name
         self._value_type = value_type
@@ -120,16 +145,27 @@ class TagMeta(KeyObject, JsonSerializable):
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
-            raise ValueError("applicable_to = {!r} is unknown, should be one of {}"
-                             .format(self._applicable_to, SUPPORTED_APPLICABLE_TO))
+            raise ValueError(
+                "applicable_to = {!r} is unknown, should be one of {}".format(
+                    self._applicable_to, SUPPORTED_APPLICABLE_TO
+                )
+            )
 
         if self._value_type == TagValueType.ONEOF_STRING:
             if self._possible_values is None:
-                raise ValueError("TagValueType is ONEOF_STRING. List of possible values have to be defined.")
+                raise ValueError(
+                    "TagValueType is ONEOF_STRING. List of possible values have to be defined."
+                )
             if not all(isinstance(item, str) for item in self._possible_values):
-                raise ValueError("TagValueType is ONEOF_STRING. All possible values have to be strings")
+                raise ValueError(
+                    "TagValueType is ONEOF_STRING. All possible values have to be strings"
+                )
         elif self._possible_values is not None:
-            raise ValueError("TagValueType is {!r}. possible_values variable have to be None".format(self._value_type))
+            raise ValueError(
+                "TagValueType is {!r}. possible_values variable have to be None".format(
+                    self._value_type
+                )
+            )
 
         _validate_color(self._color)
 
@@ -341,7 +377,7 @@ class TagMeta(KeyObject, JsonSerializable):
         jdict = {
             TagMetaJsonFields.NAME: self.name,
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
-            TagMetaJsonFields.COLOR: rgb2hex(self.color)
+            TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
@@ -410,10 +446,18 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_to = data.get(TagMetaJsonFields.APPLICABLE_TYPE, TagApplicableTo.ALL)
             applicable_classes = data.get(TagMetaJsonFields.APPLICABLE_CLASSES, [])
 
-            return cls(name=name, value_type=value_type, possible_values=values, color=color, sly_id=sly_id,
-                       hotkey=hotkey, applicable_to=applicable_to, applicable_classes=applicable_classes)
+            return cls(
+                name=name,
+                value_type=value_type,
+                possible_values=values,
+                color=color,
+                sly_id=sly_id,
+                hotkey=hotkey,
+                applicable_to=applicable_to,
+                applicable_classes=applicable_classes,
+            )
         else:
-            raise ValueError('Tags must be dict or str types.')
+            raise ValueError("Tags must be dict or str types.")
 
     def add_possible_value(self, value: str) -> TagMeta:
         """
@@ -446,11 +490,15 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         if self.value_type is TagValueType.ONEOF_STRING:
             if value in self._possible_values:
-                raise ValueError('Value {} already exists for tag {}'.format(value, self.name))
+                raise ValueError("Value {} already exists for tag {}".format(value, self.name))
             else:
                 return self.clone(possible_values=[*self.possible_values, value])
         else:
-            raise ValueError("Tag {!r} has type {!r}. Possible value can be added only to oneof_string".format(self.name, self.value_type))
+            raise ValueError(
+                "Tag {!r} has type {!r}. Possible value can be added only to oneof_string".format(
+                    self.name, self.value_type
+                )
+            )
 
     def is_valid_value(self, value: str) -> bool:
         """
@@ -494,7 +542,7 @@ class TagMeta(KeyObject, JsonSerializable):
         elif self.value_type == TagValueType.ONEOF_STRING:
             return isinstance(value, str) and (value in self._possible_values)
         else:
-            raise ValueError('Unsupported TagValueType detected ({})!'.format(self.value_type))
+            raise ValueError("Unsupported TagValueType detected ({})!".format(self.value_type))
 
     def __eq__(self, other: TagMeta) -> bool:
         """
@@ -524,10 +572,12 @@ class TagMeta(KeyObject, JsonSerializable):
             meta_lemon_1 == meta_cucumber     # False
         """
         # TODO compare colors also here (need to check the usages and replace with is_compatible() where appropriate).
-        return (isinstance(other, TagMeta) and
-                self.name == other.name and
-                self.value_type == other.value_type and
-                self.possible_values == other.possible_values)
+        return (
+            isinstance(other, TagMeta)
+            and self.name == other.name
+            and self.value_type == other.value_type
+            and self.possible_values == other.possible_values
+        )
 
     def __ne__(self, other: TagMeta) -> bool:
         """
@@ -559,16 +609,25 @@ class TagMeta(KeyObject, JsonSerializable):
         return not self == other
 
     def is_compatible(self, other: TagMeta) -> bool:
-        """
-        """
-        return (isinstance(other, TagMeta) and
-                self.name == other.name and
-                self.value_type == other.value_type and
-                self.possible_values == other.possible_values)
+        """is_compatible"""
+        return (
+            isinstance(other, TagMeta)
+            and self.name == other.name
+            and self.value_type == other.value_type
+            and self.possible_values == other.possible_values
+        )
 
-    def clone(self, name: Optional[str] = None, value_type: Optional[str] = None, possible_values: Optional[List[str]] = None,
-              color: Optional[List[int, int, int]] = None, sly_id: Optional[int] = None,
-              hotkey: Optional[str] = None, applicable_to: Optional[str] = None, applicable_classes: Optional[List[str]] = None) -> TagMeta:
+    def clone(
+        self,
+        name: Optional[str] = None,
+        value_type: Optional[str] = None,
+        possible_values: Optional[List[str]] = None,
+        color: Optional[List[int, int, int]] = None,
+        sly_id: Optional[int] = None,
+        hotkey: Optional[str] = None,
+        applicable_to: Optional[str] = None,
+        applicable_classes: Optional[List[str]] = None,
+    ) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
 
@@ -610,27 +669,57 @@ class TagMeta(KeyObject, JsonSerializable):
             C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
             meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
         """
-        return TagMeta(name=take_with_default(name, self.name),
-                       value_type=take_with_default(value_type, self.value_type),
-                       possible_values=take_with_default(possible_values, self.possible_values),
-                       color=take_with_default(color, self.color),
-                       sly_id=take_with_default(sly_id, self.sly_id),
-                       hotkey=take_with_default(hotkey, self.hotkey),
-                       applicable_to=take_with_default(applicable_to, self.applicable_to),
-                       applicable_classes=take_with_default(applicable_classes, self.applicable_classes))
+        return TagMeta(
+            name=take_with_default(name, self.name),
+            value_type=take_with_default(value_type, self.value_type),
+            possible_values=take_with_default(possible_values, self.possible_values),
+            color=take_with_default(color, self.color),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            hotkey=take_with_default(hotkey, self.hotkey),
+            applicable_to=take_with_default(applicable_to, self.applicable_to),
+            applicable_classes=take_with_default(applicable_classes, self.applicable_classes),
+        )
 
     def __str__(self):
-        return "{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{}".format(
-            'Name:', self.name, 'Value type:', self.value_type, 'Possible values:', str(self.possible_values),
-            'Hotkey', self.hotkey, 'Applicable to', self.applicable_to, 'Applicable classes', self.applicable_classes)
+        return (
+            "{:<7s}{:<24} {:<7s}{:<13} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{:<10} {:<13s}{}".format(
+                "Name:",
+                self.name,
+                "Value type:",
+                self.value_type,
+                "Possible values:",
+                str(self.possible_values),
+                "Hotkey",
+                self.hotkey,
+                "Applicable to",
+                self.applicable_to,
+                "Applicable classes",
+                self.applicable_classes,
+            )
+        )
 
     @classmethod
     def get_header_ptable(cls):
-        """
-        """
-        return ['Name', 'Value type', 'Possible values', 'Hotkey', 'Applicable to', 'Applicable classes']
+        """get_header_ptable"""
+        return [
+            "Name",
+            "Value type",
+            "Possible values",
+            "Hotkey",
+            "Applicable to",
+            "Applicable classes",
+        ]
 
     def get_row_ptable(self):
-        """
-        """
-        return [self.name, self.value_type, self.possible_values, self.hotkey, self.applicable_to, self.applicable_classes]
+        """get_row_ptable"""
+        return [
+            self.name,
+            self.value_type,
+            self.possible_values,
+            self.hotkey,
+            self.applicable_to,
+            self.applicable_classes,
+        ]
+
+    def _set_id(self, id: int):
+        self._sly_id = id

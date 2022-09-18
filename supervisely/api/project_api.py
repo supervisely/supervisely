@@ -933,3 +933,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         response = self._api.post(self._get_update_method(), body)
         return self._convert_json_info(response.json())
+
+    def pull_meta_ids(self, id, meta: ProjectMeta):
+        # to update ids in existing project meta
+        meta_json = self.get_meta(id)
+        server_meta = ProjectMeta.from_json(meta_json)
+        meta.obj_classes.refresh_ids_from(server_meta.obj_classes)
+        meta.tag_metas.refresh_ids_from(server_meta.tag_metas)
