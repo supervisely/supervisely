@@ -2,6 +2,8 @@
 
 # docs
 from typing import List, Optional, Union
+from supervisely.annotation.tag_meta import TagMeta
+from supervisely.video_annotation.video_tag import VideoTag
 
 from supervisely.api.module_api import ApiField
 from supervisely.api.entity_annotation.tag_api import TagApi
@@ -91,7 +93,7 @@ class VideoTagApi(TagApi):
         video_id: int,
         value: Optional[Union[str, int]] = None,
         frame_range: Optional[List[int]] = None,
-    ) -> None:
+    ) -> int:
         """
         Add VideoTag to video.
 
@@ -126,4 +128,26 @@ class VideoTagApi(TagApi):
 
         resp = self._api.post("videos.tags.add", request_data)
         # {'imageId': 3267369, 'tagId': 368985, 'id': 2296671}
-        return resp.json()
+        return resp.json()["id"]
+
+    def add(self, video_id: int, tag: VideoTag, update_id_inplace=True) -> int:
+        from supervisely.project.project_meta import ProjectMeta
+
+        if tag.meta.sly_id is None:
+            if update_id_inplace is True:
+                video_info = self._api.video.get_info_by_id(video_id)
+                meta_json = self._api.project.get_meta(video_info.project_id)
+                meta = ProjectMeta.from_json(meta_json)
+                server_tag_meta = meta.get_tag_meta(tag_meta.name)
+                if server_tag_meta is None:
+                    raise KeyError(
+                        f"Tag with name {tag.meta.name} not found in project with id {video_info.project_id}"
+                    )
+                tag.meta._set_id(server_tag_meta.sly_id)
+            else:
+                raise ValueError("tag_meta.sly_id is None, get updated project meta from server")
+
+        tag_id = self.add_tag(tag.meta.sly_id, video_id, tag.value, tag.frame_range)
+        if update_id_inplace is True:
+            tag._set_id(tag_id)
+        return tag_id

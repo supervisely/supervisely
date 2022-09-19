@@ -6,6 +6,8 @@ from copy import deepcopy
 from supervisely._utils import batched
 
 from supervisely._utils import camel_to_snake
+from supervisely.metric.map_metric import AP
+from supervisely.api.api import Api
 
 
 class ApiField:
@@ -487,8 +489,8 @@ class ModuleApiBase(_JsonConvertibleModule):
         except NotImplementedError:
             pass
 
-    def __init__(self, api):
-        self._api = api
+    def __init__(self, api: Api):
+        self._api: Api = api
 
     def _add_sort_param(self, data):
         """_add_sort_param"""

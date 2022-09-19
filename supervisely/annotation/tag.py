@@ -16,20 +16,21 @@ from supervisely._utils import take_with_default
 class TagJsonFields:
     """Json fields for :class:`Annotation<supervisely.annotation.tag.Tag>`"""
 
-    TAG_NAME = 'name'
+    TAG_NAME = "name"
     """"""
-    VALUE = 'value'
+    VALUE = "value"
     """"""
-    LABELER_LOGIN = 'labelerLogin'
+    LABELER_LOGIN = "labelerLogin"
     """"""
-    UPDATED_AT = 'updatedAt'
+    UPDATED_AT = "updatedAt"
     """"""
-    CREATED_AT = 'createdAt'
+    CREATED_AT = "createdAt"
     """"""
-    ID = 'id'
+    ID = "id"
     """"""
-    #TAG_META_ID = 'tagId'
+    # TAG_META_ID = 'tagId'
     # """"""
+
 
 class Tag(KeyObject):
     """
@@ -81,14 +82,22 @@ class Tag(KeyObject):
         tag_coat_color = sly.Tag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]] = None, sly_id: Optional[int] = None,
-                 labeler_login: Optional[str] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None):
+
+    def __init__(
+        self,
+        meta: TagMeta,
+        value: Optional[Union[str, int, float]] = None,
+        sly_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         if meta is None:
-            raise ValueError('TagMeta is None')
+            raise ValueError("TagMeta is None")
         self._meta = meta
         self._value = value
         if not self._meta.is_valid_value(value):
-            raise ValueError('Tag {} can not have value {}'.format(self.meta.name, value))
+            raise ValueError("Tag {} can not have value {}".format(self.meta.name, value))
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
@@ -161,8 +170,7 @@ class Tag(KeyObject):
         return self._meta.name
 
     def key(self):
-        """
-        """
+        """ """
         return self._meta.key()
 
     def to_json(self) -> Dict:
@@ -195,7 +203,7 @@ class Tag(KeyObject):
         """
         res = {
             TagJsonFields.TAG_NAME: self.meta.name,
-            #TagJsonFields.VALUE: self.value
+            # TagJsonFields.VALUE: self.value
         }
         if self.meta.value_type != TagValueType.NONE:
             res[TagJsonFields.VALUE] = self.value
@@ -259,7 +267,14 @@ class Tag(KeyObject):
             created_at = data.get(TagJsonFields.CREATED_AT, None)
             sly_id = data.get(TagJsonFields.ID, None)
         meta = tag_meta_collection.get(tag_name)
-        return cls(meta=meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            meta=meta,
+            value=value,
+            sly_id=sly_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def get_compact_str(self) -> str:
         """
@@ -280,7 +295,7 @@ class Tag(KeyObject):
             # Output: 'dog:Husky'
         """
         if (self.meta.value_type != TagValueType.NONE) and (len(str(self.value)) > 0):
-            return '{}:{}'.format(self.name, self.value)
+            return "{}:{}".format(self.name, self.value)
         return self.name
 
     def __eq__(self, other: Tag) -> bool:
@@ -349,9 +364,15 @@ class Tag(KeyObject):
         """
         return not self == other
 
-    def clone(self, meta: Optional[TagMeta] = None, value: Optional[Union[str, int, float]]= None,
-              sly_id: Optional[int] = None, labeler_login: Optional[str] = None, updated_at: Optional[str] = None,
-              created_at: Optional[str] = None) -> Tag:
+    def clone(
+        self,
+        meta: Optional[TagMeta] = None,
+        value: Optional[Union[str, int, float]] = None,
+        sly_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> Tag:
         """
         Clone makes a copy of Tag with new fields, if fields are given, otherwise it will use original Tag fields.
 
@@ -388,25 +409,33 @@ class Tag(KeyObject):
 
             clone_weather_3 = tag_weather.clone(value="Rainy")
         """
-        return Tag(meta=take_with_default(meta, self.meta),
-                   value=take_with_default(value, self.value),
-                   sly_id=take_with_default(sly_id, self.sly_id),
-                   labeler_login=take_with_default(labeler_login, self.labeler_login),
-                   updated_at=take_with_default(updated_at, self.updated_at),
-                   created_at=take_with_default(created_at, self.created_at))
+        return Tag(
+            meta=take_with_default(meta, self.meta),
+            value=take_with_default(value, self.value),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at),
+        )
 
     def __str__(self):
-        return '{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10}'.format('Name:', self._meta.name,
-                                                               'Value type:', self._meta.value_type,
-                                                               'Value:', str(self.value))
+        return "{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10}".format(
+            "Name:",
+            self._meta.name,
+            "Value type:",
+            self._meta.value_type,
+            "Value:",
+            str(self.value),
+        )
 
     @classmethod
     def get_header_ptable(cls):
-        """
-        """
-        return ['Name', 'Value type', 'Value']
+        """ """
+        return ["Name", "Value type", "Value"]
 
     def get_row_ptable(self):
-        """
-        """
+        """ """
         return [self._meta.name, self._meta.value_type, self.value]
+
+    def _set_id(self, id: int):
+        self.sly_id = id
