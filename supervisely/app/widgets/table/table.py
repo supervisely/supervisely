@@ -44,8 +44,8 @@ class PackerUnpacker:
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
-        data = data.where(pd.notnull(data), None)
-        data = data.astype(object).replace(np.nan, "-")  # may be None
+        data = data.replace({np.nan: None})
+        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
 
         unpacked_data = {
             "columns": data.columns.to_list(),
