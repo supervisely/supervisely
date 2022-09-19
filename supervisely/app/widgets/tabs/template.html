@@ -1,0 +1,11 @@
+<el-tabs type="border-card"
+         v-model="data.{{{widget.widget_id}}}.value"
+>
+    <el-tab-pane
+            v-for="tab in data.{{{widget.widget_id}}}.items"
+            :label="tab.label"
+            :name="tab.name"
+    >
+        {{ tab.content }}
+    </el-tab-pane>
+</el-tabs>
