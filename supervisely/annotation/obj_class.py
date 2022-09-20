@@ -18,17 +18,17 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 class ObjClassJsonFields:
     """Json fields for :class:`Annotation<supervisely.annotation.obj_class.ObjClass>`"""
 
-    ID = 'id'
+    ID = "id"
     """"""
-    NAME = 'title'
+    NAME = "title"
     """"""
-    GEOMETRY_TYPE = 'shape'
+    GEOMETRY_TYPE = "shape"
     """"""
-    COLOR = 'color'
+    COLOR = "color"
     """"""
-    GEOMETRY_CONFIG = 'geometry_config'
+    GEOMETRY_CONFIG = "geometry_config"
     """"""
-    HOTKEY = 'hotkey'
+    HOTKEY = "hotkey"
     """"""
 
 
@@ -62,9 +62,15 @@ class ObjClass(KeyObject, JsonSerializable):
         class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
     """
 
-    def __init__(self, name: str, geometry_type: type, color: Optional[List[int]] = None,
-                 geometry_config: Optional[Dict] = None,
-                 sly_id: Optional[int] = None, hotkey: Optional[str] = None):
+    def __init__(
+        self,
+        name: str,
+        geometry_type: type,
+        color: Optional[List[int]] = None,
+        geometry_config: Optional[Dict] = None,
+        sly_id: Optional[int] = None,
+        hotkey: Optional[str] = None,
+    ):
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
@@ -147,17 +153,17 @@ class ObjClass(KeyObject, JsonSerializable):
     @property
     def sly_id(self) -> int:
         """
-       Class ID in Supervisely server.
+        Class ID in Supervisely server.
 
-        :return: ID
-        :rtype: :class:`int`
-        :Usage example:
+         :return: ID
+         :rtype: :class:`int`
+         :Usage example:
 
-         .. code-block:: python
+          .. code-block:: python
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle, sly_id=38584)
-            print(class_lemon.sly_id)
-            # Output: 38584
+             class_lemon = sly.ObjClass('lemon', sly.Rectangle, sly_id=38584)
+             print(class_lemon.sly_id)
+             # Output: 38584
         """
         return self._sly_id
 
@@ -206,7 +212,9 @@ class ObjClass(KeyObject, JsonSerializable):
             ObjClassJsonFields.NAME: self.name,
             ObjClassJsonFields.GEOMETRY_TYPE: self.geometry_type.geometry_name(),
             ObjClassJsonFields.COLOR: rgb2hex(self.color),
-            ObjClassJsonFields.GEOMETRY_CONFIG: self.geometry_type.config_to_json(self._geometry_config)
+            ObjClassJsonFields.GEOMETRY_CONFIG: self.geometry_type.config_to_json(
+                self._geometry_config
+            ),
         }
         if self.sly_id is not None:
             res[ObjClassJsonFields.ID] = self.sly_id
@@ -241,11 +249,19 @@ class ObjClass(KeyObject, JsonSerializable):
         name = data[ObjClassJsonFields.NAME]
         geometry_type = GET_GEOMETRY_FROM_STR(data[ObjClassJsonFields.GEOMETRY_TYPE])
         color = hex2rgb(data[ObjClassJsonFields.COLOR])
-        geometry_config = geometry_type.config_from_json(data.get(ObjClassJsonFields.GEOMETRY_CONFIG))
+        geometry_config = geometry_type.config_from_json(
+            data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
+        )
         sly_id = data.get(ObjClassJsonFields.ID, None)
         hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
-        return cls(name=name, geometry_type=geometry_type, color=color, geometry_config=geometry_config, sly_id=sly_id,
-                   hotkey=hotkey)
+        return cls(
+            name=name,
+            geometry_type=geometry_type,
+            color=color,
+            geometry_config=geometry_config,
+            sly_id=sly_id,
+            hotkey=hotkey,
+        )
 
     def __eq__(self, other: ObjClass) -> bool:
         """
@@ -272,11 +288,15 @@ class ObjClass(KeyObject, JsonSerializable):
             # Compare unidentical ObjClasses
             class_lemon_1 == class_cucumber     # False
         """
-        return isinstance(other, ObjClass) and \
-               self.name == other.name and \
-               (self.geometry_type == other.geometry_type or AnyGeometry in [self.geometry_type,
-                                                                             other.geometry_type]) and \
-               self.geometry_config == other.geometry_config
+        return (
+            isinstance(other, ObjClass)
+            and self.name == other.name
+            and (
+                self.geometry_type == other.geometry_type
+                or AnyGeometry in [self.geometry_type, other.geometry_type]
+            )
+            and self.geometry_config == other.geometry_config
+        )
 
     def __ne__(self, other: ObjClass) -> bool:
         """
@@ -308,29 +328,39 @@ class ObjClass(KeyObject, JsonSerializable):
         return not self == other
 
     def __str__(self):  # Is need show geometry settings here?
-        return '{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<15}{:<16s}{:<16}{:<7s}{:<7}'.format(
-            'Name:', self.name,
-            'Shape:', self.geometry_type.__name__,
-            'Color:', str(self.color),
-            'Geom. settings:', str(self.geometry_config),
-            'Hotkey', self.hotkey
+        return "{:<7s}{:<10}{:<7s}{:<13}{:<7s}{:<15}{:<16s}{:<16}{:<7s}{:<7}".format(
+            "Name:",
+            self.name,
+            "Shape:",
+            self.geometry_type.__name__,
+            "Color:",
+            str(self.color),
+            "Geom. settings:",
+            str(self.geometry_config),
+            "Hotkey",
+            self.hotkey,
         )
 
     @classmethod
     def get_header_ptable(cls):
         """
+        get_header_ptable
         """
-        return ['Name', 'Shape', 'Color', 'Hotkey']  # Is need show geometry settings here?
+        return ["Name", "Shape", "Color", "Hotkey"]  # Is need show geometry settings here?
 
     def get_row_ptable(self):
-        """
-        """
+        """get_row_ptable"""
         return [self.name, self.geometry_type.__name__, self.color, self.hotkey]
 
-    def clone(self, name: Optional[str] = None, geometry_type: Optional[Geometry] = None,
-              color: Optional[List[int, int, int]] = None,
-              geometry_config: Optional[Dict] = None, sly_id: Optional[int] = None,
-              hotkey: Optional[str] = None) -> ObjClass:
+    def clone(
+        self,
+        name: Optional[str] = None,
+        geometry_type: Optional[Geometry] = None,
+        color: Optional[List[int, int, int]] = None,
+        geometry_config: Optional[Dict] = None,
+        sly_id: Optional[int] = None,
+        hotkey: Optional[str] = None,
+    ) -> ObjClass:
         """
         Makes a copy of ObjClass with new fields, if fields are given, otherwise it will use fields of the original ObjClass.
 
@@ -367,12 +397,17 @@ class ObjClass(KeyObject, JsonSerializable):
             #  Let's clone our ObjClass without new fields
             clone_lemon_3 = class_lemon.clone()
         """
-        return ObjClass(name=take_with_default(name, self.name),
-                        geometry_type=take_with_default(geometry_type, self.geometry_type),
-                        color=take_with_default(color, self.color),
-                        geometry_config=take_with_default(geometry_config, self.geometry_config),
-                        sly_id=take_with_default(sly_id, self.sly_id),
-                        hotkey=take_with_default(hotkey, self.hotkey))
+        return ObjClass(
+            name=take_with_default(name, self.name),
+            geometry_type=take_with_default(geometry_type, self.geometry_type),
+            color=take_with_default(color, self.color),
+            geometry_config=take_with_default(geometry_config, self.geometry_config),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            hotkey=take_with_default(hotkey, self.hotkey),
+        )
 
     def __hash__(self):
         return hash((self.name, self.geometry_type.geometry_name()))
+
+    def _set_id(self, id: int):
+        self._sly_id = id

@@ -19,15 +19,16 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class ProjectMetaJsonFields:
-    OBJ_CLASSES = 'classes'
-    IMG_TAGS = 'tags_images'
-    OBJ_TAGS = 'tags_objects'
-    TAGS = 'tags'
-    PROJECT_TYPE = 'projectType'
+    OBJ_CLASSES = "classes"
+    IMG_TAGS = "tags_images"
+    OBJ_TAGS = "tags_objects"
+    TAGS = "tags"
+    PROJECT_TYPE = "projectType"
 
 
-def _merge_img_obj_tag_metas(img_tag_metas: ObjClassCollection,
-                             obj_tag_metas: ObjClassCollection) -> ObjClassCollection:
+def _merge_img_obj_tag_metas(
+    img_tag_metas: ObjClassCollection, obj_tag_metas: ObjClassCollection
+) -> ObjClassCollection:
     obj_tag_metas_to_add = []
     for obj_tag_meta in obj_tag_metas:
         img_tag_meta_same_key = img_tag_metas.get(obj_tag_meta.key(), None)
@@ -35,9 +36,12 @@ def _merge_img_obj_tag_metas(img_tag_metas: ObjClassCollection,
             obj_tag_metas_to_add.append(obj_tag_meta)
         elif not img_tag_meta_same_key.is_compatible(obj_tag_meta):
             raise ValueError(
-                'Unable to merge tag metas for images and objects. Found tags with the same name, but incompatible '
-                'values. \n Image-level tag meta: {}\n Object-level tag meta: {}.\n Rename one of the tags to have a '
-                'unique name to be able to load project meta.'.format(str(img_tag_meta_same_key), str(obj_tag_meta)))
+                "Unable to merge tag metas for images and objects. Found tags with the same name, but incompatible "
+                "values. \n Image-level tag meta: {}\n Object-level tag meta: {}.\n Rename one of the tags to have a "
+                "unique name to be able to load project meta.".format(
+                    str(img_tag_meta_same_key), str(obj_tag_meta)
+                )
+            )
     return img_tag_metas.add_items(obj_tag_metas_to_add)
 
 
@@ -104,9 +108,14 @@ class ProjectMeta(JsonSerializable):
         scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
         meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
     """
-    def __init__(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
-                 project_type: Optional[ProjectType] = None):
-        
+
+    def __init__(
+        self,
+        obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
+        tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
+        project_type: Optional[ProjectType] = None,
+    ):
+
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
         elif isinstance(obj_classes, list):
@@ -115,7 +124,7 @@ class ProjectMeta(JsonSerializable):
             self._obj_classes = obj_classes
         else:
             raise TypeError(f"obj_classes argument has unknown type {type(obj_classes)}")
-        
+
         if tag_metas is None:
             self._tag_metas = TagMetaCollection()
         elif isinstance(tag_metas, list):
@@ -124,7 +133,7 @@ class ProjectMeta(JsonSerializable):
             self._tag_metas = tag_metas
         else:
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
-                
+
         self._project_type = project_type
 
     @property
@@ -270,7 +279,7 @@ class ProjectMeta(JsonSerializable):
         """
         res = {
             ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
-            ProjectMetaJsonFields.TAGS: self._tag_metas.to_json()
+            ProjectMetaJsonFields.TAGS: self._tag_metas.to_json(),
         }
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
@@ -323,19 +332,26 @@ class ProjectMeta(JsonSerializable):
             # New format - all project tags in a single collection.
             if any(len(x) > 0 for x in [img_tag_metas_json, obj_tag_metas_json]):
                 raise ValueError(
-                    'Project meta JSON contains both the {!r} section (current format merged tags for all of '
-                    'the project) and {!r} or {!r} sections (legacy format with separate collections for images '
-                    'and labeled objects). Either new format only or legacy format only are supported, but not a '
-                    'mix.'.format(
-                        ProjectMetaJsonFields.TAGS, ProjectMetaJsonFields.IMG_TAGS, ProjectMetaJsonFields.OBJ_TAGS))
+                    "Project meta JSON contains both the {!r} section (current format merged tags for all of "
+                    "the project) and {!r} or {!r} sections (legacy format with separate collections for images "
+                    "and labeled objects). Either new format only or legacy format only are supported, but not a "
+                    "mix.".format(
+                        ProjectMetaJsonFields.TAGS,
+                        ProjectMetaJsonFields.IMG_TAGS,
+                        ProjectMetaJsonFields.OBJ_TAGS,
+                    )
+                )
             tag_metas = TagMetaCollection.from_json(tag_metas_json)
         else:
             img_tag_metas = TagMetaCollection.from_json(img_tag_metas_json)
             obj_tag_metas = TagMetaCollection.from_json(obj_tag_metas_json)
             tag_metas = _merge_img_obj_tag_metas(img_tag_metas, obj_tag_metas)
 
-        return cls(obj_classes=ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
-                   tag_metas=tag_metas, project_type=project_type)
+        return cls(
+            obj_classes=ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
+            tag_metas=tag_metas,
+            project_type=project_type,
+        )
 
     def merge(self, other: ProjectMeta) -> ProjectMeta:
         """
@@ -404,11 +420,17 @@ class ProjectMeta(JsonSerializable):
             #     ]
             # }
         """
-        return self.clone(obj_classes=self._obj_classes.merge(other.obj_classes),
-                          tag_metas=self._tag_metas.merge(other._tag_metas))
+        return self.clone(
+            obj_classes=self._obj_classes.merge(other.obj_classes),
+            tag_metas=self._tag_metas.merge(other._tag_metas),
+        )
 
-    def clone(self, obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None, tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
-              project_type: Optional[str]=None) -> ProjectMeta:
+    def clone(
+        self,
+        obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
+        tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
+        project_type: Optional[str] = None,
+    ) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
 
@@ -459,9 +481,11 @@ class ProjectMeta(JsonSerializable):
             #     ]
             # }
         """
-        return ProjectMeta(obj_classes=take_with_default(obj_classes, self.obj_classes),
-                           tag_metas=take_with_default(tag_metas, self.tag_metas),
-                           project_type=take_with_default(project_type, self.project_type))
+        return ProjectMeta(
+            obj_classes=take_with_default(obj_classes, self.obj_classes),
+            tag_metas=take_with_default(tag_metas, self.tag_metas),
+            project_type=take_with_default(project_type, self.project_type),
+        )
 
     def add_obj_class(self, new_obj_class: ObjClass) -> ProjectMeta:
         """
@@ -998,9 +1022,9 @@ class ProjectMeta(JsonSerializable):
         return res_meta
 
     def __str__(self):
-        result = 'ProjectMeta:\n'
-        result += 'Object Classes\n{}\n'.format(str(self._obj_classes))
-        result += 'Tags\n{}\n'.format(str(self._tag_metas))
+        result = "ProjectMeta:\n"
+        result += "Object Classes\n{}\n".format(str(self._obj_classes))
+        result += "Tags\n{}\n".format(str(self._tag_metas))
         return result
 
     def __eq__(self, other: ProjectMeta):
@@ -1011,7 +1035,9 @@ class ProjectMeta(JsonSerializable):
     def __ne__(self, other: ProjectMeta):
         return not self == other
 
-    def to_segmentation_task(self, keep_geometries: Optional[List]=[Polygon, Bitmap], target_classes=None) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+    def to_segmentation_task(
+        self, keep_geometries: Optional[List] = [Polygon, Bitmap], target_classes=None
+    ) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
         """
         Convert project meta classes geometries with keep_geometries types to Bitmaps and create new ProjectMeta.
 
@@ -1096,7 +1122,9 @@ class ProjectMeta(JsonSerializable):
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
-    def to_detection_task(self, convert_classes: Optional[bool]=False) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
+    def to_detection_task(
+        self, convert_classes: Optional[bool] = False
+    ) -> Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]:
         """
         Convert project meta classes geometries to Rectangles or skip them and create new ProjectMeta.
 
@@ -1176,5 +1204,3 @@ class ProjectMeta(JsonSerializable):
                     mapping[obj_class] = None
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
-
-

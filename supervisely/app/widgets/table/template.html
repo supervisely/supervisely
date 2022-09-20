@@ -16,4 +16,6 @@
   %}
 >
 </sly-table>
-<div v-else>Table is empty</div>
+<div v-if="data.{{{widget.widget_id}}}.table_data.data.length === 0">
+  Table is empty
+</div>

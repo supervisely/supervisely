@@ -268,9 +268,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         """
         info = self._get_info_by_id(id, "projects.info")
-        self._check_project_info(
-            info, id=id, expected_type=expected_type, raise_error=raise_error
-        )
+        self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
     def get_info_by_name(
@@ -419,9 +417,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 "with_meta parameter must be True if with_annotations parameter is True"
             )
         if not with_datasets and with_items:
-            raise ValueError(
-                "with_datasets parameter must be True if with_items parameter is True"
-            )
+            raise ValueError("with_datasets parameter must be True if with_items parameter is True")
         response = self._api.post(
             self._clone_api_method_name(),
             {
@@ -562,9 +558,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_meta_json = load_json_file(path_to_meta)
             api.project.update_meta(kiwis_proj_id, project_meta)
         """
+        meta_json = None
         if isinstance(meta, ProjectMeta):
-            meta = meta.to_json()
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta})
+            meta_json = meta.to_json()
+        else:
+            meta_json = meta
+        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
     def _clone_api_method_name(self):
         """ """
@@ -665,9 +664,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(
-        self, id: int, progress_cb: Optional[Callable] = None
-    ) -> DataFrame:
+    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -810,13 +807,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param settings: Project settings
         :type settings: Dict[str, str]
         """
-        self._api.post(
-            "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings}
-        )
+        self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
-    def download_images_tags(
-        self, id: int, progress_cb: Optional[Callable] = None
-    ) -> defaultdict:
+    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
@@ -860,9 +853,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     progress_cb(1)
         return tag2images
 
-    def images_grouping(
-        self, id: int, enable: bool, tag_name: str, sync: bool = False
-    ) -> None:
+    def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
         """
         Enables images grouping in project.
 
@@ -887,9 +878,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         }
         self.update_settings(id=id, settings=project_settings)
 
-    def get_or_create(
-        self, workspace_id, name, type=ProjectType.IMAGES, description=""
-    ):
+    def get_or_create(self, workspace_id, name, type=ProjectType.IMAGES, description=""):
         """ """
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
@@ -932,9 +921,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_info = self.get_info_by_id(id)
             current_project_type = project_info.type
             if project_type == current_project_type:
-                raise ValueError(
-                    f"project with id {id} already has type {project_type}"
-                )
+                raise ValueError(f"project with id {id} already has type {project_type}")
             if not (
                 current_project_type == str(ProjectType.POINT_CLOUDS)
                 and project_type == str(ProjectType.POINT_CLOUD_EPISODES)
@@ -946,3 +933,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         response = self._api.post(self._get_update_method(), body)
         return self._convert_json_info(response.json())
+
+    def pull_meta_ids(self, id, meta: ProjectMeta):
+        # to update ids in existing project meta
+        meta_json = self.get_meta(id)
+        server_meta = ProjectMeta.from_json(meta_json)
+        meta.obj_classes.refresh_ids_from(server_meta.obj_classes)
+        meta.tag_metas.refresh_ids_from(server_meta.tag_metas)

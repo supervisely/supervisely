@@ -13,6 +13,7 @@ import numpy as np
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.api.project_api import ProjectInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
@@ -876,6 +877,13 @@ class Dataset(KeyObject):
             self._item_to_ann.pop(item_name)
             return True
         return False
+
+    @staticmethod
+    def get_url(project_id: int, dataset_id: int) -> str:
+        res = f"/projects/{project_id}/datasets/{dataset_id}/entities"
+        if is_development():
+            res = abs_url(res)
+        return res
 
 
 class Project:

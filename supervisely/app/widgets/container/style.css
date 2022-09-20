@@ -9,3 +9,7 @@
 .container.wrap {
     flex-wrap: wrap;
 }
+
+.container .card .content-wrapper {
+    height: 100%;     
+}

@@ -23,7 +23,7 @@ class SelectProject(Widget):
         default_id: int = None,
         workspace_id: int = None,
         compact: bool = False,
-        project_types: List[ProjectType] = [],
+        allowed_types: List[ProjectType] = [],
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
@@ -33,7 +33,7 @@ class SelectProject(Widget):
         self._ws_id = workspace_id
         self._team_id = None
         self._compact = compact
-        self._project_types = project_types
+        self._project_types = allowed_types
         self._show_label = show_label
         self._size = size
         self._ws_selector = None

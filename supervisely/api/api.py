@@ -110,9 +110,7 @@ class Api:
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "20"))
         if retry_sleep_sec is None:
-            retry_sleep_sec = int(
-                os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1")
-            )
+            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
         if len(token) != 128:
             raise ValueError("Invalid token {!r}: length != 128".format(token))
@@ -256,13 +254,8 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(
-                        url, data=data, headers=self.headers, stream=stream
-                    )
-                elif (
-                    type(data) is MultipartEncoderMonitor
-                    or type(data) is MultipartEncoder
-                ):
+                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     response = requests.post(
                         url,
                         data=data,
@@ -332,9 +325,7 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(
-                    url, params=json_body, headers=self.headers, stream=stream
-                )
+                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
                 if response.status_code != requests.codes.ok:
                     Api._raise_for_status(response)

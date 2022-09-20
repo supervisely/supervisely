@@ -73,6 +73,7 @@ setup(
         "PyYAML",
         "distinctipy",
         "beautifulsoup4",
+        "numerize"
     ],
     extras_require={
         "extras": [
