@@ -296,3 +296,7 @@ class Table(Widget):
     def clear_selection(self):
         StateJson()[self.widget_id]["selected_row"] = {}
         StateJson().send_changes()
+
+    def add_row(self, row: List):
+        DataJson()[self.widget_id]["table_data"]["data"].append(row)
+        StateJson().send_changes()

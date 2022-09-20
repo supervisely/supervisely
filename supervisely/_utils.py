@@ -189,9 +189,13 @@ def get_preview_link(title="preview"):
 
 
 def get_datetime(value: str) -> datetime:
+    if value is None:
+        return None
     return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def get_readable_datetime(value: str) -> str:
     dt = get_datetime(value)
+    if dt is None:
+        return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")

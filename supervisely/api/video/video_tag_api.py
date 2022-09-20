@@ -138,7 +138,7 @@ class VideoTagApi(TagApi):
                 video_info = self._api.video.get_info_by_id(video_id)
                 meta_json = self._api.project.get_meta(video_info.project_id)
                 meta = ProjectMeta.from_json(meta_json)
-                server_tag_meta = meta.get_tag_meta(tag_meta.name)
+                server_tag_meta = meta.get_tag_meta(tag.meta.name)
                 if server_tag_meta is None:
                     raise KeyError(
                         f"Tag with name {tag.meta.name} not found in project with id {video_info.project_id}"

@@ -280,6 +280,12 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
                 continue
             my_tag._set_id(new_tag.sly_id)
 
+    def get_by_id(self, tag_meta_id: int):
+        for tag_meta in self:
+            if tag_meta.sly_id == tag_meta_id:
+                return tag_meta
+        return None
+
 
 def make_renamed_tag_metas(
     src_tag_metas: TagMetaCollection, renamer, skip_missing=False
