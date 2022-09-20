@@ -90,14 +90,14 @@ class Button(Widget):
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
     def click(self, func):
-        from fastapi import Request
+        # from fastapi import Request
 
         route_path = self.get_route_path(Button.Routes.CLICK)
         server = self._sly_app.get_server()
 
         @server.post(route_path)
-        def _click(r: Request):
-            # maybe work with headers and store some values there
+        def _click():
+            # maybe work with headers and store some values there r: Request
             if self.show_loading:
                 self.loading = True
             try:
