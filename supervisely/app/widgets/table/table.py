@@ -226,6 +226,7 @@ class Table(Widget):
 
         self._parsed_data["data"].insert(index, data)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
 
     def pop_row(self, index=-1):
         index = (
@@ -237,6 +238,7 @@ class Table(Widget):
         if len(self._parsed_data["data"]) != 0:
             popped_row = self._parsed_data["data"].pop(index)
             DataJson()[self.widget_id]["table_data"] = self._parsed_data
+            DataJson().send_changes()
             return popped_row
 
     def get_selected_cell(self, state):
@@ -297,6 +299,17 @@ class Table(Widget):
         StateJson()[self.widget_id]["selected_row"] = {}
         StateJson().send_changes()
 
-    def add_row(self, row: List):
-        DataJson()[self.widget_id]["table_data"]["data"].append(row)
-        StateJson().send_changes()
+    def delete_row(self, key_column_name, key_cell_value):
+        col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[col_index] == key_cell_value:
+                row_indices.append(idx)
+        if len(row_indices) == 0:
+            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
+        if len(row_indices) > 1:
+            raise ValueError(
+                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
+            )
+        self.pop_row(row_indices[0])
+        DataJson().send_changes()

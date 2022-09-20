@@ -130,7 +130,6 @@ class VideoTagApi(TagApi):
             request_data[ApiField.FRAME_RANGE] = frame_range
 
         resp = self._api.post("videos.tags.add", request_data)
-        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296671}
         # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max'}
         return resp.json()
 
@@ -179,3 +178,10 @@ class VideoTagApi(TagApi):
             tag_json["name"] = tag_meta.name
         tags = VideoTagCollection.from_json(tags_json, project_meta.tag_metas)
         return tags
+
+    def remove(self, tag: VideoTag):
+        if tag.sly_id is None:
+            raise ValueError(
+                "Only tags with ID (tag.sly_id field) can be removed. Such tags have to be downloaded from server or have ID"
+            )
+        self.remove_from_video(tag.sly_id)
