@@ -220,7 +220,7 @@ class TagCollection(MultiKeyIndexedCollection):
         return "Tags:\n" + super(TagCollection, self).__str__()
 
     @classmethod
-    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None):
+    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None) -> TagCollection:
         if id_to_tagmeta is None:
             id_to_tagmeta = tag_meta_collection.get_id_mapping()
         tags = []

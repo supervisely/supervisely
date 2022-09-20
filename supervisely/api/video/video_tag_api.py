@@ -168,15 +168,17 @@ class VideoTagApi(TagApi):
     def get_list(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:
         data = self._api.video.get_json_info_by_id(id, True)
         tags_json = data["tags"]
-        for tag_json in tags_json:
-            tag_meta_id = tag_json["tagId"]
-            tag_meta = project_meta.tag_metas.get_by_id(tag_meta_id)
-            if tag_meta is None:
-                raise KeyError(
-                    f"Tag meta with id={tag_meta_id} not found in project meta. Please, update project meta from server"
-                )
-            tag_json["name"] = tag_meta.name
-        tags = VideoTagCollection.from_json(tags_json, project_meta.tag_metas)
+        # for tag_json in tags_json:
+        #     tag_meta_id = tag_json["tagId"]
+        #     tag_meta = project_meta.tag_metas.get_by_id(tag_meta_id)
+        #     if tag_meta is None:
+        #         raise KeyError(
+        #             f"Tag meta with id={tag_meta_id} not found in project meta. Please, update project meta from server"
+        #         )
+        #     tag_json["name"] = tag_meta.name
+        # tags = VideoTagCollection.from_json(tags_json, project_meta.tag_metas)
+        # return tags
+        tags = VideoTagCollection.from_api_response(tags_json, project_meta.tag_metas)
         return tags
 
     def remove(self, tag: VideoTag):

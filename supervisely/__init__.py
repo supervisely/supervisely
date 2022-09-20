@@ -137,6 +137,7 @@ from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.video_tag import VideoTag
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.project.video_project import (
     VideoDataset,
     VideoProject,
