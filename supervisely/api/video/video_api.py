@@ -15,11 +15,9 @@ from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_tag_api import VideoTagApi
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.io.fs import get_file_hash
-from supervisely.video_annotation.video_tag import VideoTag
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+
 
 from supervisely.io.fs import ensure_base_path
 from supervisely._utils import batched, is_development, abs_url
@@ -1025,17 +1023,3 @@ class VideoApi(RemoveableBulkModuleApi):
             "videos.custom-data.set", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
         )
         return resp.json()
-
-    def get_tags(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:
-        data = self.get_json_info_by_id(id, True)
-        tags_json = data["tags"]
-        for tag_json in tags_json:
-            tag_meta_id = tag_json["tagId"]
-            tag_meta = project_meta.tag_metas.get_by_id(tag_meta_id)
-            if tag_meta is None:
-                raise KeyError(
-                    f"Tag meta with id={tag_meta_id} not found in project meta. Please, update project meta from server"
-                )
-            tag_json["name"] = tag_meta.name
-        tags = VideoTagCollection.from_json(tags_json, project_meta.tag_metas)
-        return tags

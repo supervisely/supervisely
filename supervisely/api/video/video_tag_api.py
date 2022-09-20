@@ -7,6 +7,9 @@ from supervisely.video_annotation.video_tag import VideoTag
 
 from supervisely.api.module_api import ApiField
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.video_tag import VideoTag
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoTagApi(TagApi):
@@ -151,3 +154,17 @@ class VideoTagApi(TagApi):
         if update_id_inplace is True:
             tag._set_id(tag_id)
         return tag_id
+
+    def get_list(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:
+        data = self._api.video.get_json_info_by_id(id, True)
+        tags_json = data["tags"]
+        for tag_json in tags_json:
+            tag_meta_id = tag_json["tagId"]
+            tag_meta = project_meta.tag_metas.get_by_id(tag_meta_id)
+            if tag_meta is None:
+                raise KeyError(
+                    f"Tag meta with id={tag_meta_id} not found in project meta. Please, update project meta from server"
+                )
+            tag_json["name"] = tag_meta.name
+        tags = VideoTagCollection.from_json(tags_json, project_meta.tag_metas)
+        return tags
