@@ -19,6 +19,9 @@ class Hidable:
     def __init__(self):
         self._hide = False
 
+    def is_hidden(self):
+        return self._hide
+
     def hide(self):
         self._hide = True
         DataJson()[self.widget_id]["hide"] = self._hide
@@ -52,6 +55,9 @@ class Hidable:
 class Disableable:
     def __init__(self):
         self._disabled = False
+
+    def is_disabled(self):
+        return self._disabled
 
     def disable(self):
         self._disabled = True
