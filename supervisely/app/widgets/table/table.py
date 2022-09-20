@@ -312,4 +312,21 @@ class Table(Widget):
                 'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
             )
         self.pop_row(row_indices[0])
+
+    def update_cell_value(self, key_column_name, key_cell_value, column_name, new_value):
+        key_col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[key_col_index] == key_cell_value:
+                row_indices.append(idx)
+        if len(row_indices) == 0:
+            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
+        if len(row_indices) > 1:
+            raise ValueError(
+                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
+            )
+
+        col_index = self._parsed_data["columns"].index(column_name)
+        self._parsed_data["data"][row_indices[0]][col_index] = new_value
+        DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
