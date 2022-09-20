@@ -131,7 +131,8 @@ class VideoTagApi(TagApi):
 
         resp = self._api.post("videos.tags.add", request_data)
         # {'imageId': 3267369, 'tagId': 368985, 'id': 2296671}
-        return resp.json()["id"]
+        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max'}
+        return resp.json()
 
     def add(self, video_id: int, tag: VideoTag, update_id_inplace=True) -> int:
         from supervisely.project.project_meta import ProjectMeta
@@ -150,9 +151,19 @@ class VideoTagApi(TagApi):
             else:
                 raise ValueError("tag_meta.sly_id is None, get updated project meta from server")
 
-        tag_id = self.add_tag(tag.meta.sly_id, video_id, tag.value, tag.frame_range)
-        if update_id_inplace is True:
+        resp_json = self.add_tag(tag.meta.sly_id, video_id, tag.value, tag.frame_range)
+        tag_id = resp_json.get("id")
+        created_at = resp_json.get("createdAt")
+        updated_at = resp_json.get("updatedAt")
+        user = resp_json.get("labelerLogin")
+        if update_id_inplace is True and tag_id is not None:
             tag._set_id(tag_id)
+        if update_id_inplace is True and created_at is not None:
+            tag._set_created_at(created_at)
+        if update_id_inplace is True and updated_at is not None:
+            tag._set_updated_at(updated_at)
+        if update_id_inplace is True and user is not None:
+            tag._set_labeler_login(user)
         return tag_id
 
     def get_list(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:

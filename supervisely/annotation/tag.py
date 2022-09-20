@@ -439,3 +439,12 @@ class Tag(KeyObject):
 
     def _set_id(self, id: int):
         self.sly_id = id
+
+    def _set_updated_at(self, updated_at: str):
+        self.updated_at = updated_at
+
+    def _set_created_at(self, created_at: str):
+        self.created_at = created_at
+
+    def _set_labeler_login(self, labeler_login: str):
+        self.labeler_login = labeler_login
