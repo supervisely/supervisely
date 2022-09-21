@@ -69,6 +69,8 @@ class Video(Widget):
         DataJson()[self.widget_id]["videoId"] = self._video_id
         DataJson()[self.widget_id]["frames_count"] = self._video_info.frames_count
         DataJson().send_changes()
+        StateJson()[self.widget_id]["currentFrame"] = 0
+        StateJson().send_changes()
 
     @property
     def loading(self):
