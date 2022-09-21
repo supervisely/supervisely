@@ -217,6 +217,9 @@ class Application(metaclass=Singleton):
             from supervisely.app.widgets import Identity
 
             main_layout = Identity(layout, widget_id="__app_main_layout__")
+            logger.info(
+                "Application is running in no-html mode", extra={"templates_dir": templates_dir}
+            )
 
         if is_production():
             logger.info("Application is running on Supervisely Platform in production mode")
