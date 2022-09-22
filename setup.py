@@ -37,7 +37,7 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     url="https://github.com/supervisely/supervisely",
-    package_data={"": ["*.html", "*.css"], "supervisely": ["video/*.sh", "app/development/*.sh", "app/fastapi/templates/*.html"]},
+    package_data={"": ["*.html", "*.css"], "supervisely": ["video/*.sh", "app/development/*.sh"]},
     install_requires=[
         "numpy>=1.19, <2.0.0",
         "opencv-python>=4.5.5.62, <5.0.0.0",
