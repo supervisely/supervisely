@@ -65,6 +65,7 @@
             :session="session"
             :data="data"
             :state="state"
+            :style="{margin-left: state.app_body_padding, margin-top: state.app_body_padding}"
           ></sly-app-header>
           <div :style="{padding: state.app_body_padding}">
             {% include 'main.html' %}
