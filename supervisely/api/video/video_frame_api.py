@@ -104,12 +104,17 @@ class VideoFrameAPI(ModuleApi):
             frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
             api.video.frame.download_nps(video_id, frame_indexes)
         """
-        return [
-            sly_image.read_bytes(frame_bytes, keep_alpha)
-            for frame_bytes in self.download_bytes(
-                video_id=video_id, frame_indexes=frame_indexes, progress_cb=progress_cb
-            )
-        ]
+        downloaded_frames = []
+        for frame_bytes, frame_idx in zip(
+                self.download_bytes(video_id=video_id, frame_indexes=frame_indexes, progress_cb=progress_cb),
+                frame_indexes
+        ):
+            try:
+                frame = sly_image.read_bytes(frame_bytes, keep_alpha)
+                downloaded_frames.append(frame)
+            except Exception as e:
+                raise Exception(f"Couldn't read frame: {frame_idx}.") from e
+        return downloaded_frames
 
     def download_path(self, video_id: int, frame_index: int, path: str) -> None:
         """
