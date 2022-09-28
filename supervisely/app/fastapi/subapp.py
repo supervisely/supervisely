@@ -203,11 +203,15 @@ class Application(metaclass=Singleton):
     def __init__(self, layout: "Widget" = None, templates_dir: str = None):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
-
+        JinjaWidgets().context["__no_html_mode__"] = True
+        
         headless = False
         if layout is None and templates_dir is None:
             templates_dir: str = "templates"  # for back compatibility
             headless = True
+            logger.info(
+                "Both arguments 'layout' and 'templates_dir' are not defined. App is headless (i.e. without UI)", extra={"templates_dir": templates_dir}
+            )
         if layout is not None and templates_dir is not None:
             raise ValueError(
                 "Only one of the arguments has to be defined: 'layout' or 'templates_dir'. 'layout' argument is recommended."
@@ -220,6 +224,9 @@ class Application(metaclass=Singleton):
             logger.info(
                 "Application is running in no-html mode", extra={"templates_dir": templates_dir}
             )
+        else:
+            JinjaWidgets().auto_widget_id = False
+            JinjaWidgets().context["__no_html_mode__"] = False
 
         if is_production():
             logger.info("Application is running on Supervisely Platform in production mode")
