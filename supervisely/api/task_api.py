@@ -849,7 +849,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             icon="zmdi zmdi-folder",
         )
 
-    def update_meta(self, id: int, data: dict):
+    def update_meta(self, id: int, data: dict, agent_storage_folder: str = None):
         """
         Update given task metadata
         :param id: int — task id
@@ -857,5 +857,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         if type(data) == dict:
             data.update({"id": id})
+        
+        data["agentStorageFolder"] = agent_storage_folder
 
         self._api.post("tasks.meta.update", data)
