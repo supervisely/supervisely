@@ -10,6 +10,7 @@ import shutil
 import tarfile
 from pathlib import Path
 import urllib
+import re
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
@@ -30,8 +31,8 @@ from supervisely.io.fs import (
 
 
 class FileInfo(NamedTuple):
-    """
-    """
+    """ """
+
     team_id: int
     id: int
     user_id: int
@@ -312,6 +313,10 @@ class FileApi(ModuleApiBase):
 
             api.file.download(8, path_to_file, local_save_path)
         """
+        if self.is_file_on_agent(remote_path):
+            self.download_from_agent(remote_path, local_save_path, progress_cb)
+            return
+
         if cache is None:
             self._download(team_id, remote_path, local_save_path, progress_cb)
         else:
@@ -319,9 +324,7 @@ class FileApi(ModuleApiBase):
             if file_info.hash is None:
                 self._download(team_id, remote_path, local_save_path, progress_cb)
             else:
-                cache_path = cache.check_storage_object(
-                    file_info.hash, get_file_ext(remote_path)
-                )
+                cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
                 if cache_path is None:
                     # file not in cache
                     self._download(team_id, remote_path, local_save_path, progress_cb)
@@ -334,6 +337,37 @@ class FileApi(ModuleApiBase):
                     cache.read_object(file_info.hash, local_save_path)
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
+
+    def is_file_on_agent(self, remote_path: str):
+        if remote_path.startswith("agent://"):
+            return True
+        else:
+            return False
+
+    def download_from_agent(
+        self,
+        remote_path: str,
+        local_save_path: str,
+        progress_cb: Progress = None,
+    ) -> None:
+        if self.is_file_on_agent(remote_path) is False:
+            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
+
+        search = re.search("agent://(\d+)/(.*)", remote_path)
+        agent_id = int(search.group(1))
+        path_in_agent_folder = "/" + search.group(2)
+
+        response = self._api.post(
+            "agents.storage.download",
+            {ApiField.ID: agent_id, ApiField.PATH: path_in_agent_folder},
+            stream=True,
+        )
+        ensure_base_path(local_save_path)
+        with open(local_save_path, "wb") as fd:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                fd.write(chunk)
+                if progress_cb is not None:
+                    progress_cb(len(chunk))
 
     def download_directory(
         self,
@@ -375,17 +409,15 @@ class FileApi(ModuleApiBase):
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        temp_dir = os.path.join(
-            local_save_path, os.path.basename(os.path.normpath(remote_path))
-        )
+        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
         shutil.rmtree(temp_dir)
 
     def _upload_legacy(self, team_id, src, dst):
-        """
-        """
+        """ """
+
         def path_to_bytes_stream(path):
             return open(path, "rb")
 
@@ -517,9 +549,7 @@ class FileApi(ModuleApiBase):
             data = encoder
         else:
             data = MultipartEncoderMonitor(encoder, progress_cb)
-        resp = self._api.post(
-            "file-storage.bulk.upload?teamId={}".format(team_id), data
-        )
+        resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
         return results
 
@@ -743,8 +773,7 @@ class FileApi(ModuleApiBase):
         return None
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         # if res.storage_path is not None:
         #    res = res._replace(full_storage_url=urllib.parse.urljoin(self._api.server_address, res.storage_path))
@@ -874,7 +903,5 @@ class FileApi(ModuleApiBase):
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
         ):
 
-            self.upload_bulk(
-                team_id, local_paths_batch, remote_files_batch, progress_size_cb
-            )
+            self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
