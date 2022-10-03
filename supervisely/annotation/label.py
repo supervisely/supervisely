@@ -73,7 +73,7 @@ class LabelBase:
     """
 
     def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None,
-                 description: Optional[str] = ""):
+                 description: Optional[str] = "", instance_key=None):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -83,6 +83,8 @@ class LabelBase:
 
         if not isinstance(tags, TagCollection):
             self._tags = TagCollection(tags)
+        
+        self._instance_key = instance_key
 
     def _validate_geometry(self):
         '''
@@ -303,10 +305,12 @@ class LabelBase:
         else:
             geometry = obj_class.geometry_type.from_json(data)
 
+        instance_key = data.get(LabelJsonFields.INSTANCE_KEY)
         return cls(geometry=geometry,
                    obj_class=obj_class,
                    tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
-                   description=data.get(LabelJsonFields.DESCRIPTION, ""))
+                   description=data.get(LabelJsonFields.DESCRIPTION, ""),
+                   instance_key=instance_key)
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -371,7 +375,7 @@ class LabelBase:
 
     def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None,
               tags: Optional[Union[TagCollection, List[Tag]]] = None,
-              description: Optional[str] = None) -> LabelBase:
+              description: Optional[str] = None, instance_key=None) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
@@ -423,7 +427,8 @@ class LabelBase:
         return self.__class__(geometry=take_with_default(geometry, self.geometry),
                               obj_class=take_with_default(obj_class, self.obj_class),
                               tags=take_with_default(tags, self.tags),
-                              description=take_with_default(description, self.description))
+                              description=take_with_default(description, self.description),
+                              instance_key=instance_key)
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
@@ -681,7 +686,9 @@ class LabelBase:
         for g in geometries:
             labels.append(self.clone(geometry=g, obj_class=new_obj_class))
         return labels
-
+    
+    def set_instance_key(self, key: str):
+        self._instance_key = key
 
 class Label(LabelBase):
     def _validate_geometry_type(self):
