@@ -62,6 +62,13 @@ class ProjectInfo(NamedTuple):
         res = compress_image_url(url=res, height=200)
         return res
 
+    @property
+    def url(self):
+        res = f"projects/{self.id}/datasets"
+        if is_development():
+            res = abs_url(res)
+        return res
+    
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """

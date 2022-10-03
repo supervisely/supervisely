@@ -2887,3 +2887,7 @@ class Annotation:
             # if label.binding_key is not None:
             d[label.binding_key].append(label)
         return d
+    
+    def discard_bindings(self):
+        for label in self.labels:
+            label.binding_key = None

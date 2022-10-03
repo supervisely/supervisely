@@ -252,6 +252,9 @@ class LabelBase:
 
         if self.obj_class.sly_id is not None:
             res[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
+        
+        if self.binding_key is not None:
+            res[LabelJsonFields.INSTANCE_KEY] = self.binding_key
 
         return res
 
@@ -694,7 +697,9 @@ class LabelBase:
         return self._binding_key
        
     @binding_key.setter
-    def binding_key(self, key: str):
+    def binding_key(self, key: Union[str, None]):
+        if key is not None and type(key) is not str:
+            raise TypeError("Key has to be of type string or None")
         self._binding_key = key
 
 class Label(LabelBase):
