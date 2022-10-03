@@ -34,6 +34,8 @@ class LabelJsonFields:
     """"""
     TAGS = 'tags'
     """"""
+    INSTANCE_KEY = 'instance'
+    """"""
 
 
 class LabelBase:
@@ -73,7 +75,7 @@ class LabelBase:
     """
 
     def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None,
-                 description: Optional[str] = ""):
+                 description: Optional[str] = "", binding_key=None):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -83,6 +85,8 @@ class LabelBase:
 
         if not isinstance(tags, TagCollection):
             self._tags = TagCollection(tags)
+        
+        self._binding_key = binding_key
 
     def _validate_geometry(self):
         '''
@@ -248,6 +252,9 @@ class LabelBase:
 
         if self.obj_class.sly_id is not None:
             res[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
+        
+        if self.binding_key is not None:
+            res[LabelJsonFields.INSTANCE_KEY] = self.binding_key
 
         return res
 
@@ -303,10 +310,12 @@ class LabelBase:
         else:
             geometry = obj_class.geometry_type.from_json(data)
 
+        binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
         return cls(geometry=geometry,
                    obj_class=obj_class,
                    tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
-                   description=data.get(LabelJsonFields.DESCRIPTION, ""))
+                   description=data.get(LabelJsonFields.DESCRIPTION, ""),
+                   binding_key=binding_key)
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -371,7 +380,7 @@ class LabelBase:
 
     def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None,
               tags: Optional[Union[TagCollection, List[Tag]]] = None,
-              description: Optional[str] = None) -> LabelBase:
+              description: Optional[str] = None, binding_key=None) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
@@ -423,7 +432,8 @@ class LabelBase:
         return self.__class__(geometry=take_with_default(geometry, self.geometry),
                               obj_class=take_with_default(obj_class, self.obj_class),
                               tags=take_with_default(tags, self.tags),
-                              description=take_with_default(description, self.description))
+                              description=take_with_default(description, self.description),
+                              binding_key=binding_key)
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
@@ -681,7 +691,16 @@ class LabelBase:
         for g in geometries:
             labels.append(self.clone(geometry=g, obj_class=new_obj_class))
         return labels
-
+        
+    @property
+    def binding_key(self):
+        return self._binding_key
+       
+    @binding_key.setter
+    def binding_key(self, key: Union[str, None]):
+        if key is not None and type(key) is not str:
+            raise TypeError("Key has to be of type string or None")
+        self._binding_key = key
 
 class Label(LabelBase):
     def _validate_geometry_type(self):

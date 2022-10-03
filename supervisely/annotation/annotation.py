@@ -2880,3 +2880,14 @@ class Annotation:
             if lbl.obj_class.name in keep_classes:
                 new_labels.append(lbl.clone())
         return self.clone(labels=new_labels)
+
+    def get_bindings(self):
+        d = defaultdict(list)
+        for label in self.labels:
+            # if label.binding_key is not None:
+            d[label.binding_key].append(label)
+        return d
+    
+    def discard_bindings(self):
+        for label in self.labels:
+            label.binding_key = None
