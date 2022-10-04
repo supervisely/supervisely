@@ -61,7 +61,12 @@ class Inference:
             pass
 
     def _get_templates_dir(self):
-        raise NotImplementedError("Have to be implemented in child class")
+        return None
+        # raise NotImplementedError("Have to be implemented in child class")
+
+    def _get_layout(self):
+        return None
+        #raise NotImplementedError("Have to be implemented in child class")
 
     def load_on_device(
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
@@ -239,7 +244,7 @@ class Inference:
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
         # headless=self._headless,
-        self._app = Application(templates_dir=self._get_templates_dir())
+        self._app = Application(layout=self._get_layout(), templates_dir=self._get_templates_dir())
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")

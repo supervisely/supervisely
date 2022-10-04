@@ -1,6 +1,7 @@
 from typing import Dict, List
 from pathlib import Path
 import os
+from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -18,10 +19,15 @@ from supervisely.project.project_meta import ProjectMeta
 
 class InstanceSegmentation(Inference):
     def _get_templates_dir(self):
-        template_dir = os.path.join(
-            Path(__file__).parent.absolute(), "dashboard/templates"
-        )
-        return template_dir
+        # template_dir = os.path.join(
+        #     Path(__file__).parent.absolute(), "dashboard/templates"
+        # )
+        # return template_dir
+        return None
+        
+    def _get_layout(self) -> Widget:
+        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        return main_ui.menu
 
     def get_info(self) -> dict:
         info = super().get_info()
