@@ -165,7 +165,7 @@ class VideoTagApi(TagApi):
             tag._set_labeler_login(user)
         return tag_id
 
-    def get_list(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:
+    def download_list(self, id: int, project_meta: ProjectMeta) -> VideoTagCollection:
         data = self._api.video.get_json_info_by_id(id, True)
         tags_json = data["tags"]
         # for tag_json in tags_json:
