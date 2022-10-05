@@ -28,6 +28,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     silent_remove,
 )
+from supervisely.sly_logger import logger
 
 
 class FileInfo(NamedTuple):
@@ -599,6 +600,11 @@ class FileApi(ModuleApiBase):
 
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
+        
+        if self.is_file_on_agent(path) is True:
+            logger.warn(f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent.")
+            return
+        
         resp = self._api.post(
             "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
