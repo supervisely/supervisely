@@ -857,9 +857,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         if type(data) == dict:
             data.update({"id": id})
-            data["agentStorageFolder"] = {
-                "hostDir": agent_storage_folder,
-                "folder": relative_app_dir
-            }
+            if agent_storage_folder is None and relative_app_dir is not None:
+                raise ValueError("Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None")
+            if agent_storage_folder is not None and relative_app_dir is None:
+                raise ValueError("Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None")
+            if agent_storage_folder is not None and relative_app_dir is not None:
+                data["agentStorageFolder"] = {
+                    "hostDir": agent_storage_folder,
+                    "folder": relative_app_dir
+                }
 
         self._api.post("tasks.meta.update", data)
