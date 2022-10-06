@@ -29,6 +29,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.sly_logger import logger
+import supervisely.environment.environment as env
 
 
 class FileInfo(NamedTuple):
@@ -345,18 +346,21 @@ class FileApi(ModuleApiBase):
         else:
             return False
 
+    def parse_agent_id_and_path(self, remote_path: str) -> int:
+        if self.is_file_on_agent(remote_path) is False:
+            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
+        search = re.search("agent://(\d+)/(.*)", remote_path)
+        agent_id = int(search.group(1))
+        path_in_agent_folder = "/" + search.group(2)
+        return agent_id, path_in_agent_folder
+
     def download_from_agent(
         self,
         remote_path: str,
         local_save_path: str,
         progress_cb: Progress = None,
     ) -> None:
-        if self.is_file_on_agent(remote_path) is False:
-            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-
-        search = re.search("agent://(\d+)/(.*)", remote_path)
-        agent_id = int(search.group(1))
-        path_in_agent_folder = "/" + search.group(2)
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
 
         response = self._api.post(
             "agents.storage.download",
@@ -407,6 +411,12 @@ class FileApi(ModuleApiBase):
         """
         if not remote_path.endswith(os.path.sep):
             remote_path += os.path.sep
+
+        if self.is_file_on_agent(remote_path) is True:
+            agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+            if agent_id == env.agent_id():
+                print("TBD")
+                return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
