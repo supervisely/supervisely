@@ -186,6 +186,7 @@ class FileApi(ModuleApiBase):
             #     }
             # ]
         """
+
         response = self._api.post(
             "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
