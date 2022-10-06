@@ -15,9 +15,10 @@ import re
 from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
@@ -414,8 +415,9 @@ class FileApi(ModuleApiBase):
 
         if self.is_file_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
-            if agent_id == env.agent_id():
-                print("TBD")
+            if agent_id == env.agent_id() and env.agent_storage() is not None:
+                dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
                 return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
