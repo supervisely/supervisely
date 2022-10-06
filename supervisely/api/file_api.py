@@ -316,7 +316,7 @@ class FileApi(ModuleApiBase):
 
             api.file.download(8, path_to_file, local_save_path)
         """
-        if self.is_file_on_agent(remote_path):
+        if self.is_on_agent(remote_path):
             self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
 
@@ -341,14 +341,14 @@ class FileApi(ModuleApiBase):
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
 
-    def is_file_on_agent(self, remote_path: str):
+    def is_on_agent(self, remote_path: str):
         if remote_path.startswith("agent://"):
             return True
         else:
             return False
 
     def parse_agent_id_and_path(self, remote_path: str) -> int:
-        if self.is_file_on_agent(remote_path) is False:
+        if self.is_on_agent(remote_path) is False:
             raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
         search = re.search("agent://(\d+)/(.*)", remote_path)
         agent_id = int(search.group(1))
@@ -420,7 +420,7 @@ class FileApi(ModuleApiBase):
         if not remote_path.endswith(os.path.sep):
             remote_path += os.path.sep
 
-        if self.is_file_on_agent(remote_path) is True:
+        if self.is_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
             if agent_id == env.agent_id() and env.agent_storage() is not None:
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
@@ -625,7 +625,7 @@ class FileApi(ModuleApiBase):
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
 
-        if self.is_file_on_agent(path) is True:
+        if self.is_on_agent(path) is True:
             logger.warn(
                 f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
             )
