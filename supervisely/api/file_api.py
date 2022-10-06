@@ -282,7 +282,7 @@ class FileApi(ModuleApiBase):
         remote_path: str,
         local_save_path: str,
         cache: Optional[FileCache] = None,
-        progress_cb: Progress = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -405,8 +405,12 @@ class FileApi(ModuleApiBase):
 
             api.file.download_directory(9, path_to_dir, local_save_path)
         """
+        if not remote_path.endswith(os.path.sep):
+            remote_path += os.path.sep
+
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
-        self._download(team_id, remote_path, local_temp_archive, progress_cb)
+        self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
+        # self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
@@ -600,11 +604,13 @@ class FileApi(ModuleApiBase):
 
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
-        
+
         if self.is_file_on_agent(path) is True:
-            logger.warn(f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent.")
+            logger.warn(
+                f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
+            )
             return
-        
+
         resp = self._api.post(
             "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
