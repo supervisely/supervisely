@@ -359,9 +359,16 @@ class FileApi(ModuleApiBase):
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Progress = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+        if agent_id == env.agent_id() and env.agent_storage() is not None:
+            path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+            logger.info(f"Optimized download from agent: {path_on_agent}")
+            sly_fs.copy_file(path_on_agent, local_save_path)
+            if progress_cb is not None:
+                progress_cb(sly_fs.get_file_size(path_on_agent))
+            return
 
         response = self._api.post(
             "agents.storage.download",
@@ -417,6 +424,7 @@ class FileApi(ModuleApiBase):
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
             if agent_id == env.agent_id() and env.agent_storage() is not None:
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                logger.info(f"Optimized download from agent: {dir_on_agent}")
                 sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
                 return
 
