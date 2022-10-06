@@ -15,9 +15,10 @@ import re
 from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
@@ -29,6 +30,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.sly_logger import logger
+import supervisely.environment.environment as env
 
 
 class FileInfo(NamedTuple):
@@ -345,18 +347,28 @@ class FileApi(ModuleApiBase):
         else:
             return False
 
+    def parse_agent_id_and_path(self, remote_path: str) -> int:
+        if self.is_file_on_agent(remote_path) is False:
+            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
+        search = re.search("agent://(\d+)/(.*)", remote_path)
+        agent_id = int(search.group(1))
+        path_in_agent_folder = "/" + search.group(2)
+        return agent_id, path_in_agent_folder
+
     def download_from_agent(
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Progress = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
-        if self.is_file_on_agent(remote_path) is False:
-            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-
-        search = re.search("agent://(\d+)/(.*)", remote_path)
-        agent_id = int(search.group(1))
-        path_in_agent_folder = "/" + search.group(2)
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+        if agent_id == env.agent_id() and env.agent_storage() is not None:
+            path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+            logger.info(f"Optimized download from agent: {path_on_agent}")
+            sly_fs.copy_file(path_on_agent, local_save_path)
+            if progress_cb is not None:
+                progress_cb(sly_fs.get_file_size(path_on_agent))
+            return
 
         response = self._api.post(
             "agents.storage.download",
@@ -407,6 +419,14 @@ class FileApi(ModuleApiBase):
         """
         if not remote_path.endswith(os.path.sep):
             remote_path += os.path.sep
+
+        if self.is_file_on_agent(remote_path) is True:
+            agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+            if agent_id == env.agent_id() and env.agent_storage() is not None:
+                dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                logger.info(f"Optimized download from agent: {dir_on_agent}")
+                sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
+                return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)

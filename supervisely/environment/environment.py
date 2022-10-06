@@ -9,3 +9,7 @@ def _int_from_env(value):
 
 def agent_id():
     return _int_from_env(os.environ.get("AGENT_ID"))
+
+
+def agent_storage():
+    return os.environ.get("AGENT_STORAGE")
