@@ -8,12 +8,12 @@ api = sly.Api()
 
 
 # src_path = "/reports/objects_stats/admin/"
-src_path = "agent://42/"
+src_path = "agent://42"
 files = api.file.list(team_id=7, path=src_path)
 for file_path in files:
     print(file_path)
 
-
+# team files:
 # data = {
 #     "id": 8,
 #     "userId": 1,
@@ -27,3 +27,5 @@ for file_path in files:
 #     "teamId": 7,
 #     "name": "lemons_annotated.lnk",
 # }
+
+# agent team files

@@ -124,6 +124,20 @@ class FileApi(ModuleApiBase):
         """
         return "FileInfo"
 
+    def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+        if self.is_on_agent(path) is False:
+            raise ValueError(f"Data is not on agent: {path}")
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+
+        response = self._api.post(
+            "agents.storage.list",
+            {ApiField.ID: agent_id, ApiField.TEAM_ID: team_id, ApiField.PATH: path_in_agent_folder},
+        )
+        data = response.json()
+        raise NotImplementedError("wip")
+
+        return response.json()
+
     def list(self, team_id: int, path: str) -> List[Dict]:
         """
         List of files in the Team Files.
@@ -186,6 +200,9 @@ class FileApi(ModuleApiBase):
             #     }
             # ]
         """
+
+        if self.is_on_agent(path) is True:
+            return self.list_on_agent(team_id, path)
 
         response = self._api.post(
             "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
@@ -351,9 +368,12 @@ class FileApi(ModuleApiBase):
     def parse_agent_id_and_path(self, remote_path: str) -> int:
         if self.is_on_agent(remote_path) is False:
             raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-        search = re.search("agent://(\d+)/(.*)", remote_path)
+        search = re.search("agent://(\d+)(.*)", remote_path)
         agent_id = int(search.group(1))
-        path_in_agent_folder = "/" + search.group(2)
+        path_in_agent_folder = search.group(2)
+        if not path_in_agent_folder.startswith("/"):
+            path_in_agent_folder = "/" + path_in_agent_folder
+        path_in_agent_folder = os.path.normpath(path_in_agent_folder)
         return agent_id, path_in_agent_folder
 
     def download_from_agent(
