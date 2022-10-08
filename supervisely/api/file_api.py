@@ -382,7 +382,9 @@ class FileApi(ModuleApiBase):
         path_in_agent_folder = search.group(2)
         if not path_in_agent_folder.startswith("/"):
             path_in_agent_folder = "/" + path_in_agent_folder
-        path_in_agent_folder = os.path.normpath(path_in_agent_folder)
+        if remote_path.endswith("/") and not path_in_agent_folder.endswith("/"):
+            path_in_agent_folder += "/"
+        # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
         return agent_id, path_in_agent_folder
 
     def download_from_agent(
