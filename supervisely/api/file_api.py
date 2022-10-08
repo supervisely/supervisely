@@ -634,6 +634,15 @@ class FileApi(ModuleApiBase):
         """
         pass
 
+    def remove_from_agent(self, team_id: int, path: str) -> None:
+        raise NotImplementedError()
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+        if agent_id == env.agent_id() and env.agent_storage() is not None:
+            # path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+            # logger.info(f"Optimized download from agent: {path_on_agent}")
+            # sly_fs.copy_file(path_on_agent, local_save_path)
+            return
+
     def remove(self, team_id: int, path: str) -> None:
         """
         Removes file from Team Files.
@@ -658,6 +667,7 @@ class FileApi(ModuleApiBase):
         """
 
         if self.is_on_agent(path) is True:
+            # self.remove_from_agent(team_id, path)
             logger.warn(
                 f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
             )
