@@ -127,16 +127,27 @@ class FileApi(ModuleApiBase):
     def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
+
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+        dirs_queue: List[str] = [path_in_agent_folder]
 
-        response = self._api.post(
-            "agents.storage.list",
-            {ApiField.ID: agent_id, ApiField.TEAM_ID: team_id, ApiField.PATH: path_in_agent_folder},
-        )
-        data = response.json()
-        raise NotImplementedError("wip")
+        results = []
+        while len(dirs_queue) > 0:
+            cur_dir = dirs_queue.pop(0)
+            if cur_dir.endswith("/") is False:
+                cur_dir += "/"
+            response = self._api.post(
+                "agents.storage.list",
+                {ApiField.ID: agent_id, ApiField.TEAM_ID: team_id, ApiField.PATH: cur_dir},
+            )
+            items = response.json()
+            for item in items:
+                if item["type"] == "file":
+                    results.append(item)
+                elif item["type"] == "directory" and recursive is True:
+                    dirs_queue.append(os.path.join(cur_dir, item["name"]))
 
-        return response.json()
+        return results
 
     def list(self, team_id: int, path: str) -> List[Dict]:
         """
@@ -240,10 +251,8 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
-        )
-        results = [self._convert_json_info(info_json) for info_json in response.json()]
+        items = self.list(team_id=team_id, path=path)
+        results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
     def get_directory_size(self, team_id: int, path: str) -> int:

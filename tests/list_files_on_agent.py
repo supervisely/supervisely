@@ -7,9 +7,9 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 
 
-# src_path = "/reports/objects_stats/admin/"
-src_path = "agent://42"
-files = api.file.list(team_id=7, path=src_path)
+src_path = "/reports/objects_stats/admin/"
+# src_path = "agent://42/test-import"
+files = api.file.list2(team_id=7, path=src_path)
 for file_path in files:
     print(file_path)
 
