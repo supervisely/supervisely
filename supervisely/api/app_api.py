@@ -50,25 +50,6 @@ class ModuleInfo(NamedTuple):
     created_at: str
     updated_at: str
 
-    def get_arguments(self):
-        # default values for app modal window
-        modal_window_default_state = self.config.get("modalTemplateState", {})
-        context = self.config.get("context_menu", {})
-        target = context.get("target")
-        # ignore "ecosystem" target
-        # if "target" in context: and len(context["target"]) > 0:
-
-        # "context_menu": {
-        #     "target": [
-        #     "images_project"
-        #     ],
-        #     "context_root": "Download as"
-        # },
-        return modal_window_default_state
-
-    def get_target():
-        return {}
-
     @staticmethod
     def from_json(data: dict) -> ModuleInfo:
         return ModuleInfo(
@@ -84,6 +65,43 @@ class ModuleInfo(NamedTuple):
             created_at=data["createdAt"],
             updated_at=data["updatedAt"],
         )
+
+    def _get_arguments(self):
+        # default values for app modal window
+        modal_window_default_state = self.config.get("modalTemplateState", {})
+        context = self.config.get("context_menu", {})
+        target = context.get("target")
+        # ignore "ecosystem" target
+        # if "target" in context: and len(context["target"]) > 0:
+
+        # "context_menu": {
+        #     "target": [
+        #     "images_project"
+        #     ],
+        #     "context_root": "Download as"
+        # },
+        return modal_window_default_state
+
+    def _get_target():
+        return {}
+
+    def get_optional_args():
+        return {}
+        pass
+
+    def get_required_args():
+        from collections import namedtuple
+
+        MyType = namedtuple("MyType", ["arg1", "arg2", "arg3", "arg4"])
+        return MyType(1, 2, 3, 4)
+
+    def get_arguments():
+        return [
+            {"name": "my_var1", "value": None, "default": 123, "optional": True},
+            {"name": "my_var2", "value": None, "default": 123, "optional": False},
+            {"name": "my_var3", "value": None, "default": "123", "optional": False},
+            {"name": "my_var4", "value": None, "optional": False},
+        ]
 
 
 class AppApi(TaskApi):
