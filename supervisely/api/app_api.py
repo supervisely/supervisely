@@ -174,7 +174,7 @@ class ModuleInfo(NamedTuple):
             print("App has to be started from the context menus:")
             for target in targets:
                 print(
-                    f'[{target}] \t key: {_context_menu_targets[target]["key"]} \t - {_context_menu_targets.get(target, {"help": "empty description"})["help"]}'
+                    f'[{target}] key: {_context_menu_targets[target]["key"]} , value: {_context_menu_targets.get(target, {"help": "empty description"})["help"]}'
                 )
             print(
                 "It is needed to call get_arguments method with defined target argument (pass one of the values above)."
