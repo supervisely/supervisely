@@ -230,9 +230,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             print(task_status)
             # Output: finished
         """
-        status_str = self.get_info_by_id(task_id)[
-            ApiField.STATUS
-        ]  # @TODO: convert json to tuple
+        status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status: Status) -> None:
@@ -269,9 +267,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`bool`
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
-        effective_wait_timeout = (
-            wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
-        )
+        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
@@ -367,9 +363,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """_convert_json_info"""
         return info
 
-    def run_dtl(
-        self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None
-    ):
+    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
         """run_dtl"""
         response = self._api.post(
             "tasks.run.dtl",
@@ -495,13 +489,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     ):
         """start"""
         if app_id is not None and module_id is not None:
-            raise ValueError(
-                "Only one of the arguments (app_id or module_id) have to be defined"
-            )
+            raise ValueError("Only one of the arguments (app_id or module_id) have to be defined")
         if app_id is None and module_id is None:
-            raise ValueError(
-                "One of the arguments (app_id or module_id) have to be defined"
-            )
+            raise ValueError("One of the arguments (app_id or module_id) have to be defined")
 
         data = {
             ApiField.AGENT_ID: agent_id,
@@ -612,9 +602,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 path, name, hash = item
                 if hash in remote_hashes:
                     continue
-                content_dict["{}".format(idx)] = json.dumps(
-                    {"fullpath": name, "hash": hash}
-                )
+                content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
                 content_dict["{}-file".format(idx)] = (name, open(path, "rb"), "")
 
             if len(content_dict) > 0:
@@ -652,9 +640,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
-                    raise KeyError(
-                        "Object #{} does not have field {!r}".format(idx, key)
-                    )
+                    raise KeyError("Object #{} does not have field {!r}".format(idx, key))
         data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
         resp = self._api.post("tasks.data.set", data)
         return resp.json()
@@ -729,9 +715,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             project = self._api.project.get_info_by_id(project_id)
             project_name = project.name
 
-        output = {
-            ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}
-        }
+        output = {ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}}
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
@@ -849,7 +833,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             icon="zmdi zmdi-folder",
         )
 
-    def update_meta(self, id: int, data: dict, agent_storage_folder: str = None, relative_app_dir: str = None):
+    def update_meta(
+        self, id: int, data: dict, agent_storage_folder: str = None, relative_app_dir: str = None
+    ):
         """
         Update given task metadata
         :param id: int — task id
@@ -858,13 +844,17 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if type(data) == dict:
             data.update({"id": id})
             if agent_storage_folder is None and relative_app_dir is not None:
-                raise ValueError("Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None")
+                raise ValueError(
+                    "Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None"
+                )
             if agent_storage_folder is not None and relative_app_dir is None:
-                raise ValueError("Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None")
+                raise ValueError(
+                    "Both arguments (agent_storage_folder and relative_app_dir) has to be defined or None"
+                )
             if agent_storage_folder is not None and relative_app_dir is not None:
                 data["agentStorageFolder"] = {
                     "hostDir": agent_storage_folder,
-                    "folder": relative_app_dir
+                    "folder": relative_app_dir,
                 }
 
         self._api.post("tasks.meta.update", data)
