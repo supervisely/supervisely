@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import NamedTuple, List, Dict
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
@@ -16,6 +17,88 @@ from supervisely.io.fs import ensure_base_path
 from supervisely.task.progress import Progress
 from supervisely._utils import sizeof_fmt
 from supervisely import logger
+
+_context_menu_targets = {
+    "files_folder": {
+        "help": "Context menu of folder in Team Files. Target value is directory path.",
+        "type": str,
+        "key": "slyFolder",
+    },
+    "files_file": {
+        "help": "Context menu of file in Team Files. Target value is file path.",
+        "type": str,
+        "key": "slyFile",
+    },
+    "images_project": {
+        "help": "Context menu of images project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "images_dataset": {
+        "help": "Context menu of images dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
+    "videos_project": {
+        "help": "Context menu of videos project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "videos_dataset": {
+        "help": "Context menu of videos dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
+    "point_cloud_episodes_project": {
+        "help": "Context menu of pointcloud episodes project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "point_cloud_episodes_dataset": {
+        "help": "Context menu of pointcloud episodes dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
+    "point_cloud_project": {
+        "help": "Context menu of pointclouds project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "point_cloud_dataset": {
+        "help": "Context menu of pointclouds dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
+    "volumes_project": {
+        "help": "Context menu of volumes project (DICOMs). Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "volumes_dataset": {
+        "help": "Context menu of volumes dataset (DICOMs). Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
+    "team": {
+        "help": "Context menu of team. Target value is team id.",
+        "type": int,
+        "key": "slyTeamId",
+    },
+    "team_member": {
+        "help": "Context menu of team member. Target value is user id.",
+        "type": int,
+        "key": "slyMemberId",
+    },
+    "labeling_job": {
+        "help": "Context menu of labeling job. Target value is labeling job id.",
+        "type": int,
+        "key": "slyJobId",
+    },
+    "ecosystem": {
+        "help": "Run button in ecosystem. It is not needed to define any target",
+        "key": "nothing",
+    },
+}
 
 
 class AppInfo(NamedTuple):
@@ -52,7 +135,7 @@ class ModuleInfo(NamedTuple):
 
     @staticmethod
     def from_json(data: dict) -> ModuleInfo:
-        return ModuleInfo(
+        info = ModuleInfo(
             id=data["id"],
             slug=data["slug"],
             name=data["name"],
@@ -65,43 +148,61 @@ class ModuleInfo(NamedTuple):
             created_at=data["createdAt"],
             updated_at=data["updatedAt"],
         )
+        if "contextMenu" in info.config:
+            info.config["context_menu"] = info.config["contextMenu"]
+        return info
 
-    def _get_arguments(self):
-        # default values for app modal window
-        modal_window_default_state = self.config.get("modalTemplateState", {})
-        context = self.config.get("context_menu", {})
-        target = context.get("target")
-        # ignore "ecosystem" target
-        # if "target" in context: and len(context["target"]) > 0:
+    def arguments_help(self):
+        modal_args = self.get_modal_window_arguments()
+        if len(modal_args) == 0:
+            print(
+                f"App '{self.name}' has no additional options \n"
+                "that can be configured manually in modal dialog window \n"
+                "before running app."
+            )
+        else:
+            print(
+                f"App '{self.name}' has additional options "
+                "that can be configured manually in modal dialog window before running app. "
+                "You can change them or keep defaults: "
+            )
+            print(json.dumps(modal_args, sort_keys=True, indent=4))
 
-        # "context_menu": {
-        #     "target": [
-        #     "images_project"
-        #     ],
-        #     "context_root": "Download as"
-        # },
-        return modal_window_default_state
+        targets = self.get_context_menu_targets()
 
-    def _get_target():
-        return {}
+        if len(targets) > 0:
+            print("App has to be started from the context menus:")
+            for target in targets:
+                print(
+                    f'[{target}] \t key: {_context_menu_targets[target]["key"]} \t - {_context_menu_targets.get(target, {"help": "empty description"})["help"]}'
+                )
+            print(
+                "It is needed to call get_arguments method with defined target argument (pass one of the values above)."
+            )
 
-    def get_optional_args():
-        return {}
-        pass
+        if "ecosystem" in targets:
+            pass
 
-    def get_required_args():
-        from collections import namedtuple
+    def get_modal_window_arguments(self):
+        params = self.config.get("modalTemplateState", {})
+        return params
 
-        MyType = namedtuple("MyType", ["arg1", "arg2", "arg3", "arg4"])
-        return MyType(1, 2, 3, 4)
+    def get_arguments(self, target=None) -> dict:
+        params = self.config.get("modalTemplateState", {})
+        targets = self.get_context_menu_targets()
+        if len(targets) > 0 and target is None and "ecosystem" not in targets:
+            raise ValueError(
+                "target argument has to be defined. Call method 'arguments_help' to print help info for developer"
+            )
+        if len(targets) > 0:
+            params["state"] = {target["key"]: target["value"]}
+        return params
 
-    def get_arguments():
-        return [
-            {"name": "my_var1", "value": None, "default": 123, "optional": True},
-            {"name": "my_var2", "value": None, "default": 123, "optional": False},
-            {"name": "my_var3", "value": None, "default": "123", "optional": False},
-            {"name": "my_var4", "value": None, "optional": False},
-        ]
+    def get_context_menu_targets(self):
+        if "context_menu" in self.config:
+            if "target" in self.config["context_menu"]:
+                return self.config["context_menu"]["target"]
+        return []
 
 
 class AppApi(TaskApi):
