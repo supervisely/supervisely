@@ -42,7 +42,7 @@ def _parse_from_env(
     return default
 
 
-def agent_id(raise_not_found=False):
+def agent_id(raise_not_found=True):
     return _parse_from_env(
         name="agent_id",
         keys=["AGENT_ID"],
@@ -52,14 +52,30 @@ def agent_id(raise_not_found=False):
     )
 
 
-def agent_storage():
-    return os.environ.get("AGENT_STORAGE")
+def agent_storage(raise_not_found=True):
+    return _parse_from_env(
+        name="agent_storage",
+        keys=["AGENT_STORAGE"],
+        postprocess_fn=lambda x: x,
+        default=None,
+        raise_not_found=raise_not_found,
+    )
 
 
 def team_id(raise_not_found=True):
     return _parse_from_env(
         name="team_id",
         keys=["CONTEXT_TEAMID", "context.teamId"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def workspace_id(raise_not_found=True):
+    return _parse_from_env(
+        name="workspace_id",
+        keys=["CONTEXT_WORKSPACEID", "context.workspaceId"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
