@@ -204,4 +204,3 @@ from supervisely.project.volume_project import (
 )
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
-import supervisely.environment.environment as env

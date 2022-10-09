@@ -30,7 +30,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.sly_logger import logger
-import supervisely.environment.environment as env
+import supervisely.io.env as env
 
 
 class FileInfo(NamedTuple):
