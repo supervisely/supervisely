@@ -174,7 +174,7 @@ class ModuleInfo(NamedTuple):
             print("App has to be started from the context menus:")
             for target in targets:
                 print(
-                    f'[{target}] key: {_context_menu_targets[target]["key"]} , value: {_context_menu_targets.get(target, {"help": "empty description"})["help"]}'
+                    f'{target} : {_context_menu_targets.get(target, {"help": "empty description"})["help"]}'
                 )
             print(
                 "It is needed to call get_arguments method with defined target argument (pass one of the values above)."
@@ -187,15 +187,28 @@ class ModuleInfo(NamedTuple):
         params = self.config.get("modalTemplateState", {})
         return params
 
-    def get_arguments(self, target=None) -> dict:
+    def get_arguments(self, **kwargs) -> dict:
         params = self.config.get("modalTemplateState", {})
         targets = self.get_context_menu_targets()
-        if len(targets) > 0 and target is None and "ecosystem" not in targets:
+        if len(targets) > 0 and len(kwargs) == 0 and "ecosystem" not in targets:
             raise ValueError(
                 "target argument has to be defined. Call method 'arguments_help' to print help info for developer"
             )
-        if len(targets) > 0:
-            params["state"] = {target["key"]: target["value"]}
+        if len(kwargs) > 1:
+            raise KeyError("Only one target is allowed")
+        if len(kwargs) == 1:
+            params["state"] = {}
+            for target_key, target_value in kwargs.items():
+                if target_key not in targets:
+                    raise KeyError(
+                        f"You passed {target_key}, but allowed only one of the targets: {targets}"
+                    )
+                valid_type = _context_menu_targets[target_key]["type"]
+                if type(target_value) is not valid_type:
+                    raise ValueError(
+                        f"Target {target_key} has value {target_value} of type {type(target_value)}. Allowed type is {valid_type}"
+                    )
+                params["state"][target_key] = target_value
         return params
 
     def get_context_menu_targets(self):
