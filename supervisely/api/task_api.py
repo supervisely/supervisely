@@ -20,6 +20,12 @@ from supervisely.collection.str_enum import StrEnum
 from supervisely._utils import batched, take_with_default
 
 
+class TaskFinishedWithError(Exception):
+    """TaskFinishedWithError"""
+
+    pass
+
+
 class TaskApi(ModuleApiBase, ModuleWithStatus):
     """
     API for working with Tasks. :class:`TaskApi<TaskApi>` object is immutable.
@@ -243,7 +249,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`NoneType`
         """
         if status is self.Status.ERROR:
-            raise RuntimeError("Task status: ERROR")
+            raise TaskFinishedWithError(f"Task finished with status {str(self.Status.ERROR)}")
 
     def wait(
         self,
@@ -271,10 +277,17 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
-            if status is target_status:
+            if status in [
+                target_status,
+                self.Status.FINISHED,
+                self.Status.DEPLOYED,
+                self.Status.STOPPED,
+            ]:
                 return
             time.sleep(effective_wait_timeout)
-        raise WaitingTimeExceeded("Waiting time exceeded")
+        raise WaitingTimeExceeded(
+            f"Waiting time exceeded: total waiting time {wait_attempts * effective_wait_timeout} seconds, i.e. {wait_attempts} attempts for {effective_wait_timeout} seconds each"
+        )
 
     def upload_dtl_archive(
         self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None
