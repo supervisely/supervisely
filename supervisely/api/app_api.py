@@ -197,7 +197,7 @@ class ModuleInfo(NamedTuple):
         if len(kwargs) > 1:
             raise KeyError("Only one target is allowed")
         if len(kwargs) == 1:
-            params["state"] = {}
+            # params["state"] = {}
             for target_key, target_value in kwargs.items():
                 if target_key not in targets:
                     raise KeyError(
@@ -209,7 +209,7 @@ class ModuleInfo(NamedTuple):
                     raise ValueError(
                         f"Target {target_key} has value {target_value} of type {type(target_value)}. Allowed type is {valid_type}"
                     )
-                params["state"][key] = target_value
+                params[key] = target_value
         return params
 
     def get_context_menu_targets(self):
@@ -557,12 +557,18 @@ class AppApi(TaskApi):
         if users_id is not None:
             users_ids = [users_id]
 
+        new_params = {}
+        if "state" not in params:
+            new_params["state"] = params
+        else:
+            new_params = params
+
         result = self._api.task.start(
             agent_id=agent_id,
             app_id=app_id,
             workspace_id=workspace_id,
             description=description,
-            params=params,
+            params=new_params,
             log_level=log_level,
             users_ids=users_ids,
             app_version=app_version,

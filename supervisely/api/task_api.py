@@ -508,6 +508,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         data = {
             ApiField.AGENT_ID: agent_id,
+            # "nodeId": agent_id,
             ApiField.WORKSPACE_ID: workspace_id,
             ApiField.DESCRIPTION: description,
             ApiField.PARAMS: take_with_default(params, {"state": {}}),
