@@ -152,6 +152,10 @@ class ModuleInfo(NamedTuple):
             info.config["context_menu"] = info.config["contextMenu"]
         return info
 
+    def get_latest_release(self, default=""):
+        release = self.meta.get("releases", [default])[0]
+        return release
+
     def arguments_help(self):
         modal_args = self.get_modal_window_arguments()
         if len(modal_args) == 0:
@@ -545,7 +549,7 @@ class AppApi(TaskApi):
         params=None,
         log_level="info",
         users_id=None,
-        app_version="",
+        app_version=None,
         is_branch=False,
         task_name="run-from-python",
         restart_policy="never",
@@ -562,6 +566,10 @@ class AppApi(TaskApi):
             new_params["state"] = params
         else:
             new_params = params
+
+        if app_version is None:
+            module_info = self.get_ecosystem_module_info(module_id)
+            app_version = module_info.get_latest_release().get("version", "")
 
         result = self._api.task.start(
             agent_id=agent_id,
