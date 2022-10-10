@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+from re import L
 from typing import Callable, List
 
 
@@ -77,6 +78,46 @@ def workspace_id(raise_not_found=True):
         name="workspace_id",
         keys=["CONTEXT_WORKSPACEID", "context.workspaceId"],
         postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def project_id(raise_not_found=True):
+    return _parse_from_env(
+        name="project_id",
+        keys=["CONTEXT_PROJECTID", "context.projectId", "modal.state.slyProjectId"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def dataset_id(raise_not_found=True):
+    return _parse_from_env(
+        name="dataset_id",
+        keys=["CONTEXT_DATASETID", "context.datasetId", "modal.state.slyDatasetId"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def team_files_folder(raise_not_found=True):
+    return _parse_from_env(
+        name="team_files_folder",
+        keys=["CONTEXT_SLYFOLDER", "context.slyFolder", "modal.state.slyFolder"],
+        postprocess_fn=lambda x: str(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def team_files_file(raise_not_found=True):
+    return _parse_from_env(
+        name="team_files_file",
+        keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile"],
+        postprocess_fn=lambda x: str(x),
         default=None,
         raise_not_found=raise_not_found,
     )
