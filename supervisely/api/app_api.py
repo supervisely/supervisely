@@ -203,12 +203,13 @@ class ModuleInfo(NamedTuple):
                     raise KeyError(
                         f"You passed {target_key}, but allowed only one of the targets: {targets}"
                     )
+                key = _context_menu_targets[target_key]["key"]
                 valid_type = _context_menu_targets[target_key]["type"]
                 if type(target_value) is not valid_type:
                     raise ValueError(
                         f"Target {target_key} has value {target_value} of type {type(target_value)}. Allowed type is {valid_type}"
                     )
-                params["state"][target_key] = target_value
+                params["state"][key] = target_value
         return params
 
     def get_context_menu_targets(self):
