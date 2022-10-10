@@ -218,6 +218,26 @@ class ModuleInfo(NamedTuple):
         return []
 
 
+class SessionInfo(NamedTuple):
+    """SessionInfo"""
+
+    task_id: int
+    user_id: int
+    module_id: int  # in ecosystem
+    app_id: int  # in team (recent apps)
+
+    @staticmethod
+    def from_json(data: dict) -> SessionInfo:
+        # {'taskId': 21012, 'userId': 6, 'moduleId': 83, 'appId': 578}
+        info = SessionInfo(
+            task_id=data["taskId"],
+            user_id=data["userId"],
+            module_id=data["moduleId"],
+            app_id=data["appId"],
+        )
+        return info
+
+
 class AppApi(TaskApi):
     """AppApi"""
 
@@ -483,6 +503,47 @@ class AppApi(TaskApi):
                 else:
                     dev_tasks.append(session)
         return dev_tasks
+
+    def start(
+        self,
+        agent_id,
+        app_id=None,
+        workspace_id=None,
+        description="",
+        params=None,
+        log_level="info",
+        users_id=None,
+        app_version="",
+        is_branch=False,
+        task_name="run-from-python",
+        restart_policy="never",
+        proxy_keep_url=False,
+        module_id=None,
+        redirect_requests={},
+    ) -> SessionInfo:
+        users_ids = None
+        if users_id is not None:
+            users_ids = [users_id]
+
+        result = super().start(
+            agent_id=agent_id,
+            app_id=app_id,
+            workspace_id=workspace_id,
+            description=description,
+            params=params,
+            log_level=log_level,
+            users_ids=users_ids,
+            app_version=app_version,
+            is_branch=is_branch,
+            task_name=task_name,
+            restart_policy=restart_policy,
+            proxy_keep_url=proxy_keep_url,
+            module_id=module_id,
+            redirect_requests=redirect_requests,
+        )
+        if len(result) != 1:
+            raise ValueError(f"{len(result)} tasks started instead of one")
+        return SessionInfo.from_json(result[0])
 
 
 # info about app in team
