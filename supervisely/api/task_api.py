@@ -257,7 +257,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         target_status: Status,
         wait_attempts: Optional[int] = None,
         wait_attempt_timeout_sec: Optional[int] = None,
-    ) -> bool:
+    ):
         """
         Awaiting achievement by given Task of a given status.
 
@@ -527,7 +527,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post(method="tasks.run.app", data=data)
         return resp.json()
 
-    def stop(self, id):
+    def stop(self, id: int):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])

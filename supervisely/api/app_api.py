@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import json
-from typing import NamedTuple, List, Dict
+from typing import NamedTuple, List, Dict, Optional
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 from supervisely._utils import take_with_default
@@ -226,15 +226,28 @@ class SessionInfo(NamedTuple):
     module_id: int  # in ecosystem
     app_id: int  # in team (recent apps)
 
+    details: dict
+
     @staticmethod
     def from_json(data: dict) -> SessionInfo:
         # {'taskId': 21012, 'userId': 6, 'moduleId': 83, 'appId': 578}
-        info = SessionInfo(
-            task_id=data["taskId"],
-            user_id=data["userId"],
-            module_id=data["moduleId"],
-            app_id=data["appId"],
-        )
+
+        if "meta" in data:
+            info = SessionInfo(
+                task_id=data["id"],
+                user_id=data["createdBy"],
+                module_id=data["moduleId"],
+                app_id=data["meta"]["app"]["id"],
+                details=data,
+            )
+        else:
+            info = SessionInfo(
+                task_id=data["taskId"],
+                user_id=data["userId"],
+                module_id=data["moduleId"],
+                app_id=data["appId"],
+                details={},
+            )
         return info
 
 
@@ -468,6 +481,15 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
+    # def get_sessions(self, workspace_id: int, filter_statuses: List[TaskApi.Status] = None):
+    #     filters = [{"field": "type", "operator": "=", "value": "app"}]
+    #     # filters = []
+    #     if filter_statuses is not None:
+    #         s = [str(status) for status in filter_statuses]
+    #         filters.append({"field": "status", "operator": "in", "value": s})
+    #     result = self._api.task.get_list(workspace_id=workspace_id, filters=filters)
+    #     return result
+
     def get_sessions(
         self,
         team_id,
@@ -475,7 +497,8 @@ class AppApi(TaskApi):
         # only_running=False,
         show_disabled=False,
         session_name=None,
-    ):
+        statuses: List[TaskApi.Status] = None,
+    ) -> List[SessionInfo]:
         infos_json = self.get_list_all_pages(
             method="apps.list",
             data={
@@ -495,13 +518,21 @@ class AppApi(TaskApi):
             )
         dev_tasks = []
         sessions = infos_json[0]["tasks"]
+
+        str_statuses = []
+        if statuses is not None:
+            for s in statuses:
+                str_statuses.append(str(s))
+
         for session in sessions:
-            if session["status"] in ["queued", "consumed", "started", "deployed"]:
-                if session_name is not None:
-                    if session["meta"]["name"] == session_name:
-                        dev_tasks.append(session)
-                else:
-                    dev_tasks.append(session)
+            to_add = True
+            if session_name is not None and session["meta"]["name"] != session_name:
+                to_add = False
+            if statuses is not None and session["status"] not in str_statuses:
+                to_add = False
+            if to_add is True:
+                session["moduleId"] = module_id
+                dev_tasks.append(SessionInfo.from_json(session))
         return dev_tasks
 
     def start(
@@ -525,7 +556,7 @@ class AppApi(TaskApi):
         if users_id is not None:
             users_ids = [users_id]
 
-        result = super().start(
+        result = self._api.task.start(
             agent_id=agent_id,
             app_id=app_id,
             workspace_id=workspace_id,
@@ -544,6 +575,28 @@ class AppApi(TaskApi):
         if len(result) != 1:
             raise ValueError(f"{len(result)} tasks started instead of one")
         return SessionInfo.from_json(result[0])
+
+    def wait(
+        self,
+        id: int,
+        target_status: TaskApi.Status,
+        attempts: Optional[int] = None,
+        attempt_delay_sec: Optional[int] = None,
+    ):
+        """wait"""
+        return self._api.task.wait(
+            id=id,
+            target_status=target_status,
+            wait_attempts=attempts,
+            wait_attempt_timeout_sec=attempt_delay_sec,
+        )
+
+    def stop(self, id: int) -> TaskApi.Status:
+        """stop"""
+        return self._api.task.stop(id)
+
+    def get_status(self, task_id: int) -> TaskApi.Status:
+        return self._api.task.get_status(task_id)
 
 
 # info about app in team
