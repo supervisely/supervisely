@@ -519,8 +519,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.TASK_NAME: task_name,
             ApiField.RESTART_POLICY: restart_policy,
             ApiField.PROXY_KEEP_URL: proxy_keep_url,
-            ApiField.REDIRECT_REQUESTS: redirect_requests,
         }
+        if len(redirect_requests) > 0:
+            data[ApiField.REDIRECT_REQUESTS] = redirect_requests
+
         if app_id is not None:
             data[ApiField.APP_ID] = app_id
         if module_id is not None:
