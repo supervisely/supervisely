@@ -30,7 +30,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.sly_logger import logger
-import supervisely.environment.environment as env
+import supervisely.io.env as env
 
 
 class FileInfo(NamedTuple):
@@ -394,7 +394,10 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Callable] = None,
     ) -> None:
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
-        if agent_id == env.agent_id() and env.agent_storage() is not None:
+        if (
+            agent_id == env.agent_id(raise_not_found=False)
+            and env.agent_storage(raise_not_found=False) is not None
+        ):
             path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
             logger.info(f"Optimized download from agent: {path_on_agent}")
             sly_fs.copy_file(path_on_agent, local_save_path)
@@ -454,7 +457,10 @@ class FileApi(ModuleApiBase):
 
         if self.is_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
-            if agent_id == env.agent_id() and env.agent_storage() is not None:
+            if (
+                agent_id == env.agent_id(raise_not_found=False)
+                and env.agent_storage(raise_not_found=False) is not None
+            ):
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
                 logger.info(f"Optimized download from agent: {dir_on_agent}")
                 sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
@@ -637,7 +643,10 @@ class FileApi(ModuleApiBase):
     def remove_from_agent(self, team_id: int, path: str) -> None:
         raise NotImplementedError()
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
-        if agent_id == env.agent_id() and env.agent_storage() is not None:
+        if (
+            agent_id == env.agent_id(raise_not_found=False)
+            and env.agent_storage(raise_not_found=False) is not None
+        ):
             # path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
             # logger.info(f"Optimized download from agent: {path_on_agent}")
             # sly_fs.copy_file(path_on_agent, local_save_path)
