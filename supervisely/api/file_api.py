@@ -15,9 +15,10 @@ import re
 from supervisely._utils import batched
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely.imaging.image import write_bytes, get_hash
 from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
@@ -28,6 +29,8 @@ from supervisely.io.fs import (
     list_files_recursively,
     silent_remove,
 )
+from supervisely.sly_logger import logger
+import supervisely.io.env as env
 
 
 class FileInfo(NamedTuple):
@@ -121,6 +124,31 @@ class FileApi(ModuleApiBase):
         """
         return "FileInfo"
 
+    def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+        if self.is_on_agent(path) is False:
+            raise ValueError(f"Data is not on agent: {path}")
+
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+        dirs_queue: List[str] = [path_in_agent_folder]
+
+        results = []
+        while len(dirs_queue) > 0:
+            cur_dir = dirs_queue.pop(0)
+            if cur_dir.endswith("/") is False:
+                cur_dir += "/"
+            response = self._api.post(
+                "agents.storage.list",
+                {ApiField.ID: agent_id, ApiField.TEAM_ID: team_id, ApiField.PATH: cur_dir},
+            )
+            items = response.json()
+            for item in items:
+                if item["type"] == "file":
+                    results.append(item)
+                elif item["type"] == "directory" and recursive is True:
+                    dirs_queue.append(os.path.join(cur_dir, item["name"]))
+
+        return results
+
     def list(self, team_id: int, path: str) -> List[Dict]:
         """
         List of files in the Team Files.
@@ -183,6 +211,10 @@ class FileApi(ModuleApiBase):
             #     }
             # ]
         """
+
+        if self.is_on_agent(path) is True:
+            return self.list_on_agent(team_id, path)
+
         response = self._api.post(
             "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
@@ -219,10 +251,8 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
-        )
-        results = [self._convert_json_info(info_json) for info_json in response.json()]
+        items = self.list(team_id=team_id, path=path)
+        results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
     def get_directory_size(self, team_id: int, path: str) -> int:
@@ -281,7 +311,7 @@ class FileApi(ModuleApiBase):
         remote_path: str,
         local_save_path: str,
         cache: Optional[FileCache] = None,
-        progress_cb: Progress = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -313,7 +343,7 @@ class FileApi(ModuleApiBase):
 
             api.file.download(8, path_to_file, local_save_path)
         """
-        if self.is_file_on_agent(remote_path):
+        if self.is_on_agent(remote_path):
             self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
 
@@ -338,24 +368,42 @@ class FileApi(ModuleApiBase):
                     if progress_cb is not None:
                         progress_cb(get_file_size(local_save_path))
 
-    def is_file_on_agent(self, remote_path: str):
+    def is_on_agent(self, remote_path: str):
         if remote_path.startswith("agent://"):
             return True
         else:
             return False
 
+    def parse_agent_id_and_path(self, remote_path: str) -> int:
+        if self.is_on_agent(remote_path) is False:
+            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
+        search = re.search("agent://(\d+)(.*)", remote_path)
+        agent_id = int(search.group(1))
+        path_in_agent_folder = search.group(2)
+        if not path_in_agent_folder.startswith("/"):
+            path_in_agent_folder = "/" + path_in_agent_folder
+        if remote_path.endswith("/") and not path_in_agent_folder.endswith("/"):
+            path_in_agent_folder += "/"
+        # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
+        return agent_id, path_in_agent_folder
+
     def download_from_agent(
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Progress = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
-        if self.is_file_on_agent(remote_path) is False:
-            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-
-        search = re.search("agent://(\d+)/(.*)", remote_path)
-        agent_id = int(search.group(1))
-        path_in_agent_folder = "/" + search.group(2)
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+        if (
+            agent_id == env.agent_id(raise_not_found=False)
+            and env.agent_storage(raise_not_found=False) is not None
+        ):
+            path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+            logger.info(f"Optimized download from agent: {path_on_agent}")
+            sly_fs.copy_file(path_on_agent, local_save_path)
+            if progress_cb is not None:
+                progress_cb(sly_fs.get_file_size(path_on_agent))
+            return
 
         response = self._api.post(
             "agents.storage.download",
@@ -404,8 +452,23 @@ class FileApi(ModuleApiBase):
 
             api.file.download_directory(9, path_to_dir, local_save_path)
         """
+        if not remote_path.endswith(os.path.sep):
+            remote_path += os.path.sep
+
+        if self.is_on_agent(remote_path) is True:
+            agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+            if (
+                agent_id == env.agent_id(raise_not_found=False)
+                and env.agent_storage(raise_not_found=False) is not None
+            ):
+                dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                logger.info(f"Optimized download from agent: {dir_on_agent}")
+                sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
+                return
+
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
-        self._download(team_id, remote_path, local_temp_archive, progress_cb)
+        self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
+        # self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
@@ -577,6 +640,18 @@ class FileApi(ModuleApiBase):
         """
         pass
 
+    def remove_from_agent(self, team_id: int, path: str) -> None:
+        raise NotImplementedError()
+        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+        if (
+            agent_id == env.agent_id(raise_not_found=False)
+            and env.agent_storage(raise_not_found=False) is not None
+        ):
+            # path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+            # logger.info(f"Optimized download from agent: {path_on_agent}")
+            # sly_fs.copy_file(path_on_agent, local_save_path)
+            return
+
     def remove(self, team_id: int, path: str) -> None:
         """
         Removes file from Team Files.
@@ -599,6 +674,14 @@ class FileApi(ModuleApiBase):
 
             api.file.remove(8, "/999_App_Test/ds1/01587.json")
         """
+
+        if self.is_on_agent(path) is True:
+            # self.remove_from_agent(team_id, path)
+            logger.warn(
+                f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
+            )
+            return
+
         resp = self._api.post(
             "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )

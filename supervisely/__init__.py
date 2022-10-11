@@ -98,7 +98,7 @@ import supervisely.worker_proto.worker_api_pb2 as api_proto
 
 from supervisely.api.api import Api
 from supervisely.api import api
-from supervisely.api.task_api import WaitingTimeExceeded
+from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
 from supervisely.api.report_api import NotificationType
 from supervisely.api.image_api import ImageInfo

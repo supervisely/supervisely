@@ -1,6 +1,7 @@
 # coding: utf-8
 
-#docs
+# docs
+from re import L
 from typing import List, Optional, Callable
 
 import os
@@ -111,7 +112,9 @@ def list_dir_recursively(dir: str) -> List[str]:
     return all_files
 
 
-def list_files_recursively(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
+def list_files_recursively(
+    dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None
+) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
 
@@ -134,6 +137,7 @@ def list_files_recursively(dir: str, valid_extensions: Optional[List[str]] = Non
          print(list_files)
          # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
+
     def file_path_generator():
         for dir_name, _, file_names in os.walk(dir):
             for filename in file_names:
@@ -179,7 +183,7 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
     ]
 
 
-def mkdir(dir: str, remove_content_if_exists: Optional[bool]=False) -> None:
+def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
     """
     Creates a leaf directory and all intermediate ones.
 
@@ -377,7 +381,7 @@ def get_subdirs(dir_path: str) -> list:
 
 
 # removes directory content recursively
-def clean_dir(dir_: str, ignore_errors: Optional[bool]=True) -> None:
+def clean_dir(dir_: str, ignore_errors: Optional[bool] = True) -> None:
     """
     Recursively delete a directory tree, but save root directory.
 
@@ -528,7 +532,7 @@ def get_file_hash(path: str) -> str:
         from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
-    return get_bytes_hash(open(path, 'rb').read())
+    return get_bytes_hash(open(path, "rb").read())
 
 
 def tree(dir_path: str) -> str:
@@ -591,9 +595,11 @@ def tree(dir_path: str) -> str:
         # └── [5.4K]  q.jpeg
         # 5 directories, 37 files
     """
-    out = subprocess.Popen(['tree', '--filelimit', '500', '-h', '-n', dir_path],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
+    out = subprocess.Popen(
+        ["tree", "--filelimit", "500", "-h", "-n", dir_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
     stdout, stderr = out.communicate()
     return stdout.decode("utf-8")
 
@@ -640,7 +646,9 @@ def touch(path: str) -> None:
         os.utime(path, None)
 
 
-def download(url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None) -> str:
+def download(
+    url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None
+) -> str:
     """
     Load image from url to host by target path.
 
@@ -665,12 +673,11 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
         # Output:
         # /home/admin/work/projects/examples/avatar.jpeg
     """
+
     def _download():
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            total_size_in_bytes = int(
-                CaseInsensitiveDict(r.headers).get("Content-Length", "0")
-            )
+            total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
             if progress is not None and type(progress) is Progress:
                 progress.set(0, total_size_in_bytes)
             with open(save_path, "wb") as f:
@@ -685,9 +692,7 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
     if cache is None:
         _download()
     else:
-        cache_path = cache.check_storage_object(
-            get_string_hash(url), get_file_ext(save_path)
-        )
+        cache_path = cache.check_storage_object(get_string_hash(url), get_file_ext(save_path))
         if cache_path is None:
             # file not in cache
             _download()
@@ -703,3 +708,16 @@ def download(url: str, save_path: str, cache: Optional[FileCache] = None, progre
                     progress(sizeb)
 
     return save_path
+
+
+def copy_dir_recursively(
+    src_dir: str, dst_dir: str, progress_cb: Optional[Callable] = None
+) -> List[str]:
+    files = list_files_recursively(src_dir)
+    for src_file_path in files:
+        dst_file_path = os.path.normpath(src_file_path.replace(src_dir, dst_dir))
+        ensure_base_path(dst_file_path)
+        if not file_exists(dst_file_path):
+            copy_file(src_file_path, dst_file_path)
+            if progress_cb is not None:
+                progress_cb(get_file_size(src_file_path))

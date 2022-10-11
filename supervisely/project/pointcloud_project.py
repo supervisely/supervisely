@@ -27,6 +27,7 @@ from supervisely.pointcloud import pointcloud as sly_pointcloud
 from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.io.json import dump_json_file
 from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
 
 PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir', 'ann_path'])
 
@@ -211,12 +212,26 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
                 rimg_infos = []
                 for img_path, meta_json in related_items:
                     img = api.pointcloud.upload_related_image(img_path)[0]
-                    rimg_infos.append({ApiField.ENTITY_ID: pointcloud.id,
-                                       ApiField.NAME: meta_json[ApiField.NAME],
-                                       ApiField.HASH: img,
-                                       ApiField.META: meta_json[ApiField.META]})
-
-                api.pointcloud.add_related_images(rimg_infos)
+                    try:
+                        rimg_infos.append({ApiField.ENTITY_ID: pointcloud.id,
+                                        ApiField.NAME: meta_json[ApiField.NAME],
+                                        ApiField.HASH: img,
+                                        ApiField.META: meta_json[ApiField.META]})
+                    except Exception as e:
+                        logger.error("Related images uploading error.", extra={
+                            "pointcloud_id": pointcloud.id, 
+                            "meta_json": meta_json, 
+                            "rel_image_hash": img
+                        })
+                        raise e
+                try:
+                    api.pointcloud.add_related_images(rimg_infos)
+                except Exception as e:
+                    logger.error("Related images adding error.", extra={
+                        "pointcloud_id": pointcloud.id, 
+                        "rel_images_info": rimg_infos
+                    })
+                    raise e
             if log_progress:
                 ds_progress.iters_done_report(1)
                 

@@ -26,15 +26,15 @@ from supervisely.geometry.constants import GEOMETRY_TYPE, GEOMETRY_SHAPE
 class LabelJsonFields:
     """Json fields for :class:`Annotation<supervisely.annotation.label.Label>`"""
 
-    OBJ_CLASS_NAME = 'classTitle'
+    OBJ_CLASS_NAME = "classTitle"
     """"""
-    OBJ_CLASS_ID = 'classId'
+    OBJ_CLASS_ID = "classId"
     """"""
-    DESCRIPTION = 'description'
+    DESCRIPTION = "description"
     """"""
-    TAGS = 'tags'
+    TAGS = "tags"
     """"""
-    INSTANCE_KEY = 'instance'
+    INSTANCE_KEY = "instance"
     """"""
 
 
@@ -74,8 +74,14 @@ class LabelBase:
         # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
     """
 
-    def __init__(self, geometry: Geometry, obj_class: ObjClass, tags: Optional[Union[TagCollection, List[Tag]]] = None,
-                 description: Optional[str] = "", binding_key=None):
+    def __init__(
+        self,
+        geometry: Geometry,
+        obj_class: ObjClass,
+        tags: Optional[Union[TagCollection, List[Tag]]] = None,
+        description: Optional[str] = "",
+        binding_key=None,
+    ):
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -85,15 +91,17 @@ class LabelBase:
 
         if not isinstance(tags, TagCollection):
             self._tags = TagCollection(tags)
-        
+
         self._binding_key = binding_key
 
     def _validate_geometry(self):
-        '''
+        """
         The function checks the name of the Object for compliance.
         :return: generate ValueError error if name is mismatch
-        '''
-        self._geometry.validate(self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_config)
+        """
+        self._geometry.validate(
+            self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_config
+        )
 
     def _validate_geometry_type(self):
         raise NotImplementedError()
@@ -252,7 +260,7 @@ class LabelBase:
 
         if self.obj_class.sly_id is not None:
             res[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
-        
+
         if self.binding_key is not None:
             res[LabelJsonFields.INSTANCE_KEY] = self.binding_key
 
@@ -300,22 +308,27 @@ class LabelBase:
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:
-            raise RuntimeError(f'Failed to deserialize a Label object from JSON: label class name {obj_class_name!r} '
-                               f'was not found in the given project meta.')
+            raise RuntimeError(
+                f"Failed to deserialize a Label object from JSON: label class name {obj_class_name!r} "
+                f"was not found in the given project meta."
+            )
 
         if obj_class.geometry_type is AnyGeometry:
             geometry_type_actual = GET_GEOMETRY_FROM_STR(
-                data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE])
+                data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE]
+            )
             geometry = geometry_type_actual.from_json(data)
         else:
             geometry = obj_class.geometry_type.from_json(data)
 
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
-        return cls(geometry=geometry,
-                   obj_class=obj_class,
-                   tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
-                   description=data.get(LabelJsonFields.DESCRIPTION, ""),
-                   binding_key=binding_key)
+        return cls(
+            geometry=geometry,
+            obj_class=obj_class,
+            tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
+            description=data.get(LabelJsonFields.DESCRIPTION, ""),
+            binding_key=binding_key,
+        )
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -378,9 +391,14 @@ class LabelBase:
         """
         return self.clone(tags=self._tags.add_items(tags))
 
-    def clone(self, geometry: Optional[Geometry] = None, obj_class: Optional[ObjClass] = None,
-              tags: Optional[Union[TagCollection, List[Tag]]] = None,
-              description: Optional[str] = None, binding_key=None) -> LabelBase:
+    def clone(
+        self,
+        geometry: Optional[Geometry] = None,
+        obj_class: Optional[ObjClass] = None,
+        tags: Optional[Union[TagCollection, List[Tag]]] = None,
+        description: Optional[str] = None,
+        binding_key: Optional[str] = None,
+    ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
@@ -429,11 +447,13 @@ class LabelBase:
             clone_label_dog = label_dog.clone(sly.Label(sly.Bitmap(mask_bool), class_dog))
             # In this case RuntimeError will be raised
         """
-        return self.__class__(geometry=take_with_default(geometry, self.geometry),
-                              obj_class=take_with_default(obj_class, self.obj_class),
-                              tags=take_with_default(tags, self.tags),
-                              description=take_with_default(description, self.description),
-                              binding_key=binding_key)
+        return self.__class__(
+            geometry=take_with_default(geometry, self.geometry),
+            obj_class=take_with_default(obj_class, self.obj_class),
+            tags=take_with_default(tags, self.tags),
+            description=take_with_default(description, self.description),
+            binding_key=take_with_default(binding_key, self.binding_key),
+        )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
@@ -569,23 +589,31 @@ class LabelBase:
         return self.clone(geometry=self.geometry.flipud(img_size))
 
     def _get_font(self, img_size):
-        '''
+        """
         The function get size of font for image with given size
         :return: font for drawing
-        '''
+        """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
 
     def _draw_tags(self, bitmap, font):
         bbox = self.geometry.to_bbox()
         texts = [tag.get_compact_str() for tag in self.tags]
-        sly_image.draw_text_sequence(bitmap=bitmap,
-                                     texts=texts,
-                                     anchor_point=(bbox.top, bbox.left),
-                                     corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
-                                     font=font)
+        sly_image.draw_text_sequence(
+            bitmap=bitmap,
+            texts=texts,
+            anchor_point=(bbox.top, bbox.left),
+            corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
+            font=font,
+        )
 
-    def draw(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None, thickness: Optional[int] = 1,
-             draw_tags: Optional[bool] = False, tags_font: Optional[FreeTypeFont] = None) -> None:
+    def draw(
+        self,
+        bitmap: np.ndarray,
+        color: Optional[List[int, int, int]] = None,
+        thickness: Optional[int] = 1,
+        draw_tags: Optional[bool] = False,
+        tags_font: Optional[FreeTypeFont] = None,
+    ) -> None:
         """
         Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw>`.
 
@@ -603,15 +631,22 @@ class LabelBase:
         :rtype: :class:`NoneType<NoneType>`
         """
         effective_color = take_with_default(color, self.obj_class.color)
-        self.geometry.draw(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
+        self.geometry.draw(
+            bitmap, effective_color, thickness, config=self.obj_class.geometry_config
+        )
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
             self._draw_tags(bitmap, tags_font)
 
-    def draw_contour(self, bitmap: np.ndarray, color: Optional[List[int, int, int]] = None,
-                     thickness: Optional[int] = 1,
-                     draw_tags: Optional[bool] = False, tags_font: Optional[FreeTypeFont] = None) -> None:
+    def draw_contour(
+        self,
+        bitmap: np.ndarray,
+        color: Optional[List[int, int, int]] = None,
+        thickness: Optional[int] = 1,
+        draw_tags: Optional[bool] = False,
+        tags_font: Optional[FreeTypeFont] = None,
+    ) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
 
@@ -629,7 +664,9 @@ class LabelBase:
         :rtype: :class:`NoneType<NoneType>`
         """
         effective_color = take_with_default(color, self.obj_class.color)
-        self.geometry.draw_contour(bitmap, effective_color, thickness, config=self.obj_class.geometry_config)
+        self.geometry.draw_contour(
+            bitmap, effective_color, thickness, config=self.obj_class.geometry_config
+        )
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
@@ -691,16 +728,17 @@ class LabelBase:
         for g in geometries:
             labels.append(self.clone(geometry=g, obj_class=new_obj_class))
         return labels
-        
+
     @property
     def binding_key(self):
         return self._binding_key
-       
+
     @binding_key.setter
     def binding_key(self, key: Union[str, None]):
         if key is not None and type(key) is not str:
             raise TypeError("Key has to be of type string or None")
         self._binding_key = key
+
 
 class Label(LabelBase):
     def _validate_geometry_type(self):
@@ -709,12 +747,18 @@ class Label(LabelBase):
         """
         if self._obj_class.geometry_type != AnyGeometry:
             if type(self._geometry) is not self._obj_class.geometry_type:
-                raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
-                                   .format(type(self._geometry), self._obj_class.geometry_type))
+                raise RuntimeError(
+                    "Input geometry type {!r} != geometry type of ObjClass {}".format(
+                        type(self._geometry), self._obj_class.geometry_type
+                    )
+                )
 
 
 class PixelwiseScoresLabel(LabelBase):
     def _validate_geometry_type(self):
         if type(self._geometry) is not MultichannelBitmap:
-            raise RuntimeError("Input geometry type {!r} != geometry type of ObjClass {}"
-                               .format(type(self._geometry), MultichannelBitmap))
+            raise RuntimeError(
+                "Input geometry type {!r} != geometry type of ObjClass {}".format(
+                    type(self._geometry), MultichannelBitmap
+                )
+            )
