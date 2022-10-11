@@ -854,11 +854,11 @@ class FileApi(ModuleApiBase):
             for info in path_infos:
                 if info["path"] == remote_path:
                     return self._convert_json_info(info)
-
-        path_infos = self.list(team_id, remote_path)
-        for info in path_infos:
-            if info["path"] == remote_path:
-                return self._convert_json_info(info)
+        else:
+            path_infos = self.list(team_id, remote_path)
+            for info in path_infos:
+                if info["path"] == remote_path:
+                    return self._convert_json_info(info)
         return None
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:
