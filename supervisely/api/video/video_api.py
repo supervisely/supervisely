@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple, NamedTuple, Dict, Optional, Callable
 from requests import Response
 import datetime
+import os
 import json
 import urllib.parse
 from functools import partial
@@ -16,11 +17,11 @@ from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_tag_api import VideoTagApi
 from supervisely.sly_logger import logger
-from supervisely.io.fs import get_file_hash
-
+from supervisely.io.fs import get_file_ext, get_file_hash
+import supervisely.io.fs as sly_fs
 
 from supervisely.io.fs import ensure_base_path
-from supervisely._utils import batched, is_development, abs_url
+from supervisely._utils import batched, is_development, abs_url, rand_str
 from supervisely.video.video import get_info, get_video_streams, gen_video_stream_name
 
 from supervisely.task.progress import Progress
@@ -30,6 +31,7 @@ class VideoInfo(NamedTuple):
     id: int
     name: str
     hash: str
+    link: str
     team_id: int
     workspace_id: int
     project_id: int
@@ -130,6 +132,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.ID,
             ApiField.NAME,
             ApiField.HASH,
+            ApiField.LINK,
             ApiField.TEAM_ID,
             ApiField.WORKSPACE_ID,
             ApiField.PROJECT_ID,
@@ -484,9 +487,10 @@ class VideoApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 0, "total": 2, "timestamp": "2021-03-24T10:18:57.111Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
         """
-        return self._upload_bulk_add(
+        results = self._upload_bulk_add(
             lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
         )
+        return results
 
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
@@ -604,7 +608,7 @@ class VideoApi(RemoveableBulkModuleApi):
         path_original = self.get_info_by_id(id).path_original
         return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
 
-    def downalod_range_by_path(
+    def download_range_by_path(
         self,
         path_original: str,
         frame_start: int,
@@ -1013,7 +1017,8 @@ class VideoApi(RemoveableBulkModuleApi):
         infos: List[Dict],
         metas: Optional[List[Dict]] = None,
     ) -> List[VideoInfo]:
-        self.upsert_infos(hashes, infos, links)
+        if infos is not None:
+            self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
         )
@@ -1023,3 +1028,44 @@ class VideoApi(RemoveableBulkModuleApi):
             "videos.custom-data.set", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
         )
         return resp.json()
+
+    def upload_link(
+        self,
+        dataset_id: int,
+        link: str,
+        name: Optional[str] = None,
+        meta: Optional[List[Dict]] = None,
+    ):
+        if name is None:
+            name = rand_str(10) + get_file_ext(link)
+        local_path = os.path.join(os.getcwd(), name)
+
+        try:
+            sly_fs.download(link, local_path)
+            video_info = get_info(local_path)
+            h = get_file_hash(local_path)
+            sly_fs.silent_remove(local_path)
+        except Exception as e:
+            sly_fs.silent_remove(local_path)
+            raise e
+        name = self.get_free_name(dataset_id, name)
+        return self.upload_links(
+            dataset_id, names=[name], hashes=[h], links=[link], infos=[video_info], metas=[meta]
+        )
+
+    def add_existing(
+        self,
+        dataset_id: int,
+        video_info: VideoInfo,
+        name: str,
+    ) -> VideoInfo:
+        if video_info.link is not None:
+            return self.upload_links(
+                dataset_id,
+                names=[name],
+                hashes=[video_info.hash],
+                links=[video_info.link],
+                infos=None,
+            )[0]
+        else:
+            return self.upload_hash(dataset_id, name, video_info.hash)
