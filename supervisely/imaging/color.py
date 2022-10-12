@@ -6,7 +6,6 @@ import colorsys
 import os
 import gzip
 import json
-from turtle import color
 from typing import List
 
 
