@@ -66,7 +66,7 @@ def agent_storage(raise_not_found=True):
 def team_id(raise_not_found=True):
     return _parse_from_env(
         name="team_id",
-        keys=["CONTEXT_TEAMID", "context.teamId"],
+        keys=["CONTEXT_TEAMID", "context.teamId", "TEAM_ID"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -76,7 +76,7 @@ def team_id(raise_not_found=True):
 def workspace_id(raise_not_found=True):
     return _parse_from_env(
         name="workspace_id",
-        keys=["CONTEXT_WORKSPACEID", "context.workspaceId"],
+        keys=["CONTEXT_WORKSPACEID", "context.workspaceId", "WORKSPACE_ID"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -86,7 +86,7 @@ def workspace_id(raise_not_found=True):
 def project_id(raise_not_found=True):
     return _parse_from_env(
         name="project_id",
-        keys=["CONTEXT_PROJECTID", "context.projectId", "modal.state.slyProjectId"],
+        keys=["CONTEXT_PROJECTID", "context.projectId", "modal.state.slyProjectId", "PROJECT_ID"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -96,7 +96,7 @@ def project_id(raise_not_found=True):
 def dataset_id(raise_not_found=True):
     return _parse_from_env(
         name="dataset_id",
-        keys=["CONTEXT_DATASETID", "context.datasetId", "modal.state.slyDatasetId"],
+        keys=["CONTEXT_DATASETID", "context.datasetId", "modal.state.slyDatasetId", "DATASET_ID"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -106,7 +106,7 @@ def dataset_id(raise_not_found=True):
 def team_files_folder(raise_not_found=True):
     return _parse_from_env(
         name="team_files_folder",
-        keys=["CONTEXT_SLYFOLDER", "context.slyFolder", "modal.state.slyFolder"],
+        keys=["CONTEXT_SLYFOLDER", "context.slyFolder", "modal.state.slyFolder", "FOLDER"],
         postprocess_fn=lambda x: str(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -120,7 +120,7 @@ def folder(raise_not_found=True):
 def team_files_file(raise_not_found=True):
     return _parse_from_env(
         name="team_files_file",
-        keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile"],
+        keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile", "FILE"],
         postprocess_fn=lambda x: str(x),
         default=None,
         raise_not_found=raise_not_found,
