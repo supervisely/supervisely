@@ -369,23 +369,10 @@ class FileApi(ModuleApiBase):
                         progress_cb(get_file_size(local_save_path))
 
     def is_on_agent(self, remote_path: str):
-        if remote_path.startswith("agent://"):
-            return True
-        else:
-            return False
+        return sly_fs.is_on_agent(remote_path)
 
     def parse_agent_id_and_path(self, remote_path: str) -> int:
-        if self.is_on_agent(remote_path) is False:
-            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-        search = re.search("agent://(\d+)(.*)", remote_path)
-        agent_id = int(search.group(1))
-        path_in_agent_folder = search.group(2)
-        if not path_in_agent_folder.startswith("/"):
-            path_in_agent_folder = "/" + path_in_agent_folder
-        if remote_path.endswith("/") and not path_in_agent_folder.endswith("/"):
-            path_in_agent_folder += "/"
-        # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
-        return agent_id, path_in_agent_folder
+        return sly_fs.parse_agent_id_and_path(remote_path)
 
     def download_from_agent(
         self,
