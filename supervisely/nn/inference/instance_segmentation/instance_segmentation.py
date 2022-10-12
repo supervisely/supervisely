@@ -24,9 +24,10 @@ class InstanceSegmentation(Inference):
         # )
         # return template_dir
         return None
-        
+
     def _get_layout(self) -> Widget:
         import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+
         return main_ui.menu
 
     def get_info(self) -> dict:
@@ -45,9 +46,7 @@ class InstanceSegmentation(Inference):
                 f"Class {dto.class_name} not found in model classes {self.get_classes()}"
             )
         if not dto.mask.any():  # skip empty masks
-            logger.debug(
-                f"Mask of class {dto.class_name} is empty and will be sklipped"
-            )
+            logger.debug(f"Mask of class {dto.class_name} is empty and will be sklipped")
             return None
         geometry = Bitmap(dto.mask)
         tags = []
@@ -60,14 +59,10 @@ class InstanceSegmentation(Inference):
         settings = """confidence_threshold: 0.8"""
         return settings
 
-    def predict(
-        self, image_path: str, confidence_threshold: float
-    ) -> List[PredictionMask]:
+    def predict(self, image_path: str, confidence_threshold: float) -> List[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_annotation(
-        self, image_path: str, confidence_threshold: float
-    ) -> Annotation:
+    def predict_annotation(self, image_path: str, confidence_threshold: float) -> Annotation:
         predictions = self.predict(image_path, confidence_threshold)
         return self._predictions_to_annotation(image_path, predictions)
 
@@ -88,9 +83,7 @@ class InstanceSegmentation(Inference):
         )
         return ann.to_json()
 
-    def visualize(
-        self, predictions: List[PredictionMask], image_path: str, vis_path: str
-    ):
+    def visualize(self, predictions: List[PredictionMask], image_path: str, vis_path: str):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
@@ -103,5 +96,6 @@ class InstanceSegmentation(Inference):
         def deploy_model():
             device = deploy_ui.device.get_value()
             self.load_on_device(device)
+            print(f"✅ Model has been successfully loaded on {device} device")
 
         super().serve()

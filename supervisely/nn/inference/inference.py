@@ -1,6 +1,7 @@
 import os
 from typing import List, Dict
 import yaml
+import random
 from supervisely._utils import (
     is_production,
     is_development,
@@ -23,7 +24,8 @@ from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
-from distinctipy import distinctipy
+from supervisely.imaging.color import get_predefined_colors
+
 
 try:
     from typing import Literal
@@ -52,9 +54,7 @@ class Inference:
             if os.environ.get("_SPAWN_USER_ID") is None:
                 logger.debug("Running serving on localhost with enabled UI")
             else:
-                logger.debug(
-                    "Running serving on Supervisely platform in production mode"
-                )
+                logger.debug("Running serving on Supervisely platform in production mode")
                 raise NotImplementedError("TBD - download directory")
         elif is_development():
             self._headless = True
@@ -66,19 +66,15 @@ class Inference:
 
     def _get_layout(self):
         return None
-        #raise NotImplementedError("Have to be implemented in child class")
+        # raise NotImplementedError("Have to be implemented in child class")
 
     def load_on_device(
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
     ):
-        raise NotImplementedError(
-            "Have to be implemented in child class after inheritance"
-        )
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def get_classes(self) -> List[str]:
-        raise NotImplementedError(
-            "Have to be implemented in child class after inheritance"
-        )
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def get_info(self) -> dict:
         return {
@@ -103,10 +99,10 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            colors = distinctipy.get_colors(len(self.get_classes()))
+            colors = get_predefined_colors(len(self.get_classes()))
+            # random.shuffle(colors)
             classes = []
-            for name, color in zip(self.get_classes(), colors):
-                rgb = distinctipy.get_rgb256(color)
+            for name, rgb in zip(self.get_classes(), colors):
                 classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
             self._model_meta = ProjectMeta(classes)
             self._get_confidence_tag_meta()
@@ -131,9 +127,7 @@ class Inference:
     def visualize(self, predictions: List, image_path: str, vis_path: str):
         raise NotImplementedError("Have to be implemented in child class")
 
-    def _predictions_to_annotation(
-        self, image_path: str, predictions: List
-    ) -> Annotation:
+    def _predictions_to_annotation(self, image_path: str, predictions: List) -> Annotation:
         labels = []
         for prediction in predictions:
             label = self._create_label(prediction)
