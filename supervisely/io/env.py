@@ -113,6 +113,10 @@ def team_files_folder(raise_not_found=True):
     )
 
 
+def folder(raise_not_found=True):
+    return team_files_folder(raise_not_found)
+
+
 def team_files_file(raise_not_found=True):
     return _parse_from_env(
         name="team_files_file",
@@ -121,3 +125,7 @@ def team_files_file(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+
+def file(raise_not_found=True):
+    return team_files_file(raise_not_found)

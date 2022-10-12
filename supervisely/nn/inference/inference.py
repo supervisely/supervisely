@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 import yaml
 import random
 from supervisely._utils import (
@@ -38,24 +38,43 @@ class Inference:
     def __init__(
         self,
         model_dir: str = None,
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
+        device: Optional[Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]] = None,
     ):
         self._model_dir = model_dir
+        self._local_dir = None
+        if fs.is_on_agent(self._model_dir) or is_production():
+            logger.info("Model directory in Team Files: {self._model_dir}")
+            self._local_dir = os.path.join(get_data_dir(), "model")
+            logger.info(f"Model directory in container: {self._local_dir}")
+        else:
+            self._model_dir = os.path.abspath(self._model_dir)
+            self._local_dir = self._model_dir
+            print(f"Model directory: {self._local_dir}")
+
+        if device is None:
+            try:
+                import torch
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            except Exception as e:
+                logger.warn(
+                    f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
+                )
+                device = "cpu"
+
         self._device = device
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
 
-        self._headless = False
-        # self._template_dir = None
-        # self._template_dir = Path(__file__).parent.absolute()
+        self._headless = True
         if is_production():
-            if os.environ.get("_SPAWN_USER_ID") is None:
-                logger.debug("Running serving on localhost with enabled UI")
-            else:
-                logger.debug("Running serving on Supervisely platform in production mode")
-                raise NotImplementedError("TBD - download directory")
+            # if os.environ.get("_SPAWN_USER_ID") is None:
+            #     logger.debug("Running serving on localhost with enabled UI")
+            # else:
+            #     logger.debug("Running serving on Supervisely platform in production mode")
+            raise NotImplementedError("TBD - download directory")
         elif is_development():
             self._headless = True
             pass
@@ -85,7 +104,7 @@ class Inference:
 
     @property
     def model_dir(self):
-        return self._model_dir
+        return self._local_dir
 
     @property
     def api(self) -> Api:
