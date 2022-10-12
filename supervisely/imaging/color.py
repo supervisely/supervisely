@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import random
 import colorsys
+import os
+import gzip
+import json
+from turtle import color
 from typing import List
 
 
@@ -12,9 +16,9 @@ def _validate_color(color):
     :param: color: color (RGB tuple of integers)
     """
     if not isinstance(color, (list, tuple)):
-        raise ValueError('Color has to be list, or tuple')
+        raise ValueError("Color has to be list, or tuple")
     if len(color) != 3:
-        raise ValueError('Color have to contain exactly 3 values: [R, G, B]')
+        raise ValueError("Color have to contain exactly 3 values: [R, G, B]")
     for channel in color:
         validate_channel_value(channel)
 
@@ -45,7 +49,7 @@ def _normalize_color(color):
     Divide all RGB values by 255.
     :param color: color (RGB tuple of integers)
     """
-    return [c / 255. for c in color]
+    return [c / 255.0 for c in color]
 
 
 def _color_distance(first_color: list, second_color: list) -> float:
@@ -57,8 +61,10 @@ def _color_distance(first_color: list, second_color: list) -> float:
     """
     first_color_hls = colorsys.rgb_to_hls(*_normalize_color(first_color))
     second_color_hls = colorsys.rgb_to_hls(*_normalize_color(second_color))
-    hue_distance = min(abs(first_color_hls[0] - second_color_hls[0]),
-                       1 - abs(first_color_hls[0] - second_color_hls[0]))
+    hue_distance = min(
+        abs(first_color_hls[0] - second_color_hls[0]),
+        1 - abs(first_color_hls[0] - second_color_hls[0]),
+    )
     return hue_distance
 
 
@@ -113,17 +119,17 @@ def rgb2hex(color: List[int, int, int]) -> str:
         # Output: #8040FF
     """
     _validate_color(color)
-    return '#' + ''.join('{:02X}'.format(component) for component in color)
+    return "#" + "".join("{:02X}".format(component) for component in color)
 
 
 def _hex2color(hex_value: str) -> list:
     """
-        Convert HEX RGB string to integer RGB format
-        :param hex_value: HEX RGBA string. Example: "#FF02А4
-        :return: RGB integer values. Example: [80, 255, 0]
+    Convert HEX RGB string to integer RGB format
+    :param hex_value: HEX RGBA string. Example: "#FF02А4
+    :return: RGB integer values. Example: [80, 255, 0]
     """
-    assert hex_value.startswith('#')
-    return [int(hex_value[i:(i + 2)], 16) for i in range(1, len(hex_value), 2)]
+    assert hex_value.startswith("#")
+    return [int(hex_value[i : (i + 2)], 16) for i in range(1, len(hex_value), 2)]
 
 
 def hex2rgb(hex_value: str) -> List[int, int, int]:
@@ -174,4 +180,40 @@ def validate_channel_value(value: int) -> None:
     if 0 <= value <= 255:
         pass
     else:
-        raise ValueError('Color channel has to be in range [0; 255]')
+        raise ValueError("Color channel has to be in range [0; 255]")
+
+
+# generate colors
+# import distinctipy
+# data = {}
+# for n in range(100):
+#     print(n)
+#     colors = distinctipy.get_colors(n)
+#     rgb_colors = [distinctipy.get_rgb256(color) for color in colors]
+#     data[n] = rgb_colors
+# sly.json.dump_json_file(data, "colors.json")
+
+# import gzip
+# data = sly.json.load_json_file("colors.json")
+# with gzip.open("colors.json.gz", "wt", encoding="UTF-8") as zipfile:
+#     json.dump(data, zipfile)
+# with gzip.open("colors.json.gz", "r") as fin:
+#     data = json.loads(fin.read().decode("utf-8"))
+
+
+def get_predefined_colors(n: int):
+    try:
+        file = os.path.join(os.path.abspath(__file__), "colors.json.gz")
+        with gzip.open("colors.json.gz", "r") as fin:
+            data = json.loads(fin.read().decode("utf-8"))
+
+        if str(n) in data:
+            return data[n]
+        # generate random colors
+    except Exception as e:
+        print(repr(e))
+
+    rand_colors = []
+    for i in range(n):
+        rand_colors.append(random_rgb())
+    return rand_colors
