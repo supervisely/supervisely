@@ -849,10 +849,16 @@ class FileApi(ModuleApiBase):
             #                  updated_at='2021-01-11T09:04:17.959Z',
             #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
-        path_infos = self.list(team_id, remote_path)
-        for info in path_infos:
-            if info["path"] == remote_path:
-                return self._convert_json_info(info)
+        if self.is_on_agent(remote_path) is True:
+            path_infos = self.list_on_agent(team_id, os.path.dirname(remote_path), recursive=False)
+            for info in path_infos:
+                if info["path"] == remote_path:
+                    return self._convert_json_info(info)
+        else:
+            path_infos = self.list(team_id, remote_path)
+            for info in path_infos:
+                if info["path"] == remote_path:
+                    return self._convert_json_info(info)
         return None
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:
