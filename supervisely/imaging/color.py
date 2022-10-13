@@ -202,12 +202,12 @@ def validate_channel_value(value: int) -> None:
 
 def get_predefined_colors(n: int):
     try:
-        file = os.path.join(os.path.abspath(__file__), "colors.json.gz")
-        with gzip.open("colors.json.gz", "r") as fin:
+        file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "colors.json.gz")
+        with gzip.open(file, "r") as fin:
             data = json.loads(fin.read().decode("utf-8"))
 
         if str(n) in data:
-            return data[n]
+            return data[str(n)]
         # generate random colors
     except Exception as e:
         print(repr(e))
