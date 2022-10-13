@@ -202,7 +202,7 @@ def validate_channel_value(value: int) -> None:
 
 def get_predefined_colors(n: int):
     try:
-        file = os.path.join(os.path.abspath(__file__), "colors.json.gz")
+        file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "colors.json.gz")
         with gzip.open("colors.json.gz", "r") as fin:
             data = json.loads(fin.read().decode("utf-8"))
 
