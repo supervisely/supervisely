@@ -6,6 +6,7 @@ import colorsys
 import os
 import gzip
 import json
+import copy
 from typing import List
 
 
@@ -207,7 +208,9 @@ def get_predefined_colors(n: int):
             data = json.loads(fin.read().decode("utf-8"))
 
         if str(n) in data:
-            return data[str(n)]
+            colors = copy.deepcopy(data[str(n)])
+            random.Random(7).shuffle(colors)
+            return colors
         # generate random colors
     except Exception as e:
         print(repr(e))
