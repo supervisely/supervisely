@@ -17,6 +17,7 @@ from supervisely.annotation.label import Label
 import supervisely.imaging.image as sly_image
 import supervisely.io.fs as fs
 from supervisely.sly_logger import logger
+import supervisely.io.env as env
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
@@ -25,7 +26,7 @@ from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
-
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -40,17 +41,62 @@ class Inference:
         model_dir: str = None,
         device: Optional[Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]] = None,
     ):
+        self._device = None
+        self._prepare_device(device)
+
+        self._model_meta = None
+        self._confidence = "confidence"
+        self._app: Application = None
+        self._api: Api = None
+
+        self._model_dir = None
+        self._local_dir = None
+        self._prepare_model_directory(model_dir)
+
+        self._headless = True
+        # if is_production():
+        #     # if os.environ.get("_SPAWN_USER_ID") is None:
+        #     #     logger.debug("Running serving on localhost with enabled UI")
+        #     # else:
+        #     #     logger.debug("Running serving on Supervisely platform in production mode")
+        #     raise NotImplementedError("TBD - download directory")
+        # elif is_development():
+        #     self._headless = True
+        #     pass
+
+    def _prepare_model_directory(self, model_dir):
         self._model_dir = model_dir
         self._local_dir = None
         if fs.is_on_agent(self._model_dir) or is_production():
-            logger.info("Model directory in Team Files: {self._model_dir}")
+            team_id = env.team_id()
+            logger.info(f"Remote model directory in Team Files: {self._model_dir}")
             self._local_dir = os.path.join(get_data_dir(), "model")
-            logger.info(f"Model directory in container: {self._local_dir}")
+            logger.info(f"Local model directory: {self._local_dir}")
+
+            if fs.dir_exists(self._local_dir):
+                # only during debug, has no effect in production
+                pass
+            else:
+                sizeb = self.api.file.get_directory_size(team_id, self._model_dir)
+                progress = Progress(
+                    "Downloading model directory ...",
+                    total_cnt=sizeb,
+                    is_size=True,
+                )
+                raise NotImplementedError("Need debug directory structure")
+                self.api.file.download_directory(
+                    team_id,
+                    self._model_dir,
+                    self._local_dir,
+                    progress.iters_done_report,
+                )
+                logger.info(f"✅ Model directory has been successfully downloaded from Team Files")
         else:
             self._model_dir = os.path.abspath(self._model_dir)
             self._local_dir = self._model_dir
             print(f"Model directory: {self._local_dir}")
 
+    def _prepare_device(self, device):
         if device is None:
             try:
                 import torch
@@ -61,23 +107,6 @@ class Inference:
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
-
-        self._device = device
-        self._model_meta = None
-        self._confidence = "confidence"
-        self._app: Application = None
-        self._api: Api = None
-
-        self._headless = True
-        if is_production():
-            # if os.environ.get("_SPAWN_USER_ID") is None:
-            #     logger.debug("Running serving on localhost with enabled UI")
-            # else:
-            #     logger.debug("Running serving on Supervisely platform in production mode")
-            raise NotImplementedError("TBD - download directory")
-        elif is_development():
-            self._headless = True
-            pass
 
     def _get_templates_dir(self):
         return None

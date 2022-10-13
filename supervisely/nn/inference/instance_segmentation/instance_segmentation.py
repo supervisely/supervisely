@@ -26,9 +26,9 @@ class InstanceSegmentation(Inference):
         return None
 
     def _get_layout(self) -> Widget:
-        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-
-        return main_ui.menu
+        raise NotImplementedError()
+        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        # return main_ui.menu
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -89,13 +89,12 @@ class InstanceSegmentation(Inference):
         ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
 
     def serve(self):
-        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        # import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
 
-        @deploy_ui.deploy_btn.click
-        def deploy_model():
-            device = deploy_ui.device.get_value()
-            self.load_on_device(device)
-            print(f"✅ Model has been successfully loaded on {device} device")
-
+        # @deploy_ui.deploy_btn.click
+        # def deploy_model():
+        # device = deploy_ui.device.get_value()
+        # self.load_on_device(self._device)
+        # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
         super().serve()
