@@ -39,10 +39,10 @@ class Inference:
     def __init__(
         self,
         model_dir: str = None,
-        device: Optional[Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]] = None,
+        # device: Optional[Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]] = None,
     ):
-        self._device = None
-        self._prepare_device(device)
+        # self._device = None
+        # self._prepare_device(self._device)
 
         self._model_meta = None
         self._confidence = "confidence"
@@ -83,14 +83,13 @@ class Inference:
                     total_cnt=sizeb,
                     is_size=True,
                 )
-                raise NotImplementedError("Need debug directory structure")
                 self.api.file.download_directory(
                     team_id,
                     self._model_dir,
                     self._local_dir,
                     progress.iters_done_report,
                 )
-                logger.info(f"✅ Model directory has been successfully downloaded from Team Files")
+                logger.info(f"📥 Model directory has been successfully downloaded from Team Files")
         else:
             self._model_dir = os.path.abspath(self._model_dir)
             self._local_dir = self._model_dir
@@ -148,7 +147,6 @@ class Inference:
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
             colors = get_predefined_colors(len(self.get_classes()))
-            # random.shuffle(colors)
             classes = []
             for name, rgb in zip(self.get_classes(), colors):
                 classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))

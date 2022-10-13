@@ -26,7 +26,7 @@ class InstanceSegmentation(Inference):
         return None
 
     def _get_layout(self) -> Widget:
-        raise NotImplementedError()
+        return None
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
         # return main_ui.menu
 
