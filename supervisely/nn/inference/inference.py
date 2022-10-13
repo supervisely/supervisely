@@ -39,11 +39,7 @@ class Inference:
     def __init__(
         self,
         model_dir: str = None,
-        # device: Optional[Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]] = None,
     ):
-        # self._device = None
-        # self._prepare_device(self._device)
-
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -54,15 +50,6 @@ class Inference:
         self._prepare_model_directory(model_dir)
 
         self._headless = True
-        # if is_production():
-        #     # if os.environ.get("_SPAWN_USER_ID") is None:
-        #     #     logger.debug("Running serving on localhost with enabled UI")
-        #     # else:
-        #     #     logger.debug("Running serving on Supervisely platform in production mode")
-        #     raise NotImplementedError("TBD - download directory")
-        # elif is_development():
-        #     self._headless = True
-        #     pass
 
     def _prepare_model_directory(self, model_dir):
         self._model_dir = model_dir
