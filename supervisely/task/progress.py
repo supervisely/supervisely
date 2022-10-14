@@ -64,16 +64,24 @@ class Progress:
         #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
         # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
     """
-    def __init__(self, message: str, total_cnt: int, ext_logger: Optional[logger] = None, is_size: Optional[bool] = False,
-                 need_info_log: Optional[bool] = False, min_report_percent: Optional[int] = 1):
+
+    def __init__(
+        self,
+        message: str,
+        total_cnt: int,
+        ext_logger: Optional[logger] = None,
+        is_size: Optional[bool] = False,
+        need_info_log: Optional[bool] = False,
+        min_report_percent: Optional[int] = 1,
+    ):
         self.is_size = is_size
         self.message = message
         self.total = total_cnt
         self.current = 0
         self.is_total_unknown = total_cnt == 0
 
-        self.total_label = ''
-        self.current_label = ''
+        self.total_label = ""
+        self.current_label = ""
         self._refresh_labels()
 
         self.reported_cnt = 0
@@ -89,14 +97,21 @@ class Progress:
         if self.is_size and self.is_total_unknown is False and self.report_every < mb1:
             self.report_every = mb1  # 1mb
 
-        if self.is_size and self.is_total_unknown is False and self.total > 40 * 1024 * 1024 and self.report_every < mb5:
+        if (
+            self.is_size
+            and self.is_total_unknown is False
+            and self.total > 40 * 1024 * 1024
+            and self.report_every < mb5
+        ):
             self.report_every = mb5
 
         self.report_progress()
 
     def _refresh_labels(self):
         if self.is_size:
-            self.total_label = sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+            self.total_label = (
+                sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+            )
             self.current_label = sizeof_fmt(self.current)
         else:
             self.total_label = str(self.total if self.total > 0 else self.current)
@@ -138,24 +153,26 @@ class Progress:
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         """
         extra = {
-            'event_type': EventType.PROGRESS,
-            'subtask': self.message,
-            'current': math.ceil(self.current),
-            'total': math.ceil(self.total) if self.total > 0 else math.ceil(self.current),
+            "event_type": EventType.PROGRESS,
+            "subtask": self.message,
+            "current": math.ceil(self.current),
+            "total": math.ceil(self.total) if self.total > 0 else math.ceil(self.current),
         }
 
         if self.is_size:
-            extra['current_label'] = self.current_label
-            extra['total_label'] = self.total_label
+            extra["current_label"] = self.current_label
+            extra["total_label"] = self.total_label
 
-        self.logger.info('progress', extra=extra)
+        self.logger.info("progress", extra=extra)
         if self.need_info_log is True:
             self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
 
     def need_report(self) -> bool:
-        if (self.current == self.total) \
-                or (self.current % self.report_every == 0) \
-                or ((self.reported_cnt - 1) < (self.current // self.report_every)):
+        if (
+            (self.current >= self.total)
+            or (self.current % self.report_every == 0)
+            or ((self.reported_cnt - 1) < (self.current // self.report_every))
+        ):
             return True
         return False
 
@@ -282,28 +299,28 @@ def report_agent_rpc_ready() -> None:
     """
     Logs a message with level INFO on logger
     """
-    logger.info('Ready to get events', extra={ 'event_type': EventType.TASK_DEPLOYED })
+    logger.info("Ready to get events", extra={"event_type": EventType.TASK_DEPLOYED})
 
 
 def report_import_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
-    logger.info('import finished', extra={'event_type': EventType.IMPORT_APPLIED})
+    logger.info("import finished", extra={"event_type": EventType.IMPORT_APPLIED})
 
 
 def report_inference_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
-    logger.info('model applied', extra={'event_type': EventType.MODEL_APPLIED})
+    logger.info("model applied", extra={"event_type": EventType.MODEL_APPLIED})
 
 
 def report_dtl_finished() -> None:
     """
     Logs a message with level INFO on logger
     """
-    logger.info('DTL finished', extra={'event_type': EventType.DTL_APPLIED})
+    logger.info("DTL finished", extra={"event_type": EventType.DTL_APPLIED})
 
 
 def report_dtl_verification_finished(output: str) -> None:
@@ -311,32 +328,35 @@ def report_dtl_verification_finished(output: str) -> None:
     Logs a message with level INFO on logger
     :param output: str
     """
-    logger.info('Verification finished.', extra={'output': output, 'event_type': EventType.TASK_VERIFIED})
+    logger.info(
+        "Verification finished.", extra={"output": output, "event_type": EventType.TASK_VERIFIED}
+    )
 
 
 def _report_metrics(m_type, epoch, metrics):
-    logger.info('metrics', extra={
-        'event_type': EventType.METRICS,
-        'type': m_type,
-        'epoch': epoch,
-        'metrics': metrics
-    })
+    logger.info(
+        "metrics",
+        extra={"event_type": EventType.METRICS, "type": m_type, "epoch": epoch, "metrics": metrics},
+    )
 
 
 def report_metrics_training(epoch, metrics):
-    _report_metrics('train', epoch, metrics)
+    _report_metrics("train", epoch, metrics)
 
 
 def report_metrics_validation(epoch, metrics):
-    _report_metrics('val', epoch, metrics)
+    _report_metrics("val", epoch, metrics)
 
 
 def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_data) -> None:
-    logger.info('checkpoint', extra={
-        'event_type': EventType.CHECKPOINT,
-        'id': checkpoint_idx,
-        'subdir': subdir,
-        'sizeb': sizeb,
-        'best_now': best_now,
-        'optional': optional_data
-    })
+    logger.info(
+        "checkpoint",
+        extra={
+            "event_type": EventType.CHECKPOINT,
+            "id": checkpoint_idx,
+            "subdir": subdir,
+            "sizeb": sizeb,
+            "best_now": best_now,
+            "optional": optional_data,
+        },
+    )
