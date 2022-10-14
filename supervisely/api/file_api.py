@@ -455,14 +455,18 @@ class FileApi(ModuleApiBase):
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
-        # self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        norm_remote_dir = os.path.basename(os.path.normpath(remote_path))
+        temp_dir = os.path.join(local_save_path, "temp_data_dir")
+        os.rename(os.path.join(local_save_path, norm_remote_dir), temp_dir)
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
-            shutil.move(os.path.join(temp_dir, file_name), local_save_path)
+            if file_name == norm_remote_dir:
+                shutil.move(os.path.join(temp_dir, file_name), os.path.join(local_save_path, file_name))
+            else:
+                shutil.move(os.path.join(temp_dir, file_name), local_save_path)
         shutil.rmtree(temp_dir)
 
     def _upload_legacy(self, team_id, src, dst):
