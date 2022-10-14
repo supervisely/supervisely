@@ -265,7 +265,7 @@ class Inference:
             logger.warn(
                 "Serving is running in advanced development mode with Supervisely VPN Network"
             )
-            team_id = int(os.environ["context.teamId"])
+            team_id = env.team_id()
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
