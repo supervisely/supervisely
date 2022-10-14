@@ -76,7 +76,7 @@ class Inference:
                     self._local_dir,
                     progress.iters_done_report,
                 )
-                logger.info(f"📥 Model directory has been successfully downloaded from Team Files")
+                print(f"📥 Model directory has been successfully downloaded from Team Files")
         else:
             self._model_dir = os.path.abspath(self._model_dir)
             self._local_dir = self._model_dir

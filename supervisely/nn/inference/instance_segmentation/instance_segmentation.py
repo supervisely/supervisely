@@ -15,6 +15,7 @@ from supervisely.decorators.inference import (
     process_image_sliding_window,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import Progress
 
 
 class InstanceSegmentation(Inference):
@@ -97,4 +98,6 @@ class InstanceSegmentation(Inference):
         # device = deploy_ui.device.get_value()
         # self.load_on_device(self._device)
         # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
+        Progress("Deploying model ...", 1)
         super().serve()
+        Progress("Model deployed", 1).iter_done_report()
