@@ -462,8 +462,9 @@ class FileApi(ModuleApiBase):
         temp_dir = os.path.join(local_save_path, "temp_data_dir")
         os.rename(os.path.join(local_save_path, norm_remote_dir), temp_dir)
         file_names = os.listdir(temp_dir)
+        norm_local_dir = os.path.basename(os.path.normpath(local_save_path))
         for file_name in file_names:
-            if file_name == norm_remote_dir:
+            if file_name == norm_local_dir:
                 shutil.move(os.path.join(temp_dir, file_name), os.path.join(local_save_path, file_name))
             else:
                 shutil.move(os.path.join(temp_dir, file_name), local_save_path)
