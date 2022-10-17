@@ -459,12 +459,12 @@ class FileApi(ModuleApiBase):
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
         to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
-        renamed_dir = os.path.join(local_save_path, rand_str(10))
-        os.rename(to_move_dir, renamed_dir)
-        file_names = os.listdir(renamed_dir)
+        temp_dir = os.path.join(local_save_path, rand_str(10))
+        os.rename(to_move_dir, temp_dir)
+        file_names = os.listdir(temp_dir)
         for file_name in file_names:
-            shutil.move(os.path.join(renamed_dir, file_name), local_save_path)
-        shutil.rmtree(renamed_dir)
+            shutil.move(os.path.join(temp_dir, file_name), local_save_path)
+        shutil.rmtree(temp_dir)
 
     def _upload_legacy(self, team_id, src, dst):
         """ """
