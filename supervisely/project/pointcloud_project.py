@@ -1,12 +1,20 @@
 # coding: utf-8
 
 # dict
-from typing import List, Optional, Dict, Tuple, Callable
+from typing import List, Optional, Dict, Tuple, Callable, NamedTuple, Union
 from supervisely.api.api import Api
 from collections import namedtuple
 import os
 
-from supervisely.io.fs import file_exists, touch, dir_exists, list_files, get_file_name_with_ext, get_file_name
+from supervisely.io.fs import (
+    file_exists,
+    touch,
+    dir_exists,
+    list_files,
+    get_file_name_with_ext,
+    get_file_name,
+    copy_file,
+)
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, has_valid_ext
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
@@ -29,12 +37,14 @@ from supervisely.io.json import dump_json_file
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
-PointcloudItemPaths = namedtuple('PointcloudItemPaths', ['pointcloud_path', 'related_images_dir', 'ann_path'])
+PointcloudItemPaths = namedtuple(
+    "PointcloudItemPaths", ["pointcloud_path", "related_images_dir", "ann_path"]
+)
 
 
 class PointcloudDataset(VideoDataset):
-    item_dir_name = 'pointcloud'
-    related_images_dir_name = 'related_images'
+    item_dir_name = "pointcloud"
+    related_images_dir_name = "related_images"
     annotation_class = PointcloudAnnotation
 
     @staticmethod
@@ -44,9 +54,96 @@ class PointcloudDataset(VideoDataset):
     def _get_empty_annotaion(self, item_name):
         return self.annotation_class()
 
+    def add_item_file(
+        self,
+        item_name: str,
+        item_path: str,
+        ann: Optional[Union[PointcloudAnnotation, str]] = None,
+        _validate_item: Optional[bool] = True,
+        _use_hardlink: Optional[bool] = False,
+        item_info: Optional[NamedTuple] = None,
+    ) -> None:
+        """
+        Adds given item file to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: str
+        :param item_path: Path to the item.
+        :type item_path: str
+        :param ann: PointcloudAnnotation object or path to annotation.json file.
+        :type ann: PointcloudAnnotation or str, optional
+        :param _validate_item: Checks input files format.
+        :type _validate_item: bool, optional
+        :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
+        :type _use_hardlink: bool, optional
+        :param item_info: NamedTuple ImageInfo containing information about pointcloud.
+        :type item_info: NamedTuple, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension.
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.project import Dataset
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann = "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg.json"
+            ds.add_item_file("IMG_777.jpeg", "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg", ann=ann)
+        """
+        if item_path is None and item_info is None:
+            raise RuntimeError("No item_path or ann or item_info provided.")
+
+        self._add_item_file(
+            item_name,
+            item_path,
+            _validate_item=_validate_item,
+            _use_hardlink=_use_hardlink,
+        )
+        self._add_ann_by_type(item_name, ann)
+
+        # TODO: CHECK ITEM INFO PATH AND CONTENT
+        self._add_img_info(item_name, item_info)
+
+    def _add_item_file(self, item_name, item_path, _validate_item=True, _use_hardlink=False):
+        if item_path is None:
+            return
+
+        self._add_pointcloud_file(item_name, item_path, _validate_item, _use_hardlink)
+
+    def _add_pointcloud_file(
+        self, item_name, pointcloud_path, _validate_img=True, _use_hardlink=False
+    ):
+        """
+        Add given item file to dataset items directory. Generate exception error if item_name already exists in dataset
+        or item name has unsupported extension
+        :param item_name: str
+        :param pointcloud_path: str
+        :param _validate_img: bool
+        :param _use_hardlink: bool
+        """
+
+        self._check_add_item_name(item_name)
+        dst_pointcloud_path = os.path.join(self.item_dir, item_name)
+        if (
+            pointcloud_path != dst_pointcloud_path and pointcloud_path is not None
+        ):  # used only for agent + api during download project + None to optimize internal usage
+            hardlink_done = False
+            if _use_hardlink:
+                try:
+                    os.link(pointcloud_path, dst_pointcloud_path)
+                    hardlink_done = True
+                except OSError:
+                    pass
+            if not hardlink_done:
+                copy_file(pointcloud_path, dst_pointcloud_path)
+            if _validate_img:
+                self._validate_added_item_or_die(pointcloud_path)
+
     @staticmethod
     def _validate_added_item_or_die(item_path):
-        # Make sure we actually received a valid image file, clean it up and fail if not so.
+        # Make sure we actually received a valid pointcloud file, clean it up and fail if not so.
         try:
             sly_pointcloud.validate_format(item_path)
         except (sly_pointcloud.UnsupportedPointcloudFormat, sly_pointcloud.PointcloudReadException):
@@ -59,9 +156,11 @@ class PointcloudDataset(VideoDataset):
         return rimg_dir
 
     def get_item_paths(self, item_name: str) -> PointcloudItemPaths:
-        return PointcloudItemPaths(pointcloud_path=self.get_img_path(item_name),
-                                   related_images_dir=self.get_related_images_path(item_name),
-                                   ann_path=self.get_ann_path(item_name))
+        return PointcloudItemPaths(
+            pointcloud_path=self.get_img_path(item_name),
+            related_images_dir=self.get_related_images_path(item_name),
+            ann_path=self.get_ann_path(item_name),
+        )
 
     def get_related_images(self, item_name: str) -> List[Tuple[str, Dict]]:
         results = []
@@ -69,12 +168,12 @@ class PointcloudDataset(VideoDataset):
         if dir_exists(path):
             files = list_files(path, SUPPORTED_IMG_EXTS)
             for file in files:
-                img_meta_path = os.path.join(path, get_file_name_with_ext(file)+".json")
+                img_meta_path = os.path.join(path, get_file_name_with_ext(file) + ".json")
                 img_meta = {}
                 if file_exists(img_meta_path):
                     img_meta = load_json_file(img_meta_path)
                     if img_meta[ApiField.NAME] != get_file_name_with_ext(file):
-                        raise RuntimeError('Wrong format: name field contains wrong image path')
+                        raise RuntimeError("Wrong format: name field contains wrong image path")
                 results.append((file, img_meta))
         return results
 
@@ -90,9 +189,15 @@ class PointcloudProject(VideoProject):
         return read_project_wrapper(dir, cls)
 
 
-def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, dataset_ids: Optional[List[int]]=None,
-                                download_items: Optional[bool]=True, log_progress: Optional[bool]=False,
-                                progress_cb: Optional[Callable] = None) -> None:
+def download_pointcloud_project(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    download_items: Optional[bool] = True,
+    log_progress: Optional[bool] = False,
+    progress_cb: Optional[Callable] = None,
+) -> PointcloudProject:
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -114,14 +219,18 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
         pointclouds = api.pointcloud.get_list(dataset.id)
 
         if log_progress:
-            ds_progress = Progress('Downloading dataset: {!r}'.format(dataset.name), total_cnt=len(pointclouds))
+            ds_progress = Progress(
+                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(pointclouds)
+            )
         for batch in batched(pointclouds, batch_size=LOG_BATCH_SIZE):
             pointcloud_ids = [pointcloud_info.id for pointcloud_info in batch]
             pointcloud_names = [pointcloud_info.name for pointcloud_info in batch]
 
             ann_jsons = api.pointcloud.annotation.download_bulk(dataset.id, pointcloud_ids)
 
-            for pointcloud_id, pointcloud_name, ann_json in zip(pointcloud_ids, pointcloud_names, ann_jsons):
+            for pointcloud_id, pointcloud_name, ann_json in zip(
+                pointcloud_ids, pointcloud_names, ann_jsons
+            ):
                 if pointcloud_name != ann_json[ApiField.NAME]:
                     raise RuntimeError("Error in api.video.annotation.download_batch: broken order")
 
@@ -140,8 +249,10 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
                                 name = new_name
                                 rimage_info[ApiField.NAME] = name
                             else:
-                                raise RuntimeError('Something wrong with photo context filenames.\
-                                                    Please, contact support')
+                                raise RuntimeError(
+                                    "Something wrong with photo context filenames.\
+                                                    Please, contact support"
+                                )
 
                         rimage_id = rimage_info[ApiField.ID]
 
@@ -154,19 +265,28 @@ def download_pointcloud_project(api: Api, project_id: int, dest_dir: str, datase
                 else:
                     touch(pointcloud_file_path)
 
-                dataset_fs.add_item_file(pointcloud_name,
-                                         pointcloud_file_path,
-                                         ann=PointcloudAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
-                                         _validate_item=False)
+                dataset_fs.add_item_file(
+                    pointcloud_name,
+                    pointcloud_file_path,
+                    ann=PointcloudAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
+                    _validate_item=False,
+                )
             if progress_cb is not None:
                 progress_cb(len(batch))
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
+    return project_fs
 
 
-def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, project_name: Optional[str]=None, log_progress: Optional[bool]=False) -> Tuple[int, str]:
+def upload_pointcloud_project(
+    directory: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = False,
+) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:
         project_name = project_fs.name
@@ -183,7 +303,9 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
 
         ds_progress = None
         if log_progress:
-            ds_progress = Progress('Uploading dataset: {!r}'.format(dataset.name), total_cnt=len(dataset_fs))
+            ds_progress = Progress(
+                "Uploading dataset: {!r}".format(dataset.name), total_cnt=len(dataset_fs)
+            )
 
         for item_name in dataset_fs:
 
@@ -192,7 +314,7 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
 
             try:
                 _, meta = related_items[0]
-                timestamp = meta[ApiField.META]['timestamp']
+                timestamp = meta[ApiField.META]["timestamp"]
                 if timestamp:
                     item_meta = {"timestamp": timestamp}
             except (KeyError, IndexError):
@@ -213,26 +335,33 @@ def upload_pointcloud_project(directory: str, api: Api, workspace_id: int, proje
                 for img_path, meta_json in related_items:
                     img = api.pointcloud.upload_related_image(img_path)[0]
                     try:
-                        rimg_infos.append({ApiField.ENTITY_ID: pointcloud.id,
-                                        ApiField.NAME: meta_json[ApiField.NAME],
-                                        ApiField.HASH: img,
-                                        ApiField.META: meta_json[ApiField.META]})
+                        rimg_infos.append(
+                            {
+                                ApiField.ENTITY_ID: pointcloud.id,
+                                ApiField.NAME: meta_json[ApiField.NAME],
+                                ApiField.HASH: img,
+                                ApiField.META: meta_json[ApiField.META],
+                            }
+                        )
                     except Exception as e:
-                        logger.error("Related images uploading error.", extra={
-                            "pointcloud_id": pointcloud.id, 
-                            "meta_json": meta_json, 
-                            "rel_image_hash": img
-                        })
+                        logger.error(
+                            "Related images uploading error.",
+                            extra={
+                                "pointcloud_id": pointcloud.id,
+                                "meta_json": meta_json,
+                                "rel_image_hash": img,
+                            },
+                        )
                         raise e
                 try:
                     api.pointcloud.add_related_images(rimg_infos)
                 except Exception as e:
-                    logger.error("Related images adding error.", extra={
-                        "pointcloud_id": pointcloud.id, 
-                        "rel_images_info": rimg_infos
-                    })
+                    logger.error(
+                        "Related images adding error.",
+                        extra={"pointcloud_id": pointcloud.id, "rel_images_info": rimg_infos},
+                    )
                     raise e
             if log_progress:
                 ds_progress.iters_done_report(1)
-                
+
     return project.id, project_name

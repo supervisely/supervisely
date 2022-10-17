@@ -149,6 +149,7 @@ from supervisely.video import video
 import supervisely.labeling_jobs.utils as lj
 
 from supervisely.pointcloud import pointcloud
+from supervisely.pointcloud_episodes import pointcloud_episodes
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
