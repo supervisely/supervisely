@@ -7,7 +7,7 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 
 src_path = "/val/"
-dst_path = "/Users/max/work/app_debug_data/val/"
+dst_path = "/Users/max/work/app_debug_data/mmm/"
 
 if sly.fs.dir_exists(dst_path):
     sly.fs.remove_dir(dst_path)
