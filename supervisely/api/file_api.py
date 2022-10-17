@@ -458,8 +458,8 @@ class FileApi(ModuleApiBase):
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
         temp_dir = os.path.join(local_save_path, rand_str(10))
+        to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
         os.rename(to_move_dir, temp_dir)
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
