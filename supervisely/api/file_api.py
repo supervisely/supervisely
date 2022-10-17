@@ -12,7 +12,7 @@ from pathlib import Path
 import urllib
 import re
 
-from supervisely._utils import batched
+from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
@@ -455,11 +455,12 @@ class FileApi(ModuleApiBase):
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
-        # self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        temp_dir = os.path.join(local_save_path, rand_str(10))
+        to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        os.rename(to_move_dir, temp_dir)
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
