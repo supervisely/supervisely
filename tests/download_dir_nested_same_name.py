@@ -12,4 +12,4 @@ dst_path = "/Users/max/work/app_debug_data/val/"
 if sly.fs.dir_exists(dst_path):
     sly.fs.remove_dir(dst_path)
 sly.fs.ensure_base_path(dst_path)
-api.file.download_directory(team_id=277, remote_path=src_path, local_save_path=dst_path)
+api.file.download_directory(team_id=7, remote_path=src_path, local_save_path=dst_path)
