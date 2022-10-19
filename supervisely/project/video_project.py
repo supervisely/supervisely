@@ -60,9 +60,11 @@ class VideoDataset(Dataset):
         return self.annotation_class(img_size, frames_count)
 
     def add_item_np(self, item_name, img, ann=None):
+        # TODO: fix
         raise RuntimeError("Deprecated method. Works only with images project")
 
     def _add_img_np(self, item_name, img):
+        # TODO: fix
         raise RuntimeError("Deprecated method. Works only with images project")
 
     @staticmethod
@@ -83,9 +85,7 @@ class VideoDataset(Dataset):
         :param item_name: str
         :return: namedtuple object containing paths to video and annotation from given path
         """
-        return VideoDataset.paths_tuple(
-            self.get_img_path(item_name), self.get_ann_path(item_name)
-        )
+        return VideoDataset.paths_tuple(self.get_img_path(item_name), self.get_ann_path(item_name))
 
 
 class VideoProject(Project):
@@ -115,7 +115,7 @@ class VideoProject(Project):
         super()._read()
         self._key_id_map = KeyIdMap()
         if os.path.exists(self._get_key_id_map_path()):
-            self._key_id_map.load_json(self._get_key_id_map_path())
+            self._key_id_map = KeyIdMap.from_json(self._get_key_id_map_path())
 
     def _create(self):
         """
@@ -124,9 +124,7 @@ class VideoProject(Project):
         super()._create()
         self.set_key_id_map(KeyIdMap())
 
-    def _add_item_file_to_dataset(
-        self, ds, item_name, item_paths, _validate_item, _use_hardlink
-    ):
+    def _add_item_file_to_dataset(self, ds, item_name, item_paths, _validate_item, _use_hardlink):
         """
         Add given item file to dataset items directory and add annatation to dataset annotations dir corresponding to item.
         Generate exception error if item_name already exists in dataset or item name has unsupported extension
@@ -229,13 +227,9 @@ def download_video_project(
 
             ann_jsons = api.video.annotation.download_bulk(dataset.id, video_ids)
 
-            for video_id, video_name, ann_json in zip(
-                video_ids, video_names, ann_jsons
-            ):
+            for video_id, video_name, ann_json in zip(video_ids, video_names, ann_jsons):
                 if video_name != ann_json[ApiField.VIDEO_NAME]:
-                    raise RuntimeError(
-                        "Error in api.video.annotation.download_batch: broken order"
-                    )
+                    raise RuntimeError("Error in api.video.annotation.download_batch: broken order")
 
                 video_file_path = dataset_fs.generate_item_path(video_name)
                 if download_videos is True:
@@ -246,9 +240,7 @@ def download_video_project(
                 dataset_fs.add_item_file(
                     video_name,
                     video_file_path,
-                    ann=VideoAnnotation.from_json(
-                        ann_json, project_fs.meta, key_id_map
-                    ),
+                    ann=VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
                     _validate_item=False,
                 )
 
@@ -318,8 +310,6 @@ def upload_video_project(
             )
             progress_cb = ds_progress.iters_done_report
 
-        api.video.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, progress_cb
-        )
+        api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
 
     return project.id, project.name

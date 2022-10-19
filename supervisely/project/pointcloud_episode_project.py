@@ -10,7 +10,7 @@ from typing import Tuple, List, Dict, Optional, Callable, NamedTuple, Union
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import touch, dir_exists, list_files, mkdir, copy_file
+from supervisely.io.fs import touch, dir_exists, list_files, mkdir
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
@@ -22,8 +22,15 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
 
-PointcloudItemPaths = namedtuple("PointcloudItemPaths", ["pointcloud_path", "related_images_dir"])
+PointcloudItemPaths = namedtuple(
+    "PointcloudItemPaths", ["pointcloud_path", "related_images_dir", "frame_index"]
+)
+PointcloudItemInfo = namedtuple(
+    "PointcloudItemInfo",
+    ["dataset_name", "name", "pointcloud_path", "related_images_dir", "frame_index"],
+)
 
 
 class PointcloudEpisodeDataset(PointcloudDataset):
@@ -31,10 +38,18 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     related_images_dir_name = "related_images"
     annotation_class = PointcloudEpisodeAnnotation
 
+    @property
+    def ann_dir(self) -> None:
+        raise NotImplementedError(
+            f"{type(self).__name__} object don't have correct path for 'ann_dir' property. \
+            Use 'get_ann_path()' method instead of this."
+        )
+
     def get_item_paths(self, item_name: str) -> PointcloudItemPaths:
         return PointcloudItemPaths(
-            pointcloud_path=self.get_img_path(item_name),
+            pointcloud_path=self.get_pointcloud_path(item_name),
             related_images_dir=self.get_related_images_path(item_name),
+            frame_index=self.get_frame_idx(item_name),
         )
 
     def get_ann_path(self) -> str:
@@ -46,20 +61,19 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     def set_ann(self, ann: PointcloudEpisodeAnnotation) -> None:
         if type(ann) is not self.annotation_class:
             raise TypeError(
-                "Type of 'ann' have to be PointcloudEpisodeAnnotation, not a {}".format(type(ann))
+                f"Type of 'ann' should be {self.annotation_class.__name__}, not a {type(ann).__name__}"
             )
         dst_ann_path = self.get_ann_path()
         dump_json_file(ann.to_json(), dst_ann_path)
-
-    def _add_img_info(self, item_name, img_info=None):
-        return
 
     def _create(self):
         mkdir(self.item_dir)
 
     def _read(self):
         if not dir_exists(self.item_dir):
-            raise NotADirectoryError(f"Cannot read dataset {self.item_dir}: directory not found")
+            raise NotADirectoryError(
+                f"Cannot read dataset {self.name}: {self.item_dir} directory not found"
+            )
 
         try:
             item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
@@ -76,7 +90,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             self._pc_to_frame = {v: k for k, v in self._frame_to_pc_map.items()}
             self._item_to_ann = {name: self._pc_to_frame[name] for name in item_names}
         except Exception as ex:
-            raise Exception(f"Cannot read dataset ({self.item_dir}): {repr(ex)}")
+            raise Exception(f"Cannot read dataset ({self.name}): {repr(ex)}")
 
     def add_item_file(
         self,
@@ -109,12 +123,11 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            from supervisely.project.pointcloud_episode_project import PointcloudEpisodeDataset
+            dataset_path = "/home/admin/work/supervisely/projects/episodes_project/episode_0"
+            ds = PointcloudEpisodeDataset(dataset_path, sly.OpenMode.READ)
 
-            ann = "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg.json"
-            ds.add_item_file("IMG_777.jpeg", "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg", ann=ann)
+            ds.add_item_file("PTC_777.pcd", "/home/admin/work/supervisely/projects/episodes_project/episode_0/pointcloud/PTC_777.pcd", frame=3)
         """
         if item_path is None and item_info is None:
             raise RuntimeError("No item_path or ann or item_info provided.")
@@ -126,9 +139,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             _use_hardlink=_use_hardlink,
         )
         self._add_ann_by_type(item_name, frame)
-
-        # TODO: CHECK ITEM INFO PATH AND CONTENT
-        self._add_img_info(item_name, item_info)
+        self._add_pointcloud_info(item_name, item_info)
 
     def _add_ann_by_type(self, item_name, frame):
         if frame is None:
@@ -144,7 +155,6 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         if self._item_to_ann[item_name] == "":
             return -1
         return int(self._item_to_ann[item_name])
-
 
 class PointcloudEpisodeProject(PointcloudProject):
     dataset_class = PointcloudEpisodeDataset
@@ -167,6 +177,8 @@ def download_pointcloud_episode_project(
     download_annotations: Optional[bool] = True,
     log_progress: Optional[bool] = False,
     batch_size: Optional[int] = 10,
+    save_pointcloud_info: Optional[bool] = False,
+    save_pointclouds: Optional[bool] = True,
     progress_cb: Optional[Callable] = None,
 ) -> PointcloudEpisodeProject:
     key_id_map = KeyIdMap()
@@ -210,9 +222,11 @@ def download_pointcloud_episode_project(
             pc_to_frame = {v: k for k, v in frame_to_pc_map.items()}
             item_to_ann = {name: pc_to_frame[name] for name in pointcloud_names}
 
-            for pointcloud_id, pointcloud_name in zip(pointcloud_ids, pointcloud_names):
+            for pointcloud_id, pointcloud_name, pointcloud_info in zip(
+                pointcloud_ids, pointcloud_names, batch
+            ):
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
-                if download_pcd is True:
+                if download_pcd:
                     api.pointcloud_episode.download_path(pointcloud_id, pointcloud_file_path)
                 else:
                     touch(pointcloud_file_path)
@@ -232,9 +246,10 @@ def download_pointcloud_episode_project(
 
                 dataset_fs.add_item_file(
                     pointcloud_name,
-                    pointcloud_file_path,
+                    pointcloud_file_path if save_pointclouds else None,
                     item_to_ann[pointcloud_name],
                     _validate_item=False,
+                    item_info=pointcloud_info if save_pointcloud_info else None,
                 )
             if progress_cb is not None:
                 progress_cb(len(batch))

@@ -31,6 +31,7 @@ class KeyIdMap:
         #     "videos": {}
         # }
     """
+
     def __init__(self):
         self._data = dict()
         self._data[TAGS] = bidict()
@@ -396,6 +397,17 @@ class KeyIdMap:
     @classmethod
     def load_json(cls, path: str) -> KeyIdMap:
         """
+        Deprecated and no longer supported method to load KeyIdMap from json.
+        Don't use it!
+        Use static method 'from_json(path)' to load KeyIdMap from json file instead.
+        """
+        raise RuntimeError(
+            "Method is deprecated and no longer supported. Use static method 'from_json(path)' to load KeyIdMap from json file. Please write to technical support if you see this error."
+        )
+
+    @staticmethod
+    def from_json(path: str) -> KeyIdMap:
+        """
         Decoding data from json file with given filename to KeyIdMap.
 
         :param path: Target file path.
@@ -410,7 +422,7 @@ class KeyIdMap:
             new_key_id = KeyIdMap.load_json('/home/admin/work/projects/key_id.json')
         """
         simple_dict = load_json_file(path)
-        result = cls()
+        result = KeyIdMap()
         for key_type, value_dict in simple_dict.items():
             for key_str, id in value_dict.items():
                 result._add(key_type, uuid.UUID(key_str), id)
