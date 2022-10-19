@@ -12,7 +12,7 @@ from pathlib import Path
 import urllib
 import re
 
-from supervisely._utils import batched
+from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
@@ -369,23 +369,10 @@ class FileApi(ModuleApiBase):
                         progress_cb(get_file_size(local_save_path))
 
     def is_on_agent(self, remote_path: str):
-        if remote_path.startswith("agent://"):
-            return True
-        else:
-            return False
+        return sly_fs.is_on_agent(remote_path)
 
     def parse_agent_id_and_path(self, remote_path: str) -> int:
-        if self.is_on_agent(remote_path) is False:
-            raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-        search = re.search("agent://(\d+)(.*)", remote_path)
-        agent_id = int(search.group(1))
-        path_in_agent_folder = search.group(2)
-        if not path_in_agent_folder.startswith("/"):
-            path_in_agent_folder = "/" + path_in_agent_folder
-        if remote_path.endswith("/") and not path_in_agent_folder.endswith("/"):
-            path_in_agent_folder += "/"
-        # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
-        return agent_id, path_in_agent_folder
+        return sly_fs.parse_agent_id_and_path(remote_path)
 
     def download_from_agent(
         self,
@@ -468,11 +455,12 @@ class FileApi(ModuleApiBase):
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
-        # self._download(team_id, remote_path, local_temp_archive, progress_cb)
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
-        temp_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        temp_dir = os.path.join(local_save_path, rand_str(10))
+        to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))
+        os.rename(to_move_dir, temp_dir)
         file_names = os.listdir(temp_dir)
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
@@ -849,10 +837,16 @@ class FileApi(ModuleApiBase):
             #                  updated_at='2021-01-11T09:04:17.959Z',
             #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
-        path_infos = self.list(team_id, remote_path)
-        for info in path_infos:
-            if info["path"] == remote_path:
-                return self._convert_json_info(info)
+        if self.is_on_agent(remote_path) is True:
+            path_infos = self.list_on_agent(team_id, os.path.dirname(remote_path), recursive=False)
+            for info in path_infos:
+                if info["path"] == remote_path:
+                    return self._convert_json_info(info)
+        else:
+            path_infos = self.list(team_id, remote_path)
+            for info in path_infos:
+                if info["path"] == remote_path:
+                    return self._convert_json_info(info)
         return None
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> FileInfo:

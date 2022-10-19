@@ -66,7 +66,9 @@ def create_debug_task(team_id, port="8000"):
     redirect_requests = {"token": api.token, "port": port}
     task = None
     for session in sessions:
-        if session.details["meta"]["redirectRequests"] == redirect_requests:
+        if (session.details["meta"].get("redirectRequests") == redirect_requests) and (
+            session.details["status"] == str(api.app.Status.QUEUED)
+        ):
             task = session.details
             logger.info(f"Debug task already exists: {task['id']}")
             break

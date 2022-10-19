@@ -1,6 +1,7 @@
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 import yaml
+import random
 from supervisely._utils import (
     is_production,
     is_development,
@@ -16,6 +17,7 @@ from supervisely.annotation.label import Label
 import supervisely.imaging.image as sly_image
 import supervisely.io.fs as fs
 from supervisely.sly_logger import logger
+import supervisely.io.env as env
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
@@ -23,7 +25,8 @@ from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
 import supervisely.app.development as sly_app_development
-from distinctipy import distinctipy
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -36,44 +39,76 @@ class Inference:
     def __init__(
         self,
         model_dir: str = None,
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
-        self._model_dir = model_dir
-        self._device = device
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
 
-        self._headless = False
-        # self._template_dir = None
-        # self._template_dir = Path(__file__).parent.absolute()
-        if is_production():
-            if os.environ.get("_SPAWN_USER_ID") is None:
-                logger.debug("Running serving on localhost with enabled UI")
+        self._model_dir = None
+        self._local_dir = None
+        self._prepare_model_directory(model_dir)
+
+        self._headless = True
+
+    def _prepare_model_directory(self, model_dir):
+        self._model_dir = model_dir
+        self._local_dir = None
+        if fs.is_on_agent(self._model_dir) or is_production():
+            team_id = env.team_id()
+            logger.info(f"Remote model directory in Team Files: {self._model_dir}")
+            self._local_dir = os.path.join(get_data_dir(), "model")
+            logger.info(f"Local model directory: {self._local_dir}")
+
+            if fs.dir_exists(self._local_dir):
+                # only during debug, has no effect in production
+                pass
             else:
-                logger.debug(
-                    "Running serving on Supervisely platform in production mode"
+                sizeb = self.api.file.get_directory_size(team_id, self._model_dir)
+                progress = Progress(
+                    "Downloading model directory ...",
+                    total_cnt=sizeb,
+                    is_size=True,
                 )
-                raise NotImplementedError("TBD - download directory")
-        elif is_development():
-            self._headless = True
-            pass
+                self.api.file.download_directory(
+                    team_id,
+                    self._model_dir,
+                    self._local_dir,
+                    progress.iters_done_report,
+                )
+                print(f"📥 Model directory has been successfully downloaded from Team Files")
+        else:
+            self._model_dir = os.path.abspath(self._model_dir)
+            self._local_dir = self._model_dir
+            print(f"Model directory: {self._local_dir}")
+
+    def _prepare_device(self, device):
+        if device is None:
+            try:
+                import torch
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            except Exception as e:
+                logger.warn(
+                    f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
+                )
+                device = "cpu"
 
     def _get_templates_dir(self):
-        raise NotImplementedError("Have to be implemented in child class")
+        return None
+        # raise NotImplementedError("Have to be implemented in child class")
+
+    def _get_layout(self):
+        return None
+        # raise NotImplementedError("Have to be implemented in child class")
 
     def load_on_device(
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
     ):
-        raise NotImplementedError(
-            "Have to be implemented in child class after inheritance"
-        )
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def get_classes(self) -> List[str]:
-        raise NotImplementedError(
-            "Have to be implemented in child class after inheritance"
-        )
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def get_info(self) -> dict:
         return {
@@ -84,7 +119,7 @@ class Inference:
 
     @property
     def model_dir(self):
-        return self._model_dir
+        return self._local_dir
 
     @property
     def api(self) -> Api:
@@ -98,10 +133,9 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            colors = distinctipy.get_colors(len(self.get_classes()))
+            colors = get_predefined_colors(len(self.get_classes()))
             classes = []
-            for name, color in zip(self.get_classes(), colors):
-                rgb = distinctipy.get_rgb256(color)
+            for name, rgb in zip(self.get_classes(), colors):
                 classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
             self._model_meta = ProjectMeta(classes)
             self._get_confidence_tag_meta()
@@ -126,9 +160,7 @@ class Inference:
     def visualize(self, predictions: List, image_path: str, vis_path: str):
         raise NotImplementedError("Have to be implemented in child class")
 
-    def _predictions_to_annotation(
-        self, image_path: str, predictions: List
-    ) -> Annotation:
+    def _predictions_to_annotation(self, image_path: str, predictions: List) -> Annotation:
         labels = []
         for prediction in predictions:
             label = self._create_label(prediction)
@@ -233,13 +265,13 @@ class Inference:
             logger.warn(
                 "Serving is running in advanced development mode with Supervisely VPN Network"
             )
-            team_id = int(os.environ["context.teamId"])
+            team_id = env.team_id()
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
 
         # headless=self._headless,
-        self._app = Application(templates_dir=self._get_templates_dir())
+        self._app = Application(layout=self._get_layout(), templates_dir=self._get_templates_dir())
         server = self._app.get_server()
 
         @server.post(f"/get_session_info")

@@ -11,9 +11,7 @@ def read(fname):
         return fin.read()
 
 
-response = requests.get(
-    "https://api.github.com/repos/supervisely/supervisely/releases/latest"
-)
+response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
 version = response.json()["tag_name"]
 
 # Dependencies do not include PyTorch, so
@@ -43,7 +41,10 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     url="https://github.com/supervisely/supervisely",
-    package_data={"": ["*.html", "*.css"], "supervisely": ["video/*.sh", "app/development/*.sh"]},
+    package_data={
+        "": ["*.html", "*.css"],
+        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
+    },
     install_requires=[
         "numpy>=1.19, <2.0.0",
         "opencv-python>=4.5.5.62, <5.0.0.0",
@@ -74,12 +75,12 @@ setup(
         "MarkupSafe>=2.1.1, <3.0.0",
         "arel>=0.2.0, <1.0.0",
         "tqdm>=4.62.3, <5.0.0",
-        "pandas>=1.1.3, <1.4.0", # For compatibility with Python3.7
+        "pandas>=1.1.3, <1.4.0",  # For compatibility with Python3.7
         "async_asgi_testclient",
         "PyYAML",
         "distinctipy",
         "beautifulsoup4",
-        "numerize"
+        "numerize",
     ],
     extras_require={
         "extras": [
