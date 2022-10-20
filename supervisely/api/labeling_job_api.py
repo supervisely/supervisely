@@ -1033,3 +1033,28 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         activity = self._api.team.get_activity(team_id, filter_job_id=job_id, progress_cb=progress_cb)
         df = pd.DataFrame(activity)
         return df
+
+    def set_status(self, id: int, status: str) -> None:
+        """
+        Sets Labeling Job status.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param status: New Labeling Job status
+        :type status: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.labeling_job.set_status(id=9, status="completed")
+        """
+        self._api.post('jobs.set-status', {ApiField.ID: id, ApiField.STATUS: status})
