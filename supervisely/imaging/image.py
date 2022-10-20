@@ -1,20 +1,21 @@
 # coding: utf-8
 
+import io
 import os.path
 from pkg_resources import parse_version
 import base64
-import requests
 from typing import List, Tuple, Optional
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
 from enum import Enum
+import nrrd
 
-from supervisely.io.fs import ensure_base_path, get_file_ext
+from supervisely.io.fs import ensure_base_path, get_file_ext, silent_remove
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.imaging.font import get_font
-from supervisely._utils import get_bytes_hash, is_development, abs_url
+from supervisely._utils import get_bytes_hash, is_development, abs_url, rand_str
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -22,7 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif"]
+SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif", ".nrrd"]
 DEFAULT_IMG_EXT = ".png"
 
 
@@ -66,7 +67,7 @@ class ImageReadException(Exception):
 
 def is_valid_ext(ext: str) -> bool:
     """
-    Checks file extension for list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
+    Checks file extension for list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif', '.nrrd').
 
     :param ext: Image extention.
     :type ext: str
@@ -86,7 +87,7 @@ def is_valid_ext(ext: str) -> bool:
 
 def has_valid_ext(path: str) -> bool:
     """
-    Checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
+    Checks if a given file has a supported extension('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif', '.nrrd').
 
     :param path: Path to file.
     :type path: str
@@ -107,7 +108,7 @@ def has_valid_ext(path: str) -> bool:
 
 def validate_ext(path: str) -> None:
     """
-    Generate exception error if file extention is not in list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif').
+    Generate exception error if file extention is not in list of supported images extensions('.jpg', '.jpeg', '.mpo', '.bmp', '.png', '.webp', '.tiff', '.tif', '.nrrd').
 
     :param path: Path to file.
     :type path: str
@@ -140,7 +141,7 @@ def validate_ext(path: str) -> None:
 
 def validate_format(path: str) -> None:
     """
-    Validate input file format, if file extention not supported raise ImageExtensionError.
+    Validate input file format, if file extension is not supported raise ImageExtensionError.
 
     :param path: Path to file.
     :type path: str
@@ -162,6 +163,10 @@ def validate_format(path: str) -> None:
 
         # Output: Error has occured trying to read image '/home/admin/work/docs/016_img.py'. Original exception message: "cannot identify image file '/home/admin/work/docs/016_img.py'"
     """
+    ext = get_file_ext(path)
+    if ext == ".nrrd":
+        data, header = nrrd.read(path, index_order='C')
+        return
     try:
         pil_img = PILImage.open(path)
         pil_img.load()  # Validate image data. Because 'open' is lazy method.
@@ -173,8 +178,8 @@ def validate_format(path: str) -> None:
         )
 
     img_format = pil_img.format
-    img_ext = "." + img_format
-    if not is_valid_ext("." + img_format):
+    img_ext = f".{img_format}"
+    if not is_valid_ext(f".{img_format}"):
         raise UnsupportedImageFormat(
             "Unsupported image format {!r} for file {!r}. Only the following formats are supported: {}".format(
                 img_ext, path, ", ".join(SUPPORTED_IMG_EXTS)
@@ -200,6 +205,11 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
 
         im = sly.image.read('/home/admin/work/docs/image.jpeg')
     """
+    ext = get_file_ext(path)
+    if ext == ".nrrd":
+        data, header = nrrd.read(path, index_order='C')
+        return data
+
     validate_format(path)
     if remove_alpha_channel is True:
         img = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -242,6 +252,12 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
         im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\...\xd9'
         im = sly.image.read_bytes(im_bytes)
     """
+    if image_bytes.startswith(b"NRRD"):
+        file_like = io.BytesIO(image_bytes)
+        header = nrrd.read_header(file_like)
+        data = nrrd.read_data(header, file_like, index_order='C')
+        return data
+
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
     if keep_alpha is True:
         img = cv2.imdecode(image_np_arr, cv2.IMREAD_UNCHANGED)
@@ -287,6 +303,11 @@ def write(
     """
     ensure_base_path(path)
     validate_ext(path)
+
+    ext = get_file_ext(path)
+    if ext == ".nrrd":
+        return nrrd.write(path, img, index_order='C')
+
     res_img = img.copy()
     if len(img.shape) == 2:
         res_img = np.expand_dims(img, 2)
@@ -468,6 +489,15 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
                 ext, ", ".join(SUPPORTED_IMG_EXTS)
             )
         )
+    if ext == ".nrrd":
+        nrrd_bytes = None
+        _filename = f"./sly-nrrd-data-bytes-{rand_str(10)}{ext}"
+        nrrd.write(_filename, img, index_order='C')
+        with open(_filename, "rb") as nrrd_file:
+            nrrd_bytes = nrrd_file.read()
+        silent_remove(_filename)
+        return nrrd_bytes
+
     img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2BGR)
     encode_status, img_array = cv2.imencode(ext, img)
     if encode_status is True:
