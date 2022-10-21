@@ -6,30 +6,22 @@ from typing import Optional, List, Dict
 from supervisely.project.project_meta import ProjectMeta
 from copy import deepcopy
 import uuid
+import json
 
 from supervisely._utils import take_with_default
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.constants import (
-    FRAMES,
-    IMG_SIZE,
-    IMG_SIZE_HEIGHT,
-    IMG_SIZE_WIDTH,
     DESCRIPTION,
-    FRAMES_COUNT,
     TAGS,
     OBJECTS,
-    VIDEO_ID,
     KEY,
-    VIDEOS_MAP,
-    VIDEO_NAME,
+    FIGURES,
 )
+from supervisely.pointcloud_annotation.constants import POINTCLOUD_ID
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation
-from supervisely.video_annotation.constants import FIGURES
-from supervisely.pointcloud_annotation.constants import POINTCLOUD_ID
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
@@ -127,6 +119,47 @@ class PointcloudAnnotation(VideoAnnotation):
         return cls(
             objects=objects, figures=figures, tags=tags, description=description, key=item_key
         )
+
+    @classmethod
+    def load_json_file(cls, path: str, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
+        """
+        Loads json file and converts it to PointcloudAnnotation.
+
+        :param path: Path to the json file.
+        :type path: str
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
+        :type project_meta: ProjectMeta
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: PointcloudAnnotation object
+        :rtype: :class:`PointcloudAnnotation<PointcloudAnnotation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            team_name = 'Vehicle Detection'
+            workspace_name = 'Cities'
+            project_name =  'London'
+
+            team = api.team.get_info_by_name(team_name)
+            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+            project = api.project.get_info_by_name(workspace.id, project_name)
+
+            meta = api.project.get_meta(project.id)
+
+            # Load json file
+            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+            ann = sly.PointcloudAnnotation.load_json_file(path, meta)
+        """
+        with open(path) as fin:
+            data = json.load(fin)
+        return cls.from_json(data, project_meta, key_id_map)
 
     def clone(
         self,

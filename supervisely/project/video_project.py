@@ -87,6 +87,39 @@ class VideoDataset(Dataset):
         """
         return VideoDataset.paths_tuple(self.get_img_path(item_name), self.get_ann_path(item_name))
 
+    def get_ann(self, item_name, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> VideoAnnotation:
+        """
+        Read video annotation of item from json.
+
+        :param item_name: Video name.
+        :type item_name: str
+        :param project_meta: Project Meta.
+        :type project_meta: ProjectMeta
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: VideoAnnotation
+        :rtype: :class:`VideoAnnotation`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.project.video_project import VideoProject
+            project_path = "/home/admin/work/supervisely/projects/video_project"
+            project = VideoProject(project_path, sly.OpenMode.READ)
+
+            ds = project.datasets.get('video_ds_1')
+
+            annotation = ds.get_ann("video1")
+            # Output: RuntimeError: Item video1 not found in the project.
+
+            annotation = ds.get_ann("video1.mp4")
+            print(type(annotation).__name__)
+            # Output: VideoAnnotation
+        """
+        ann_path = self.get_ann_path(item_name)
+        return VideoAnnotation.load_json_file(ann_path, project_meta, key_id_map)
+
 
 class VideoProject(Project):
     """

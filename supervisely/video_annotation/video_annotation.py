@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Optional, Iterator
 from copy import deepcopy
 import uuid
+import json
 from uuid import UUID
 from supervisely.project.project_meta import ProjectMeta
 
@@ -543,6 +544,47 @@ class VideoAnnotation:
             description=description,
             key=video_key,
         )
+
+    @classmethod
+    def load_json_file(cls, path: str, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> VideoAnnotation:
+        """
+        Loads json file and converts it to VideoAnnotation.
+
+        :param path: Path to the json file.
+        :type path: str
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
+        :type project_meta: ProjectMeta
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: VideoAnnotation object
+        :rtype: :class:`VideoAnnotation<VideoAnnotation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            team_name = 'Vehicle Detection'
+            workspace_name = 'Cities'
+            project_name =  'London'
+
+            team = api.team.get_info_by_name(team_name)
+            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+            project = api.project.get_info_by_name(workspace.id, project_name)
+
+            meta = api.project.get_meta(project.id)
+
+            # Load json file
+            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+            ann = sly.VideoAnnotation.load_json_file(path, meta)
+        """
+        with open(path) as fin:
+            data = json.load(fin)
+        return cls.from_json(data, project_meta, key_id_map)
 
     def clone(
         self,

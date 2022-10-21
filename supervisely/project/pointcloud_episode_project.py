@@ -2,6 +2,7 @@
 
 # docs
 import os
+import random
 from collections import namedtuple
 from supervisely.api.api import Api
 from supervisely.annotation.annotation import Annotation
@@ -21,6 +22,7 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.frame import Frame
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
@@ -54,6 +56,47 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def get_ann_path(self) -> str:
         return os.path.join(self.directory, "annotation.json")
+
+    def get_ann(self, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> PointcloudEpisodeAnnotation:
+        """
+        Read pointcloud annotation of item from json.
+
+        :param item_name: Pointcloud name.
+        :type item_name: str
+        :param project_meta: Project Meta.
+        :type project_meta: :class:`ProjectMeta<supervisely.ProjectMeta>`
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
+        :return: PointcloudEpisodeAnnotation object
+        :rtype: :class:`PointcloudEpisodeAnnotation<supervisely.PointcloudEpisodeAnnotation>`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+
+            ds = project.datasets.get('ds1')
+
+            annotation = ds.get_ann("PTC_0056")
+            # Output: RuntimeError: Item PTC_0056 not found in the project.
+
+            annotation = ds.get_ann("PTC_0056.pcd")
+            print(type(annotation).__name__)
+            # Output: PointcloudEpisodeAnnotation
+        """
+        ann_path = self.get_ann_path()
+        return PointcloudEpisodeAnnotation.load_json_file(ann_path, project_meta, key_id_map)
+        
+    def get_ann_frame(self, item_name: str, annotation: PointcloudEpisodeAnnotation = None) -> Frame:
+        frame_idx = self.get_frame_idx(item_name)
+        if frame_idx is None:
+            raise ValueError(f"Frame wasn't assigned to pointcloud with name {item_name}.")
+        return annotation.frames.get(frame_idx)
+
 
     def get_frame_pointcloud_map_path(self) -> str:
         return os.path.join(self.directory, "frame_pointcloud_map.json")
@@ -123,9 +166,9 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_episode_project import PointcloudEpisodeDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/episodes_project/episode_0"
-            ds = PointcloudEpisodeDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudEpisodeDataset(dataset_path, sly.OpenMode.READ)
 
             ds.add_item_file("PTC_777.pcd", "/home/admin/work/supervisely/projects/episodes_project/episode_0/pointcloud/PTC_777.pcd", frame=3)
         """
@@ -152,9 +195,13 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             raise TypeError("Unsupported type {!r} for ann argument".format(type(frame)))
 
     def get_frame_idx(self, item_name: str) -> int:
+        frame = self._item_to_ann.get(item_name, None)
+        if frame is None:
+            raise RuntimeError("Item {} not found in the project.".format(item_name))
         if self._item_to_ann[item_name] == "":
-            return -1
+            return None
         return int(self._item_to_ann[item_name])
+
 
 class PointcloudEpisodeProject(PointcloudProject):
     dataset_class = PointcloudEpisodeDataset
@@ -165,6 +212,177 @@ class PointcloudEpisodeProject(PointcloudProject):
     @classmethod
     def read_single(cls, dir):
         return read_project_wrapper(dir, cls)
+
+    @staticmethod
+    def get_train_val_splits_by_count(
+        project_dir: str, train_count: int, val_count: int
+    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+        """
+        Get train and val items information from project by given train and val counts.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_count: Number of train items.
+        :type train_count: int
+        :param val_count: Number of val items.
+        :type val_count: int
+        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+            project = sly.PointcloudEpisodeProject(project_path, sly.OpenMode.READ)
+            train_count = 16
+            val_count = 4
+            train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
+        """
+
+        def _list_items_for_splits(project) -> List[PointcloudItemInfo]:
+            items = []
+            for dataset in project.datasets:
+                for item_name in dataset:
+                    items.append(
+                        PointcloudItemInfo(
+                            dataset_name=dataset.name,
+                            name=item_name,
+                            pointcloud_path=dataset.get_pointcloud_path(item_name),
+                            related_images_dir=dataset.get_related_images_path(item_name),
+                            frame_index=dataset.get_frame_idx(item_name),
+                        )
+                    )
+            return items
+
+        project = PointcloudEpisodeProject(project_dir, OpenMode.READ)
+        if project.total_items != train_count + val_count:
+            raise ValueError("total_count != train_count + val_count")
+        all_items = _list_items_for_splits(project)
+        random.shuffle(all_items)
+        train_items = all_items[:train_count]
+        val_items = all_items[train_count:]
+        return train_items, val_items
+
+    @staticmethod
+    def get_train_val_splits_by_tag(
+        project_dir: str,
+        train_tag_name: str,
+        val_tag_name: str,
+        untagged: Optional[str] = "ignore",
+    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+        """
+        Get train and val items information from project by given train and val tags names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_tag_name: Train tag name.
+        :type train_tag_name: str
+        :param val_tag_name: Val tag name.
+        :type val_tag_name: str
+        :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
+        :type untagged: str, optional
+        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+            project = sly.PointcloudEpisodeProject(project_path, sly.OpenMode.READ)
+            train_tag_name = 'train'
+            val_tag_name = 'val'
+            train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
+        """
+        untagged_actions = ["ignore", "train", "val"]
+        if untagged not in untagged_actions:
+            raise ValueError(
+                f"Unknown untagged action {untagged}. Should be one of {untagged_actions}"
+            )
+        project = PointcloudEpisodeProject(project_dir, OpenMode.READ)
+        train_items = []
+        val_items = []
+        for dataset in project.datasets:
+            ann = dataset.get_ann(project.meta)
+            for item_name in dataset:
+                item_paths = dataset.get_item_paths(item_name)
+                frame_idx = dataset.get_frame_idx(item_name)
+
+                info = PointcloudItemInfo(
+                    dataset_name=dataset.name,
+                    name=item_name,
+                    pointcloud_path=item_paths.pointcloud_path,
+                    related_images_dir=item_paths.related_images_dir,
+                    frame_index=frame_idx,
+                )
+                frame_tags = ann.get_tags_on_frame(frame_idx)
+                if frame_tags.get(train_tag_name) is not None:
+                    train_items.append(info)
+                if frame_tags.get(val_tag_name) is not None:
+                    val_items.append(info)
+                if frame_tags.get(train_tag_name) is None and frame_tags.get(val_tag_name) is None:
+                    # untagged item
+                    if untagged == "ignore":
+                        continue
+                    elif untagged == "train":
+                        train_items.append(info)
+                    elif untagged == "val":
+                        val_items.append(info)
+        return train_items, val_items
+
+    @staticmethod
+    def get_train_val_splits_by_dataset(
+        project_dir: str, train_datasets: List[str], val_datasets: List[str]
+    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+        """
+        Get train and val items information from project by given train and val datasets names.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: str
+        :param train_datasets: List of train datasets names.
+        :type train_datasets: List[str]
+        :param val_datasets: List of val datasets names.
+        :type val_datasets: List[str]
+        :raises: :class:`KeyError` if dataset name not found in project
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+            project = sly.PointcloudEpisodeProject(project_path, sly.OpenMode.READ)
+            train_datasets = ['ds1', 'ds2']
+            val_datasets = ['ds3', 'ds4']
+            train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
+        """
+
+        def _add_items_to_list(project, datasets_names, items_list):
+            for dataset_name in datasets_names:
+                dataset = project.datasets.get(dataset_name)
+                if dataset is None:
+                    raise KeyError(f"Dataset '{dataset_name}' not found")
+                for item_name in dataset:
+                    item_paths = dataset.get_item_paths(item_name)
+                    frame_idx = dataset.get_frame_idx(item_name)
+                    info = PointcloudItemInfo(
+                        dataset_name=dataset.name,
+                        name=item_name,
+                        pointcloud_path=item_paths.pointcloud_path,
+                        related_images_dir=item_paths.related_images_dir,
+                        frame_index=frame_idx,
+                    )
+                    items_list.append(info)
+
+        project = PointcloudEpisodeProject(project_dir, OpenMode.READ)
+        train_items = []
+        _add_items_to_list(project, train_datasets, train_items)
+        val_items = []
+        _add_items_to_list(project, val_datasets, val_items)
+        return train_items, val_items
 
 
 def download_pointcloud_episode_project(

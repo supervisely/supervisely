@@ -47,7 +47,7 @@ ItemInfo = namedtuple("ItemInfo", ["dataset_name", "name", "img_path", "ann_path
 
 class OpenMode(Enum):
     """
-    Defines the mode of using the :class:`Project<supervisely.project.project.Project>` and :class:`Dataset<supervisely.project.project.Dataset>`.
+    Defines the mode of using the :class:`Project<supervisely.Project>` and :class:`Dataset<supervisely.Dataset>`.
     """
 
     READ = 1
@@ -75,9 +75,9 @@ class Dataset(KeyObject):
 
      .. code-block:: python
 
-         from supervisely.project.project import Dataset, OpenMode
-         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-         ds = Dataset(dataset_path, OpenMode.READ)
+        import supervisely as sly
+        dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+        ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
     """
 
     item_dir_name = "img"
@@ -106,6 +106,25 @@ class Dataset(KeyObject):
             self._create()
 
     @property
+    def project_dir(self) -> str:
+        """
+        Path to the project containing the dataset.
+
+        :return: Path to project.
+        :rtype: :`class`: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds0"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            print(ds.project_dir)
+            # Output: "/home/admin/work/supervisely/projects/lemons_annotated"
+        """
+        return self._project_dir
+
+    @property
     def name(self) -> str:
         """
         Dataset name.
@@ -116,9 +135,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
             print(dataset.name)
             # Output: "ds1"
         """
@@ -130,7 +149,7 @@ class Dataset(KeyObject):
     @property
     def directory(self) -> str:
         """
-        Path to Dataset directory.
+        Path to the dataset directory.
 
         :return: Path to dataset directory
         :rtype: :class:`str`
@@ -139,9 +158,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             print(ds.directory)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1'
@@ -159,9 +178,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             print(ds.img_dir)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img'
@@ -179,9 +198,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             print(ds.img_dir)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img'
@@ -200,9 +219,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             print(ds.ann_dir)
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann'
@@ -211,10 +230,42 @@ class Dataset(KeyObject):
 
     @property
     def img_info_dir(self):
+        """
+        Path to the dataset image info directory.
+
+        :return: Path to the dataset directory with images info
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.img_info_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info'
+        """
         return os.path.join(self.directory, "img_info")
 
     @property
     def seg_dir(self):
+        """
+        Path to the dataset segmentation masks directory.
+
+        :return: Path to the dataset directory with masks
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.seg_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/seg'
+        """
         return os.path.join(self.directory, "seg")
 
     @classmethod
@@ -276,6 +327,22 @@ class Dataset(KeyObject):
         mkdir(self.item_dir)
 
     def get_items_names(self) -> list:
+        """
+        List of dataset item names.
+
+        :return: List of item names.
+        :rtype: :class:`list`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.get_item_names())
+            # Output: ['IMG_0002.jpg', 'IMG_0005.jpg', 'IMG_0008.jpg', ...]
+        """
         return list(self._item_to_ann.keys())
 
     def item_exists(self, item_name: str) -> bool:
@@ -290,9 +357,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            ds = Dataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ds.item_exists("IMG_0748")      # False
             ds.item_exists("IMG_0748.jpeg") # True
@@ -312,9 +379,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            ds = Dataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ds.get_item_path("IMG_0748")
             # Output: RuntimeError: Item IMG_0748 not found in the project.
@@ -337,9 +404,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            ds = Dataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ds.get_img_path("IMG_0748")
             # Output: RuntimeError: Item IMG_0748 not found in the project.
@@ -354,6 +421,33 @@ class Dataset(KeyObject):
         return os.path.join(self.item_dir, item_name)
 
     def get_ann(self, item_name, project_meta: ProjectMeta) -> Annotation:
+        """
+        Read annotation of item from json.
+
+        :param item_name: Image name.
+        :type item_name: str
+        :param project_meta: Input :class:`ProjectMeta<supervisely.ProjectMeta>`.
+        :type project_meta: ProjectMeta
+        :return: Annotation object
+        :rtype: :class:`Annotation` 
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            ds = project.datasets.get('ds1')
+
+            annotation = ds.get_ann("IMG_0748", project.meta)
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            annotation = ds.get_ann("IMG_0748.jpeg", project.meta)
+            print(type(annotation).__name__)
+            # Output: Annotation
+        """
         ann_path = self.get_ann_path(item_name)
         return Annotation.load_json_file(ann_path, project_meta)
 
@@ -370,9 +464,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            ds = Dataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ds.get_ann_path("IMG_0748")
             # Output: RuntimeError: Item IMG_0748 not found in the project.
@@ -405,9 +499,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds0"
-            ds = Dataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             info = ds.get_image_info("IMG_0748.jpeg")
         """
@@ -455,12 +549,12 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
-            ann = "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg.json"
-            ds.add_item_file("IMG_777.jpeg", "/home/admin/work/supervisely/projects/Test/IMG_8888.jpeg", ann=ann)
+            ann = "/home/admin/work/supervisely/projects/lemons_annotated/ds1/IMG_8888.jpeg.json"
+            ds.add_item_file("IMG_777.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/IMG_8888.jpeg", ann=ann)
         """
         if item_path is None and ann is None and img_info is None:
             raise RuntimeError("No item_path or ann or img_info provided.")
@@ -499,9 +593,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
@@ -539,9 +633,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
@@ -638,9 +732,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             print(ds.generate_item_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg'
@@ -721,9 +815,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             height, width = 500, 700
             ann = sly.Annotation((height, width))
@@ -751,11 +845,11 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
-            ann_out_path = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_4455.jpeg.json"
+            ann_out_path = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
             ds.set_ann_file("IMG_1812.jpeg", ann_out_path)
         """
         if type(ann_path) is not str:
@@ -778,9 +872,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ann_json = {
                 "description":"",
@@ -812,9 +906,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path, ann_path = dataset.get_item_paths("IMG_0748.jpeg")
             print("img_path: " img_path, "ann_path: " ann_path)
@@ -847,9 +941,9 @@ class Dataset(KeyObject):
 
          .. code-block:: python
 
-            from supervisely.project.project import Dataset
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            ds = sly.project.project.Dataset(dataset_path, sly.OpenMode.READ)
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             result = dataset.delete_item("IMG_0748.jpeg")
             # Output: True
@@ -874,7 +968,7 @@ class Dataset(KeyObject):
 
 class Project:
     """
-    Project is a parent directory for dataset. :class:`Project<Project>` object is immutable.
+    Project is a parent directory for dataset. :class:`Project<supervisely.Project>` object is immutable.
 
     :param directory: Path to project directory.
     :type directory: str
@@ -884,9 +978,9 @@ class Project:
 
      .. code-block:: python
 
-         from supervisely.project.project import Project, OpenMode
-         project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-         project = Project(project_path, OpenMode.READ)
+        import supervisely as sly
+        project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+        project = sly.Project(project_path, sly.OpenMode.READ)
     """
 
     dataset_class = Dataset
@@ -933,9 +1027,10 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             print(project.parent_dir)
-             # Output: '/home/admin/work/supervisely/projects'
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.parent_dir)
+            # Output: '/home/admin/work/supervisely/projects'
         """
         return self._parent_dir
 
@@ -950,9 +1045,10 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             print(project.name)
-             # Output: 'lemons_annotated'
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.name)
+            # Output: 'lemons_annotated'
         """
         return self._name
 
@@ -962,13 +1058,14 @@ class Project:
         Project datasets.
 
         :return: Datasets
-        :rtype: :class:`DatasetDict<supervisely.project.project.Project.DatasetDict>`
+        :rtype: :class:`DatasetDict<supervisely.Project.DatasetDict>`
         :Usage example:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             for dataset in project.datasets:
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            for dataset in project.datasets:
                 print(dataset.name)
                 # Output: ds1
                 #         ds2
@@ -986,19 +1083,20 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             print(project.meta)
-             # Output:
-             # +-------+--------+----------------+--------+
-             # |  Name | Shape  |     Color      | Hotkey |
-             # +-------+--------+----------------+--------+
-             # |  kiwi | Bitmap |  [255, 0, 0]   |        |
-             # | lemon | Bitmap | [81, 198, 170] |        |
-             # +-------+--------+----------------+--------+
-             # Tags
-             # +------+------------+-----------------+--------+---------------+--------------------+
-             # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
-             # +------+------------+-----------------+--------+---------------+--------------------+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.meta)
+            # Output:
+            # +-------+--------+----------------+--------+
+            # |  Name | Shape  |     Color      | Hotkey |
+            # +-------+--------+----------------+--------+
+            # |  kiwi | Bitmap |  [255, 0, 0]   |        |
+            # | lemon | Bitmap | [81, 198, 170] |        |
+            # +-------+--------+----------------+--------+
+            # Tags
+            # +------+------------+-----------------+--------+---------------+--------------------+
+            # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+            # +------+------------+-----------------+--------+---------------+--------------------+
         """
         return self._meta
 
@@ -1013,9 +1111,10 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             print(project.directory)
-             # Output: '/home/admin/work/supervisely/projects/lemons_annotated'
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.directory)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated'
         """
         return os.path.join(self.parent_dir, self.name)
 
@@ -1030,9 +1129,10 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             print(project.total_items)
-             # Output: 12
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.total_items)
+            # Output: 12
         """
         return sum(len(ds) for ds in self._datasets)
 
@@ -1094,18 +1194,19 @@ class Project:
 
          .. code-block:: python
 
-             proj_lemons = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             proj_kiwi = sly.Project("/home/admin/work/supervisely/projects/kiwi_annotated", sly.OpenMode.READ)
+            import supervisely as sly
+            proj_lemons = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            proj_kiwi = sly.Project("/home/admin/work/supervisely/projects/kiwi_annotated", sly.OpenMode.READ)
 
-             proj_lemons.set_meta(proj_kiwi.meta)
+            proj_lemons.set_meta(proj_kiwi.meta)
 
-             print(project.proj_lemons)
-             # Output:
-             # +-------+--------+----------------+--------+
-             # |  Name | Shape  |     Color      | Hotkey |
-             # +-------+--------+----------------+--------+
-             # |  kiwi | Bitmap |  [255, 0, 0]   |        |
-             # +-------+--------+----------------+--------+
+            print(project.proj_lemons)
+            # Output:
+            # +-------+--------+----------------+--------+
+            # |  Name | Shape  |     Color      | Hotkey |
+            # +-------+--------+----------------+--------+
+            # |  kiwi | Bitmap |  [255, 0, 0]   |        |
+            # +-------+--------+----------------+--------+
         """
         self._meta = new_meta
         dump_json_file(self.meta.to_json(), self._get_project_meta_path(), indent=4)
@@ -1125,20 +1226,28 @@ class Project:
         :param ds_name: Dataset name.
         :type ds_name: str
         :return: Dataset object
-        :rtype: :class:`Dataset<Dataset>`
+        :rtype: :class:`Dataset<supervisely.Dataset>`
         :Usage example:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             project.create_dataset("ds3")
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            
+            for dataset in project.datasets:
+                print(dataset.name)
 
-             for dataset in project.datasets:
-                 print(dataset.name)
+            # Output: ds1
+            #         ds2
 
-             # Output: ds1
-             #         ds2
-             #         ds3
+            project.create_dataset("ds3")
+
+            for dataset in project.datasets:
+                print(dataset.name)
+
+            # Output: ds1
+            #         ds2
+            #         ds3
         """
         ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
@@ -1183,13 +1292,14 @@ class Project:
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: bool, optional
         :return: Project object
-        :rtype: :class:`Project<Project>`
+        :rtype: :class:`Project<supervisely.Project>`
         :Usage example:
 
          .. code-block:: python
 
-             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-             project.copy_data("/home/admin/work/supervisely/projects/", "lemons_copy")
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            project.copy_data("/home/admin/work/supervisely/projects/", "lemons_copy")
         """
         dst_name = dst_name if dst_name is not None else self.name
         new_project = Project(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
@@ -1397,8 +1507,9 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
-             project.remove_classes_except(project_path, inplace=True)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
+            project.remove_classes_except(project_path, inplace=True)
         """
         classes_to_remove = []
         project = Project(project_dir, OpenMode.READ)
@@ -1428,9 +1539,10 @@ class Project:
 
          .. code-block:: python
 
-             project = sly.project.project.Project(project_path, sly.OpenMode.READ)
-             classes_to_remove = ['lemon']
-             project.remove_classes(project_path, classes_to_remove, inplace=True)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
+            classes_to_remove = ['lemon']
+            project.remove_classes(project_path, classes_to_remove, inplace=True)
         """
         if inplace is False:
             raise ValueError(
@@ -1500,7 +1612,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_objects(project_path)
         """
         Project._remove_items(project_dir=project_dir, without_objects=True, inplace=inplace)
@@ -1520,7 +1633,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_tags(project_path)
         """
         Project._remove_items(project_dir=project_dir, without_tags=True, inplace=inplace)
@@ -1542,7 +1656,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             project.remove_items_without_both_objects_and_tags(project_path)
         """
         Project._remove_items(
@@ -1572,7 +1687,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             train_count = 4
             val_count = 2
             train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
@@ -1626,7 +1742,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             train_tag_name = 'train'
             val_tag_name = 'val'
             train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
@@ -1682,7 +1799,8 @@ class Project:
 
          .. code-block:: python
 
-            project = sly.project.project.Project(project_path, sly.OpenMode.READ)
+            import supervisely as sly
+            project = sly.Project(project_path, sly.OpenMode.READ)
             train_datasets = ['ds1', 'ds2']
             val_datasets = ['ds3', 'ds4']
             train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
@@ -1715,14 +1833,15 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
     :param project_class: Project object
     :type project_class: Project
     :return: Project class object
-    :rtype: :class:`Project<Project>`
+    :rtype: :class:`Project<supervisely.Project>`
     :raises: :class:`Exception` if given directory contains more than one subdirectory.
     :Usage example:
 
      .. code-block:: python
 
-            proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
-            project = sly.read_single_project(proj_dir)
+        import supervisely as sly
+        proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
+        project = sly.read_single_project(proj_dir)
     """
     try:
         project_fs = project_class(dir, OpenMode.READ)
@@ -1846,6 +1965,8 @@ def upload_project(
 
      .. code-block:: python
 
+            import supervisely as sly
+
             # Local folder with Project
             project_directory = "/home/admin/work/supervisely/source/project"
             project = sly.Project(project_directory, sly.OpenMode.READ)
@@ -1963,6 +2084,8 @@ def download_project(
 
      .. code-block:: python
 
+            import supervisely as sly
+            
             # Local destination Project folder
             save_directory = "/home/admin/work/supervisely/source/project"
 

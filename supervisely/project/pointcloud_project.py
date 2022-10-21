@@ -118,9 +118,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             ds.get_pointcloud_path("PTC_0748")
             # Output: RuntimeError: Item IMG_0748 not found in the project.
@@ -142,9 +142,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             info = ds.get_pointcloud_info("IMG_0748.pcd")
         """
@@ -167,9 +167,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             ds.get_ann_path("PTC_0748")
             # Output: RuntimeError: Item PTC_0748 not found in the project.
@@ -191,9 +191,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             result = dataset.delete_item("PTC_0748.pcd")
             # Output: True
@@ -242,9 +242,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             ann = "/home/admin/work/supervisely/projects/ptc_project/ds0/ann/PTC_777.pcd.json"
             ds.add_item_file("PTC_777.pcd", "/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_777.pcd", ann=ann)
@@ -287,9 +287,9 @@ class PointcloudDataset(VideoDataset):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudDataset
+            import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
 
             pointcloud_path = "/home/admin/Pointclouds/ptc0.pcd"
             img_np = sly.image.read(img_path)
@@ -361,6 +361,42 @@ class PointcloudDataset(VideoDataset):
             related_images_dir=self.get_related_images_path(item_name),
             ann_path=self.get_ann_path(item_name),
         )
+
+    # def validate_figure_bounds(self,)
+
+    def get_ann(self, item_name, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> PointcloudAnnotation:
+        """
+        Read pointcloud annotation of item from json.
+
+        :param item_name: Pointcloud name.
+        :type item_name: str
+        :param project_meta: Project Meta.
+        :type project_meta: ProjectMeta
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: PointcloudAnnotation object
+        :rtype: :class:`PointcloudAnnotation<supervisely.PointcloudAnnotation>`
+        :raises: :class:`RuntimeError` if item not found in the project
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+
+            ds = project.datasets.get('ds1')
+
+            annotation = ds.get_ann("PTC_0056")
+            # Output: RuntimeError: Item PTC_0056 not found in the project.
+
+            annotation = ds.get_ann("PTC_0056.pcd")
+            print(type(annotation).__name__)
+            # Output: PointcloudAnnotation
+        """
+        ann_path = self.get_ann_path(item_name)
+        return PointcloudAnnotation.load_json_file(ann_path, project_meta, key_id_map)
 
     def get_related_images(self, item_name: str) -> List[Tuple[str, Dict]]:
         results = []
@@ -517,9 +553,9 @@ class PointcloudProject(VideoProject):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudProject
+            import supervisely as sly
             project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = PointcloudProject(project_path, sly.OpenMode.READ)
+            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
             train_tag_name = 'train'
             val_tag_name = 'val'
             train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
@@ -578,9 +614,9 @@ class PointcloudProject(VideoProject):
 
          .. code-block:: python
 
-            from supervisely.project.pointcloud_project import PointcloudProject
+            import supervisely as sly
             project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = PointcloudProject(project_path, sly.OpenMode.READ)
+            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
             train_datasets = ['ds1', 'ds2']
             val_datasets = ['ds3', 'ds4']
             train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)

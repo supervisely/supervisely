@@ -1,7 +1,10 @@
 # coding: utf-8
 
 import uuid
+import json
+from typing import Optional
 
+from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
@@ -19,6 +22,23 @@ class PointcloudEpisodeAnnotation:
         self._tags = take_with_default(tags, VideoTagCollection())
         self._objects = take_with_default(objects, PointcloudObjectCollection())
         self._key = take_with_default(key, uuid.uuid4())
+
+    def get_tags_on_frame(self, frame_index: int) -> VideoTagCollection:
+        tags = []
+        for video_tag in self._tags:
+            if frame_index >= video_tag.frame_range[0] and frame_index <= video_tag.frame_range[1]:
+                tags.append(video_tag)
+        return VideoTagCollection(tags)
+
+    def get_objects_on_frame(self, frame_index: int) -> PointcloudObjectCollection:
+        frame = self._frames.get(frame_index, None)
+        if frame is None:
+            raise ValueError(f"No frame with index {frame_index} in annotation.")
+        frame_objects = {}
+        for fig in frame.figures:
+            if fig.parent_object.key() not in frame_objects.keys():
+                frame_objects[fig.parent_object.key()] = fig.parent_object
+        return PointcloudObjectCollection(list(frame_objects.values()))
 
     def to_json(self, key_id_map: KeyIdMap = None):
         res_json = {
@@ -52,6 +72,47 @@ class PointcloudEpisodeAnnotation:
         frames = FrameCollection.from_json(data[FRAMES], objects, key_id_map=key_id_map)
 
         return cls(frames_count, objects, frames, tags, description, item_key)
+
+    @classmethod
+    def load_json_file(cls, path: str, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
+        """
+        Loads json file and converts it to PointcloudEpisodeAnnotation.
+
+        :param path: Path to the json file.
+        :type path: str
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
+        :type project_meta: ProjectMeta
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: PointcloudEpisodeAnnotation object
+        :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            team_name = 'Vehicle Detection'
+            workspace_name = 'Cities'
+            project_name =  'London'
+
+            team = api.team.get_info_by_name(team_name)
+            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+            project = api.project.get_info_by_name(workspace.id, project_name)
+
+            meta = api.project.get_meta(project.id)
+
+            # Load json file
+            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+            ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, meta)
+        """
+        with open(path) as fin:
+            data = json.load(fin)
+        return cls.from_json(data, project_meta, key_id_map)
 
     def clone(self, frames_count=None, objects=None, frames=None, tags=None, description=""):
         return PointcloudEpisodeAnnotation(frames_count=take_with_default(frames_count, self.frames_count),
