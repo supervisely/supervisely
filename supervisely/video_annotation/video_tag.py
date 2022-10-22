@@ -72,9 +72,11 @@ class VideoTag(Tag):
         self._frame_range = None
         if frame_range is not None:
             if not isinstance(frame_range, (tuple, list)):
-                raise TypeError('{!r} has to be a tuple or a list. Given type "{}".'.format(FRAME_RANGE, type(frame_range)))
-            else:
-                self._frame_range = list(frame_range)
+                raise TypeError('frame_range has to be a tuple or a list. Given type "{}".'.format(type(frame_range)))
+
+            if len(frame_range) != 2 or not isinstance(frame_range[0], int) or not isinstance(frame_range[1], int):
+                raise ValueError("frame_range has to be a tuple or a list with 2 int values.") 
+            self._frame_range = list(frame_range)
 
         self._key = take_with_default(key, uuid.uuid4())
 

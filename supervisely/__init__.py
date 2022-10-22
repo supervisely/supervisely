@@ -156,6 +156,8 @@ from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
 )
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
+from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,

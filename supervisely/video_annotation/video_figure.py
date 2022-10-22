@@ -27,7 +27,7 @@ from supervisely.geometry.constants import (
 )
 
 
-class OutOfImageBoundsExtension(Exception):
+class OutOfImageBoundsException(Exception):
     pass
 
 
@@ -85,9 +85,18 @@ class VideoFigure:
         #     }
         # }
     """
-    def __init__(self, video_object: VideoObject, geometry: Geometry, frame_index: int, key: Optional[UUID]=None,
-                 class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None,
-                 created_at: Optional[str]=None):
+
+    def __init__(
+        self,
+        video_object: VideoObject,
+        geometry: Geometry,
+        frame_index: int,
+        key: Optional[UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
         self._frame_index = frame_index
@@ -227,7 +236,7 @@ class VideoFigure:
                     )
                 )
 
-    def to_json(self, key_id_map: Optional[UUID]=None, save_meta: Optional[bool]=False) -> Dict:
+    def to_json(self, key_id_map: Optional[UUID] = None, save_meta: Optional[bool] = False) -> Dict:
         """
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -300,7 +309,13 @@ class VideoFigure:
         return {ApiField.FRAME: self.frame_index}
 
     @classmethod
-    def from_json(cls, data: Dict, objects: VideoObjectCollection, frame_index: int, key_id_map: Optional[KeyIdMap] = None) -> VideoFigure:
+    def from_json(
+        cls,
+        data: Dict,
+        objects: VideoObjectCollection,
+        frame_index: int,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> VideoFigure:
         """
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -340,9 +355,7 @@ class VideoFigure:
                 raise RuntimeError("Figure can not be deserialized: key_id_map is None")
             object_key = key_id_map.get_object_key(object_id)
             if object_key is None:
-                raise RuntimeError(
-                    "Object with id={!r} not found in key_id_map".format(object_id)
-                )
+                raise RuntimeError("Object with id={!r} not found in key_id_map".format(object_id))
 
         object = objects.get(object_key)
         if object is None:
@@ -379,9 +392,17 @@ class VideoFigure:
             created_at=created_at,
         )
 
-    def clone(self, video_object: Optional[VideoObject]=None, geometry: Optional[Geometry]=None, frame_index: Optional[int]=None,
-              key: Optional[UUID]=None, class_id: Optional[int]=None, labeler_login: Optional[str]=None,
-              updated_at: Optional[str]=None, created_at: Optional[str]=None) -> VideoFigure:
+    def clone(
+        self,
+        video_object: Optional[VideoObject] = None,
+        geometry: Optional[Geometry] = None,
+        frame_index: Optional[int] = None,
+        key: Optional[UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> VideoFigure:
         """
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
 
@@ -445,17 +466,20 @@ class VideoFigure:
             #     }
             # }
         """
-        return self.__class__(video_object=take_with_default(video_object, self.parent_object),
-                              geometry=take_with_default(geometry, self.geometry),
-                              frame_index=take_with_default(frame_index, self.frame_index),
-                              key=take_with_default(key, self._key),
-                              class_id=take_with_default(class_id, self.class_id),
-                              labeler_login=take_with_default(labeler_login, self.labeler_login),
-                              updated_at=take_with_default(updated_at, self.updated_at),
-                              created_at=take_with_default(created_at, self.created_at)
-                              )
+        return self.__class__(
+            video_object=take_with_default(video_object, self.parent_object),
+            geometry=take_with_default(geometry, self.geometry),
+            frame_index=take_with_default(frame_index, self.frame_index),
+            key=take_with_default(key, self._key),
+            class_id=take_with_default(class_id, self.class_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at),
+        )
 
-    def validate_bounds(self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False) -> None:
+    def validate_bounds(
+        self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False
+    ) -> None:
         """
         Checks if given image with given size contains a figure.
 
@@ -463,7 +487,7 @@ class VideoFigure:
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises: :class:`OutOfImageBoundsExtension<supervisely.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
+        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
         :return: None
         :rtype: :class:`NoneType`
 
@@ -481,16 +505,16 @@ class VideoFigure:
 
             im_size = (50, 200)
             video_figure_car.validate_bounds(im_size)
-            # raise OutOfImageBoundsExtension("Figure is out of image bounds")
+            # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         canvas_rect = Rectangle.from_size(img_size)
         if canvas_rect.contains(self.geometry.to_bbox()) is False:
-            raise OutOfImageBoundsExtension("Figure is out of image bounds")
+            raise OutOfImageBoundsException("Figure is out of image bounds")
 
         if _auto_correct is True:
             geometries_after_crop = [
                 cropped_geometry for cropped_geometry in self.geometry.crop(canvas_rect)
             ]
             if len(geometries_after_crop) != 1:
-                raise OutOfImageBoundsExtension("Several geometries after crop")
+                raise OutOfImageBoundsException("Several geometries after crop")
             self._set_geometry_inplace(geometries_after_crop[0])

@@ -162,6 +162,7 @@ API
     :template: autosummary/custom-class-template.rst
 
     ImageApi
+    ImageInfo
 
 .. currentmodule:: supervisely.api.import_storage_api
 
@@ -568,6 +569,32 @@ Pointcloud Annotation
 
     PointcloudObjectCollection
 
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTag
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTagCollection
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_annotation
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeAnnotation
 
 Project
 -------
