@@ -654,6 +654,7 @@ Project
 
     VideoProject
     VideoDataset
+    VideoItemPaths
 
 .. currentmodule:: supervisely.project.volume_project
 

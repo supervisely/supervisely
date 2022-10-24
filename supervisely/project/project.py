@@ -86,7 +86,7 @@ def _get_effective_ann_name(img_name, ann_names):
 
 class Dataset(KeyObject):
     """
-    Dataset is where your labeled and unlabeled images, videos and other files live. :class:`Dataset<Dataset>` object is immutable.
+    Dataset is where your labeled and unlabeled images and other data files live. :class:`Dataset<Dataset>` object is immutable.
 
     :param directory: Path to dataset directory.
     :type directory: str
@@ -166,12 +166,13 @@ class Dataset(KeyObject):
             import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
-            print(dataset.name)
+            print(ds.name)
             # Output: "ds1"
         """
         return self._name
 
     def key(self):
+        # TODO: add docstring
         return self.name
 
     @property
@@ -329,7 +330,7 @@ class Dataset(KeyObject):
     def _read(self):
         """
         Fills out the dictionary items: item file name -> annotation file name. Checks item and annotation directoris existing and dataset not empty.
-        Consistency checks. Every image must have an annotation, and the correspondence must be one to one.
+        Consistency checks. Every item must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
         """
         if not dir_exists(self.item_dir):
@@ -370,7 +371,7 @@ class Dataset(KeyObject):
 
     def _create(self):
         """
-        Creates a leaf directory and all intermediate ones for items and annatations.
+        Creates a leaf directory and all intermediate ones for items and annotations.
         """
         mkdir(self.ann_dir)
         mkdir(self.item_dir)
@@ -507,7 +508,7 @@ class Dataset(KeyObject):
             # }
         """
         ann_path = self.get_ann_path(item_name)
-        return Annotation.load_json_file(ann_path, project_meta)
+        return self.annotation_class.load_json_file(ann_path, project_meta)
 
     def get_ann_path(self, item_name: str) -> str:
         """
@@ -868,7 +869,7 @@ class Dataset(KeyObject):
 
     def _add_ann_by_type(self, item_name, ann):
         """
-        Add given annatation to dataset annotations dir and to dictionary items: item file name -> annotation file name
+        Add given annotation to dataset annotations dir and to dictionary items: item file name -> annotation file name
         :param item_name: str
         :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
         """
@@ -897,7 +898,7 @@ class Dataset(KeyObject):
         elif type(item_info) is str and os.path.isfile(item_info):
             shutil.copy(item_info, dst_info_path)
         else:
-            # item info named tuple (ImageInfo, PointcloudInfo, ..)
+            # item info named tuple (ImageInfo, VideoInfo, PointcloudInfo, ..)
             dump_json_file(item_info._asdict(), dst_info_path, indent=4)
 
     def _check_add_item_name(self, item_name):
@@ -993,8 +994,7 @@ class Dataset(KeyObject):
             if _validate_item:
                 self._validate_added_item_or_die(item_path)
 
-    @staticmethod
-    def _validate_added_item_or_die(item_path):
+    def _validate_added_item_or_die(self, item_path):
         """
         Make sure we actually received a valid image file, clean it up and fail if not so
         :param item_path: str
@@ -1123,7 +1123,7 @@ class Dataset(KeyObject):
             # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
         """
         return ItemPaths(
-            img_path=self.get_img_path(item_name), ann_path=self.get_ann_path(item_name)
+            img_path=self.get_item_path(item_name), ann_path=self.get_ann_path(item_name)
         )
 
     def __len__(self):
@@ -1537,22 +1537,21 @@ class Project:
         for ds in self:
             new_ds = new_project.create_dataset(ds.name)
 
-            ds: Dataset
             for item_name in ds:
-                img_path, ann_path = ds.get_item_paths(item_name)
-                img_info_path = ds.get_item_info_path(item_name)
+                item_path, ann_path = ds.get_item_paths(item_name)
+                item_info_path = ds.get_item_info_path(item_name)
 
-                img_path = img_path if os.path.isfile(img_path) else None
+                item_path = item_path if os.path.isfile(item_path) else None
                 ann_path = ann_path if os.path.isfile(ann_path) else None
-                img_info_path = img_info_path if os.path.isfile(img_info_path) else None
+                item_info_path = item_info_path if os.path.isfile(item_info_path) else None
 
                 new_ds.add_item_file(
                     item_name,
-                    img_path,
+                    item_path,
                     ann_path,
                     _validate_item=_validate_item,
                     _use_hardlink=_use_hardlink,
-                    item_info=img_info_path
+                    item_info=item_info_path
                 )
         return new_project
 
@@ -2413,7 +2412,7 @@ def download_project(
             api = sly.Api(address, token)
             project_id = 8888
 
-            # Upload Project
+            # Download Project
             sly.download_project(api, project_id, save_directory)
     """
     if cache is None:
