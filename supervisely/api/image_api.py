@@ -28,28 +28,98 @@ from supervisely._utils import batched, generate_free_name
 
 
 class ImageInfo(NamedTuple):
-    """ """
+    """
+    Object with image parameters from Supervisely.
 
-    id: int
-    name: str
+    :Example:
+
+     .. code-block:: python
+
+        ImageInfo(
+            id=770915,
+            name='IMG_3861.jpeg',
+            link=None,
+            hash='ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=',
+            mime='image/jpeg',
+            ext='jpeg',
+            size=148388,
+            width=1067,
+            height=800,
+            labels_count=4,
+            dataset_id=2532,
+            created_at='2021-03-02T10:04:33.973Z',
+            updated_at='2021-03-02T10:04:33.973Z',
+            meta={},
+            path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
+            full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            tags=[]
+        )
+    """
+    #: :class:`int`: Image ID in Supervisely.
+    id: int 
+
+    #: :class:`str`: Image filename.
+    name: str 
+    
+    #: :class:`str`: Use link as ID for images that are expected to be stored at remote server. 
+    #: e.g. "http://your-server/image1.jpg".
     link: str
+
+    #: :class:`str`: Image hash obtained by base64(sha256(file_content)). 
+    #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
+
+    #: :class:`str`: Image MIME type.
     mime: str
+
+    #: :class:`str`: Image file extension.
     ext: str
+
+    #: :class:`int`: Image size (in bytes).
     size: int
+
+    #: :class:`int`: Image width.
     width: int
+
+    #: :class:`int`: Image height.
     height: int
+
+    #: :class:`int`: Number of :class:`Labels<supervisely.annotation.label.Label>` in the Image.
     labels_count: int
+
+    #: :class:`int`: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
     dataset_id: int
+
+    #: :class:`str`: Image creation time. e.g. "2019-02-22T14:59:53.381Z".
     created_at: str
+
+    #: :class:`str`: Time of last image update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
+
+    #: :class:`dict`: Custom additional image info.
     meta: dict
+
+    #: :class:`str`: Relative storage URL to image. e.g. 
+    #: "/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     path_original: str
+
+    #: :class:`str`: Full storage URL to image. e.g. 
+    #: "http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
-    tags: list
+
+    #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list. 
+    #: e.g. "[{'entityId': 2836466, 'tagId': 345022, 'id': 2224609, 'labelerLogin': 'admin', 
+    #: 'createdAt': '2021-03-05T14:15:39.923Z', 'updatedAt': '2021-03-05T14:15:39.923Z'}, {...}]".
+    tags: List[Dict]
 
     @property
     def preview_url(self):
+        """
+        Get Image preview URL.
+
+        :return: Image preview URL.
+        :rtype: :class:`str`
+        """
         res = self.full_storage_url
         if is_development():
             res = abs_url(res)
@@ -85,29 +155,10 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple ImageInfo containing information about Image.
+        Get list of all :class:`ImageInfo<ImageInfo>` field names.
 
-        :Example:
-
-         .. code-block:: python
-
-            ImageInfo(id=770915,
-                      name='IMG_3861.jpeg',
-                      link=None,
-                      hash='ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=',
-                      mime='image/jpeg',
-                      ext='jpeg',
-                      size=148388,
-                      width=1067,
-                      height=800,
-                      labels_count=4,
-                      dataset_id=2532,
-                      created_at='2021-03-02T10:04:33.973Z',
-                      updated_at='2021-03-02T10:04:33.973Z',
-                      meta={},
-                      path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-                      full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
-                      tags=[]
+        :return: List of :class:`ImageInfo<ImageInfo>` field names.`
+        :rtype: :class:`List[str]`
         """
         return [
             ApiField.ID,
@@ -132,7 +183,10 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ImageInfo**.
+        Get string name of :class:`ImageInfo<ImageInfo>` NamedTuple.
+
+        :return: NamedTuple name.
+        :rtype: :class:`str`
         """
         return "ImageInfo"
 
@@ -145,18 +199,20 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: int = None,
     ) -> List[ImageInfo]:
         """
-        List of Images in the given Dataset.
+        List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
 
-        :param dataset_id: Dataset ID in which the Images are located.
-        :type dataset_id: int
+        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
+        :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
-        :type filters: List[dict], optional
-        :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
-        :type sort: str, optional
-        :param sort_order:
-        :type sort_order: str, optional
-        :return: List of all images with information for the given Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[ImageInfo]`
+        :type filters: :class:`List[Dict]`, optional
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}
+        :type sort: :class:`str`, optional
+        :param sort_order: Sort order. One of {'asc' (default), 'desc'}
+        :type sort_order: :class:`str`, optional
+        :param limit: Max number of list elements. No limit if None (default).
+        :type limit: :class:`int`, optional
+        :return: Objects with image information from Supervisely.
+        :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
 
          .. code-block:: python
@@ -223,20 +279,21 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-    ) -> List[NamedTuple]:
+    ) -> List[ImageInfo]:
         """
-        List of filtered Images in the given Dataset.
+        List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
+        Differs in a more flexible filter format from the get_list() method. 
 
-        :param dataset_id: Dataset ID in which the Images are located.
-        :type dataset_id: int
-        :param filters: List of params to sort output Images
-        :type filters: List[dict], optional
-        :param sort: string (one of "id" "name" "description" "labelsCount" "createdAt" "updatedAt")
-        :type sort: str, optional
-        :param sort_order:
-        :type sort_order: str, optional
-        :return: List of all images with information for the given Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[ImageInfo]`
+        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
+        :type dataset_id: :class:`int`
+        :param filters: List of params to sort output Images.
+        :type filters: :class:`List[Dict]`, optional
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}.
+        :type sort: :class:`str`, optional
+        :param sort_order: Sort order. One of {'asc' (default), 'desc'}
+        :type sort_order: :class:`str`, optional
+        :return: Objects with image information from Supervisely.
+        :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
         :Usage example:
 
@@ -287,8 +344,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ImageInfo`
+        :return: Object with image information from Supervisely.
+        :rtype: :class:`ImageInfo<ImageInfo>`
         :Usage example:
 
          .. code-block:: python
@@ -316,7 +373,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress.
         :type progress_cb: Progress, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
 
@@ -355,9 +412,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param is_stream: bool
         :return: Response class object contain metadata of image with given id
         """
-        response = self._api.post(
-            "images.download", {ApiField.ID: id}, stream=is_stream
-        )
+        response = self._api.post("images.download", {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_np(self, id: int, keep_alpha: Optional[bool] = False) -> np.ndarray:
@@ -417,11 +472,9 @@ class ImageApi(RemoveableBulkModuleApi):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def _download_batch(self, dataset_id, ids, progress_cb: Optional[Callable] = None):
+    def _download_batch(self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None):
         """
-        Generate image id and it content from given dataset and list of images ids
-        :param dataset_id: int
-        :param ids: list of integers
+        Get image id and it content from given dataset and list of images ids.
         """
         for batch_ids in batched(ids):
             response = self._api.post(
@@ -435,6 +488,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 # The regex has 2 capture group: one for the prefix and one for the actual name value.
                 img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
 
+                # TODO: check If this is the right way
                 if progress_cb is not None:
                     progress_cb(1)
                 yield img_id, part
@@ -450,16 +504,18 @@ class ImageApi(RemoveableBulkModuleApi):
         Download Images with given ids and saves them for the given paths.
 
         :param dataset_id: Dataset ID in Supervisely, where Images are located.
-        :type dataset_id: int
+        :type dataset_id: :class:`int`
         :param ids: List of Image IDs in Supervisely.
-        :type ids: List[int]
+        :type ids: :class:`List[int]`
         :param paths: Local save paths for Images.
-        :type paths: List[str]
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type paths: :class:`List[str]`
+        :param progress_cb: Function for tracking download progress. It must be update function with 1 :class:`int` parameter.
+                            e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: :class:`Progress<supervisely.task.progress.Progress>`, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
+        
         :Usage example:
 
          .. code-block:: python
@@ -492,9 +548,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise ValueError(
-                'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
-            )
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
 
         id_to_path = {id: path for id, path in zip(ids, paths)}
         for img_id, resp_part in self._download_batch(dataset_id, ids, progress_cb):
@@ -663,9 +717,7 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             return True
 
-    def _upload_uniq_images_single_req(
-        self, func_item_to_byte_stream, hashes_items_to_upload
-    ):
+    def _upload_uniq_images_single_req(self, func_item_to_byte_stream, hashes_items_to_upload):
         """
         Upload images (binary data) to server with single request.
         Expects unique images that aren't exist at server.
@@ -838,9 +890,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         hashes = [get_file_hash(x) for x in paths]
 
-        self._upload_data_bulk(
-            path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb
-        )
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_np(
@@ -1297,17 +1347,13 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(names) == 0:
             return results
         if len(names) != len(items):
-            raise ValueError(
-                'Can not match "names" and "items" lists, len(names) != len(items)'
-            )
+            raise ValueError('Can not match "names" and "items" lists, len(names) != len(items)')
 
         if metas is None:
             metas = [{}] * len(names)
         else:
             if len(names) != len(metas):
-                raise ValueError(
-                    'Can not match "names" and "metas" len(names) != len(metas)'
-                )
+                raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
         for batch in batched(list(zip(names, items, metas))):
             images = []
@@ -1431,9 +1477,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if type(ids) is not list:
             raise TypeError(
-                "ids parameter has type {!r}. but has to be of type {!r}".format(
-                    type(ids), list
-                )
+                "ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list)
             )
 
         if len(ids) == 0:
@@ -1452,9 +1496,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if change_name_if_conflict:
             new_names = [
-                generate_free_name(
-                    existing_names, info.name, with_ext=True, extend_used_names=True
-                )
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
                 for info in ids_info
             ]
         else:
@@ -1471,9 +1513,7 @@ class ImageApi(RemoveableBulkModuleApi):
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
-            src_project_id = self._api.dataset.get_info_by_id(
-                ids_info[0].dataset_id
-            ).project_id
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
             dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
             self._api.project.merge_metas(src_project_id, dst_project_id)
             self._api.annotation.copy_batch(ids, new_ids)
@@ -1570,9 +1610,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
-        return self.copy_batch(
-            dst_dataset_id, [id], change_name_if_conflict, with_annotations
-        )[0]
+        return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def move(
         self,
@@ -1609,9 +1647,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
-        return self.move_batch(
-            dst_dataset_id, [id], change_name_if_conflict, with_annotations
-        )[0]
+        return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def url(
         self,
@@ -1721,9 +1757,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(hashes) == 0:
             return
         if len(hashes) != len(paths):
-            raise ValueError(
-                'Can not match "hashes" and "paths" lists, len(hashes) != len(paths)'
-            )
+            raise ValueError('Can not match "hashes" and "paths" lists, len(hashes) != len(paths)')
 
         h_to_path = {h: path for h, path in zip(hashes, paths)}
         for h, resp_part in self._download_batch_by_hashes(list(set(hashes))):
@@ -1886,14 +1920,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if type(meta) is not dict:
             raise TypeError("Meta must be dict, not {}".format(type(meta)))
-        response = self._api.post(
-            "images.editInfo", {ApiField.ID: id, ApiField.META: meta}
-        )
+        response = self._api.post("images.editInfo", {ApiField.ID: id, ApiField.META: meta})
         return response.json()
 
-    def add_tag(
-        self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None
-    ) -> None:
+    def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None) -> None:
         """
         Add tag with given ID to Image by ID.
 
