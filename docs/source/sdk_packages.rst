@@ -505,6 +505,7 @@ IO
     fs
     json
 
+
 Labeling Jobs
 -------------
 
@@ -599,7 +600,7 @@ Pointcloud Annotation
 Project
 -------
 **Project**
-- Working with Superrvisely projects on disk.
+- Working with Supervisely projects on disk.
 
 .. currentmodule:: supervisely.project.project
 
@@ -609,8 +610,11 @@ Project
     :template: autosummary/custom-class-template.rst
 
     Project
+    DatasetDict
     Dataset
     OpenMode
+    ItemPaths
+    ItemInfo
 
 .. currentmodule:: supervisely.project.pointcloud_project
 

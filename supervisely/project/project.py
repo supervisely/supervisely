@@ -3,18 +3,15 @@
 from __future__ import annotations
 import shutil
 from collections import namedtuple
-import functools
 import os
-import json
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, TypeVar
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
 import random
 import numpy as np
 
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.api.project_api import ProjectInfo
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
@@ -35,7 +32,7 @@ from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely._utils import batched, is_development, abs_url
-from supervisely.io.fs import file_exists, ensure_base_path, get_file_name
+from supervisely.io.fs import ensure_base_path
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
 from supervisely.io.fs_cache import FileCache
@@ -67,15 +64,15 @@ class OpenMode(Enum):
     """
     Defines the mode of using the :class:`Project<Project>` and :class:`Dataset<Dataset>`.
     """
-    #: :class:`int`: READ :class:`Project<Project>` mode to open.
+    #: :class:`int`: READ open mode.
     #: Loads project from given project directory. Checks that item and annotation directories
-    #: exists and dataset is not empty. Consistency checks. Check that every image has
+    #: exist and dataset is not empty. Consistency checks. Checks that every image has
     #: an annotation and the correspondence is one to one.
     READ = 1
 
-    #: :class:`int`: CREATE :class:`Project<Project>` mode to open.
+    #: :class:`int`: CREATE open mode.
     #: Creates a leaf directory and empty meta.json file. Generates error if 
-    #: project directory is already exists and is not empty.
+    #: project directory already exists and is not empty.
     CREATE = 2
 
 
@@ -103,11 +100,18 @@ class Dataset(KeyObject):
         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
         ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
     """
-
+    #: :class:`str`: Items data directory name
     item_dir_name = "img"
+
+    #: :class:`str`: Annotations directory name
     ann_dir_name = "ann"
+
+    #: :class:`str`: Items info directory name
     item_info_dir_name = "img_info"
+
+    #: :class:`str`: Segmentation masks directory name
     seg_dir_name = "seg"
+
     annotation_class = Annotation
     item_info_class = ImageInfo
 
@@ -886,7 +890,7 @@ class Dataset(KeyObject):
         if item_info is None:
             return
 
-        dst_info_path = self.get_img_info_path(item_name)
+        dst_info_path = self.get_item_info_path(item_name)
         ensure_base_path(dst_info_path)
         if type(item_info) is dict:
             dump_json_file(item_info, dst_info_path, indent=4)
@@ -943,6 +947,7 @@ class Dataset(KeyObject):
             print(ds.generate_item_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg'
         """
+        #TODO: what the difference between this and ds.get_item_path() ?
         return os.path.join(self.item_dir, item_name)
 
     def _add_img_np(self, item_name, img):
@@ -972,19 +977,19 @@ class Dataset(KeyObject):
             return
 
         self._check_add_item_name(item_name)
-        dst_img_path = os.path.join(self.item_dir, item_name)
+        dst_item_path = os.path.join(self.item_dir, item_name)
         if (
-            item_path != dst_img_path and item_path is not None
+            item_path != dst_item_path and item_path is not None
         ):  # used only for agent + api during download project + None to optimize internal usage
             hardlink_done = False
             if _use_hardlink:
                 try:
-                    os.link(item_path, dst_img_path)
+                    os.link(item_path, dst_item_path)
                     hardlink_done = True
                 except OSError:
                     pass
             if not hardlink_done:
-                copy_file(item_path, dst_img_path)
+                copy_file(item_path, dst_item_path)
             if _validate_item:
                 self._validate_added_item_or_die(item_path)
 
@@ -1195,7 +1200,7 @@ class Dataset(KeyObject):
 
 class Project:
     """
-    Project is a parent directory for dataset. Project> object is immutable.
+    Project is a parent directory for dataset. Project object is immutable.
 
     :param directory: Path to project directory.
     :type directory: :class:`str`
@@ -1518,7 +1523,12 @@ class Project:
 
             import supervisely as sly
             project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-            project.copy_data("/home/admin/work/supervisely/projects/", "lemons_copy")
+            print(project.total_items)
+            # Output: 6
+
+            new_project = project.copy_data("/home/admin/work/supervisely/projects/", "lemons_copy")
+            print(new_project.total_items)
+            # Output: 6
         """
         dst_name = dst_name if dst_name is not None else self.name
         new_project = Project(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
@@ -1529,18 +1539,17 @@ class Project:
 
             ds: Dataset
             for item_name in ds:
-                item_paths = ds.get_item_paths(item_name)
-                img_info_path = ds.get_img_info_path(item_name)
+                img_path, ann_path = ds.get_item_paths(item_name)
+                img_info_path = ds.get_item_info_path(item_name)
 
-                item_paths = ItemPaths(
-                    img_path=item_paths.img_path if os.path.isfile(item_paths.img_path) else None,
-                    ann_path=item_paths.ann_path if os.path.isfile(item_paths.ann_path) else None,
-                )
+                img_path = img_path if os.path.isfile(img_path) else None
+                ann_path = ann_path if os.path.isfile(ann_path) else None
                 img_info_path = img_info_path if os.path.isfile(img_info_path) else None
 
                 new_ds.add_item_file(
                     item_name,
-                    item_paths,
+                    img_path,
+                    ann_path,
                     _validate_item=_validate_item,
                     _use_hardlink=_use_hardlink,
                     item_info=img_info_path
