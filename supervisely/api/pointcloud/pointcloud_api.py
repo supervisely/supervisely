@@ -170,8 +170,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         return ordered_results
 
-    def upload_related_image(self, path: str) -> List[str]:
-        return self.upload_related_images([path])
+    def upload_related_image(self, path: str) -> str:
+        return self.upload_related_images([path])[0]
 
     def upload_related_images(self, paths: List[str], progress_cb: Optional[Callable] = None) -> List[str]:
         def path_to_bytes_stream(path):

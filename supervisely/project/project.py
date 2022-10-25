@@ -2130,6 +2130,145 @@ class Project:
         _add_items_to_list(project, val_datasets, val_items)
         return train_items, val_items
 
+    @staticmethod
+    def download(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: Optional[List[int]] = None,
+        log_progress: Optional[bool] = False,
+        batch_size: Optional[int] = 10,
+        cache: Optional[FileCache] = None,
+        progress_cb: Optional[Callable] = None,
+        only_image_tags: Optional[bool] = False,
+        save_image_info: Optional[bool] = False,
+        save_images: bool = True,
+    ) -> None:
+        """
+        Download project from Supervisely to the given directory.
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Supervisely downloadable project ID.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Dataset IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :param batch_size: The number of images in the batch when they are loaded to a host.
+        :type batch_size: :class:`int`, optional
+        :param cache: FileCache object.
+        :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
+        :param progress_cb: Function for tracking download progress. It must be update function 
+                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: Function, optional
+        :param only_image_tags: Download project with only images tags (without objects tags).
+        :type only_image_tags: :class:`bool`, optional
+        :param save_image_info: Download images infos or not.
+        :type save_image_info: :class:`bool`, optional
+        :param save_images: Download images or not.
+        :type save_images: :class:`bool`, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination Project folder
+                save_directory = "/home/admin/work/supervisely/source/project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project
+                sly.Project.download(api, project_id, save_directory)
+                project_fs = sly.Project(save_directory, sly.OpenMode.READ)
+        """
+        download_project(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            batch_size=batch_size,
+            cache=cache,
+            progress_cb=progress_cb,
+            only_image_tags=only_image_tags,
+            save_image_info=save_image_info,
+            save_images=save_images,
+        )
+
+    @staticmethod
+    def upload(
+        dir: str,
+        api: Api,
+        workspace_id: int,
+        project_name: Optional[str] = None,
+        log_progress: Optional[bool] = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> Tuple[int, str]:
+        """
+        Uploads project to Supervisely from the given directory.
+
+        :param dir: Path to project directory.
+        :type dir: :class:`str`
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param workspace_id: Workspace ID, where project will be uploaded.
+        :type workspace_id: :class:`int`
+        :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
+        :type project_name: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. It must be update function 
+                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: Function, optional
+        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :rtype: :class:`int`, :class:`str`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Obtain server address and your api_token from environment variables
+            # Edit those values if you run this notebook on your own PC
+            address = os.environ['SERVER_ADDRESS']
+            token = os.environ['API_TOKEN']
+
+            # Initialize API object
+            api = sly.Api(address, token)
+
+            # Upload Project
+            project_id, project_name = sly.Project.upload(
+                project_directory, 
+                api, 
+                workspace_id=45, 
+                project_name="My Project"
+            )
+        """
+        return upload_project(
+            dir=dir,
+            api=api,
+            workspace_id=workspace_id,
+            project_name=project_name,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
 
 def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
@@ -2251,50 +2390,6 @@ def upload_project(
     log_progress: Optional[bool] = True,
     progress_cb: Optional[Callable] = None,
 ) -> Tuple[int, str]:
-    """
-    Uploads project to Supervisely from the given directory.
-
-    :param dir: Path to project directory.
-    :type dir: :class:`str`
-    :param api: Supervisely API address and token.
-    :type api: :class:`Api<supervisely.api.api.Api>`
-    :param workspace_id: Workspace ID, where project will be uploaded.
-    :type workspace_id: :class:`int`
-    :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-    :type project_name: :class:`str`, optional
-    :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`, optional
-    :param progress_cb: Function for tracking download progress. It must be update function 
-                        with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-    :type progress_cb: Function, optional
-    :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
-    :rtype: :class:`int`, :class:`str`
-    :Usage example:
-
-     .. code-block:: python
-
-            import supervisely as sly
-
-            # Local folder with Project
-            project_directory = "/home/admin/work/supervisely/source/project"
-            project = sly.Project(project_directory, sly.OpenMode.READ)
-
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
-
-            # Initialize API object
-            api = sly.Api(address, token)
-
-            # Upload Project
-            project_id, project_name = sly.upload_project(
-                project_directory, 
-                api, 
-                workspace_id=45, 
-                project_name="Lemons"
-            )
-    """
     project_fs = read_single_project(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -2368,53 +2463,6 @@ def download_project(
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
 ) -> None:
-    """
-    Download project from Supervisely to the given directory.
-
-    :param api: Supervisely API address and token.
-    :type api: :class:`Api<supervisely.api.api.Api>`
-    :param project_id: Supervisely downloadable project ID.
-    :type project_id: :class:`int`
-    :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`
-    :param dataset_ids: Dataset IDs.
-    :type dataset_ids: :class:`list` [ :class:`int` ], optional
-    :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`, optional
-    :param batch_size: The number of images in the batch when they are loaded to a host.
-    :type batch_size: :class:`int`, optional
-    :param cache: FileCache object.
-    :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
-    :param progress_cb: Function for tracking download progress. It must be update function 
-                        with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-    :type progress_cb: Function, optional
-    :param only_image_tags: Download project with only images tags.
-    :type only_image_tags: :class:`bool`, optional
-    :param save_image_info: Save images infos.
-    :type save_image_info: :class:`bool`, optional
-    :return: None
-    :rtype: NoneType
-    :Usage example:
-
-     .. code-block:: python
-
-            import supervisely as sly
-
-            # Local destination Project folder
-            save_directory = "/home/admin/work/supervisely/source/project"
-
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
-
-            # Initialize API object
-            api = sly.Api(address, token)
-            project_id = 8888
-
-            # Download Project
-            sly.download_project(api, project_id, save_directory)
-    """
     if cache is None:
         _download_project(
             api,

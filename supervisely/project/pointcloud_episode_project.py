@@ -26,14 +26,31 @@ from supervisely.video_annotation.frame import Frame
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
-PointcloudItemPaths = namedtuple(
-    "PointcloudItemPaths", ["pointcloud_path", "related_images_dir", "frame_index"]
-)
-PointcloudItemInfo = namedtuple(
-    "PointcloudItemInfo",
-    ["dataset_name", "name", "pointcloud_path", "related_images_dir", "frame_index"],
-)
+class EpisodeItemPaths(NamedTuple):
+    #: :class:`str`: Full pointcloud file path of item
+    pointcloud_path: str
 
+    #: :class:`str`: Path to related images directory of item
+    related_images_dir: str
+
+    #: :class:`int`: Index of frame in episode annotation of dataset
+    frame_index: int
+
+class EpisodeItemInfo(NamedTuple):
+    #: :class:`str`: Item's dataset name
+    dataset_name: str
+
+    #: :class:`str`: Item name
+    name: str
+
+    #: :class:`str`: Full pointcloud file path of item
+    pointcloud_path: str
+
+    #: :class:`str`: Path to related images directory of item
+    related_images_dir: str
+
+    #: :class:`int`: Index of frame in episode annotation of dataset
+    frame_index: int
 
 class PointcloudEpisodeDataset(PointcloudDataset):
     item_dir_name = "pointcloud"
@@ -47,8 +64,8 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             Use 'get_ann_path()' method instead of this."
         )
 
-    def get_item_paths(self, item_name: str) -> PointcloudItemPaths:
-        return PointcloudItemPaths(
+    def get_item_paths(self, item_name: str) -> EpisodeItemPaths:
+        return EpisodeItemPaths(
             pointcloud_path=self.get_pointcloud_path(item_name),
             related_images_dir=self.get_related_images_path(item_name),
             frame_index=self.get_frame_idx(item_name),
@@ -384,6 +401,141 @@ class PointcloudEpisodeProject(PointcloudProject):
         _add_items_to_list(project, val_datasets, val_items)
         return train_items, val_items
 
+    @staticmethod
+    def download(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: Optional[List[int]] = None,
+        download_pointclouds: Optional[bool] = True,
+        download_related_images: Optional[bool] = True,
+        download_pointclouds_info: Optional[bool] = False,
+        batch_size: Optional[int] = 10,
+        log_progress: Optional[bool] = False,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Download pointcloud episodes project from Supervisely to the given directory.
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Supervisely downloadable project ID.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Dataset IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param download_pointclouds: Download pointcloud data files or not.
+        :type download_pointclouds: :class:`bool`, optional
+        :param download_related_images: Download related images or not.
+        :type download_related_images: :class:`bool`, optional
+        :param download_pointclouds_info: Download pointcloud info .json files or not.
+        :type download_pointclouds_info: :class:`bool`, optional
+        :param batch_size: The number of images in the batch when they are loaded to a host.
+        :type batch_size: :class:`int`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. It must be update function 
+                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: Function, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination project folder
+                save_directory = "/home/admin/work/supervisely/source/ptc_project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project
+                sly.PointcloudEpisodeProject.download(api, project_id, save_directory)
+                project_fs = sly.PointcloudEpisodeProject(save_directory, sly.OpenMode.READ)
+        """
+        download_pointcloud_episode_project(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            download_pcd=download_pointclouds,
+            download_related_images=download_related_images,
+            download_annotations=True,
+            download_pointclouds_info=download_pointclouds_info,
+            batch_size=batch_size,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    def upload(
+        directory: str,
+        api: Api,
+        workspace_id: int,
+        project_name: Optional[str] = None,
+        log_progress: Optional[bool] = False,
+        progress_cb: Optional[Callable] = None,
+    ) -> Tuple[int, str]:
+        """
+        Uploads pointcloud episodes project to Supervisely from the given directory.
+
+        :param directory: Path to project directory.
+        :type directory: :class:`str`
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param workspace_id: Workspace ID, where project will be uploaded.
+        :type workspace_id: :class:`int`
+        :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
+        :type project_name: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. It must be update function 
+                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: Function, optional
+        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :rtype: :class:`int`, :class:`str`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Pointcloud Project
+            project_directory = "/home/admin/work/supervisely/source/episodes_project"
+
+            # Obtain server address and your api_token from environment variables
+            # Edit those values if you run this notebook on your own PC
+            address = os.environ['SERVER_ADDRESS']
+            token = os.environ['API_TOKEN']
+
+            # Initialize API object
+            api = sly.Api(address, token)
+
+            # Upload Pointcloud Project
+            project_id, project_name = sly.PointcloudEpisodeProject.upload(
+                project_directory, 
+                api, 
+                workspace_id=45, 
+                project_name="My Episodes Project"
+            )
+        """
+        return upload_pointcloud_episode_project(
+            directory=directory,
+            api=api,
+            workspace_id=workspace_id,
+            project_name=project_name,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
 def download_pointcloud_episode_project(
     api: Api,
@@ -393,12 +545,14 @@ def download_pointcloud_episode_project(
     download_pcd: Optional[bool] = True,
     download_related_images: Optional[bool] = True,
     download_annotations: Optional[bool] = True,
-    log_progress: Optional[bool] = False,
+    download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
-    save_pointcloud_info: Optional[bool] = False,
-    save_pointclouds: Optional[bool] = True,
+    log_progress: Optional[bool] = False,
     progress_cb: Optional[Callable] = None,
-) -> PointcloudEpisodeProject:
+) -> None:
+    # download_annotations is deprecated parameter for backward compatibility.
+    if not download_annotations:
+        download_annotations = True
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -415,16 +569,15 @@ def download_pointcloud_episode_project(
         dataset_fs = project_fs.create_dataset(dataset.name)
         pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
-        if download_annotations:
-            # Download annotation to project_path/dataset_path/annotation.json
-            ann_json = api.pointcloud_episode.annotation.download(dataset.id)
-            annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
-            dataset_fs.set_ann(annotation)
+        # Download annotation to project_path/dataset_path/annotation.json
+        ann_json = api.pointcloud_episode.annotation.download(dataset.id)
+        annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
+        dataset_fs.set_ann(annotation)
 
-            # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
-            frame_name_map = api.pointcloud_episode.get_frame_name_map(dataset.id)
-            frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
-            dump_json_file(frame_name_map, frame_pointcloud_map_path)
+        # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
+        frame_name_map = api.pointcloud_episode.get_frame_name_map(dataset.id)
+        frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
+        dump_json_file(frame_name_map, frame_pointcloud_map_path)
 
         # Download data
         if log_progress:
@@ -464,10 +617,10 @@ def download_pointcloud_episode_project(
 
                 dataset_fs.add_item_file(
                     pointcloud_name,
-                    pointcloud_file_path if save_pointclouds else None,
+                    pointcloud_file_path if download_pcd else None,
                     item_to_ann[pointcloud_name],
                     _validate_item=False,
-                    item_info=pointcloud_info if save_pointcloud_info else None,
+                    item_info=pointcloud_info if download_pointclouds_info else None,
                 )
             if progress_cb is not None:
                 progress_cb(len(batch))
@@ -475,7 +628,6 @@ def download_pointcloud_episode_project(
                 ds_progress.iters_done_report(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
-    return project_fs
 
 
 def upload_pointcloud_episode_project(
@@ -484,6 +636,7 @@ def upload_pointcloud_episode_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
+    progress_cb: Optional[Callable] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
     project_locally = PointcloudEpisodeProject(directory, OpenMode.READ)
@@ -497,7 +650,7 @@ def upload_pointcloud_episode_project(
     )
     api.project.update_meta(project_remotely.id, project_locally.meta.to_json())
 
-    uploaded_objects = KeyIdMap()
+    key_id_map = KeyIdMap()
     for dataset_locally in project_locally.datasets:
         ann_json_path = dataset_locally.get_ann_path()
 
@@ -529,26 +682,27 @@ def upload_pointcloud_episode_project(
             items_infos["paths"].append(item_path)
             items_infos["metas"].append(item_meta)
 
-        ds_progress = (
-            Progress(
+        progress = None
+        if log_progress and progress_cb is None:
+            progress = Progress(
                 "Uploading pointclouds: {!r}".format(dataset_remotely.name),
                 total_cnt=len(dataset_locally),
-            )
-            if log_progress
-            else None
-        )
+            ).iters_done_report
+        elif progress_cb is not None:
+            progress = progress_cb
+
         pcl_infos = api.pointcloud_episode.upload_paths(
             dataset_remotely.id,
             names=items_infos["names"],
             paths=items_infos["paths"],
             metas=items_infos["metas"],
-            progress_cb=ds_progress.iters_done_report if log_progress else None,
+            progress_cb=progress,
         )
 
         # STEP 2 — upload annotations
         frame_to_pcl_ids = {pcl_info.frame: pcl_info.id for pcl_info in pcl_infos}
         api.pointcloud_episode.annotation.append(
-            dataset_remotely.id, episode_annotation, frame_to_pcl_ids, uploaded_objects
+            dataset_remotely.id, episode_annotation, frame_to_pcl_ids, key_id_map
         )
 
         # STEP 3 — upload photo context
@@ -561,18 +715,17 @@ def upload_pointcloud_episode_project(
 
             img_infos["img_paths"].extend(images_paths_for_frame)
 
-        img_progress = (
-            Progress(
+        if log_progress and progress_cb is None:
+            progress = Progress(
                 "Uploading photo context: {!r}".format(dataset_remotely.name),
                 total_cnt=len(img_infos["img_paths"]),
-            )
-            if log_progress
-            else None
-        )
+            ).iters_done_report
+        elif progress_cb is not None:
+            progress = progress_cb
 
         images_hashes = api.pointcloud_episode.upload_related_images(
             img_infos["img_paths"],
-            progress_cb=img_progress.iters_done_report if log_progress else None,
+            progress_cb=progress,
         )
 
         # STEP 3.2 — upload images metas

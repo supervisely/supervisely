@@ -58,6 +58,9 @@ class VideoDataset(Dataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "video_info"
+    
+    #: :class:`str`: Segmentation masks directory name
+    seg_dir_name = None
 
     annotation_class = VideoAnnotation
     item_info_class = VideoInfo
@@ -539,10 +542,10 @@ class VideoDataset(Dataset):
 
     def _validate_added_item_or_die(self, item_path):
         """
-        Make sure we actually received a valid image file, clean it up and fail if not so.
+        Make sure we actually received a valid video file, clean it up and fail if not so.
         :param item_path: str
         """
-        # Make sure we actually received a valid image file, clean it up and fail if not so.
+        # Make sure we actually received a valid video file, clean it up and fail if not so.
         try:
             sly_video.validate_format(item_path)
         except Exception as e:
@@ -647,7 +650,7 @@ class VideoProject(Project):
      .. code-block:: python
 
         import supervisely as sly
-        project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+        project_path = "/home/admin/work/supervisely/projects/videos_example"
         project = sly.Project(project_path, sly.OpenMode.READ)
     """
 
@@ -756,7 +759,6 @@ class VideoProject(Project):
             print(new_project.total_items)
             # Output: 6
         """
-        # TODO: what about KeyIdMap? Generate new or take from source project?
         dst_name = dst_name if dst_name is not None else self.name
         new_project = VideoProject(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
         new_project.set_meta(self.meta)
@@ -933,42 +935,42 @@ class VideoProject(Project):
         """
         return read_project_wrapper(dir, cls)
 
+    @staticmethod
+    def download(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: List[int] = None,
+        download_videos: bool = True,
+        save_video_info: bool = False,
+        log_progress: bool = False,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Download video project from Supervisely to the given directory.
 
-def download_video_project(
-    api: Api,
-    project_id: int,
-    dest_dir: str,
-    dataset_ids: List[int] = None,
-    download_videos: bool = True,
-    save_video_info: bool = False,
-    log_progress: bool = False,
-    progress_cb: Optional[Callable] = None,
-) -> None:
-    """
-    Download video project from Supervisely to the given directory.
+        :param api: Supervisely Api class object.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Project ID in Supervisely.
+        :type project_id: :class:`int`
+        :param dest_dir: Directory to download video project.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Datasets IDs in Supervisely to download.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param download_videos: Download videos from Supervisely video project in dest_dir or not.
+        :type download_videos: :class:`bool`, optional
+        :param save_video_info: Save video infos or not.
+        :type save_video_info: :class:`bool`, optional
+        :param log_progress: Log download progress or not.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. It must be update function 
+                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
+        :type progress_cb: Function, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
 
-    :param api: Supervisely Api class object.
-    :type api: :class:`Api<supervisely.api.api.Api>`
-    :param project_id: Project ID in Supervisely.
-    :type project_id: :class:`int`
-    :param dest_dir: Directory to download video project.
-    :type dest_dir: :class:`str`
-    :param dataset_ids: Datasets IDs in Supervisely to download.
-    :type dataset_ids: :class:`list` [ :class:`int` ], optional
-    :param download_videos: Download videos from Supervisely video project in dest_dir or not.
-    :type download_videos: :class:`bool`, optional
-    :param save_video_info: Save video infos or not.
-    :type save_video_info: :class:`bool`, optional
-    :param log_progress: Log download progress or not.
-    :type log_progress: :class:`bool`, optional
-    :param progress_cb: Function for tracking download progress. It must be update function 
-                        with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-    :type progress_cb: Function, optional
-    :return: None
-    :rtype: NoneType
-    :Usage example:
-
-     .. code-block:: python
+        .. code-block:: python
 
             import supervisely as sly
             
@@ -985,8 +987,86 @@ def download_video_project(
             project_id = 8888
 
             # Download Video Project
-            sly.download_video_project(api, project_id, save_directory)
-    """
+            sly.VideoProject.download(api, project_id, save_directory)
+            project_fs = sly.VideoProject(save_directory, sly.OpenMode.READ)
+        """
+        download_video_project(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            download_videos=download_videos,
+            save_video_info=save_video_info,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    def upload(
+        dir: str,
+        api: Api,
+        workspace_id: int,
+        project_name: Optional[str] = None,
+        log_progress: Optional[bool] = True,
+    ) -> Tuple[int, str]:
+        """
+        Upload video project from given directory in Supervisely.
+
+        :param dir: Directory with video project.
+        :type dir: str
+        :param api: Api class object.
+        :type api: Api
+        :param workspace_id: Workspace ID in Supervisely to upload video project.
+        :type workspace_id: int
+        :param project_name: Name of video project.
+        :type project_name: str
+        :param log_progress: Logging progress of download video project or not.
+        :type log_progress: bool, optional
+        :return: New video project ID in Supervisely and project name
+        :rtype: :class:`int`, :class:`str`
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local folder with Video Project
+                project_directory = "/home/admin/work/supervisely/source/video_project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+
+                # Upload Video Project
+                project_id, project_name = sly.VideoProject.upload(
+                    project_directory, 
+                    api, 
+                    workspace_id=45, 
+                    project_name="My Video Project"
+                )
+        """
+        return upload_video_project(
+            dir=dir,
+            api=api,
+            workspace_id=workspace_id,
+            project_name=project_name,
+            log_progress=log_progress,
+        )
+
+def download_video_project(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: List[int] = None,
+    download_videos: bool = True,
+    save_video_info: bool = False,
+    log_progress: bool = False,
+    progress_cb: Optional[Callable] = None,
+) -> None:
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -1048,12 +1128,26 @@ def download_video_project(
                         raise e
                 else:
                     touch(video_file_path)
-                item_info = video_info if save_video_info else None
+                item_info = video_info._asdict() if save_video_info else None
+                try:
+                    video_ann = VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING", 
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "video_id": video_id, 
+                            "video_name": video_name, 
+                            "ann_json": ann_json
+                        }
+                    )
+                    raise e
                 try:
                     dataset_fs.add_item_file(
                         video_name,
                         video_file_path,
-                        ann=VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map),
+                        ann=video_ann,
                         _validate_item=False,
                         _use_hardlink=True,
                         item_info=item_info
@@ -1067,8 +1161,7 @@ def download_video_project(
                             "video_id": video_id, 
                             "video_name": video_name, 
                             "video_file_path": video_file_path,
-                            "item_info": item_info,
-                            "ann_json": ann_json
+                            "item_info": item_info
                         }
                     )
                     raise e
@@ -1089,22 +1182,6 @@ def upload_video_project(
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
 ) -> Tuple[int, str]:
-    """
-    Upload video project from given directory in Supervisely.
-
-    :param dir: Directory with video project.
-    :type dir: str
-    :param api: Api class object.
-    :type api: Api
-    :param workspace_id: Workspace ID in Supervisely to upload video project.
-    :type workspace_id: int
-    :param project_name: Name of video project.
-    :type project_name: str
-    :param log_progress: Logging progress of download video project or not.
-    :type log_progress: bool, optional
-    :return: New video project ID in Supervisely and project name
-    :rtype: :class:`Tuple[int, str]`
-    """
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name
