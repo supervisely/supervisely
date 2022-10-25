@@ -24,8 +24,8 @@ class VideoTag(Tag):
     :type value: str or int or float or None, optional
     :param frame_range: Video Tag frame range.
     :type frame_range: Tuple[int, int] or List[int, int], optional
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
+    :param key: uuid.UUID object.
+    :type key: uuid.UUID, optional
     :param sly_id: Video Tag ID in Supervisely.
     :type sly_id: int, optional
     :param labeler_login: Login of user who created VideoTag.
@@ -65,7 +65,7 @@ class VideoTag(Tag):
         # Output: ValueError: Tag coat color can not have value yellow
     """
     def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]]=None, frame_range: Optional[Tuple[int, int]]=None,
-                 key: Optional[KeyIdMap]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
+                 key: Optional[uuid.UUID]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
                  updated_at: Optional[str]=None, created_at: Optional[str]=None):
         super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         
@@ -81,12 +81,12 @@ class VideoTag(Tag):
         self._key = take_with_default(key, uuid.uuid4())
 
     @property
-    def frame_range(self) -> List[int, int]:
+    def frame_range(self) -> Tuple[int, int]:
         """
         VideoTag frame range.
 
         :return: Range of frames for current VideoTag
-        :rtype: :class:`List[int, int]`
+        :rtype: :class:`Tuple[int, int]`
         :Usage example:
 
          .. code-block:: python
@@ -95,7 +95,7 @@ class VideoTag(Tag):
         """
         return self._frame_range
 
-    def key(self):
+    def key(self) -> uuid.UUID:
         return self._key
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
@@ -239,7 +239,7 @@ class VideoTag(Tag):
                self.frame_range == other.frame_range
 
     def clone(self, meta: Optional[TagMeta] = None, value: Optional[Union[str, int, float]] = None, frame_range: Optional[Tuple[int, int]] = None,
-              key: Optional[KeyIdMap] = None, sly_id: Optional[int] = None, labeler_login: Optional[str] = None,
+              key: Optional[uuid.UUID] = None, sly_id: Optional[int] = None, labeler_login: Optional[str] = None,
               updated_at: Optional[str] = None, created_at: Optional[str] = None) -> VideoTag:
         """
         Makes a copy of VideoTag with new fields, if fields are given, otherwise it will use fields of the original VideoTag.
@@ -250,8 +250,8 @@ class VideoTag(Tag):
         :type value: str or int or float or None, optional
         :param frame_range: VideoTag frame range.
         :type frame_range: Tuple[int, int] or List[int, int], optional
-        :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
+        :param key: uuid.UUID object.
+        :type key: uuid.UUID, optional
         :param sly_id: VideoTag ID in Supervisely.
         :type sly_id: int, optional
         :param labeler_login: Login of user who created VideoTag.
@@ -284,14 +284,16 @@ class VideoTag(Tag):
             #     "key": "360438485fd34264921ca19bd43b0b71"
             # }
         """
-        return VideoTag(meta=take_with_default(meta, self.meta),
-                        value=take_with_default(value, self.value),
-                        frame_range=take_with_default(frame_range, self.frame_range),
-                        key=take_with_default(key, self.key),
-                        sly_id=take_with_default(sly_id, self.sly_id),
-                        labeler_login=take_with_default(labeler_login, self.labeler_login),
-                        updated_at=take_with_default(updated_at, self.updated_at),
-                        created_at=take_with_default(created_at, self.created_at))
+        return self.__class__(
+            meta=take_with_default(meta, self.meta),
+            value=take_with_default(value, self.value),
+            frame_range=take_with_default(frame_range, self.frame_range),
+            key=take_with_default(key, self.key()),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at)
+        )
 
     def __str__(self):
         return '{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10} {:<12}'.format('Name:', self._meta.name,
@@ -300,8 +302,8 @@ class VideoTag(Tag):
                                                                'FrameRange', str(self.frame_range))
 
     @classmethod
-    def get_header_ptable(cls):
+    def get_header_ptable(cls) -> List[str]:
         return ['Name', 'Value type', 'Value', 'Frame range']
 
-    def get_row_ptable(self):
+    def get_row_ptable(self) -> List[str]:
         return [self._meta.name, self._meta.value_type, self.value, self.frame_range]

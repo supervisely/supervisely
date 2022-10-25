@@ -9,6 +9,7 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 from supervisely._utils import take_with_default
+from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 from supervisely.video_annotation.frame_collection import FrameCollection
@@ -177,7 +178,7 @@ class VideoAnnotation:
         self.validate_figures_bounds()
 
     @property
-    def img_size(self):
+    def img_size(self) -> Tuple[int, int]:
         """
         Size of the image (height, width).
 
@@ -198,7 +199,7 @@ class VideoAnnotation:
         return deepcopy(self._img_size)
 
     @property
-    def frames_count(self):
+    def frames_count(self) -> int:
         """
         Number of frames.
 
@@ -219,7 +220,7 @@ class VideoAnnotation:
         return self._frames_count
 
     @property
-    def objects(self):
+    def objects(self) -> VideoObjectCollection:
         """
         VideoAnnotation objects.
 
@@ -250,7 +251,7 @@ class VideoAnnotation:
         return self._objects
 
     @property
-    def frames(self):
+    def frames(self) -> FrameCollection:
         """
         VideoAnnotation frames.
 
@@ -306,7 +307,7 @@ class VideoAnnotation:
         return self._frames
 
     @property
-    def figures(self):
+    def figures(self) -> List[VideoFigure]:
         """
         VideoAnnotation figures.
 
@@ -375,11 +376,11 @@ class VideoAnnotation:
         """
         return self._tags
 
-    def key(self):
+    def key(self) -> UUID:
         return self._key
 
     @property
-    def description(self):
+    def description(self) -> str:
         """
         Video description.
 

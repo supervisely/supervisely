@@ -124,7 +124,7 @@ class VideoFigure:
         self._validate_geometry()
 
     @property
-    def video_object(self):
+    def video_object(self) -> VideoObject:
         """
         VideoObject of current VideoFigure.
 
@@ -145,7 +145,7 @@ class VideoFigure:
         return self._video_object
 
     @property
-    def parent_object(self):
+    def parent_object(self) -> VideoObject:
         """
         VideoObject of current VideoFigure.
 
@@ -166,7 +166,7 @@ class VideoFigure:
         return self._video_object
 
     @property
-    def geometry(self):
+    def geometry(self) -> Geometry:
         """
         Geometry of the current VideoFigure.
 
@@ -197,7 +197,7 @@ class VideoFigure:
         return self._geometry
 
     @property
-    def frame_index(self):
+    def frame_index(self) -> int:
         """
         Frame index of the current VideoFigure.
 
@@ -212,7 +212,7 @@ class VideoFigure:
         """
         return self._frame_index
 
-    def key(self):
+    def key(self) -> UUID:
         return self._key
 
     def _validate_geometry(self):
@@ -236,7 +236,7 @@ class VideoFigure:
                     )
                 )
 
-    def to_json(self, key_id_map: Optional[UUID] = None, save_meta: Optional[bool] = False) -> Dict:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None, save_meta: Optional[bool] = False) -> Dict:
         """
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -305,7 +305,7 @@ class VideoFigure:
         self._add_creation_info(data_json)
         return data_json
 
-    def get_meta(self):
+    def get_meta(self) -> Dict[str, int]:
         return {ApiField.FRAME: self.frame_index}
 
     @classmethod

@@ -56,7 +56,7 @@ class VideoObject(KeyObject):
         #     "tags": []
         # }
     """
-    def __init__(self, obj_class: ObjClass, tags: ObjClass[VideoTagCollection] = None, key: Optional[KeyIdMap]=None,
+    def __init__(self, obj_class: ObjClass, tags: Optional[VideoTagCollection] = None, key: Optional[uuid.UUID]=None,
                  class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None,
                  created_at: Optional[str]=None):
         self.labeler_login = labeler_login
@@ -77,7 +77,7 @@ class VideoObject(KeyObject):
             d[CREATED_AT] = self.created_at
 
     @property
-    def obj_class(self):
+    def obj_class(self) -> ObjClass:
         """
         ObjClass of the current VideoObject.
 
@@ -103,11 +103,11 @@ class VideoObject(KeyObject):
         """
         return self._obj_class
 
-    def key(self):
+    def key(self) -> uuid.UUID:
         return self._key
 
     @property
-    def tags(self):
+    def tags(self) -> VideoTagCollection:
         """
         VideoTagCollection of the current VideoObject.
 
@@ -145,7 +145,7 @@ class VideoObject(KeyObject):
         return self._tags.clone()
 
     @property
-    def class_id(self):
+    def class_id(self) -> int:
         return self._class_id
 
     def add_tag(self, tag: VideoTag) -> VideoObject:

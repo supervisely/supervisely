@@ -3,11 +3,12 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Iterator
+from typing import List, Optional, Dict, Iterator, Any
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
 from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
 from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta
 
 
 class TagCollection(MultiKeyIndexedCollection):
@@ -220,7 +221,11 @@ class TagCollection(MultiKeyIndexedCollection):
         return "Tags:\n" + super(TagCollection, self).__str__()
 
     @classmethod
-    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None) -> TagCollection:
+    def from_api_response(
+        cls, 
+        data: List[Dict], 
+        tag_meta_collection: TagMetaCollection, 
+        id_to_tagmeta:Optional[Dict[int, TagMeta]]=None) -> TagCollection:
         if id_to_tagmeta is None:
             id_to_tagmeta = tag_meta_collection.get_id_mapping()
         tags = []

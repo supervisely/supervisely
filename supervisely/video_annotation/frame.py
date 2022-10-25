@@ -67,7 +67,7 @@ class Frame(KeyObject):
         self._figures = take_with_default(figures, [])
 
     @property
-    def index(self):
+    def index(self) -> int:
         """
         Frame index.
 
@@ -81,11 +81,11 @@ class Frame(KeyObject):
         """
         return self._index
 
-    def key(self):
+    def key(self) -> int:
         return self._index
 
     @property
-    def figures(self):
+    def figures(self) -> List[VideoFigure]:
         """
         Frame figures.
 

@@ -698,7 +698,7 @@ class VideoProject(Project):
         super()._read()
         self._key_id_map = KeyIdMap()
         if os.path.exists(self._get_key_id_map_path()):
-            self._key_id_map = KeyIdMap.from_json(self._get_key_id_map_path())
+            self._key_id_map = self._key_id_map.load_json(self._get_key_id_map_path())
 
     def _create(self):
         """

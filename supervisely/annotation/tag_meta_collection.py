@@ -273,14 +273,14 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     def __iter__(self) -> Iterator[TagMeta]:
         return next(self)
 
-    def refresh_ids_from(self, tags: TagMetaCollection):
+    def refresh_ids_from(self, tags: TagMetaCollection) -> None:
         for new_tag in tags:
             my_tag = self.get(new_tag.name)
             if my_tag is None:
                 continue
             my_tag._set_id(new_tag.sly_id)
 
-    def get_by_id(self, tag_meta_id: int):
+    def get_by_id(self, tag_meta_id: int) -> TagMeta:
         for tag_meta in self:
             if tag_meta.sly_id == tag_meta_id:
                 return tag_meta
@@ -288,7 +288,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
 
 def make_renamed_tag_metas(
-    src_tag_metas: TagMetaCollection, renamer, skip_missing=False
+    src_tag_metas: TagMetaCollection, renamer: Renamer, skip_missing: bool = False
 ) -> TagMetaCollection:
     """make_renamed_tag_metas"""
     result_tags = []

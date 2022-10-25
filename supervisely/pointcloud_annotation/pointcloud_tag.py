@@ -17,8 +17,8 @@ class PointcloudTag(Tag):
     :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
     :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
     :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
-    :param key: KeyIdMap object.
-    :type key: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
+    :param key: uuid.UUID object.
+    :type key: uuid.UUID, optional
     :param sly_id: Video Tag ID in Supervisely.
     :type sly_id: :class:`int`, optional
     :param labeler_login: Login of user who created PointcloudTag.
@@ -59,7 +59,7 @@ class PointcloudTag(Tag):
         # Output: ValueError: Tag coat color can not have value yellow
     """
     def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]]=None,
-                 key: Optional[KeyIdMap]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
+                 key: Optional[uuid.UUID]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
                  updated_at: Optional[str]=None, created_at: Optional[str]=None):
         super(PointcloudTag, self).__init__(meta, value=value, sly_id=sly_id, 
             labeler_login=labeler_login, 
@@ -153,7 +153,7 @@ class PointcloudTag(Tag):
         """
         return super(PointcloudTag, self).__ne__(other)
 
-    def key(self):
+    def key(self) -> uuid.UUID:
         return self._key
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
@@ -233,7 +233,7 @@ class PointcloudTag(Tag):
         self,
         meta: Optional[TagMeta] = None,
         value: Optional[Union[str, int, float]] = None,
-        key: Optional[KeyIdMap] = None, 
+        key: Optional[uuid.UUID] = None, 
         sly_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -246,8 +246,8 @@ class PointcloudTag(Tag):
         :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`, optional
         :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
         :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
+        :param key: uuid.UUID object.
+        :type key: uuid.UUID, optional
         :param sly_id: Pointcloud Tag ID in Supervisely server.
         :type sly_id: :class:`int`, optional
         :param labeler_login: Login of user who created Pointcloud Tag.
@@ -283,7 +283,7 @@ class PointcloudTag(Tag):
         return PointcloudTag(
             meta=take_with_default(meta, self.meta),
             value=take_with_default(value, self.value),
-            key=take_with_default(key, self.key),
+            key=take_with_default(key, self.key()),
             sly_id=take_with_default(sly_id, self.sly_id),
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),

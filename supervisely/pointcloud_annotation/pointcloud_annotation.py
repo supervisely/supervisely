@@ -1,7 +1,5 @@
 # coding: utf-8
-
-
-# docs
+from __future__ import annotations
 from typing import Optional, List, Dict
 from supervisely.project.project_meta import ProjectMeta
 from copy import deepcopy
@@ -9,16 +7,15 @@ import uuid
 import json
 
 from supervisely._utils import take_with_default
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.constants import (
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
+from supervisely.pointcloud_annotation.constants import (
     DESCRIPTION,
     TAGS,
     OBJECTS,
     KEY,
     FIGURES,
+    POINTCLOUD_ID
 )
-from supervisely.pointcloud_annotation.constants import POINTCLOUD_ID
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -31,47 +28,47 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
 class PointcloudAnnotation(VideoAnnotation):
     """
     Class for creating and using PointcloudAnnotation
+
+    :param objects: PointcloudObjectCollection
+    :param figures: List[PointcloudFigure]
+    :param tags: PointcloudTagCollection
+    :param description: str
+    :param key: uuid class object
     """
 
     def __init__(
         self,
-        objects: Optional[VideoObjectCollection] = None,
-        figures: Optional[List] = None,
-        tags: Optional[VideoTagCollection] = None,
+        objects: Optional[PointcloudObjectCollection] = None,
+        figures: Optional[List[PointcloudFigure]] = None,
+        tags: Optional[PointcloudTagCollection] = None,
         description: Optional[str] = "",
         key: Optional[uuid.UUID] = None,
     ):
-        """
-        :param objects: VideoObjectCollection
-        :param figures: list of figures(Point, Cuboid, etc)
-        :param tags: VideoTagCollection
-        :param description: str
-        :param key: uuid class object
-        """
+        
         self._description = description
-        self._tags = take_with_default(tags, VideoTagCollection())
-        self._objects = take_with_default(objects, VideoObjectCollection())
+        self._tags = take_with_default(tags, PointcloudTagCollection())
+        self._objects = take_with_default(objects, PointcloudObjectCollection())
         self._figures = take_with_default(figures, [])
         self._key = take_with_default(key, uuid.uuid4())
 
     @property
     def img_size(self):
-        raise RuntimeError("Not supported for pointcloud")
+        raise NotImplementedError("Not supported for pointcloud")
 
     @property
     def frames_count(self):
-        raise RuntimeError("Not supported for pointcloud")
+        raise NotImplementedError("Not supported for pointcloud")
 
     @property
     def frames(self):
-        raise RuntimeError("Not supported for pointcloud")
+        raise NotImplementedError("Not supported for pointcloud")
 
     @property
-    def figures(self):
+    def figures(self) -> List[PointcloudFigure]:
         return deepcopy(self._figures)
 
     def validate_figures_bounds(self):
-        raise RuntimeError("Not supported for pointcloud")
+        raise NotImplementedError("Not supported for pointcloud")
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
@@ -97,7 +94,7 @@ class PointcloudAnnotation(VideoAnnotation):
     @classmethod
     def from_json(
         cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
-    ):
+    ) -> PointcloudAnnotation:
         """
         :param data: input PointcloudAnnotation in json format
         :param project_meta: ProjectMeta class object
@@ -108,7 +105,7 @@ class PointcloudAnnotation(VideoAnnotation):
         if key_id_map is not None:
             key_id_map.add_video(item_key, data.get(POINTCLOUD_ID, None))
         description = data.get(DESCRIPTION, "")
-        tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
+        tags = PointcloudTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
         objects = PointcloudObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
 
         figures = []
@@ -121,7 +118,12 @@ class PointcloudAnnotation(VideoAnnotation):
         )
 
     @classmethod
-    def load_json_file(cls, path: str, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
+    def load_json_file(
+        cls, 
+        path: str, 
+        project_meta: ProjectMeta, 
+        key_id_map: Optional[KeyIdMap] = None
+    ) -> PointcloudAnnotation:
         """
         Loads json file and converts it to PointcloudAnnotation.
 
@@ -163,15 +165,15 @@ class PointcloudAnnotation(VideoAnnotation):
 
     def clone(
         self,
-        objects: Optional[VideoObjectCollection] = None,
+        objects: Optional[PointcloudObjectCollection] = None,
         figures: Optional[List] = None,
-        tags: Optional[VideoTagCollection] = None,
+        tags: Optional[PointcloudTagCollection] = None,
         description: Optional[str] = None,
-    ):
+    ) -> PointcloudAnnotation:
         """
-        :param objects: VideoObjectCollection
+        :param objects: PointcloudObjectCollection
         :param figures: list of figures
-        :param tags: VideoTagCollection
+        :param tags: PointcloudTagCollection
         :param description: str
         :return: PointcloudAnnotation class object
         """

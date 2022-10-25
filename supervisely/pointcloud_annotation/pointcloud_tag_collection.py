@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any, Iterator
 
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
+from supervisely.annotation.tag_meta import TagMeta
 import supervisely.sly_logger as logger
 
 class PointcloudTagCollection(TagCollection):
@@ -137,8 +138,16 @@ class PointcloudTagCollection(TagCollection):
 
     item_type = PointcloudTag
 
+    def __iter__(self) -> Iterator[PointcloudTag]:
+        return next(self)
+
     @classmethod
-    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None) -> PointcloudTagCollection:
+    def from_api_response(
+        cls, 
+        data: List[Dict], 
+        tag_meta_collection: TagMetaCollection, 
+        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None
+    ) -> PointcloudTagCollection:
         # TODO: write docstring
         return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
 
