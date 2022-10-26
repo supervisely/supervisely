@@ -488,7 +488,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 # The regex has 2 capture group: one for the prefix and one for the actual name value.
                 img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
 
-                # TODO: check If this is the right way
                 if progress_cb is not None:
                     progress_cb(1)
                 yield img_id, part

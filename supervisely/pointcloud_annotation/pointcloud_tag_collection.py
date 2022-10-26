@@ -141,53 +141,52 @@ class PointcloudTagCollection(TagCollection):
     def __iter__(self) -> Iterator[PointcloudTag]:
         return next(self)
 
-    @classmethod
-    def from_api_response(
-        cls, 
-        data: List[Dict], 
-        tag_meta_collection: TagMetaCollection, 
-        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None
-    ) -> PointcloudTagCollection:
-        # TODO: write docstring
-        return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
+    # @classmethod
+    # def from_api_response(
+    #     cls, 
+    #     data: List[Dict], 
+    #     tag_meta_collection: TagMetaCollection, 
+    #     id_to_tagmeta: Optional[Dict[int, TagMeta]] = None
+    # ) -> PointcloudTagCollection:
+    #     return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
 
-    def get_by_name(self, tag_name: str) -> List[PointcloudTag]:
-        """
-        Get list of Pointcloud Tags with provided name.
+    # def get_by_name(self, tag_name: str) -> List[PointcloudTag]:
+    #     """
+    #     Get list of Pointcloud Tags with provided name.
 
-        :param tag_name: Pointcloud Tag name.
-        :type tag_name: :class:`str`
-        :return: List of Pointcloud Tags.
-        :rtype: :class:`List[PointcloudTag]<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
-        """
-        res = []
-        for tag in self:
-            if tag.name == tag_name:
-                res.append(tag)
-        return res
+    #     :param tag_name: Pointcloud Tag name.
+    #     :type tag_name: :class:`str`
+    #     :return: List of Pointcloud Tags.
+    #     :rtype: :class:`List[PointcloudTag]<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
+    #     """
+    #     res = []
+    #     for tag in self:
+    #         if tag.name == tag_name:
+    #             res.append(tag)
+    #     return res
 
-    def get_single_by_name(self, tag_name: str) -> PointcloudTag:
-        """
-        Get Pointcloud Tag with provided name.
-        Method will raise error If collection contains more than 1 tag with provided name.
+    # def get_single_by_name(self, tag_name: str) -> PointcloudTag:
+    #     """
+    #     Get Pointcloud Tag with provided name.
+    #     Method will raise error If collection contains more than 1 tag with provided name.
 
-        :param tag_name: Pointcloud Tag name.
-        :type tag_name: :class:`str`
-        :return: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
-        :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>` 
-        :raises: :class:`ValueError`, If collection contains more than 1 tag with provided name.
-        """
-        res = []
-        for tag in self:
-            if tag.name == tag_name:
-                res.append(tag)
-        if len(res) == 0:
-            return None
-        if len(res) > 1:
-            raise ValueError(
-                "There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
-            )
-        return res[0]
+    #     :param tag_name: Pointcloud Tag name.
+    #     :type tag_name: :class:`str`
+    #     :return: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
+    #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>` 
+    #     :raises: :class:`ValueError`, If collection contains more than 1 tag with provided name.
+    #     """
+    #     res = []
+    #     for tag in self:
+    #         if tag.name == tag_name:
+    #             res.append(tag)
+    #     if len(res) == 0:
+    #         return None
+    #     if len(res) > 1:
+    #         raise ValueError(
+    #             "There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
+    #         )
+    #     return res[0]
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
