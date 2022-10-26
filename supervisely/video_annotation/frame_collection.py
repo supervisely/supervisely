@@ -2,9 +2,10 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_figure import VideoFigure
 
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.video_annotation.frame import Frame
@@ -151,6 +152,9 @@ class FrameCollection(KeyIndexedCollection):
     """
     item_type = Frame
 
+    def get(self, key: str, default: Optional[Any]=None) -> Frame:
+        return super().get(key, default)
+
     def to_json(self, key_id_map: KeyIdMap=None) -> List[Dict]:
         """
         Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
@@ -228,7 +232,7 @@ class FrameCollection(KeyIndexedCollection):
         return "Frames:\n" + super(FrameCollection, self).__str__()
 
     @property
-    def figures(self):
+    def figures(self) -> List[VideoFigure]:
         """
         Get figures from all frames in collection.
 
@@ -263,7 +267,7 @@ class FrameCollection(KeyIndexedCollection):
             figures_array.extend(frame.figures)
         return figures_array
 
-    def get_figures_and_keys(self, key_id_map: KeyIdMap) -> Tuple[List, List]:
+    def get_figures_and_keys(self, key_id_map: KeyIdMap) -> Tuple[List[Dict], List[str]]:
         """
         Get figures from all frames in collection in json format, keys from all figures in frames in collection.
 

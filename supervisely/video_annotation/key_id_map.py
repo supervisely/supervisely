@@ -31,6 +31,7 @@ class KeyIdMap:
         #     "videos": {}
         # }
     """
+
     def __init__(self):
         self._data = dict()
         self._data[TAGS] = bidict()

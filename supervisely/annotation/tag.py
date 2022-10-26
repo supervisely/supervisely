@@ -202,8 +202,7 @@ class Tag(KeyObject):
             # }
         """
         res = {
-            TagJsonFields.TAG_NAME: self.meta.name,
-            # TagJsonFields.VALUE: self.value
+            TagJsonFields.TAG_NAME: self.meta.name
         }
         if self.meta.value_type != TagValueType.NONE:
             res[TagJsonFields.VALUE] = self.value
@@ -213,13 +212,6 @@ class Tag(KeyObject):
             res[TagJsonFields.UPDATED_AT] = self.updated_at
         if self.created_at is not None:
             res[TagJsonFields.CREATED_AT] = self.created_at
-        # if self.meta.value_type == TagValueType.NONE:
-        #     return self.meta.name
-        # else:
-        #     return {
-        #         TagJsonFields.TAG_NAME: self.meta.name,
-        #         TagJsonFields.VALUE: self.value
-        #     }
         return res
 
     @classmethod

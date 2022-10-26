@@ -7,6 +7,7 @@ KEY = 'key'
 FIGURES = 'figures'
 OBJECT_ID = 'objectId'
 OBJECT_KEY = 'objectKey'
+TAGS = 'tags'
 
 TAGS_MAP = 'tags'
 OBJECTS_MAP = 'objects'

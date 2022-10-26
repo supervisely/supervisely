@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import List, Dict, Optional, Iterator, Any
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
-
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.video_annotation.video_tag import VideoTag
 
@@ -248,7 +248,12 @@ class VideoTagCollection(TagCollection):
         return next(self)
 
     @classmethod
-    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None) -> VideoTagCollection:
+    def from_api_response(
+        cls, 
+        data: List[Dict], 
+        tag_meta_collection: TagMetaCollection, 
+        id_to_tagmeta: Optional[Dict[int, TagMeta]]=None
+    ) -> VideoTagCollection:
         return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
 
     def get_by_name(self, tag_name: str, default: Optional[Any] = None) -> List[VideoTag]:

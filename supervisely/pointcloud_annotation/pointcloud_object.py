@@ -8,7 +8,7 @@ from supervisely.video_annotation.video_object import VideoObject
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.constants import KEY, ID
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, CLASS_ID
 
@@ -59,5 +59,5 @@ class PointcloudObject(VideoObject):
 
         return cls(obj_class=obj_class,
                    key=key,
-                   tags=VideoTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
+                   tags=PointcloudTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
                    class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
