@@ -14,7 +14,7 @@ from supervisely.pointcloud_annotation.constants import (
     OBJECTS,
     KEY,
     FIGURES,
-    POINTCLOUD_ID
+    POINTCLOUD_ID,
 )
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -44,7 +44,7 @@ class PointcloudAnnotation(VideoAnnotation):
         description: Optional[str] = "",
         key: Optional[uuid.UUID] = None,
     ):
-        
+
         self._description = description
         self._tags = take_with_default(tags, PointcloudTagCollection())
         self._objects = take_with_default(objects, PointcloudObjectCollection())
@@ -64,8 +64,30 @@ class PointcloudAnnotation(VideoAnnotation):
         raise NotImplementedError("Not supported for pointcloud")
 
     @property
+    def tags(self) -> PointcloudTagCollection:
+        return super().tags
+
+    @property
+    def objects(self) -> PointcloudObjectCollection:
+        return super().objects
+
+    @property
     def figures(self) -> List[PointcloudFigure]:
         return deepcopy(self._figures)
+
+    # def get_objects_on_frame(self, frame_index: int):
+    #     raise NotImplementedError("Not supported for pointcloud")
+
+    # def get_tags_on_frame(self, frame_index: int):
+    #     raise NotImplementedError("Not supported for pointcloud")
+
+    def get_objects_from_figures(self) -> PointcloudObjectCollection:
+        ann_objects = {}
+        for fig in self.figures:
+            if fig.parent_object.key() not in ann_objects.keys():
+                ann_objects[fig.parent_object.key()] = fig.parent_object
+
+        return PointcloudObjectCollection(ann_objects.values())
 
     def validate_figures_bounds(self):
         raise NotImplementedError("Not supported for pointcloud")
@@ -119,10 +141,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
     @classmethod
     def load_json_file(
-        cls, 
-        path: str, 
-        project_meta: ProjectMeta, 
-        key_id_map: Optional[KeyIdMap] = None
+        cls, path: str, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
     ) -> PointcloudAnnotation:
         """
         Loads json file and converts it to PointcloudAnnotation.

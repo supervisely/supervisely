@@ -19,18 +19,22 @@ from supervisely.video_annotation.constants import (
     KEY,
 )
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import PointcloudEpisodeFrameCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
+    PointcloudEpisodeFrameCollection,
+)
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import PointcloudEpisodeTagCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
+    PointcloudEpisodeTagCollection,
+)
 
 
 class PointcloudEpisodeAnnotation:
     def __init__(
-        self, 
-        frames_count: Optional[int] = None, 
-        objects: Optional[PointcloudObjectCollection] = None, 
-        frames: Optional[PointcloudEpisodeFrameCollection] = None, 
-        tags: Optional[PointcloudEpisodeTagCollection] = None, 
+        self,
+        frames_count: Optional[int] = None,
+        objects: Optional[PointcloudObjectCollection] = None,
+        frames: Optional[PointcloudEpisodeFrameCollection] = None,
+        tags: Optional[PointcloudEpisodeTagCollection] = None,
         description: Optional[str] = "",
         key: uuid.UUID = None,
     ) -> None:
@@ -42,6 +46,12 @@ class PointcloudEpisodeAnnotation:
         self._key = take_with_default(key, uuid.uuid4())
 
     def get_tags_on_frame(self, frame_index: int) -> PointcloudEpisodeTagCollection:
+        frame = self._frames.get(frame_index, None)
+        if frame is None:
+            if frame_index < self.frames_count:
+                return PointcloudEpisodeTagCollection([])
+            else:
+                raise ValueError(f"No frame with index {frame_index} in annotation.")
         tags = []
         for tag in self._tags:
             if frame_index >= tag.frame_range[0] and frame_index <= tag.frame_range[1]:
@@ -51,7 +61,10 @@ class PointcloudEpisodeAnnotation:
     def get_objects_on_frame(self, frame_index: int) -> PointcloudObjectCollection:
         frame = self._frames.get(frame_index, None)
         if frame is None:
-            raise ValueError(f"No frame with index {frame_index} in annotation.")
+            if frame_index < self.frames_count:
+                return PointcloudObjectCollection([])
+            else:
+                raise ValueError(f"No frame with index {frame_index} in annotation.")
         frame_objects = {}
         for fig in frame.figures:
             if fig.parent_object.key() not in frame_objects.keys():
@@ -61,7 +74,10 @@ class PointcloudEpisodeAnnotation:
     def get_figures_on_frame(self, frame_index: int) -> List[PointcloudFigure]:
         frame = self._frames.get(frame_index, None)
         if frame is None:
-            raise ValueError(f"No frame with index {frame_index} in annotation.")
+            if frame_index < self.frames_count:
+                return PointcloudObjectCollection([])
+            else:
+                raise ValueError(f"No frame with index {frame_index} in annotation.")
         return frame.figures
 
     def to_json(self, key_id_map: KeyIdMap = None) -> Dict:
@@ -82,7 +98,9 @@ class PointcloudEpisodeAnnotation:
         return res_json
 
     @classmethod
-    def from_json(cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
+    def from_json(
+        cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
+    ):
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
@@ -91,9 +109,13 @@ class PointcloudEpisodeAnnotation:
         description = data.get(DESCRIPTION, "")
         frames_count = data.get(FRAMES_COUNT, 0)
 
-        tags = PointcloudEpisodeTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
+        tags = PointcloudEpisodeTagCollection.from_json(
+            data[TAGS], project_meta.tag_metas, key_id_map
+        )
         objects = PointcloudObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
-        frames = PointcloudEpisodeFrameCollection.from_json(data[FRAMES], objects, key_id_map=key_id_map)
+        frames = PointcloudEpisodeFrameCollection.from_json(
+            data[FRAMES], objects, key_id_map=key_id_map
+        )
 
         return cls(frames_count, objects, frames, tags, description, item_key)
 
@@ -141,12 +163,12 @@ class PointcloudEpisodeAnnotation:
         return cls.from_json(data, project_meta, key_id_map)
 
     def clone(
-        self, 
-        frames_count: Optional[int] = None, 
-        objects: Optional[PointcloudObjectCollection] = None, 
-        frames: Optional[PointcloudEpisodeFrameCollection] = None, 
-        tags: Optional[PointcloudEpisodeTagCollection] = None, 
-        description: Optional[str] = ""
+        self,
+        frames_count: Optional[int] = None,
+        objects: Optional[PointcloudObjectCollection] = None,
+        frames: Optional[PointcloudEpisodeFrameCollection] = None,
+        tags: Optional[PointcloudEpisodeTagCollection] = None,
+        description: Optional[str] = "",
     ) -> PointcloudEpisodeAnnotation:
         return PointcloudEpisodeAnnotation(
             frames_count=take_with_default(frames_count, self.frames_count),

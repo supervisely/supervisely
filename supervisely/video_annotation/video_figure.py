@@ -114,7 +114,7 @@ class VideoFigure:
         if self.created_at is not None:
             d[CREATED_AT] = self.created_at
 
-    def _set_geometry_inplace(self, geometry):
+    def _set_geometry_inplace(self, geometry: Geometry) -> None:
         """
         Checks the given geometry for correctness. Raise error if given geometry type != geometry type of VideoObject class
         :param geometry: Geometry class object (Point, Rectangle etc)
@@ -236,7 +236,9 @@ class VideoFigure:
                     )
                 )
 
-    def to_json(self, key_id_map: Optional[KeyIdMap] = None, save_meta: Optional[bool] = False) -> Dict:
+    def to_json(
+        self, key_id_map: Optional[KeyIdMap] = None, save_meta: Optional[bool] = False
+    ) -> Dict:
         """
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 

@@ -37,7 +37,7 @@ from supervisely.project.project import OpenMode, Dataset, read_single_project a
 
 
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-import supervisely.pointcloud.pointcloud as sly_pointcloud
+import supervisely.pointcloud as sly_pointcloud
 from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.io.json import dump_json_file
 from supervisely.project.project_type import ProjectType
@@ -180,7 +180,7 @@ class PointcloudDataset(VideoDataset):
         """
         return super().get_item_path(item_name)
 
-    def get_pointcloud_info(self, item_name: str) -> NamedTuple:
+    def get_pointcloud_info(self, item_name: str) -> PointcloudInfo:
         """
         Information for Pointcloud with given name.
 
@@ -445,13 +445,28 @@ class PointcloudDataset(VideoDataset):
 
 
 class PointcloudProject(VideoProject):
+    """
+    PointcloudProject is a parent directory for pointcloud datasets. PointcloudProject object is immutable.
+
+    :param directory: Path to pointcloud project directory.
+    :type directory: :class:`str`
+    :param mode: Determines working mode for the given project.
+    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        project_path = "/home/admin/work/supervisely/projects/ptc_project"
+        project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+    """
     dataset_class = PointcloudDataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = PointcloudDataset
 
     @classmethod
-    def read_single(cls, dir):
+    def read_single(cls, dir) -> PointcloudProject:
         return read_project_wrapper(dir, cls)
 
     @staticmethod

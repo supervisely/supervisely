@@ -1873,7 +1873,6 @@ class Project:
         without_objects_and_tags=False,
         inplace=False,
     ):
-        # TODO: strange things with inplace parameter. It seems that it is useless and check below is incorrect.
         if inplace is False:
             raise ValueError(
                 f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"

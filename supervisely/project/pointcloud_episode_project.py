@@ -1,17 +1,18 @@
 # coding: utf-8
 
 # docs
+from __future__ import annotations
 import os
 import random
-from collections import namedtuple
 from supervisely.api.api import Api
-from supervisely.annotation.annotation import Annotation
 from typing import Tuple, List, Dict, Optional, Callable, NamedTuple, Union
 
+import supervisely.imaging.image as sly_image
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
+from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import touch, dir_exists, list_files, mkdir
+from supervisely.io.fs import touch, dir_exists, list_files, mkdir, get_file_name
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
@@ -53,8 +54,22 @@ class EpisodeItemInfo(NamedTuple):
     frame_index: int
 
 class PointcloudEpisodeDataset(PointcloudDataset):
+    #: :class:`str`: Items data directory name
     item_dir_name = "pointcloud"
+
+    #: :class:`str`: Annotations directory name
+    ann_dir_name = "ann"
+
+    #: :class:`str`: Items info directory name
+    item_info_dir_name = "pointcloud_info"
+    
+    #: :class:`str`: Related images directory name
     related_images_dir_name = "related_images"
+
+    #: :class:`str`: Segmentation masks directory name
+    seg_dir_name = None
+
+    item_info_type = PointcloudInfo
     annotation_class = PointcloudEpisodeAnnotation
 
     @property
@@ -106,7 +121,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             # Output: PointcloudEpisodeAnnotation
         """
         ann_path = self.get_ann_path()
-        return PointcloudEpisodeAnnotation.load_json_file(ann_path, project_meta, key_id_map)
+        return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
         
     def get_ann_frame(self, item_name: str, annotation: PointcloudEpisodeAnnotation = None) -> Frame:
         frame_idx = self.get_frame_idx(item_name)
@@ -199,7 +214,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             _use_hardlink=_use_hardlink,
         )
         self._add_ann_by_type(item_name, frame)
-        self._add_pointcloud_info(item_name, item_info)
+        self._add_item_info(item_name, item_info)
 
     def _add_ann_by_type(self, item_name, frame):
         if frame is None:
@@ -227,13 +242,13 @@ class PointcloudEpisodeProject(PointcloudProject):
         item_type = PointcloudEpisodeDataset
 
     @classmethod
-    def read_single(cls, dir):
+    def read_single(cls, dir) -> PointcloudEpisodeProject:
         return read_project_wrapper(dir, cls)
 
     @staticmethod
     def get_train_val_splits_by_count(
         project_dir: str, train_count: int, val_count: int
-    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+    ) -> Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]:
         """
         Get train and val items information from project by given train and val counts.
 
@@ -245,7 +260,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type val_count: int
         :raises: :class:`ValueError` if total_count != train_count + val_count
         :return: Tuple with lists of train items information and val items information
-        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
         :Usage example:
 
          .. code-block:: python
@@ -257,12 +272,12 @@ class PointcloudEpisodeProject(PointcloudProject):
             train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
         """
 
-        def _list_items_for_splits(project) -> List[PointcloudItemInfo]:
+        def _list_items_for_splits(project) -> List[EpisodeItemInfo]:
             items = []
             for dataset in project.datasets:
                 for item_name in dataset:
                     items.append(
-                        PointcloudItemInfo(
+                        EpisodeItemInfo(
                             dataset_name=dataset.name,
                             name=item_name,
                             pointcloud_path=dataset.get_pointcloud_path(item_name),
@@ -287,7 +302,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         train_tag_name: str,
         val_tag_name: str,
         untagged: Optional[str] = "ignore",
-    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+    ) -> Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]:
         """
         Get train and val items information from project by given train and val tags names.
 
@@ -301,7 +316,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type untagged: str, optional
         :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
         :return: Tuple with lists of train items information and val items information
-        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
         :Usage example:
 
          .. code-block:: python
@@ -327,7 +342,7 @@ class PointcloudEpisodeProject(PointcloudProject):
                 item_paths = dataset.get_item_paths(item_name)
                 frame_idx = dataset.get_frame_idx(item_name)
 
-                info = PointcloudItemInfo(
+                info = EpisodeItemInfo(
                     dataset_name=dataset.name,
                     name=item_name,
                     pointcloud_path=item_paths.pointcloud_path,
@@ -352,7 +367,7 @@ class PointcloudEpisodeProject(PointcloudProject):
     @staticmethod
     def get_train_val_splits_by_dataset(
         project_dir: str, train_datasets: List[str], val_datasets: List[str]
-    ) -> Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]:
+    ) -> Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]:
         """
         Get train and val items information from project by given train and val datasets names.
 
@@ -364,7 +379,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type val_datasets: List[str]
         :raises: :class:`KeyError` if dataset name not found in project
         :return: Tuple with lists of train items information and val items information
-        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
         :Usage example:
 
          .. code-block:: python
@@ -385,7 +400,7 @@ class PointcloudEpisodeProject(PointcloudProject):
                 for item_name in dataset:
                     item_paths = dataset.get_item_paths(item_name)
                     frame_idx = dataset.get_frame_idx(item_name)
-                    info = PointcloudItemInfo(
+                    info = EpisodeItemInfo(
                         dataset_name=dataset.name,
                         name=item_name,
                         pointcloud_path=item_paths.pointcloud_path,
@@ -604,9 +619,32 @@ def download_pointcloud_episode_project(
 
                 if download_related_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
-                    related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
+                    try:
+                        related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
+                    except Exception as e:
+                        logger.info(
+                            "INFO FOR DEBUGGING", 
+                            extra={
+                                "project_id": project_id,
+                                "dataset_id": dataset.id,
+                                "pointcloud_id": pointcloud_id,
+                                "pointcloud_name": pointcloud_name,
+                            }
+                        )
+                        raise e
+                    
                     for rimage_info in related_images:
                         name = rimage_info[ApiField.NAME]
+                        if not sly_image.has_valid_ext(name):
+                            new_name = get_file_name(name)  # to fix cases like .png.json
+                            if sly_image.has_valid_ext(new_name):
+                                name = new_name
+                                rimage_info[ApiField.NAME] = name
+                            else:
+                                raise RuntimeError(
+                                    "Something wrong with photo context filenames.\
+                                                    Please, contact support"
+                                )
                         rimage_id = rimage_info[ApiField.ID]
 
                         path_img = os.path.join(related_images_path, name)
@@ -622,8 +660,8 @@ def download_pointcloud_episode_project(
                     _validate_item=False,
                     item_info=pointcloud_info if download_pointclouds_info else None,
                 )
-            if progress_cb is not None:
-                progress_cb(len(batch))
+                if progress_cb is not None:
+                    progress_cb(1)
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
 

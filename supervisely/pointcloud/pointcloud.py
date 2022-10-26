@@ -2,13 +2,12 @@
 
 import os
 import numpy as np
-import open3d as o3d
 from typing import List, Optional
 from supervisely._utils import is_development, abs_url
 from supervisely.io.fs import ensure_base_path
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd", ".ply"]
+ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd"]
 
 
 class PointcloudExtensionError(Exception):
@@ -86,6 +85,10 @@ def read(path: str, coords_dims: Optional[List[int]] = None) -> np.ndarray:
 
         ptc = sly.pointcloud.read('/home/admin/work/pointclouds/ptc0.pcd')
     """
+    try:
+        import open3d as o3d
+    except ImportError:
+        raise ImportError("No module named open3d. Please make sure that module is installed from pip and try again.")
     validate_format(path)
     if coords_dims is None:
         coords_dims = [0, 1, 2]
@@ -120,6 +123,10 @@ def write(path: str, pointcloud_np: np.ndarray, coords_dims: Optional[List[int]]
 
         ptc = sly.pointcloud.write('/home/admin/work/pointclouds/ptc0.pcd', pointcloud)
     """
+    try:
+        import open3d as o3d
+    except ImportError:
+        raise ImportError("No module named open3d. Please make sure that module is installed from pip and try again.")
     ensure_base_path(path)
     validate_format(path)
     if coords_dims is None:

@@ -400,85 +400,85 @@ class VideoAnnotation:
         """
         return self._description
 
-    def get_tags_on_frame(self, frame_index: int) -> VideoTagCollection:
-        """
-        Get all existing video tags from frame of video.
+    # def get_tags_on_frame(self, frame_index: int) -> VideoTagCollection:
+    #     """
+    #     Get all existing video tags from frame of video.
 
-        :param frame_index: Video frame index.
-        :type frame_index: :class:`int`
-        :return: Tags from the given frame.
-        :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
+    #     :param frame_index: Video frame index.
+    #     :type frame_index: :class:`int`
+    #     :return: Tags from the given frame.
+    #     :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
 
-        :Usage example:
+    #     :Usage example:
 
-         .. code-block:: python
+    #      .. code-block:: python
 
-            import supervisely as sly
+    #         import supervisely as sly
 
-            height, width = 50, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(10, 10, 40, 40)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
-            meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-            tag_car = sly.VideoTag(meta_car, frame_range=(fr_index, fr_index))
-            tags = sly.VideoTagCollection([tag_car])
+    #         height, width = 50, 700
+    #         frames_count = 1
+    #         obj_class_car = sly.ObjClass('car', sly.Rectangle)
+    #         video_obj_car = sly.VideoObject(obj_class_car)
+    #         objects = sly.VideoObjectCollection([video_obj_car])
+    #         fr_index = 7
+    #         geometry = sly.Rectangle(10, 10, 40, 40)
+    #         video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+    #         frame = sly.Frame(fr_index, figures=[video_figure_car])
+    #         frames = sly.FrameCollection([frame])
+    #         meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
+    #         tag_car = sly.VideoTag(meta_car, frame_range=(fr_index, fr_index))
+    #         tags = sly.VideoTagCollection([tag_car])
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, tags)
-            tags_on_frame = video_ann.get_tags_on_frame(fr_index)
-            print(len(tags_on_frame))
-            # Output: 1
-        """
-        tags = []
-        for tag in self._tags:
-            if frame_index >= tag.frame_range[0] and frame_index <= tag.frame_range[1]:
-                tags.append(tag)
-        return VideoTagCollection(tags)
+    #         video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, tags)
+    #         tags_on_frame = video_ann.get_tags_on_frame(fr_index)
+    #         print(len(tags_on_frame))
+    #         # Output: 1
+    #     """
+    #     tags = []
+    #     for tag in self._tags:
+    #         if frame_index >= tag.frame_range[0] and frame_index <= tag.frame_range[1]:
+    #             tags.append(tag)
+    #     return VideoTagCollection(tags)
 
-    def get_objects_on_frame(self, frame_index: int) -> VideoObjectCollection:
-        """
-        Get all existing video objects from frame of video.
+    # def get_objects_on_frame(self, frame_index: int) -> VideoObjectCollection:
+    #     """
+    #     Get all existing video objects from frame of video.
 
-        :param frame_index: Video frame index.
-        :type frame_index: :class:`int`
-        :return: Objects from the given frame.
-        :rtype: :class:`VideoObjectCollection<supervisely.video_annotation.video_object_collection.VideoObjectCollection>`
+    #     :param frame_index: Video frame index.
+    #     :type frame_index: :class:`int`
+    #     :return: Objects from the given frame.
+    #     :rtype: :class:`VideoObjectCollection<supervisely.video_annotation.video_object_collection.VideoObjectCollection>`
 
-        :Usage example:
+    #     :Usage example:
 
-         .. code-block:: python
+    #      .. code-block:: python
 
-            import supervisely as sly
+    #         import supervisely as sly
 
-            height, width = 50, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(10, 10, 40, 40)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
+    #         height, width = 50, 700
+    #         frames_count = 1
+    #         obj_class_car = sly.ObjClass('car', sly.Rectangle)
+    #         video_obj_car = sly.VideoObject(obj_class_car)
+    #         objects = sly.VideoObjectCollection([video_obj_car])
+    #         fr_index = 7
+    #         geometry = sly.Rectangle(10, 10, 40, 40)
+    #         video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+    #         frame = sly.Frame(fr_index, figures=[video_figure_car])
+    #         frames = sly.FrameCollection([frame])
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
-            objs_on_frame = video_ann.get_objects_on_frame(fr_index)
-            print(len(objs_on_frame))
-            # Output: 1
-        """
-        frame = self._frames.get(frame_index, None)
-        if frame is None:
-            raise ValueError(f"No frame with index {frame_index} in annotation.")
-        frame_objects = {}
-        for fig in frame.figures:
-            if fig.parent_object.key() not in frame_objects.keys():
-                frame_objects[fig.parent_object.key()] = fig.parent_object
-        return VideoObjectCollection(list(frame_objects.values()))
+    #         video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
+    #         objs_on_frame = video_ann.get_objects_on_frame(fr_index)
+    #         print(len(objs_on_frame))
+    #         # Output: 1
+    #     """
+    #     frame = self._frames.get(frame_index, None)
+    #     if frame is None:
+    #         raise ValueError(f"No frame with index {frame_index} in annotation.")
+    #     frame_objects = {}
+    #     for fig in frame.figures:
+    #         if fig.parent_object.key() not in frame_objects.keys():
+    #             frame_objects[fig.parent_object.key()] = fig.parent_object
+    #     return VideoObjectCollection(list(frame_objects.values()))
 
     def validate_figures_bounds(self) -> None:
         """
