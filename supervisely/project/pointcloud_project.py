@@ -1027,7 +1027,8 @@ def upload_pointcloud_project(
             # upload related_images if exist
             if len(related_items) != 0:
                 rimg_infos = []
-                for img_path, meta_json in related_items:
+                camera_names = []
+                for img_ind, (img_path, meta_json) in enumerate(related_items):
                     try:
                         img = api.pointcloud.upload_related_image(img_path)
                     except Exception as e:
@@ -1042,6 +1043,10 @@ def upload_pointcloud_project(
                             }
                         )
                         raise e
+                    if "deviceId" not in meta_json[ApiField.META].keys():
+                        camera_names.append(f"CAM_{str(img_ind).zfill(2)}")
+                    else:
+                        camera_names.append(meta_json[ApiField.META]["deviceId"])
                     rimg_infos.append(
                         {
                             ApiField.ENTITY_ID: pointcloud.id,
@@ -1052,7 +1057,7 @@ def upload_pointcloud_project(
                     )
                     
                 try:
-                    api.pointcloud.add_related_images(rimg_infos)
+                    api.pointcloud.add_related_images(rimg_infos, camera_names)
                 except Exception as e:
                     logger.info(
                         "INFO FOR DEBUGGING", 
@@ -1062,6 +1067,7 @@ def upload_pointcloud_project(
                             "pointcloud_id": pointcloud.id,
                             "pointcloud_name": pointcloud.name, 
                             "rimg_infos": rimg_infos,
+                            "camera_names": camera_names,
                         }
                     )
                     raise e
