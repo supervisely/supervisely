@@ -56,10 +56,13 @@ class ProjectInfo(NamedTuple):
 
     @property
     def image_preview_url(self):
-        res = self.reference_image_url
-        if is_development():
-            res = abs_url(res)
-        res = compress_image_url(url=res, height=200)
+        if self.type in [str(ProjectType.POINT_CLOUDS), str(ProjectType.POINT_CLOUD_EPISODES)]:
+            res = "https://user-images.githubusercontent.com/12828725/199022135-4161917c-05f8-4681-9dc1-b5e10ee8bb0f.png"
+        else:
+            res = self.reference_image_url
+            if is_development():
+                res = abs_url(res)
+            res = compress_image_url(url=res, height=200)
         return res
 
     @property
@@ -68,7 +71,7 @@ class ProjectInfo(NamedTuple):
         if is_development():
             res = abs_url(res)
         return res
-    
+
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """

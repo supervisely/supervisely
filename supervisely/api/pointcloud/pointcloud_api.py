@@ -179,7 +179,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         return self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
 
-    def add_related_images(self, images_json: Dict) -> Dict:
+    def add_related_images(self, images_json: List[Dict], camera_names: List[str] = None) -> Dict:
+        if camera_names is not None:
+            if len(camera_names) != len(images_json):
+                ValueError("camera_names length must be equal to images_json length.")
+            for img_ind, camera_name in enumerate(camera_names):
+                images_json[img_ind][ApiField.META]["deviceId"] = camera_name
         response = self._api.post('point-clouds.images.add', {ApiField.IMAGES: images_json})
         return response.json()
 

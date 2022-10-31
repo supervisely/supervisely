@@ -27,6 +27,7 @@ from supervisely.video_annotation.frame import Frame
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
+
 class EpisodeItemPaths(NamedTuple):
     #: :class:`str`: Full pointcloud file path of item
     pointcloud_path: str
@@ -36,6 +37,7 @@ class EpisodeItemPaths(NamedTuple):
 
     #: :class:`int`: Index of frame in episode annotation of dataset
     frame_index: int
+
 
 class EpisodeItemInfo(NamedTuple):
     #: :class:`str`: Item's dataset name
@@ -53,6 +55,7 @@ class EpisodeItemInfo(NamedTuple):
     #: :class:`int`: Index of frame in episode annotation of dataset
     frame_index: int
 
+
 class PointcloudEpisodeDataset(PointcloudDataset):
     #: :class:`str`: Items data directory name
     item_dir_name = "pointcloud"
@@ -62,7 +65,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "pointcloud_info"
-    
+
     #: :class:`str`: Related images directory name
     related_images_dir_name = "related_images"
 
@@ -89,7 +92,9 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     def get_ann_path(self) -> str:
         return os.path.join(self.directory, "annotation.json")
 
-    def get_ann(self, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> PointcloudEpisodeAnnotation:
+    def get_ann(
+        self, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
+    ) -> PointcloudEpisodeAnnotation:
         """
         Read pointcloud annotation of item from json.
 
@@ -122,13 +127,14 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         """
         ann_path = self.get_ann_path()
         return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
-        
-    def get_ann_frame(self, item_name: str, annotation: PointcloudEpisodeAnnotation = None) -> Frame:
+
+    def get_ann_frame(
+        self, item_name: str, annotation: PointcloudEpisodeAnnotation = None
+    ) -> Frame:
         frame_idx = self.get_frame_idx(item_name)
         if frame_idx is None:
             raise ValueError(f"Frame wasn't assigned to pointcloud with name {item_name}.")
         return annotation.frames.get(frame_idx)
-
 
     def get_frame_pointcloud_map_path(self) -> str:
         return os.path.join(self.directory, "frame_pointcloud_map.json")
@@ -450,7 +456,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type batch_size: :class:`int`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
         :return: None
@@ -513,7 +519,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
@@ -537,9 +543,9 @@ class PointcloudEpisodeProject(PointcloudProject):
 
             # Upload Pointcloud Project
             project_id, project_name = sly.PointcloudEpisodeProject.upload(
-                project_directory, 
-                api, 
-                workspace_id=45, 
+                project_directory,
+                api,
+                workspace_id=45,
                 project_name="My Episodes Project"
             )
         """
@@ -551,6 +557,7 @@ class PointcloudEpisodeProject(PointcloudProject):
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
+
 
 def download_pointcloud_episode_project(
     api: Api,
@@ -613,26 +620,41 @@ def download_pointcloud_episode_project(
             ):
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
                 if download_pcd:
-                    api.pointcloud_episode.download_path(pointcloud_id, pointcloud_file_path)
+                    try:
+                        api.pointcloud_episode.download_path(pointcloud_id, pointcloud_file_path)
+                    except Exception as e:
+                        logger.info(
+                            "INFO FOR DEBUGGING",
+                            extra={
+                                "project_id": project_id,
+                                "dataset_id": dataset.id,
+                                "pointcloud_id": pointcloud_id,
+                                "pointcloud_name": pointcloud_name,
+                                "pointcloud_file_path": pointcloud_file_path,
+                            },
+                        )
+                        raise e
                 else:
                     touch(pointcloud_file_path)
 
                 if download_related_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
                     try:
-                        related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
+                        related_images = api.pointcloud_episode.get_list_related_images(
+                            pointcloud_id
+                        )
                     except Exception as e:
                         logger.info(
-                            "INFO FOR DEBUGGING", 
+                            "INFO FOR DEBUGGING",
                             extra={
                                 "project_id": project_id,
                                 "dataset_id": dataset.id,
                                 "pointcloud_id": pointcloud_id,
                                 "pointcloud_name": pointcloud_name,
-                            }
+                            },
                         )
                         raise e
-                    
+
                     for rimage_info in related_images:
                         name = rimage_info[ApiField.NAME]
                         if not sly_image.has_valid_ext(name):
@@ -650,16 +672,45 @@ def download_pointcloud_episode_project(
                         path_img = os.path.join(related_images_path, name)
                         path_json = os.path.join(related_images_path, name + ".json")
 
-                        api.pointcloud_episode.download_related_image(rimage_id, path_img)
+                        try:
+                            api.pointcloud_episode.download_related_image(rimage_id, path_img)
+                        except Exception as e:
+                            logger.info(
+                                "INFO FOR DEBUGGING",
+                                extra={
+                                    "project_id": project_id,
+                                    "dataset_id": dataset.id,
+                                    "pointcloud_id": pointcloud_id,
+                                    "pointcloud_name": pointcloud_name,
+                                    "rimage_id": rimage_id,
+                                    "path_img": path_img,
+                                },
+                            )
+                            raise e
                         dump_json_file(rimage_info, path_json)
-
-                dataset_fs.add_item_file(
-                    pointcloud_name,
-                    pointcloud_file_path if download_pcd else None,
-                    item_to_ann[pointcloud_name],
-                    _validate_item=False,
-                    item_info=pointcloud_info if download_pointclouds_info else None,
-                )
+                pointcloud_file_path = pointcloud_file_path if download_pcd else None
+                pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
+                try:
+                    dataset_fs.add_item_file(
+                        pointcloud_name,
+                        pointcloud_file_path,
+                        item_to_ann[pointcloud_name],
+                        _validate_item=False,
+                        item_info=pointcloud_info,
+                    )
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "pointcloud_id": pointcloud_id,
+                            "pointcloud_name": pointcloud_name,
+                            "pointcloud_file_path": pointcloud_file_path,
+                            "item_info": pointcloud_info,
+                        },
+                    )
+                    raise e
                 if progress_cb is not None:
                     progress_cb(1)
             if log_progress:
@@ -677,7 +728,7 @@ def upload_pointcloud_episode_project(
     progress_cb: Optional[Callable] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
-    project_locally = PointcloudEpisodeProject(directory, OpenMode.READ)
+    project_locally = PointcloudEpisodeProject.read_single(directory)
     project_name = project_locally.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):
@@ -711,8 +762,7 @@ def upload_pointcloud_episode_project(
         items_infos = {"names": [], "paths": [], "metas": []}
 
         for item_name in dataset_locally:
-            item_path, related_images_dir = dataset_locally.get_item_paths(item_name)
-            frame_idx = dataset_locally.get_frame_idx(item_name)
+            item_path, related_images_dir, frame_idx = dataset_locally.get_item_paths(item_name)
 
             item_meta = {"frame": frame_idx}
 
@@ -728,20 +778,43 @@ def upload_pointcloud_episode_project(
             ).iters_done_report
         elif progress_cb is not None:
             progress = progress_cb
-
-        pcl_infos = api.pointcloud_episode.upload_paths(
-            dataset_remotely.id,
-            names=items_infos["names"],
-            paths=items_infos["paths"],
-            metas=items_infos["metas"],
-            progress_cb=progress,
-        )
-
+        try:
+            pcl_infos = api.pointcloud_episode.upload_paths(
+                dataset_remotely.id,
+                names=items_infos["names"],
+                paths=items_infos["paths"],
+                metas=items_infos["metas"],
+                progress_cb=progress,
+            )
+        except Exception as e:
+            logger.info(
+                "INFO FOR DEBUGGING",
+                extra={
+                    "project_id": project_remotely.id,
+                    "dataset_id": dataset_remotely.id,
+                    "item_names": items_infos["names"],
+                    "item_paths": items_infos["paths"],
+                    "item_metas": items_infos["metas"],
+                },
+            )
+            raise e
         # STEP 2 — upload annotations
         frame_to_pcl_ids = {pcl_info.frame: pcl_info.id for pcl_info in pcl_infos}
-        api.pointcloud_episode.annotation.append(
-            dataset_remotely.id, episode_annotation, frame_to_pcl_ids, key_id_map
-        )
+        try:
+            api.pointcloud_episode.annotation.append(
+                dataset_remotely.id, episode_annotation, frame_to_pcl_ids, key_id_map
+            )
+        except Exception as e:
+            logger.info(
+                "INFO FOR DEBUGGING",
+                extra={
+                    "project_id": project_remotely.id,
+                    "dataset_id": dataset_remotely.id,
+                    "frame_to_pcl_ids": frame_to_pcl_ids,
+                    "ann": episode_annotation.to_json(),
+                },
+            )
+            raise e
 
         # STEP 3 — upload photo context
         img_infos = {"img_paths": [], "img_metas": []}
@@ -761,18 +834,31 @@ def upload_pointcloud_episode_project(
         elif progress_cb is not None:
             progress = progress_cb
 
-        images_hashes = api.pointcloud_episode.upload_related_images(
-            img_infos["img_paths"],
-            progress_cb=progress,
-        )
+        try:
+            images_hashes = api.pointcloud_episode.upload_related_images(
+                img_infos["img_paths"],
+                progress_cb=progress,
+            )
+        except Exception as e:
+            logger.info(
+                "INFO FOR DEBUGGING",
+                extra={
+                    "project_id": project_remotely.id,
+                    "dataset_id": dataset_remotely.id,
+                    "img_paths": img_infos["img_paths"],
+                },
+            )
+            raise e
 
         # STEP 3.2 — upload images metas
         images_hashes_iterator = images_hashes.__iter__()
         for pcl_info in pcl_infos:
             related_items = dataset_locally.get_related_images(pcl_info.name)
 
-            for _, meta_json in related_items:
+            for img_ind, (_, meta_json) in enumerate(related_items):
                 img_hash = next(images_hashes_iterator)
+                if "deviceId" not in meta_json[ApiField.META].keys():
+                    meta_json[ApiField.META]["deviceId"] = f"CAM_{str(img_ind).zfill(2)}"
                 img_infos["img_metas"].append(
                     {
                         ApiField.ENTITY_ID: pcl_info.id,
@@ -783,6 +869,17 @@ def upload_pointcloud_episode_project(
                 )
 
         if len(img_infos["img_metas"]) > 0:
-            api.pointcloud_episode.add_related_images(img_infos["img_metas"])
+            try:
+                api.pointcloud_episode.add_related_images(img_infos["img_metas"])
+            except Exception as e:
+                logger.info(
+                    "INFO FOR DEBUGGING",
+                    extra={
+                        "project_id": project_remotely.id,
+                        "dataset_id": dataset_remotely.id,
+                        "rimg_infos": img_infos["img_metas"],
+                    },
+                )
+                raise e
 
     return project_remotely.id, project_remotely.name

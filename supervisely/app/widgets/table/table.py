@@ -3,7 +3,7 @@ import copy
 import numpy as np
 import pandas as pd
 import re
-from typing import NamedTuple, Any, List
+from typing import NamedTuple, Any, List, Optional, Dict
 
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
@@ -38,7 +38,9 @@ class PackerUnpacker:
 
     @staticmethod
     def dict_unpacker(data: dict):
-        unpacked_data = {"columns": data["columns"], "data": data["data"]}
+        unpacked_data = copy.deepcopy(data)
+        if "summaryRow" not in unpacked_data.keys():
+            unpacked_data["summaryRow"] = None
 
         return unpacked_data
 
@@ -50,12 +52,15 @@ class PackerUnpacker:
         unpacked_data = {
             "columns": data.columns.to_list(),
             "data": data.values.tolist(),
+            "summaryRow": None,
         }
         return unpacked_data
 
     @staticmethod
     def dict_packer(data):
         packed_data = {"columns": data["columns"], "data": data["data"]}
+        if "summaryRow" in data.keys() and data["summaryRow"] is not None:
+            packed_data["summaryRow"] = data["summaryRow"]
         return packed_data
 
     @staticmethod
@@ -108,12 +113,12 @@ class Table(Widget):
     def __init__(
         self,
         data=None,
-        columns: list = None,
-        fixed_cols: int = None,
-        per_page: int = 10,
-        page_sizes: List[int] = [10, 15, 30, 50, 100],
-        width: str = "auto",  # "200px", or "100%"
-        widget_id: str = None,
+        columns: Optional[list] = None,
+        fixed_cols: Optional[int] = None,
+        per_page: Optional[int] = 10,
+        page_sizes: Optional[List[int]] = [10, 15, 30, 50, 100],
+        width: Optional[str] = "auto",  # "200px", or "100%"
+        widget_id: Optional[str] = None,
     ):
         """
         :param data: Data of table in different formats:
@@ -162,7 +167,7 @@ class Table(Widget):
         if input_data is not None:
             self._parsed_data = copy.deepcopy(self._get_unpacked_data(input_data=input_data))
         else:
-            self._parsed_data = {"columns": [], "data": []}
+            self._parsed_data = {"columns": [], "data": [], "summaryRow": None}
             self._data_type = dict
 
     def _get_packed_data(self, input_data, data_type):
@@ -192,27 +197,42 @@ class Table(Widget):
         )
 
     @property
-    def fixed_columns_num(self):
+    def fixed_columns_num(self) -> int:
         return self._fix_columns
 
     @fixed_columns_num.setter
-    def fixed_columns_num(self, value):
+    def fixed_columns_num(self, value: int):
         self._fix_columns = value
         DataJson()[self.widget_id]["table_options"]["fixColumns"] = self._fix_columns
 
-    def to_json(self) -> dict:
+    @property
+    def summary_row(self) -> List[Any]:
+        if "summaryRow" not in self._parsed_data.keys():
+            return None
+        return self._parsed_data["summaryRow"]
+
+    @summary_row.setter
+    def summary_row(self, value: List[Any]):
+        cols_num = len(self._parsed_data["columns"])
+        if len(value) < cols_num:
+            value.extend([""] * (cols_num - len(value)))
+        elif len(value) > cols_num:
+            value = value[:cols_num]
+        DataJson()[self.widget_id]["table_data"]["summaryRow"] = value
+
+    def to_json(self) -> Dict:
         return self._get_packed_data(self._parsed_data, dict)
 
     def to_pandas(self) -> pd.DataFrame:
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
 
-    def read_json(self, value: dict):
+    def read_json(self, value: dict) -> None:
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
         self.clear_selection()
 
-    def read_pandas(self, value: pd.DataFrame):
+    def read_pandas(self, value: pd.DataFrame) -> None:
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
