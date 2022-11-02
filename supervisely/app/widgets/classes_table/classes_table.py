@@ -1,12 +1,12 @@
-
 from typing import Optional, List
 
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets.widget import Disableable
-from supervisely import ProjectMeta, ProjectType, Api, Rectangle
+from supervisely import ProjectMeta, ProjectType, Api
 from supervisely.geometry.geometry import Geometry
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
+
 
 class ClassesTable(Widget):
     class Routes:
@@ -41,7 +41,7 @@ class ClassesTable(Widget):
 
         Disableable.__init__(self)
         super().__init__(widget_id=widget_id, file_path=__file__)
-    
+
     def value_changed(self, func):
         route_path = self.get_route_path(ClassesTable.Routes.CLASS_SELECTED)
         server = self._sly_app.get_server()
@@ -54,17 +54,14 @@ class ClassesTable(Widget):
 
         return _value_changed
 
-    def _update_meta(
-        self,
-        project_meta: Optional[ProjectMeta] = None
-    ) -> None:
+    def _update_meta(self, project_meta: Optional[ProjectMeta] = None) -> None:
         if project_meta is None:
             self._table_data = []
             self._columns = []
             self._checkboxes = []
             self._global_checkbox = False
             return
-        columns = ['class', 'shape']
+        columns = ["class", "shape"]
         stats = None
         data_to_show = []
         for obj_class in project_meta.obj_classes:
@@ -75,14 +72,17 @@ class ClassesTable(Widget):
             stats = self._api.project.get_stats(self._project_id)
             project_info = self._api.project.get_info_by_id(self._project_id)
             if project_info.type == str(ProjectType.IMAGES):
-                columns.append('images count')
+                columns.append("images count")
             elif project_info.type == str(ProjectType.VIDEOS):
-                columns.append('videos count')
-            elif project_info.type in [str(ProjectType.POINT_CLOUDS), str(ProjectType.POINT_CLOUD_EPISODES)]:
-                columns.append('pointclouds count')
+                columns.append("videos count")
+            elif project_info.type in [
+                str(ProjectType.POINT_CLOUDS),
+                str(ProjectType.POINT_CLOUD_EPISODES),
+            ]:
+                columns.append("pointclouds count")
             elif project_info.type == str(ProjectType.VOLUMES):
-                columns.append('volumes count')
-            columns.append('objects count')
+                columns.append("volumes count")
+            columns.append("objects count")
 
             class_items = {}
             for item in stats["images"]["objectClasses"]:
@@ -94,16 +94,18 @@ class ClassesTable(Widget):
             for obj_class in data_to_show:
                 obj_class["itemsCount"] = class_items[obj_class["title"]]
                 obj_class["objectsCount"] = class_objects[obj_class["title"]]
-        
+
         columns = [col.upper() for col in columns]
         if data_to_show:
             table_data = []
             for line in data_to_show:
                 table_line = []
-                table_line.extend([
-                    {"name": "CLASS", "data": line["title"], "color": line["color"]}, 
-                    {"name": "SHAPE", "data": line["shape"]},
-                ])
+                table_line.extend(
+                    [
+                        {"name": "CLASS", "data": line["title"], "color": line["color"]},
+                        {"name": "SHAPE", "data": line["shape"]},
+                    ]
+                )
                 if "itemsCount" in line.keys():
                     table_line.append({"name": "ITEMS COUNT", "data": line["itemsCount"]})
                 if "objectsCount" in line.keys():
@@ -119,10 +121,7 @@ class ClassesTable(Widget):
             self._checkboxes = []
             self._global_checkbox = False
 
-    def read_meta(
-        self, 
-        project_meta: ProjectMeta
-    ) -> None:
+    def read_meta(self, project_meta: ProjectMeta) -> None:
         self._update_meta(project_meta=project_meta)
         DataJson()[self.widget_id]["table_data"] = self._table_data
         DataJson()[self.widget_id]["columns"] = self._columns
@@ -154,7 +153,7 @@ class ClassesTable(Widget):
     def allowed_types(self, value: List[Geometry]):
         self._allowed_types = value
         DataJson()[self.widget_id]["allowed_types"] = self._allowed_types
-    
+
     def get_json_state(self):
         return {"global_checkbox": self._global_checkbox, "checkboxes": self._checkboxes}
 
