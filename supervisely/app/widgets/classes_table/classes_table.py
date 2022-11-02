@@ -14,12 +14,10 @@ class ClassesTable(Widget):
 
     def __init__(
         self,
-        project_meta: Optional[ProjectMeta] = None,
         project_id: Optional[int] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        classes_stats: Optional[dict] = None,
         allowed_types: Optional[List[Geometry]] = None,
-        per_page: Optional[int] = 100,
-        page_sizes: Optional[List[int]] = [10, 15, 30, 50, 100],
-        width: Optional[str] = "auto",  # "200px", or "100%"
         widget_id: Optional[str] = None,
     ):
         self._table_data = []
@@ -33,10 +31,6 @@ class ClassesTable(Widget):
         self._project_id = project_id
         self._update_meta(project_meta=project_meta)
 
-        self._per_page = per_page
-        self._page_sizes = page_sizes
-        self._fix_columns = None
-        self._width = width
         self._loading = False
 
         Disableable.__init__(self)
