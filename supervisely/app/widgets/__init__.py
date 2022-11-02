@@ -4,6 +4,7 @@ from supervisely.app.widgets.notification_box.notification_box import Notificati
 from supervisely.app.widgets.done_label.done_label import DoneLabel
 from supervisely.app.widgets.sly_tqdm.sly_tqdm import SlyTqdm, Progress
 from supervisely.app.widgets.grid_gallery.grid_gallery import GridGallery
+from supervisely.app.widgets.classes_table.classes_table import ClassesTable
 from supervisely.app.widgets.classic_table.classic_table import ClassicTable
 from supervisely.app.widgets.confusion_matrix.confusion_matrix import ConfusionMatrix
 from supervisely.app.widgets.project_selector.project_selector import ProjectSelector
