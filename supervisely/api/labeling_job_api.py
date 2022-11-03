@@ -265,7 +265,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                include_images_with_tags: Optional[List[str]] = None,
                exclude_images_with_tags: Optional[List[str]] = None,
                images_range: Optional[List[int, int]] = None,
-               reviewer_id: Optional[int] = None) -> List[LabelingJobInfo]:
+               reviewer_id: Optional[int] = None,
+               images_ids: Optional[List[int]] = []) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
 
@@ -295,6 +296,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         :type images_range: List[int, int], optional
         :param reviewer_id: User ID in Supervisely to assign User as Reviewer to Labeling Job.
         :type reviewer_id: int, optional
+        :param images_ids: List of images ids to label in dataset
+        :type images_ids: List[int], optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -449,7 +452,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         if tags_limit_per_image is None:
             tags_limit_per_image = 0
 
-        data = {ApiField.NAME: name,
+        data = {
+            ApiField.NAME: name,
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.USER_IDS: user_ids,
                 # ApiField.DESCRIPTION: description,
@@ -458,7 +462,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                     'projectTags': tags_to_label,
                     'imageTags': filter_images_by_tags,
                     'imageFiguresLimit': objects_limit_per_image,
-                    'imageTagsLimit': tags_limit_per_image, }
+                    'imageTagsLimit': tags_limit_per_image,
+                    'entityIds': images_ids
+                    }
                 }
 
         if readme is not None:
