@@ -18,6 +18,7 @@ class LabeledImage(GridGallery):
         border_width: int = 3,
         widget_id: str = None,
     ):
+        self._image_id = None
         super().__init__(
             columns_number=1,
             annotations_opacity=annotations_opacity,
@@ -29,7 +30,19 @@ class LabeledImage(GridGallery):
             widget_id=widget_id,
         )
 
-    def set(self, title, image_url, ann: Annotation = None):
+    def set(self, title, image_url, ann: Annotation = None, image_id=None):
         self.clean_up()
         self.append(image_url=image_url, annotation=ann, title=title)
+        self._image_id = image_id
         DataJson().send_changes()
+
+    def clean_up(self):
+        super().clean_up()
+        self._image_id = None
+
+    def is_empty(self):
+        return len(self._data) == 0
+
+    @property
+    def id(self):
+        return self._image_id
