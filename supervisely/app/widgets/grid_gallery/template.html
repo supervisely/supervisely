@@ -47,4 +47,8 @@
     </sly-grid-gallery>
   </div>
 </div>
-<div v-else>Gallery is empty</div>
+<div
+  v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length === 0"
+>
+  Gallery is empty
+</div>
