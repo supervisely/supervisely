@@ -437,6 +437,8 @@ class ApiField:
     """"""
     PROCESSING_PATH = "processingPath"
     """"""
+    FORCE_METADATA_FOR_LINKS = "forceMetadataForLinks"
+    """"""
 
 
 def _get_single_item(items):
@@ -601,19 +603,22 @@ class ModuleApiBase(_JsonConvertibleModule):
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
             return self.InfoType(*field_values)
 
-    def _get_response_by_id(self, id, method, id_field):
+    def _get_response_by_id(self, id, method, id_field, fields=None):
         """_get_response_by_id"""
         try:
-            return self._api.post(method, {id_field: id})
+            data = {id_field: id}
+            if fields is not None:
+                data.update(fields)
+            return self._api.post(method, data)
         except requests.exceptions.HTTPError as error:
             if error.response.status_code == 404:
                 return None
             else:
                 raise error
 
-    def _get_info_by_id(self, id, method):
+    def _get_info_by_id(self, id, method, fields=None):
         """_get_info_by_id"""
-        response = self._get_response_by_id(id, method, id_field=ApiField.ID)
+        response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)
         return self._convert_json_info(response.json()) if (response is not None) else None
 
 

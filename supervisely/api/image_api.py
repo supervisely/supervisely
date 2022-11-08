@@ -15,7 +15,7 @@ import json
 
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely._utils import is_development, abs_url, compress_image_url
-from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
+from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi, _get_single_item
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     ensure_base_path,
@@ -55,17 +55,18 @@ class ImageInfo(NamedTuple):
             tags=[]
         )
     """
+
     #: :class:`int`: Image ID in Supervisely.
-    id: int 
+    id: int
 
     #: :class:`str`: Image filename.
-    name: str 
-    
-    #: :class:`str`: Use link as ID for images that are expected to be stored at remote server. 
+    name: str
+
+    #: :class:`str`: Use link as ID for images that are expected to be stored at remote server.
     #: e.g. "http://your-server/image1.jpg".
     link: str
 
-    #: :class:`str`: Image hash obtained by base64(sha256(file_content)). 
+    #: :class:`str`: Image hash obtained by base64(sha256(file_content)).
     #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
 
@@ -99,16 +100,16 @@ class ImageInfo(NamedTuple):
     #: :class:`dict`: Custom additional image info.
     meta: dict
 
-    #: :class:`str`: Relative storage URL to image. e.g. 
+    #: :class:`str`: Relative storage URL to image. e.g.
     #: "/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     path_original: str
 
-    #: :class:`str`: Full storage URL to image. e.g. 
+    #: :class:`str`: Full storage URL to image. e.g.
     #: "http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
 
-    #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list. 
-    #: e.g. "[{'entityId': 2836466, 'tagId': 345022, 'id': 2224609, 'labelerLogin': 'admin', 
+    #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list.
+    #: e.g. "[{'entityId': 2836466, 'tagId': 345022, 'id': 2224609, 'labelerLogin': 'admin',
     #: 'createdAt': '2021-03-05T14:15:39.923Z', 'updatedAt': '2021-03-05T14:15:39.923Z'}, {...}]".
     tags: List[Dict]
 
@@ -197,6 +198,7 @@ class ImageApi(RemoveableBulkModuleApi):
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
         limit: int = None,
+        force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -269,6 +271,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.FILTER: filters or [],
                 ApiField.SORT: sort,
                 ApiField.SORT_ORDER: sort_order,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
             limit=limit,
         )
@@ -279,10 +282,11 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
+        force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
         List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
-        Differs in a more flexible filter format from the get_list() method. 
+        Differs in a more flexible filter format from the get_list() method.
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
         :type dataset_id: :class:`int`
@@ -309,7 +313,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_infos = api.image.get_filtered_list(dataset_id, filters=[{ 'type': 'images_filename', 'data': { 'value': '2008' } }])
         """
         if filters is None or not filters:
-            return self.get_list(dataset_id, sort=sort, sort_order=sort_order)
+            return self.get_list(
+                dataset_id,
+                sort=sort,
+                sort_order=sort_order,
+                force_metadata_for_links=force_metadata_for_links,
+            )
 
         if not all(["type" in filter.keys() for filter in filters]):
             raise ValueError("'type' field not found in filter")
@@ -335,10 +344,11 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.FILTERS: filters,
                 ApiField.SORT: sort,
                 ApiField.SORT_ORDER: sort_order,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
         )
 
-    def get_info_by_id(self, id: int) -> ImageInfo:
+    def get_info_by_id(self, id: int, force_metadata_for_links=True) -> ImageInfo:
         """
         Get Image information by ID.
 
@@ -360,11 +370,27 @@ class ImageApi(RemoveableBulkModuleApi):
             # Or you can open certain image in Supervisely Annotation Tool UI and get last digits of the URL
             img_info = api.image.get_info_by_id(770918)
         """
-        return self._get_info_by_id(id, "images.info")
+        return self._get_info_by_id(
+            id, "images.info", fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links}
+        )
+
+    def _get_info_by_filters(self, parent_id, filters):
+        """_get_info_by_filters"""
+        items = self.get_list(parent_id, filters)
+        return _get_single_item(items)
+
+    def get_info_by_name(self, dataset_id, name):
+        """get_info_by_name"""
+        return self._get_info_by_name(
+            get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
+                dataset_id, module_name
+            ),
+            name=name,
+        )
 
     # @TODO: reimplement to new method images.bulk.info
     def get_info_by_id_batch(
-        self, ids: List[int], progress_cb: Optional[Callable] = None
+        self, ids: List[int], progress_cb: Optional[Callable] = None, force_metadata_for_links=True
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -397,7 +423,11 @@ class ImageApi(RemoveableBulkModuleApi):
             results.extend(
                 self.get_list_all_pages(
                     "images.list",
-                    {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters},
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    },
                 )
             )
             if progress_cb is not None:
@@ -472,7 +502,9 @@ class ImageApi(RemoveableBulkModuleApi):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def _download_batch(self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None):
+    def _download_batch(
+        self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None
+    ):
         """
         Get image id and it content from given dataset and list of images ids.
         """
@@ -514,7 +546,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
-        
+
         :Usage example:
 
          .. code-block:: python
