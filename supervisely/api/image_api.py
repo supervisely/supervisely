@@ -1057,6 +1057,7 @@ class ImageApi(RemoveableBulkModuleApi):
         links: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
+        force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1097,6 +1098,7 @@ class ImageApi(RemoveableBulkModuleApi):
             links,
             progress_cb,
             metas=metas,
+            force_metadata_for_links=force_metadata_for_links,
         )
 
     def upload_hash(
@@ -1164,6 +1166,7 @@ class ImageApi(RemoveableBulkModuleApi):
         hashes: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
+        force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1216,6 +1219,7 @@ class ImageApi(RemoveableBulkModuleApi):
             hashes,
             progress_cb,
             metas=metas,
+            force_metadata_for_links=force_metadata_for_links,
         )
 
     def upload_id(
@@ -1370,7 +1374,14 @@ class ImageApi(RemoveableBulkModuleApi):
         return result
 
     def _upload_bulk_add(
-        self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None
+        self,
+        func_item_to_kv,
+        dataset_id,
+        names,
+        items,
+        progress_cb=None,
+        metas=None,
+        force_metadata_for_links=True,
     ):
         """ """
         results = []
@@ -1398,7 +1409,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
             response = self._api.post(
                 "images.bulk.add",
-                {ApiField.DATASET_ID: dataset_id, ApiField.IMAGES: images},
+                {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.IMAGES: images,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                },
             )
             if progress_cb is not None:
                 progress_cb(len(images))
