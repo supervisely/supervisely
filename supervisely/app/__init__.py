@@ -5,5 +5,7 @@ import supervisely.app.fastapi as fastapi
 import supervisely.app.widgets as widgets
 import supervisely.app.development as development
 import supervisely.app.exceptions as exceptions
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.exceptions import DialogWindowMessage
 
 # from supervisely.app.fastapi.request import Request
