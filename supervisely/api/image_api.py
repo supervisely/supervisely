@@ -374,16 +374,16 @@ class ImageApi(RemoveableBulkModuleApi):
             id, "images.info", fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links}
         )
 
-    def _get_info_by_filters(self, parent_id, filters):
+    def _get_info_by_filters(self, parent_id, filters, force_metadata_for_links):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters)
+        items = self.get_list(parent_id, filters, force_metadata_for_links=force_metadata_for_links)
         return _get_single_item(items)
 
-    def get_info_by_name(self, dataset_id, name):
+    def get_info_by_name(self, dataset_id, name, force_metadata_for_links=True):
         """get_info_by_name"""
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
-                dataset_id, module_name
+                dataset_id, module_name, force_metadata_for_links
             ),
             name=name,
         )
@@ -417,7 +417,7 @@ class ImageApi(RemoveableBulkModuleApi):
         results = []
         if len(ids) == 0:
             return results
-        dataset_id = self.get_info_by_id(ids[0]).dataset_id
+        dataset_id = self.get_info_by_id(ids[0], force_metadata_for_links=force_metadata_for_links).dataset_id
         for batch in batched(ids):
             filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
             results.extend(
@@ -1445,13 +1445,18 @@ class ImageApi(RemoveableBulkModuleApi):
                 val = info[field_name]
             field_values.append(val)
             if field_name == ApiField.MIME:
-                temp_ext = val.split("/")[1]
+                if val:
+                    temp_ext = val.split("/")[1]
+                else:
+                    temp_ext = None
                 field_values.append(temp_ext)
         for idx, field_name in enumerate(self.info_sequence()):
             if field_name == ApiField.NAME:
                 cur_ext = get_file_ext(field_values[idx]).replace(".", "").lower()
                 if not cur_ext:
                     field_values[idx] = "{}.{}".format(field_values[idx], temp_ext)
+                    break
+                if temp_ext is None:
                     break
                 if temp_ext == "jpeg" and cur_ext in ["jpg", "jpeg", "mpo"]:
                     break
