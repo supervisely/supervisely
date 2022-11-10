@@ -1366,7 +1366,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        infos = self.get_info_by_id_batch(ids)
+        infos = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
 
         # prev implementation
         # hashes = [info.hash for info in infos]
@@ -1576,7 +1576,7 @@ class ImageApi(RemoveableBulkModuleApi):
         existing_images = self.get_list(dst_dataset_id)
         existing_names = {image.name for image in existing_images}
 
-        ids_info = self.get_info_by_id_batch(ids)
+        ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
         temp_ds_ids = []
         for info in ids_info:
             if info.dataset_id not in temp_ds_ids:
@@ -1890,7 +1890,7 @@ class ImageApi(RemoveableBulkModuleApi):
             print(img_project_id)
             # Output: 53939
         """
-        dataset_id = self.get_info_by_id(image_id).dataset_id
+        dataset_id = self.get_info_by_id(image_id, force_metadata_for_links=False).dataset_id
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id
 
@@ -2145,3 +2145,23 @@ class ImageApi(RemoveableBulkModuleApi):
             api.image.remove(image_id)
         """
         super(ImageApi, self).remove(image_id)
+
+    def exists(self, parent_id, name):
+        """exists"""
+        return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
+
+    def _get_free_name(self, exist_check_fn, name):
+        """_get_free_name"""
+        res_title = name
+        suffix = 1
+        while exist_check_fn(res_title):
+            res_title = "{}_{:03d}".format(name, suffix)
+            suffix += 1
+        return res_title
+
+    def get_free_name(self, parent_id, name):
+        """get_free_name"""
+        return self._get_free_name(
+            exist_check_fn=lambda module_name: self.exists(parent_id, module_name),
+            name=name,
+        )
