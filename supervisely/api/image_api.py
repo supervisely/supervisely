@@ -1075,7 +1075,7 @@ class ImageApi(RemoveableBulkModuleApi):
         links: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
-        batch_size = 50,
+        batch_size=50,
         force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
@@ -1399,7 +1399,7 @@ class ImageApi(RemoveableBulkModuleApi):
         items,
         progress_cb=None,
         metas=None,
-        batch_size = 50,
+        batch_size=50,
         force_metadata_for_links=True,
     ):
         """ """
