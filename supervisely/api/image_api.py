@@ -1075,6 +1075,7 @@ class ImageApi(RemoveableBulkModuleApi):
         links: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
+        batch_size = 50,
         force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
@@ -1116,6 +1117,7 @@ class ImageApi(RemoveableBulkModuleApi):
             links,
             progress_cb,
             metas=metas,
+            batch_size=batch_size,
             force_metadata_for_links=force_metadata_for_links,
         )
 
@@ -1397,6 +1399,7 @@ class ImageApi(RemoveableBulkModuleApi):
         items,
         progress_cb=None,
         metas=None,
+        batch_size = 50,
         force_metadata_for_links=True,
     ):
         """ """
@@ -1413,7 +1416,7 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
-        for batch in batched(list(zip(names, items, metas))):
+        for batch in batched(list(zip(names, items, metas)), batch_size=batch_size):
             images = []
             for name, item, meta in batch:
                 item_tuple = func_item_to_kv(item)
