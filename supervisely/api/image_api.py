@@ -5,10 +5,8 @@
 from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional, Union, Callable
 import numpy as np
-from supervisely.task.progress import Progress
 
 import io
-import os
 import re
 import urllib.parse
 import json
@@ -382,9 +380,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def _get_info_by_filters(self, parent_id, filters, force_metadata_for_links):
         """_get_info_by_filters"""
-        items = self.get_list(
-            parent_id, filters, force_metadata_for_links=force_metadata_for_links
-        )
+        items = self.get_list(parent_id, filters, force_metadata_for_links=force_metadata_for_links)
         return _get_single_item(items)
 
     def get_info_by_name(self, dataset_id, name, force_metadata_for_links=True):
@@ -428,9 +424,7 @@ class ImageApi(RemoveableBulkModuleApi):
         results = []
         if len(ids) == 0:
             return results
-        dataset_id = self.get_info_by_id(
-            ids[0], force_metadata_for_links=False
-        ).dataset_id
+        dataset_id = self.get_info_by_id(ids[0], force_metadata_for_links=False).dataset_id
         for batch in batched(ids):
             filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
             results.extend(
@@ -455,9 +449,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param is_stream: bool
         :return: Response class object contain metadata of image with given id
         """
-        response = self._api.post(
-            "images.download", {ApiField.ID: id}, stream=is_stream
-        )
+        response = self._api.post("images.download", {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_np(self, id: int, keep_alpha: Optional[bool] = False) -> np.ndarray:
@@ -594,9 +586,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise ValueError(
-                'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
-            )
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
 
         id_to_path = {id: path for id, path in zip(ids, paths)}
         for img_id, resp_part in self._download_batch(dataset_id, ids, progress_cb):
@@ -765,9 +755,7 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             return True
 
-    def _upload_uniq_images_single_req(
-        self, func_item_to_byte_stream, hashes_items_to_upload
-    ):
+    def _upload_uniq_images_single_req(self, func_item_to_byte_stream, hashes_items_to_upload):
         """
         Upload images (binary data) to server with single request.
         Expects unique images that aren't exist at server.
@@ -940,9 +928,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         hashes = [get_file_hash(x) for x in paths]
 
-        self._upload_data_bulk(
-            path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb
-        )
+        self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_np(
@@ -1366,7 +1352,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        infos = self.get_info_by_id_batch(ids)
+        infos = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
 
         # prev implementation
         # hashes = [info.hash for info in infos]
@@ -1419,17 +1405,13 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(names) == 0:
             return results
         if len(names) != len(items):
-            raise ValueError(
-                'Can not match "names" and "items" lists, len(names) != len(items)'
-            )
+            raise ValueError('Can not match "names" and "items" lists, len(names) != len(items)')
 
         if metas is None:
             metas = [{}] * len(names)
         else:
             if len(names) != len(metas):
-                raise ValueError(
-                    'Can not match "names" and "metas" len(names) != len(metas)'
-                )
+                raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
         for batch in batched(list(zip(names, items, metas))):
             images = []
@@ -1455,9 +1437,7 @@ class ImageApi(RemoveableBulkModuleApi):
             for info_json in response.json():
                 info_json_copy = info_json.copy()
                 if info_json.get(ApiField.MIME, None) is not None:
-                    info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[
-                        1
-                    ]
+                    info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
                 # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                 results.append(self._convert_json_info(info_json_copy))
 
@@ -1565,9 +1545,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if type(ids) is not list:
             raise TypeError(
-                "ids parameter has type {!r}. but has to be of type {!r}".format(
-                    type(ids), list
-                )
+                "ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list)
             )
 
         if len(ids) == 0:
@@ -1576,7 +1554,7 @@ class ImageApi(RemoveableBulkModuleApi):
         existing_images = self.get_list(dst_dataset_id)
         existing_names = {image.name for image in existing_images}
 
-        ids_info = self.get_info_by_id_batch(ids)
+        ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
         temp_ds_ids = []
         for info in ids_info:
             if info.dataset_id not in temp_ds_ids:
@@ -1586,9 +1564,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if change_name_if_conflict:
             new_names = [
-                generate_free_name(
-                    existing_names, info.name, with_ext=True, extend_used_names=True
-                )
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
                 for info in ids_info
             ]
         else:
@@ -1605,9 +1581,7 @@ class ImageApi(RemoveableBulkModuleApi):
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
-            src_project_id = self._api.dataset.get_info_by_id(
-                ids_info[0].dataset_id
-            ).project_id
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
             dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
             self._api.project.merge_metas(src_project_id, dst_project_id)
             self._api.annotation.copy_batch(ids, new_ids)
@@ -1704,9 +1678,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
-        return self.copy_batch(
-            dst_dataset_id, [id], change_name_if_conflict, with_annotations
-        )[0]
+        return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def move(
         self,
@@ -1743,9 +1715,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
-        return self.move_batch(
-            dst_dataset_id, [id], change_name_if_conflict, with_annotations
-        )[0]
+        return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def url(
         self,
@@ -1855,9 +1825,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(hashes) == 0:
             return
         if len(hashes) != len(paths):
-            raise ValueError(
-                'Can not match "hashes" and "paths" lists, len(hashes) != len(paths)'
-            )
+            raise ValueError('Can not match "hashes" and "paths" lists, len(hashes) != len(paths)')
 
         h_to_path = {h: path for h, path in zip(hashes, paths)}
         for h, resp_part in self._download_batch_by_hashes(list(set(hashes))):
@@ -1890,7 +1858,7 @@ class ImageApi(RemoveableBulkModuleApi):
             print(img_project_id)
             # Output: 53939
         """
-        dataset_id = self.get_info_by_id(image_id).dataset_id
+        dataset_id = self.get_info_by_id(image_id, force_metadata_for_links=False).dataset_id
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
         return project_id
 
@@ -2020,14 +1988,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if type(meta) is not dict:
             raise TypeError("Meta must be dict, not {}".format(type(meta)))
-        response = self._api.post(
-            "images.editInfo", {ApiField.ID: id, ApiField.META: meta}
-        )
+        response = self._api.post("images.editInfo", {ApiField.ID: id, ApiField.META: meta})
         return response.json()
 
-    def add_tag(
-        self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None
-    ) -> None:
+    def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None) -> None:
         """
         Add tag with given ID to Image by ID.
 
@@ -2145,3 +2109,7 @@ class ImageApi(RemoveableBulkModuleApi):
             api.image.remove(image_id)
         """
         super(ImageApi, self).remove(image_id)
+
+    def exists(self, parent_id, name):
+        """exists"""
+        return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
