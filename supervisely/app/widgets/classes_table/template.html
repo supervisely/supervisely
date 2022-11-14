@@ -12,12 +12,27 @@
       <th v-if="data.{{{widget.widget_id}}}.selectable" width="30px">
         <el-checkbox 
           :disabled="data.{{{widget.widget_id}}}.disabled"
+          {%
+          if 
+          widget._changes_handled
+          %}
           @change="
                     state.{{{widget.widget_id}}}.checkboxes = new Array(
                       data.{{{widget.widget_id}}}.table_data.length
                     ).fill(state.{{{widget.widget_id}}}.global_checkbox);
                     post('/{{{widget.widget_id}}}/class_selected_cb/');
                   "
+          {%
+          else
+          %}
+          @change="
+                    state.{{{widget.widget_id}}}.checkboxes = new Array(
+                      data.{{{widget.widget_id}}}.table_data.length
+                    ).fill(state.{{{widget.widget_id}}}.global_checkbox);
+                  "
+          {%
+          endif
+          %}
           v-model="state.{{{widget.widget_id}}}.global_checkbox">
         </el-checkbox>
       </th>

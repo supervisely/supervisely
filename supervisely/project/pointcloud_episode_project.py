@@ -129,7 +129,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
 
     def get_ann_frame(
-        self, item_name: str, annotation: PointcloudEpisodeAnnotation = None
+        self, item_name: str, annotation: PointcloudEpisodeAnnotation
     ) -> Frame:
         frame_idx = self.get_frame_idx(item_name)
         if frame_idx is None:
