@@ -192,16 +192,6 @@ class ClassesTable(Widget):
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
 
-    @property
-    def disabled(self):
-        return self._disabled
-
-    @disabled.setter
-    def disabled(self, value: bool):
-        self._disabled = value
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
-
     def clear_selection(self):
         StateJson()[self.widget_id]["global_checkbox"] = False
         StateJson()[self.widget_id]["checkboxes"] = [False] * len(self._table_data)
