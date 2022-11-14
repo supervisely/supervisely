@@ -18,22 +18,29 @@ class ClassesTable(Widget):
         project_id: Optional[int] = None,
         project_fs: Optional[Project] = None,
         allowed_types: Optional[List[Geometry]] = None,
+        selectable: Optional[bool] = True,
         disabled: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        if project_id is not None and project_fs is not None:
+            raise ValueError(
+                "You can not provide both project_id and project_fs parameters to Classes Table widget."
+            )
         self._table_data = []
         self._columns = []
         self._changes_handled = False
         self._global_checkbox = False
         self._checkboxes = []
+        self._selectable = selectable
         self._allowed_types = allowed_types if allowed_types is not None else []
-        self._api = Api()
+        if project_id is not None:
+            self._api = Api()
+        else:
+            self._api = None
         self._project_id = project_id
         self._disabled = disabled
-        self._update_meta(project_meta=project_meta)
-
         self._loading = False
-
+        self._update_meta(project_meta=project_meta)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def value_changed(self, func):
@@ -59,7 +66,10 @@ class ClassesTable(Widget):
         stats = None
         data_to_show = []
         for obj_class in project_meta.obj_classes:
-            if self._allowed_types is None or obj_class.geometry_type not in self._allowed_types:
+            if (
+                self._allowed_types is None
+                or obj_class.geometry_type not in self._allowed_types
+            ):
                 data_to_show.append(obj_class.to_json())
 
         if self._project_id is not None:
@@ -96,14 +106,22 @@ class ClassesTable(Widget):
                 table_line = []
                 table_line.extend(
                     [
-                        {"name": "CLASS", "data": line["title"], "color": line["color"]},
+                        {
+                            "name": "CLASS",
+                            "data": line["title"],
+                            "color": line["color"],
+                        },
                         {"name": "SHAPE", "data": line["shape"]},
                     ]
                 )
                 if "itemsCount" in line.keys():
-                    table_line.append({"name": "ITEMS COUNT", "data": line["itemsCount"]})
+                    table_line.append(
+                        {"name": "ITEMS COUNT", "data": line["itemsCount"]}
+                    )
                 if "objectsCount" in line.keys():
-                    table_line.append({"name": "OBJECTS COUNT", "data": line["objectsCount"]})
+                    table_line.append(
+                        {"name": "OBJECTS COUNT", "data": line["objectsCount"]}
+                    )
                 table_data.append(table_line)
             self._table_data = table_data
             self._columns = columns
@@ -128,6 +146,7 @@ class ClassesTable(Widget):
             "columns": self._columns,
             "loading": self._loading,
             "disabled": self._disabled,
+            "selectable": self._selectable,
         }
 
     @property
@@ -149,7 +168,10 @@ class ClassesTable(Widget):
         DataJson()[self.widget_id]["allowed_types"] = self._allowed_types
 
     def get_json_state(self):
-        return {"global_checkbox": self._global_checkbox, "checkboxes": self._checkboxes}
+        return {
+            "global_checkbox": self._global_checkbox,
+            "checkboxes": self._checkboxes,
+        }
 
     def get_selected_classes(self) -> List[str]:
         classes = []

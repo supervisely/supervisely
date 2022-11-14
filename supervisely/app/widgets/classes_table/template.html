@@ -9,7 +9,7 @@
     v-if="data.{{{widget.widget_id}}}.table_data.length > 0"
   >
     <thead>
-      <th width="30px">
+      <th v-if="data.{{{widget.widget_id}}}.selectable" width="30px">
         <el-checkbox 
           :disabled="data.{{{widget.widget_id}}}.disabled"
           @change="
@@ -27,7 +27,7 @@
     </thead>
     <tbody>
       <tr v-for="(row, row_index) in data.{{{widget.widget_id}}}.table_data">
-        <td width="30px">
+        <td v-if="data.{{{widget.widget_id}}}.selectable" width="30px">
           <el-checkbox 
             :disabled="data.{{{widget.widget_id}}}.disabled"
             v-model="state.{{{widget.widget_id}}}.checkboxes[row_index]"
