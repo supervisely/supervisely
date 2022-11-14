@@ -7,6 +7,23 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.sly_logger import logger
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.geometry.point_3d import Point3d
+
+type_to_zmdi_icon = {
+    sly.AnyGeometry: "zmdi zmdi-shape",
+    sly.Rectangle: "zmdi zmdi-crop-din",  # "zmdi zmdi-square-o"
+    sly.Polygon: "icons8-polygon",  # "zmdi zmdi-edit"
+    sly.Bitmap: "zmdi zmdi-brush",
+    sly.Polyline: "zmdi zmdi-gesture",
+    sly.Point: "zmdi zmdi-dot-circle-alt",
+    sly.Cuboid: "zmdi zmdi-ungroup",  #
+    Cuboid3d: "zmdi zmdi-codepen",
+    Pointcloud: "zmdi zmdi-cloud-outline",  #  # "zmdi zmdi-border-clear"
+    sly.MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
+    Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+}
 
 
 class ClassesTable(Widget):
@@ -46,7 +63,9 @@ class ClassesTable(Widget):
                 logger.warn(
                     "Both parameters project_id and project_meta were provided to ClassesTable widget. Project meta classes taken from remote project and project_meta parameter is ignored."
                 )
-            project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            project_meta = sly.ProjectMeta.from_json(
+                self._api.project.get_meta(project_id)
+            )
         self._project_fs = project_fs
         if project_fs is not None:
             if project_meta is not None:
@@ -54,7 +73,7 @@ class ClassesTable(Widget):
                     "Both parameters project_fs and project_meta were provided to ClassesTable widget. Project meta classes taken from project_fs.meta and project_meta parameter is ignored."
                 )
             project_meta = project_fs.meta
-        if project_meta is not None:        
+        if project_meta is not None:
             self._update_meta(project_meta=project_meta)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -95,7 +114,7 @@ class ClassesTable(Widget):
                 columns.append("pointclouds count")
             elif project_info.type == str(sly.ProjectType.VOLUMES):
                 columns.append("volumes count")
-            columns.append("objects count")
+            columns.append("figures count")
 
             class_items = {}
             for item in stats["images"]["objectClasses"]:
@@ -138,9 +157,10 @@ class ClassesTable(Widget):
                         item_ann = ds.get_ann(item_name, project_meta)
                         item_ann: sly.VideoAnnotation
                         item_class = {}
-                        for video_object in item_ann.objects:
-                            class_objects[video_object.obj_class.name] += 1
-                            item_class[video_object.obj_class.name] = True
+                        for video_figure in item_ann.figures:
+                            video_figure: sly.VideoFigure
+                            class_objects[video_figure.obj_class.name] += 1
+                            item_class[video_figure.obj_class.name] = True
                         for obj_class in project_meta.obj_classes:
                             if obj_class.name in item_class.keys():
                                 class_items[obj_class.name] += 1
@@ -151,11 +171,12 @@ class ClassesTable(Widget):
                     ds: sly.PointcloudDataset
                     for item_name in ds:
                         item_ann = ds.get_ann(item_name, project_meta)
-                        item_objects = item_ann.get_objects_from_figures()
+                        item_figures = item_ann.figures
                         item_class = {}
-                        for ptc_object in item_objects:
-                            class_objects[ptc_object.obj_class.name] += 1
-                            item_class[ptc_object.obj_class.name] = True
+                        for ptc_figure in item_figures:
+                            ptc_figure: sly.PointcloudFigure
+                            class_objects[ptc_figure.obj_class.name] += 1
+                            item_class[ptc_figure.obj_class.name] = True
                         for obj_class in project_meta.obj_classes:
                             if obj_class.name in item_class.keys():
                                 class_items[obj_class.name] += 1
@@ -164,33 +185,37 @@ class ClassesTable(Widget):
                 columns.append("pointclouds count")
                 for ds in self._project_fs.datasets:
                     ds: sly.PointcloudEpisodeDataset
-                    episode_ann = ds.get_ann(project_meta)
+                    episode_ann: sly.PointcloudEpisodeAnnotation = ds.get_ann(
+                        project_meta
+                    )
                     for item_name in ds:
                         frame_index = ds.get_frame_idx(item_name)
-                        item_objects = episode_ann.get_objects_on_frame(frame_index)
+                        item_figures = episode_ann.get_figures_on_frame(frame_index)
                         item_class = {}
-                        for ptc_object in item_objects:
-                            class_objects[ptc_object.obj_class.name] += 1
-                            item_class[ptc_object.obj_class.name] = True
+                        for ptc_figure in item_figures:
+                            ptc_figure: sly.PointcloudFigure
+                            class_objects[ptc_figure.obj_class.name] += 1
+                            item_class[ptc_figure.obj_class.name] = True
                         for obj_class in project_meta.obj_classes:
                             if obj_class.name in item_class.keys():
                                 class_items[obj_class.name] += 1
-                                
+
             elif type(self._project_fs) == sly.VolumeProject:
                 columns.append("volumes count")
                 for ds in self._project_fs.datasets:
                     ds: sly.VolumeDataset
                     for item_name in ds:
                         item_ann = ds.get_ann(item_name, project_meta)
+                        item_ann: sly.VolumeAnnotation
                         item_class = {}
-                        for volume_object in item_ann.objects:
-                            volume_object: sly.VolumeObject
-                            class_objects[volume_object.obj_class.name] += 1
-                            item_class[volume_object.obj_class.name] = True
+                        for volume_figure in item_ann.figures:
+                            volume_figure: sly.VolumeFigure
+                            class_objects[volume_figure.obj_class.name] += 1
+                            item_class[volume_figure.obj_class.name] = True
                         for obj_class in project_meta.obj_classes:
                             if obj_class.name in item_class.keys():
                                 class_items[obj_class.name] += 1
-            columns.append("objects count")
+            columns.append("figures count")
 
             for obj_class in data_to_show:
                 obj_class["itemsCount"] = class_items[obj_class["title"]]
@@ -201,6 +226,12 @@ class ClassesTable(Widget):
             table_data = []
             for line in data_to_show:
                 table_line = []
+                icon = type_to_zmdi_icon[sly.AnyGeometry]
+                for geo_type, icon_text in type_to_zmdi_icon.items():
+                    geo_type: Geometry
+                    if geo_type.geometry_name() == line["shape"]:
+                        icon = icon_text
+                        break
                 table_line.extend(
                     [
                         {
@@ -208,7 +239,7 @@ class ClassesTable(Widget):
                             "data": line["title"],
                             "color": line["color"],
                         },
-                        {"name": "SHAPE", "data": line["shape"]},
+                        {"name": "SHAPE", "data": line["shape"], "icon": icon},
                     ]
                 )
                 if "itemsCount" in line.keys():
@@ -217,7 +248,7 @@ class ClassesTable(Widget):
                     )
                 if "objectsCount" in line.keys():
                     table_line.append(
-                        {"name": "OBJECTS COUNT", "data": line["objectsCount"]}
+                        {"name": "FIGURES COUNT", "data": line["objectsCount"]}
                     )
                 table_data.append(table_line)
             self._table_data = table_data
@@ -291,10 +322,23 @@ class ClassesTable(Widget):
     def allowed_types(self) -> List[Geometry]:
         return self._allowed_types
 
-    @allowed_types.setter
-    def allowed_types(self, value: List[Geometry]):
-        self._allowed_types = value
-        DataJson()[self.widget_id]["allowed_types"] = self._allowed_types
+    @property
+    def project_id(self) -> int:
+        return self._project_id
+
+    @property
+    def project_fs(self) -> int:
+        return self._project_fs
+
+    @property
+    def loading(self) -> bool:
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()
 
     def get_json_state(self) -> Dict[str, Any]:
         return {
@@ -311,17 +355,9 @@ class ClassesTable(Widget):
                         classes.append(col["data"])
         return classes
 
-    @property
-    def loading(self) -> bool:
-        return self._loading
-
-    @loading.setter
-    def loading(self, value: bool):
-        self._loading = value
-        DataJson()[self.widget_id]["loading"] = self._loading
-        DataJson().send_changes()
-
     def clear_selection(self) -> None:
-        StateJson()[self.widget_id]["global_checkbox"] = False
-        StateJson()[self.widget_id]["checkboxes"] = [False] * len(self._table_data)
+        self._global_checkbox = False
+        self._checkboxes = [False] * len(self._table_data)
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()

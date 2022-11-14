@@ -60,6 +60,12 @@
           <span v-if="col.name === 'CLASS'">
             <i class="zmdi zmdi-circle ml5 mr5" :style="{color: col.color}"></i>
           </span>
+          <span v-if="col.name === 'SHAPE'">
+            <i
+              :class="col.icon"
+              style="margin-right: 5px"
+            ></i>
+          </span>
           {{ col.data }}
         </td>
       </tr>
