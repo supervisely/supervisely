@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets.widget import Disableable
-from supervisely import ProjectMeta, ProjectType, Api
+from supervisely import ProjectMeta, ProjectType, Api, Project
 from supervisely.geometry.geometry import Geometry
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
@@ -14,26 +14,26 @@ class ClassesTable(Widget):
 
     def __init__(
         self,
-        project_id: Optional[int] = None,
         project_meta: Optional[ProjectMeta] = None,
-        classes_stats: Optional[dict] = None,
+        project_id: Optional[int] = None,
+        project_fs: Optional[Project] = None,
         allowed_types: Optional[List[Geometry]] = None,
+        disabled: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
         self._table_data = []
         self._columns = []
         self._changes_handled = False
-        self._all_selected_handled = False
         self._global_checkbox = False
         self._checkboxes = []
         self._allowed_types = allowed_types if allowed_types is not None else []
         self._api = Api()
         self._project_id = project_id
+        self._disabled = disabled
         self._update_meta(project_meta=project_meta)
 
         self._loading = False
 
-        Disableable.__init__(self)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def value_changed(self, func):
