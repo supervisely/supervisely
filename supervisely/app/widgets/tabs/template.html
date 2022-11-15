@@ -1,11 +1,13 @@
-<el-tabs type="border-card"
-         v-model="data.{{{widget.widget_id}}}.value"
+<el-tabs 
+    :type="data.{{{widget.widget_id}}}.type"
+    v-model="state.{{{widget.widget_id}}}.value"
 >
+    {% for tab_pane in widget._items %}
     <el-tab-pane
-            v-for="tab in data.{{{widget.widget_id}}}.items"
-            :label="tab.label"
-            :name="tab.name"
+        label="{{{tab_pane.label}}}"
+        name="{{{tab_pane.name}}}"
     >
-        {{ tab.content }}
+        {{{ tab_pane.content }}}
     </el-tab-pane>
+    {% endfor %}
 </el-tabs>
