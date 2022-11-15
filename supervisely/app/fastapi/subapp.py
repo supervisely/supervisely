@@ -30,7 +30,7 @@ from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.exceptions import DialogWindowBase
 
 from typing import TYPE_CHECKING
 
@@ -132,9 +132,10 @@ def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
         details = {"title": "Oops! Something went wrong", "message": repr(exc)}
-        if isinstance(exc, DialogWindowError):
+        if isinstance(exc, DialogWindowBase):
             details["title"] = exc.title
             details["message"] = exc.description
+            details["status"] = exc.status
         return await http_exception_handler(
             request,
             HTTPException(status_code=500, detail=details),
@@ -148,7 +149,7 @@ def _init(
     process_id=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
-    from supervisely.app.content import StateJson
+    from supervisely.app.content import StateJson, DataJson
 
     if app is None:
         app = _MainServer().get_server()
@@ -160,6 +161,10 @@ def _init(
             StateJson()["app_body_padding"] = "20px"
         Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
         enable_hot_reload_on_debug(app)
+
+    StateJson()["slyAppShowDialog"] = False
+    DataJson()["slyAppDialogTitle"] = ""
+    DataJson()["slyAppDialogMessage"] = ""
 
     app.mount("/sly", create(process_id, headless))
 

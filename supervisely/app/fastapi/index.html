@@ -69,7 +69,8 @@
           ></sly-app-header>
           <div :style="{'padding': state.app_body_padding}">
             {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
-            %} {% include 'main.html' %} {% endif %}
+            %} {% include 'main.html' %} {% endif %} {% include
+            'dialog_window.html' %}
           </div>
         </template>
       </sly-app>
