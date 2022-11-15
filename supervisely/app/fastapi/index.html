@@ -69,39 +69,9 @@
           ></sly-app-header>
           <div :style="{'padding': state.app_body_padding}">
             {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
-            %} {% include 'main.html' %} {% endif %}
+            %} {% include 'main.html' %} {% endif %} {% include
+            'dialog_window.html' %}
           </div>
-          <div style="color: red">{{data.slyAppShowDialog}}</div>
-          <el-dialog
-            v-if="data.slyAppShowDialog"
-            v-model="state.slyAppDialogOpened"
-            title="abc"
-            size="tiny"
-          >
-            <div class="fflex" style="margin: -20px 0 -20px 0">
-              <i
-                class="notification-box-icon el-icon-information information mr15"
-                style="font-size: 35px; color: #50bfff"
-              ></i>
-
-              <span
-                style="
-                  min-height: 35px;
-                  display: flex;
-                  align-items: center;
-                  word-break: break-word;
-                "
-              >
-                {{ data.slyAppDialogMessage }}
-              </span>
-            </div>
-
-            <div slot="footer">
-              <el-button type="primary" @click="data.slyAppShowDialog = false;"
-                >Ok</el-button
-              >
-            </div>
-          </el-dialog>
         </template>
       </sly-app>
     </div>
