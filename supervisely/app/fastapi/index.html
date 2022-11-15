@@ -2,6 +2,12 @@
 <html>
   <head>
     <link
+      id="favicon"
+      rel="icon"
+      type="image/x-icon"
+      href="{{{__favicon__}}}"
+    />
+    <link
       type="text/css"
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
@@ -59,9 +65,11 @@
             :session="session"
             :data="data"
             :state="state"
+            :style="{'margin-left': state.app_body_padding, 'margin-top': state.app_body_padding}"
           ></sly-app-header>
-          <div :style="{padding: state.app_body_padding}">
-            {% include 'main.html' %}
+          <div :style="{'padding': state.app_body_padding}">
+            {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
+            %} {% include 'main.html' %} {% endif %}
           </div>
         </template>
       </sly-app>

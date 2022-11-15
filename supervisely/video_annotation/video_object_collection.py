@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, Iterator
 
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
@@ -159,6 +159,9 @@ class VideoObjectCollection(KeyIndexedCollection):
         # ]
     """
     item_type = VideoObject
+
+    def __iter__(self) -> Iterator[VideoObject]:
+        return next(self)
 
     def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> List[Dict]:
         """

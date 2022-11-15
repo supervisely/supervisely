@@ -2,7 +2,8 @@ import copy
 
 import numpy as np
 import pandas as pd
-from typing import NamedTuple, Any, List
+import re
+from typing import NamedTuple, Any, List, Optional, Dict
 
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
@@ -37,24 +38,29 @@ class PackerUnpacker:
 
     @staticmethod
     def dict_unpacker(data: dict):
-        unpacked_data = {"columns": data["columns"], "data": data["data"]}
+        unpacked_data = copy.deepcopy(data)
+        if "summaryRow" not in unpacked_data.keys():
+            unpacked_data["summaryRow"] = None
 
         return unpacked_data
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
-        data = data.where(pd.notnull(data), None)
-        data = data.astype(object).replace(np.nan, "-")  # may be None
+        data = data.replace({np.nan: None})
+        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
 
         unpacked_data = {
             "columns": data.columns.to_list(),
             "data": data.values.tolist(),
+            "summaryRow": None,
         }
         return unpacked_data
 
     @staticmethod
     def dict_packer(data):
         packed_data = {"columns": data["columns"], "data": data["data"]}
+        if "summaryRow" in data.keys() and data["summaryRow"] is not None:
+            packed_data["summaryRow"] = data["summaryRow"]
         return packed_data
 
     @staticmethod
@@ -93,21 +99,26 @@ class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
 
-    class ClickedDataPoint(NamedTuple):
-        column_index: int
-        column_name: str
-        cell_value: Any
-        row: dict
+    class ClickedDataPoint:
+        def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
+            self.column_index = column_index
+            self.column_name = column_name
+            self.cell_value = cell_value
+            self.row = row
+            self.button_name = None
+            search = re.search(r"<button>(.*?)</button>", str(self.cell_value))
+            if search is not None:
+                self.button_name = search.group(1)
 
     def __init__(
         self,
         data=None,
-        columns: list = None,
-        fixed_cols: int = None,
-        per_page: int = 10,
-        page_sizes: List[int] = [10, 15, 30, 50, 100],
-        width: str = "auto",  # "200px", or "100%"
-        widget_id: str = None,
+        columns: Optional[list] = None,
+        fixed_cols: Optional[int] = None,
+        per_page: Optional[int] = 10,
+        page_sizes: Optional[List[int]] = [10, 15, 30, 50, 100],
+        width: Optional[str] = "auto",  # "200px", or "100%"
+        widget_id: Optional[str] = None,
     ):
         """
         :param data: Data of table in different formats:
@@ -154,17 +165,13 @@ class Table(Widget):
 
     def _update_table_data(self, input_data):
         if input_data is not None:
-            self._parsed_data = copy.deepcopy(
-                self._get_unpacked_data(input_data=input_data)
-            )
+            self._parsed_data = copy.deepcopy(self._get_unpacked_data(input_data=input_data))
         else:
-            self._parsed_data = {"columns": [], "data": []}
+            self._parsed_data = {"columns": [], "data": [], "summaryRow": None}
             self._data_type = dict
 
     def _get_packed_data(self, input_data, data_type):
-        return PackerUnpacker.pack_data(
-            data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type]
-        )
+        return PackerUnpacker.pack_data(data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type])
 
     def _get_unpacked_data(self, input_data):
         input_data_type = type(input_data)
@@ -190,42 +197,56 @@ class Table(Widget):
         )
 
     @property
-    def fixed_columns_num(self):
+    def fixed_columns_num(self) -> int:
         return self._fix_columns
 
     @fixed_columns_num.setter
-    def fixed_columns_num(self, value):
+    def fixed_columns_num(self, value: int):
         self._fix_columns = value
         DataJson()[self.widget_id]["table_options"]["fixColumns"] = self._fix_columns
 
-    def to_json(self) -> dict:
+    @property
+    def summary_row(self) -> List[Any]:
+        if "summaryRow" not in self._parsed_data.keys():
+            return None
+        return self._parsed_data["summaryRow"]
+
+    @summary_row.setter
+    def summary_row(self, value: List[Any]):
+        cols_num = len(self._parsed_data["columns"])
+        if len(value) < cols_num:
+            value.extend([""] * (cols_num - len(value)))
+        elif len(value) > cols_num:
+            value = value[:cols_num]
+        DataJson()[self.widget_id]["table_data"]["summaryRow"] = value
+
+    def to_json(self) -> Dict:
         return self._get_packed_data(self._parsed_data, dict)
 
     def to_pandas(self) -> pd.DataFrame:
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
 
-    def read_json(self, value: dict):
+    def read_json(self, value: dict) -> None:
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
         self.clear_selection()
 
-    def read_pandas(self, value: pd.DataFrame):
+    def read_pandas(self, value: pd.DataFrame) -> None:
         self._update_table_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
         self.clear_selection()
 
     def insert_row(self, data, index=-1):
-        PackerUnpacker.validate_sizes(
-            {"columns": self._parsed_data["columns"], "data": [data]}
-        )
+        PackerUnpacker.validate_sizes({"columns": self._parsed_data["columns"], "data": [data]})
 
         table_data = self._parsed_data["data"]
         index = len(table_data) if index > len(table_data) or index < 0 else index
 
         self._parsed_data["data"].insert(index, data)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
 
     def pop_row(self, index=-1):
         index = (
@@ -237,6 +258,7 @@ class Table(Widget):
         if len(self._parsed_data["data"]) != 0:
             popped_row = self._parsed_data["data"].pop(index)
             DataJson()[self.widget_id]["table_data"] = self._parsed_data
+            DataJson().send_changes()
             return popped_row
 
     def get_selected_cell(self, state):
@@ -249,12 +271,7 @@ class Table(Widget):
         column_index = state[self.widget_id]["selected_row"].get("selectedColumn")
         row = state[self.widget_id]["selected_row"].get("selectedRowData")
 
-        if (
-            row_index is None
-            or column_name is None
-            or column_index is None
-            or row is None
-        ):
+        if row_index is None or column_name is None or column_index is None or row is None:
             # click table header or clear selection
             return None
 
@@ -284,6 +301,10 @@ class Table(Widget):
     def get_html_text_as_button(title="preview"):
         return f"<button>{title}</button>"
 
+    @staticmethod
+    def create_button(title) -> str:
+        return f"<button>{title}</button>"
+
     @property
     def loading(self):
         return self._loading
@@ -297,3 +318,35 @@ class Table(Widget):
     def clear_selection(self):
         StateJson()[self.widget_id]["selected_row"] = {}
         StateJson().send_changes()
+
+    def delete_row(self, key_column_name, key_cell_value):
+        col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[col_index] == key_cell_value:
+                row_indices.append(idx)
+        if len(row_indices) == 0:
+            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
+        if len(row_indices) > 1:
+            raise ValueError(
+                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
+            )
+        self.pop_row(row_indices[0])
+
+    def update_cell_value(self, key_column_name, key_cell_value, column_name, new_value):
+        key_col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[key_col_index] == key_cell_value:
+                row_indices.append(idx)
+        if len(row_indices) == 0:
+            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
+        if len(row_indices) > 1:
+            raise ValueError(
+                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
+            )
+
+        col_index = self._parsed_data["columns"].index(column_name)
+        self._parsed_data["data"][row_indices[0]][col_index] = new_value
+        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()

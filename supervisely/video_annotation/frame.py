@@ -67,7 +67,7 @@ class Frame(KeyObject):
         self._figures = take_with_default(figures, [])
 
     @property
-    def index(self):
+    def index(self) -> int:
         """
         Frame index.
 
@@ -81,11 +81,11 @@ class Frame(KeyObject):
         """
         return self._index
 
-    def key(self):
+    def key(self) -> int:
         return self._index
 
     @property
-    def figures(self):
+    def figures(self) -> List[VideoFigure]:
         """
         Frame figures.
 
@@ -105,7 +105,7 @@ class Frame(KeyObject):
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
-        :raises: :class:`OutOfImageBoundsExtension<supervisely.video_annotation.video_figure.OutOfImageBoundsExtension>`, if figure is out of image bounds
+        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
         :return: None
         :rtype: :class:`NoneType`
 
@@ -124,7 +124,7 @@ class Frame(KeyObject):
 
             image_size = (20, 200)
             frame.validate_figures_bounds(image_size)
-            # raise OutOfImageBoundsExtension("Figure is out of image bounds")
+            # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         if img_size is None:
             return

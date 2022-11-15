@@ -3,10 +3,10 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Iterator, Any
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
-
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.video_annotation.video_tag import VideoTag
 
@@ -156,9 +156,10 @@ class VideoTagCollection(TagCollection):
         #     }
         # ]
     """
+
     item_type = VideoTag
 
-    def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> List[Dict]:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
         Convert the VideoTagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -197,7 +198,12 @@ class VideoTagCollection(TagCollection):
         return [tag.to_json(key_id_map) for tag in self]
 
     @classmethod
-    def from_json(cls, data: List[Dict], tag_meta_collection: TagMetaCollection, key_id_map: Optional[KeyIdMap]=None) -> VideoTagCollection:
+    def from_json(
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> VideoTagCollection:
         """
         Convert a list of json dicts to VideoTagCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -233,5 +239,41 @@ class VideoTagCollection(TagCollection):
 
             tags = VideoTagCollection.from_json(tags_json, meta_collection)
         """
-        tags = [cls.item_type.from_json(tag_json, tag_meta_collection, key_id_map) for tag_json in data]
+        tags = [
+            cls.item_type.from_json(tag_json, tag_meta_collection, key_id_map) for tag_json in data
+        ]
         return cls(tags)
+
+    def __iter__(self) -> Iterator[VideoTag]:
+        return next(self)
+
+    @classmethod
+    def from_api_response(
+        cls, 
+        data: List[Dict], 
+        tag_meta_collection: TagMetaCollection, 
+        id_to_tagmeta: Optional[Dict[int, TagMeta]]=None
+    ) -> VideoTagCollection:
+        return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
+
+    def get_by_name(self, tag_name: str, default: Optional[Any] = None) -> List[VideoTag]:
+        # super().get_by_name(tag_name, default)
+        res = []
+        for tag in self:
+            if tag.name == tag_name:
+                res.append(tag)
+        return res
+
+    def get_single_by_name(self, tag_name: str, default: Optional[Any] = None) -> VideoTag:
+        # super().get_by_name(tag_name, default)
+        res = []
+        for tag in self:
+            if tag.name == tag_name:
+                res.append(tag)
+        if len(res) == 0:
+            return None
+        if len(res) > 1:
+            raise ValueError(
+                "There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
+            )
+        return res[0]

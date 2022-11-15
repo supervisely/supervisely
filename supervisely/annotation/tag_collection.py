@@ -3,11 +3,12 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Iterator, Any
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
 from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
 from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta
 
 
 class TagCollection(MultiKeyIndexedCollection):
@@ -133,6 +134,7 @@ class TagCollection(MultiKeyIndexedCollection):
         #     }
         # ]
     """
+
     item_type = Tag
 
     def to_json(self) -> List[Dict]:
@@ -216,17 +218,24 @@ class TagCollection(MultiKeyIndexedCollection):
         return cls(tags)
 
     def __str__(self):
-        return 'Tags:\n' + super(TagCollection, self).__str__()
+        return "Tags:\n" + super(TagCollection, self).__str__()
 
     @classmethod
-    def from_api_response(cls, data, tag_meta_collection, id_to_tagmeta=None):
+    def from_api_response(
+        cls, 
+        data: List[Dict], 
+        tag_meta_collection: TagMetaCollection, 
+        id_to_tagmeta:Optional[Dict[int, TagMeta]]=None) -> TagCollection:
         if id_to_tagmeta is None:
             id_to_tagmeta = tag_meta_collection.get_id_mapping()
         tags = []
         for tag_json in data:
             tag_meta_id = tag_json["tagId"]
             tag_meta = id_to_tagmeta[tag_meta_id]
-            tag_json['name'] = tag_meta.name
+            tag_json["name"] = tag_meta.name
             tag = cls.item_type.from_json(tag_json, tag_meta_collection)
             tags.append(tag)
         return cls(tags)
+
+    def __iter__(self) -> Iterator[Tag]:
+        return next(self)

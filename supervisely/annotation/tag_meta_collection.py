@@ -164,6 +164,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         tag_metas = sly.TagMetaCollection([meta_cow, meta_chicken])
         # Output: DuplicateKeyError: "Key 'cow' already exists"
     """
+
     item_type = TagMeta
 
     def to_json(self) -> List[Dict]:
@@ -242,7 +243,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         tags = [TagMeta.from_json(tag_meta_json) for tag_meta_json in data]
         return cls(tags)
 
-    def get_id_mapping(self, raise_if_no_id: Optional[bool]=False) -> Dict[int, TagMeta]:
+    def get_id_mapping(self, raise_if_no_id: Optional[bool] = False) -> Dict[int, TagMeta]:
         """
         Create dict matching TagMetas id to TagMeta.
 
@@ -257,8 +258,10 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         for tag_meta in self:
             if tag_meta.sly_id is not None:
                 if tag_meta.sly_id in res:
-                    raise KeyError(f"TagMeta with id={tag_meta.sly_id} already exists (duplication). "
-                                   f"Please contact tech support")
+                    raise KeyError(
+                        f"TagMeta with id={tag_meta.sly_id} already exists (duplication). "
+                        f"Please contact tech support"
+                    )
                 else:
                     res[tag_meta.sly_id] = tag_meta
             else:
@@ -270,10 +273,24 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     def __iter__(self) -> Iterator[TagMeta]:
         return next(self)
 
+    def refresh_ids_from(self, tags: TagMetaCollection) -> None:
+        for new_tag in tags:
+            my_tag = self.get(new_tag.name)
+            if my_tag is None:
+                continue
+            my_tag._set_id(new_tag.sly_id)
 
-def make_renamed_tag_metas(src_tag_metas: TagMetaCollection, renamer, skip_missing=False) -> TagMetaCollection:
-    """
-    """
+    def get_by_id(self, tag_meta_id: int) -> TagMeta:
+        for tag_meta in self:
+            if tag_meta.sly_id == tag_meta_id:
+                return tag_meta
+        return None
+
+
+def make_renamed_tag_metas(
+    src_tag_metas: TagMetaCollection, renamer: Renamer, skip_missing: bool = False
+) -> TagMetaCollection:
+    """make_renamed_tag_metas"""
     result_tags = []
     for src_tag in src_tag_metas:
         renamed_name = renamer.rename(src_tag.name)
@@ -281,6 +298,6 @@ def make_renamed_tag_metas(src_tag_metas: TagMetaCollection, renamer, skip_missi
             result_tags.append(src_tag.clone(name=renamed_name))
         elif not skip_missing:
             raise KeyError(
-                'Tag meta named {} could not be mapped to a destination name.'.format(src_tag.name))
+                "Tag meta named {} could not be mapped to a destination name.".format(src_tag.name)
+            )
     return TagMetaCollection(items=result_tags)
-

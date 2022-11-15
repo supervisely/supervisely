@@ -5,11 +5,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-import fastapi
-from varname import varname
-
 from supervisely.app import DataJson
-from supervisely.app.fastapi import run_sync
 from supervisely.app.widgets import Widget
 
 
@@ -20,13 +16,12 @@ class Button(Widget):
     def __init__(
         self,
         text: str = "Button",
-        button_type: Literal[
-            "primary", "info", "warning", "danger", "success", "text"
-        ] = "primary",
+        button_type: Literal["primary", "info", "warning", "danger", "success", "text"] = "primary",
         button_size: Literal["mini", "small", "large"] = None,
         plain: bool = False,
         show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
+        icon_gap: int = 5,
         widget_id=None,
     ):
         self._widget_routes = {}
@@ -35,10 +30,11 @@ class Button(Widget):
         self._button_type = button_type
         self._button_size = button_size
         self._plain = plain
+        self._icon_gap = icon_gap
         if icon is None:
             self._icon = ""
         else:
-            self._icon = f'<i class="{icon}" style="margin-right: 5px"></i>'
+            self._icon = f'<i class="{icon}" style="margin-right: {icon_gap}px"></i>'
 
         self._loading = False
         self._disabled = False
@@ -94,19 +90,23 @@ class Button(Widget):
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
     def click(self, func):
-        @self.add_route(self._sly_app.get_server(), Button.Routes.CLICK)
-        @wraps(func)
-        def add_loading(*args, **kwargs):
+        # from fastapi import Request
+
+        route_path = self.get_route_path(Button.Routes.CLICK)
+        server = self._sly_app.get_server()
+
+        @server.post(route_path)
+        def _click():
+            # maybe work with headers and store some values there r: Request
             if self.show_loading:
                 self.loading = True
             try:
-                result = func(*args, **kwargs)
+                func()
             except Exception as e:
                 if self.show_loading and self.loading:
                     self.loading = False
                 raise e
             if self.show_loading:
                 self.loading = False
-            return result
 
-        return add_loading
+        return _click

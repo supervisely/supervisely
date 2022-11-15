@@ -8,17 +8,18 @@ from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
-js_bundle_version = "2.1.20"
-js_frontend_version = "0.0.26"
+# https://github.com/supervisely/js-bundle
+js_bundle_version = "2.1.25"
+
+# https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
+js_frontend_version = "0.0.29"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
         super().__init__(directory)
 
-    def _create_env(
-        self, directory: typing.Union[str, PathLike]
-    ) -> "jinja2.Environment":
+    def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":
         env_fastapi = super()._create_env(directory)
         env_sly = jinja2.Environment(
             loader=env_fastapi.loader,

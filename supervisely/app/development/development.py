@@ -35,9 +35,7 @@ def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
     mkdir(network_dir)
 
     process = subprocess.run(
-        shlex.split(
-            f"{script_path} {action} {api.token} {api.server_address} {network_dir}"
-        ),
+        shlex.split(f"{script_path} {action} {api.token} {api.server_address} {network_dir}"),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         universal_newlines=True,
@@ -63,15 +61,15 @@ def create_debug_task(team_id, port="8000"):
     api = Api()
     me = api.user.get_my_info()
     session_name = me.login + "-development"
-    module_id = api.app.get_ecosystem_module_id(
-        "supervisely-ecosystem/while-true-script-v2"
-    )
+    module_id = api.app.get_ecosystem_module_id("supervisely-ecosystem/while-true-script-v2")
     sessions = api.app.get_sessions(team_id, module_id, session_name=session_name)
     redirect_requests = {"token": api.token, "port": port}
     task = None
     for session in sessions:
-        if session["meta"]["redirectRequests"] == redirect_requests:
-            task = session
+        if (session.details["meta"].get("redirectRequests") == redirect_requests) and (
+            session.details["status"] == str(api.app.Status.QUEUED)
+        ):
+            task = session.details
             logger.info(f"Debug task already exists: {task['id']}")
             break
     workspaces = api.workspace.get_list(team_id)

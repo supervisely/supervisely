@@ -13,15 +13,16 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+
+# from supervisely.app.fastapi.request import Request
+
 import jinja2
 from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from supervisely.app.fastapi.utils import run_sync
-
 from supervisely.app.singleton import Singleton
-
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
@@ -29,6 +30,13 @@ from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development
 from async_asgi_testclient import TestClient
+from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.app.exceptions import DialogWindowError
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from supervisely.app.widgets import Widget
 
 
 def create(process_id=None, headless=False) -> FastAPI:
@@ -85,9 +93,7 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         import supervisely
 
-        app.mount(
-            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
-        )
+        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
 
     return app
 
@@ -126,12 +132,13 @@ def enable_hot_reload_on_debug(app: FastAPI):
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
+        details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+        if isinstance(exc, DialogWindowError):
+            details["title"] = exc.title
+            details["message"] = exc.description
         return await http_exception_handler(
             request,
-            HTTPException(
-                status_code=500,
-                detail={"title": "Oops! Something went wrong", "message": repr(exc)},
-            ),
+            HTTPException(status_code=500, detail=details),
         )
 
 
@@ -152,9 +159,7 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(
-            directory=[str(Path(__file__).parent.absolute()), templates_dir]
-        )
+        Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
         enable_hot_reload_on_debug(app)
 
     app.mount("/sly", create(process_id, headless))
@@ -163,16 +168,18 @@ def _init(
 
         @app.middleware("http")
         async def get_state_from_request(request: Request, call_next):
+
             await StateJson.from_request(request)
+            # if not ("application/json" not in request.headers.get("Content-Type", "")):
+            #     content = await request.json()
+            #     request.sly_api_token = content["context"].get("apiToken")
             response = await call_next(request)
             return response
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse(
-                "index.html", {"request": request}
-            )
+            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
         @app.on_event("shutdown")
         def shutdown():
@@ -193,11 +200,36 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, templates_dir: str = "templates", headless=False):
-        if is_production():
+    def __init__(self, layout: "Widget" = None, templates_dir: str = None):
+        self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
+        JinjaWidgets().context["__favicon__"] = self._favicon
+        JinjaWidgets().context["__no_html_mode__"] = True
+        
+        headless = False
+        if layout is None and templates_dir is None:
+            templates_dir: str = "templates"  # for back compatibility
+            headless = True
             logger.info(
-                "Application is running on Supervisely Platform in production mode"
+                "Both arguments 'layout' and 'templates_dir' are not defined. App is headless (i.e. without UI)", extra={"templates_dir": templates_dir}
             )
+        if layout is not None and templates_dir is not None:
+            raise ValueError(
+                "Only one of the arguments has to be defined: 'layout' or 'templates_dir'. 'layout' argument is recommended."
+            )
+        if layout is not None:
+            templates_dir = os.path.join(Path(__file__).parent.absolute(), "templates")
+            from supervisely.app.widgets import Identity
+
+            main_layout = Identity(layout, widget_id="__app_main_layout__")
+            logger.info(
+                "Application is running in no-html mode", extra={"templates_dir": templates_dir}
+            )
+        else:
+            JinjaWidgets().auto_widget_id = False
+            JinjaWidgets().context["__no_html_mode__"] = False
+
+        if is_production():
+            logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()

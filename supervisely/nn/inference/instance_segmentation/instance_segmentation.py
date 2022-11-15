@@ -1,6 +1,7 @@
 from typing import Dict, List
 from pathlib import Path
 import os
+from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -14,14 +15,21 @@ from supervisely.decorators.inference import (
     process_image_sliding_window,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import Progress
 
 
 class InstanceSegmentation(Inference):
     def _get_templates_dir(self):
-        template_dir = os.path.join(
-            Path(__file__).parent.absolute(), "dashboard/templates"
-        )
-        return template_dir
+        # template_dir = os.path.join(
+        #     Path(__file__).parent.absolute(), "dashboard/templates"
+        # )
+        # return template_dir
+        return None
+
+    def _get_layout(self) -> Widget:
+        return None
+        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        # return main_ui.menu
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -39,9 +47,7 @@ class InstanceSegmentation(Inference):
                 f"Class {dto.class_name} not found in model classes {self.get_classes()}"
             )
         if not dto.mask.any():  # skip empty masks
-            logger.debug(
-                f"Mask of class {dto.class_name} is empty and will be sklipped"
-            )
+            logger.debug(f"Mask of class {dto.class_name} is empty and will be sklipped")
             return None
         geometry = Bitmap(dto.mask)
         tags = []
@@ -54,14 +60,10 @@ class InstanceSegmentation(Inference):
         settings = """confidence_threshold: 0.8"""
         return settings
 
-    def predict(
-        self, image_path: str, confidence_threshold: float
-    ) -> List[PredictionMask]:
+    def predict(self, image_path: str, confidence_threshold: float) -> List[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_annotation(
-        self, image_path: str, confidence_threshold: float
-    ) -> Annotation:
+    def predict_annotation(self, image_path: str, confidence_threshold: float) -> Annotation:
         predictions = self.predict(image_path, confidence_threshold)
         return self._predictions_to_annotation(image_path, predictions)
 
@@ -82,20 +84,20 @@ class InstanceSegmentation(Inference):
         )
         return ann.to_json()
 
-    def visualize(
-        self, predictions: List[PredictionMask], image_path: str, vis_path: str
-    ):
+    def visualize(self, predictions: List[PredictionMask], image_path: str, vis_path: str):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
 
     def serve(self):
-        import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
+        # import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
 
-        @deploy_ui.deploy_btn.click
-        def deploy_model():
-            device = deploy_ui.device.get_value()
-            self.load_on_device(device)
-
+        # @deploy_ui.deploy_btn.click
+        # def deploy_model():
+        # device = deploy_ui.device.get_value()
+        # self.load_on_device(self._device)
+        # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
+        Progress("Deploying model ...", 1)
         super().serve()
+        Progress("Model deployed", 1).iter_done_report()

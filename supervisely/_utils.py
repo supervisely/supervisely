@@ -24,9 +24,7 @@ def rand_str(length):
 
 
 # @TODO: use in API? or remove
-def generate_free_name(
-    used_names, possible_name, with_ext=False, extend_used_names=False
-):
+def generate_free_name(used_names, possible_name, with_ext=False, extend_used_names=False):
     res_name = possible_name
     new_suffix = 1
     while res_name in set(used_names):
@@ -134,9 +132,7 @@ def _remove_sensitive_information(d: dict):
 def validate_img_size(img_size):
     if not isinstance(img_size, (tuple, list)):
         raise TypeError(
-            '{!r} has to be a tuple or a list. Given type "{}".'.format(
-                "img_size", type(img_size)
-            )
+            '{!r} has to be a tuple or a list. Given type "{}".'.format("img_size", type(img_size))
         )
     return tuple(img_size)
 
@@ -187,4 +183,19 @@ def compress_image_url(
 
 
 def get_preview_link(title="preview"):
-    return f'<a href="javascript:;">{title}<i class="zmdi zmdi-cast" style="margin-left: 5px"></i></a>'
+    return (
+        f'<a href="javascript:;">{title}<i class="zmdi zmdi-cast" style="margin-left: 5px"></i></a>'
+    )
+
+
+def get_datetime(value: str) -> datetime:
+    if value is None:
+        return None
+    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def get_readable_datetime(value: str) -> str:
+    dt = get_datetime(value)
+    if dt is None:
+        return None
+    return dt.strftime("%Y-%m-%d %H:%M:%S")

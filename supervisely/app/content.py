@@ -34,14 +34,27 @@ def get_data_dir():
             logger.debug(f"Load dir from evn {key}={value}")
             break
     if dir is None:
-        raise ValueError(
-            f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}"
-        )
+        raise ValueError(f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}")
 
     if dir_exists(dir) is False:
-        logger.info(
-            f"App data directory {dir} doesn't exist. Will be made automatically."
-        )
+        logger.info(f"App data directory {dir} doesn't exist. Will be made automatically.")
+        mkdir(dir)
+    return dir
+
+
+def get_synced_data_dir():
+    dir = "/sly-app-data"
+
+    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    for key in keys:
+        value = os.environ.get(key)
+        if value is not None:
+            dir = value
+            logger.debug(f"Load dir from evn {key}={value}")
+            break
+
+    if dir_exists(dir) is False:
+        logger.info(f"Synced app data directory {dir} doesn't exist. Will be made automatically.")
         mkdir(dir)
     return dir
 

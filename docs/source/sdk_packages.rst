@@ -162,6 +162,7 @@ API
     :template: autosummary/custom-class-template.rst
 
     ImageApi
+    ImageInfo
 
 .. currentmodule:: supervisely.api.import_storage_api
 
@@ -504,6 +505,7 @@ IO
     fs
     json
 
+
 Labeling Jobs
 -------------
 
@@ -568,11 +570,37 @@ Pointcloud Annotation
 
     PointcloudObjectCollection
 
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTag
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTagCollection
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_annotation
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeAnnotation
 
 Project
 -------
 **Project**
-- Working with Superrvisely projects on disk.
+- Working with Supervisely projects on disk.
 
 .. currentmodule:: supervisely.project.project
 
@@ -582,8 +610,11 @@ Project
     :template: autosummary/custom-class-template.rst
 
     Project
+    DatasetDict
     Dataset
     OpenMode
+    ItemPaths
+    ItemInfo
 
 .. currentmodule:: supervisely.project.pointcloud_project
 
@@ -623,6 +654,7 @@ Project
 
     VideoProject
     VideoDataset
+    VideoItemPaths
 
 .. currentmodule:: supervisely.project.volume_project
 
