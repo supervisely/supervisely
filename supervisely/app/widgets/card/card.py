@@ -11,7 +11,7 @@ class Card(Widget):
         description: str = None,
         collapsable: bool = False,
         content: Widget = None,
-        slot_content: Widget = None,
+        content_top_right: Widget = None,
         lock_message="Card content is locked",
         widget_id: str = None,
     ):
@@ -21,7 +21,7 @@ class Card(Widget):
         self._collapsed = False
         self._content = content
         self._show_slot = False
-        self._slot_content = slot_content
+        self._slot_content = content_top_right
         if self._slot_content is not None:
             self._show_slot = True
         self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}

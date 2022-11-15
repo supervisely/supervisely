@@ -9,3 +9,7 @@ class DialogWindowError(Exception):
 
     def __str__(self):
         return self.get_message()
+
+
+class DialogWindowMessage(DialogWindowError):
+    pass

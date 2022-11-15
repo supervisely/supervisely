@@ -58,9 +58,7 @@ class GridGallery(Widget):
 
         objects_list = list(objects_dict.values())
         objects_collection = (
-            supervisely.ObjClassCollection(objects_list)
-            if len(objects_list) > 0
-            else None
+            supervisely.ObjClassCollection(objects_list) if len(objects_list) > 0 else None
         )
 
         self._project_meta = supervisely.ProjectMeta(obj_classes=objects_collection)
@@ -99,9 +97,7 @@ class GridGallery(Widget):
 
         if incoming_value is None:
             incoming_value = self._last_used_column_index
-            self._last_used_column_index = (
-                self._last_used_column_index + 1
-            ) % self.columns_number
+            self._last_used_column_index = (self._last_used_column_index + 1) % self.columns_number
         else:
             self._last_used_column_index = incoming_value
 
@@ -117,9 +113,7 @@ class GridGallery(Widget):
 
         column_index = self.get_column_index(incoming_value=column_index)
         cell_uuid = str(
-            uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}"
-            ).hex
+            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}").hex
         )
 
         self._data.append(
@@ -158,9 +152,7 @@ class GridGallery(Widget):
         for cell_data in self._data:
             annotations[cell_data["cell_uuid"]] = {
                 "url": cell_data["image_url"],
-                "figures": [
-                    label.to_json() for label in cell_data["annotation"].labels
-                ],
+                "figures": [label.to_json() for label in cell_data["annotation"].labels],
                 "title": cell_data["title"],
             }
 
@@ -168,9 +160,7 @@ class GridGallery(Widget):
         DataJson()[self.widget_id]["content"]["annotations"] = self._annotations
 
     def _update_project_meta(self):
-        DataJson()[self.widget_id]["content"][
-            "projectMeta"
-        ] = self._generate_project_meta()
+        DataJson()[self.widget_id]["content"]["projectMeta"] = self._generate_project_meta()
 
     def _update(self):
         self._update_layout()

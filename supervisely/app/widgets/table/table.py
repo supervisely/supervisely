@@ -106,7 +106,7 @@ class Table(Widget):
             self.cell_value = cell_value
             self.row = row
             self.button_name = None
-            search = re.search(r"<button>(.*?)</button>", self.cell_value)
+            search = re.search(r"<button>(.*?)</button>", str(self.cell_value))
             if search is not None:
                 self.button_name = search.group(1)
 
