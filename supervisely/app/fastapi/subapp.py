@@ -17,7 +17,6 @@ from fastapi import (
 # from supervisely.app.fastapi.request import Request
 
 import jinja2
-from fastapi.testclient import TestClient
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -204,13 +203,14 @@ class Application(metaclass=Singleton):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
-        
+
         headless = False
         if layout is None and templates_dir is None:
             templates_dir: str = "templates"  # for back compatibility
             headless = True
             logger.info(
-                "Both arguments 'layout' and 'templates_dir' are not defined. App is headless (i.e. without UI)", extra={"templates_dir": templates_dir}
+                "Both arguments 'layout' and 'templates_dir' are not defined. App is headless (i.e. without UI)",
+                extra={"templates_dir": templates_dir},
             )
         if layout is not None and templates_dir is not None:
             raise ValueError(
