@@ -44,3 +44,4 @@ from supervisely.app.widgets.dataset_thumbnail.dataset_thumbnail import DatasetT
 from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMeta
 from supervisely.app.widgets.video_thumbnail.video_thumbnail import VideoThumbnail
 from supervisely.app.widgets.tabs.tabs import Tabs
+from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs

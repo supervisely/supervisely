@@ -1,0 +1,31 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/radio_tabs/style.css"/>
+
+<el-tabs 
+    type="border-card"
+    v-model="state.{{{widget.widget_id}}}.value"
+    class="el-tabs-cards"
+    {%
+    if 
+    widget._changes_handled
+    %}
+    @tab-click="post('/{{{widget.widget_id}}}/value_changed_cb');"
+    {%
+    endif
+    %}
+>
+    {% for tab_pane in widget._items %}
+    <el-tab-pane
+        name="{{{tab_pane.name}}}"
+    >
+        <el-radio 
+            slot="label" 
+            v-model="state.{{{widget.widget_id}}}.value" 
+            label="{{{tab_pane.name}}}"
+        >
+            {{{ tab_pane.title }}}
+            <div>{{{ tab_pane.subtitle }}}</div>
+        </el-radio>
+        {{{ tab_pane.content }}}
+    </el-tab-pane>
+    {% endfor %}
+</el-tabs>
