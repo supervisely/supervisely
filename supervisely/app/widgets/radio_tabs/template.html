@@ -2,13 +2,17 @@
 
 <el-tabs 
     type="border-card"
-    v-model="state.{{{widget.widget_id}}}.value"
+    :value="state.{{{widget.widget_id}}}.value"
     class="el-tabs-cards"
     {%
     if 
     widget._changes_handled
     %}
-    @tab-click="post('/{{{widget.widget_id}}}/value_changed_cb');"
+    @input="($event) => { if (state.{{{widget.widget_id}}}.value !== $event) { state.{{{widget.widget_id}}}.value = $event; post('/{{{widget.widget_id}}}/value_changed_cb'); }}"
+    {%
+    else
+    %}
+    @input="($event) => { state.{{{widget.widget_id}}}.value = $event; }"
     {%
     endif
     %}
