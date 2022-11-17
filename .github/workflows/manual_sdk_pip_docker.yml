@@ -48,3 +48,21 @@ jobs:
           tag_ref_name=${{ env.RELEASE_VERSION }}
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
+        
+  deploy-nvidia-sdk:
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:   
+    - name: Build and Push Docker Image with NVIDIA
+      uses: mr-smithers-excellent/docker-build-push@v5
+      with:
+        image: supervisely/sdk-nvidia-pyindex
+        tags: ${{ env.RELEASE_VERSION }}, latest
+        addLatest: true
+        dockerfile: "base_images/sdk_nvidia_pyindex/Dockerfile"
+        registry: docker.io
+        buildArgs: |
+          tag_ref_name=${{ env.RELEASE_VERSION }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
