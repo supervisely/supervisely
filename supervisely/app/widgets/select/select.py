@@ -155,5 +155,5 @@ class Select(Widget):
 
 
 # class SelectString(Select):
-#     def __init__(values, labels=None):
+#     def __init__(values: List[str], labels: Optional[List[str]]=None):
 #         pass
