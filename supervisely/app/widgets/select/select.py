@@ -46,9 +46,7 @@ class Select(Widget):
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        def __init__(
-            self, value, label: str = None, content: Widget = None
-        ) -> Select.Item:
+        def __init__(self, value, label: str = None, content: Widget = None) -> Select.Item:
             self.value = value
             self.label = label
             if label is None:
@@ -83,9 +81,7 @@ class Select(Widget):
             raise ValueError("One of the arguments has to be defined: items or groups")
 
         if items is not None and groups is not None:
-            raise ValueError(
-                "Only one of the arguments has to be defined: items or groups"
-            )
+            raise ValueError("Only one of the arguments has to be defined: items or groups")
 
         self._items = items
         self._groups = groups
@@ -99,11 +95,7 @@ class Select(Widget):
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if (
-            self._groups is not None
-            and len(self._groups) > 0
-            and len(self._groups[0]) > 0
-        ):
+        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0]) > 0:
             return self._groups[0].items[0]
         return None
 
@@ -160,3 +152,8 @@ class Select(Widget):
         self.update_state()
         DataJson().send_changes()
         StateJson().send_changes()
+
+
+# class SelectString(Select):
+#     def __init__(values, labels=None):
+#         pass
