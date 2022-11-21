@@ -75,6 +75,7 @@ class Select(Widget):
         filterable: bool = False,
         placeholder: str = "select",
         size: Literal["large", "small", "mini"] = None,
+        multiple: bool = False,
         widget_id: str = None,
     ) -> Select:
         if items is None and groups is None:
@@ -89,6 +90,7 @@ class Select(Widget):
         self._placeholder = placeholder
         self._changes_handled = False
         self._size = size
+        self._multiple = multiple
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -103,6 +105,7 @@ class Select(Widget):
         res = {
             "filterable": self._filterable,
             "placeholder": self._placeholder,
+            "multiple": self._multiple,
             "items": None,
             "groups": None,
         }
@@ -162,6 +165,7 @@ class SelectString(Select):
         filterable: Optional[bool] = False,
         placeholder: Optional[str] = "select",
         size: Optional[Literal["large", "small", "mini"]] = None,
+        multiple: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
         if labels is not None:
@@ -178,6 +182,7 @@ class SelectString(Select):
             groups=None,
             filterable=filterable,
             placeholder=placeholder,
+            multiple=multiple,
             size=size,
             widget_id=widget_id
         )
