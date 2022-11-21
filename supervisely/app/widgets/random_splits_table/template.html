@@ -22,13 +22,14 @@
                        :disabled="state.{{{widget.widget_id}}}.disabled"
                        show-input :min="1" :max="99"
                        style="flex:1; max-width: 99%; margin-left: 15px;"
-                       @input="
-                       state.{{{widget.widget_id}}}.count.train =
-                       Math.min(parseInt(data.{{{widget.widget_id}}}.items_count * state.{{{widget.widget_id}}}.percent.train / 100, 10),
-                                data.{{{widget.widget_id}}}.items_count - 1);
-                       state.{{{widget.widget_id}}}.count.train = Math.max(state.{{{widget.widget_id}}}.count.train, 1)
-                       state.{{{widget.widget_id}}}.count.val = data.{{{widget.widget_id}}}.items_count- state.{{{widget.widget_id}}}.count.train;
-                       state.{{{widget.widget_id}}}.percent.val = 100 - state.{{{widget.widget_id}}}.percent.train"
+                       @input=  "
+                                state.{{{widget.widget_id}}}.count.train =
+                                Math.min(parseInt(data.{{{widget.widget_id}}}.items_count * state.{{{widget.widget_id}}}.percent.train / 100, 10),
+                                            data.{{{widget.widget_id}}}.items_count - 1);
+                                state.{{{widget.widget_id}}}.count.train = Math.max(state.{{{widget.widget_id}}}.count.train, 1)
+                                state.{{{widget.widget_id}}}.count.val = data.{{{widget.widget_id}}}.items_count- state.{{{widget.widget_id}}}.count.train;
+                                state.{{{widget.widget_id}}}.percent.val = 100 - state.{{{widget.widget_id}}}.percent.train
+                                "
             ></el-slider>
         </template>
     </el-table-column>

@@ -4,15 +4,23 @@ from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
 
 class RandomSplitsTable(Widget):
-    def __init__(self, items_count: int, widget_id: Optional[int] = None):
+    def __init__(
+        self, 
+        items_count: int, 
+        start_train_percent: Optional[int] = 80,
+        widget_id: Optional[int] = None
+    ):
+        if 1 <= start_train_percent <= 99:
+            pass
+        else:
+            raise ValueError("start_train_percent must be in range [1; 99].")
         self._table_data = [
             {"name": "train", "type": "success"},
             {"name": "val", "type": "primary"},
             {"name": "total", "type": "gray"},
         ]
         self._items_count = items_count
-        train_percent = 80
-        train_count = int(items_count / 100 * train_percent)
+        train_count = int(items_count / 100 * start_train_percent)
         self._count = {
             "total": items_count,
             "train": train_count,
@@ -21,8 +29,8 @@ class RandomSplitsTable(Widget):
 
         self._percent = {
             "total": 100,
-            "train": train_percent,
-            "val": 100 - train_percent
+            "train": start_train_percent,
+            "val": 100 - start_train_percent
         }
         self._disabled = False
         self._share_items = False
@@ -43,3 +51,6 @@ class RandomSplitsTable(Widget):
             "disabled": self._disabled,
             "shareImagesBetweenSplits": self._share_items
         }
+
+    def get_splits_counts(self):
+        return self._count.copy()
