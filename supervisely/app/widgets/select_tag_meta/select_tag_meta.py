@@ -18,6 +18,7 @@ class SelectTagMeta(Widget):
         self,
         default: str = None,
         project_id: int = None,
+        project_meta: ProjectMeta = None,
         allowed_types: List[str] = None,
         multiselect: bool = False,
         show_label: bool = True,
@@ -28,7 +29,10 @@ class SelectTagMeta(Widget):
         self._default = default
         self._project_id = project_id
         self._project_info = None
-        self._project_meta: ProjectMeta = None
+        self._project_meta: ProjectMeta = project_meta
+        if project_meta is not None and project_id is not None:
+            raise ValueError("You can not provide both project_id and project_meta parameters to SelectTagMeta widget.")
+        
         self._allowed_types = allowed_types
         self._multiselect = multiselect
         self._show_label = show_label
@@ -43,8 +47,11 @@ class SelectTagMeta(Widget):
                         )
                     )
 
-        self._project_id = _get_int_or_env(self._project_id, "context.projectId")
-        if self._project_id is None:
+        if project_meta is None:
+            self._project_id = _get_int_or_env(self._project_id, "context.projectId")
+        self._tags = None
+        self._value = None
+        if self._project_id is None and self._project_meta is None:
             dataset_id = _get_int_env("context.datasetId")
             if dataset_id is None:
                 raise ValueError(
@@ -53,7 +60,12 @@ class SelectTagMeta(Widget):
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
             self._project_id = dataset_info.project_id
 
-        self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
+            self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
+        
+        elif self._project_meta is not None:
+            self._tags = self._project_meta.tag_metas.to_json()
+            if len(self._tags):
+                self._value = self._tags[0]["name"]
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -69,6 +81,8 @@ class SelectTagMeta(Widget):
             res["options"]["availableValueTypes"] = self._allowed_types
         if self._size is not None:
             res["options"]["size"] = self._size
+        if self._tags is not None:
+            res["tags"] = self._tags
         return res
 
     def get_json_state(self) -> Dict:
@@ -78,6 +92,8 @@ class SelectTagMeta(Widget):
         }
         if self._multiselect is True:
             res["tags"] = [self._default]
+        if self._value is not None:
+            res["value"] = self._value
         return res
 
     def get_selected_name(self) -> str:
