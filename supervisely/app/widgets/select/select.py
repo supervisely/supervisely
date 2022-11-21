@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 try:
     from typing import Literal
@@ -154,6 +154,52 @@ class Select(Widget):
         StateJson().send_changes()
 
 
-# class SelectString(Select):
-#     def __init__(values: List[str], labels: Optional[List[str]]=None):
-#         pass
+class SelectString(Select):
+    def __init__(
+        self, 
+        values: List[str], 
+        labels: Optional[List[str]] = None,
+        filterable: Optional[bool] = False,
+        placeholder: Optional[str] = "select",
+        size: Optional[Literal["large", "small", "mini"]] = None,
+        widget_id: Optional[str] = None,
+    ):
+        if labels is not None:
+            if len(values) != len(labels):
+                raise ValueError("values length must be equal to labels length.")
+            items = []
+            for value, label in zip(values, labels):
+                items.append(Select.Item(value, label))
+        else:
+            items = [Select.Item(value) for value in values]
+
+        super(SelectString, self).__init__(
+            items=items,
+            groups=None,
+            filterable=filterable,
+            placeholder=placeholder,
+            size=size,
+            widget_id=widget_id
+        )
+
+    def _get_first_value(self) -> Select.Item:
+        if self._items is not None and len(self._items) > 0:
+            return self._items[0]
+        return None
+
+    def get_items(self) -> List[str]:
+        return [item.value for item in self._items]
+
+    def set(self, values: List[str], labels: Optional[List[Select.Item]] = None):
+        if labels is not None:
+            if len(values) != len(labels):
+                raise ValueError("values length must be equal to labels length.")
+            self._items = []
+            for value, label in zip(values, labels):
+                self._items.append(Select.Item(value, label))
+        else:
+            self._items = [Select.Item(value) for value in values]
+        self.update_data()
+        self.update_state()
+        DataJson().send_changes()
+        StateJson().send_changes()
