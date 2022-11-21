@@ -1,8 +1,10 @@
+from typing import Dict, Optional
+
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
 
 class RandomSplitsTable(Widget):
-    def __init__(self, items_count):
+    def __init__(self, items_count: int, widget_id: Optional[int] = None):
         self._table_data = [
             {"name": "train", "type": "success"},
             {"name": "val", "type": "primary"},
@@ -25,14 +27,16 @@ class RandomSplitsTable(Widget):
         self._disabled = False
         self._share_items = False
 
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_data_json(self):
+
+    def get_json_data(self) -> Dict:
         return {
             "table_data": self._table_data,
             "items_count": self._items_count,
         }
 
-    def get_state_json(self):
+    def get_json_state(self) -> Dict:
         return {
             "count": self._count,
             "percent": self._percent,
