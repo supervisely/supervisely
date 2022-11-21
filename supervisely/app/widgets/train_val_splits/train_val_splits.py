@@ -139,8 +139,8 @@ class TrainValSplits(Widget):
             )
         elif self._project_fs is not None:
             ds_names = [ds.name for ds in self._project_fs.datasets]
-            self._train_ds_select = SelectString(ds_names)
-            self._val_ds_select = SelectString(ds_names)
+            self._train_ds_select = SelectString(ds_names, multiple=True)
+            self._val_ds_select = SelectString(ds_names, multiple=True)
         train_field = Field(
             self._train_ds_select, 
             title="Train dataset(s)",

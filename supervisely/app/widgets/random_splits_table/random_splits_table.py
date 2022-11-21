@@ -32,25 +32,21 @@ class RandomSplitsTable(Widget):
             "train": start_train_percent,
             "val": 100 - start_train_percent
         }
-        self._disabled = False
-        self._share_items = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
 
-    def get_json_data(self) -> Dict:
+    def get_json_data(self):
         return {
             "table_data": self._table_data,
             "items_count": self._items_count,
         }
 
-    def get_json_state(self) -> Dict:
+    def get_json_state(self):
         return {
             "count": self._count,
-            "percent": self._percent,
-            "disabled": self._disabled,
-            "shareImagesBetweenSplits": self._share_items
+            "percent": self._percent
         }
 
-    def get_splits_counts(self):
-        return self._count.copy()
+    def get_splits_counts(self) -> Dict[str, int]:
+        return StateJson()[self.widget_id]["count"]
