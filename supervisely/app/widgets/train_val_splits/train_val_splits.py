@@ -38,20 +38,25 @@ class TrainValSplits(Widget):
         self._val_ds_select: Union[SelectDataset, SelectString] = None
         self._split_methods = []
         contents = []
+        tabs_descriptions = []
         if random_splits:
             self._split_methods.append('Random')
+            tabs_descriptions.append('Shuffle data and split with defined probability')
             contents.append(self._get_random_content())
         if tags_splits:
             self._split_methods.append('Based on item tags')
+            tabs_descriptions.append('Images should have assigned train or val tag')
             contents.append(self._get_tags_content())
         if datasets_splits:
             self._split_methods.append('Based on datasets')
+            tabs_descriptions.append('Select one or several datasets for every split')
             contents.append(self._get_datasets_content())
         if not self._split_methods:
             raise ValueError("Any of split methods [random_splits, tags_splits, datasets_splits] must be specified in TrainValSplits.")
         
         self._content = RadioTabs(
             titles=self._split_methods,
+            descriptions=tabs_descriptions,
             contents=contents,
         )
 
