@@ -49,14 +49,18 @@ class SlidingWindowsFuzzy(SlidingWindows):
 
     def get_add_padding(self, source_shape):
         """ """
+        h = source_shape[0]
+        w = source_shape[1]
         source_rect = Rectangle.from_size(source_shape)
         window_rect = Rectangle.from_size(self.window_shape)
         if not source_rect.contains(window_rect):
             raise RuntimeError("Sliding window: window is larger than source (image).")
 
-        hw_limit = tuple(source_shape[i] - self.window_shape[i] for i in (0, 1))
-        for wind_top in range(0, hw_limit[0] + self.stride[0], self.stride[0]):
-            for wind_left in range(0, hw_limit[1] + self.stride[1], self.stride[1]):
+        # hw_limit = tuple(source_shape[i] - self.window_shape[i] for i in (0, 1))
+        # for wind_top in range(0, hw_limit[0] + self.stride[0], self.stride[0]):
+            # for wind_left in range(0, hw_limit[1] + self.stride[1], self.stride[1]):
+        for wind_top in range(0, h, self.stride[0]):
+            for wind_left in range(0, w, self.stride[1]):
                 roi = window_rect.translate(drow=wind_top, dcol=wind_left)
                 yield roi
 
