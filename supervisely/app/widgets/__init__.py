@@ -19,7 +19,7 @@ from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.sidebar.sidebar import Sidebar
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
-from supervisely.app.widgets.select.select import Select
+from supervisely.app.widgets.select.select import Select, SelectString
 from supervisely.app.widgets.menu.menu import Menu
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.input_number.input_number import InputNumber
@@ -45,3 +45,4 @@ from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMet
 from supervisely.app.widgets.video_thumbnail.video_thumbnail import VideoThumbnail
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
+from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
