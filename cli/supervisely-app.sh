@@ -14,7 +14,7 @@ Options:
   -p | --path   path to app (current dir by default)
 
 Commands:
-  release\t\t\t release app release
+  release\t\t\t release app version
   ";
 }
 
