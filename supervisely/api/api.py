@@ -249,8 +249,10 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
+        url = self.server_address + "/public/api/v3/" + method
+        logger.trace(f"POST {url}")
+
         for retry_idx in range(retries):
-            url = self.server_address + "/public/api/v3/" + method
             response = None
             try:
                 if type(data) is bytes:
@@ -316,10 +318,12 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
+        url = self.server_address + "/public/api/v3/" + method
+        if use_public_api is False:
+            url = os.path.join(self.server_address, method)
+        logger.trace(f"GET {url}")
+
         for retry_idx in range(retries):
-            url = self.server_address + "/public/api/v3/" + method
-            if use_public_api is False:
-                url = os.path.join(self.server_address, method)
             response = None
             try:
                 json_body = params
