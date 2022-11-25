@@ -14,7 +14,7 @@ Options:
   -p | --path   path to app (current dir by default)
 
 Commands:
-  release\t\t\t release app version
+  release\t\t\t release app release
   ";
 }
 
@@ -67,12 +67,12 @@ check_cli_deps() {
 
   if ! command -v curl > /dev/null 2>&1; then
     failed=1
-    echo -e "curl is not installed. Please run this command to install it:\nsudo apt update && sudo apt install -y curl\n"
+    echo -e "curl is not installed. Please install it and try again\n"
   fi
 
   if ! command -v tar > /dev/null 2>&1; then
     failed=1
-    echo -e "tar is not installed. Please run this command to install it:\nsudo apt update && sudo apt install -y tar\n"
+    echo -e "tar is not installed. Please install it and try again\n"
   fi
 
   if [[ ${failed} -eq 1 ]]; then
@@ -115,8 +115,10 @@ function release() {
   readme=
   modal_template=
   config=$(cat "${module_path}/config.json")
-  archive_path="/tmp/$(echo $RANDOM | md5sum | head -c 20; echo;)"
+  archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
   modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
+
+  parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
 
   if [[ -f "${module_path}/README.md" ]]; then
     readme=$(cat "${module_path}/README.md")
@@ -132,6 +134,7 @@ function release() {
 
   release_response=$(curl -sSL -w '%{http_code}' --location --request POST "${server}/public/api/v3/ecosystem.release" \
   --header "x-api-key: ${token}" \
+  -F slug="${parsed_slug}" \
   -F config="${config}" \
   -F readme="${readme}" \
   -F archive=@"$archive_path/archive.tar.gz" \
