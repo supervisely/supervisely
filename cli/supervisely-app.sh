@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o pipefail -e
+
 VERSION='1.0.0'
 
 usage() {
@@ -82,10 +84,12 @@ check_cli_deps() {
 
 function release() {
   if [[ -z "${module_path}" ]]; then
+    echo "No '--path' is provided, will archive and release current directory"
     module_path=$(pwd)
   fi
 
   if [[ -f ~/supervisely.env ]]; then
+    echo "Detected ~/supervisely.env"
     source ~/supervisely.env
   fi
 
@@ -117,7 +121,6 @@ function release() {
   config=$(cat "${module_path}/config.json")
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
   modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
-
   parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
 
   if [[ -f "${module_path}/README.md" ]]; then
@@ -130,21 +133,24 @@ function release() {
 
   mkdir "${archive_path}"
   
-  tar -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
+  echo "Packing the following files to ${archive_path}/archive.tar.gz:"
+  tar -v --exclude-vcs-ignores --exclude-vcs -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
 
-  release_response=$(curl -sSL -w '%{http_code}' --location --request POST "${server}/public/api/v3/ecosystem.release" \
+  echo "Uploading archive..."
+
+  release_response=$(curl -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
+  --progress-bar \
   --header "x-api-key: ${token}" \
   -F slug="${parsed_slug}" \
   -F config="${config}" \
   -F readme="${readme}" \
   -F archive=@"$archive_path/archive.tar.gz" \
-  --form-string modalTemplate="${modal_template}"
-  )
+  --form-string modalTemplate="${modal_template}" | cat)
 
   if [[ "$release_response" =~ '{"success":true}200' ]]; then
-    echo "Module successfully released"
+    echo "Application successfully released to ${server}"
   else
-    echo "ERROR: server returned HTTP code $release_response"
+    echo "ERROR: $release_response"
     exit 1
   fi
 
