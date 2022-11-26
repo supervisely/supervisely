@@ -134,7 +134,7 @@ function release() {
   mkdir "${archive_path}"
   
   echo "Packing the following files to ${archive_path}/archive.tar.gz:"
-  tar -v --exclude-vcs-ignores --exclude-vcs -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
+  tar -v --exclude-vcs-ignores --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
 
   echo "Uploading archive..."
 
@@ -147,7 +147,7 @@ function release() {
   -F archive=@"$archive_path/archive.tar.gz" \
   --form-string modalTemplate="${modal_template}" | cat)
 
-  if [[ "$release_response" =~ '{"success":true}200' ]]; then
+  if [[ "$release_response" =~ '{"success":true}' ]]; then
     echo "Application successfully released to ${server}"
   else
     echo "ERROR: $release_response"
