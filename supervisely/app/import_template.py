@@ -1,6 +1,7 @@
 from typing import Optional, Union
 from supervisely._utils import is_production
 import supervisely.io.env as env
+from supervisely.api.module_api import Api
 
 try:
     from typing import Literal
@@ -10,19 +11,15 @@ except ImportError:
 
 
 class Import:
-    def __init__(
-        self,
-    ):
-        pass
-
-    def process_file(self, workspace_id: int, path: str) -> Optional[Union[int, None]]:
-        pass
-
-    def process_folder(self, workspace_id: int, path: str) -> Optional[Union[int, None]]:
+    def process(
+        self, workspace_id: int, path: str, is_directory: bool
+    ) -> Optional[Union[int, None]]:
         pass
 
     def run(self):
+        task_id = None
         if is_production():
+            task_id = env.task_id()
             raise NotImplementedError()
 
         workspace_id = env.workspace_id()
@@ -38,6 +35,13 @@ class Import:
                 "One of the environment variables has to be defined for the import app: FILE or FOLDER"
             )
 
+        is_directory = True
         if file is not None:
-            result = self.process_file(workspace_id=workspace_id, path=file)
-            print("result = ", result)
+            is_directory = False
+
+        project_id = self.process(workspace_id=workspace_id, path=file, is_directory=is_directory)
+        if type(project_id) is int and is_production():
+            api = Api.from_env()
+            info = api.project.get_info_by_id(project_id)
+            api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
+            print("Result project: id={info.id}, name={info.name}")
