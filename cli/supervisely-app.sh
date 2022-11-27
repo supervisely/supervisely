@@ -121,7 +121,8 @@ function release() {
   config=$(cat "${module_path}/config.json")
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
   modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
-  parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
+  parsed_slug=
+  # parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
 
   if [[ -f "${module_path}/README.md" ]]; then
     readme=$(cat "${module_path}/README.md")
@@ -134,7 +135,11 @@ function release() {
   mkdir "${archive_path}"
   
   echo "Packing the following files to ${archive_path}/archive.tar.gz:"
-  tar -v --exclude-vcs-ignores --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
+  tar_params=()
+  if [ -f "${module_path}/.gitignore" ]; then
+    tar_params+=(--exclude-from="${module_path}/.gitignore")
+  fi
+  tar -v "${tar_params[@]}" --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
 
   echo "Uploading archive..."
 
