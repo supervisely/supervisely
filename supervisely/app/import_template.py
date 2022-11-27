@@ -1,7 +1,7 @@
 from typing import Optional, Union
 from supervisely._utils import is_production
 import supervisely.io.env as env
-from supervisely.api.module_api import Api
+from supervisely.api.api import Api
 
 try:
     from typing import Literal
