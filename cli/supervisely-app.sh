@@ -124,7 +124,8 @@ function release() {
   parsed_slug=
   
   if [[ -d "${module_path}/.git" ]]; then
-    parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
+    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@[^\/:]*[:\/]+(.*)\.git/\1/')
+    echo "Will use application slug from remote.origin.url: ${parsed_slug}"
   fi
 
   if [[ -f "${module_path}/README.md" ]]; then
