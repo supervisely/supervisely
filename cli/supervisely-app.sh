@@ -84,7 +84,7 @@ check_cli_deps() {
 
 function release() {
   if [[ -z "${module_path}" ]]; then
-    echo "No '--path' is provided, will archive and release current directory"
+    echo "No '--path' is provided, will archive and release the current directory"
     module_path=$(pwd)
   fi
 
@@ -122,7 +122,10 @@ function release() {
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
   modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
   parsed_slug=
-  # parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
+  
+  if [[ -d "${module_path}/.git" ]]; then
+    parsed_slug=$(git config --get remote.origin.url | sed -n 's|.*github.com/\(.*/.*\)\.git|\1|p')
+  fi
 
   if [[ -f "${module_path}/README.md" ]]; then
     readme=$(cat "${module_path}/README.md")
