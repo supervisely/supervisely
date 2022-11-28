@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 try:
     from typing import Literal
@@ -46,9 +46,7 @@ class Select(Widget):
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        def __init__(
-            self, value, label: str = None, content: Widget = None
-        ) -> Select.Item:
+        def __init__(self, value, label: str = None, content: Widget = None) -> Select.Item:
             self.value = value
             self.label = label
             if label is None:
@@ -77,15 +75,14 @@ class Select(Widget):
         filterable: bool = False,
         placeholder: str = "select",
         size: Literal["large", "small", "mini"] = None,
+        multiple: bool = False,
         widget_id: str = None,
     ) -> Select:
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
 
         if items is not None and groups is not None:
-            raise ValueError(
-                "Only one of the arguments has to be defined: items or groups"
-            )
+            raise ValueError("Only one of the arguments has to be defined: items or groups")
 
         self._items = items
         self._groups = groups
@@ -93,17 +90,14 @@ class Select(Widget):
         self._placeholder = placeholder
         self._changes_handled = False
         self._size = size
+        self._multiple = multiple
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if (
-            self._groups is not None
-            and len(self._groups) > 0
-            and len(self._groups[0]) > 0
-        ):
+        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0]) > 0:
             return self._groups[0].items[0]
         return None
 
@@ -111,6 +105,7 @@ class Select(Widget):
         res = {
             "filterable": self._filterable,
             "placeholder": self._placeholder,
+            "multiple": self._multiple,
             "items": None,
             "groups": None,
         }
@@ -156,6 +151,59 @@ class Select(Widget):
     def set(self, items: List[Select.Item] = None, groups: List[Select.Group] = None):
         self._items = items
         self._groups = groups
+        self.update_data()
+        self.update_state()
+        DataJson().send_changes()
+        StateJson().send_changes()
+
+
+class SelectString(Select):
+    def __init__(
+        self, 
+        values: List[str], 
+        labels: Optional[List[str]] = None,
+        filterable: Optional[bool] = False,
+        placeholder: Optional[str] = "select",
+        size: Optional[Literal["large", "small", "mini"]] = None,
+        multiple: Optional[bool] = False,
+        widget_id: Optional[str] = None,
+    ):
+        if labels is not None:
+            if len(values) != len(labels):
+                raise ValueError("values length must be equal to labels length.")
+            items = []
+            for value, label in zip(values, labels):
+                items.append(Select.Item(value, label))
+        else:
+            items = [Select.Item(value) for value in values]
+
+        super(SelectString, self).__init__(
+            items=items,
+            groups=None,
+            filterable=filterable,
+            placeholder=placeholder,
+            multiple=multiple,
+            size=size,
+            widget_id=widget_id
+        )
+
+    def _get_first_value(self) -> Select.Item:
+        if self._items is not None and len(self._items) > 0:
+            return self._items[0]
+        return None
+
+    def get_items(self) -> List[str]:
+        return [item.value for item in self._items]
+
+    def set(self, values: List[str], labels: Optional[List[Select.Item]] = None):
+        if labels is not None:
+            if len(values) != len(labels):
+                raise ValueError("values length must be equal to labels length.")
+            self._items = []
+            for value, label in zip(values, labels):
+                self._items.append(Select.Item(value, label))
+        else:
+            self._items = [Select.Item(value) for value in values]
         self.update_data()
         self.update_state()
         DataJson().send_changes()

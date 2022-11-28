@@ -17,7 +17,7 @@ from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_tag_api import VideoTagApi
 from supervisely.sly_logger import logger
-from supervisely.io.fs import get_file_ext, get_file_hash
+from supervisely.io.fs import get_file_ext, get_file_hash, get_file_size
 import supervisely.io.fs as sly_fs
 
 from supervisely.io.fs import ensure_base_path
@@ -895,6 +895,34 @@ class VideoApi(RemoveableBulkModuleApi):
                     "File skipped {!r}: error occurred during processing {!r}".format(name, str(e))
                 )
         return video_info_results
+
+    def upload_path(
+        self,
+        dataset_id: int,
+        name: str,
+        path: str,
+        meta: Dict = None,
+        item_progress: Optional[Progress] = None,
+    ) -> VideoInfo:
+        progress_cb = item_progress
+        p = None
+        if item_progress is not None and type(item_progress) is bool:
+            p = Progress(f"Uploading {name}", total_cnt=get_file_size(path), is_size=True)
+            progress_cb = p.iters_done_report
+
+        results = self.upload_paths(
+            dataset_id=dataset_id,
+            names=[name],
+            paths=[path],
+            progress_cb=None,
+            metas=[meta],
+            infos=None,
+            item_progress=progress_cb,
+        )
+        if type(item_progress) is bool:
+            p.set_current_value(value=p.total, report=True)
+
+        return results[0]
 
     def _upload_uniq_videos_single_req(
         self, func_item_to_byte_stream, hashes_items_to_upload, progress_cb=None

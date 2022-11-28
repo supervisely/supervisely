@@ -129,3 +129,13 @@ def team_files_file(raise_not_found=True):
 
 def file(raise_not_found=True):
     return team_files_file(raise_not_found)
+
+
+def task_id(raise_not_found=True):
+    return _parse_from_env(
+        name="task_id",
+        keys=["TASK_ID"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )

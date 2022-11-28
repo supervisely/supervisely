@@ -77,6 +77,7 @@ class SelectDataset(Widget):
             "filterable": True,
             "valueProperty": "id",
             "multiple": self._multiselect,
+            "flat": True,
         }
         if self._size is not None:
             res["options"]["size"] = self._size
