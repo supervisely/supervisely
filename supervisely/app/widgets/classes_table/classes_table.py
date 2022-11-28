@@ -104,17 +104,16 @@ class ClassesTable(Widget):
             stats = self._api.project.get_stats(self._project_id)
             project_info = self._api.project.get_info_by_id(self._project_id)
             if project_info.type == str(sly.ProjectType.IMAGES):
-                columns.append("images count")
+                columns.extend(["images count", "labels count"])
             elif project_info.type == str(sly.ProjectType.VIDEOS):
-                columns.append("videos count")
+                columns.extend(["videos count", "figures count"])
             elif project_info.type in [
                 str(sly.ProjectType.POINT_CLOUDS),
                 str(sly.ProjectType.POINT_CLOUD_EPISODES),
             ]:
-                columns.append("pointclouds count")
+                columns.extend(["pointclouds count", "figures count"])
             elif project_info.type == str(sly.ProjectType.VOLUMES):
-                columns.append("volumes count")
-            columns.append("figures count")
+                columns.extend(["volumes count", "figures count"])
 
             class_items = {}
             for item in stats["images"]["objectClasses"]:
@@ -151,6 +150,7 @@ class ClassesTable(Widget):
         columns = [col.upper() for col in columns]
         if data_to_show:
             table_data = []
+            data_to_show = sorted(data_to_show, key=lambda line: line["objectsCount"], reverse=True)
             for line in data_to_show:
                 table_line = []
                 icon = type_to_zmdi_icon[sly.AnyGeometry]
