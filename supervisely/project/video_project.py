@@ -517,6 +517,44 @@ class VideoDataset(Dataset):
         """
         raise NotImplementedError(f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object.")
 
+    def get_classes_stats(
+        self,
+        project_meta: Optional[ProjectMeta] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        if project_meta is None:
+            project = VideoProject(self.project_dir, OpenMode.READ)
+            project_meta = project.meta
+        class_items = {}
+        class_objects = {}
+        class_figures = {}
+        for obj_class in project_meta.obj_classes:
+            class_items[obj_class.name] = 0
+            class_objects[obj_class.name] = 0
+            class_figures[obj_class.name] = 0
+        for item_name in self:
+            item_ann = self.get_ann(item_name, project_meta)
+            item_class = {}
+            for ann_obj in item_ann.objects:
+                class_objects[ann_obj.obj_class.name] += 1
+            for video_figure in item_ann.figures:
+                class_figures[video_figure.obj_class.name] += 1
+                item_class[video_figure.obj_class.name] = True
+            for obj_class in project_meta.obj_classes:
+                if obj_class.name in item_class.keys():
+                    class_items[obj_class.name] += 1
+        
+        result = {}
+        if return_items_count:
+            result["items_count"] = class_items
+        if return_objects_count:
+            result["objects_count"] = class_objects
+        if return_figures_count:
+            result["figures_count"] = class_figures
+        return result
+
     def _get_empty_annotaion(self, item_name):
         """
         Create empty VideoAnnotation for given video
@@ -689,6 +727,20 @@ class VideoProject(Project):
             # Output: "/projects/10093/datasets"
         """
         return super().get_url(id)
+
+    def get_classes_stats(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        return super(VideoProject, self).get_classes_stats(
+            dataset_names, 
+            return_objects_count, 
+            return_figures_count, 
+            return_items_count
+        )
 
     def _read(self):
         """
