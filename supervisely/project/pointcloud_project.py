@@ -392,8 +392,8 @@ class PointcloudDataset(VideoDataset):
                     class_objects[ann_obj.obj_class.name] += 1
                 objects_calculated = True
             for ptc_figure in item_ann.figures:
-                class_figures[ptc_figure.obj_class.name] += 1
-                item_class[ptc_figure.obj_class.name] = True
+                class_figures[ptc_figure.parent_object.obj_class.name] += 1
+                item_class[ptc_figure.parent_object.obj_class.name] = True
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1

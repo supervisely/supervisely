@@ -540,8 +540,8 @@ class VideoDataset(Dataset):
             for ann_obj in item_ann.objects:
                 class_objects[ann_obj.obj_class.name] += 1
             for video_figure in item_ann.figures:
-                class_figures[video_figure.obj_class.name] += 1
-                item_class[video_figure.obj_class.name] = True
+                class_figures[video_figure.parent_object.obj_class.name] += 1
+                item_class[video_figure.parent_object.obj_class.name] = True
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
