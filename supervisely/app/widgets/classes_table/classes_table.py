@@ -128,98 +128,25 @@ class ClassesTable(Widget):
                 obj_class["objectsCount"] = class_objects[obj_class["title"]]
 
         elif self._project_fs is not None:
-            class_items = {}
-            class_objects = {}
-            for obj_class in project_meta.obj_classes:
-                class_items[obj_class.name] = 0
-                class_objects[obj_class.name] = 0
+            project_stats = self._project_fs.get_classes_stats()
 
             if type(self._project_fs) == sly.Project:
-                columns.append("images count")
-                for ds in self._project_fs.datasets:
-                    ds: sly.Dataset
-                    for item_name in ds:
-                        item_ann = ds.get_ann(item_name, project_meta)
-                        item_class = {}
-                        for label in item_ann.labels:
-                            label: sly.Label
-                            class_objects[label.obj_class.name] += 1
-                            item_class[label.obj_class.name] = True
-                        for obj_class in project_meta.obj_classes:
-                            if obj_class.name in item_class.keys():
-                                class_items[obj_class.name] += 1
+                columns.extend(["images count", "labels count"])
 
             elif type(self._project_fs) == sly.VideoProject:
-                columns.append("videos count")
-                for ds in self._project_fs.datasets:
-                    ds: sly.VideoDataset
-                    for item_name in ds:
-                        item_ann = ds.get_ann(item_name, project_meta)
-                        item_ann: sly.VideoAnnotation
-                        item_class = {}
-                        for video_figure in item_ann.figures:
-                            video_figure: sly.VideoFigure
-                            class_objects[video_figure.obj_class.name] += 1
-                            item_class[video_figure.obj_class.name] = True
-                        for obj_class in project_meta.obj_classes:
-                            if obj_class.name in item_class.keys():
-                                class_items[obj_class.name] += 1
+                columns.extend(["videos count", "objects count", "figures count"])
 
-            elif type(self._project_fs) == sly.PointcloudProject:
-                columns.append("pointclouds count")
-                for ds in self._project_fs.datasets:
-                    ds: sly.PointcloudDataset
-                    for item_name in ds:
-                        item_ann = ds.get_ann(item_name, project_meta)
-                        item_figures = item_ann.figures
-                        item_class = {}
-                        for ptc_figure in item_figures:
-                            ptc_figure: sly.PointcloudFigure
-                            class_objects[ptc_figure.obj_class.name] += 1
-                            item_class[ptc_figure.obj_class.name] = True
-                        for obj_class in project_meta.obj_classes:
-                            if obj_class.name in item_class.keys():
-                                class_items[obj_class.name] += 1
-
-            elif type(self._project_fs) == sly.PointcloudEpisodeProject:
-                columns.append("pointclouds count")
-                for ds in self._project_fs.datasets:
-                    ds: sly.PointcloudEpisodeDataset
-                    episode_ann: sly.PointcloudEpisodeAnnotation = ds.get_ann(
-                        project_meta
-                    )
-                    for item_name in ds:
-                        frame_index = ds.get_frame_idx(item_name)
-                        item_figures = episode_ann.get_figures_on_frame(frame_index)
-                        item_class = {}
-                        for ptc_figure in item_figures:
-                            ptc_figure: sly.PointcloudFigure
-                            class_objects[ptc_figure.obj_class.name] += 1
-                            item_class[ptc_figure.obj_class.name] = True
-                        for obj_class in project_meta.obj_classes:
-                            if obj_class.name in item_class.keys():
-                                class_items[obj_class.name] += 1
+            elif type(self._project_fs) in [sly.PointcloudProject, sly.PointcloudEpisodeProject]:
+                columns.extend(["pointclouds count", "objects count", "figures count"])
 
             elif type(self._project_fs) == sly.VolumeProject:
-                columns.append("volumes count")
-                for ds in self._project_fs.datasets:
-                    ds: sly.VolumeDataset
-                    for item_name in ds:
-                        item_ann = ds.get_ann(item_name, project_meta)
-                        item_ann: sly.VolumeAnnotation
-                        item_class = {}
-                        for volume_figure in item_ann.figures:
-                            volume_figure: sly.VolumeFigure
-                            class_objects[volume_figure.obj_class.name] += 1
-                            item_class[volume_figure.obj_class.name] = True
-                        for obj_class in project_meta.obj_classes:
-                            if obj_class.name in item_class.keys():
-                                class_items[obj_class.name] += 1
-            columns.append("figures count")
+                columns.extend(["volumes count", "objects count", "figures count"])
 
             for obj_class in data_to_show:
-                obj_class["itemsCount"] = class_items[obj_class["title"]]
-                obj_class["objectsCount"] = class_objects[obj_class["title"]]
+                obj_class["itemsCount"] = project_stats["items_count"][obj_class["title"]]
+                obj_class["objectsCount"] = project_stats["objects_count"][obj_class["title"]]
+                if type(self._project_fs) != sly.Project:
+                    obj_class["figuresCount"] = project_stats["figures_count"][obj_class["title"]]
 
         columns = [col.upper() for col in columns]
         if data_to_show:
@@ -248,7 +175,11 @@ class ClassesTable(Widget):
                     )
                 if "objectsCount" in line.keys():
                     table_line.append(
-                        {"name": "FIGURES COUNT", "data": line["objectsCount"]}
+                        {"name": "OBJECTS COUNT", "data": line["objectsCount"]}
+                    )
+                if "figuresCount" in line.keys():
+                    table_line.append(
+                        {"name": "FIGURES COUNT", "data": line["figuresCount"]}
                     )
                 table_data.append(table_line)
             self._table_data = table_data
