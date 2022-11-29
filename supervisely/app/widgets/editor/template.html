@@ -1,0 +1,7 @@
+{% if widget._restore_button %}
+<el-button class="ml15" type="text">
+    Restore Default
+</el-button>
+{% endif %}
+<sly-editor v-model="state.{{{widget.widget_id}}}.code"
+            :options="data.{{{widget.widget_id}}}.editor_options"></sly-editor>
