@@ -1075,8 +1075,8 @@ class ImageApi(RemoveableBulkModuleApi):
         links: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
-        batch_size=50,
-        force_metadata_for_links=True,
+        batch_size: Optional[int] = 50,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1186,6 +1186,7 @@ class ImageApi(RemoveableBulkModuleApi):
         hashes: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
+        batch_size: Optional[int] = 50,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1238,6 +1239,7 @@ class ImageApi(RemoveableBulkModuleApi):
             hashes,
             progress_cb,
             metas=metas,
+            batch_size=batch_size,
         )
 
     def upload_id(
@@ -1305,6 +1307,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
+        batch_size: Optional[int] = 50,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1377,14 +1380,14 @@ class ImageApi(RemoveableBulkModuleApi):
         result = [None] * len(names)
         if len(links) > 0:
             res_infos_links = self.upload_links(
-                dataset_id, links_names, links, progress_cb, metas=links_metas
+                dataset_id, links_names, links, progress_cb, metas=links_metas, batch_size=batch_size
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
 
         if len(hashes) > 0:
             res_infos_hashes = self.upload_hashes(
-                dataset_id, hashes_names, hashes, progress_cb, metas=hashes_metas
+                dataset_id, hashes_names, hashes, progress_cb, metas=hashes_metas, batch_size=batch_size
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1591,6 +1594,78 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return new_images
 
+    def copy_batch_optimized(
+        self,
+        src_dataset_id: int,
+        src_image_infos: List[ImageInfo],
+        dst_dataset_id: int,
+        with_annotations: Optional[bool] = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> List[ImageInfo]:
+        """
+        Copies Images with given IDs to Dataset.
+
+        :param src_dataset_id: Source Dataset ID in Supervisely.
+        :type src_dataset_id: int
+        :param src_image_infos: ImageInfo objects of images to copy.
+        :type src_image_infos: List [ :class:`ImageInfo` ]
+        :param dst_dataset_id: Destination Dataset ID in Supervisely.
+        :type dst_dataset_id: int
+        :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
+        :type with_annotations: bool, optional
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: Progress, optional
+        :raises: :class:`TypeError` if type of src_image_infos is not list
+        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ImageInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_ds_id = 2231
+            img_infos = api.image.get_list(src_ds_id)
+
+            dest_ds_id = 2574
+            dest_img_infos = api.image.copy_batch_optimized(src_ds_id, img_infos, dest_ds_id)
+        """
+        if type(src_image_infos) is not list:
+            raise TypeError(
+                "src_image_infos parameter has type {!r}. but has to be of type {!r}".format(
+                    type(src_image_infos), list
+                )
+            )
+
+        if len(src_image_infos) == 0:
+            return
+
+        existing_images = self.get_list(dst_dataset_id)
+        existing_names = {image.name for image in existing_images}
+
+        new_names = [
+            generate_free_name(
+                existing_names, info.name, with_ext=True, extend_used_names=True
+            )
+            for info in src_image_infos
+        ]
+
+        src_ids = [info.id for info in src_image_infos]
+        new_images = self.upload_ids(dst_dataset_id, new_names, src_ids, progress_cb, batch_size = 500)
+        new_ids = [new_image.id for new_image in new_images]
+
+        if with_annotations:
+            src_project_id = self._api.dataset.get_info_by_id(src_dataset_id).project_id
+            dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
+            self._api.project.merge_metas(src_project_id, dst_project_id)
+            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size = 500)
+
+        return new_images
+
     def move_batch(
         self,
         dst_dataset_id: int,
@@ -1644,6 +1719,57 @@ class ImageApi(RemoveableBulkModuleApi):
             dst_dataset_id, ids, change_name_if_conflict, with_annotations, progress_cb
         )
         self.remove_batch(ids)
+        return new_images
+
+    def move_batch_optimized(
+        self,
+        src_dataset_id: int,
+        src_image_infos: List[ImageInfo],
+        dst_dataset_id: int,
+        with_annotations: Optional[bool] = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> List[ImageInfo]:
+        """
+        Moves Images with given IDs to Dataset.
+
+        :param src_dataset_id: Source Dataset ID in Supervisely.
+        :type src_dataset_id: int
+        :param src_image_infos: ImageInfo objects of images to move.
+        :type src_image_infos: List [ :class:`ImageInfo` ]
+        :param dst_dataset_id: Destination Dataset ID in Supervisely.
+        :type dst_dataset_id: int
+        :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
+        :type with_annotations: bool, optional
+        :param progress_cb: Function for tracking the progress of moving.
+        :type progress_cb: Progress, optional
+        :raises: :class:`TypeError` if type of src_image_infos is not list
+        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ImageInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_ds_id = 2231
+            img_infos = api.image.get_list(src_ds_id)
+
+            dest_ds_id = 2574
+            dest_img_infos = api.image.move_batch_optimized(src_ds_id, img_infos, dest_ds_id)
+        """
+        new_images = self.copy_batch_optimized(
+            src_dataset_id, 
+            src_image_infos, 
+            dst_dataset_id, 
+            with_annotations=with_annotations, 
+            progress_cb=progress_cb,
+        )
+        src_ids = [info.id for info in src_image_infos]
+        self.remove_batch(src_ids, batch_size=500)
         return new_images
 
     def copy(
@@ -2065,7 +2191,12 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
-    def remove_batch(self, ids: List[int], progress_cb: Optional[Callable] = None):
+    def remove_batch(
+        self, 
+        ids: List[int], 
+        progress_cb: Optional[Callable] = None, 
+        batch_size: Optional[int] = 50,
+    ):
         """
         Remove images from supervisely by ids.
 
@@ -2088,7 +2219,7 @@ class ImageApi(RemoveableBulkModuleApi):
             image_ids = [2389126, 2389127]
             api.image.remove_batch(image_ids)
         """
-        super(ImageApi, self).remove_batch(ids, progress_cb)
+        super(ImageApi, self).remove_batch(ids, progress_cb=progress_cb, batch_size=batch_size)
 
     def remove(self, image_id: int):
         """
