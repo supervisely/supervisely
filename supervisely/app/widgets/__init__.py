@@ -46,3 +46,4 @@ from supervisely.app.widgets.video_thumbnail.video_thumbnail import VideoThumbna
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
+from supervisely.app.widgets.editor.editor import Editor
