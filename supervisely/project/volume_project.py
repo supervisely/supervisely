@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from collections import namedtuple
+from typing import Optional, List
 import os
 
 from supervisely.io.fs import file_exists, touch
@@ -44,12 +45,64 @@ class VolumeDataset(VideoDataset):
             self.get_interpolation_dir(item_name), figure.key().hex + ".stl"
         )
 
+    def get_classes_stats(
+        self,
+        project_meta: Optional[ProjectMeta] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        if project_meta is None:
+            project = VolumeProject(self.project_dir, OpenMode.READ)
+            project_meta = project.meta
+        class_items = {}
+        class_objects = {}
+        class_figures = {}
+        for obj_class in project_meta.obj_classes:
+            class_items[obj_class.name] = 0
+            class_objects[obj_class.name] = 0
+            class_figures[obj_class.name] = 0
+        for item_name in self:
+            item_ann = self.get_ann(item_name, project_meta)
+            item_class = {}
+            for ann_obj in item_ann.objects:
+                class_objects[ann_obj.obj_class.name] += 1
+            for volume_figure in item_ann.figures:
+                class_figures[volume_figure.parent_object.obj_class.name] += 1
+                item_class[volume_figure.parent_object.obj_class.name] = True
+            for obj_class in project_meta.obj_classes:
+                if obj_class.name in item_class.keys():
+                    class_items[obj_class.name] += 1
+        
+        result = {}
+        if return_items_count:
+            result["items_count"] = class_items
+        if return_objects_count:
+            result["objects_count"] = class_objects
+        if return_figures_count:
+            result["figures_count"] = class_figures
+        return result
+
 
 class VolumeProject(VideoProject):
     dataset_class = VolumeDataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = VolumeDataset
+
+    def get_classes_stats(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        return super(VolumeProject, self).get_classes_stats(
+            dataset_names, 
+            return_objects_count, 
+            return_figures_count, 
+            return_items_count
+        )
 
 
 def download_volume_project(

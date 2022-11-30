@@ -858,6 +858,43 @@ class Dataset(KeyObject):
         self._add_ann_by_type(item_name, ann)
         self._add_item_info(item_name, img_info)
 
+    def get_classes_stats(
+        self,
+        project_meta: Optional[ProjectMeta] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        if project_meta is None:
+            project = Project(self.project_dir, OpenMode.READ)
+            project_meta = project.meta
+        class_items = {}
+        class_objects = {}
+        class_figures = {}
+        for obj_class in project_meta.obj_classes:
+            class_items[obj_class.name] = 0
+            class_objects[obj_class.name] = 0
+            class_figures[obj_class.name] = 0
+        for item_name in self:
+            item_ann = self.get_ann(item_name, project_meta)
+            item_class = {}
+            for label in item_ann.labels:
+                class_objects[label.obj_class.name] += 1
+                item_class[label.obj_class.name] = True
+            for obj_class in project_meta.obj_classes:
+                if obj_class.name in item_class.keys():
+                    class_items[obj_class.name] += 1
+        
+        result = {}
+        if return_items_count:
+            result["items_count"] = class_items
+        if return_objects_count:
+            result["objects_count"] = class_objects
+        if return_figures_count:
+            class_figures = class_objects.copy() # for Images project
+            result["figures_count"] = class_figures
+        return result
+
     def _get_empty_annotaion(self, item_name):
         """
         Create empty annotation from given item. Generate exception error if item not found in project
@@ -1386,6 +1423,34 @@ class Project:
             # Output: 12
         """
         return sum(len(ds) for ds in self._datasets)
+
+    def get_classes_stats(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        result = {}
+        for ds in self.datasets:
+            ds: Dataset
+            if dataset_names is not None and ds.name not in dataset_names:
+                continue
+            ds_stats = ds.get_classes_stats(
+                self.meta, 
+                return_objects_count, 
+                return_figures_count, 
+                return_items_count
+            )
+            for stat_name, classes_stats in ds_stats.items():
+                if stat_name not in result.keys():
+                    result[stat_name] = {}
+                for class_name, class_count in classes_stats.items():
+                    if class_name not in result[stat_name].keys():
+                        result[stat_name][class_name] = 0
+                    result[stat_name][class_name] += class_count
+
+        return result
 
     def _get_project_meta_path(self):
         """

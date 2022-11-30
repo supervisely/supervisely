@@ -129,7 +129,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
 
     def get_ann_frame(
-        self, item_name: str, annotation: PointcloudEpisodeAnnotation = None
+        self, item_name: str, annotation: PointcloudEpisodeAnnotation
     ) -> Frame:
         frame_idx = self.get_frame_idx(item_name)
         if frame_idx is None:
@@ -222,6 +222,46 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         self._add_ann_by_type(item_name, frame)
         self._add_item_info(item_name, item_info)
 
+    def get_classes_stats(
+        self,
+        project_meta: Optional[ProjectMeta] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        if project_meta is None:
+            project = PointcloudEpisodeProject(self.project_dir, OpenMode.READ)
+            project_meta = project.meta
+        class_items = {}
+        class_objects = {}
+        class_figures = {}
+        for obj_class in project_meta.obj_classes:
+            class_items[obj_class.name] = 0
+            class_objects[obj_class.name] = 0
+            class_figures[obj_class.name] = 0
+        episode_ann: PointcloudEpisodeAnnotation = self.get_ann(project_meta)
+        for ann_obj in episode_ann.objects:
+            class_objects[ann_obj.obj_class.name] += 1
+        for item_name in self:
+            frame_index = self.get_frame_idx(item_name)
+            item_figures = episode_ann.get_figures_on_frame(frame_index)
+            item_class = {}
+            for ptc_figure in item_figures:
+                class_figures[ptc_figure.parent_object.obj_class.name] += 1
+                item_class[ptc_figure.parent_object.obj_class.name] = True
+            for obj_class in project_meta.obj_classes:
+                if obj_class.name in item_class.keys():
+                    class_items[obj_class.name] += 1
+        
+        result = {}
+        if return_items_count:
+            result["items_count"] = class_items
+        if return_objects_count:
+            result["objects_count"] = class_objects
+        if return_figures_count:
+            result["figures_count"] = class_figures
+        return result
+
     def _add_ann_by_type(self, item_name, frame):
         if frame is None:
             self._item_to_ann[item_name] = ""
@@ -250,6 +290,20 @@ class PointcloudEpisodeProject(PointcloudProject):
     @classmethod
     def read_single(cls, dir) -> PointcloudEpisodeProject:
         return read_project_wrapper(dir, cls)
+
+    def get_classes_stats(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        return super(PointcloudEpisodeProject, self).get_classes_stats(
+            dataset_names, 
+            return_objects_count, 
+            return_figures_count, 
+            return_items_count
+        )
 
     @staticmethod
     def get_train_val_splits_by_count(

@@ -366,6 +366,46 @@ class PointcloudDataset(VideoDataset):
         dst_img_path = os.path.join(self.pointcloud_dir, item_name)
         sly_pointcloud.write(dst_img_path, pointcloud)
 
+    def get_classes_stats(
+        self,
+        project_meta: Optional[ProjectMeta] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        if project_meta is None:
+            project = PointcloudProject(self.project_dir, OpenMode.READ)
+            project_meta = project.meta
+        class_items = {}
+        class_objects = {}
+        class_figures = {}
+        for obj_class in project_meta.obj_classes:
+            class_items[obj_class.name] = 0
+            class_objects[obj_class.name] = 0
+            class_figures[obj_class.name] = 0
+        objects_calculated = False
+        for item_name in self:
+            item_ann = self.get_ann(item_name, project_meta)
+            item_class = {}
+            if not objects_calculated:
+                for ann_obj in item_ann.objects:
+                    class_objects[ann_obj.obj_class.name] += 1
+                objects_calculated = True
+            for ptc_figure in item_ann.figures:
+                class_figures[ptc_figure.parent_object.obj_class.name] += 1
+                item_class[ptc_figure.parent_object.obj_class.name] = True
+            for obj_class in project_meta.obj_classes:
+                if obj_class.name in item_class.keys():
+                    class_items[obj_class.name] += 1
+        
+        result = {}
+        if return_items_count:
+            result["items_count"] = class_items
+        if return_objects_count:
+            result["objects_count"] = class_objects
+        if return_figures_count:
+            result["figures_count"] = class_figures
+        return result
 
     def _validate_added_item_or_die(self, item_path):
         # Make sure we actually received a valid pointcloud file, clean it up and fail if not so.
@@ -468,6 +508,20 @@ class PointcloudProject(VideoProject):
     @classmethod
     def read_single(cls, dir) -> PointcloudProject:
         return read_project_wrapper(dir, cls)
+
+    def get_classes_stats(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        return_objects_count: Optional[bool] = True,
+        return_figures_count: Optional[bool] = True,
+        return_items_count: Optional[bool] = True,
+    ):
+        return super(PointcloudProject, self).get_classes_stats(
+            dataset_names, 
+            return_objects_count, 
+            return_figures_count, 
+            return_items_count
+        )
 
     @staticmethod
     def get_train_val_splits_by_count(
