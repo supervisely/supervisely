@@ -16,13 +16,13 @@ class Import:
     def process(
         self, workspace_id: int, path: str, is_directory: bool
     ) -> Optional[Union[int, None]]:
-        pass
+        raise NotImplementedError() # implement your method when inherit
 
     def run(self):
-        api = Api.from_env()
-
+        api = None
         task_id = None
         if is_production():
+            api = Api.from_env()
             task_id = env.task_id()
             # raise NotImplementedError()
 
@@ -57,7 +57,6 @@ class Import:
             
         project_id = self.process(workspace_id=workspace_id, path=path, is_directory=is_directory)
         if type(project_id) is int and is_production():
-            # api = Api.from_env()
             info = api.project.get_info_by_id(project_id)
             api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
             print(f"Result project: id={info.id}, name={info.name}")
