@@ -2,6 +2,8 @@ from typing import Optional, Union
 from supervisely._utils import is_production
 import supervisely.io.env as env
 from supervisely.api.api import Api
+from supervisely.app import get_data_dir
+from os.path import join, basename
 
 try:
     from typing import Literal
@@ -17,11 +19,14 @@ class Import:
         pass
 
     def run(self):
+        api = Api.from_env()
+
         task_id = None
         if is_production():
             task_id = env.task_id()
-            raise NotImplementedError()
+            # raise NotImplementedError()
 
+        team_id = env.team_id()
         workspace_id = env.workspace_id()
         file = env.file(raise_not_found=False)
         folder = env.folder(raise_not_found=False)
@@ -36,12 +41,23 @@ class Import:
             )
 
         is_directory = True
+        path = folder
         if file is not None:
+            path = file
             is_directory = False
 
-        project_id = self.process(workspace_id=workspace_id, path=file, is_directory=is_directory)
+        if is_production():
+            local_save_path = join(get_data_dir(), basename(path))
+            if is_directory:
+                raise NotImplementedError()
+                # api.file.download_directory(team_id=team_id, remote_path=path, local_save_path=local_save_path)
+            else:
+                api.file.download(team_id=team_id, remote_path=path, local_save_path=local_save_path)
+            path = local_save_path
+            
+        project_id = self.process(workspace_id=workspace_id, path=path, is_directory=is_directory)
         if type(project_id) is int and is_production():
-            api = Api.from_env()
+            # api = Api.from_env()
             info = api.project.get_info_by_id(project_id)
             api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
-            print("Result project: id={info.id}, name={info.name}")
+            print(f"Result project: id={info.id}, name={info.name}")
