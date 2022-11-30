@@ -836,9 +836,9 @@ class RemoveableBulkModuleApi(ModuleApi):
         """_remove_batch_field_name"""
         raise NotImplementedError()
 
-    def remove_batch(self, ids, progress_cb=None):
+    def remove_batch(self, ids, progress_cb=None, batch_size=50):
         """remove_batch"""
-        for ids_batch in batched(ids):
+        for ids_batch in batched(ids, batch_size=batch_size):
             self._api.post(
                 self._remove_batch_api_method_name(),
                 {self._remove_batch_field_name(): ids_batch},
