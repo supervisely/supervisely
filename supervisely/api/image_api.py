@@ -1075,8 +1075,8 @@ class ImageApi(RemoveableBulkModuleApi):
         links: List[str],
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
-        force_metadata_for_links: Optional[bool] = True,
         batch_size: Optional[int] = 50,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1117,8 +1117,8 @@ class ImageApi(RemoveableBulkModuleApi):
             links,
             progress_cb,
             metas=metas,
-            force_metadata_for_links=force_metadata_for_links,
             batch_size=batch_size,
+            force_metadata_for_links=force_metadata_for_links,
         )
 
     def upload_hash(
@@ -1402,8 +1402,8 @@ class ImageApi(RemoveableBulkModuleApi):
         items,
         progress_cb=None,
         metas=None,
-        force_metadata_for_links=True,
         batch_size=50,
+        force_metadata_for_links=True,
     ):
         """ """
         results = []
