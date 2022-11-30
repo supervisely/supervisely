@@ -1,6 +1,10 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget, Button
-from typing import Optional, Literal
+from typing import Optional
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 class Editor(Widget):
     def __init__(
