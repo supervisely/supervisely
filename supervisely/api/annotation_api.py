@@ -648,7 +648,7 @@ class AnnotationApi(ModuleApi):
         self.copy_batch([src_image_id], [dst_image_id])
 
     def copy_batch_by_ids(
-        self, src_image_ids: List[int], dst_image_ids: List[int]
+        self, src_image_ids: List[int], dst_image_ids: List[int], batch_size: Optional[int] = 50
     ) -> None:
         """
         Copy annotations from one images IDs to another images IDs in API.
@@ -682,15 +682,16 @@ class AnnotationApi(ModuleApi):
             )
         if len(src_image_ids) == 0:
             return
-
-        self._api.post(
-            "annotations.bulk.copy",
-            data={
-                "srcImageIds": src_image_ids,
-                "destImageIds": dst_image_ids,
-                "preserveSourceDate": True,
-            },
-        )
+        for cur_batch in batched(list(zip(src_image_ids, dst_image_ids)), batch_size=batch_size):
+            src_ids_batch, dst_ids_batch = zip(*cur_batch)
+            self._api.post(
+                "annotations.bulk.copy",
+                data={
+                    "srcImageIds": src_ids_batch,
+                    "destImageIds": dst_ids_batch,
+                    "preserveSourceDate": True,
+                },
+            )
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
         """
