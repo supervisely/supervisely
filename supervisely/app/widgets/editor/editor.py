@@ -54,14 +54,14 @@ class Editor(Widget):
     def get_json_state(self):
         return {"text": self._current_code}
 
-    def get_code(self):
+    def get_text(self) -> str:
         return StateJson()[self.widget_id]['text']
 
     def set_text(
         self,
         text: Optional[str] = "",
         language_mode: Optional[Literal['json', 'html', 'plain_text', 'yaml', 'python']] = None,
-    ):
+    ) -> None:
         self._initial_code = text
         self._current_code = text
         self._language_mode = language_mode
@@ -72,7 +72,12 @@ class Editor(Widget):
             DataJson()[self.widget_id]['editor_options']['mode'] = self._language_mode
             DataJson().send_changes()
 
-    def set_readonly(self, value: Optional[bool] = True):
+    @property
+    def readonly(self) -> bool:
+        return self._readonly
+
+    @readonly.setter
+    def readonly(self, value: bool):
         self._readonly = value
         DataJson()[self.widget_id]['editor_options']['readOnly'] = self._readonly
         DataJson().send_changes()
