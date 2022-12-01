@@ -16,7 +16,7 @@ class Import:
     def process(
         self, workspace_id: int, path: str, is_directory: bool
     ) -> Optional[Union[int, None]]:
-        raise NotImplementedError() # implement your method when inherit
+        raise NotImplementedError() # implement your own method when inherit
 
     def run(self):
         api = None
