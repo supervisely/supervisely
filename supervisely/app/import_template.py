@@ -30,14 +30,12 @@ class Import:
 
     def run(self):
         api = Api.from_env()
-        context = Import.Context
-        
-        context.task_id = None
+        task_id = None
         if is_production():
-            context.task_id = env.task_id()
+            task_id = env.task_id()
 
-        context.team_id = env.team_id()
-        context.workspace_id = env.workspace_id()
+        team_id = env.team_id()
+        workspace_id = env.workspace_id()
           
         file = env.file(raise_not_found=False)
         folder = env.folder(raise_not_found=False)
@@ -51,39 +49,49 @@ class Import:
                 "One of the environment variables has to be defined for the import app: FILE or FOLDER"
             )
 
-        context.path = folder
+        is_directory = True
+        path = folder
         if file is not None:
-            context.path = file
-            context.is_directory = False
+            path = file
+            is_directory = False
             
-        context.project_id = env.project_id(raise_not_found=False)
-        context.dataset_id = env.dataset_id(raise_not_found=False)
+        project_id = env.project_id(raise_not_found=False)
+        dataset_id = env.dataset_id(raise_not_found=False)
         
         # get or create project with the same name as input file and empty dataset in it
-        if context.project_id is None:
-            project_name = Path(context.path).stem
-            project = api.project.create(workspace_id=context.workspace_id, name=project_name, change_name_if_conflict=True)
+        if project_id is None:
+            project_name = Path(path).stem
+            project = api.project.create(workspace_id=workspace_id, name=project_name, change_name_if_conflict=True)
         else:
             project = api.project.get_info_by_id(id=project_id)
         print(f"Working project: id={project.id}, name={project.name}")
             
-        if context.dataset_id is None: 
+        if dataset_id is None: 
             dataset = api.dataset.create(project_id=project.id, name="dataset", change_name_if_conflict=True)
         else:
-            dataset = api.dataset.get_info_by_id(id=context.dataset_id)
+            dataset = api.dataset.get_info_by_id(id=dataset_id)
         print(f"Working dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
             local_save_path = join(get_data_dir(), basename(path))
-            if context.is_directory:
+            if is_directory:
                 raise NotImplementedError()
                 # api.file.download_directory(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             else:
-                api.file.download(team_id=context.team_id, remote_path=path, local_save_path=local_save_path)
+                api.file.download(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             path = local_save_path
+            
+        context = Import.Context
+        context.task_id = task_id
+        context.team_id = team_id
+        context.workspace_id = workspace_id
+        context.project_id = project.id
+        context.dataset_id = dataset.id
+        context.path = path
+        context.is_directory = is_directory
             
         project_id = self.process(context=context)
         if type(project_id) is int and is_production():
             info = api.project.get_info_by_id(project_id)
-            api.task.set_output_project(task_id=context.task_id, project_id=info.id, project_name=info.name)
+            api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
             print(f"Result project: id={info.id}, name={info.name}")
