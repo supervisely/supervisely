@@ -16,23 +16,82 @@ except ImportError:
 
 
 class Import:
-    class Context(NamedTuple):
-        task_id: int = None
-        team_id: int = None
-        workspace_id: int = None
-        project_id: int = None
-        dataset_id: int = None
-        path: str = None
-        is_directory: bool = None
+    class Context:
+        def __init__(self, task_id: int, team_id: int, workspace_id: int, project_id: int, dataset_id: int, path: str, is_directory: bool = True):            
+            self.task_id = task_id
+            if self.task_id is not None and type(self.task_id) != int:
+                raise ValueError(f"Task ID must be 'int': {self.task_id}")
+            
+            self.team_id = team_id
+            if self.team_id is None:
+                raise ValueError(f"Team ID is not specified: {self.team_id}")
+            # if type(self.team_id) != int:
+            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+
+            self.workspace_id = workspace_id
+            if self.workspace_id is None:
+                raise ValueError(f"Workspace ID is not specified: {self.workspace_id}")
+            # if type(self.project_id) != int:
+            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+
+            self.project_id = project_id
+            if self.project_id is None:
+                raise ValueError(f"Project ID is not specified: {self.project_id}")
+            # if type(self.project_id) != int:
+            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+
+            self.dataset_id = dataset_id
+            if self.dataset_id is not None and type(self.dataset_id) != int:
+                raise ValueError(f"Dataset ID must be 'int': {self.dataset_id}")
+
+            self.path = path
+            if self.path is None:
+                raise ValueError(f"Remote path to files is not specified: {self.path}")
+            if type(self.path) != str:
+                raise ValueError(f"Remote path must be 'str': {self.path}")
+
+            self.is_directory = is_directory
+            if type(self.is_directory) != bool:
+                raise ValueError(f"Remote path must be 'bool': {self.is_directory}")
+       
+        def print_context(self):
+            if self.task_id is not None:
+                print(f"'task id:' {self.task_id}")
+            if self.team_id is not None:
+                print(f"'team id:' {self.team_id}")
+            if self.workspace_id is not None:
+                print(f"'workspace id:' {self.workspace_id}")
+            if self.project_id is not None:
+                print(f"'Items will be uploaded to project:' {self.project_id}")
+            if self.dataset_id is not None:
+                print(f"'dataset id:' {self.dataset_id}")
+            if self.path is not None:
+                print(f"path:' {self.path}")
+            if self.is_directory is not None:
+                print(f"is_directory:' {self.is_directory}")
         
-    def print_context(self):
-        print(f"'task id:' {self.Context.task_id}")
-        print(f"'team id:' {self.Context.team_id}")
-        print(f"'workspace id:' {self.Context.workspace_id}")
-        print(f"'project id:' {self.Context.project_id}")
-        print(f"'dataset id:' {self.Context.dataset_id}")
-        print(f"'path:' {self.Context.path}")
-        print(f"'is_directory:' {self.Context.is_directory}")
+        def print_destination(self):
+            if self.team_id is not None and self.workspace_id is not None and self.project_id is not None:
+                if self.dataset_id is not None:
+                    print(f"Files will be uploaded to the following destination:"
+                          f"\nteam id: {self.team_id}"
+                          f"\nworkspace id: {self.workspace_id}"
+                          f"\nproject id: {self.project_id}"
+                          f"\ndataset id: {self.dataset_id}")
+                else:
+                    print(f"Files will be uploaded to the following destination:"
+                          f"\nteam id: {self.team_id}"
+                          f"\nworkspace id: {self.workspace_id}"
+                          f"\nproject id: {self.project_id}")
+                
+        def print_remote_path(self):
+            if self.path is not None:
+                if self.is_directory is True:
+                    print(f"Remote path to directory:' {self.path}")
+                else:
+                    print(f"Remote path to file:' {self.path}")
+
+
         
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError() # implement your own method when inherit
@@ -90,15 +149,15 @@ class Import:
                 api.file.download(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             path = local_save_path
             
-        context = Import.Context
-        context.task_id = task_id
-        context.team_id = team_id
-        context.workspace_id = workspace_id
-        context.project_id = project.id
-        context.dataset_id = dataset.id
-        context.path = path
-        context.is_directory = is_directory
-        # self.print_context()
+        context = Import.Context(
+            task_id=task_id,
+            team_id=team_id,
+            workspace_id=workspace_id,
+            project_id=project.id,
+            dataset_id=dataset.id,
+            path=path,
+            is_directory=is_directory
+        )
             
         project_id = self.process(context=context)
         if type(project_id) is int and is_production():
