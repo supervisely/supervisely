@@ -75,7 +75,7 @@ setup(
         "MarkupSafe>=2.1.1, <3.0.0",
         "arel>=0.2.0, <1.0.0",
         "tqdm>=4.62.3, <5.0.0",
-        "pandas>=1.1.3, <1.4.0",  # For compatibility with Python3.7
+        "pandas>=1.1.3, <=1.5.2",  # For compatibility with Python3.7
         "async_asgi_testclient",
         "PyYAML",
         "distinctipy",
