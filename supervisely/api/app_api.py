@@ -516,7 +516,8 @@ class AppApi(TaskApi):
             # validate_total=False,
         )
         if len(infos_json) == 0:
-            raise KeyError(f"App [module_id = {module_id}] not found in team {team_id}")
+            # raise KeyError(f"App [module_id = {module_id}] not found in team {team_id}")
+            return []
         if len(infos_json) > 1:
             raise KeyError(
                 f"Apps list in team is broken: app [module_id = {module_id}] added to team {team_id} multiple times"
