@@ -25,23 +25,25 @@ class Import:
             self.team_id = team_id
             if self.team_id is None:
                 raise ValueError(f"Team ID is not specified: {self.team_id}")
-            # if type(self.team_id) != int:
-            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+            if type(self.team_id) != int:
+                raise ValueError(f"Project ID must be 'int': {self.project_id}")
 
             self.workspace_id = workspace_id
             if self.workspace_id is None:
                 raise ValueError(f"Workspace ID is not specified: {self.workspace_id}")
-            # if type(self.project_id) != int:
-            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+            if type(self.workspace_id) != int:
+                raise ValueError(f"Project ID must be 'int': {self.project_id}")
 
             self.project_id = project_id
             if self.project_id is None:
                 raise ValueError(f"Project ID is not specified: {self.project_id}")
-            # if type(self.project_id) != int:
-            #     raise ValueError(f"Project ID must be 'int': {self.project_id}")
+            if type(self.project_id) != int:
+                raise ValueError(f"Project ID must be 'int': {self.project_id}")
 
             self.dataset_id = dataset_id
-            if self.dataset_id is not None and type(self.dataset_id) != int:
+            if self.project_id is None:
+                raise ValueError(f"Dataset ID is not specified: {self.dataset_id}")
+            if type(self.dataset_id) != int:
                 raise ValueError(f"Dataset ID must be 'int': {self.dataset_id}")
 
             self.path = path
@@ -143,8 +145,7 @@ class Import:
         if is_production():
             local_save_path = join(get_data_dir(), basename(path))
             if is_directory:
-                raise NotImplementedError()
-                # api.file.download_directory(team_id=team_id, remote_path=path, local_save_path=local_save_path)
+                api.file.download_directory(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             else:
                 api.file.download(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             path = local_save_path
