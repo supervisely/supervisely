@@ -17,14 +17,23 @@ except ImportError:
 
 class Import:
     class Context(NamedTuple):
-        task_id=None
-        team_id=None
-        workspace_id=None
-        project_id=None
-        dataset_id=None
-        path=None
-        is_directory=True
-    
+        task_id: int = None
+        team_id: int = None
+        workspace_id: int = None
+        project_id: int = None
+        dataset_id: int = None
+        path: str = None
+        is_directory: bool = None
+        
+    def print_context(self):
+        print(f"'task id:' {self.Context.task_id}")
+        print(f"'team id:' {self.Context.team_id}")
+        print(f"'workspace id:' {self.Context.workspace_id}")
+        print(f"'project id:' {self.Context.project_id}")
+        print(f"'dataset id:' {self.Context.dataset_id}")
+        print(f"'path:' {self.Context.path}")
+        print(f"'is_directory:' {self.Context.is_directory}")
+        
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError() # implement your own method when inherit
 
@@ -89,6 +98,7 @@ class Import:
         context.dataset_id = dataset.id
         context.path = path
         context.is_directory = is_directory
+        # self.print_context()
             
         project_id = self.process(context=context)
         if type(project_id) is int and is_production():
