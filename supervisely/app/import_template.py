@@ -17,11 +17,7 @@ except ImportError:
 
 class Import:
     class Context:
-        def __init__(self, task_id: int, team_id: int, workspace_id: int, project_id: int, dataset_id: int, path: str, is_directory: bool = True):            
-            self.task_id = task_id
-            if self.task_id is not None and type(self.task_id) != int:
-                raise ValueError(f"Task ID must be 'int': {self.task_id}")
-            
+        def __init__(self, team_id: int, workspace_id: int, project_id: int, dataset_id: int, path: str, is_directory: bool = True):            
             self.team_id = team_id
             if self.team_id is None:
                 raise ValueError(f"Team ID is not specified: {self.team_id}")
@@ -57,8 +53,6 @@ class Import:
                 raise ValueError(f"Remote path must be 'bool': {self.is_directory}")
        
         def print_context(self):
-            if self.task_id is not None:
-                print(f"'task id:' {self.task_id}")
             if self.team_id is not None:
                 print(f"'team id:' {self.team_id}")
             if self.workspace_id is not None:
@@ -151,7 +145,6 @@ class Import:
             path = local_save_path
             
         context = Import.Context(
-            task_id=task_id,
             team_id=team_id,
             workspace_id=workspace_id,
             project_id=project.id,
