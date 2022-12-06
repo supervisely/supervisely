@@ -1308,6 +1308,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
+        force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1357,7 +1358,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        infos = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
+        infos = self.get_info_by_id_batch(ids, force_metadata_for_links=force_metadata_for_links)
 
         # prev implementation
         # hashes = [info.hash for info in infos]
@@ -1380,14 +1381,25 @@ class ImageApi(RemoveableBulkModuleApi):
         result = [None] * len(names)
         if len(links) > 0:
             res_infos_links = self.upload_links(
-                dataset_id, links_names, links, progress_cb, metas=links_metas, batch_size=batch_size
+                dataset_id,
+                links_names,
+                links,
+                progress_cb,
+                metas=links_metas,
+                batch_size=batch_size,
+                force_metadata_for_links=force_metadata_for_links,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
 
         if len(hashes) > 0:
             res_infos_hashes = self.upload_hashes(
-                dataset_id, hashes_names, hashes, progress_cb, metas=hashes_metas, batch_size=batch_size
+                dataset_id,
+                hashes_names,
+                hashes,
+                progress_cb,
+                metas=hashes_metas,
+                batch_size=batch_size,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1601,6 +1613,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dst_dataset_id: int,
         with_annotations: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
+        dst_names: List[ImageInfo] = None,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1644,25 +1657,34 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(src_image_infos) == 0:
             return
 
-        existing_images = self.get_list(dst_dataset_id)
-        existing_names = {image.name for image in existing_images}
-
-        new_names = [
-            generate_free_name(
-                existing_names, info.name, with_ext=True, extend_used_names=True
-            )
-            for info in src_image_infos
-        ]
+        if dst_names is None:
+            existing_images = self.get_list(dst_dataset_id, force_metadata_for_links=False)
+            existing_names = {image.name for image in existing_images}
+            new_names = [
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
+                for info in src_image_infos
+            ]
+        else:
+            if len(dst_names) != len(src_image_infos):
+                raise RuntimeError("len(dst_names) != len(src_image_infos)")
+            new_names = dst_names
 
         src_ids = [info.id for info in src_image_infos]
-        new_images = self.upload_ids(dst_dataset_id, new_names, src_ids, progress_cb, batch_size = 500)
+        new_images = self.upload_ids(
+            dst_dataset_id,
+            new_names,
+            src_ids,
+            progress_cb,
+            batch_size=500,
+            force_metadata_for_links=False,
+        )
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
             src_project_id = self._api.dataset.get_info_by_id(src_dataset_id).project_id
             dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
             self._api.project.merge_metas(src_project_id, dst_project_id)
-            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size = 500)
+            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size=500)
 
         return new_images
 
@@ -1728,6 +1750,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dst_dataset_id: int,
         with_annotations: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
+        dst_names: List[ImageInfo] = None,
     ) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
@@ -1762,11 +1785,12 @@ class ImageApi(RemoveableBulkModuleApi):
             dest_img_infos = api.image.move_batch_optimized(src_ds_id, img_infos, dest_ds_id)
         """
         new_images = self.copy_batch_optimized(
-            src_dataset_id, 
-            src_image_infos, 
-            dst_dataset_id, 
-            with_annotations=with_annotations, 
+            src_dataset_id,
+            src_image_infos,
+            dst_dataset_id,
+            with_annotations=with_annotations,
             progress_cb=progress_cb,
+            dst_names=dst_names,
         )
         src_ids = [info.id for info in src_image_infos]
         self.remove_batch(src_ids, batch_size=500)
@@ -2192,9 +2216,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb(len(batch_ids))
 
     def remove_batch(
-        self, 
-        ids: List[int], 
-        progress_cb: Optional[Callable] = None, 
+        self,
+        ids: List[int],
+        progress_cb: Optional[Callable] = None,
         batch_size: Optional[int] = 50,
     ):
         """
