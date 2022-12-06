@@ -258,6 +258,36 @@ class Inference:
         )
         fs.silent_remove(image_path)
         return ann_json
+    
+    def inference_video_id(self, api: Api, state: dict):
+        from supervisely.nn.inference.video_inference import InferenceVideoInterface
+        logger.debug("Input data", extra={"state": state})
+        video_info = api.video.get_info_by_id(state['videoId'])
+
+        video_images_path = os.path.join(get_data_dir(), rand_str(15))
+        inf_video_interface = InferenceVideoInterface(
+            api=api,
+            start_frame_index=state.get('startFrameIndex', 0),
+            frames_count=state.get('framesCount', video_info.frames_count - 1),
+            frames_direction=state.get('framesDirection', 'forward'),
+            video_info=video_info,
+            imgs_dir=video_images_path,
+        )
+
+        inf_video_interface.download_frames()
+        settings = self.get_inference_settings(state)
+        anns_json = []
+        for image_path in inf_video_interface.images_paths:
+            ann_json = self.inference_image_path(
+                image_path=image_path, 
+                project_meta=self.model_meta,
+                state=state,
+                settings=settings,
+            )
+            anns_json.append(ann_json)
+        fs.remove_dir(video_images_path)
+        return anns_json
+
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -301,4 +331,4 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            raise NotImplementedError()
+            raise self.inference_video_id(request.api, request.state)
