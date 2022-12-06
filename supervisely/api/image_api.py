@@ -1308,7 +1308,8 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
-        force_metadata_for_links=True,
+        force_metadata_for_links: bool = True,
+        infos: List[ImageInfo] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1358,7 +1359,10 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        infos = self.get_info_by_id_batch(ids, force_metadata_for_links=force_metadata_for_links)
+        if infos is None:
+            infos = self.get_info_by_id_batch(
+                ids, force_metadata_for_links=force_metadata_for_links
+            )
 
         # prev implementation
         # hashes = [info.hash for info in infos]
@@ -1677,6 +1681,7 @@ class ImageApi(RemoveableBulkModuleApi):
             progress_cb,
             batch_size=500,
             force_metadata_for_links=False,
+            infos=src_image_infos,
         )
         new_ids = [new_image.id for new_image in new_images]
 
