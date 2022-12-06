@@ -331,4 +331,4 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return self.inference_video_id(request.api, request.state)
+            return {'ann': self.inference_video_id(request.api, request.state)}
