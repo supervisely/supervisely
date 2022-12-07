@@ -2,7 +2,7 @@ from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
 
-class Textarea(Widget):
+class TextArea(Widget):
     def __init__(
         self,
         value: str = None,
@@ -33,21 +33,21 @@ class Textarea(Widget):
 
     def set_value(self, value):
         self._value = value
-        DataJson()[self.widget_id]["value"] = value
-        DataJson().send_changes()
+        StateJson()[self.widget_id]["value"] = value
+        StateJson().send_changes()
 
     def get_value(self):
-        return DataJson()[self.widget_id]["value"]
+        return StateJson()[self.widget_id]["value"]
 
     def is_readonly(self):
-        return StateJson()[self.widget_id]["readonly"]
+        return DataJson()[self.widget_id]["readonly"]
 
     def enable_readonly(self):
         self._readonly = True
-        StateJson()[self.widget_id]["readonly"] = True
-        StateJson().send_changes()
+        DataJson()[self.widget_id]["readonly"] = True
+        DataJson().send_changes()
 
     def disable_readonly(self):
         self._readonly = False
-        StateJson()[self.widget_id]["readonly"] = False
-        StateJson().send_changes()
+        DataJson()[self.widget_id]["readonly"] = False
+        DataJson().send_changes()
