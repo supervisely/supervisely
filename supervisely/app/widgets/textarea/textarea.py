@@ -1,33 +1,53 @@
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
 
 class Textarea(Widget):
     def __init__(
         self,
-        text: str = None,
+        value: str = None,
         placeholder: str = "Please input",
         rows: int = 2,
         autosize: bool = True,
+        readonly: bool = False,
         widget_id=None,
     ):
-        self._text = text
+        self._value = value
         self._placeholder = placeholder
         self._rows = rows
         self._autosize = autosize
+        self._readonly = readonly
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            "text": self._text,
+            "value": self._value,
             "placeholder": self._placeholder,
             "rows": self._rows,
             "autosize": self._autosize,
+            "readonly": self._readonly,
         }
 
     def get_json_state(self):
-        return None
+        return {"value": self._value}
 
+    def set_value(self, value):
+        self._value = value
+        DataJson()[self.widget_id]["value"] = value
+        DataJson().send_changes()
 
-    @property
-    def text(self):
-        return self._text
+    def get_value(self):
+        return DataJson()[self.widget_id]["value"]
+
+    def is_readonly(self):
+        return StateJson()[self.widget_id]["readonly"]
+
+    def enable_readonly(self):
+        self._readonly = True
+        StateJson()[self.widget_id]["readonly"] = True
+        StateJson().send_changes()
+
+    def disable_readonly(self):
+        self._readonly = False
+        StateJson()[self.widget_id]["readonly"] = False
+        StateJson().send_changes()
