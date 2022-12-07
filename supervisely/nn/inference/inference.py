@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Optional
 import yaml
 import random
+import numpy as np
 from supervisely._utils import (
     is_production,
     is_development,
@@ -199,6 +200,39 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
+    def inference_image(self, state: dict):
+        logger.debug("Input state", extra={"state": state})
+        settings = self.get_inference_settings(state)
+        image = np.frombuffer(state["image_bytes"], dtype=np.uint8)
+        image_path = os.path.join(get_data_dir(), rand_str(10))
+        sly_image.write(image_path, image)
+        ann_json = self.inference_image_path(
+            image_path=image_path,
+            project_meta=self.model_meta,
+            state=state,
+            settings=settings,
+        )
+        fs.silent_remove(image_path)
+        return ann_json
+
+    def inference_batch(self, state: dict):
+        logger.debug("Input state", extra={"state": state})
+        settings = self.get_inference_settings(state)
+        anns_json = []
+        for image_bytes in state["images_bytes"]:
+            image = np.frombuffer(image_bytes, dtype=np.uint8)
+            image_path = os.path.join(get_data_dir(), rand_str(10))
+            sly_image.write(image_path, image)
+            ann_json = self.inference_image_path(
+                image_path=image_path,
+                project_meta=self.model_meta,
+                state=state,
+                settings=settings,
+            )
+            fs.silent_remove(image_path)
+            anns_json.append(ann_json)
+        return anns_json
+
     def inference_batch_ids(self, api: Api, state: dict):
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
@@ -316,6 +350,14 @@ class Inference:
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
+
+        @server.post("/inference_image")
+        def inference_image(request: Request):
+            return self.inference_image(request.state)
+
+        @server.post("/inference_batch")
+        def inference_batch(request: Request):
+            return self.inference_batch(request.state)
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
