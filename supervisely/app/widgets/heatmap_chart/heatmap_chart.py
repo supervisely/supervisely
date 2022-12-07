@@ -130,5 +130,6 @@ class HeatmapChart(Apexchart):
 
     def get_clicked_datapoint(self):
         res = super().get_clicked_datapoint()
-        res = res._replace(x=self._original_series_x[res.series_name][res.data_index])
+        if res is not None:
+            res = res._replace(x=self._original_series_x[res.series_name][res.data_index])
         return res
