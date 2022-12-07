@@ -137,8 +137,8 @@ class Import:
         print(f"Working dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
-            local_save_path = join(get_data_dir(), basename(path))
-            if is_directory:
+            local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
+            if is_directory:             
                 api.file.download_directory(team_id=team_id, remote_path=path, local_save_path=local_save_path)
             else:
                 api.file.download(team_id=team_id, remote_path=path, local_save_path=local_save_path)
