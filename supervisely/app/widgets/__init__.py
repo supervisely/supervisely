@@ -49,3 +49,4 @@ from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea
+from supervisely.app.widgets.line_plot.line_plot import LinePlot
