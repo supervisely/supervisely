@@ -1618,6 +1618,7 @@ class ImageApi(RemoveableBulkModuleApi):
         with_annotations: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         dst_names: List[ImageInfo] = None,
+        batch_size: Optional[int] = 500,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1679,7 +1680,7 @@ class ImageApi(RemoveableBulkModuleApi):
             new_names,
             src_ids,
             progress_cb,
-            batch_size=500,
+            batch_size=batch_size,
             force_metadata_for_links=False,
             infos=src_image_infos,
         )
@@ -1689,7 +1690,7 @@ class ImageApi(RemoveableBulkModuleApi):
             src_project_id = self._api.dataset.get_info_by_id(src_dataset_id).project_id
             dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
             self._api.project.merge_metas(src_project_id, dst_project_id)
-            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size=500)
+            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size=batch_size)
 
         return new_images
 
@@ -1756,6 +1757,7 @@ class ImageApi(RemoveableBulkModuleApi):
         with_annotations: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         dst_names: List[ImageInfo] = None,
+        batch_size: Optional[int] = 500,
     ) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
@@ -1796,9 +1798,10 @@ class ImageApi(RemoveableBulkModuleApi):
             with_annotations=with_annotations,
             progress_cb=progress_cb,
             dst_names=dst_names,
+            batch_size=batch_size,
         )
         src_ids = [info.id for info in src_image_infos]
-        self.remove_batch(src_ids, batch_size=500)
+        self.remove_batch(src_ids, batch_size=batch_size)
         return new_images
 
     def copy(
