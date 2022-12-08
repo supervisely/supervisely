@@ -2,7 +2,7 @@ import json
 import os
 from typing import List, Dict, Optional
 from fastapi import Form, Response, UploadFile, status
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import yaml
 import random
 from supervisely._utils import (
@@ -262,18 +262,15 @@ class Inference:
         fs.silent_remove(image_path)
         return ann_json
 
-    def inference_files(self, state: dict, files: list[UploadFile]):
+    def inference_images_files(self, state: dict, files: list[UploadFile]):
         paths = []
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
         fs.mkdir(temp_dir)
         for file in files:
-            try:
-                img_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-                img = Image.open(file.file)
-                img.save(img_path)
-                paths.append(img_path)
-            except Exception as e:
-                print(e)
+            img_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+            img = Image.open(file.file)
+            img.save(img_path)
+            paths.append(img_path)
         results = self.inference_images_dir(paths, state)
         fs.remove_dir(temp_dir)
         return results
@@ -326,11 +323,13 @@ class Inference:
         def inference_image_files(response: Response, files: list[UploadFile], settings: str = Form("{}")):
             try:
                 state = json.loads(settings)
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return 'Settings is not json object'
+                return self.inference_images_files(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f'Cannot decode settings: {e}'
-            if type(state) != dict:
+            except UnidentifiedImageError:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'Settings is not json object'
-
-            return self.inference_files(state, files)
+                return f'File is not an image'
