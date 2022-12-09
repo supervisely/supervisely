@@ -2187,6 +2187,7 @@ class ImageApi(RemoveableBulkModuleApi):
         tag_id: int,
         value: Optional[Union[str, int]] = None,
         progress_cb: Optional[Callable] = None,
+        batch_size: Optional[int] = 100,
     ) -> None:
         """
         Add tag with given ID to Images by IDs.
@@ -2199,6 +2200,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type value: int or str or None, optional
         :param progress_cb: Function for tracking progress of adding tag.
         :type progress_cb: Progress, optional
+        :param batch_size: Batch size
+        :type batch_size: int, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :Usage example:
@@ -2215,7 +2218,7 @@ class ImageApi(RemoveableBulkModuleApi):
             tag_id = 277083
             api.image.add_tag_batch(image_ids, tag_id)
         """
-        for batch_ids in batched(image_ids, batch_size=100):
+        for batch_ids in batched(image_ids, batch_size):
             data = {ApiField.TAG_ID: tag_id, ApiField.IDS: batch_ids}
             if value is not None:
                 data[ApiField.VALUE] = value
