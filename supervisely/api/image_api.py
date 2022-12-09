@@ -13,6 +13,7 @@ import json
 
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -2188,6 +2189,7 @@ class ImageApi(RemoveableBulkModuleApi):
         value: Optional[Union[str, int]] = None,
         progress_cb: Optional[Callable] = None,
         batch_size: Optional[int] = 100,
+        tag_meta: Optional[TagMeta] = None,
     ) -> None:
         """
         Add tag with given ID to Images by IDs.
@@ -2202,6 +2204,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Progress, optional
         :param batch_size: Batch size
         :type batch_size: int, optional
+        :param tag_meta: Tag Meta. Needed for value validation, omit to skip validation
+        :type tag_meta: TagMeta, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :Usage example:
@@ -2218,6 +2222,17 @@ class ImageApi(RemoveableBulkModuleApi):
             tag_id = 277083
             api.image.add_tag_batch(image_ids, tag_id)
         """
+        if tag_meta:
+            if not (tag_meta.sly_id == tag_id):
+                raise ValueError("tag_meta.sly_id and tag_id should be same")
+            if not tag_meta.is_valid_value(value):
+                raise ValueError(
+                    "Tag {} can not have value {}".format(tag_meta.name, value)
+                )
+        else:
+            # No value validation
+            pass
+
         for batch_ids in batched(image_ids, batch_size):
             data = {ApiField.TAG_ID: tag_id, ApiField.IDS: batch_ids}
             if value is not None:
