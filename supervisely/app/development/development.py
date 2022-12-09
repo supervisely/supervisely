@@ -23,6 +23,7 @@ def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         universal_newlines=True,
+        shell=True,
     )
     if "Connected to Supervisely Net!" in process.stdout:
         logger.info(f"You connected to Supervisely VPN Network")
