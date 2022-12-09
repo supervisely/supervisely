@@ -98,7 +98,7 @@ class SelectDataset(Widget):
     def get_selected_ids(self):
         if self._multiselect is False:
             raise ValueError(
-                "Multiselect is disabled. Use another method 'get_selected_id' insted of 'get_selected_ids'"
+                "Multiselect is disabled. Use another method 'get_selected_id' instead of 'get_selected_ids'"
             )
         if self._all_datasets_checkbox.is_checked():
             if self._compact is True:
