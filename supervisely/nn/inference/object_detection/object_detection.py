@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 from pathlib import Path
 import os
 from supervisely.app.widgets.widget import Widget
@@ -60,8 +60,8 @@ class ObjectDetection(Inference):
     def predict(self, image_path: str, confidence_threshold: float) -> List[PredictionBBox]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_annotation(self, image_path: str, confidence_threshold: float) -> Annotation:
-        predictions = self.predict(image_path, confidence_threshold)
+    def predict_annotation(self, image_path: str, settings: Dict[str, Any]) -> Annotation:
+        predictions = self.predict(image_path, settings)
         return self._predictions_to_annotation(image_path, predictions)
 
     @process_image_sliding_window
@@ -77,7 +77,7 @@ class ObjectDetection(Inference):
             settings = self.get_inference_settings(state)
         logger.debug("Input path", extra={"path": image_path})
         ann = self.predict_annotation(
-            image_path, confidence_threshold=settings["confidence_threshold"]
+            image_path, settings=settings
         )
         return ann.to_json()
 
