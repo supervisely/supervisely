@@ -47,7 +47,8 @@ class Inference:
 
         self._model_dir = None
         self._local_dir = None
-        self._prepare_model_directory(model_dir)
+        if model_dir is not None:
+            self._prepare_model_directory(model_dir)
 
         self._headless = True
 
