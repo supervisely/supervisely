@@ -8,7 +8,7 @@ usage() {
   echo -e "Supervisely Apps CLI
 
 Usage:
-  supervisely-apps release
+  supervisely-app release
 
 Options:
   -s | --server server address to release
