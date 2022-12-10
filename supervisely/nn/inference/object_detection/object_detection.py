@@ -64,7 +64,6 @@ class ObjectDetection(Inference):
         predictions = self.predict(image_path, settings)
         return self._predictions_to_annotation(image_path, predictions)
 
-    @process_image_sliding_window
     @process_image_roi
     def inference_image_path(
         self,
