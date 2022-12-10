@@ -79,7 +79,10 @@ class ObjectDetection(Inference):
         ann = self.predict_annotation(
             image_path, settings=settings
         )
-        return ann.to_json()
+        if isinstance(ann, Annotation):
+            return ann.to_json()
+        else:
+            return ann
 
     def visualize(self, predictions: List[PredictionBBox], image_path: str, vis_path: str):
         image = sly_image.read(image_path)
