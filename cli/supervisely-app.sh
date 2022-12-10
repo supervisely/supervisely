@@ -102,6 +102,9 @@ function release() {
     fi
   fi
 
+  # trim traliling slash if any
+  server=${server%/}
+
   if [[ -z "${token}" ]]; then
     if [[ -n "${API_TOKEN}" ]]; then
       token=$API_TOKEN
@@ -122,10 +125,16 @@ function release() {
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
   modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
   parsed_slug=
+  parsed_slug_config=$(echo "${config}" | sed -n 's/"slug": "\(.*\)",\?/\1/p' | xargs)
   
   if [[ -d "${module_path}/.git" ]]; then
     parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@[^\/:]*[:\/]+(.*)\.git/\1/')
-    echo "Will use application slug from remote.origin.url: ${parsed_slug}"
+    echo "Application slug in remote.origin.url: ${parsed_slug}"
+  fi
+
+  if [[ "${parsed_slug_config}" ]]; then
+    parsed_slug="${parsed_slug_config}"
+    echo "Application slug in config.json: ${parsed_slug}"
   fi
 
   if [[ -f "${module_path}/README.md" ]]; then
