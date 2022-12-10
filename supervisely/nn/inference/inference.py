@@ -276,7 +276,7 @@ class Inference:
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
-            self._task_id = task["taskId"]
+            self._task_id = task["id"]
         else:
             self._task_id = env.task_id()
 
