@@ -44,10 +44,12 @@ class Inference:
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
+        self._task_id = None
 
         self._model_dir = None
         self._local_dir = None
-        self._prepare_model_directory(model_dir)
+        if model_dir is not None:
+            self._prepare_model_directory(model_dir)
 
         self._headless = True
 
@@ -140,6 +142,11 @@ class Inference:
             self._model_meta = ProjectMeta(classes)
             self._get_confidence_tag_meta()
         return self._model_meta
+
+    
+    @property
+    def task_id(self) -> int:
+        return self._task_id
 
     def _get_confidence_tag_meta(self):
         tag_meta = self.model_meta.get_tag_meta(self._confidence)
@@ -269,6 +276,9 @@ class Inference:
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
+            self._task_id = task["id"]
+        else:
+            self._task_id = env.task_id()
 
         # headless=self._headless,
         self._app = Application(layout=self._get_layout(), templates_dir=self._get_templates_dir())
