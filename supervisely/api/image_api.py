@@ -510,6 +510,33 @@ class ImageApi(RemoveableBulkModuleApi):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
+    def download(self, id: int, path: str) -> None:
+        """
+        Downloads Image from Dataset to local path by ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Image.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_info = api.image.get_info_by_id(770918)
+            save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+
+            api.image.download_path(770918, save_path)
+        """
+        self.download_path(id=id, path=path)
+
     def _download_batch(
         self, dataset_id: int, ids: List[int], progress_cb: Optional[Callable] = None
     ):
@@ -2226,9 +2253,7 @@ class ImageApi(RemoveableBulkModuleApi):
             if not (tag_meta.sly_id == tag_id):
                 raise ValueError("tag_meta.sly_id and tag_id should be same")
             if not tag_meta.is_valid_value(value):
-                raise ValueError(
-                    "Tag {} can not have value {}".format(tag_meta.name, value)
-                )
+                raise ValueError("Tag {} can not have value {}".format(tag_meta.name, value))
         else:
             # No value validation
             pass
