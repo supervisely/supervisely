@@ -99,7 +99,8 @@ class Apexchart(Widget):
         @server.post(route_path)
         def _click():
             res = self.get_clicked_datapoint()
-            func(res)
+            if res is not None:
+                func(res)
 
         return _click
 

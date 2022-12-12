@@ -12,7 +12,7 @@ class InputNumber(Widget):
         size: str = "small",
         controls: bool = True,
         debounce: int = 300,
-        widget_id: str = None
+        widget_id: str = None,
     ):
         self._value = value
         self._min = min
@@ -31,7 +31,7 @@ class InputNumber(Widget):
             "step": self._step,
             "size": self._size,
             "controls": self._controls,
-            "debounce": self._debounce
+            "debounce": self._debounce,
         }
 
     def get_json_state(self):
@@ -47,6 +47,8 @@ class InputNumber(Widget):
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
+    def get_value(self):
+        return StateJson()[self.widget_id]["value"]
 
     @property
     def min(self):
@@ -58,7 +60,6 @@ class InputNumber(Widget):
         DataJson()[self.widget_id]["min"] = self._min
         DataJson().send_changes()
 
-
     @property
     def max(self):
         return self._max
@@ -68,4 +69,3 @@ class InputNumber(Widget):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
         DataJson().send_changes()
-

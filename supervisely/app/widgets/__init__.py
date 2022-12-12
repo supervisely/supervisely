@@ -48,3 +48,5 @@ from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
 from supervisely.app.widgets.editor.editor import Editor
+from supervisely.app.widgets.textarea.textarea import TextArea
+from supervisely.app.widgets.destination_project.destination_project import DestinationProject
