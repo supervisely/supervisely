@@ -1,5 +1,8 @@
+import json
 import os
 from typing import List, Dict, Optional
+from fastapi import Form, Response, UploadFile, status
+from PIL import Image, UnidentifiedImageError
 import yaml
 import random
 import numpy as np
@@ -330,6 +333,19 @@ class Inference:
         return anns_json
 
 
+    def inference_images_files(self, state: dict, files: List[UploadFile]):
+        paths = []
+        temp_dir = os.path.join(get_data_dir(), rand_str(10))
+        fs.mkdir(temp_dir)
+        for file in files:
+            img_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+            img = Image.open(file.file)
+            img.save(img_path)
+            paths.append(img_path)
+        results = self.inference_images_dir(paths, state)
+        fs.remove_dir(temp_dir)
+        return results
+
     def serve(self):
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
@@ -384,3 +400,18 @@ class Inference:
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             return {'ann': self.inference_video_id(request.api, request.state)}
+
+        @server.post("/inference_images")
+        def inference_image_files(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+            try:
+                state = json.loads(settings)
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return 'Settings is not json object'
+                return self.inference_images_files(state, files)
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Cannot decode settings: {e}'
+            except UnidentifiedImageError:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'File is not an image'
