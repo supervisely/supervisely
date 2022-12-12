@@ -214,7 +214,7 @@ class Inference:
         logger.debug("Input state", extra={"state": state})
         settings = self.get_inference_settings(state)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
-        image_np = sly_image.read_bytes(file.file)
+        image_np = sly_image.read_bytes(file.file.read())
         sly_image.write(image_path, image_np)
         ann_json = self.inference_image_path(
             image_path=image_path,
@@ -232,7 +232,7 @@ class Inference:
         fs.mkdir(temp_dir)
         for file in files:
             image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-            image_np = sly_image.read_bytes(file.file)
+            image_np = sly_image.read_bytes(file.file.read())
             sly_image.write(image_path, image_np)
             paths.append(image_path)
         results = self.inference_images_dir(paths, state)
