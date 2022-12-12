@@ -210,12 +210,12 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
-    def inference_image(self, state: dict):
+    def inference_image(self, state: dict, file: UploadFile):
         logger.debug("Input state", extra={"state": state})
         settings = self.get_inference_settings(state)
-        image = np.frombuffer(state["image_bytes"], dtype=np.uint8)
-        image_path = os.path.join(get_data_dir(), rand_str(10))
-        sly_image.write(image_path, image)
+        image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
+        image_np = sly_image.read_bytes(file.file, dtype=np.uint8)
+        sly_image.write(image_path, image_np)
         ann_json = self.inference_image_path(
             image_path=image_path,
             project_meta=self.model_meta,
@@ -225,23 +225,19 @@ class Inference:
         fs.silent_remove(image_path)
         return ann_json
 
-    def inference_batch(self, state: dict):
+    def inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Input state", extra={"state": state})
-        settings = self.get_inference_settings(state)
-        anns_json = []
-        for image_bytes in state["images_bytes"]:
-            image = np.frombuffer(image_bytes, dtype=np.uint8)
-            image_path = os.path.join(get_data_dir(), rand_str(10))
-            sly_image.write(image_path, image)
-            ann_json = self.inference_image_path(
-                image_path=image_path,
-                project_meta=self.model_meta,
-                state=state,
-                settings=settings,
-            )
-            fs.silent_remove(image_path)
-            anns_json.append(ann_json)
-        return anns_json
+        paths = []
+        temp_dir = os.path.join(get_data_dir(), rand_str(10))
+        fs.mkdir(temp_dir)
+        for file in files:
+            image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+            image_np = sly_image.read_bytes(file.file, dtype=np.uint8)
+            sly_image.write(image_path, image_np)
+            paths.append(image_path)
+        results = self.inference_images_dir(paths, state)
+        fs.remove_dir(temp_dir)
+        return results
 
     def inference_batch_ids(self, api: Api, state: dict):
         ids = state["batch_ids"]
@@ -332,20 +328,6 @@ class Inference:
         fs.remove_dir(video_images_path)
         return anns_json
 
-
-    def inference_images_files(self, state: dict, files: List[UploadFile]):
-        paths = []
-        temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(temp_dir)
-        for file in files:
-            img_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-            img = Image.open(file.file)
-            img.save(img_path)
-            paths.append(img_path)
-        results = self.inference_images_dir(paths, state)
-        fs.remove_dir(temp_dir)
-        return results
-
     def serve(self):
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
@@ -377,14 +359,6 @@ class Inference:
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
-        @server.post("/inference_image")
-        def inference_image(request: Request):
-            return self.inference_image(request.state)
-
-        @server.post("/inference_batch")
-        def inference_batch(request: Request):
-            return self.inference_batch(request.state)
-
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
             return self.inference_image_id(request.api, request.state)
@@ -401,17 +375,35 @@ class Inference:
         def inference_video_id(request: Request):
             return {'ann': self.inference_video_id(request.api, request.state)}
 
-        @server.post("/inference_images")
-        def inference_image_files(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+        @server.post("/inference_image")
+        def inference_image(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+            if len(files) != 1:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Only one file expected but got {len(files)}'
             try:
                 state = json.loads(settings)
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return 'Settings is not json object'
-                return self.inference_images_files(state, files)
+                return self.inference_image(state, files[0])
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f'Cannot decode settings: {e}'
-            except UnidentifiedImageError:
+            except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'File is not an image'
+                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'
+
+        @server.post("/inference_batch")
+        def inference_batch(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+            try:
+                state = json.loads(settings)
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return 'Settings is not json object'
+                return self.inference_batch(state, files)
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Cannot decode settings: {e}'
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'
