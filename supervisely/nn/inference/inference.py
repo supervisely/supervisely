@@ -1,7 +1,11 @@
+import json
 import os
 from typing import List, Dict, Optional
+from fastapi import Form, Response, UploadFile, status
+from PIL import Image, UnidentifiedImageError
 import yaml
 import random
+import numpy as np
 from supervisely._utils import (
     is_production,
     is_development,
@@ -206,6 +210,35 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
+    def inference_image(self, state: dict, file: UploadFile):
+        logger.debug("Input state", extra={"state": state})
+        settings = self.get_inference_settings(state)
+        image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
+        image_np = sly_image.read_bytes(file.file)
+        sly_image.write(image_path, image_np)
+        ann_json = self.inference_image_path(
+            image_path=image_path,
+            project_meta=self.model_meta,
+            state=state,
+            settings=settings,
+        )
+        fs.silent_remove(image_path)
+        return ann_json
+
+    def inference_batch(self, state: dict, files: List[UploadFile]):
+        logger.debug("Input state", extra={"state": state})
+        paths = []
+        temp_dir = os.path.join(get_data_dir(), rand_str(10))
+        fs.mkdir(temp_dir)
+        for file in files:
+            image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+            image_np = sly_image.read_bytes(file.file)
+            sly_image.write(image_path, image_np)
+            paths.append(image_path)
+        results = self.inference_images_dir(paths, state)
+        fs.remove_dir(temp_dir)
+        return results
+
     def inference_batch_ids(self, api: Api, state: dict):
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
@@ -265,6 +298,35 @@ class Inference:
         )
         fs.silent_remove(image_path)
         return ann_json
+    
+    def inference_video_id(self, api: Api, state: dict):
+        from supervisely.nn.inference.video_inference import InferenceVideoInterface
+        logger.debug("Input data", extra={"state": state})
+        video_info = api.video.get_info_by_id(state['videoId'])
+
+        video_images_path = os.path.join(get_data_dir(), rand_str(15))
+        inf_video_interface = InferenceVideoInterface(
+            api=api,
+            start_frame_index=state.get('startFrameIndex', 0),
+            frames_count=state.get('framesCount', video_info.frames_count - 1),
+            frames_direction=state.get('framesDirection', 'forward'),
+            video_info=video_info,
+            imgs_dir=video_images_path,
+        )
+
+        inf_video_interface.download_frames()
+        settings = self.get_inference_settings(state)
+        anns_json = []
+        for image_path in inf_video_interface.images_paths:
+            ann_json = self.inference_image_path(
+                image_path=image_path, 
+                project_meta=self.model_meta,
+                state=state,
+                settings=settings,
+            )
+            anns_json.append(ann_json)
+        fs.remove_dir(video_images_path)
+        return anns_json
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -311,4 +373,37 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            raise NotImplementedError()
+            return {'ann': self.inference_video_id(request.api, request.state)}
+
+        @server.post("/inference_image")
+        def inference_image(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+            if len(files) != 1:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Only one file expected but got {len(files)}'
+            try:
+                state = json.loads(settings)
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return 'Settings is not json object'
+                return self.inference_image(state, files[0])
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Cannot decode settings: {e}'
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'
+
+        @server.post("/inference_batch")
+        def inference_batch(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+            try:
+                state = json.loads(settings)
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return 'Settings is not json object'
+                return self.inference_batch(state, files)
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'Cannot decode settings: {e}'
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'

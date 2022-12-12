@@ -81,6 +81,8 @@ setup(
         "distinctipy",
         "beautifulsoup4",
         "numerize",
+        "ffmpeg-python==0.2.0",
+        "python-multipart==0.0.5",
     ],
     extras_require={
         "extras": [
