@@ -119,7 +119,6 @@ function release() {
     exit 1
   fi
 
-  readme=
   modal_template=
   config=$(cat "${module_path}/config.json")
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
@@ -137,10 +136,6 @@ function release() {
     echo "Application slug in config.json: ${parsed_slug}"
   fi
 
-  if [[ -f "${module_path}/README.md" ]]; then
-    readme=$(cat "${module_path}/README.md")
-  fi
-
   if [[ -n "${modal_template_path}" ]]; then
     modal_template=$(cat "${module_path}/${modal_template_path}")
   fi
@@ -156,12 +151,16 @@ function release() {
 
   echo "Uploading archive..."
 
-  release_response=$(curl -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
+  curl_params=()
+  if [[ -f "${module_path}/README.md" ]]; then
+    curl_params+=(-F readme="<${module_path}/README.md")
+  fi
+
+  release_response=$(curl "${curl_params[@]}" -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
   --progress-bar \
   --header "x-api-key: ${token}" \
   -F slug="${parsed_slug}" \
   -F config="${config}" \
-  -F readme="${readme}" \
   -F archive=@"$archive_path/archive.tar.gz" \
   --form-string modalTemplate="${modal_template}" | cat)
 
