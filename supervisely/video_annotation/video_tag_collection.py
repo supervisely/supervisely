@@ -249,10 +249,10 @@ class VideoTagCollection(TagCollection):
 
     @classmethod
     def from_api_response(
-        cls, 
-        data: List[Dict], 
-        tag_meta_collection: TagMetaCollection, 
-        id_to_tagmeta: Optional[Dict[int, TagMeta]]=None
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
+        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None,
     ) -> VideoTagCollection:
         return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
 
@@ -274,6 +274,6 @@ class VideoTagCollection(TagCollection):
             return None
         if len(res) > 1:
             raise ValueError(
-                "There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
+                f"There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
             )
         return res[0]
