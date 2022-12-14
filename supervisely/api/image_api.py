@@ -324,6 +324,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 dataset_id,
                 sort=sort,
                 sort_order=sort_order,
+                limit=limit,
                 force_metadata_for_links=force_metadata_for_links,
                 return_first_response=return_first_response,
             )
