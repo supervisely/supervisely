@@ -200,8 +200,9 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-        limit: int = None,
-        force_metadata_for_links=True,
+        limit: Optional[int] = None,
+        force_metadata_for_links: Optional[bool] = True,
+        return_first_response: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -277,6 +278,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
             limit=limit,
+            return_first_response=return_first_response,
         )
 
     def get_filtered_list(
@@ -285,7 +287,9 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-        force_metadata_for_links=True,
+        force_metadata_for_links: Optional[bool]=True,
+        limit: Optional[int] = None,
+        return_first_response: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -321,6 +325,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 sort=sort,
                 sort_order=sort_order,
                 force_metadata_for_links=force_metadata_for_links,
+                return_first_response=return_first_response,
             )
 
         if not all(["type" in filter.keys() for filter in filters]):
@@ -349,6 +354,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.SORT_ORDER: sort_order,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
+            limit=limit,
+            return_first_response=return_first_response,
         )
 
     def get_info_by_id(self, id: int, force_metadata_for_links=True) -> ImageInfo:
