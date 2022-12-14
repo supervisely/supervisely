@@ -200,9 +200,9 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-        limit: int = None,
-        force_metadata_for_links: bool = True,
-        return_first_response: bool = False,
+        limit: Optional[int] = None,
+        force_metadata_for_links: Optional[bool] = True,
+        return_first_response: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
