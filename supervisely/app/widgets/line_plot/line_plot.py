@@ -48,7 +48,9 @@ class LinePlot(Widget):
         data = [{"x": px, "y": py} for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)
-        self.update_y_range(min(y), max(y))
+        
+        if len(y) > 0:
+            self.update_y_range(min(y), max(y))
 
         DataJson()[self.widget_id]['series'] = self._series
         if send_changes:
@@ -72,8 +74,7 @@ class LinePlot(Widget):
         DataJson().send_changes()
 
     def get_series_by_name(self, name):
-        # series_list = self.get_json_data()['series']
         series_list = DataJson()[self.widget_id]['series']
         series_id, series_data = next(((i, series) for i, series in enumerate(series_list) if series['name'] == name), (None, None))
-        assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
+        # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
         return series_id, series_data
