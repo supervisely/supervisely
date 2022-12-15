@@ -144,7 +144,7 @@ function release() {
   parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
 
   if [[ -d "${module_root}/.git" ]]; then
-    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@[^\/:]*[:\/]+(.*)\.git/\1/')
+    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@?[^\/:]*[:\/]+(.*)\/(.*)\.git/\1\/\2/')
     echo "Application slug in remote.origin.url: ${parsed_slug}"
   fi
 
