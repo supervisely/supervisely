@@ -9,7 +9,7 @@ from supervisely.app.content import StateJson, DataJson
 class GridPlot(Widget):
     def __init__(
         self,
-        data: list[dict] = [],
+        data: list[dict or str] = [],
         columns: int = 1,
         gap: int = 10,
         widget_id: str = None,
@@ -19,7 +19,10 @@ class GridPlot(Widget):
         self._gap = gap
 
         for plot_data in data:
-            self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data['series'])
+            if isinstance(plot_data, dict):
+                self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data['series'])
+            else:
+                self._widgets[plot_data] = LinePlot(title=plot_data, series=[])
 
         if self._columns < 1:
             raise ValueError(f"columns ({self._columns}) < 1")
@@ -69,8 +72,16 @@ class GridPlot(Widget):
 
     def add_scalar(self, identifier: str, y, x):
         plot_title, series_name = identifier.split('/')
-        self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": y}])
+        _, series = self._widgets[plot_title].get_series_by_name(series_name)
+        if series is not None:
+            self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": y}])
+        else:
+            self._widgets[plot_title].add_series(name=series_name, x=[], y=[])
     
     def add_scalars(self, plot_title: str, new_values: dict, x):
         for series_name in new_values.keys():
-            self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": new_values[series_name]}])
+            _, series = self._widgets[plot_title].get_series_by_name(series_name)
+            if series is not None:
+                self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": new_values[series_name]}])
+            else:
+                self._widgets[plot_title].add_series(name=series_name, x=[], y=[])
