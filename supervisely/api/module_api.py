@@ -439,6 +439,8 @@ class ApiField:
     """"""
     FORCE_METADATA_FOR_LINKS = "forceMetadataForLinks"
     """"""
+    SKIP_VALIDATION = "skipValidation"
+    """"""
 
 
 def _get_single_item(items):
