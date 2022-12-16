@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from fastapi import Form, Response, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 import yaml
@@ -28,9 +28,14 @@ from supervisely.app.fastapi.subapp import Application
 from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.fastapi.request import Request
 from supervisely.api.api import Api
+from supervisely.nn.prediction_dto import Prediction
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.task.progress import Progress
+from supervisely.decorators.inference import (
+    process_image_roi,
+    process_image_sliding_window,
+)
 
 try:
     from typing import Literal
@@ -133,9 +138,6 @@ class Inference:
             self._api = Api()
         return self._api
 
-    def _get_obj_class_shape(self):
-        raise NotImplementedError("Have to be implemented in child class")
-
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
@@ -159,19 +161,10 @@ class Inference:
             self._model_meta = self._model_meta.add_tag_meta(tag_meta)
         return tag_meta
 
-    def _create_label(self, dto) -> Label:
+    def _create_label(self, dto: Prediction) -> Label:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict(self, image_path: str):
-        raise NotImplementedError("Have to be implemented in child class")
-
-    def predict_annotation(self, image_path: str) -> Annotation:
-        raise NotImplementedError("Have to be implemented in child class")
-
-    def visualize(self, predictions: List, image_path: str, vis_path: str):
-        raise NotImplementedError("Have to be implemented in child class")
-
-    def _predictions_to_annotation(self, image_path: str, predictions: List) -> Annotation:
+    def _predictions_to_annotation(self, image_path: str, predictions: List[Prediction]) -> Annotation:
         labels = []
         for prediction in predictions:
             label = self._create_label(prediction)
@@ -188,15 +181,26 @@ class Inference:
     def _get_custom_inference_settings() -> str:  # in yaml format
         return ""
 
-    def inference_image_path(
-        self, image_path, project_meta: ProjectMeta, state: Dict, settings: Dict = None
+    @process_image_sliding_window
+    @process_image_roi
+    def _inference_image_path(
+        self,
+        image_path: str,
+        settings: Dict,
+        data_to_return: Dict,
     ):
-        raise NotImplementedError()
+        logger.debug("Input path", extra={"path": image_path})
+        predictions = self.predict(image_path, settings=settings, data_to_return=data_to_return)
+        ann = self._predictions_to_annotation(image_path, predictions)
+        return ann
+
+    def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[Prediction]:
+        raise NotImplementedError("Have to be implemented in child class")
 
     def _get_custom_inference_settings_dict(self) -> dict:
         return yaml.safe_load(self._get_custom_inference_settings())
 
-    def get_inference_settings(self, state: dict):
+    def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
         for key, value in self._get_custom_inference_settings_dict().items():
             if key not in settings:
@@ -210,13 +214,18 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
-    def inference_image(self, state: dict, file: UploadFile):
+    def visualize(self, predictions: List[Prediction], image_path: str, vis_path: str):
+        image = sly_image.read(image_path)
+        ann = self._predictions_to_annotation(image_path, predictions)
+        ann.draw_pretty(bitmap=image, output_path=vis_path, fill_rectangles=False)
+
+    def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Input state", extra={"state": state})
-        settings = self.get_inference_settings(state)
+        settings = self._get_inference_settings(state)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
         image_np = sly_image.read_bytes(file.file.read())
         sly_image.write(image_path, image_np)
-        ann_json = self.inference_image_path(
+        ann_json = self._inference_image_path(
             image_path=image_path,
             project_meta=self.model_meta,
             state=state,
@@ -225,7 +234,7 @@ class Inference:
         fs.silent_remove(image_path)
         return ann_json
 
-    def inference_batch(self, state: dict, files: List[UploadFile]):
+    def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Input state", extra={"state": state})
         paths = []
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
@@ -235,11 +244,11 @@ class Inference:
             image_np = sly_image.read_bytes(file.file.read())
             sly_image.write(image_path, image_np)
             paths.append(image_path)
-        results = self.inference_images_dir(paths, state)
+        results = self._inference_images_dir(paths, state)
         fs.remove_dir(temp_dir)
         return results
 
-    def inference_batch_ids(self, api: Api, state: dict):
+    def _inference_batch_ids(self, api: Api, state: dict):
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
         paths = []
@@ -247,59 +256,59 @@ class Inference:
         fs.mkdir(temp_dir)
         for info in infos:
             paths.append(os.path.join(temp_dir, f"{rand_str(10)}_{info.name}"))
-        api.image.download_paths(infos[0].dataset_id, ids, paths)
-        results = self.inference_images_dir(paths, state)
+        api.image.download_paths(infos[0].dataset_id, ids, paths) # TODO: check if this is correct (from the same ds)
+        results = self._inference_images_dir(paths, state)
         fs.remove_dir(temp_dir)
         return results
 
-    def inference_images_dir(self, img_paths: List[str], state: Dict):
-        settings = self.get_inference_settings(state)
-        annotations = []
+    def _inference_images_dir(self, img_paths: List[str], state: Dict):
+        settings = self._get_inference_settings(state)
+        results = []
         for image_path in img_paths:
-            ann_json = self.inference_image_path(
+            data_to_return = {}
+            ann = self._inference_image_path(
                 image_path=image_path,
-                project_meta=self.model_meta,
-                state=state,
                 settings=settings,
+                data_to_return=data_to_return,
             )
-            annotations.append(ann_json)
-        return annotations
+            results.append({"annotation": ann.to_json(), "data": data_to_return})
+        return results
 
-    def inference_image_id(self, api: Api, state: dict):
+    def _inference_image_id(self, api: Api, state: dict):
         logger.debug("Input state", extra={"state": state})
-        settings = self.get_inference_settings(state)
+        settings = self._get_inference_settings(state)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
         api.image.download_path(image_id, image_path)
-        ann_json = self.inference_image_path(
+        data_to_return = {}
+        ann = self._inference_image_path(
             image_path=image_path,
-            project_meta=self.model_meta,
-            state=state,
             settings=settings,
+            data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        return ann_json
+        return {"annotation": ann.to_json(), "data": data_to_return}
 
-    def inference_image_url(self, api: Api, state: dict):
+    def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Input data", extra={"state": state})
-        settings = self.get_inference_settings(state)
+        settings = self._get_inference_settings(state)
         image_url = state["image_url"]
         ext = fs.get_file_ext(image_url)
         if ext == "":
             ext = ".jpg"
         image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
         fs.download(image_url, image_path)
-        ann_json = self.inference_image_path(
+        data_to_return = {}
+        ann = self._inference_image_path(
             image_path=image_path,
-            project_meta=self.model_meta,
-            state=state,
             settings=settings,
+            data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        return ann_json
+        return {"annotation": ann.to_json(), "data": data_to_return}
     
-    def inference_video_id(self, api: Api, state: dict):
+    def _inference_video_id(self, api: Api, state: dict):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
         logger.debug("Input data", extra={"state": state})
         video_info = api.video.get_info_by_id(state['videoId'])
@@ -315,18 +324,18 @@ class Inference:
         )
 
         inf_video_interface.download_frames()
-        settings = self.get_inference_settings(state)
-        anns_json = []
+        settings = self._get_inference_settings(state)
+        results = []
         for image_path in inf_video_interface.images_paths:
-            ann_json = self.inference_image_path(
-                image_path=image_path, 
-                project_meta=self.model_meta,
-                state=state,
+            data_to_return = {}
+            ann = self._inference_image_path(
+                image_path=image_path,
                 settings=settings,
+                data_to_return=data_to_return,
             )
-            anns_json.append(ann_json)
+            results.append({"annotation": ann.to_json(), "data": data_to_return})
         fs.remove_dir(video_images_path)
-        return anns_json
+        return results
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -361,19 +370,20 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            return self.inference_image_id(request.api, request.state)
+            # TODO: уточнить ждет ли применялка лист или дикт тоже понимает
+            return self._inference_image_id(request.api, request.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            return self.inference_image_url(request.api, request.state)
+            return self._inference_image_url(request.api, request.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            return self.inference_batch_ids(request.api, request.state)
+            return self._inference_batch_ids(request.api, request.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return {'ann': self.inference_video_id(request.api, request.state)}
+            return {'ann': self._inference_video_id(request.api, request.state)}
 
         @server.post("/inference_image")
         def inference_image(response: Response, files: List[UploadFile], settings: str = Form("{}")):
@@ -385,7 +395,7 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return 'Settings is not json object'
-                return self.inference_image(state, files[0])
+                return self._inference_image(state, files[0])
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f'Cannot decode settings: {e}'
@@ -400,7 +410,7 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return 'Settings is not json object'
-                return self.inference_batch(state, files)
+                return self._inference_batch(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f'Cannot decode settings: {e}'

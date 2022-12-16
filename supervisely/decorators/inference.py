@@ -164,6 +164,6 @@ def process_image_sliding_window(func):
                     "labels": [l.to_json() for l in slice_ann.labels],
                 }
             )
-        return {"annotation": ann.to_json(), "data": {"slides": results}}
+        return ann
 
     return wrapper_inference

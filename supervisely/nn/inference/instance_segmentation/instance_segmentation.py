@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 from pathlib import Path
 import os
 from supervisely.app.widgets.widget import Widget
@@ -37,9 +37,6 @@ class InstanceSegmentation(Inference):
         info["sliding_window_support"] = "basic"  # or "advanced" in the future
         return info
 
-    def _get_obj_class_shape(self):
-        return Bitmap
-
     def _create_label(self, dto: PredictionMask):
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if obj_class is None:
@@ -60,34 +57,8 @@ class InstanceSegmentation(Inference):
         settings = """confidence_threshold: 0.8"""
         return settings
 
-    def predict(self, image_path: str, confidence_threshold: float) -> List[PredictionMask]:
+    def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
-
-    def predict_annotation(self, image_path: str, confidence_threshold: float) -> Annotation:
-        predictions = self.predict(image_path, confidence_threshold)
-        return self._predictions_to_annotation(image_path, predictions)
-
-    @process_image_sliding_window
-    @process_image_roi
-    def inference_image_path(
-        self,
-        image_path: str,
-        project_meta: ProjectMeta,
-        state: Dict,
-        settings: Dict = None,
-    ):
-        if settings is None:
-            settings = self.get_inference_settings(state)
-        logger.debug("Input path", extra={"path": image_path})
-        ann = self.predict_annotation(
-            image_path, confidence_threshold=settings["confidence_threshold"]
-        )
-        return ann.to_json()
-
-    def visualize(self, predictions: List[PredictionMask], image_path: str, vis_path: str):
-        image = sly_image.read(image_path)
-        ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, thickness=3, output_path=vis_path)
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
