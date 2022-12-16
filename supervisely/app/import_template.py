@@ -6,8 +6,6 @@ from supervisely.app import get_data_dir
 from os.path import join, basename
 from pathlib import Path
 
-from typing import NamedTuple
-
 try:
     from typing import Literal
 except ImportError:
@@ -140,7 +138,7 @@ class Import:
 
         if dataset_id is None:
             dataset = api.dataset.create(
-                project_id=project.id, name="dataset", change_name_if_conflict=True
+                project_id=project.id, name="ds0", change_name_if_conflict=True
             )
             print(f"Importing to created Dataset: id={dataset.id}, name={dataset.name}")
         else:
