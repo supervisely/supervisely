@@ -28,10 +28,6 @@ def process_image_roi(func):
     :type image_np: numpy.ndarray
     :param image_path: Path to image (use image_path or image_np, not both)
     :type image_path: str
-    :param project_meta: ProjectMeta of the current project
-    :type project_meta: ProjectMeta
-    :param state: Application state
-    :type state: dict
     :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
     :return: Annotation in json format
     :rtype: :class:`dict`
@@ -52,13 +48,12 @@ def process_image_roi(func):
 
     def process_image_np(image_np, sly_rectangle):
         image_crop = sly_image.crop(image_np, sly_rectangle)
-        image_size, image_crop_size = image_np.shape[:2], image_crop.shape[:2]
+        image_size, image_crop_size = image_np.shape[:2], image_crop.shape[:2] # TODO: second param?
         return image_crop, image_size
 
     def scale_ann_to_original_size(
-        ann_json, project_meta, original_size, sly_rectangle
+        ann, original_size, sly_rectangle
     ):
-        ann = Annotation.from_json(ann_json, project_meta)
         updated_labels = []
         for label in ann.labels:
             if type(label.geometry) is Rectangle:
@@ -80,18 +75,16 @@ def process_image_roi(func):
             updated_labels.append(label.clone(geometry=updated_geometry))
 
         ann = ann.clone(img_size=original_size, labels=updated_labels)
-        ann_json = ann.to_json()
-        return ann_json
+        return ann
 
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
-        project_meta = kwargs["project_meta"]
-        state = kwargs["state"]
-        rectangle_json = state.get("rectangle")
+        settings = kwargs["settings"]
+        rectangle_json = settings.get("rectangle")
 
         if rectangle_json is None:
-            ann_json = func(*args, **kwargs)
-            return ann_json
+            ann = func(*args, **kwargs)
+            return ann
 
         rectangle = Rectangle.from_json(rectangle_json)
         if "image_np" in kwargs.keys():
@@ -100,9 +93,9 @@ def process_image_roi(func):
                 raise ValueError("Invalid input. Image path must be numpy.ndarray")
             image_crop_np, image_size = process_image_np(image_np, rectangle)
             kwargs["image_np"] = image_crop_np
-            ann_json = func(*args, **kwargs)
-            ann_json = scale_ann_to_original_size(
-                ann_json, project_meta, image_size, rectangle
+            ann = func(*args, **kwargs)
+            ann = scale_ann_to_original_size(
+                ann, image_size, rectangle
             )
         elif "image_path" in kwargs.keys():
             image_path = kwargs["image_path"]
@@ -110,15 +103,15 @@ def process_image_roi(func):
                 raise ValueError("Invalid input. Image path must be str")
             image_crop_path, image_size = process_image_path(image_path, rectangle)
             kwargs["image_path"] = image_crop_path
-            ann_json = func(*args, **kwargs)
-            ann_json = scale_ann_to_original_size(
-                ann_json, project_meta, image_size, rectangle
+            ann = func(*args, **kwargs)
+            ann = scale_ann_to_original_size(
+                ann, image_size, rectangle
             )
             silent_remove(image_crop_path)
         else:
             raise ValueError("image_np or image_path not provided!")
 
-        return ann_json
+        return ann
 
     return wrapper_inference
 
@@ -126,13 +119,12 @@ def process_image_roi(func):
 def process_image_sliding_window(func):
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
-        project_meta = kwargs["project_meta"]
-        state = kwargs["state"]
         settings = kwargs["settings"]
+        data_to_return = kwargs["data_to_return"]
         inference_mode = settings.get("inference_mode", "full_image")
         if inference_mode != "sliding_window":
-            ann_json = func(*args, **kwargs)
-            return ann_json
+            ann = func(*args, **kwargs)
+            return ann
 
         sliding_window_params = settings["sliding_window_params"]
         image_path = kwargs["image_path"]
@@ -152,13 +144,11 @@ def process_image_sliding_window(func):
             rectangles.append(window)
 
         ann = Annotation.from_img_path(image_path)
-        results = []
+        data_to_return["slides"] = []
         for rect in rectangles:
-            state["rectangle"] = rect.to_json()
-            ann_json = func(*args, **kwargs)
-            slice_ann = Annotation.from_json(ann_json, project_meta)
+            slice_ann: Annotation = func(*args, **kwargs)
             ann = ann.add_labels(slice_ann.labels)
-            results.append(
+            data_to_return["slides"].append(
                 {
                     "rectangle": rect.to_json(),
                     "labels": [l.to_json() for l in slice_ann.labels],

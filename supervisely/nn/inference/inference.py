@@ -168,7 +168,7 @@ class Inference:
             "model_path": self.model_path,
             "number_of_classes": len(self.get_classes()),
             "sliding_window_support": "basic", # ["basic", "advanced"]
-            "videos_support": True,
+            "videos_support": True, # TODO: check if this is needed
         }
 
     @property
@@ -249,6 +249,8 @@ class Inference:
 
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
+        if "rectangle" in state.keys():
+            settings["rectangle"] = state["rectangle"]
         for key, value in self.custom_inference_settings.items():
             if key not in settings:
                 logger.warn(
