@@ -7,14 +7,31 @@ class LinePlot(Widget):
         self,
         title: str,
         series: list = [],
+        smoothing_weight: int = 0, 
+        group_key: str = None, 
+        show_legend: bool = True, 
+        decimals_in_float: int = 2, 
+        xaxis_decimals_in_float: int = None, 
+        yaxis_interval: list = None, 
         widget_id = None,
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
     ):
         self._title = title
         self._series = series
+        self._smoothing_weight = smoothing_weight
+        self._group_key = group_key
+        self._show_legend = show_legend
+        self._decimals_in_float = decimals_in_float
+        self._xaxis_decimals_in_float = xaxis_decimals_in_float
+        self._yaxis_interval = yaxis_interval
         self._options = {
             "title": self._title,
-            "yaxis": [{"show": True}],
+            "smoothingWeight": self._smoothing_weight,
+            "groupKey": self._group_key,
+            "showLegend": self._show_legend,
+            "decimalsInFloat": self._decimals_in_float,
+            "xaxisDecimalsInFloat": self._xaxis_decimals_in_float,
+            "yaxisInterval": self._yaxis_interval
         }
         self._yaxis_autorescale = yaxis_autorescale
         self._ymin = 0
@@ -33,7 +50,6 @@ class LinePlot(Widget):
 
     def get_json_state(self):
         return None
-
     
     def update_y_range(self, ymin: int, ymax: int, send_changes=True):
         self._ymin = min(self._ymin, ymin)
