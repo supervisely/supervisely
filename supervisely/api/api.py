@@ -110,7 +110,7 @@ class Api:
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "20"))
         if retry_sleep_sec is None:
-            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "3"))
+            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
         if len(token) != 128:
             raise ValueError("Invalid token {!r}: length != 128".format(token))
