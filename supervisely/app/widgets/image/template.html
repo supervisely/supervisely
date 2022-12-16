@@ -1,11 +1,4 @@
-<div
-  class="card preview-card"
-  style="max-height: 450px; max-width: 650px; justify-content: center"
->
-  <img
-    class="preview-image"
-    v-loading="data.{{{widget.widget_id}}}.loading"
-    :src="data.{{{widget.widget_id}}}.content.image_url"
-    :alt="data.{{{widget.widget_id}}}.content.title"
-  />
+<link rel="stylesheet" href="./sly/css/app/widgets/image/styles.css" />
+<div>
+  <img class="preview_image" :src="data.{{{widget.widget_id}}}.content.url" />
 </div>
