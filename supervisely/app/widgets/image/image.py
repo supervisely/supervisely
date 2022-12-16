@@ -8,7 +8,7 @@ class Image(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {"content": {"url": self._url}}
+        return {"url": self._url}
 
     def get_json_state(self):
         return None
@@ -22,5 +22,5 @@ class Image(Widget):
         self._update()
 
     def _update(self):
-        DataJson()[self.widget_id]["content"]["url"] = self._url
+        DataJson()[self.widget_id]["url"] = self._url
         DataJson().send_changes()
