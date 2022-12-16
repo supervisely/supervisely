@@ -2,10 +2,6 @@ import json
 import os
 from typing import List, Dict, Optional, Any
 from fastapi import Form, Response, UploadFile, status
-from PIL import Image, UnidentifiedImageError
-import yaml
-import random
-import numpy as np
 from supervisely._utils import (
     is_production,
     is_development,
@@ -47,35 +43,40 @@ except ImportError:
 class Inference:
     def __init__(
         self,
-        model_dir: str = None,
+        remote_model_path: Optional[str] = None, # folder of file, from Team Files or external link
+        additional_remote_files: Optional[List[str]] = None, # configs and etc., from Team Files or external links
+        custom_inference_settings: Optional[Dict[str, Any]] = None,
     ):
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
         self._task_id = None
-
-        self._model_dir = None
-        self._local_dir = None
-        if model_dir is not None:
-            self._prepare_model_directory(model_dir)
-
+        self._custom_inference_settings = custom_inference_settings
         self._headless = True
+        
+        self._prepare_model_files(remote_model_path, additional_remote_files)
+        
+    def _prepare_model_files(self, model_link: Optional[str] = None, additional_files_links: Optional[List[str]] = None):
+        self._local_model_path = None
+        self._additional_files = []
+        if model_link is None:
+            # TODO: to think
+            return
+        local_model_path = os.path.join(get_data_dir(), "model")
+        local_files_path = local_model_path
 
-    def _prepare_model_directory(self, model_dir):
-        self._model_dir = model_dir
-        self._local_dir = None
-        if fs.is_on_agent(self._model_dir) or is_production():
+        if fs.is_on_agent(self._remote_model_path) or is_production():
             team_id = env.team_id()
-            logger.info(f"Remote model directory in Team Files: {self._model_dir}")
-            self._local_dir = os.path.join(get_data_dir(), "model")
-            logger.info(f"Local model directory: {self._local_dir}")
 
-            if fs.dir_exists(self._local_dir):
+            if fs.dir_exists(self._local_model_path):
                 # only during debug, has no effect in production
                 pass
-            else:
-                sizeb = self.api.file.get_directory_size(team_id, self._model_dir)
+            elif self.api.file.dir_exists(self._remote_model_path): # folder from Team Files
+                logger.info(f"Remote model directory in Team Files: {self._remote_model_path}")
+                self._local_model_path = local_model_path
+                logger.info(f"Local model directory: {self._local_model_path}")
+                sizeb = self.api.file.get_directory_size(team_id, self._remote_model_path)
                 progress = Progress(
                     "Downloading model directory ...",
                     total_cnt=sizeb,
@@ -83,15 +84,54 @@ class Inference:
                 )
                 self.api.file.download_directory(
                     team_id,
-                    self._model_dir,
-                    self._local_dir,
+                    self._remote_model_path,
+                    self._local_model_path,
                     progress.iters_done_report,
                 )
                 print(f"📥 Model directory has been successfully downloaded from Team Files")
+            
+            elif self.api.file.exists(self._remote_model_path): # file from Team Files
+                local_file_name = os.path.basename(self._remote_model_path)
+                self._local_model_path = os.path.join(self._local_model_path, local_file_name)
+                progress = Progress("Downloading weights file...", 1, is_size=True, need_info_log=True)
+                file_info = self.api.file.get_info_by_path(team_id, self._remote_model_path)
+                progress.set(current=0, total=file_info.sizeb)
+                self.api.file.download(team_id, self._remote_model_path, self._local_model_path,
+                                            progress_cb=progress.iters_done_report)
+            else: # external url
+                local_file_name = os.path.basename(self._remote_model_path)
+                self._local_model_path = os.path.join(self._local_model_path, local_file_name)
+                progress = Progress("Downloading weights file...", 1, is_size=True, need_info_log=True)
+                fs.download(self._remote_model_path, self._local_model_path, progress=progress)
         else:
-            self._model_dir = os.path.abspath(self._model_dir)
-            self._local_dir = self._model_dir
-            print(f"Model directory: {self._local_dir}")
+            self._remote_model_path = os.path.abspath(self._remote_model_path)
+            self._local_model_path = self._remote_model_path
+            print(f"Model directory: {self._local_model_path}")
+        
+        if additional_files_links is None:
+            print("No additional files for model.")
+            return
+
+        for add_file_link in additional_files_links:
+            if fs.is_on_agent(self._remote_model_path) or is_production():
+                team_id = env.team_id()
+                file_name = os.path.basename(add_file_link)
+                local_file_path = os.path.join(local_files_path, file_name)
+                progress = Progress(f"Downloading file {file_name}...", 1, is_size=True, need_info_log=True)
+                if fs.dir_exists(add_file_link):
+                    # only during debug, has no effect in production
+                    pass
+                elif self.api.file.exists(add_file_link): # file from Team Files
+                    file_info = self.api.file.get_info_by_path(env.team_id(), add_file_link)
+                    progress.set(current=0, total=file_info.sizeb)
+                    self.api.file.download(team_id, add_file_link, local_file_path,
+                                                progress_cb=progress.iters_done_report)
+                else: # external url
+                    fs.download(add_file_link, local_file_path, progress=progress)
+                self._additional_files.append(local_file_path)
+                print(f"File {file_name} path: {local_file_path}")
+            else:
+                self._additional_files.append(os.path.abspath(local_file_path))
 
     def _prepare_device(self, device):
         if device is None:
@@ -123,20 +163,30 @@ class Inference:
 
     def get_info(self) -> dict:
         return {
-            "model name": get_name_from_env(default="Neural Network Serving"),
-            "model dir": self.model_dir,
-            "number of classes": len(self.get_classes()),
+            "app_name": get_name_from_env(default="Neural Network Serving"),
+            "session_id": self.task_id,
+            "model_path": self.model_path,
+            "number_of_classes": len(self.get_classes()),
+            "sliding_window_support": "basic", # ["basic", "advanced"]
+            "videos_support": True,
         }
 
     @property
-    def model_dir(self):
-        return self._local_dir
+    def model_path(self) -> str:
+        return self._local_model_path
+
+    @property
+    def additional_files(self) -> List[str]:
+        return self._additional_files
 
     @property
     def api(self) -> Api:
         if self._api is None:
             self._api = Api()
         return self._api
+    
+    def _get_obj_class_shape(self):
+        raise NotImplementedError("Have to be implemented in child class")
 
     @property
     def model_meta(self) -> ProjectMeta:
@@ -149,7 +199,6 @@ class Inference:
             self._get_confidence_tag_meta()
         return self._model_meta
 
-    
     @property
     def task_id(self) -> int:
         return self._task_id
@@ -178,8 +227,9 @@ class Inference:
         ann = ann.add_labels(labels)
         return ann
 
-    def _get_custom_inference_settings() -> str:  # in yaml format
-        return ""
+    @property
+    def custom_inference_settings(self) -> Dict[str, any]:
+        return self._custom_inference_settings
 
     @process_image_sliding_window
     @process_image_roi
@@ -197,12 +247,9 @@ class Inference:
     def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def _get_custom_inference_settings_dict(self) -> dict:
-        return yaml.safe_load(self._get_custom_inference_settings())
-
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
-        for key, value in self._get_custom_inference_settings_dict().items():
+        for key, value in self.custom_inference_settings.items():
             if key not in settings:
                 logger.warn(
                     f"Field {key} not found in inference settings. Use default value {value}"
@@ -225,14 +272,14 @@ class Inference:
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
         image_np = sly_image.read_bytes(file.file.read())
         sly_image.write(image_path, image_np)
-        ann_json = self._inference_image_path(
+        data_to_return = {}
+        ann = self._inference_image_path(
             image_path=image_path,
-            project_meta=self.model_meta,
-            state=state,
             settings=settings,
+            data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        return ann_json
+        return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Input state", extra={"state": state})

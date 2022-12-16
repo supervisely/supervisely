@@ -723,8 +723,8 @@ class FileApi(ModuleApiBase):
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
-           file = api.file.exists(8, "/999_App_Test/")   # True
-           file = api.file.exists(8, "/10000_App_Test/") # False
+           file = api.file.dir_exists(8, "/999_App_Test/")   # True
+           file = api.file.dir_exists(8, "/10000_App_Test/") # False
         """
         files_infos = self.list(team_id, remote_directory)
         if len(files_infos) > 0:

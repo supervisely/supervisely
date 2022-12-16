@@ -34,8 +34,15 @@ class InstanceSegmentation(Inference):
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "instance segmentation"
-        info["sliding_window_support"] = "basic"  # or "advanced" in the future
+        # recommended parameters:
+        # info["model_name"] = ""
+        # info["checkpoint_name"] = ""
+        # info["pretrained_on_dataset"] = ""
+        # info["device"] = ""
         return info
+
+    def _get_obj_class_shape(self):
+        return Bitmap
 
     def _create_label(self, dto: PredictionMask):
         obj_class = self.model_meta.get_obj_class(dto.class_name)
@@ -52,10 +59,6 @@ class InstanceSegmentation(Inference):
             tags.append(Tag(self._get_confidence_tag_meta(), dto.score))
         label = Label(geometry, obj_class, tags)
         return label
-
-    def _get_custom_inference_settings(self) -> str:  # in yaml format
-        settings = """confidence_threshold: 0.8"""
-        return settings
 
     def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[PredictionMask]:
         raise NotImplementedError("Have to be implemented in child class")
