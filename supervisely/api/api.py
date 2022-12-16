@@ -283,7 +283,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=self.retry_sleep_sec,
+                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
@@ -342,7 +342,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=self.retry_sleep_sec,
+                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
                 )
