@@ -11,9 +11,10 @@ Usage:
   supervisely-app release
 
 Options:
-  -s | --server server address to release
-  -t | --token  api token
-  -p | --path   path to app (current dir by default)
+  -s | --server  server address to release
+  -t | --token   api token
+  -p | --path    path to app (current dir by default)
+  -a | --sub-app path to app folder inside multi-app repository (relative to --path / current dir)
 
 Commands:
   release\t\t\t release app release
@@ -48,6 +49,11 @@ while test $# -gt 0; do
             ;;
     -p|--path)
             module_path="${2}"
+            shift
+            shift
+            ;;
+    -a | --sub-app)
+            rel_submodule_path="${2}"
             shift
             shift
             ;;
@@ -88,6 +94,17 @@ function release() {
     module_path=$(pwd)
   fi
 
+  module_path=${module_path%/}
+  module_root=${module_path}
+
+  if [[ -n "${rel_submodule_path}" ]]; then
+    rel_submodule_path=${rel_submodule_path%/}
+    module_path="${module_path}/${rel_submodule_path}"
+
+    echo "App from subfolder ${rel_submodule_path} will be released"
+  fi
+
+
   if [[ -f ~/supervisely.env ]]; then
     echo "Detected ~/supervisely.env"
     source ~/supervisely.env
@@ -122,12 +139,12 @@ function release() {
   modal_template=
   config=$(cat "${module_path}/config.json")
   archive_path="/tmp/$(echo $RANDOM$RANDOM$RANDOM | tr '[0-9]' '[a-z]')"
-  modal_template_path=$(echo "${config}" | sed -n 's/"modal_template": "\(.*\)",\?/\1/p' | xargs)
+  modal_template_path=$(echo "${config}" | sed -nE 's/"modal_template": "(.*)",?/\1/p' | xargs)
   parsed_slug=
-  parsed_slug_config=$(echo "${config}" | sed -n 's/"slug": "\(.*\)",\?/\1/p' | xargs)
-  
-  if [[ -d "${module_path}/.git" ]]; then
-    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@[^\/:]*[:\/]+(.*)\.git/\1/')
+  parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
+
+  if [[ -d "${module_root}/.git" ]]; then
+    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@?[^\/:]*[:\/]+(.*)\/(.*)\.git/\1\/\2/')
     echo "Application slug in remote.origin.url: ${parsed_slug}"
   fi
 
@@ -136,18 +153,26 @@ function release() {
     echo "Application slug in config.json: ${parsed_slug}"
   fi
 
+  if [[ -n "${rel_submodule_path}" ]]; then
+    parsed_slug="${parsed_slug}/${rel_submodule_path}"
+  fi
+
+  if [[ -f "${module_path}/README.md" ]]; then
+    readme=$(cat "${module_path}/README.md")
+  fi
+
   if [[ -n "${modal_template_path}" ]]; then
-    modal_template=$(cat "${module_path}/${modal_template_path}")
+    modal_template=$(cat "${module_root}/${modal_template_path}")
   fi
 
   mkdir "${archive_path}"
   
   echo "Packing the following files to ${archive_path}/archive.tar.gz:"
   tar_params=()
-  if [ -f "${module_path}/.gitignore" ]; then
-    tar_params+=(--exclude-from="${module_path}/.gitignore")
+  if [ -f "${module_root}/.gitignore" ]; then
+    tar_params+=(--exclude-from="${module_root}/.gitignore")
   fi
-  tar -v "${tar_params[@]}" --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_path)" $(basename $module_path)
+  tar -v "${tar_params[@]}" --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
 
   echo "Uploading archive..."
 
@@ -165,7 +190,7 @@ function release() {
   --form-string modalTemplate="${modal_template}" | cat)
 
   if [[ "$release_response" =~ '{"success":true}' ]]; then
-    echo "Application successfully released to ${server}"
+    echo "Application ${parsed_slug} successfully released to ${server}"
   else
     echo "ERROR: $release_response"
     exit 1

@@ -8,9 +8,10 @@ from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 from supervisely.annotation.tag_meta import TagMeta
 import supervisely.sly_logger as logger
 
+
 class PointcloudTagCollection(TagCollection):
     """
-    Collection with :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` instances. 
+    Collection with :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` instances.
     :class:`PointcloudTagCollection<PointcloudTagCollection>` object is immutable.
 
     :Usage example:
@@ -143,9 +144,9 @@ class PointcloudTagCollection(TagCollection):
 
     # @classmethod
     # def from_api_response(
-    #     cls, 
-    #     data: List[Dict], 
-    #     tag_meta_collection: TagMetaCollection, 
+    #     cls,
+    #     data: List[Dict],
+    #     tag_meta_collection: TagMetaCollection,
     #     id_to_tagmeta: Optional[Dict[int, TagMeta]] = None
     # ) -> PointcloudTagCollection:
     #     return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
@@ -173,7 +174,7 @@ class PointcloudTagCollection(TagCollection):
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: :class:`str`
     #     :return: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
-    #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>` 
+    #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
     #     :raises: :class:`ValueError`, If collection contains more than 1 tag with provided name.
     #     """
     #     res = []
@@ -184,13 +185,13 @@ class PointcloudTagCollection(TagCollection):
     #         return None
     #     if len(res) > 1:
     #         raise ValueError(
-    #             "There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
+    #             f"There are more than one tag {tag_name} in VideoTagCollection. Use method get_by_name instead"
     #         )
     #     return res[0]
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
-        Convert the :class:`PointcloudTagCollection<PointcloudTagCollection>` to a list of json dicts. 
+        Convert the :class:`PointcloudTagCollection<PointcloudTagCollection>` to a list of json dicts.
         Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
@@ -231,13 +232,14 @@ class PointcloudTagCollection(TagCollection):
         return [tag.to_json(key_id_map) for tag in self]
 
     @classmethod
-    def from_json(cls, 
-                  data: List[Dict], 
-                  tag_meta_collection: TagMetaCollection, 
-                  key_id_map: Optional[KeyIdMap] = None,
-        ) -> PointcloudTagCollection:
+    def from_json(
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> PointcloudTagCollection:
         """
-        Convert a list with dicts in json format to :class:`PointcloudTagCollection<PointcloudTagCollection>`. 
+        Convert a list with dicts in json format to :class:`PointcloudTagCollection<PointcloudTagCollection>`.
         Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`.
 
         :param data: List with dicts in json format.

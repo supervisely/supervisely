@@ -439,6 +439,8 @@ class ApiField:
     """"""
     FORCE_METADATA_FOR_LINKS = "forceMetadataForLinks"
     """"""
+    SKIP_VALIDATION = "skipValidation"
+    """"""
 
 
 def _get_single_item(items):
@@ -510,6 +512,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         progress_cb=None,
         convert_json_info_cb=None,
         limit: int = None,
+        return_first_response: bool = False,
     ):
         """get_list_all_pages"""
         if convert_json_info_cb is None:
@@ -553,6 +556,8 @@ class ModuleApiBase(_JsonConvertibleModule):
 
         if limit is not None:
             results = results[:limit]
+        if return_first_response:
+            return [convert_func(item) for item in results], first_response 
         return [convert_func(item) for item in results]
 
     @staticmethod

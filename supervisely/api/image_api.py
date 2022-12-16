@@ -200,8 +200,9 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-        limit: int = None,
-        force_metadata_for_links=True,
+        limit: Optional[int] = None,
+        force_metadata_for_links: Optional[bool] = True,
+        return_first_response: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -277,6 +278,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
             limit=limit,
+            return_first_response=return_first_response,
         )
 
     def get_filtered_list(
@@ -285,7 +287,9 @@ class ImageApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict]] = None,
         sort: Optional[str] = "id",
         sort_order: Optional[str] = "asc",
-        force_metadata_for_links=True,
+        force_metadata_for_links: Optional[bool]=True,
+        limit: Optional[int] = None,
+        return_first_response: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -320,7 +324,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 dataset_id,
                 sort=sort,
                 sort_order=sort_order,
+                limit=limit,
                 force_metadata_for_links=force_metadata_for_links,
+                return_first_response=return_first_response,
             )
 
         if not all(["type" in filter.keys() for filter in filters]):
@@ -349,6 +355,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 ApiField.SORT_ORDER: sort_order,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
+            limit=limit,
+            return_first_response=return_first_response,
         )
 
     def get_info_by_id(self, id: int, force_metadata_for_links=True) -> ImageInfo:
@@ -1105,6 +1113,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
+        skip_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1147,6 +1156,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             batch_size=batch_size,
             force_metadata_for_links=force_metadata_for_links,
+            skip_validation=skip_validation,
         )
 
     def upload_hash(
@@ -1215,6 +1225,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Callable] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
+        skip_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1268,6 +1279,7 @@ class ImageApi(RemoveableBulkModuleApi):
             progress_cb,
             metas=metas,
             batch_size=batch_size,
+            skip_validation=skip_validation,
         )
 
     def upload_id(
@@ -1338,6 +1350,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         force_metadata_for_links: bool = True,
         infos: List[ImageInfo] = None,
+        skip_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1420,6 +1433,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=links_metas,
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
+                skip_validation=skip_validation,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1432,6 +1446,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb,
                 metas=hashes_metas,
                 batch_size=batch_size,
+                skip_validation=skip_validation,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1448,6 +1463,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas=None,
         batch_size=50,
         force_metadata_for_links=True,
+        skip_validation=False,
     ):
         """ """
         results = []
@@ -1479,6 +1495,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     ApiField.DATASET_ID: dataset_id,
                     ApiField.IMAGES: images,
                     ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    ApiField.SKIP_VALIDATION: skip_validation,
                 },
             )
             if progress_cb is not None:
@@ -1647,6 +1664,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Callable] = None,
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
+        skip_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1711,6 +1729,7 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             force_metadata_for_links=False,
             infos=src_image_infos,
+            skip_validation=skip_validation,
         )
         new_ids = [new_image.id for new_image in new_images]
 
@@ -1786,6 +1805,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Callable] = None,
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
+        skip_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
@@ -1827,6 +1847,7 @@ class ImageApi(RemoveableBulkModuleApi):
             progress_cb=progress_cb,
             dst_names=dst_names,
             batch_size=batch_size,
+            skip_validation=skip_validation,
         )
         src_ids = [info.id for info in src_image_infos]
         self.remove_batch(src_ids, batch_size=batch_size)
