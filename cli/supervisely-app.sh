@@ -166,13 +166,15 @@ function release() {
   fi
 
   mkdir "${archive_path}"
-  
-  echo "Packing the following files to ${archive_path}/archive.tar.gz:"
-  tar_params=()
-  if [ -f "${module_root}/.gitignore" ]; then
-    tar_params+=(--exclude-from="${module_root}/.gitignore")
+
+  if [ -f "${module_root}/.gitignore" ] && command -v git > /dev/null 2>&1; then
+    echo "Packing the following folder to ${archive_path}/archive.tar.gz:"
+    echo "${module_root}"
+    git archive --prefix="$(basename $module_root)/" --output="${archive_path}/archive.tar.gz" --format=tar.gz HEAD
+  else
+    echo "Packing the following files to ${archive_path}/archive.tar.gz:"
+    tar -v --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
   fi
-  tar -v "${tar_params[@]}" --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
 
   echo "Uploading archive..."
 
