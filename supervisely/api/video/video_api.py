@@ -643,7 +643,7 @@ class VideoApi(RemoveableBulkModuleApi):
             end_fr= 35
             video_info = api.video.get_info_by_id(video_id)
             path_sl = video_info.path_original
-            response = api.video.downalod_range_by_path(path_sl, start_fr, end_fr)
+            response = api.video.download_range_by_path(path_sl, start_fr, end_fr)
         """
         response = self._api.get(
             method="image-converter/transcode" + path_original,
