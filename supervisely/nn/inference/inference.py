@@ -45,7 +45,7 @@ class Inference:
     def __init__(
         self,
         location: Optional[Union[str, List[str]]] = None, # folders of files with model or configs, from Team Files or external links
-        custom_inference_settings: Optional[Dict[str, Any]] = None, # dict with settings or path to .yml file
+        custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, # dict with settings or path to .yml file
     ):
         self._model_meta = None
         self._confidence = "confidence"
@@ -103,6 +103,7 @@ class Inference:
         if location is None:
             return
         local_files_path = os.path.join(get_data_dir(), "model")
+        fs.mkdir(local_files_path)
         if isinstance(location, str):
             self._location = self._download_from_location(location, local_files_path)
         else:
