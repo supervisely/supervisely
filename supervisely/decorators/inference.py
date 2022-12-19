@@ -61,7 +61,7 @@ def _scale_ann_to_original_size(
     ann = ann.clone(img_size=original_size, labels=updated_labels)
     return ann
 
-def _apply_agnostic_nms(labels, iou_thres=0.5, conf_thresh=0.5):
+def _apply_agnostic_nms(labels, iou_thres=0.5):
     import torch
     import torchvision
     # TODO: where we can get iou_th and conf_th?
@@ -70,7 +70,12 @@ def _apply_agnostic_nms(labels, iou_thres=0.5, conf_thresh=0.5):
     for label in labels:
         label: Label
         label_rect: Rectangle = label.geometry.to_bbox()
-        boxes.append([label_rect.left, label_rect.top, label_rect.right, label_rect.bottom])
+        boxes.append([
+            float(label_rect.left), 
+            float(label_rect.top), 
+            float(label_rect.right), 
+            float(label_rect.bottom)
+        ])
         conf_score: Tag = label.tags.get("confidence", None)
         if conf_score is None:
             raise ValueError("Label don't have confidence score tag named 'confidence'.")
@@ -80,8 +85,7 @@ def _apply_agnostic_nms(labels, iou_thres=0.5, conf_thresh=0.5):
     saved_inds = torchvision.ops.nms(boxes, scores, iou_thres)
     saved_labels = []
     for ind in saved_inds:
-        if scores[ind] >= conf_thresh:
-            saved_labels.append(labels[ind])
+        saved_labels.append(labels[ind])
     return saved_labels
 
 
