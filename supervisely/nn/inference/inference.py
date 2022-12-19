@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
     is_production,
@@ -18,6 +18,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.fs as fs
 from supervisely.sly_logger import logger
 import supervisely.io.env as env
+import yaml
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
@@ -43,95 +44,71 @@ except ImportError:
 class Inference:
     def __init__(
         self,
-        remote_model_path: Optional[str] = None, # folder of file, from Team Files or external link
-        additional_remote_files: Optional[List[str]] = None, # configs and etc., from Team Files or external links
-        custom_inference_settings: Optional[Dict[str, Any]] = None,
+        location: Optional[Union[str, List[str]]] = None, # folders of files with model or configs, from Team Files or external links
+        custom_inference_settings: Optional[Dict[str, Any]] = None, # dict with settings or path to .yml file
     ):
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
         self._task_id = None
+        if isinstance(custom_inference_settings, str):
+            if fs.file_exists(custom_inference_settings):
+                with open(custom_inference_settings, 'r') as f:
+                    custom_inference_settings = f.read()
+            else:
+                raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
         self._headless = True
         
-        self._prepare_model_files(remote_model_path, additional_remote_files)
-        
-    def _prepare_model_files(self, model_link: Optional[str] = None, additional_files_links: Optional[List[str]] = None):
-        self._local_model_path = None
-        self._additional_files = []
-        if model_link is None:
-            # TODO: to think
-            return
-        local_model_path = os.path.join(get_data_dir(), "model")
-        local_files_path = local_model_path
+        self._prepare_model_files(location)
 
-        if fs.is_on_agent(self._remote_model_path) or is_production():
+    def _download_from_location(self, location_link, local_files_path):
+        if fs.is_on_agent(location_link) or is_production():
             team_id = env.team_id()
-
-            if fs.dir_exists(self._local_model_path):
+            basename = os.path.basename(location_link)
+            local_path = os.path.join(local_files_path, basename)
+            progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
+            if fs.dir_exists(location_link):
                 # only during debug, has no effect in production
-                pass
-            elif self.api.file.dir_exists(self._remote_model_path): # folder from Team Files
-                logger.info(f"Remote model directory in Team Files: {self._remote_model_path}")
-                self._local_model_path = local_model_path
-                logger.info(f"Local model directory: {self._local_model_path}")
-                sizeb = self.api.file.get_directory_size(team_id, self._remote_model_path)
-                progress = Progress(
-                    "Downloading model directory ...",
-                    total_cnt=sizeb,
-                    is_size=True,
-                )
+                local_path = os.path.abspath(location_link)
+            elif self.api.file.dir_exists(team_id, location_link): # folder from Team Files
+                logger.info(f"Remote directory in Team Files: {location_link}")
+                logger.info(f"Local directory: {local_path}")
+                sizeb = self.api.file.get_directory_size(team_id, location_link)
+                progress.set(current=0, total=sizeb)
                 self.api.file.download_directory(
                     team_id,
-                    self._remote_model_path,
-                    self._local_model_path,
+                    location_link,
+                    local_path,
                     progress.iters_done_report,
                 )
-                print(f"📥 Model directory has been successfully downloaded from Team Files")
-            
-            elif self.api.file.exists(self._remote_model_path): # file from Team Files
-                local_file_name = os.path.basename(self._remote_model_path)
-                self._local_model_path = os.path.join(self._local_model_path, local_file_name)
-                progress = Progress("Downloading weights file...", 1, is_size=True, need_info_log=True)
-                file_info = self.api.file.get_info_by_path(team_id, self._remote_model_path)
+                print(f"📥 Directory {basename} has been successfully downloaded from Team Files")
+            elif self.api.file.exists(team_id, location_link): # file from Team Files
+                file_info = self.api.file.get_info_by_path(env.team_id(), location_link)
                 progress.set(current=0, total=file_info.sizeb)
-                self.api.file.download(team_id, self._remote_model_path, self._local_model_path,
+                self.api.file.download(team_id, location_link, local_path,
                                             progress_cb=progress.iters_done_report)
+                print(f"📥 File {basename} has been successfully downloaded from Team Files")
             else: # external url
-                local_file_name = os.path.basename(self._remote_model_path)
-                self._local_model_path = os.path.join(self._local_model_path, local_file_name)
-                progress = Progress("Downloading weights file...", 1, is_size=True, need_info_log=True)
-                fs.download(self._remote_model_path, self._local_model_path, progress=progress)
+                fs.download(location_link, local_path, progress=progress)
+                print(f"📥 File {basename} has been successfully downloaded.")
+            print(f"File {basename} path: {local_path}")
         else:
-            self._remote_model_path = os.path.abspath(self._remote_model_path)
-            self._local_model_path = self._remote_model_path
-            print(f"Model directory: {self._local_model_path}")
-        
-        if additional_files_links is None:
-            print("No additional files for model.")
-            return
+            local_path = os.path.abspath(location_link)
+        return local_path
 
-        for add_file_link in additional_files_links:
-            if fs.is_on_agent(self._remote_model_path) or is_production():
-                team_id = env.team_id()
-                file_name = os.path.basename(add_file_link)
-                local_file_path = os.path.join(local_files_path, file_name)
-                progress = Progress(f"Downloading file {file_name}...", 1, is_size=True, need_info_log=True)
-                if fs.dir_exists(add_file_link):
-                    # only during debug, has no effect in production
-                    pass
-                elif self.api.file.exists(add_file_link): # file from Team Files
-                    file_info = self.api.file.get_info_by_path(env.team_id(), add_file_link)
-                    progress.set(current=0, total=file_info.sizeb)
-                    self.api.file.download(team_id, add_file_link, local_file_path,
-                                                progress_cb=progress.iters_done_report)
-                else: # external url
-                    fs.download(add_file_link, local_file_path, progress=progress)
-                self._additional_files.append(local_file_path)
-                print(f"File {file_name} path: {local_file_path}")
-            else:
-                self._additional_files.append(os.path.abspath(local_file_path))
+    def _prepare_model_files(self, location: Optional[Union[str, List[str]]] = None):
+        self._location = None
+        if location is None:
+            return
+        local_files_path = os.path.join(get_data_dir(), "model")
+        if isinstance(location, str):
+            self._location = self._download_from_location(location, local_files_path)
+        else:
+            self._location = []
+            for location_link in location:
+                self._location.append(self._download_from_location(location_link, local_files_path))
 
     def _prepare_device(self, device):
         if device is None:
@@ -165,19 +142,15 @@ class Inference:
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "model_path": self.model_path,
+            "model_files": self.location,
             "number_of_classes": len(self.get_classes()),
             "sliding_window_support": "basic", # ["basic", "advanced"]
             "videos_support": True, # TODO: check if this is needed
         }
 
     @property
-    def model_path(self) -> str:
-        return self._local_model_path
-
-    @property
-    def additional_files(self) -> List[str]:
-        return self._additional_files
+    def location(self) -> Union[str, List[str]]:
+        return self._location
 
     @property
     def api(self) -> Api:
@@ -228,8 +201,16 @@ class Inference:
         return ann
 
     @property
-    def custom_inference_settings(self) -> Dict[str, any]:
+    def custom_inference_settings(self) -> Union[Dict[str, any], str]:
         return self._custom_inference_settings
+
+    @property
+    def custom_inference_settings_dict(self) -> Dict[str, any]:
+        if isinstance(self._custom_inference_settings, dict):
+            return self._custom_inference_settings
+        else:
+            return yaml.safe_load(self._custom_inference_settings)
+
 
     @process_image_sliding_window
     @process_image_roi
@@ -237,10 +218,10 @@ class Inference:
         self,
         image_path: str,
         settings: Dict,
-        data_to_return: Dict,
+        data_to_return: Dict, # for decorators
     ):
         logger.debug("Input path", extra={"path": image_path})
-        predictions = self.predict(image_path, settings=settings, data_to_return=data_to_return)
+        predictions = self.predict(image_path, settings=settings)
         ann = self._predictions_to_annotation(image_path, predictions)
         return ann
 
@@ -251,7 +232,8 @@ class Inference:
         settings = state.get("settings", {})
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
-        for key, value in self.custom_inference_settings.items():
+        
+        for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
                 logger.warn(
                     f"Field {key} not found in inference settings. Use default value {value}"
@@ -410,8 +392,7 @@ class Inference:
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
-            settings = self._get_custom_inference_settings()
-            return {"settings": settings}
+            return {"settings": self.custom_inference_settings}
 
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
