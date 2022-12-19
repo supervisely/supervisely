@@ -161,8 +161,13 @@ def process_image_sliding_window(func):
         all_labels = []
         for slide in data_to_return["slides"]:
             all_labels.extend(slide["labels"])
-        data_to_return["slides"].append(all_labels) # for visualization
-        data_to_return["slides"].append(all_labels)
+        full_rect = Rectangle(0, 0, img_h, img_w)
+        all_labels_slide = {
+            "rectangle": full_rect.to_json(),
+            "labels": all_labels
+        }
+        data_to_return["slides"].append(all_labels_slide) # for visualization
+        data_to_return["slides"].append(all_labels_slide)
         return ann
 
     return wrapper_inference
