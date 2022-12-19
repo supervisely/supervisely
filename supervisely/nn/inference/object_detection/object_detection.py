@@ -52,8 +52,11 @@ class ObjectDetection(Inference):
         label = Label(geometry, obj_class, tags)
         return label
 
-    def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[PredictionBBox]:
+    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionBBox]:
         raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionBBox]:
+        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui

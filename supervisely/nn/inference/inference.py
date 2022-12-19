@@ -46,12 +46,14 @@ class Inference:
         self,
         location: Optional[Union[str, List[str]]] = None, # folders of files with model or configs, from Team Files or external links
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, # dict with settings or path to .yml file
+        sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
     ):
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
         self._task_id = None
+        self._sliding_window_mode = sliding_window_mode
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, 'r') as f:
@@ -145,13 +147,17 @@ class Inference:
             "session_id": self.task_id,
             "model_files": self.location,
             "number_of_classes": len(self.get_classes()),
-            "sliding_window_support": "basic", # ["basic", "advanced"]
-            "videos_support": True, # TODO: check if this is needed
+            "sliding_window_support": self.sliding_window_mode,
+            "videos_support": True,
         }
 
     @property
     def location(self) -> Union[str, List[str]]:
         return self._location
+
+    @property
+    def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
+        return self._sliding_window_mode
 
     @property
     def api(self) -> Api:
@@ -222,17 +228,26 @@ class Inference:
         data_to_return: Dict, # for decorators
     ):
         logger.debug("Input path", extra={"path": image_path})
-        predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        if settings["sliding_window_mode"] in ["basic", "none"]:
+            predictions = self.predict(image_path=image_path, settings=settings)
+            ann = self._predictions_to_annotation(image_path, predictions)
+        elif settings["sliding_window_mode"] == "advanced":
+            # TODO:
+            predictions = self.predict_raw(image_path=image_path, settings=settings)
+            ann = self._predictions_to_annotation(image_path, predictions)
         return ann
 
-    def predict(self, image_path: str, settings: Dict[str, Any], data_to_return: Dict[str, Any]) -> List[Prediction]:
+    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
 
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
+        settings["sliding_window_mode"] = self.sliding_window_mode
         
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:

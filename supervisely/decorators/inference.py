@@ -8,6 +8,8 @@ from supervisely.imaging import image as sly_image
 from supervisely.geometry.rectangle import Rectangle
 from supervisely._utils import rand_str as sly_rand_str
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+from supervisely.annotation.tag import Tag
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.sliding_windows_fuzzy import (
     SlidingWindowsFuzzy,
@@ -58,6 +60,30 @@ def _scale_ann_to_original_size(
 
     ann = ann.clone(img_size=original_size, labels=updated_labels)
     return ann
+
+def _apply_agnostic_nms(labels, iou_thres=0.5, conf_thresh=0.5):
+    import torch
+    import torchvision
+    # TODO: where we can get iou_th and conf_th?
+    boxes = []
+    scores = []
+    for label in labels:
+        label: Label
+        label_rect: Rectangle = label.geometry.to_bbox()
+        boxes.append([label_rect.left, label_rect.top, label_rect.right, label_rect.bottom])
+        conf_score: Tag = label.tags.get("confidence", None)
+        if conf_score is None:
+            raise ValueError("Label don't have confidence score tag named 'confidence'.")
+        scores.append(conf_score.value)
+    boxes = torch.tensor(boxes)
+    scores = torch.tensor(scores)
+    saved_inds = torchvision.ops.nms(boxes, scores, iou_thres)
+    saved_labels = []
+    for ind in saved_inds:
+        if scores[ind] >= conf_thresh:
+            saved_labels.append(labels[ind])
+    return saved_labels
+
 
 def process_image_roi(func):
     """
@@ -124,6 +150,10 @@ def process_image_sliding_window(func):
         if inference_mode != "sliding_window":
             ann = func(*args, **kwargs)
             return ann
+        sliding_window_mode = settings.get("sliding_window_mode", "basic")
+        if sliding_window_mode == "none":
+            ann = func(*args, **kwargs)
+            return ann
 
         sliding_window_params = settings["sliding_window_params"]
         image_path = kwargs["image_path"]
@@ -142,8 +172,8 @@ def process_image_sliding_window(func):
         for window in slider.get(img.shape[:2]):
             rectangles.append(window)
 
-        ann = Annotation.from_img_path(image_path)
         data_to_return["slides"] = []
+        all_labels = []
         for rect in rectangles:
             image_crop_path, image_size = _process_image_path(image_path, rect)
             kwargs["image_path"] = image_crop_path
@@ -157,17 +187,31 @@ def process_image_sliding_window(func):
                     "labels": [l.to_json() for l in slice_ann.labels],
                 }
             )
-            ann = ann.add_labels(slice_ann.labels)
-        all_labels = []
+            all_labels.extend(slice_ann.labels)
+
+        all_json_labels = []
         for slide in data_to_return["slides"]:
-            all_labels.extend(slide["labels"])
+            all_json_labels.extend(slide["labels"])
+
         full_rect = Rectangle(0, 0, img_h, img_w)
         all_labels_slide = {
             "rectangle": full_rect.to_json(),
-            "labels": all_labels
+            "labels": all_json_labels
         }
         data_to_return["slides"].append(all_labels_slide) # for visualization
-        data_to_return["slides"].append(all_labels_slide)
+        ann = Annotation.from_img_path(image_path)
+
+        if sliding_window_mode == "advanced":
+            labels_after_nms = _apply_agnostic_nms(all_labels)
+            ann = ann.add_labels(labels_after_nms)
+            all_labels_after_nms_slide = {
+                "rectangle": full_rect.to_json(),
+                "labels": [l.to_json() for l in labels_after_nms]
+            }
+            data_to_return["slides"].append(all_labels_after_nms_slide)
+        else:
+            ann = ann.add_labels(all_labels)
+            data_to_return["slides"].append(all_labels_slide)
         return ann
 
     return wrapper_inference
