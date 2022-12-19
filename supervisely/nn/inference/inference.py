@@ -72,7 +72,7 @@ class Inference:
             if fs.dir_exists(location_link):
                 # only during debug, has no effect in production
                 local_path = os.path.abspath(location_link)
-            elif self.api.file.dir_exists(team_id, location_link): # folder from Team Files
+            elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith('/'): # folder from Team Files
                 logger.info(f"Remote directory in Team Files: {location_link}")
                 logger.info(f"Local directory: {local_path}")
                 sizeb = self.api.file.get_directory_size(team_id, location_link)
@@ -222,7 +222,7 @@ class Inference:
         data_to_return: Dict, # for decorators
     ):
         logger.debug("Input path", extra={"path": image_path})
-        predictions = self.predict(image_path, settings=settings)
+        predictions = self.predict(image_path=image_path, settings=settings)
         ann = self._predictions_to_annotation(image_path, predictions)
         return ann
 
