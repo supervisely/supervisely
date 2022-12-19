@@ -228,12 +228,13 @@ class Inference:
         data_to_return: Dict, # for decorators
     ):
         logger.debug("Input path", extra={"path": image_path})
-        if settings["sliding_window_mode"] in ["basic", "none"]:
-            predictions = self.predict(image_path=image_path, settings=settings)
-            ann = self._predictions_to_annotation(image_path, predictions)
-        elif settings["sliding_window_mode"] == "advanced":
-            # TODO:
+        inference_mode = settings.get("inference_mode", "full_image")
+
+        if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
+            ann = self._predictions_to_annotation(image_path, predictions)
+        else:
+            predictions = self.predict(image_path=image_path, settings=settings)
             ann = self._predictions_to_annotation(image_path, predictions)
         return ann
 
