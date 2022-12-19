@@ -158,6 +158,9 @@ def process_image_sliding_window(func):
                 }
             )
             ann = ann.add_labels(slice_ann.labels)
+        all_labels = [slide["labels"] for slide in data_to_return["slides"]]
+        data_to_return["slides"].append(all_labels) # for visualization
+        data_to_return["slides"].append(all_labels)
         return ann
 
     return wrapper_inference
