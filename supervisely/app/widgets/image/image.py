@@ -3,8 +3,12 @@ from supervisely.app.widgets import Widget
 
 
 class Image(Widget):
-    def __init__(self, widget_id: str = None):
-        self._url = ""
+    def __init__(
+        self,
+        url: str = "",
+        widget_id: str = None,
+    ):
+        self._url = url
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
