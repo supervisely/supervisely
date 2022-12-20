@@ -26,8 +26,8 @@ class Export:
             self,
             project: tuple,
             datasets: list,
-            items: list,
-            anns: list,
+            items: dict,
+            anns: dict,
         ):
             self._project = project
             self._datasets = datasets
@@ -45,19 +45,19 @@ class Export:
             )
 
         @property
-        def project(self) -> int:
+        def project(self) -> tuple:
             return self._project
 
         @property
-        def datasets(self) -> int:
+        def datasets(self) -> list:
             return self._datasets
 
         @property
-        def items(self) -> int:
+        def items(self) -> dict:
             return self._items
 
         @property
-        def anns(self) -> str:
+        def anns(self) -> dict:
             return self._anns
 
         @property
