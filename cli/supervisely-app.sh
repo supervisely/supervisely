@@ -181,7 +181,7 @@ function release() {
     curl_params+=(-F readme="<${module_path}/README.md")
   fi
 
-  release_response=$(curl "${curl_params[@]}" -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
+  release_response=$(curl "${curl_params[@]}" --http1.1 -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
   --progress-bar \
   --header "x-api-key: ${token}" \
   -F slug="${parsed_slug}" \
