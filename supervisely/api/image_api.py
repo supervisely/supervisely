@@ -1665,6 +1665,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
         skip_validation: Optional[bool] = False,
+        save_source_date: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1737,7 +1738,12 @@ class ImageApi(RemoveableBulkModuleApi):
             src_project_id = self._api.dataset.get_info_by_id(src_dataset_id).project_id
             dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
             self._api.project.merge_metas(src_project_id, dst_project_id)
-            self._api.annotation.copy_batch_by_ids(src_ids, new_ids, batch_size=batch_size)
+            self._api.annotation.copy_batch_by_ids(
+                src_ids, 
+                new_ids, 
+                batch_size=batch_size,
+                save_source_date=save_source_date,
+            )
 
         return new_images
 
