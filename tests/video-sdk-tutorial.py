@@ -96,11 +96,8 @@ print(new_videos_info)
 # Download annotations for the single video by id
 ann = api.video.annotation.download(video_id)
 
-print(ann)
-
 
 # Download annotations for a list of the videos by ids
-
 anns = api.video.annotation.download_bulk(dataset_id, video_ids)
 
 
