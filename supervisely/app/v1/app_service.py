@@ -114,15 +114,26 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
+    def _graceful_exit(self, sig, frame):
+        asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
+
     def _run_executors(self):
         self.executor = concurrent.futures.ThreadPoolExecutor()
         self.loop = asyncio.get_event_loop()
+        self.logger.trace(f"Operating system: {sys.platform}")
         # May want to catch other signals too
-        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT)
-        for s in signals:
-            self.loop.add_signal_handler(
-                s, lambda s=s: asyncio.create_task(self._shutdown(signal=s))
-            )
+        if os.name == "nt":
+            # Windows
+            signals = (signal.SIGTERM, signal.SIGINT)
+            for s in signals:
+                signal.signal(s, self._graceful_exit)
+        else:
+            # Others
+            signals = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT)
+            for s in signals:
+                self.loop.add_signal_handler(
+                    s, lambda s=s: asyncio.create_task(self._shutdown(signal=s))
+                )
         # comment out the line below to see how unhandled exceptions behave
         self.loop.set_exception_handler(self.handle_exception)
 
