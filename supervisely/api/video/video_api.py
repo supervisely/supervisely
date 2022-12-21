@@ -606,7 +606,7 @@ class VideoApi(RemoveableBulkModuleApi):
             response = api.video.download_range_by_id(video_id, start_fr, end_fr)
         """
         path_original = self.get_info_by_id(id).path_original
-        return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
+        return self.download_range_by_path(path_original, frame_start, frame_end, is_stream)
 
     def download_range_by_path(
         self,
