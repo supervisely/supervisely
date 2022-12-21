@@ -68,10 +68,10 @@ class Inference:
     def _download_from_location(self, location_link, local_files_path):
         if fs.is_on_agent(location_link) or is_production():
             team_id = env.team_id()
-            basename = os.path.basename(location_link)
+            basename = os.path.basename(os.path.normpath(location_link))
             local_path = os.path.join(local_files_path, basename)
             progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
-            if fs.dir_exists(location_link):
+            if fs.dir_exists(location_link) or fs.file_exists(location_link):
                 # only during debug, has no effect in production
                 local_path = os.path.abspath(location_link)
             elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith('/'): # folder from Team Files
