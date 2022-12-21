@@ -1680,6 +1680,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: Progress, optional
+        :param dst_names: ImageInfo list with existing items in destination dataset.
+        :type dst_names: List [ :class:`ImageInfo` ], optional
+        :param batch_size: Number of elements to copy for each request.
+        :type batch_size: int, optional
+        :param skip_validation: Flag for skipping additinal validations.
+        :type skip_validation: bool, optional
+        :param save_source_date: Save source annotation dates (creation and modification) or create a new date. 
+        :type save_source_date: bool, optional
         :raises: :class:`TypeError` if type of src_image_infos is not list
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1812,6 +1820,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
         skip_validation: Optional[bool] = False,
+        save_source_date: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
@@ -1826,6 +1835,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of moving.
         :type progress_cb: Progress, optional
+        :param dst_names: ImageInfo list with existing items in destination dataset.
+        :type dst_names: List [ :class:`ImageInfo` ], optional
+        :param batch_size: Number of elements to copy for each request.
+        :type batch_size: int, optional
+        :param skip_validation: Flag for skipping additinal validations.
+        :type skip_validation: bool, optional
+        :param save_source_date: Save source annotation dates (creation and modification) or create a new date. 
+        :type save_source_date: bool, optional
         :raises: :class:`TypeError` if type of src_image_infos is not list
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1854,6 +1871,7 @@ class ImageApi(RemoveableBulkModuleApi):
             dst_names=dst_names,
             batch_size=batch_size,
             skip_validation=skip_validation,
+            save_source_date=save_source_date,
         )
         src_ids = [info.id for info in src_image_infos]
         self.remove_batch(src_ids, batch_size=batch_size)
