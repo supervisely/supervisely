@@ -8,6 +8,8 @@ from supervisely.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT,
 from supervisely import logger
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
     """

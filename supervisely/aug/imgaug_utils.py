@@ -8,6 +8,8 @@ from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 import numpy as np
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 def create_aug_info(category_name, aug_name, params, sometimes: float = None):
     clean_params = params
     #clean_params = remove_unexpected_arguments(category_name, aug_name, params)

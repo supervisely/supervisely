@@ -14,6 +14,8 @@ from supervisely.imaging.image import KEEP_ASPECT_RATIO
 from supervisely.geometry.constants import POINTS, EXTERIOR, INTERIOR, BITMAP, DATA, ORIGIN
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 class PointTest(unittest.TestCase):
     def setUp(self):
         self.point = Point(row=10,  col=5)
