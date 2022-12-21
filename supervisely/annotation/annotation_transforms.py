@@ -15,6 +15,9 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.point_location import PointLocation
 
 
+if not hasattr(np, 'int'): np.int = np.int_
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 def skeletonize_bitmap(ann: Annotation, classes: List[str], method_id: SkeletonizeMethod) -> Annotation:
     """
     Extracts skeletons from bitmap figures.

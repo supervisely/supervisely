@@ -23,6 +23,8 @@ from supervisely.geometry.constants import BITMAP
 from supervisely.imaging.image import read
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 class SkeletonizeMethod(Enum):
     """
     Specifies possible skeletonization methods of :class:`Bitmap<Bitmap>`.

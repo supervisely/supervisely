@@ -15,6 +15,8 @@ from supervisely.geometry.point_location import points_to_row_col_list, row_col_
 from supervisely.geometry.rectangle import Rectangle
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 class CuboidFace:
     """
     CuboidFace for a single :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`.
