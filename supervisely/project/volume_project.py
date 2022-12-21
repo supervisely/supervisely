@@ -32,6 +32,15 @@ class VolumeDataset(VideoDataset):
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
 
+    @classmethod
+    def _has_valid_ext(cls, path: str) -> bool:
+        """
+        Checks if file from given path is supported
+        :param path: str
+        :return: bool
+        """
+        return sly_volume.has_valid_ext(path)
+
     def _get_empty_annotaion(self, item_name):
         path = item_name
         _, volume_meta = sly_volume.read_nrrd_serie_volume(path)
