@@ -350,3 +350,16 @@ class Table(Widget):
         self._parsed_data["data"][row_indices[0]][col_index] = new_value
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
+
+    def update_matching_cells(self, key_column_name, key_cell_value, column_name, new_value):
+        key_col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[key_col_index] == key_cell_value:
+                row_indices.append(idx)
+        
+        col_index = self._parsed_data["columns"].index(column_name)
+        for row_idx in row_indices:
+            self._parsed_data["data"][row_idx][col_index] = new_value
+        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()

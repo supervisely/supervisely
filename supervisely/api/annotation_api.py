@@ -648,7 +648,11 @@ class AnnotationApi(ModuleApi):
         self.copy_batch([src_image_id], [dst_image_id])
 
     def copy_batch_by_ids(
-        self, src_image_ids: List[int], dst_image_ids: List[int], batch_size: Optional[int] = 50
+        self, 
+        src_image_ids: List[int], 
+        dst_image_ids: List[int], 
+        batch_size: Optional[int] = 50,
+        save_source_date: Optional[bool] = True,
     ) -> None:
         """
         Copy annotations from one images IDs to another images IDs in API.
@@ -689,7 +693,7 @@ class AnnotationApi(ModuleApi):
                 data={
                     "srcImageIds": src_ids_batch,
                     "destImageIds": dst_ids_batch,
-                    "preserveSourceDate": True,
+                    "preserveSourceDate": save_source_date,
                 },
             )
 
