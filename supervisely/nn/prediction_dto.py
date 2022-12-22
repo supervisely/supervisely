@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class Prediction:
     def __init__(self, class_name):
@@ -18,3 +18,10 @@ class PredictionBBox(Prediction):
         super(PredictionBBox, self).__init__(class_name=class_name)
         self.bbox_tlbr = bbox_tlbr
         self.score = score
+
+class PredictionSegmentation(Prediction):
+    def __init__(self, mask: np.ndarray):
+        self.mask = mask
+        
+
+

@@ -54,6 +54,8 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
+        if custom_inference_settings is None:
+            custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, 'r') as f:
@@ -200,6 +202,9 @@ class Inference:
             if label is None:
                 # for example empty mask
                 continue
+            if isinstance(label, list):
+                labels.extend(label)
+                continue
             labels.append(label)
 
         # create annotation with correct image resolution
@@ -246,6 +251,8 @@ class Inference:
 
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
+        if settings is None:
+            settings = {}
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
         settings["sliding_window_mode"] = self.sliding_window_mode
@@ -262,10 +269,16 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
-    def visualize(self, predictions: List[Prediction], image_path: str, vis_path: str):
+    def visualize(
+        self, 
+        predictions: List[Prediction], 
+        image_path: str, 
+        vis_path: str, 
+        thickness: Optional[int] = None
+    ):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, output_path=vis_path, fill_rectangles=False)
+        ann.draw_pretty(bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False)
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Input state", extra={"state": state})
