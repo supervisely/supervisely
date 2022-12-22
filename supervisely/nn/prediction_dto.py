@@ -19,14 +19,9 @@ class PredictionBBox(Prediction):
         self.bbox_tlbr = bbox_tlbr
         self.score = score
 
-class SemanticPrediction(Prediction):
-    def __init__(self, mask: np.ndarray, class_index2name_mapping: Dict[int, str]):
-        image_classes = np.unique(mask)
-        self.masks = []
-        for class_idx in image_classes:
-            class_name = class_index2name_mapping[class_idx]
-            class_mask = mask == class_idx
-            self.masks.append(PredictionMask(class_name, class_mask))
+class PredictionSegmentation(Prediction):
+    def __init__(self, mask: np.ndarray):
+        self.mask = mask
         
 
 

@@ -1,13 +1,13 @@
 from typing import Dict, List, Any
 from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask, SemanticPrediction
+from supervisely.nn.prediction_dto import PredictionMask, PredictionSegmentation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
 from supervisely.task.progress import Progress
-
+import numpy as np
 
 class SemanticSegmentation(Inference):
     def _get_templates_dir(self):
@@ -35,30 +35,29 @@ class SemanticSegmentation(Inference):
     def _get_obj_class_shape(self):
         return Bitmap
 
-    def _create_label(self, dto: SemanticPrediction):
+    def _create_label(self, dto: PredictionSegmentation):
+        image_classes = np.unique(dto.mask)
         labels = []
-        for mask_pred in dto.masks:
-            mask_pred: PredictionMask
-            obj_class = self.model_meta.get_obj_class(mask_pred.class_name)
+        for class_idx in image_classes:
+            class_mask = dto.mask == class_idx
+            class_name = self.get_classes()[class_idx]
+            obj_class = self.model_meta.get_obj_class(class_name)
             if obj_class is None:
                 raise KeyError(
-                    f"Class {mask_pred.class_name} not found in model classes {self.get_classes()}"
+                    f"Class {class_name} not found in model classes {self.get_classes()}"
                 )
-            if not mask_pred.mask.any():  # skip empty masks
-                logger.debug(f"Mask of class {mask_pred.class_name} is empty and will be sklipped")
+            if not class_mask.any():  # skip empty masks
+                logger.debug(f"Mask of class {class_name} is empty and will be sklipped")
                 return None
-            geometry = Bitmap(mask_pred.mask)
-            tags = []
-            if mask_pred.score is not None:
-                tags.append(Tag(self._get_confidence_tag_meta(), mask_pred.score))
-            label = Label(geometry, obj_class, tags)
+            geometry = Bitmap(class_mask)
+            label = Label(geometry, obj_class)
             labels.append(label)
         return labels
 
-    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[SemanticPrediction]:
+    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionSegmentation]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[SemanticPrediction]:
+    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionSegmentation]:
         raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
 
     def serve(self):
