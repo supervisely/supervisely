@@ -251,6 +251,8 @@ class Inference:
 
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
+        if settings is None:
+            settings = {}
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
         settings["sliding_window_mode"] = self.sliding_window_mode
