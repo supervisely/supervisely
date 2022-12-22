@@ -200,6 +200,9 @@ class Inference:
             if label is None:
                 # for example empty mask
                 continue
+            if isinstance(label, list):
+                labels.extend(label)
+                continue
             labels.append(label)
 
         # create annotation with correct image resolution
@@ -262,10 +265,16 @@ class Inference:
     def app(self) -> Application:
         return self._app
 
-    def visualize(self, predictions: List[Prediction], image_path: str, vis_path: str):
+    def visualize(
+        self, 
+        predictions: List[Prediction], 
+        image_path: str, 
+        vis_path: str, 
+        thickness: Optional[int] = None
+    ):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, output_path=vis_path, fill_rectangles=False)
+        ann.draw_pretty(bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False)
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Input state", extra={"state": state})

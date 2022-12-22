@@ -1,15 +1,10 @@
 from typing import Dict, List, Any
-from pathlib import Path
-import os
 from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.prediction_dto import PredictionBBox
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
-import supervisely.imaging.image as sly_image
-from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 
 

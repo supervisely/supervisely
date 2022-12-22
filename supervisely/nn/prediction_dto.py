@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class Prediction:
     def __init__(self, class_name):
@@ -18,3 +18,15 @@ class PredictionBBox(Prediction):
         super(PredictionBBox, self).__init__(class_name=class_name)
         self.bbox_tlbr = bbox_tlbr
         self.score = score
+
+class SemanticPrediction(Prediction):
+    def __init__(self, mask: np.ndarray, class_index2name_mapping: Dict[int, str]):
+        image_classes = np.unique(mask)
+        self.masks = []
+        for class_idx in image_classes:
+            class_name = class_index2name_mapping[class_idx]
+            class_mask = mask == class_idx
+            self.masks.append(PredictionMask(class_name, class_mask))
+        
+
+
