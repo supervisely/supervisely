@@ -1100,3 +1100,64 @@ class VideoApi(RemoveableBulkModuleApi):
             )[0]
         else:
             return self.upload_hash(dataset_id, name, video_info.hash)
+
+    def _remove_batch_api_method_name(self):
+        """ """
+        return "images.bulk.remove"
+
+    def _remove_batch_field_name(self):
+        """ """
+        return ApiField.IMAGE_IDS
+
+    def remove_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Callable] = None,
+        batch_size: Optional[int] = 50,
+    ):
+        """
+        Remove videos from supervisely by ids.
+
+        :param ids: List of Videos IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking progress of removing.
+        :type progress_cb: Progress, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [2389126, 2389127]
+            api.video.remove_batch(video_ids)
+        """
+        super(VideoApi, self).remove_batch(ids, progress_cb=progress_cb, batch_size=batch_size)
+
+    def remove(self, video_id: int):
+        """
+        Remove video from supervisely by id.
+
+        :param video_id: Videos ID in Supervisely.
+        :type video_id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_id = 2389126
+            api.video.remove(video_id)
+        """
+        super(VideoApi, self).remove(video_id)
