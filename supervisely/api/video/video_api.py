@@ -605,8 +605,9 @@ class VideoApi(RemoveableBulkModuleApi):
             end_fr= 35
             response = api.video.download_range_by_id(video_id, start_fr, end_fr)
         """
-        path_original = self.get_info_by_id(id).path_original
-        return self.download_range_by_path(path_original, frame_start, frame_end, is_stream)
+        raise NotImplementedError("Method is not supported")
+        # path_original = self.get_info_by_id(id).path_original
+        # return self.download_range_by_path(path_original, frame_start, frame_end, is_stream)
 
     def download_range_by_path(
         self,
@@ -645,13 +646,14 @@ class VideoApi(RemoveableBulkModuleApi):
             path_sl = video_info.path_original
             response = api.video.download_range_by_path(path_sl, start_fr, end_fr)
         """
-        response = self._api.get(
-            method="image-converter/transcode" + path_original,
-            params={"startFrame": frame_start, "endFrame": frame_end, "transmux": True},
-            stream=is_stream,
-            use_public_api=False,
-        )
-        return response
+        raise NotImplementedError("Method is not supported")
+        # response = self._api.get(
+        #     method="image-converter/transcode" + path_original,
+        #     params={"startFrame": frame_start, "endFrame": frame_end, "transmux": True},
+        #     stream=is_stream,
+        #     use_public_api=False,
+        # )
+        # return response
 
     def download_save_range(
         self, video_id: int, frame_start: int, frame_end: int, save_path: str
@@ -688,11 +690,12 @@ class VideoApi(RemoveableBulkModuleApi):
             print(result)
             # Output: /home/admin/work/projects/videos/MOT16-03.mp4
         """
-        response = self.download_range_by_id(video_id, frame_start, frame_end)
-        with open(save_path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=128):
-                fd.write(chunk)
-        return save_path
+        raise NotImplementedError("Method is not supported")
+        # response = self.download_range_by_id(video_id, frame_start, frame_end)
+        # with open(save_path, "wb") as fd:
+        #     for chunk in response.iter_content(chunk_size=128):
+        #         fd.write(chunk)
+        # return save_path
 
     def notify_progress(
         self,
