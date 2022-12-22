@@ -54,6 +54,8 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
+        if custom_inference_settings is None:
+            custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, 'r') as f:
