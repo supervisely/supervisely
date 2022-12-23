@@ -566,8 +566,8 @@ class FileApi(ModuleApiBase):
             name = get_file_name_with_ext(dst)
             content_dict.append((ApiField.NAME, name))
             dst_dir = os.path.dirname(dst)
-            if not dst_dir.endswith(os.path.sep):
-                dst_dir += os.path.sep
+            if not dst_dir.endswith("/"):
+                dst_dir += "/"
             content_dict.append((ApiField.PATH, dst_dir))
             content_dict.append(
                 (
