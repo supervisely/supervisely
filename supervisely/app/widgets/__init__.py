@@ -53,3 +53,4 @@ from supervisely.app.widgets.destination_project.destination_project import Dest
 from supervisely.app.widgets.image.image import Image
 from supervisely.app.widgets.line_plot.line_plot import LinePlot
 from supervisely.app.widgets.grid_plot.grid_plot import GridPlot
+from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
