@@ -23,6 +23,7 @@ import supervisely.io.fs as sly_fs
 from supervisely.io.fs import ensure_base_path
 from supervisely._utils import batched, is_development, abs_url, rand_str
 from supervisely.video.video import get_info, get_video_streams, gen_video_stream_name
+from supervisely.video.video import validate_ext
 
 from supervisely.task.progress import Progress
 
@@ -875,6 +876,7 @@ class VideoApi(RemoveableBulkModuleApi):
         metas2 = [meta["meta"] for meta in metas]
 
         for name, hash, meta in zip(names, hashes, metas2):
+            validate_ext(os.path.splitext(name)[1])
             try:
                 all_streams = meta["streams"]
                 video_streams = get_video_streams(all_streams)
