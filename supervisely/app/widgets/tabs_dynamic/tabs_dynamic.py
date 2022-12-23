@@ -24,7 +24,7 @@ class TabsDynamic(Widget):
         type: Optional[Literal["card", "border-card"]] = "border-card",
         widget_id=None,
     ):  
-        if Path(filepath_or_raw_yaml).is_file():
+        if Path(filepath_or_raw_yaml[-50:]).is_file():
             data_source = open(filepath_or_raw_yaml, "r")
         else:
             data_source = filepath_or_raw_yaml
@@ -34,8 +34,6 @@ class TabsDynamic(Widget):
         except yaml.YAMLError as exc:
             print(exc)
         
-        
-        self._items = []
         self._items_dict = {'common': {}}
         for key, val in self._data.items():
             if isinstance(val, dict):
@@ -43,6 +41,7 @@ class TabsDynamic(Widget):
             else:
                 self._items_dict['common'][key] = val
         
+        self._items = []
         for label, data in self._items_dict.items():
             self._items.append(TabsDynamic.TabPane(label=label, content=Editor(yaml.dump(data), language_mode='yaml', height_px=250)))
         
