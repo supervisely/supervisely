@@ -72,7 +72,7 @@ class LineChart(Apexchart):
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
-            "yaxis": [{"show": True}],
+            "yaxis": [{"show": True, "decimalsInFloat": 1}],
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
