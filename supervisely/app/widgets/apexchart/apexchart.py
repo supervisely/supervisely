@@ -1,8 +1,10 @@
 from __future__ import annotations
 from typing import Union, NamedTuple, Any, List
 from functools import wraps
+import traceback
 from supervisely.app.widgets import Widget
 from supervisely.app.content import StateJson, DataJson
+from supervisely import logger
 
 """
 size1 = 10
@@ -100,15 +102,17 @@ class Apexchart(Widget):
         def _click():
             res = self.get_clicked_datapoint()
             if res is not None:
-                func(res)
+                try:
+                    return func(res)
+                except Exception as e:
+                    logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                    raise e
 
         return _click
 
     def add_series(self, name: str, x: list, y: list, send_changes=True):
         if len(x) != len(y):
-            raise ValueError(
-                f"Lists x and y have different lenght, {len(x)} != {len(y)}"
-            )
+            raise ValueError(f"Lists x and y have different lenght, {len(x)} != {len(y)}")
         data = [{"x": px, "y": py} for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)

@@ -9,6 +9,7 @@ from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
+import traceback
 
 
 class PackerUnpacker:
@@ -289,11 +290,15 @@ class Table(Widget):
 
         @server.post(route_path)
         def _click():
-            value_dict = self.get_selected_cell(StateJson())
-            if value_dict is None:
-                return
-            datapoint = Table.ClickedDataPoint(**value_dict)
-            func(datapoint)
+            try:
+                value_dict = self.get_selected_cell(StateJson())
+                if value_dict is None:
+                    return
+                datapoint = Table.ClickedDataPoint(**value_dict)
+                func(datapoint)
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                raise e
 
         return _click
 
@@ -357,7 +362,7 @@ class Table(Widget):
         for idx, row in enumerate(self._parsed_data["data"]):
             if row[key_col_index] == key_cell_value:
                 row_indices.append(idx)
-        
+
         col_index = self._parsed_data["columns"].index(column_name)
         for row_idx in row_indices:
             self._parsed_data["data"][row_idx][col_index] = new_value
