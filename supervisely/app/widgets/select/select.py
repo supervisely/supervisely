@@ -97,7 +97,7 @@ class Select(Widget):
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0]) > 0:
+        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0].items) > 0:
             return self._groups[0].items[0]
         return None
 
@@ -159,8 +159,8 @@ class Select(Widget):
 
 class SelectString(Select):
     def __init__(
-        self, 
-        values: List[str], 
+        self,
+        values: List[str],
         labels: Optional[List[str]] = None,
         filterable: Optional[bool] = False,
         placeholder: Optional[str] = "select",
@@ -184,7 +184,7 @@ class SelectString(Select):
             placeholder=placeholder,
             multiple=multiple,
             size=size,
-            widget_id=widget_id
+            widget_id=widget_id,
         )
 
     def _get_first_value(self) -> Select.Item:
