@@ -37,7 +37,7 @@ class ScatterChart(Apexchart):
         self,
         title: str,
         series: list = [],
-        zoom: bool = False,
+        zoom: bool = True,
         markers_size: int = 4,
         data_labels: bool = False,
         xaxis_type: Literal["numeric", "category", "datetime"] = "numeric",
@@ -60,9 +60,15 @@ class ScatterChart(Apexchart):
         self._widget_height = height
 
         self._options = {
-            "chart": {"type": "line", "zoom": {"enabled": self._zoom}},
+            "chart": {
+                "type": "scatter",
+                "zoom": {"enabled": self._zoom},
+                # "animations": {"enabled": False},
+            },
             "dataLabels": {"enabled": self._data_labels},
-            "stroke": {"width": 0},  # there is issue in Apex, so we treat a line chart as a scatter with no lines.
+            "stroke": {
+                "width": 0
+            },  # there is issue in Apex, so we treat a line chart as a scatter with no lines.
             "title": {"text": self._title, "align": "left"},
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
@@ -77,7 +83,7 @@ class ScatterChart(Apexchart):
         super().__init__(
             series=self._series,
             options=self._options,
-            type="line",
+            type="scatter",
             height=self._widget_height,
         )
         self.update_y_range(self._ymin, self._ymax)

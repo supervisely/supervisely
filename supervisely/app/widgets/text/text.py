@@ -86,11 +86,10 @@ class Text(Widget):
         self._icon = type_to_icon[self._status]
         self._icon_color = type_to_icon_color[self._status]
         self._text_color = type_to_text_color[self._status]
+
         self.update_data()
         DataJson().send_changes()
 
-    def set(
-        self, text: str, status: Literal["text", "info", "success", "warning", "error"]
-    ):
+    def set(self, text: str, status: Literal["text", "info", "success", "warning", "error"]):
         self.text = text
         self.status = status
