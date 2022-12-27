@@ -48,6 +48,7 @@ class LineChart(Apexchart):
         yaxis_title: str = None,
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
         height: Union[int, str] = 350,
+        decimalsInFloat: int = 2,
     ):
         self._title = title
         self._series = series
@@ -63,6 +64,7 @@ class LineChart(Apexchart):
         self._ymin = 0
         self._ymax = 10
         self._widget_height = height
+        self._decimalsInFloat = decimalsInFloat
 
         self._options = {
             "chart": {"type": "line", "zoom": {"enabled": self._zoom}},
@@ -72,7 +74,7 @@ class LineChart(Apexchart):
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
-            "yaxis": [{"show": True, "decimalsInFloat": 1}],
+            "yaxis": [{"show": True, "decimalsInFloat": self._decimalsInFloat}],
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}

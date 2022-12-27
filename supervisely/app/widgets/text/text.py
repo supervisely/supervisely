@@ -86,7 +86,6 @@ class Text(Widget):
         self._icon = type_to_icon[self._status]
         self._icon_color = type_to_icon_color[self._status]
         self._text_color = type_to_text_color[self._status]
-
         self.update_data()
         DataJson().send_changes()
 

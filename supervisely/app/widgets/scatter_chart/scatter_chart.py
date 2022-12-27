@@ -45,6 +45,7 @@ class ScatterChart(Apexchart):
         yaxis_title: str = None,
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
         height: Union[int, str] = 350,
+        decimalsInFloat: int = 2,
     ):
         self._title = title
         self._series = series
@@ -58,22 +59,24 @@ class ScatterChart(Apexchart):
         self._ymin = 0
         self._ymax = 10
         self._widget_height = height
+        self._decimalsInFloat = decimalsInFloat
 
         self._options = {
             "chart": {
                 "type": "scatter",
                 "zoom": {"enabled": self._zoom},
-                # "animations": {"enabled": False},
+                "animations": {
+                    # TODO: fix animations bug in scatter_chart (issue with DataJson)
+                    "enabled": False,
+                },
             },
             "dataLabels": {"enabled": self._data_labels},
-            "stroke": {
-                "width": 0
-            },  # there is issue in Apex, so we treat a line chart as a scatter with no lines.
+            "stroke": {"width": 0},
             "title": {"text": self._title, "align": "left"},
             "grid": {"row": {"colors": ["#f3f3f3", "transparent"], "opacity": 0.5}},
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
-            "yaxis": [{"show": True, "decimalsInFloat": 1}],
+            "yaxis": [{"show": True, "decimalsInFloat": self._decimalsInFloat}],
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}
@@ -116,3 +119,18 @@ class ScatterChart(Apexchart):
             super().add_series(name, x, y, send_changes=False)
             self.update_y_range(min(y), max(y), send_changes=False)
         DataJson().send_changes()
+
+    def add_points_to_serie(
+        self, name: str, x: Union[list, int], y: Union[list, int], send_changes=True
+    ):
+        if isinstance(x, int):
+            x = [x]
+            y = [y]
+        data = [{"x": px, "y": py} for px, py in zip(x, y)]
+        for serie in self._series:
+            if serie["name"] == name:
+                serie["data"] += data
+                break
+        self.update_data()
+        if send_changes:
+            DataJson().send_changes()
