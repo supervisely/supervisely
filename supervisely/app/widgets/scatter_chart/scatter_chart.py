@@ -64,7 +64,7 @@ class ScatterChart(Apexchart):
         self._options = {
             "chart": {
                 "type": "scatter",
-                "zoom": {"enabled": self._zoom},
+                "zoom": {"enabled": self._zoom, "type": "xy"},
                 "animations": {
                     # TODO: fix animations bug in scatter_chart (issue with DataJson)
                     "enabled": False,
