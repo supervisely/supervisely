@@ -97,7 +97,7 @@ class Select(Widget):
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0]) > 0:
+        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0].items) > 0:
             return self._groups[0].items[0]
         return None
 
