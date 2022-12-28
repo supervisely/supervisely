@@ -33,6 +33,11 @@ class SelectItem(Widget):
         self._show_label = show_label
         self._size = size
 
+        self._ds_selector = None
+        self._limit_message = None
+
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
         items = []
         if self._dataset_id is not None:
             items = self._get_items_from_server(dataset_id)
@@ -43,8 +48,6 @@ class SelectItem(Widget):
         self._item_selector = Select(
             items=items, filterable=True, size=size, widget_id=generate_id()
         )
-        self._ds_selector = None
-        self._limit_message = None
 
         self._dataset_id = _get_int_or_env(self._dataset_id, "modal.state.slyDatasetId")
         if self._compact is True:
@@ -68,7 +71,6 @@ class SelectItem(Widget):
                 # print("dataset_id ---> ", dataset_id)
                 self.refresh_items(dataset_id)
 
-        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
         res = {
