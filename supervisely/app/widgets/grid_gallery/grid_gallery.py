@@ -109,6 +109,8 @@ class GridGallery(Widget):
         annotation: supervisely.Annotation = None,
         title: str = "",
         column_index: int = None,
+        zoom_to: str = None,
+        zoom_factor: float = 1.2,
     ):
 
         column_index = self.get_column_index(incoming_value=column_index)
@@ -125,6 +127,8 @@ class GridGallery(Widget):
                 "column_index": column_index,
                 "title": title,
                 "cell_uuid": cell_uuid,
+                "zoom_to": zoom_to,
+                "zoom_factor": zoom_factor,
             }
         )
 
@@ -155,6 +159,12 @@ class GridGallery(Widget):
                 "figures": [label.to_json() for label in cell_data["annotation"].labels],
                 "title": cell_data["title"],
             }
+            if not cell_data["zoom_to"] is None: 
+                zoom_params = {
+                    "figureId": cell_data["zoom_to"],
+                    "factor": cell_data["zoom_factor"],
+                }
+                annotations[cell_data["cell_uuid"]]["zoomToFigure"] = zoom_params
 
         self._annotations = copy.deepcopy(annotations)
         DataJson()[self.widget_id]["content"]["annotations"] = self._annotations
