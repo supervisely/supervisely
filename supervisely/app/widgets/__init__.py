@@ -51,4 +51,4 @@ from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea
 from supervisely.app.widgets.destination_project.destination_project import DestinationProject
 from supervisely.app.widgets.image.image import Image
-from supervisely.app.widgets.video_raw.video_raw import VideoRaw
+from supervisely.app.widgets.video_light.video_light import VideoLight
