@@ -11,9 +11,9 @@ class VideoLight(Widget):
         self._mime_type = mime_type
         self._current_timestamp = 0
         super().__init__(widget_id=widget_id, file_path=__file__)
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__
-        ] = "./sly/css/app/widgets/video_light/script.js"
+
+        script_path = "./sly/css/app/widgets/video_light/script.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
         return {"url": self._url, "mimeType": self._mime_type}
