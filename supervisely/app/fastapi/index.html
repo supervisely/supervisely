@@ -57,6 +57,16 @@
       window.parent.postMessage('{ "showHeader": false }', "*");
     </script>
 
+    {% for widget_name, scripts in __widget_scripts__.items() %}
+        {% if scripts is iterable %}
+            {% for script_name in scripts %}
+                <script src="./sly/css/app/widgets/{{{ widget_name }}}/{{{ script_name }}}"></script>
+            {% endfor %}
+        {% else %}
+            <script src="./sly/css/app/widgets/{{{ widget_name }}}/{{{ scripts }}}"></script>
+        {% endif %}
+    {% endfor %}
+
     <div id="sly-app">
       <sly-app>
         <template v-slot="{ post, state, data, session }">

@@ -1,0 +1,6 @@
+<py-sly-video
+  :time_to_set.sync="state.{{{widget.widget_id}}}.timeToSet"
+  :video_type="data.{{{widget.widget_id}}}.videoType"
+  :video_url="data.{{{widget.widget_id}}}.videoUrl"
+  @timeupdate="state.{{{widget.widget_id}}}.currentTime = $event"
+></py-sly-video>
