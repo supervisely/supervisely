@@ -42,7 +42,7 @@ class TabsDynamic(Widget):
 
         yaml = MyYAML()
         self._data = yaml.load(data_source)
-        common_data = self._data.copy()
+        self._common_data = self._data.copy()
         
         self._items_dict = {'common': None}
         self._items = []
@@ -52,9 +52,9 @@ class TabsDynamic(Widget):
                 editor = Editor(yaml_str, language_mode='yaml', height_px=250)
                 self._items_dict[label] = editor
                 self._items.append(TabsDynamic.TabPane(label=label, content=editor))
-                del common_data[label]
+                del self._common_data[label]
 
-        yaml_str = yaml.dump(common_data)
+        yaml_str = yaml.dump(self._common_data)
         editor = Editor(yaml_str, language_mode='yaml', height_px=250)
         self._items_dict['common'] = editor
         self._items.insert(0, TabsDynamic.TabPane(label='common', content=editor))
@@ -79,3 +79,16 @@ class TabsDynamic(Widget):
 
     def get_active_tab(self) -> str:
         return StateJson()[self.widget_id]["value"]
+    
+    def get_merged_yaml(self):
+        yaml = MyYAML()
+        yaml_data = yaml.load('common:')
+        for label, editor in self._items_dict.items():
+            label_yaml_data = yaml.load(editor.get_text())
+            if label == 'common':
+                for key, value in label_yaml_data.items():
+                    yaml_data[key] = value
+            else:
+                yaml_data[label] = label_yaml_data
+        del yaml_data['common']
+        return yaml.dump(yaml_data)
