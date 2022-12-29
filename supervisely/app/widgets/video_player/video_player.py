@@ -4,7 +4,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets_context import JinjaWidgets
 
 
-class VideoLight(Widget):
+class VideoPlayer(Widget):
     def __init__(self, url: str = None, mime_type: str = "video/mp4", widget_id: str = None):
         self._api = Api()
         self._url = url
@@ -12,7 +12,7 @@ class VideoLight(Widget):
         self._current_timestamp = 0
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-        script_path = "./sly/css/app/widgets/video_light/script.js"
+        script_path = "./sly/css/app/widgets/video_player/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
