@@ -57,12 +57,12 @@
       window.parent.postMessage('{ "showHeader": false }', "*");
     </script>
 
-    {% for widget_name, scripts in __widget_scripts__.items() %}
+    {% for scripts in __widget_scripts__.values() %}
         {% if scripts is string %}
-            <script src="./sly/css/app/widgets/{{{ widget_name }}}/{{{ scripts }}}"></script>
+            <script src="{{{ scripts }}}"></script>
         {% else %}
-            {% for script_name in scripts %}
-                <script src="./sly/css/app/widgets/{{{ widget_name }}}/{{{ script_name }}}"></script>
+            {% for scripts in scripts %}
+                <script src="{{{ scripts }}}"></script>
             {% endfor %}
         {% endif %}
     {% endfor %}

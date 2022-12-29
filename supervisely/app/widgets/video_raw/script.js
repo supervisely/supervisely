@@ -1,5 +1,5 @@
-Vue.component("py-sly-video", {
-  props: ["time_to_set", "video_url", "video_type"],
+Vue.component("html-video", {
+  props: ["time_to_set", "url", "mime_type"],
   template: `
 <div>
     <video ref="video"
@@ -8,7 +8,7 @@ Vue.component("py-sly-video", {
         controls
         @timeupdate="$emit('timeupdate', $refs['video'].currentTime)"
     >
-        <source ref="video-data" :src="video_url" :type="video_type">
+        <source ref="video-data" :src="url" :type="mime_type">
     </video>
 </div>
 `,
@@ -18,15 +18,16 @@ Vue.component("py-sly-video", {
       if (Number.isFinite(time)) {
         this.$refs["video"].currentTime = time;
         this.$emit("update:time_to_set", null);
+        this.$refs["video"].pause();
       }
     },
-    video_url: {
+    url: {
       handler() {
         this.update_video_src();
       },
       immediate: true,
     },
-    video_type: {
+    mime_type: {
       handler() {
         this.update_video_src();
       },
@@ -35,13 +36,13 @@ Vue.component("py-sly-video", {
   },
   methods: {
     update_video_src() {
-      if (!this.video_url || !this.video_type) {
+      if (!this.url || !this.mime_type) {
         return;
       }
       this.$refs["video"].pause();
 
-      this.$refs["video-data"].setAttribute("src", this.video_url);
-      this.$refs["video-data"].setAttribute("type", this.video_type);
+      this.$refs["video-data"].setAttribute("src", this.url);
+      this.$refs["video-data"].setAttribute("type", this.mime_type);
 
       this.$refs["video"].load();
     },

@@ -4,21 +4,19 @@ from supervisely.api.api import Api
 from supervisely.app.widgets_context import JinjaWidgets
 
 
-class VideoRaw(Widget):
-    def __init__(self, video_url: str = None, video_type: str = None, widget_id: str = None):
+class VideoRaw(Widget): #TODO: change name (VideoPlayer, VideoLight, VideoSimple, Video_2, LightVideoPlayer, VideoBase)
+    def __init__(self, url: str = None, mime_type: str = "video/mp4", widget_id: str = None):
         self._api = Api()
-        self._video_url = video_url
-        self._video_type = video_type
-        if self._video_type is None:
-            self._video_type = "video/mp4"
+        self._url = url
+        self._mime_type = mime_type 
         self._current_timestamp = 0
         super().__init__(widget_id=widget_id, file_path=__file__)
-        JinjaWidgets().context["__widget_scripts__"]["video_raw"] = 'script.js'
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = './sly/css/app/widgets/video_raw/script.js'
 
     def get_json_data(self):
         return {
-            "videoUrl": self._video_url,
-            "videoType": self._video_type
+            "url": self._url,
+            "mimeType": self._mime_type
         }
 
     def get_json_state(self):
@@ -28,18 +26,18 @@ class VideoRaw(Widget):
         }
 
     @property
-    def video_url(self):
-        return self._video_url
+    def url(self):
+        return self._url
 
     @property
-    def video_type(self):
-        return self._video_type
+    def mime_type(self):
+        return self._mime_type
 
-    def set_video(self, url: str, video_type: str):
-        self._video_url = url
-        self._video_type = video_type
-        DataJson()[self.widget_id]["videoUrl"] = self._video_url
-        DataJson()[self.widget_id]["videoType"] = self._video_type
+    def set_video(self, url: str, mime_type: str):
+        self._url = url
+        self._mime_type = mime_type
+        DataJson()[self.widget_id]["url"] = self._url
+        DataJson()[self.widget_id]["mimeType"] = self._mime_type
         DataJson().send_changes()
         StateJson()[self.widget_id]["currentTime"] = 0
         StateJson().send_changes()
