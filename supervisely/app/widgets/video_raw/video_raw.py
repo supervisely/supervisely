@@ -35,9 +35,9 @@ class VideoRaw(Widget):
     def video_type(self):
         return self._video_type
 
-    def set_video(self, url: str, type: str):
+    def set_video(self, url: str, video_type: str):
         self._video_url = url
-        self._video_type = type
+        self._video_type = video_type
         DataJson()[self.widget_id]["videoUrl"] = self._video_url
         DataJson()[self.widget_id]["videoType"] = self._video_type
         DataJson().send_changes()
