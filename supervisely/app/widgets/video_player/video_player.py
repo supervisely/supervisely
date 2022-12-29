@@ -16,7 +16,10 @@ class VideoPlayer(Widget):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
-        return {"url": self._url, "mimeType": self._mime_type}
+        return {
+            "url": self._url,
+            "mimeType": self._mime_type,
+        }
 
     def get_json_state(self):
         return {
