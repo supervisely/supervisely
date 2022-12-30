@@ -37,15 +37,11 @@ class Import:
                 raise ValueError(f"Workspace ID must be 'int': {self._workspace_id}")
 
             self._project_id = project_id
-            if self._project_id is None:
-                raise ValueError(f"Project ID is not specified: {self._project_id}")
-            if type(self._project_id) is not int:
+            if self._project_id is not None and type(self._project_id) is not int:
                 raise ValueError(f"Project ID must be 'int': {self._project_id}")
 
             self._dataset_id = dataset_id
-            if self._dataset_id is None:
-                raise ValueError(f"Dataset ID is not specified: {self._dataset_id}")
-            if type(self._dataset_id) is not int:
+            if self._dataset_id is not None and type(self._dataset_id) is not int:
                 raise ValueError(f"Dataset ID must be 'int': {self._dataset_id}")
 
             self._path = path
