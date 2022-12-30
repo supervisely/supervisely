@@ -10,6 +10,7 @@ class VideoPlayer(Widget):
         self._url = url
         self._mime_type = mime_type
         self._current_timestamp = 0
+        self._playing = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         script_path = "./sly/css/app/widgets/video_player/script.js"
@@ -25,6 +26,7 @@ class VideoPlayer(Widget):
         return {
             "currentTime": 0,
             "timeToSet": 0,
+            "playing": False
         }
 
     @property
@@ -53,3 +55,17 @@ class VideoPlayer(Widget):
         StateJson()[self.widget_id]["timeToSet"] = value
         StateJson().send_changes()
         return self._current_timestamp
+
+    def play(self):
+        if self._playing == True:
+            return
+        self._playing = True
+        StateJson()[self.widget_id]["playing"] = True
+        StateJson().send_changes()
+
+    def pause(self):
+        if self._playing == False:
+            return
+        self._playing = False
+        StateJson()[self.widget_id]["playing"] = False
+        StateJson().send_changes()
