@@ -84,6 +84,21 @@ class Disableable:
         return str(soup)
 
 
+class Loading:
+    def __init__(self):
+        self._loading = False
+    
+    @property
+    def loading(self):
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()
+
+
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
     if cls_name == "":
@@ -92,7 +107,7 @@ def generate_id(cls_name=""):
         return cls_name + "AutoId" + suffix
 
 
-class Widget(Hidable, Disableable):
+class Widget(Hidable, Disableable, Loading):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()

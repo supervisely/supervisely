@@ -4,6 +4,7 @@
 />
 
 <div
+  v-loading="data.{{{widget.widget_id}}}.loading"
   v-if="data.{{{widget.widget_id}}}.title || data.{{{widget.widget_id}}}.description"
   class="notification-box notification-box-{{{widget.box_type}}}"
 >

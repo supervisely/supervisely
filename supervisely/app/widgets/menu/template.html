@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/sidebar/style.css" />
 
-<sly-sidebar :options="{{{widget._options}}}">
+<sly-sidebar v-loading="data.{{{widget.widget_id}}}.loading" :options="{{{widget._options}}}">
   <div slot="sidebar">
     <el-menu
       mode="vertical"

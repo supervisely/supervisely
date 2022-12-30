@@ -1,4 +1,5 @@
 <el-tabs 
+    v-loading="data.{{{widget.widget_id}}}.loading"
     :type="data.{{{widget.widget_id}}}.type"
     v-model="state.{{{widget.widget_id}}}.value"
 >

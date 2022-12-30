@@ -1,4 +1,8 @@
-<sly-field title="" :description="data.{{{widget.widget_id}}}.description">
+<sly-field 
+  title="" 
+  :description="data.{{{widget.widget_id}}}.description"
+  v-loading="data.{{{widget.widget_id}}}.loading"
+  >
   <span slot="title">
     <span v-if="data.{{{widget.widget_id}}}.show_project_name">
       <a target="_blank" :href="data.{{{widget.widget_id}}}.project_url">

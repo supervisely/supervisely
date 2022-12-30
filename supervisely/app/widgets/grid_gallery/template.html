@@ -1,5 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/grid_gallery/style.css" />
 <div
+  v-loading="data.{{{widget.widget_id}}}.loading"
   v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length > 0"
 >
   <div
@@ -48,6 +49,7 @@
   </div>
 </div>
 <div
+  v-loading="data.{{{widget.widget_id}}}.loading"
   v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length === 0"
 >
   Gallery is empty

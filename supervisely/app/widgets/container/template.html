@@ -1,5 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/container/style.css" />
 <div
+  v-loading="data.{{{widget.widget_id}}}.loading"
   {%
   if
   widget._flex_direction == 'vertical'

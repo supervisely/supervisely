@@ -1,5 +1,7 @@
-{% if widget._restore_button is not none %}
-{{{ widget._restore_button }}}
-{% endif %}
-<sly-editor v-model="state.{{{widget.widget_id}}}.text"
-            :options="data.{{{widget.widget_id}}}.editor_options"></sly-editor>
+<div v-loading="data.{{{widget.widget_id}}}.loading">
+    {% if widget._restore_button is not none %}
+    {{{ widget._restore_button }}}
+    {% endif %}
+    <sly-editor v-model="state.{{{widget.widget_id}}}.text"
+                :options="data.{{{widget.widget_id}}}.editor_options"></sly-editor>
+</div>

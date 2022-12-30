@@ -1,4 +1,7 @@
-<sly-field title="" :description="data.{{{widget.widget_id}}}.description">
+<sly-field
+  v-loading="data.{{{widget.widget_id}}}.loading"
+  title="" 
+  :description="data.{{{widget.widget_id}}}.description">
   <a
     slot="title"
     rel="noopener noreferrer"

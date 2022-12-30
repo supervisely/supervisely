@@ -1,4 +1,5 @@
 <el-input
+        v-loading="data.{{{widget.widget_id}}}.loading"
         v-model="state.{{{widget.widget_id}}}.value"
         :minlength="data.{{{widget.widget_id}}}.minlength"
         :maxlength="data.{{{widget.widget_id}}}.maxlength"
