@@ -30,7 +30,7 @@ class VideoPlayer(Widget):
         return {
             "currentTime": 0,
             "timeToSet": 0,
-            "is_playing": False
+            "isPlaying": False
         }
 
     @property
@@ -41,7 +41,7 @@ class VideoPlayer(Widget):
     def mime_type(self):
         return self._mime_type
 
-    def set_video(self, url: str, mime_type: str):
+    def set_video(self, url: str, mime_type: str = "video/mp4"):
         self._url = url
         self._mime_type = mime_type
         DataJson()[self.widget_id]["url"] = self._url
@@ -51,23 +51,23 @@ class VideoPlayer(Widget):
         StateJson().send_changes()
 
     def play(self):
-        is_playing = StateJson()[self.widget_id]["is_playing"]
-        if is_playing:
+        is_playing = StateJson()[self.widget_id]["isPlaying"]
+        if is_playing is True:
             return
         self._is_playing = True
-        StateJson()[self.widget_id]["is_playing"] = True
+        StateJson()[self.widget_id]["isPlaying"] = True
         StateJson().send_changes()
 
     def pause(self):
-        is_playing = StateJson()[self.widget_id]["is_playing"]
-        if not is_playing:
+        is_playing = StateJson()[self.widget_id]["isPlaying"]
+        if is_playing is False:
             return
         self._is_playing = False
-        StateJson()[self.widget_id]["is_playing"] = False
+        StateJson()[self.widget_id]["isPlaying"] = False
         StateJson().send_changes()
 
     def get_current_timestamp(self):
-        self._current_timestamp = round(StateJson()[self.widget_id]["currentTime"])
+        self._current_timestamp = round(StateJson()[self.widget_id]["currentTime"], 1)
         return self._current_timestamp
 
     def set_current_timestamp(self, value: int):
