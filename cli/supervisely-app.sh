@@ -2,7 +2,7 @@
 
 set -o pipefail -e
 
-VERSION='1.0.0'
+VERSION='1.0.1'
 
 usage() {
   echo -e "Supervisely Apps CLI
@@ -142,19 +142,25 @@ function release() {
   modal_template_path=$(echo "${config}" | sed -nE 's/"modal_template": "(.*)",?/\1/p' | xargs)
   parsed_slug=
   parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
-
-  if [[ -d "${module_root}/.git" ]]; then
-    parsed_slug=$(git config --get remote.origin.url | sed -E 's/.*@?[^\/:]*[:\/]+(.*)\/(.*)\.git/\1\/\2/')
-    echo "Application slug in remote.origin.url: ${parsed_slug}"
-  fi
+  module_name=$(echo "${config}" | sed -nE 's/^ *"name": "(.*)",?/\1/p' | xargs)
+  module_release=$(echo "${config}" | sed -nE 's/"release": ({.*})/\1/p' | xargs)
 
   if [[ "${parsed_slug_config}" ]]; then
     parsed_slug="${parsed_slug_config}"
-    echo "Application slug in config.json: ${parsed_slug}"
+
+    if [[ -n "${rel_submodule_path}" ]]; then
+      if [[ "${parsed_slug_config}" != *"/${rel_submodule_path}" ]]; then
+        echo "Slug from submodule config.json must includes submodule path (specified in -a | --sub-app)"
+        exit 1
+      fi
+    fi
+
+    # echo "Application slug in config.json: ${parsed_slug}"
   fi
 
-  if [[ -n "${rel_submodule_path}" ]]; then
-    parsed_slug="${parsed_slug}/${rel_submodule_path}"
+  if [[ -z "${parsed_slug}" ]]; then
+    echo "Slug is empty. Please add slug field in config.json"
+    exit 1
   fi
 
   if [[ -f "${module_path}/README.md" ]]; then
@@ -165,12 +171,44 @@ function release() {
     modal_template=$(cat "${module_root}/${modal_template_path}")
   fi
 
+  module_exists_label="updated"
+
+  exists_status=$(curl -w '%{http_code}' -sS --output /dev/null -L --location --request POST "${server}/public/api/v3/ecosystem.info" \
+    --header "x-api-key: ${token}" \
+    --header "Content-Type: application/json" \
+    -d '{"slug": "'"${parsed_slug}"'"}');
+
+  if [[ "$exists_status" =~ ^4 ]]; then
+    module_exists_label="created"
+  fi
+
+  echo
+  echo "App \"${module_name}\" will be ${module_exists_label}"
+  echo "Slug: ${parsed_slug}"
+  echo "Release: ${module_release}"
+  echo "Server: ${server}"
+  echo "Local path: ${module_root}"
+
+  if [[ -n "${rel_submodule_path}" ]]; then
+    echo "Submodule path: ${rel_submodule_path}"
+  fi
+
+  echo "Do you want to continue? [y/N]"
+  read -n 1 -r response
+  echo
+
+  if ! [[ $response =~ ^[Yy]$ ]]
+  then
+    echo "Release canceled"
+    exit 1
+  fi
+
   mkdir "${archive_path}"
 
   if [ -f "${module_root}/.gitignore" ] && command -v git > /dev/null 2>&1; then
-    echo "Packing the following folder to ${archive_path}/archive.tar.gz:"
-    echo "${module_root}"
-    git archive --prefix="$(basename $module_root)/" --output="${archive_path}/archive.tar.gz" --format=tar.gz HEAD
+    echo "Packing the following files to ${archive_path}/archive.tar.gz:"
+    echo "$(git ls-files)"
+    git ls-files | tar Tzcf - "$archive_path/archive.tar.gz"
   else
     echo "Packing the following files to ${archive_path}/archive.tar.gz:"
     tar -v --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
@@ -184,12 +222,12 @@ function release() {
   fi
 
   release_response=$(curl "${curl_params[@]}" --http1.1 -L --location --request POST "${server}/public/api/v3/ecosystem.release" \
-  --progress-bar \
-  --header "x-api-key: ${token}" \
-  -F slug="${parsed_slug}" \
-  -F config="${config}" \
-  -F archive=@"$archive_path/archive.tar.gz" \
-  --form-string modalTemplate="${modal_template}" | cat)
+    --progress-bar \
+    --header "x-api-key: ${token}" \
+    -F slug="${parsed_slug}" \
+    -F config="${config}" \
+    -F archive=@"$archive_path/archive.tar.gz" \
+    --form-string modalTemplate="${modal_template}" | cat)
 
   if [[ "$release_response" =~ '{"success":true}' ]]; then
     echo "Application ${parsed_slug} successfully released to ${server}"
