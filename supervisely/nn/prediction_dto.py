@@ -22,6 +22,8 @@ class PredictionBBox(Prediction):
 class PredictionSegmentation(Prediction):
     def __init__(self, mask: np.ndarray):
         self.mask = mask
-        
 
-
+class PredictionKeypoints(Prediction):
+    def __init__(self, class_name: str, keypoints: np.ndarray):
+        super(PredictionKeypoints, self).__init__(class_name=class_name)
+        self.keypoints = keypoints 
