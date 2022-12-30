@@ -63,11 +63,7 @@ Vue.component("html-video", {
       if (!video) {
         return;
       }
-      if (this.is_playing) {
-        video.play();
-      } else {
-        video.pause();
-      }
+      this.is_playing ? video.play() : video.pause();
     },
   },
 });
