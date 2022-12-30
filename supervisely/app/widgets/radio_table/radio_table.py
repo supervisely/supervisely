@@ -79,3 +79,10 @@ class RadioTable(Widget):
         self._update_frows()
         DataJson()[self.widget_id]["frows"] = self._frows
         DataJson()[self.widget_id]["raw_rows_data"] = self._rows
+
+    def select_row(self, row_index):
+        if row_index < 0 or row_index >= len(self._rows)-1:
+            raise ValueError(
+                f'Row with index "{row_index}" does not exist'
+            )
+        StateJson()[self.widget_id]["selectedRow"] = row_index
