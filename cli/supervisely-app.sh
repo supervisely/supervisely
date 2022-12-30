@@ -112,7 +112,7 @@ function release() {
 
   if [[ -z "${server}" ]]; then
     if [[ -n "${SERVER_ADDRESS}" ]]; then
-      server=$SERVER_ADDRESS
+      server=$(echo "${SERVER_ADDRESS}" | sed 's/\r$//')
     else
       echo -e "\"server\" is not specified. Please use -s to set server"
       exit 1
@@ -124,7 +124,7 @@ function release() {
 
   if [[ -z "${token}" ]]; then
     if [[ -n "${API_TOKEN}" ]]; then
-      token=$API_TOKEN
+      token=$(echo "${API_TOKEN}" | sed 's/\r$//')
     else
       echo -e "\"token\" is not specified. Please use -t to set token"
       exit 1
