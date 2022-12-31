@@ -47,13 +47,13 @@ class Import:
 
             self._is_path_required = is_path_required
             self._path = path
-            if self.is_path_required is True and self._path is None:
+            if self._is_path_required is True and self._path is None:
                 raise ValueError(f"Remote path is not specified: {self._path}")
-            if self.is_path_required is True and type(self._path) is not str:
+            if self._is_path_required is True and type(self._path) is not str:
                 raise ValueError(f"Remote path must be 'str': {self._path}")
 
             self._is_directory = is_directory
-            if self.is_path_required is True and type(self._is_directory) is not bool:
+            if self._is_path_required is True and type(self._is_directory) is not bool:
                 raise ValueError(f"Remote path must be 'bool': {self._is_directory}")
 
         def __str__(self):
