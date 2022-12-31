@@ -93,7 +93,7 @@ class Import:
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError()  # implement your own method when inherit
 
-    def is_path_required():
+    def is_path_required(self):
         return True
     
     def run(self):
