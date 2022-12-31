@@ -23,6 +23,7 @@ class Import:
             dataset_id: int,
             path: str,
             is_directory: bool = True,
+            is_path_required: bool = True
         ):
             self._team_id = team_id
             if self._team_id is None:
@@ -44,14 +45,15 @@ class Import:
             if self._dataset_id is not None and type(self._dataset_id) is not int:
                 raise ValueError(f"Dataset ID must be 'int': {self._dataset_id}")
 
+            self._is_path_required = is_path_required
             self._path = path
-            if self._path is None:
+            if self.is_path_required is True and self._path is None:
                 raise ValueError(f"Remote path is not specified: {self._path}")
-            if type(self._path) is not str:
+            if self.is_path_required is True and type(self._path) is not str:
                 raise ValueError(f"Remote path must be 'str': {self._path}")
 
             self._is_directory = is_directory
-            if type(self._is_directory) is not bool:
+            if self.is_path_required is True and type(self._is_directory) is not bool:
                 raise ValueError(f"Remote path must be 'bool': {self._is_directory}")
 
         def __str__(self):
@@ -91,6 +93,9 @@ class Import:
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError()  # implement your own method when inherit
 
+    def is_path_required():
+        return True
+    
     def run(self):
         api = Api.from_env()
         task_id = None
@@ -169,6 +174,7 @@ class Import:
             dataset_id=dataset_id,
             path=path,
             is_directory=is_directory,
+            is_path_required=self.is_path_required()
         )
 
         project_id = self.process(context=context)
