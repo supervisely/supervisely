@@ -1,7 +1,4 @@
-<div 
-    v-if="data.{{{widget.widget_id}}}.widget_routes && data.{{{widget.widget_id}}}.widget_routes.cell_clicked_cb"
-    v-loading="data.{{{widget.widget_id}}}.loading"
-    >
+<div v-if="data.{{{widget.widget_id}}}.widget_routes && data.{{{widget.widget_id}}}.widget_routes.cell_clicked_cb">
     <sly-table :content="data.{{{widget.widget_id}}}.table_data"
                :options="data.{{{widget.widget_id}}}.table_options"
                @input="state.{{{widget.widget_id}}}.selected_row = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')">
@@ -9,10 +6,7 @@
     </sly-table>
 </div>
 
-<div 
-    v-if="!data.{{{widget.widget_id}}}.widget_routes || !data.{{{widget.widget_id}}}.widget_routes.cell_clicked_cb"
-    v-loading="data.{{{widget.widget_id}}}.loading"
-    >
+<div v-if="!data.{{{widget.widget_id}}}.widget_routes || !data.{{{widget.widget_id}}}.widget_routes.cell_clicked_cb">
     <sly-table :content="data.{{{widget.widget_id}}}.table_data"
                :options="data.{{{widget.widget_id}}}.table_options"
     >

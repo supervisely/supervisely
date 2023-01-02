@@ -98,6 +98,9 @@ class Loading:
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
 
+    def _wrap_loading_html(self, widget_id, html):
+        return f'<div v-loading="data.{widget_id}.loading">{html}</div>'
+
 
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
@@ -199,6 +202,7 @@ class Widget(Hidable, Disableable, Loading):
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         # st = time.time()
+        html = self._wrap_loading_html(self.widget_id, html)
         html = self._wrap_disable_html(self.widget_id, html)
         # print("---> Time (_wrap_disable_html): ", time.time() - st, " seconds")
         # st = time.time()

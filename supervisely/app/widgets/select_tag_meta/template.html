@@ -1,13 +1,12 @@
 {% if widget._project_id is not none %}
 <sly-select-tag
-  v-loading="data.{{{widget.widget_id}}}.loading"
   :project-id="state.{{{widget.widget_id}}}.projectId"
   :tags.sync="state.{{{widget.widget_id}}}.tags"
   :options="data.{{{widget.widget_id}}}.options"
   :disabled="data.{{{widget.widget_id}}}.disabled"
 ></sly-select-tag>
 {% else %}
-<div v-loading="data.{{{widget.widget_id}}}.loading">
+<div>
   <label
     v-if="data.{{{widget.widget_id}}}.options.showLabel"
     class="mt10 mb5 block"

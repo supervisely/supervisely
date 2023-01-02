@@ -1,10 +1,7 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/field/style.css" />
 
 
-<sly-field
-  v-loading="data.{{{widget.widget_id}}}.loading"
-  :title="data.{{{widget.widget_id}}}.title" 
-  :description="data.{{{widget.widget_id}}}.description"
+<sly-field :title="data.{{{widget.widget_id}}}.title" :description="data.{{{widget.widget_id}}}.description"
   style="margin-bottom: 0px">
   <a v-if="data.{{{widget.widget_id}}}.title_url" slot="title" target="_blank"
     :href="data.{{{widget.widget_id}}}.title_url">{{data.{{{widget.widget_id}}}.title}}

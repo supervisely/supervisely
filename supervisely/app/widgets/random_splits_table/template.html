@@ -1,7 +1,4 @@
-<el-table 
-    v-loading="data.{{{widget.widget_id}}}.loading"
-    :data="data.{{{widget.widget_id}}}.table_data"
-    class="ultra-table">
+<el-table :data="data.{{{widget.widget_id}}}.table_data" class="ultra-table">
     <el-table-column label="Info" width="180">
         <template scope="scope">
             <el-tag :type="scope.row.type">
