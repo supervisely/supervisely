@@ -80,7 +80,7 @@ class TabsDynamic(Widget):
     def get_active_tab(self) -> str:
         return StateJson()[self.widget_id]["value"]
     
-    def get_merged_yaml(self):
+    def get_merged_yaml(self, as_dict: bool = False):
         yaml = MyYAML()
         yaml_data = yaml.load('common:')
         for label, editor in self._items_dict.items():
@@ -91,4 +91,6 @@ class TabsDynamic(Widget):
             else:
                 yaml_data[label] = label_yaml_data
         del yaml_data['common']
+        if as_dict:
+            return yaml_data
         return yaml.dump(yaml_data)

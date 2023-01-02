@@ -54,3 +54,4 @@ from supervisely.app.widgets.image.image import Image
 from supervisely.app.widgets.line_plot.line_plot import LinePlot
 from supervisely.app.widgets.grid_plot.grid_plot import GridPlot
 from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
+from supervisely.app.widgets.binded_input_number.binded_input_number import BindedInputNumber
