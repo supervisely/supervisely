@@ -2,7 +2,7 @@
 
 set -o pipefail -e
 
-VERSION='1.0.1'
+VERSION='1.0.2'
 
 usage() {
   echo -e "Supervisely Apps CLI
@@ -205,12 +205,16 @@ function release() {
 
   mkdir "${archive_path}"
 
+  echo "Packing the following files to ${archive_path}/archive.tar.gz:"
+
   if [ -f "${module_root}/.gitignore" ] && command -v git > /dev/null 2>&1; then
-    echo "Packing the following files to ${archive_path}/archive.tar.gz:"
-    echo "$(git ls-files)"
-    git ls-files | tar Tzcf - "$archive_path/archive.tar.gz"
+    echo "$(git ls-files -c --others --exclude-standard)"
+
+    git_files=($(git ls-files -c --others --exclude-standard))
+    files_list=$(printf "$(basename $module_root)/%s " "${git_files[@]}")
+
+    tar -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" ${files_list}
   else
-    echo "Packing the following files to ${archive_path}/archive.tar.gz:"
     tar -v --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
   fi
 
