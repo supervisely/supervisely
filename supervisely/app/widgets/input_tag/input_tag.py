@@ -53,7 +53,7 @@ class InputTag(Widget):
                 raise ValueError(f'Tag value "{value}" is invalid')
         else:
             self._set_tag_value(value)
-        StateJson().send_changes()
+            self.activate()
 
     def get_value(self):
         tag_component = self._component
