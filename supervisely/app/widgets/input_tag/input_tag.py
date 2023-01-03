@@ -32,7 +32,7 @@ class InputTag(Widget):
         tag_component = self._component
         tag_component.uncheck()
 
-    def set(self, value: Union[bool, int, str] = None, tag: Tag = None):
+    def set(self, value: Union[bool, int, str, None] = None, tag: Tag = None):
         """
         Sets value for the tag. If argument "tag" is present, then value is ignored.
         Pass None as value to deactivate tag
@@ -89,4 +89,4 @@ class InputTag(Widget):
         return None
 
     def get_json_state(self) -> Dict:
-        return {}
+        return None

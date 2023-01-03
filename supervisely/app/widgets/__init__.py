@@ -54,4 +54,3 @@ from supervisely.app.widgets.destination_project.destination_project import Dest
 from supervisely.app.widgets.image.image import Image
 from supervisely.app.widgets.video_player.video_player import VideoPlayer
 from supervisely.app.widgets.input_tag.input_tag import InputTag
-from supervisely.app.widgets.tags_redactor.tags_redactor import TagsRedactor
