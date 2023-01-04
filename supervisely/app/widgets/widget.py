@@ -1,9 +1,10 @@
+from __future__ import annotations
 from pathlib import Path
 from bs4 import BeautifulSoup
 import re
 import time
 import uuid
-from typing import Union
+from typing import Union, List
 from varname import varname
 from jinja2 import Environment
 import markupsafe
@@ -84,6 +85,24 @@ class Disableable:
         return str(soup)
 
 
+class Loading:
+    def __init__(self):
+        self._loading = False
+    
+    @property
+    def loading(self):
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self._loading = value
+        DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson().send_changes()
+
+    def _wrap_loading_html(self, widget_id, html):
+        return f'<div v-loading="data.{widget_id}.loading">{html}</div>'
+
+
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
     if cls_name == "":
@@ -92,7 +111,7 @@ def generate_id(cls_name=""):
         return cls_name + "AutoId" + suffix
 
 
-class Widget(Hidable, Disableable):
+class Widget(Hidable, Disableable, Loading):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()
@@ -184,6 +203,7 @@ class Widget(Hidable, Disableable):
         jinja2_sly_env: Environment = create_env(current_dir)
         html = jinja2_sly_env.get_template("template.html").render({"widget": self})
         # st = time.time()
+        html = self._wrap_loading_html(self.widget_id, html)
         html = self._wrap_disable_html(self.widget_id, html)
         # print("---> Time (_wrap_disable_html): ", time.time() - st, " seconds")
         # st = time.time()
@@ -194,6 +214,30 @@ class Widget(Hidable, Disableable):
     def __html__(self):
         res = self.to_html()
         return res
+
+
+class ConditionalWidget(Widget):
+    def __init__(self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__):
+        self._items = items
+        super().__init__(widget_id=widget_id, file_path=file_path)
+
+    def get_items(self) -> List[ConditionalItem]:
+        res = []
+        if self._items is not None:
+            res.extend(self._items)
+        return res
+
+
+class ConditionalItem:
+    def __init__(self, value, label: str = None, content: Widget = None) -> ConditionalItem:
+        self.value = value
+        self.label = label
+        if label is None:
+            self.label = str(self.value)
+        self.content = content
+
+    def to_json(self):
+        return {"label": self.label, "value": self.value}
 
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
