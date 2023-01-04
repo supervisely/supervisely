@@ -2,7 +2,7 @@
 
 set -o pipefail -e
 
-VERSION='1.0.2'
+VERSION='1.0.3'
 
 usage() {
   echo -e "Supervisely Apps CLI
@@ -68,7 +68,6 @@ while test $# -gt 0; do
             ;;
   esac
 done
-
 
 check_cli_deps() {
   local failed=0
@@ -184,23 +183,22 @@ function release() {
 
   echo
   echo "App \"${module_name}\" will be ${module_exists_label}"
-  echo "Slug: ${parsed_slug}"
-  echo "Release: ${module_release}"
-  echo "Server: ${server}"
-  echo "Local path: ${module_root}"
+  echo "Slug:           ${parsed_slug}"
+  echo "Release:        ${module_release}"
+  echo "Server:         ${server}"
+  echo "Local path:     ${module_root}"
 
   if [[ -n "${rel_submodule_path}" ]]; then
     echo "Submodule path: ${rel_submodule_path}"
   fi
 
-  echo "Do you want to continue? [y/N]"
-  read -n 1 -r response
+  read -n 1 -r -p "Do you want to continue? [y/N] " response
   echo
 
   if ! [[ $response =~ ^[Yy]$ ]]
   then
     echo "Release canceled"
-    exit 1
+    exit 0
   fi
 
   mkdir "${archive_path}"
@@ -210,12 +208,36 @@ function release() {
   if [ -f "${module_root}/.gitignore" ] && command -v git > /dev/null 2>&1; then
     echo "$(git ls-files -c --others --exclude-standard)"
 
-    git_files=($(git ls-files -c --others --exclude-standard))
-    files_list=$(printf "$(basename $module_root)/%s " "${git_files[@]}")
+    folder_name=$(basename ${module_root})
 
-    tar -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" ${files_list}
+    declare -a files_list
+
+    while IFS= read -r line; do
+      file_name=${line}
+      files_list+=( "${folder_name}/${file_name}" )
+    done <<< "$(git ls-files -c --others --exclude-standard)"
+
+    tar -czf "${archive_path}/archive.tar.gz" -C "$(dirname $module_root)" "${files_list[@]}"
   else
-    tar -v --exclude-vcs --totals -czf "$archive_path/archive.tar.gz" -C "$(dirname $module_root)" $(basename $module_root)
+    tar -v --exclude-vcs --totals -czf "${archive_path}/archive.tar.gz" -C "$(dirname ${module_root})" $(basename ${module_root})
+  fi
+
+  archive_size=$(ls -l ${archive_path} | awk '/d|-/{printf("%d\n",$5)}')
+
+  if (( $archive_size > (300 * 1024 * 1024) )); then
+    echo "Release canceled. Archive size is too large"
+    rm -rf $archive_path
+    exit 1
+  elif (( $archive_size > (100 * 1024 * 1024) )); then
+    read -n 1 -r -p "Archive size is larger than 100mb. Continue? [y/N] " response
+    echo
+
+    if ! [[ $response =~ ^[Yy]$ ]]
+    then
+      echo "Release canceled"
+      rm -rf $archive_path
+      exit 0
+    fi
   fi
 
   echo "Uploading archive..."
