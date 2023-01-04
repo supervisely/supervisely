@@ -37,15 +37,11 @@ class Import:
                 raise ValueError(f"Workspace ID must be 'int': {self._workspace_id}")
 
             self._project_id = project_id
-            if self._project_id is None:
-                raise ValueError(f"Project ID is not specified: {self._project_id}")
-            if type(self._project_id) is not int:
+            if self._project_id is not None and type(self._project_id) is not int:
                 raise ValueError(f"Project ID must be 'int': {self._project_id}")
 
             self._dataset_id = dataset_id
-            if self._dataset_id is None:
-                raise ValueError(f"Dataset ID is not specified: {self._dataset_id}")
-            if type(self._dataset_id) is not int:
+            if self._dataset_id is not None and type(self._dataset_id) is not int:
                 raise ValueError(f"Dataset ID must be 'int': {self._dataset_id}")
 
             self._path = path
@@ -124,26 +120,35 @@ class Import:
 
         project_id = env.project_id(raise_not_found=False)
         dataset_id = env.dataset_id(raise_not_found=False)
-
-        # get or create project with the same name as input file and empty dataset in it
-        if project_id is None:
-            project_name = Path(path).stem
-            project = api.project.create(
-                workspace_id=workspace_id, name=project_name, change_name_if_conflict=True
-            )
-            print(f"Importing to created Project: id={project.id}, name={project.name}")
-        else:
+        
+        if project_id is not None:
+            # lets validate that project exists
             project = api.project.get_info_by_id(id=project_id)
             print(f"Importing to existing Project: id={project.id}, name={project.name}")
-
-        if dataset_id is None:
-            dataset = api.dataset.create(
-                project_id=project.id, name="ds0", change_name_if_conflict=True
-            )
-            print(f"Importing to created Dataset: id={dataset.id}, name={dataset.name}")
-        else:
+        if dataset_id is not None:
+            # lets validate that dataset exists
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
+
+        # get or create project with the same name as input file and empty dataset in it
+        # if project_id is None:
+        #     project_name = Path(path).stem
+        #     project = api.project.create(
+        #         workspace_id=workspace_id, name=project_name, change_name_if_conflict=True
+        #     )
+        #     print(f"Importing to created Project: id={project.id}, name={project.name}")
+        # else:
+        #     project = api.project.get_info_by_id(id=project_id)
+        #     print(f"Importing to existing Project: id={project.id}, name={project.name}")
+
+        # if dataset_id is None:
+        #     dataset = api.dataset.create(
+        #         project_id=project.id, name="ds0", change_name_if_conflict=True
+        #     )
+        #     print(f"Importing to created Dataset: id={dataset.id}, name={dataset.name}")
+        # else:
+        #     dataset = api.dataset.get_info_by_id(id=dataset_id)
+        #     print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
             local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
@@ -160,8 +165,8 @@ class Import:
         context = Import.Context(
             team_id=team_id,
             workspace_id=workspace_id,
-            project_id=project.id,
-            dataset_id=dataset.id,
+            project_id=project_id,
+            dataset_id=dataset_id,
             path=path,
             is_directory=is_directory,
         )

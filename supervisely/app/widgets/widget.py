@@ -1,9 +1,10 @@
+from __future__ import annotations
 from pathlib import Path
 from bs4 import BeautifulSoup
 import re
 import time
 import uuid
-from typing import Union
+from typing import Union, List
 from varname import varname
 from jinja2 import Environment
 import markupsafe
@@ -213,6 +214,30 @@ class Widget(Hidable, Disableable, Loading):
     def __html__(self):
         res = self.to_html()
         return res
+
+
+class ConditionalWidget(Widget):
+    def __init__(self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__):
+        self._items = items
+        super().__init__(widget_id=widget_id, file_path=file_path)
+
+    def get_items(self) -> List[ConditionalItem]:
+        res = []
+        if self._items is not None:
+            res.extend(self._items)
+        return res
+
+
+class ConditionalItem:
+    def __init__(self, value, label: str = None, content: Widget = None) -> ConditionalItem:
+        self.value = value
+        self.label = label
+        if label is None:
+            self.label = str(self.value)
+        self.content = content
+
+    def to_json(self):
+        return {"label": self.label, "value": self.value}
 
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string

@@ -1,3 +1,4 @@
+from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
@@ -53,3 +54,5 @@ from supervisely.app.widgets.textarea.textarea import TextArea
 from supervisely.app.widgets.destination_project.destination_project import DestinationProject
 from supervisely.app.widgets.image.image import Image
 from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
+from supervisely.app.widgets.video_player.video_player import VideoPlayer
+from supervisely.app.widgets.radio_group.radio_group import RadioGroup

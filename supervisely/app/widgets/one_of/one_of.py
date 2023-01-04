@@ -1,11 +1,11 @@
-from supervisely.app.widgets import Widget, Select
+from supervisely.app.widgets import Widget, ConditionalWidget
 from typing import Dict
 
 
 class OneOf(Widget):
     def __init__(
         self,
-        conditional_widget: Select,  # or RadioGroup in future
+        conditional_widget: ConditionalWidget,
         widget_id: str = None,
     ):
         self._conditional_widget = conditional_widget
