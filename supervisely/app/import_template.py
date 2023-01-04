@@ -23,6 +23,7 @@ class Import:
             dataset_id: int,
             path: str,
             is_directory: bool = True,
+            is_path_required: bool = True,
         ):
             self._team_id = team_id
             if self._team_id is None:
@@ -44,14 +45,15 @@ class Import:
             if self._dataset_id is not None and type(self._dataset_id) is not int:
                 raise ValueError(f"Dataset ID must be 'int': {self._dataset_id}")
 
+            self._is_path_required = is_path_required
             self._path = path
-            if self._path is None:
+            if self._is_path_required is True and self._path is None:
                 raise ValueError(f"Remote path is not specified: {self._path}")
-            if type(self._path) is not str:
+            if self._is_path_required is True and type(self._path) is not str:
                 raise ValueError(f"Remote path must be 'str': {self._path}")
 
             self._is_directory = is_directory
-            if type(self._is_directory) is not bool:
+            if self._is_path_required is True and type(self._is_directory) is not bool:
                 raise ValueError(f"Remote path must be 'bool': {self._is_directory}")
 
         def __str__(self):
@@ -91,6 +93,9 @@ class Import:
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError()  # implement your own method when inherit
 
+    def is_path_required(self) -> bool:
+        return True
+
     def run(self):
         api = Api.from_env()
         task_id = None
@@ -107,10 +112,11 @@ class Import:
             raise KeyError(
                 "Both FILE and FOLDER envs are defined, but only one is allowed for the import"
             )
-        if file is None and folder is None:
-            raise KeyError(
-                "One of the environment variables has to be defined for the import app: FILE or FOLDER"
-            )
+        if self.is_path_required():
+            if file is None and folder is None:
+                raise KeyError(
+                    "One of the environment variables has to be defined for the import app: FILE or FOLDER"
+                )
 
         is_directory = True
         path = folder
@@ -120,7 +126,7 @@ class Import:
 
         project_id = env.project_id(raise_not_found=False)
         dataset_id = env.dataset_id(raise_not_found=False)
-        
+
         if project_id is not None:
             # lets validate that project exists
             project = api.project.get_info_by_id(id=project_id)
@@ -129,26 +135,6 @@ class Import:
             # lets validate that dataset exists
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
-
-        # get or create project with the same name as input file and empty dataset in it
-        # if project_id is None:
-        #     project_name = Path(path).stem
-        #     project = api.project.create(
-        #         workspace_id=workspace_id, name=project_name, change_name_if_conflict=True
-        #     )
-        #     print(f"Importing to created Project: id={project.id}, name={project.name}")
-        # else:
-        #     project = api.project.get_info_by_id(id=project_id)
-        #     print(f"Importing to existing Project: id={project.id}, name={project.name}")
-
-        # if dataset_id is None:
-        #     dataset = api.dataset.create(
-        #         project_id=project.id, name="ds0", change_name_if_conflict=True
-        #     )
-        #     print(f"Importing to created Dataset: id={dataset.id}, name={dataset.name}")
-        # else:
-        #     dataset = api.dataset.get_info_by_id(id=dataset_id)
-        #     print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
             local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
@@ -169,6 +155,7 @@ class Import:
             dataset_id=dataset_id,
             path=path,
             is_directory=is_directory,
+            is_path_required=self.is_path_required(),
         )
 
         project_id = self.process(context=context)
