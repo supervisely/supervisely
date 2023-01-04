@@ -1,3 +1,4 @@
+from supervisely.app import DataJson
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Widget
 from supervisely.api.project_api import ProjectInfo
@@ -37,3 +38,18 @@ class DatasetThumbnail(Widget):
 
     def get_json_state(self):
         return None
+    
+    def set(
+        self, 
+        project_info: ProjectInfo,
+        dataset_info: DatasetInfo
+    ):
+        self._project_info = project_info
+        self._dataset_info = dataset_info
+
+        self._description = f"{self._dataset_info.items_count} {self._project_info.type} in dataset"
+        self._url = Dataset.get_url(
+            project_id=self._project_info.id, dataset_id=self._dataset_info.id
+        )
+        self.update_data()
+        DataJson().send_changes()
