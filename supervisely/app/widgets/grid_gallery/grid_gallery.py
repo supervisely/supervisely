@@ -109,7 +109,7 @@ class GridGallery(Widget):
         annotation: supervisely.Annotation = None,
         title: str = "",
         column_index: int = None,
-        zoom_to: str = None,
+        zoom_to: int = None,
         zoom_factor: float = 1.2,
     ):
 
