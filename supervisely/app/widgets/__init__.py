@@ -53,5 +53,6 @@ from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea
 from supervisely.app.widgets.destination_project.destination_project import DestinationProject
 from supervisely.app.widgets.image.image import Image
+from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
 from supervisely.app.widgets.video_player.video_player import VideoPlayer
 from supervisely.app.widgets.radio_group.radio_group import RadioGroup
