@@ -255,6 +255,41 @@ class FileApi(ModuleApiBase):
         results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
+    def listdir(self, team_id: int, path: str) -> List[str]:
+        """
+        List dirs and files in the `path` dir.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to directory.
+        :type path: str
+        :return: List of paths
+        :rtype: :class:`List[str]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 8
+            path = "/999_App_Test/"
+            files = api.file.listdir(team_id, path)
+
+            print(files)
+            # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
+        """
+        files_filtered = set()
+        files = self.list(team_id, path)
+        for f in files:
+            match = re.match(f"{path}/[^/]*", f["path"])
+            if match:
+                files_filtered.add(match.group())
+        return list(files_filtered)
+
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
         Get directory size in the Team Files.
