@@ -66,6 +66,10 @@ class _slyProgressBarIO:
         new_text = s.strip().replace("\r", "")
         if len(new_text) != 0:
             if self.total is not None:
+                if self.total == 0:  # to avoid ZeroDivisionError
+                    self.progress["percent"] = 100
+                else:
+                    self.progress["percent"] = int(self._n / self.total * 100)
                 self.progress["percent"] = int(self._n / self.total * 100)
                 self.progress["info"] = extract_by_regexp(
                     r"(\d+(?:\.\d+\w+)?)*/.*\]", new_text
