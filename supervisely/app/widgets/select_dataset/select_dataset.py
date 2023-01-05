@@ -91,7 +91,7 @@ class SelectDataset(Widget):
     def get_selected_id(self):
         if self._multiselect is True:
             raise ValueError(
-                "Multiselect is enabled. Use another method 'get_selected_ids' insted of 'get_selected_id'"
+                "Multiselect is enabled. Use another method 'get_selected_ids' instead of 'get_selected_id'"
             )
         return StateJson()[self.widget_id]["datasets"]
 
