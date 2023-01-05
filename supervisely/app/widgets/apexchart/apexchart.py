@@ -119,3 +119,23 @@ class Apexchart(Widget):
         self.update_data()
         if send_changes:
             DataJson().send_changes()
+
+    def set_title(self, title: str, send_changes=True):
+        if self._options.get('title') is None:
+            self._options["title"] = {}
+        self._options["title"]["text"] = title
+        self.update_data()
+        if send_changes:
+            DataJson().send_changes()
+
+    def set_series(self, series: list, send_changes=True):
+        self._series = series
+        self.update_data()
+        if send_changes:
+            DataJson().send_changes()
+    
+    def set_colors(self, colors: list, send_changes=True):
+        self._options["colors"] = colors
+        self.update_data()
+        if send_changes:
+            DataJson().send_changes()
