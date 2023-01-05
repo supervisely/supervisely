@@ -101,13 +101,12 @@ class Loading:
 
     def _wrap_loading_html(self, widget_id, html):
         soup = BeautifulSoup(html, features="html.parser")
-        results = soup.find_all(re.compile("^el-loading"))
-        if len(results) > 0:
-            return html
         results = soup.find_all(recursive=False)
         for tag in results:
-            if tag.name.startswith("sly-") or tag.name.startswith("el-") or tag.name in ("div", "table"):
-                tag["v-loading"] = f"data.{widget_id}.loading"
+            if tag.has_attr("v-loading") or tag.has_attr(":loading"):
+                return html
+        for tag in results:
+            tag["v-loading"] = f"data.{widget_id}.loading"
         return str(soup)
 
 
