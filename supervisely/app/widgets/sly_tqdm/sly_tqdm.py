@@ -70,7 +70,6 @@ class _slyProgressBarIO:
                     self.progress["percent"] = 100
                 else:
                     self.progress["percent"] = int(self._n / self.total * 100)
-                self.progress["percent"] = int(self._n / self.total * 100)
                 self.progress["info"] = extract_by_regexp(
                     r"(\d+(?:\.\d+\w+)?)*/.*\]", new_text
                 )
