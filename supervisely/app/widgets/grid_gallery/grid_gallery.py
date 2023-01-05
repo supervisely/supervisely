@@ -29,6 +29,7 @@ class GridGallery(Widget):
 
         self.columns_number = columns_number
 
+        self._unique_id = 0
         self._last_used_column_index = 0
         self._project_meta: supervisely.ProjectMeta = None
         self._loading = False
@@ -115,7 +116,7 @@ class GridGallery(Widget):
 
         column_index = self.get_column_index(incoming_value=column_index)
         cell_uuid = str(
-            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}").hex
+            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}_{self._unique_id}").hex
         )
 
         self._data.append(
@@ -133,6 +134,7 @@ class GridGallery(Widget):
         )
 
         self._update()
+        self._unique_id += 1
 
     def clean_up(self):
         self._data = []
