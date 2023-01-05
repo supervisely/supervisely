@@ -100,7 +100,15 @@ class Loading:
         DataJson().send_changes()
 
     def _wrap_loading_html(self, widget_id, html):
-        return f'<div v-loading="data.{widget_id}.loading">{html}</div>'
+        soup = BeautifulSoup(html, features="html.parser")
+        results = soup.find_all(re.compile("^el-loading"))
+        if len(results) > 0:
+            return html
+        results = soup.find_all(recursive=False)
+        for tag in results:
+            if tag.name.startswith("sly-") or tag.name.startswith("el-") or tag.name in ("div", "table"):
+                tag["v-loading"] = f"data.{widget_id}.loading"
+        return str(soup)
 
 
 def generate_id(cls_name=""):
