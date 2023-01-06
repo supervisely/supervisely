@@ -1,9 +1,15 @@
 from typing import Dict, Union
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.app.widgets import Checkbox, Field, Empty, Input, InputNumber, RadioGroup
+from supervisely.app.widgets import (
+    Checkbox,
+    Field,
+    Empty,
+    Input,
+    InputNumber,
+    RadioGroup,
+)
 
 
 class InputTag(Widget):
@@ -17,17 +23,26 @@ class InputTag(Widget):
         if tag_meta.value_type == str(TagValueType.NONE):
             return Checkbox(content=Field(content=Empty(), title=tag_meta.name))
         if tag_meta.value_type == str(TagValueType.ANY_NUMBER):
-            return Checkbox(content=Field(content=InputNumber(controls=False, debounce=500), title=tag_meta.name))
+            return Checkbox(
+                content=Field(
+                    content=InputNumber(controls=False, debounce=500),
+                    title=tag_meta.name,
+                )
+            )
         if tag_meta.value_type == str(TagValueType.ANY_STRING):
             return Checkbox(content=Field(content=Input(), title=tag_meta.name))
         if tag_meta.value_type == str(TagValueType.ONEOF_STRING):
-            items = [RadioGroup.Item(pv, pv, Empty()) for pv in tag_meta.possible_values]
-            return Checkbox(content=Field(content=RadioGroup(items=items), title=tag_meta.name))
+            items = [
+                RadioGroup.Item(pv, pv, Empty()) for pv in tag_meta.possible_values
+            ]
+            return Checkbox(
+                content=Field(content=RadioGroup(items=items), title=tag_meta.name)
+            )
 
     def activate(self):
         tag_component = self._component
         tag_component.check()
-        
+
     def deactivate(self):
         tag_component = self._component
         tag_component.uncheck()
@@ -70,7 +85,12 @@ class InputTag(Widget):
             return content.get_value()
 
     def get_tag(self):
-        return Tag(self._tag_meta, self.get_value())
+        tag_value = self.get_value()
+        if tag_value is None:
+            return None
+        if tag_value is True:
+            tag_value = None
+        return Tag(self._tag_meta, tag_value)
 
     def _set_tag_value(self, value):
         if not self._tag_meta.is_valid_value(value):
@@ -84,7 +104,7 @@ class InputTag(Widget):
             content.set_value(value)
         if type(content) is RadioGroup:
             content.set_value(value)
-        
+
     def get_json_data(self):
         return None
 
