@@ -17,7 +17,7 @@ class InputTag(Widget):
         if tag_meta.value_type == str(TagValueType.NONE):
             return Checkbox(content=Field(content=Empty(), title=tag_meta.name))
         if tag_meta.value_type == str(TagValueType.ANY_NUMBER):
-            return Checkbox(content=Field(content=InputNumber(min="-Infinity", max="Infinity", controls=False, debounce=500), title=tag_meta.name))
+            return Checkbox(content=Field(content=InputNumber(controls=False, debounce=500), title=tag_meta.name))
         if tag_meta.value_type == str(TagValueType.ANY_STRING):
             return Checkbox(content=Field(content=Input(), title=tag_meta.name))
         if tag_meta.value_type == str(TagValueType.ONEOF_STRING):

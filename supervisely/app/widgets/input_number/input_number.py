@@ -7,8 +7,8 @@ class InputNumber(Widget):
     def __init__(
         self,
         value: Union[int, float] = 1,
-        min: Union[int, float] = 1,
-        max: Union[int, float] = 100,
+        min: Union[int, float, None] = None,
+        max: Union[int, float, None] = None,
         step: Union[int, float] = 1,
         size: str = "small",
         controls: bool = True,
