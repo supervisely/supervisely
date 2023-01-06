@@ -116,8 +116,7 @@ class SelectDataset(Widget):
         server = self._sly_app.get_server()
         self._changes_handled = True
 
-        @server.post(route_path)
-        def _click():
+        def _process():
             if self._multiselect is True:
                 value = self.get_selected_ids()
                 if value == "":
@@ -128,5 +127,13 @@ class SelectDataset(Widget):
                 if value == "":
                     value = None
                 func(value)
+
+        @self._all_datasets_checkbox.value_changed
+        def _select_all_datasets(is_checked):
+            _process()
+
+        @server.post(route_path)
+        def _click():
+            _process()
 
         return _click
