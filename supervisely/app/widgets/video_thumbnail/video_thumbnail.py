@@ -8,13 +8,13 @@ from supervisely.video.video import get_labeling_tool_url, get_labeling_tool_lin
 
 class VideoThumbnail(Widget):
     def __init__(self, info: VideoInfo = None, widget_id: str = None):
-        self._info = None
-        self._id = None
-        self._name = None
-        self._description = None
-        self._url = None
-        self._open_link = None
-        self._preview_url = None
+        self._info: VideoInfo = None
+        self._id: int = None
+        self._name: str = None
+        self._description: str = None
+        self._url: str = None
+        self._open_link: str = None
+        self._preview_url: str = None
         self._set_info(info)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
