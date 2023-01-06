@@ -46,6 +46,11 @@ class FileViewer(Widget):
     def get_selected_items(self):
         return StateJson()[self.widget_id]["selected"]
 
+    def update_file_tree(self, files_list):
+        self._files_list = files_list
+        DataJson()[self.widget_id]["list"] = self._files_list
+        DataJson().send_changes()
+
     def value_changed(self, func):
         route_path = self.get_route_path(FileViewer.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -53,7 +58,7 @@ class FileViewer(Widget):
 
         @server.post(route_path)
         def _click():
-            value = self.get_selected_dataset_id()
+            value = self.get_selected_items()
             if value == "":
                 value = None
             func(value)
