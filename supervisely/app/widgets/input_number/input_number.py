@@ -1,3 +1,4 @@
+from typing import Literal, Union
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
@@ -5,13 +6,14 @@ from supervisely.app.widgets import Widget
 class InputNumber(Widget):
     def __init__(
         self,
-        value: int = 1,
-        min: int = 1,
-        max: int = 100,
-        step: int = 1,
+        value: Union[int, float] = 1,
+        min: Union[int, float, None] = None,
+        max: Union[int, float, None] = None,
+        step: Union[int, float] = 1,
         size: str = "small",
         controls: bool = True,
         debounce: int = 300,
+        precision: int = 0,
         widget_id: str = None,
     ):
         self._value = value
@@ -21,6 +23,7 @@ class InputNumber(Widget):
         self._size = size
         self._controls = controls
         self._debounce = debounce
+        self._precision = precision
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -32,6 +35,7 @@ class InputNumber(Widget):
             "size": self._size,
             "controls": self._controls,
             "debounce": self._debounce,
+            "precision": self._precision,
         }
 
     def get_json_state(self):
