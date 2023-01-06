@@ -1,5 +1,6 @@
 import copy
 import uuid
+import time
 
 import supervisely
 from supervisely.app import DataJson
@@ -115,7 +116,7 @@ class GridGallery(Widget):
 
         column_index = self.get_column_index(incoming_value=column_index)
         cell_uuid = str(
-            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}").hex
+            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}_{time.time()}").hex
         )
 
         self._data.append(
