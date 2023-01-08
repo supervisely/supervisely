@@ -137,16 +137,17 @@ class Import:
             print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
-            local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
-            if is_directory:
-                api.file.download_directory(
-                    team_id=team_id, remote_path=path, local_save_path=local_save_path
-                )
-            else:
-                api.file.download(
-                    team_id=team_id, remote_path=path, local_save_path=local_save_path
-                )
-            path = local_save_path
+            if path:
+                local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
+                if is_directory:
+                    api.file.download_directory(
+                        team_id=team_id, remote_path=path, local_save_path=local_save_path
+                    )
+                else:
+                    api.file.download(
+                        team_id=team_id, remote_path=path, local_save_path=local_save_path
+                    )
+                path = local_save_path
 
         context = Import.Context(
             team_id=team_id,
