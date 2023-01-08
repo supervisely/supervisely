@@ -137,7 +137,7 @@ class Import:
             print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
-            if path:
+            if path is not None:
                 local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
                 if is_directory:
                     api.file.download_directory(
