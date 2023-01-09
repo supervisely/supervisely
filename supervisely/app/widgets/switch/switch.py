@@ -43,7 +43,7 @@ class Switch(ConditionalWidget):
         }
 
     def get_json_state(self) -> Dict:
-        return {"switched": self._switched, "value": int(self._switched)}
+        return {"switched": self._switched, "value": str(int(self._switched))}
 
     def is_switched(self):
         return StateJson()[self.widget_id]["switched"]
