@@ -56,6 +56,7 @@ class FileViewer(Widget):
         DataJson().send_changes()
 
     def value_changed(self, func):
+        # TODO: throttle
         route_path = self.get_route_path(FileViewer.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
