@@ -445,6 +445,8 @@ class ApiField:
     """"""
     PER_PAGE = "per_page"
     """"""
+    SKIP_BOUNDS_VALIDATION = "skipBoundsValidation"
+    """"""
 
 
 def _get_single_item(items):

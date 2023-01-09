@@ -438,7 +438,12 @@ class AnnotationApi(ModuleApi):
         )
         return [ann_info.annotation for ann_info in results]
 
-    def upload_path(self, img_id: int, ann_path: str) -> None:
+    def upload_path(
+        self,
+        img_id: int,
+        ann_path: str,
+        skip_bounds_validation: Optional[bool] = False,
+    ) -> None:
         """
         Loads an annotation from a given path to a given image ID in the API.
 
@@ -463,13 +468,14 @@ class AnnotationApi(ModuleApi):
             ann_path = '/home/admin/work/supervisely/example/ann.json'
             upl_path = api.annotation.upload_path(image_id, ann_path)
         """
-        self.upload_paths([img_id], [ann_path])
+        self.upload_paths([img_id], [ann_path], skip_bounds_validation=skip_bounds_validation)
 
     def upload_paths(
         self,
         img_ids: List[int],
         ann_paths: List[str],
         progress_cb: Optional[Callable] = None,
+        skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
         Loads an annotations from a given paths to a given images IDs in the API. Images IDs must be from one dataset.
@@ -502,9 +508,20 @@ class AnnotationApi(ModuleApi):
             with open(ann_path) as json_file:
                 return json.load(json_file)
 
-        self._upload_batch(read_json, img_ids, ann_paths, progress_cb)
+        self._upload_batch(
+            read_json,
+            img_ids,
+            ann_paths,
+            progress_cb,
+            skip_bounds_validation=skip_bounds_validation,
+        )
 
-    def upload_json(self, img_id: int, ann_json: Dict) -> None:
+    def upload_json(
+        self,
+        img_id: int,
+        ann_json: Dict,
+        skip_bounds_validation: Optional[bool] = False,
+    ) -> None:
         """
         Loads an annotation from dict to a given image ID in the API.
 
@@ -528,13 +545,14 @@ class AnnotationApi(ModuleApi):
             image_id = 121236918
             upl_json = api.annotation.upload_json(image_id, ann_json)
         """
-        self.upload_jsons([img_id], [ann_json])
+        self.upload_jsons([img_id], [ann_json], skip_bounds_validation=skip_bounds_validation)
 
     def upload_jsons(
         self,
         img_ids: List[int],
         ann_jsons: List[Dict],
         progress_cb: Optional[Callable] = None,
+        skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
         Loads an annotations from dicts to a given images IDs in the API. Images IDs must be from one dataset.
@@ -561,9 +579,20 @@ class AnnotationApi(ModuleApi):
             img_ids = [121236918, 121236919]
             upl_jsons = api.annotation.upload_jsons(img_ids, ann_jsons)
         """
-        self._upload_batch(lambda x: x, img_ids, ann_jsons, progress_cb)
+        self._upload_batch(
+            lambda x: x,
+            img_ids,
+            ann_jsons,
+            progress_cb,
+            skip_bounds_validation=skip_bounds_validation,
+        )
 
-    def upload_ann(self, img_id: int, ann: Annotation) -> None:
+    def upload_ann(
+        self,
+        img_id: int,
+        ann: Annotation,
+        skip_bounds_validation: Optional[bool] = False,
+    ) -> None:
         """
         Loads an :class:`Annotation<supervisely.annotation.annotation.Annotation>` to a given image ID in the API.
 
@@ -587,13 +616,14 @@ class AnnotationApi(ModuleApi):
             image_id = 121236918
             upl_ann = api.annotation.upload_ann(image_id, ann)
         """
-        self.upload_anns([img_id], [ann])
+        self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(
         self,
         img_ids: List[int],
         anns: List[Annotation],
         progress_cb: Optional[Callable] = None,
+        skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
         Loads an :class:`Annotations<supervisely.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
@@ -621,9 +651,22 @@ class AnnotationApi(ModuleApi):
             upl_anns = api.annotation.upload_anns(img_ids, [ann1, ann2])
         """
         # img_ids from the same dataset
-        self._upload_batch(Annotation.to_json, img_ids, anns, progress_cb)
+        self._upload_batch(
+            Annotation.to_json,
+            img_ids,
+            anns,
+            progress_cb,
+            skip_bounds_validation=skip_bounds_validation,
+        )
 
-    def _upload_batch(self, func_ann_to_json, img_ids, anns, progress_cb=None):
+    def _upload_batch(
+        self,
+        func_ann_to_json,
+        img_ids,
+        anns,
+        progress_cb=None,
+        skip_bounds_validation: Optional[bool] = False,
+    ):
         """
         _upload_batch
         """
@@ -635,7 +678,9 @@ class AnnotationApi(ModuleApi):
                 'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
             )
 
-        dataset_id = self._api.image.get_info_by_id(img_ids[0]).dataset_id
+        dataset_id = self._api.image.get_info_by_id(
+            img_ids[0], force_metadata_for_links=False
+        ).dataset_id
         for batch in batched(list(zip(img_ids, anns))):
             data = [
                 {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
@@ -643,7 +688,11 @@ class AnnotationApi(ModuleApi):
             ]
             self._api.post(
                 "annotations.bulk.add",
-                data={ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATIONS: data},
+                data={
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.ANNOTATIONS: data,
+                    ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
+                },
             )
             if progress_cb is not None:
                 progress_cb(len(batch))
@@ -684,6 +733,7 @@ class AnnotationApi(ModuleApi):
         dst_image_ids: List[int],
         progress_cb: Optional[Callable] = None,
         force_metadata_for_links: Optional[bool] = True,
+        skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
         Copy annotations from one images IDs to another in API.
@@ -731,7 +781,9 @@ class AnnotationApi(ModuleApi):
                 src_dataset_id, src_ids_batch, force_metadata_for_links=force_metadata_for_links
             )
             ann_jsons = [ann_info.annotation for ann_info in ann_infos]
-            self.upload_jsons(dst_ids_batch, ann_jsons)
+            self.upload_jsons(
+                dst_ids_batch, ann_jsons, skip_bounds_validation=skip_bounds_validation
+            )
             if progress_cb is not None:
                 progress_cb(len(src_ids_batch))
 
@@ -740,6 +792,7 @@ class AnnotationApi(ModuleApi):
         src_image_id: int,
         dst_image_id: int,
         force_metadata_for_links: Optional[bool] = True,
+        skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
         Copy annotation from one image ID to another image ID in API.
@@ -766,7 +819,10 @@ class AnnotationApi(ModuleApi):
             api.annotation.copy(src_id, dst_id)
         """
         self.copy_batch(
-            [src_image_id], [dst_image_id], force_metadata_for_links=force_metadata_for_links
+            [src_image_id],
+            [dst_image_id],
+            force_metadata_for_links=force_metadata_for_links,
+            skip_bounds_validation=skip_bounds_validation,
         )
 
     def copy_batch_by_ids(
@@ -826,7 +882,12 @@ class AnnotationApi(ModuleApi):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return AnnotationInfo(**res._asdict())
 
-    def append_labels(self, image_id: int, labels: List[Label]) -> None:
+    def append_labels(
+        self,
+        image_id: int,
+        labels: List[Label],
+        skip_bounds_validation: Optional[bool] = False,
+    ) -> None:
         """
         Append labels to image with given ID in API.
 
@@ -852,7 +913,11 @@ class AnnotationApi(ModuleApi):
         for batch_jsons in batched(payload, batch_size=100):
             resp = self._api.post(
                 "figures.bulk.add",
-                {ApiField.ENTITY_ID: image_id, ApiField.FIGURES: batch_jsons},
+                {
+                    ApiField.ENTITY_ID: image_id,
+                    ApiField.FIGURES: batch_jsons,
+                    ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
+                },
             )
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
