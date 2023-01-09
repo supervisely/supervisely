@@ -2,5 +2,13 @@
   <sly-file-viewer
     :list="data.{{{widget.widget_id}}}.list"
     v-model="state.{{{widget.widget_id}}}.selected"
+    {%
+    if
+    widget._changes_handled
+    %}
+    @input="post('/{{{widget.widget_id}}}/value_changed')"
+    {%
+    endif
+    %}
   />
 </div>

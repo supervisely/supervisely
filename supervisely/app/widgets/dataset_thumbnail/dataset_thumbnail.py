@@ -25,10 +25,18 @@ class DatasetThumbnail(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        if self._project_info is None:
-            return None
-        if self._dataset_info is None:
-            return None
+        if self._project_info is None or self._dataset_info is None:
+            return {
+                "id": None,
+                "name": None,
+                "description": None,
+                "url": None,
+                "image_preview_url": None,
+                "show_project_name": self._show_project_name,
+                "project_name": None,
+                "project_url": None,
+            }
+
         return {
             "id": self._dataset_info.id,
             "name": self._dataset_info.name,

@@ -30,6 +30,10 @@ class FileViewer(Widget):
                 raise ValueError(
                     f"All elements in 'files_list' must be dicts, index: {idx}, element: {f}"
                 )
+            if "path" not in f:
+                raise KeyError(
+                    f"One of the files dicts missing required key 'path', index: {idx}, element: {f}"
+                )
 
         self._files_list = files_list
         self._selected = []
@@ -57,10 +61,8 @@ class FileViewer(Widget):
         self._changes_handled = True
 
         @server.post(route_path)
-        def _click():
-            value = self.get_selected_items()
-            if value == "":
-                value = None
-            func(value)
+        def _value_changed():
+            res = self.get_selected_items()
+            func(res)
 
-        return _click
+        return _value_changed

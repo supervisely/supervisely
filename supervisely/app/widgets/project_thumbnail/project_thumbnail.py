@@ -15,7 +15,13 @@ class ProjectThumbnail(Widget):
 
     def get_json_data(self):
         if self._info is None:
-            return None
+            return {
+                "id": None,
+                "name": None,
+                "description": None,
+                "url": None,
+                "image_preview_url": None,
+            }
 
         return {
             "id": self._info.id,
