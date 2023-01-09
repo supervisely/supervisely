@@ -15,7 +15,9 @@ from supervisely._utils import batched
 
 class AnnotationInfo(NamedTuple):
     """
+    AnnotationInfo
     """
+
     image_id: int
     image_name: str
     annotation: dict
@@ -84,6 +86,7 @@ class AnnotationApi(ModuleApi):
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         progress_cb: Optional[Callable] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of information about all annotations for a given dataset.
@@ -146,12 +149,102 @@ class AnnotationApi(ModuleApi):
         """
         return self.get_list_all_pages(
             "annotations.list",
-            {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []},
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters or [],
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            },
             progress_cb,
         )
 
+    def get_list_generator(
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        progress_cb: Optional[Callable] = None,
+        batch_size: Optional[int] = 50,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> List[AnnotationInfo]:
+        """
+        Get list of information about all annotations for a given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param filters: List of parameters to sort output Annotations.
+        :type filters: List[dict], optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[AnnotationInfo]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            ann_infos = api.annotation.get_list(dataset_id)
+            print(json.dumps(ann_infos[0], indent=4))
+            # Output: [
+            #     121236918,
+            #     "IMG_0748.jpeg",
+            #     {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     },
+            #     "2019-12-19T12:06:59.435Z",
+            #     "2021-02-06T11:07:26.080Z"
+            # ]
+
+            ann_infos_filter = api.annotation.get_list(dataset_id, filters={ 'field': 'name', 'operator': '=', 'value': 'IMG_1836' })
+            print(json.dumps(ann_infos_filter, indent=4))
+            # Output: [
+            #     121236919,
+            #     "IMG_1836",
+            #     {
+            #         "description": "",
+            #         "tags": [],
+            #         "size": {
+            #             "height": 800,
+            #             "width": 1067
+            #         },
+            #         "objects": []
+            #     },
+            #     "2019-12-19T12:06:59.435Z",
+            #     "2021-02-06T11:07:26.080Z"
+            # ]
+        """
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.PAGINATION_MODE: ApiField.TOKEN,
+        }
+        if batch_size is not None:
+            data[ApiField.PER_PAGE] = batch_size
+        else:
+            # use default value on instance (learn in API documentation)
+            # 20k for instance
+            # 50 by default in SDK
+            pass
+
+        return self.get_list_all_pages_generator("annotations.list", data, progress_cb)
+
     def download(
-        self, image_id: int, with_custom_data: Optional[bool] = False
+        self,
+        image_id: int,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -193,12 +286,19 @@ class AnnotationApi(ModuleApi):
         """
         response = self._api.post(
             "annotations.info",
-            {ApiField.IMAGE_ID: image_id, ApiField.WITH_CUSTOM_DATA: with_custom_data},
+            {
+                ApiField.IMAGE_ID: image_id,
+                ApiField.WITH_CUSTOM_DATA: with_custom_data,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            },
         )
         return self._convert_json_info(response.json())
 
     def download_json(
-        self, image_id: int, with_custom_data: Optional[bool] = False
+        self,
+        image_id: int,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
@@ -233,7 +333,9 @@ class AnnotationApi(ModuleApi):
             #     }
         """
         return self.download(
-            image_id=image_id, with_custom_data=with_custom_data
+            image_id=image_id,
+            with_custom_data=with_custom_data,
+            force_metadata_for_links=force_metadata_for_links,
         ).annotation
 
     def download_batch(
@@ -242,6 +344,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Callable] = None,
         with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -279,6 +382,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
             for ann_dict in results:
@@ -294,6 +398,7 @@ class AnnotationApi(ModuleApi):
         dataset_id: int,
         image_ids: List[int],
         progress_cb: Optional[Callable] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -329,6 +434,7 @@ class AnnotationApi(ModuleApi):
             dataset_id=dataset_id,
             image_ids=image_ids,
             progress_cb=progress_cb,
+            force_metadata_for_links=force_metadata_for_links,
         )
         return [ann_info.annotation for ann_info in results]
 
@@ -519,6 +625,7 @@ class AnnotationApi(ModuleApi):
 
     def _upload_batch(self, func_ann_to_json, img_ids, anns, progress_cb=None):
         """
+        _upload_batch
         """
         # img_ids from the same dataset
         if len(img_ids) == 0:
@@ -543,26 +650,31 @@ class AnnotationApi(ModuleApi):
 
     def get_info_by_id(self, id):
         """
+        get_info_by_id
         """
         raise NotImplementedError("Method is not supported")
 
     def get_info_by_name(self, parent_id, name):
         """
+        get_info_by_name
         """
         raise NotImplementedError("Method is not supported")
 
     def exists(self, parent_id, name):
         """
+        exists
         """
         raise NotImplementedError("Method is not supported")
 
     def get_free_name(self, parent_id, name):
         """
+        get_free_name
         """
         raise NotImplementedError("Method is not supported")
 
     def _add_sort_param(self, data):
         """
+        _add_sort_param
         """
         return data
 
@@ -571,6 +683,7 @@ class AnnotationApi(ModuleApi):
         src_image_ids: List[int],
         dst_image_ids: List[int],
         progress_cb: Optional[Callable] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> None:
         """
         Copy annotations from one images IDs to another in API.
@@ -614,13 +727,20 @@ class AnnotationApi(ModuleApi):
         src_dataset_id = self._api.image.get_info_by_id(src_image_ids[0]).dataset_id
         for cur_batch in batched(list(zip(src_image_ids, dst_image_ids))):
             src_ids_batch, dst_ids_batch = zip(*cur_batch)
-            ann_infos = self.download_batch(src_dataset_id, src_ids_batch)
+            ann_infos = self.download_batch(
+                src_dataset_id, src_ids_batch, force_metadata_for_links=force_metadata_for_links
+            )
             ann_jsons = [ann_info.annotation for ann_info in ann_infos]
             self.upload_jsons(dst_ids_batch, ann_jsons)
             if progress_cb is not None:
                 progress_cb(len(src_ids_batch))
 
-    def copy(self, src_image_id: int, dst_image_id: int) -> None:
+    def copy(
+        self,
+        src_image_id: int,
+        dst_image_id: int,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> None:
         """
         Copy annotation from one image ID to another image ID in API.
 
@@ -645,12 +765,14 @@ class AnnotationApi(ModuleApi):
             dst_id = 547837053
             api.annotation.copy(src_id, dst_id)
         """
-        self.copy_batch([src_image_id], [dst_image_id])
+        self.copy_batch(
+            [src_image_id], [dst_image_id], force_metadata_for_links=force_metadata_for_links
+        )
 
     def copy_batch_by_ids(
-        self, 
-        src_image_ids: List[int], 
-        dst_image_ids: List[int], 
+        self,
+        src_image_ids: List[int],
+        dst_image_ids: List[int],
         batch_size: Optional[int] = 50,
         save_source_date: Optional[bool] = True,
     ) -> None:
@@ -699,6 +821,7 @@ class AnnotationApi(ModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> AnnotationInfo:
         """
+        _convert_json_info
         """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return AnnotationInfo(**res._asdict())
