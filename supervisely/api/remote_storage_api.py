@@ -38,7 +38,15 @@ class RemoteStorageApi(ModuleApiBase):
         """_convert_json_info"""
         return info
 
-    def list(self, path: str, recursive: bool = True, files: bool = True, folders: bool = True, limit: int = 10000, start_after: str = "") -> dict:
+    def list(
+        self,
+        path: str,
+        recursive: bool = True,
+        files: bool = True,
+        folders: bool = True,
+        limit: int = 10000,
+        start_after: str = "",
+    ) -> dict:
         """
         List files and directories for given remote path.
 
@@ -58,7 +66,7 @@ class RemoteStorageApi(ModuleApiBase):
         :rtype: dict
 
         """
-        
+
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
         resp = self._api.get(
@@ -69,7 +77,7 @@ class RemoteStorageApi(ModuleApiBase):
                 "files": files,
                 "folders": folders,
                 "limit": limit,
-                "startAfter": start_after
+                "startAfter": start_after,
             },
         )
         return resp.json()
@@ -78,7 +86,7 @@ class RemoteStorageApi(ModuleApiBase):
         """
         Downloads item from given remote path to given local path.
 
-        :param remote_path: Remote path to item that you want to upload.
+        :param remote_path: Remote path to item that you want to download.
         :type remote_path: str
         :param save_path: Local save path.
         :type save_path: str
@@ -132,11 +140,9 @@ class RemoteStorageApi(ModuleApiBase):
 
     def _upload_paths_batch(self, local_paths, remote_paths):
         """_upload_paths_batch"""
-        
+
         if len(local_paths) != len(remote_paths):
-            raise ValueError(
-                "Inconsistency in paths, len(local_paths) != len(remote_paths)"
-            )
+            raise ValueError("Inconsistency in paths, len(local_paths) != len(remote_paths)")
         if len(local_paths) == 0:
             return {}
 
