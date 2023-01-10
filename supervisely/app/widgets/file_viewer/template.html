@@ -10,5 +10,7 @@
     {%
     endif
     %}
+    v-loading="state.viewer_loading"
+    @change="(evt) => { if (evt.type !== 'folder') return; state.{{{widget.widget_id}}}.viewer_path = evt.path; state.{{{widget.widget_id}}}.viewer_loading = true; post('/{{{widget.widget_id}}}/path_changed') }"
   />
 </div>

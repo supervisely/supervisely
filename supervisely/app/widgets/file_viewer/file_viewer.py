@@ -1,8 +1,4 @@
-try:
-    from typing import Literal, List
-except ImportError:
-    from typing_extensions import Literal
-
+from typing import List
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
@@ -12,6 +8,7 @@ from supervisely.project.project_type import ProjectType
 class FileViewer(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
+        PATH_CHANGED = "path_changed"
 
     def __init__(
         self,
@@ -38,6 +35,9 @@ class FileViewer(Widget):
         self._files_list = files_list
         self._selected = []
         self._changes_handled = False
+        self._viewer_loading = False
+        self._viewer_path = ""
+        self._viewer_path_changed = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -45,15 +45,35 @@ class FileViewer(Widget):
         return {"list": self._files_list}
 
     def get_json_state(self):
-        return {"selected": self._selected}
+        return {
+            "viewer_path": self._viewer_path,
+            "viewer_loading": self._viewer_loading,
+            "selected": self._selected,
+        }
 
     def get_selected_items(self):
         return StateJson()[self.widget_id]["selected"]
+
+    def get_current_path(self):
+        return StateJson()[self.widget_id]["viewer_path"]
 
     def update_file_tree(self, files_list):
         self._files_list = files_list
         DataJson()[self.widget_id]["list"] = self._files_list
         DataJson().send_changes()
+
+    def path_changed(self, func):
+        route_path = self.get_route_path(FileViewer.Routes.PATH_CHANGED)
+        server = self._sly_app.get_server()
+        self._viewer_path_changed = True
+
+        @server.post(route_path)
+        def _path_changed():
+            res = self.get_current_path()
+            func(res)
+            StateJson()[self.widget_id]["viewer_loading"] = False
+
+        return _path_changed
 
     def value_changed(self, func):
         # TODO: throttle
