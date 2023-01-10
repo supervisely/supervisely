@@ -64,9 +64,13 @@ class InputTag(Widget):
     def is_valid_value(self, value):
         return self._tag_meta.is_valid_value(value)
     
-    def set(self, tag: Tag):
-        self._set_value(tag.value)
-        self.activate()
+    def set(self, tag: Union[Tag, None]):
+        if tag is None:
+            self._set_default_value()
+            self.deactivate()
+        else:
+            self._set_value(tag.value)
+            self.activate()
 
     def get_tag(self):
         if not self.is_active():
@@ -93,6 +97,16 @@ class InputTag(Widget):
             content.set_value(value)
         if type(content) is RadioGroup:
             content.set_value(value)
+
+    def _set_default_value(self):
+        tag_component = self._component
+        content = tag_component._content._content
+        if type(content) is InputNumber:
+            content.value = 0
+        if type(content) is Input:
+            content.set_value("")
+        if type(content) is RadioGroup:
+            content.set_value(None)
 
     def get_json_data(self):
         return None
