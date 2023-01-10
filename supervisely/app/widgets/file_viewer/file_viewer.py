@@ -1,3 +1,5 @@
+from typing import List
+
 try:
     from typing import Literal, List
 except ImportError:
