@@ -2,6 +2,7 @@
 requires = [
     "requests",
     "setuptools>=42",
-    "wheel"
+    "wheel",
+    "tqdm"
 ]
 build-backend = "setuptools.build_meta"
