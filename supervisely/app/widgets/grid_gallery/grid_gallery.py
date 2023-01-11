@@ -112,6 +112,7 @@ class GridGallery(Widget):
         column_index: int = None,
         zoom_to: int = None,
         zoom_factor: float = 1.2,
+        title_url = None,
     ):
 
         column_index = self.get_column_index(incoming_value=column_index)
@@ -130,6 +131,7 @@ class GridGallery(Widget):
                 "cell_uuid": cell_uuid,
                 "zoom_to": zoom_to,
                 "zoom_factor": zoom_factor,
+                "title_url": title_url,
             }
         )
 
@@ -159,6 +161,7 @@ class GridGallery(Widget):
                 "url": cell_data["image_url"],
                 "figures": [label.to_json() for label in cell_data["annotation"].labels],
                 "title": cell_data["title"],
+                "title_url": cell_data["title_url"],
             }
             if not cell_data["zoom_to"] is None: 
                 zoom_params = {
