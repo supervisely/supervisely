@@ -2737,28 +2737,19 @@ def _download_dataset(
                 images_nps = api.image.download_nps(
                     dataset_id, images_ids_batch, progress_cb=progress_cb
                 )
-                for index, image_np in enumerate(images_nps):
-                    img_info = img_info_batch[index]
-                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
-
-                    dataset.add_item_np(
-                        item_name=image_name,
-                        img=image_np,
-                        ann=img_name_to_ann[img_info.id],
-                        img_info=img_info if save_image_info is True else None,
-                    )
             else:
-                for img_info in img_info_batch:
-                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+                images_nps = [None] * len(img_info_batch)
+            for index, image_np in enumerate(images_nps):
+                img_info = img_info_batch[index]
+                image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
 
-                    dataset.add_item_np(
-                        item_name=image_name,
-                        img=None,
-                        ann=img_name_to_ann[img_info.id],
-                        img_info=img_info if save_image_info is True else None,
-                    )
-
-        if cache is not None:
+                dataset.add_item_np(
+                    item_name=image_name,
+                    img=image_np if save_images is True else None,
+                    ann=img_name_to_ann[img_info.id],
+                    img_info=img_info if save_image_info is True else None,
+                )
+        if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
 
