@@ -54,8 +54,8 @@ class BindedInputNumber(Widget):
         StateJson().send_changes()
 
     def get_value(self):
-        width =  StateJson()[self.widget_id]["width"]
-        height =  StateJson()[self.widget_id]["height"]
+        width =  StateJson()[self.widget_id]['value']["width"]
+        height =  StateJson()[self.widget_id]['value']["height"]
         return width, height
 
 
