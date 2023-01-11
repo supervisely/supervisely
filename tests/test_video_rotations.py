@@ -42,5 +42,5 @@ for file in os.listdir(videos_dir):
     cap.release()
     cv2.destroyAllWindows()
 
-# chech that all result videos have the same frames sizes
+# should be only 2 shape sizes options: 1280x720 or 720x1280
 assert len(frames_set) == 2
