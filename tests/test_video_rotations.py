@@ -43,4 +43,4 @@ for file in os.listdir(videos_dir):
     cv2.destroyAllWindows()
 
 # check that all result videos have the same frames sizes
-assert (len(frames_set), 1)
+assert len(frames_set) == 1
