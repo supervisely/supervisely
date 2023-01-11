@@ -113,3 +113,11 @@ class InputTag(Widget):
 
     def get_json_state(self) -> Dict:
         return None
+
+    def value_changed(self, func):
+        if type(self._component._content._content) is Empty:
+            return func
+        return self._component._content._content.value_changed(func)
+
+    def selection_changed(self, func):
+        return self._component.value_changed(func)
