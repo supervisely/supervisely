@@ -101,7 +101,7 @@ class InferenceVideoInterface:
             #     return cv2.rotate(frame, rotate_code)
 
             vidcap = cv2.VideoCapture(video_path)
-            vidcap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
+            vidcap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
 
             success, image = vidcap.read()
             count = 0
