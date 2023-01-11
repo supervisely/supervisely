@@ -221,7 +221,7 @@ class GraphNodes(Geometry):
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
-        class_id = data.get(CLASS_ID, Node)
+        class_id = data.get(CLASS_ID, None)
         return GraphNodes(nodes=nodes, sly_id=sly_id, class_id=class_id,
                           labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
