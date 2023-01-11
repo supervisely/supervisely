@@ -13,7 +13,7 @@ if sly.fs.dir_exists(new_videos_dir):
 else:
     sly.fs.mkdir(new_videos_dir)
 
-frames_set = set()
+frames_set = set()  # for test at the end
 
 for file in os.listdir(videos_dir):
     new_path = os.path.join(new_videos_dir, f"new-{file}")
@@ -42,5 +42,5 @@ for file in os.listdir(videos_dir):
     cap.release()
     cv2.destroyAllWindows()
 
-# chech that all result videos have the same frames sizes
+# check that all result videos have the same frames sizes
 assert (len(frames_set), 1)
