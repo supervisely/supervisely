@@ -3,12 +3,15 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets import (
-    Checkbox,
+    Switch,
     Field,
     Empty,
     Input,
     InputNumber,
     RadioGroup,
+    Flexbox,
+    Text,
+    Container,
 )
 
 
@@ -16,42 +19,41 @@ class InputTag(Widget):
     def __init__(self, tag_meta: TagMeta, widget_id: int = None):
         self._tag_meta = tag_meta
         self._component = self._get_tag_component(tag_meta)
+        self._activation_widget = self._component._widgets[0]._widgets[0]
+        self._input_widget = self._component._widgets[1]
 
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        super().__init__(widget_id=widget_id, file_path=__file__)   
 
     def _get_tag_component(self, tag_meta: TagMeta):
+        def _wrap_in_switch(widget: Widget, title: str):
+            return Container(widgets=[
+                Flexbox(widgets=[Switch(), Text(title)]),
+                widget
+            ], gap=3)
+
         if tag_meta.value_type == str(TagValueType.NONE):
-            return Checkbox(content=Field(content=Empty(), title=tag_meta.name))
+            return _wrap_in_switch(widget = Empty(), title=tag_meta.name)
         if tag_meta.value_type == str(TagValueType.ANY_NUMBER):
-            return Checkbox(
-                content=Field(
-                    content=InputNumber(controls=False, debounce=500),
-                    title=tag_meta.name,
-                )
-            )
+            return _wrap_in_switch(InputNumber(controls=False, debounce=500), title=tag_meta.name)
         if tag_meta.value_type == str(TagValueType.ANY_STRING):
-            return Checkbox(content=Field(content=Input(), title=tag_meta.name))
+            return _wrap_in_switch(Input(), title=tag_meta.name)
         if tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             items = [
                 RadioGroup.Item(pv, pv, Empty()) for pv in tag_meta.possible_values
             ]
-            return Checkbox(
-                content=Field(content=RadioGroup(items=items), title=tag_meta.name)
-            )
+            return _wrap_in_switch(RadioGroup(items=items), title=tag_meta.name)
 
     def get_tag_meta(self):
         return self._tag_meta
 
     def activate(self):
-        tag_component = self._component
-        tag_component.check()
+        self._activation_widget.on()
 
     def deactivate(self):
-        tag_component = self._component
-        tag_component.uncheck()
+        self._activation_widget.off()
 
     def is_active(self):
-        return self._component.is_checked()
+        return self._activation_widget.is_switched()
 
     @property
     def value(self):
@@ -79,34 +81,28 @@ class InputTag(Widget):
         return Tag(self._tag_meta, tag_value)
 
     def _get_value(self):
-        tag_component = self._component
-        content = tag_component._content._content
-        if type(content) is Empty:
+        if type(self._input_widget) is Empty:
             return None
         else:
-            return content.get_value()
+            return self._input_widget.get_value()
 
     def _set_value(self, value):
         if not self.is_valid_value(value):
             raise ValueError(f'Tag value "{value}" is invalid')
-        tag_component = self._component
-        content = tag_component._content._content
-        if type(content) is InputNumber:
-            content.value = value
-        if type(content) is Input:
-            content.set_value(value)
-        if type(content) is RadioGroup:
-            content.set_value(value)
+        if type(self._input_widget) is InputNumber:
+            self._input_widget.value = value
+        if type(self._input_widget) is Input:
+            self._input_widget.set_value(value)
+        if type(self._input_widget) is RadioGroup:
+            self._input_widget.set_value(value)
 
     def _set_default_value(self):
-        tag_component = self._component
-        content = tag_component._content._content
-        if type(content) is InputNumber:
-            content.value = 0
-        if type(content) is Input:
-            content.set_value("")
-        if type(content) is RadioGroup:
-            content.set_value(None)
+        if type(self._input_widget) is InputNumber:
+            self._input_widget.value = 0
+        if type(self._input_widget) is Input:
+            self._input_widget.set_value("")
+        if type(self._input_widget) is RadioGroup:
+            self._input_widget.set_value(None)
 
     def get_json_data(self):
         return None
@@ -115,9 +111,9 @@ class InputTag(Widget):
         return None
 
     def value_changed(self, func):
-        if type(self._component._content._content) is Empty:
+        if type(self._input_widget) is Empty:
             return func
-        return self._component._content._content.value_changed(func)
+        return self._input_widget.value_changed(func)
 
     def selection_changed(self, func):
-        return self._component.value_changed(func)
+        return self._activation_widget.value_changed(func)
