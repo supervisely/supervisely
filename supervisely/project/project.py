@@ -47,6 +47,7 @@ class ItemPaths(NamedTuple):
     #: :class:`str`: Full annotation file path of item
     ann_path: str
 
+
 class ItemInfo(NamedTuple):
     #: :class:`str`: Item's dataset name
     dataset_name: str
@@ -60,10 +61,12 @@ class ItemInfo(NamedTuple):
     #: :class:`str`: Full annotation file path of item
     ann_path: str
 
+
 class OpenMode(Enum):
     """
     Defines the mode of using the :class:`Project<Project>` and :class:`Dataset<Dataset>`.
     """
+
     #: :class:`int`: READ open mode.
     #: Loads project from given project directory. Checks that item and annotation directories
     #: exist and dataset is not empty. Consistency checks. Checks that every image has
@@ -71,7 +74,7 @@ class OpenMode(Enum):
     READ = 1
 
     #: :class:`int`: CREATE open mode.
-    #: Creates a leaf directory and empty meta.json file. Generates error if 
+    #: Creates a leaf directory and empty meta.json file. Generates error if
     #: project directory already exists and is not empty.
     CREATE = 2
 
@@ -83,6 +86,7 @@ def _get_effective_ann_name(img_name, ann_names):
     else:
         old_format_name = os.path.splitext(img_name)[0] + ANN_EXT
         return old_format_name if (old_format_name in ann_names) else None
+
 
 class Dataset(KeyObject):
     """
@@ -100,6 +104,7 @@ class Dataset(KeyObject):
         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
         ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
     """
+
     #: :class:`str`: Items data directory name
     item_dir_name = "img"
 
@@ -674,9 +679,7 @@ class Dataset(KeyObject):
         """
         item_info_path = self.get_item_info_path(item_name)
         item_info_dict = load_json_file(item_info_path)
-        item_info_named_tuple = namedtuple(
-            self.item_info_class.__name__, item_info_dict
-        )
+        item_info_named_tuple = namedtuple(self.item_info_class.__name__, item_info_dict)
         return item_info_named_tuple(**item_info_dict)
 
     def get_seg_path(self, item_name: str) -> str:
@@ -720,7 +723,7 @@ class Dataset(KeyObject):
         img_info: Optional[Union[ImageInfo, Dict, str]] = None,
     ) -> None:
         """
-        Adds given item file to dataset items directory, and adds given annotation to dataset 
+        Adds given item file to dataset items directory, and adds given annotation to dataset
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
@@ -758,10 +761,14 @@ class Dataset(KeyObject):
             raise RuntimeError("No item_path or ann or img_info provided.")
 
         if item_info is not None and img_info is not None:
-            raise RuntimeError("At least one parameter of two (item_info and img_info) must be None.")
+            raise RuntimeError(
+                "At least one parameter of two (item_info and img_info) must be None."
+            )
 
         if img_info is not None:
-            logger.warn("img_info parameter of add_item_file() method is deprecated and can be removed in future versions. Use item_info parameter instead.")
+            logger.warn(
+                "img_info parameter of add_item_file() method is deprecated and can be removed in future versions. Use item_info parameter instead."
+            )
             item_info = img_info
 
         self._add_item_file(
@@ -884,14 +891,14 @@ class Dataset(KeyObject):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
         if return_objects_count:
             result["objects_count"] = class_objects
         if return_figures_count:
-            class_figures = class_objects.copy() # for Images project
+            class_figures = class_objects.copy()  # for Images project
             result["figures_count"] = class_figures
         return result
 
@@ -985,7 +992,7 @@ class Dataset(KeyObject):
             print(ds.generate_item_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg'
         """
-        #TODO: what the difference between this and ds.get_item_path() ?
+        # TODO: what the difference between this and ds.get_item_path() ?
         return os.path.join(self.item_dir, item_name)
 
     def _add_img_np(self, item_name, img):
@@ -1155,7 +1162,7 @@ class Dataset(KeyObject):
             img_path, ann_path = dataset.get_item_paths("IMG_0748.jpeg")
             print("img_path:", img_path)
             print("ann_path:", ann_path)
-            # Output: 
+            # Output:
             # img_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_0748.jpeg
             # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
         """
@@ -1221,7 +1228,7 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             from supervisely import Dataset
-            
+
             project_id = 10093
             dataset_id = 45330
             ds_items_link = Dataset.get_url(project_id, dataset_id)
@@ -1292,7 +1299,7 @@ class Project:
          .. code-block:: python
 
             from supervisely import Project
-            
+
             project_id = 10093
             datasets_link = Project.get_url(project_id)
 
@@ -1437,10 +1444,7 @@ class Project:
             if dataset_names is not None and ds.name not in dataset_names:
                 continue
             ds_stats = ds.get_classes_stats(
-                self.meta, 
-                return_objects_count, 
-                return_figures_count, 
-                return_items_count
+                self.meta, return_objects_count, return_figures_count, return_items_count
             )
             for stat_name, classes_stats in ds_stats.items():
                 if stat_name not in result.keys():
@@ -1616,7 +1620,7 @@ class Project:
                     ann_path,
                     _validate_item=_validate_item,
                     _use_hardlink=_use_hardlink,
-                    item_info=item_info_path
+                    item_info=item_info_path,
                 )
         return new_project
 
@@ -1646,8 +1650,8 @@ class Project:
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
-        Makes a copy of the :class:`Project<Project>`, converts annotations to 
-        :class:`Bitmaps<supervisely.geometry.bitmap.Bitmap>` and updates 
+        Makes a copy of the :class:`Project<Project>`, converts annotations to
+        :class:`Bitmaps<supervisely.geometry.bitmap.Bitmap>` and updates
         :class:`project meta<supervisely.project.project_meta.ProjectMeta>`.
 
         You will able to get item's segmentation masks location by :class:`dataset.get_seg_path(item_name)<supervisely.project.project.Dataset.get_seg_path>` method.
@@ -1658,13 +1662,13 @@ class Project:
         :type dst_project_dir: :class:`str`, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
-        :param target_classes: Classes list to include to destination project. If segmentation_type="semantic", 
+        :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
                                background class "__bg__" will be added automatically.
         :type target_classes: :class:`list` [ :class:`str` ], optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
-        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__" 
+        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
                                   will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
         :return: None
@@ -1677,7 +1681,7 @@ class Project:
             source_project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
             seg_project_path = "/home/admin/work/supervisely/projects/lemons_segmentation"
             sly.Project.to_segmentation_task(
-                src_project_dir=source_project.directory, 
+                src_project_dir=source_project.directory,
                 dst_project_dir=seg_project_path
             )
             seg_project = sly.Project(seg_project_path, sly.OpenMode.READ)
@@ -1778,8 +1782,8 @@ class Project:
         progress_cb: Optional[Callable] = None,
     ) -> None:
         """
-        Makes a copy of the :class:`Project<Project>`, converts annotations to 
-        :class:`Rectangles<supervisely.geometry.rectangle.Rectangle>` and updates 
+        Makes a copy of the :class:`Project<Project>`, converts annotations to
+        :class:`Rectangles<supervisely.geometry.rectangle.Rectangle>` and updates
         :class:`project meta<supervisely.project.project_meta.ProjectMeta>`.
 
         :param src_project_dir: Path to source project directory.
@@ -1788,7 +1792,7 @@ class Project:
         :type dst_project_dir: :class:`str`, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
         :return: None
@@ -1801,7 +1805,7 @@ class Project:
             source_project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
             det_project_path = "/home/admin/work/supervisely/projects/lemons_detection"
             sly.Project.to_detection_task(
-                src_project_dir=source_project.directory, 
+                src_project_dir=source_project.directory,
                 dst_project_dir=det_project_path
             )
             det_project = sly.Project(det_project_path, sly.OpenMode.READ)
@@ -2053,8 +2057,8 @@ class Project:
             train_count = 4
             val_count = 2
             train_items, val_items = sly.Project.get_train_val_splits_by_count(
-                project_path, 
-                train_count, 
+                project_path,
+                train_count,
                 val_count
             )
         """
@@ -2111,8 +2115,8 @@ class Project:
             train_tag_name = 'train'
             val_tag_name = 'val'
             train_items, val_items = sly.Project.get_train_val_splits_by_tag(
-                project_path, 
-                train_tag_name, 
+                project_path,
+                train_tag_name,
                 val_tag_name
             )
         """
@@ -2171,8 +2175,8 @@ class Project:
             train_datasets = ['ds1', 'ds2']
             val_datasets = ['ds3', 'ds4']
             train_items, val_items = sly.Project.get_train_val_splits_by_dataset(
-                project_path, 
-                train_datasets, 
+                project_path,
+                train_datasets,
                 val_datasets
             )
         """
@@ -2225,7 +2229,7 @@ class Project:
         :type batch_size: :class:`int`, optional
         :param cache: FileCache object.
         :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
@@ -2294,7 +2298,7 @@ class Project:
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
+        :param progress_cb: Function for tracking download progress. It must be update function
                             with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
         :type progress_cb: Function, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
@@ -2318,9 +2322,9 @@ class Project:
 
             # Upload Project
             project_id, project_name = sly.Project.upload(
-                project_directory, 
-                api, 
-                workspace_id=45, 
+                project_directory,
+                api,
+                workspace_id=45,
                 project_name="My Project"
             )
         """
@@ -2386,6 +2390,7 @@ def _download_project(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
+    progress_cb=None,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -2444,6 +2449,8 @@ def _download_project(
 
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
+            if progress_cb is not None:
+                progress_cb(len(batch))
 
 
 def upload_project(
@@ -2538,6 +2545,7 @@ def download_project(
             only_image_tags=only_image_tags,
             save_image_info=save_image_info,
             save_images=save_images,
+            progress_cb=progress_cb,
         )
     else:
         _download_project_optimized(
@@ -2724,11 +2732,13 @@ def _download_dataset(
 
         # download images and write to dataset
         for img_info_batch in batched(images_to_download):
-            images_ids_batch = [image_info.id for image_info in img_info_batch]
-            images_nps = api.image.download_nps(
-                dataset_id, images_ids_batch, progress_cb=progress_cb
-            )
-
+            if save_images:
+                images_ids_batch = [image_info.id for image_info in img_info_batch]
+                images_nps = api.image.download_nps(
+                    dataset_id, images_ids_batch, progress_cb=progress_cb
+                )
+            else:
+                images_nps = [None] * len(img_info_batch)
             for index, image_np in enumerate(images_nps):
                 img_info = img_info_batch[index]
                 image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
@@ -2739,9 +2749,9 @@ def _download_dataset(
                     ann=img_name_to_ann[img_info.id],
                     img_info=img_info if save_image_info is True else None,
                 )
-
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
+
 
 DatasetDict = Project.DatasetDict
