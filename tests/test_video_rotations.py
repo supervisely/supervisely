@@ -22,7 +22,7 @@ for file in os.listdir(videos_dir):
     cap = cv2.VideoCapture(filepath)
 
     # set CAP_PROP_ORIENTATION_AUTO flag for VideoCapture
-    cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
+    cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
 
     frameSize = (int(cap.get(3)), int(cap.get(4)))
     fps = cap.get(5)
@@ -42,5 +42,5 @@ for file in os.listdir(videos_dir):
     cap.release()
     cv2.destroyAllWindows()
 
-# check that all result videos have the same frames sizes
-assert len(frames_set) == 1
+# should be only 2 shape sizes options: 1280x720 or 720x1280
+assert len(frames_set) == 2
