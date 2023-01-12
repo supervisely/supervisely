@@ -1,4 +1,5 @@
 import copy
+import io
 
 import numpy as np
 import pandas as pd
@@ -10,6 +11,7 @@ from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
 import traceback
+from fastapi.responses import StreamingResponse, RedirectResponse
 
 
 class PackerUnpacker:
@@ -99,6 +101,7 @@ def show_image(datapoint: sly.app.widgets.Table.ClickedDataPoint):
 class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
+        DOWNLOAD_AS_CSV = "download_as_csv"
 
     class ClickedDataPoint:
         def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
@@ -157,6 +160,7 @@ class Table(Widget):
                 "perPage": self._per_page,
                 "pageSizes": self._page_sizes,
                 "fixColumns": self._fix_columns,
+                "customDownloadUrl": None,
             },
             "loading": self._loading,
         }
@@ -282,6 +286,31 @@ class Table(Widget):
             "row": row,
             "cell_value": row[column_name],
         }
+
+    def download_as_csv(self, func):
+        route_path = self.get_route_path(Table.Routes.DOWNLOAD_AS_CSV)
+        server = self._sly_app.get_server()
+        DataJson()[self.widget_id]["table_options"]["customDownloadUrl"] = route_path
+
+        @server.get(route_path)
+        def _click():
+            try:
+                df = func()
+                df_name = df.index.name
+                if df_name is None:
+                    df_name = "table"
+                stream = io.StringIO()
+                df.to_csv(stream, index=False)
+                response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+                response.headers["Content-Disposition"] = f"attachment; filename={df_name}.csv"
+                return response
+
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                response = RedirectResponse(url="/")
+                return response
+
+        return _click
 
     def click(self, func):
         route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
