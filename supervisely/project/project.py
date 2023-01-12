@@ -2420,7 +2420,10 @@ def _download_project(
             image_names = [image_info.name for image_info in batch]
 
             # download images in numpy format
-            batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
+            if save_images:
+                batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
+            else:
+                batch_imgs_bytes = [None] * len(image_ids)
 
             # download annotations in json format
             if only_image_tags is False:
