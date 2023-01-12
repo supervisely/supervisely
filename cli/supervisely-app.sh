@@ -2,20 +2,17 @@
 
 set -o pipefail -e
 
-VERSION='1.0.3'
+VERSION='1.0.4'
 
 usage() {
   echo -e "Supervisely Apps CLI
-
 Usage:
   supervisely-app release
-
 Options:
   -s | --server  server address to release
   -t | --token   api token
   -p | --path    path to app (current dir by default)
   -a | --sub-app path to app folder inside multi-app repository (relative to --path / current dir)
-
 Commands:
   release\t\t\t release app release
   ";
@@ -142,7 +139,7 @@ function release() {
   parsed_slug=
   parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
   module_name=$(echo "${config}" | sed -nE 's/^ *"name": "(.*)",?/\1/p' | xargs)
-  module_release=$(echo "${config}" | sed -nE 's/"release": ({.*})/\1/p' | xargs)
+  module_release=$(echo "${config}" | sed -nE 's/"release": (\{.*\})/\1/p' | xargs)
 
   if [[ "${parsed_slug_config}" ]]; then
     parsed_slug="${parsed_slug_config}"
