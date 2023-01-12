@@ -127,7 +127,7 @@ class GridGallery(Widget):
                 if annotation is None
                 else annotation.clone(),
                 "column_index": column_index,
-                "title": title,
+                "title": title if title_url is None else title + ' <i class="zmdi zmdi-open-in-new"></i>',
                 "cell_uuid": cell_uuid,
                 "zoom_to": zoom_to,
                 "zoom_factor": zoom_factor,
