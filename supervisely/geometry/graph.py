@@ -587,3 +587,40 @@ class GraphNodes(Geometry):
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
         return [AnyGeometry, Rectangle]
+    
+    @staticmethod
+    def build_config(node_color: list, edge_color: list):
+        """
+        Build geometry config for object class initialization
+        :param node_color: list of integers
+        :param edge_color: list of integers
+        :return: dict
+
+        :Usage Example:
+        config = sly.GraphNodes.build_config(node_color=[0, 0, 255], edge_color=[0, 255, 0])
+        """
+        nodes = {'0': {'label': 'nose', 'loc': [515, 248], 'color': node_color, 'disabled': False},
+                '1': {'label': 'left_eye', 'loc': [536, 230], 'color': node_color, 'disabled': False},
+                '2': {'label': 'right_eye', 'loc': [496, 228], 'color': node_color, 'disabled': False},
+                '3': {'label': 'left_ear', 'loc': [561, 248], 'color': node_color, 'disabled': False},
+                '4': {'label': 'right_ear', 'loc': [464, 242], 'color': node_color, 'disabled': False},
+                '5': {'label': 'left_shoulder', 'loc': [615, 387], 'color': node_color, 'disabled': False},
+                '6': {'label': 'right_shoulder', 'loc': [400, 383], 'color': node_color, 'disabled': False},
+                '7': {'label': 'left_elbow', 'loc': [653, 559], 'color': node_color, 'disabled': False},
+                '8': {'label': 'right_elbow', 'loc': [364, 554], 'color': node_color, 'disabled': False},
+                '9': {'label': 'left_wrist', 'loc': [655, 712], 'color': node_color, 'disabled': False},
+                '10': {'label': 'right_wrist', 'loc': [364, 711], 'color': node_color, 'disabled': False},
+                '11': {'label': 'left_hip', 'loc': [565, 703], 'color': node_color, 'disabled': False},
+                '12': {'label': 'right_hip', 'loc': [437, 705], 'color': node_color, 'disabled': False},
+                '13': {'label': 'left_knee', 'loc': [568, 922], 'color': node_color, 'disabled': False},
+                '14': {'label': 'right_knee', 'loc': [434, 919], 'color': node_color, 'disabled': False},
+                '15': {'label': 'left_ankle', 'loc': [571, 1109], 'color': node_color, 'disabled': False},
+                '16': {'label': 'right_ankle', 'loc': [442, 1100], 'color': node_color, 'disabled': False}}
+        edges = []
+        skeleton = [[15, 13], [13, 11], [16, 14], [14, 12], [11, 12], # links between nodes
+                    [5, 11], [6, 12], [5, 6], [5, 7], [6, 8], [7, 9], # e.g. node 5 is linked to node 11
+                    [8, 10], [1, 2], [0, 1], [0, 2], [1, 3], [2, 4],
+                    [3, 5], [4, 6]]
+        for link in skeleton:
+            edges.append({'dst': str(link[0]), 'src': str(link[1]), 'color': edge_color})
+        return {'nodes': nodes, 'edges': edges}
