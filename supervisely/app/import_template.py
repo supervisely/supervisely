@@ -130,10 +130,14 @@ class Import:
         if project_id is not None:
             # lets validate that project exists
             project = api.project.get_info_by_id(id=project_id)
+            if project is None:
+                raise ValueError(f"Project with ID: '{project_id}' is not found or either archived")
             print(f"Importing to existing Project: id={project.id}, name={project.name}")
         if dataset_id is not None:
             # lets validate that dataset exists
             dataset = api.dataset.get_info_by_id(id=dataset_id)
+            if dataset is None:
+                raise ValueError(f"Project with ID: '{dataset_id}' is not found or either archived")
             print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
