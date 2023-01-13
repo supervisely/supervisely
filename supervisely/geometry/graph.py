@@ -4,7 +4,7 @@
 from __future__ import annotations
 import cv2
 from copy import deepcopy
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 from supervisely.geometry.image_rotator import ImageRotator
 
 
@@ -37,6 +37,9 @@ class Node(JsonSerializable):
     :type location: PointLocation
     :param disabled: Determines whether to display the Node when drawing or not.
     :type disabled: bool, optional
+    :param label: str
+    :param row: int
+    :param col: int
     :Usage example:
 
      .. code-block:: python
@@ -46,9 +49,20 @@ class Node(JsonSerializable):
 
         vertex = Node(sly.PointLocation(5, 5))
     """
-    def __init__(self, location: PointLocation, disabled: Optional[bool] = True):
+    def __init__(
+            self,
+            location: Optional[PointLocation] = None,
+            disabled: Optional[bool] = False,
+            label: Optional[str] = None,
+            row: Optional[int] = None,
+            col: Optional[int] = None):
+        if None not in (location, row, col) or all(item is None for item in (location, row, col)):
+            raise ValueError('Either location or row and col must be specified') 
         self._location = location
         self._disabled = disabled
+        self._label = label
+        if None not in [row, col]:
+            self._location = PointLocation(row, col)
 
     @property
     def location(self) -> PointLocation:
@@ -140,7 +154,7 @@ class GraphNodes(Geometry):
     """
     GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
-    :param nodes: Dict containing nodes of graph.
+    :param nodes: Dict or List containing nodes of graph
     :type nodes: dict
     :param sly_id: GraphNodes ID in Supervisely server.
     :type sly_id: int, optional
@@ -170,12 +184,16 @@ class GraphNodes(Geometry):
     def geometry_name():
         return 'graph'
 
-    def __init__(self, nodes: Dict[str, Dict],
+    def __init__(self, nodes: Union[Dict[str, Dict], List],
                  sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
                  updated_at: Optional[str] = None, created_at: Optional[str] = None):
 
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._nodes = nodes
+        if isinstance(nodes, list):
+            self._nodes = {}
+            for node in nodes:
+                self._nodes[node._label] = Node(node._location)
 
     @property
     def nodes(self) -> Dict[str, Dict]:
@@ -587,3 +605,31 @@ class GraphNodes(Geometry):
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
         return [AnyGeometry, Rectangle]
+
+
+class KeypointsTemplate:
+    def __init__(self):
+        self.config = {"nodes": {}, "edges": []}
+
+    def add_point(
+                self,
+                label: str,
+                row: int,
+                col: int,
+                color: list = [0, 0, 255],
+                disabled: bool = False
+                ):
+        self.config["nodes"][label] = {
+                                    "label": label,
+                                    "loc": [row, col],
+                                    "color": color,
+                                    "disabled": disabled
+                                    }
+
+    def add_edge(
+                self,
+                src: str,
+                dst: str,
+                color: list = [0, 255, 0]
+                ):
+        self.config["edges"].append({"src": src, "dst": dst, "color": color})
