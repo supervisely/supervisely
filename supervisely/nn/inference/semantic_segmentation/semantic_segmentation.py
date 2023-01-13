@@ -11,9 +11,6 @@ import numpy as np
 
 
 class SemanticSegmentation(Inference):
-    def get_ui(self) -> Widget:
-        return None
-
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "semantic segmentation"

@@ -11,9 +11,6 @@ from supervisely.geometry.graph import Node
 
 
 class PoseEstimation(Inference):
-    def get_ui(self) -> Widget:
-        return None
-
     def get_info(self):
         info = super().get_info()
         info["task type"] = "pose estimation"

@@ -9,11 +9,6 @@ from supervisely.task.progress import Progress
 
 
 class ObjectDetection(Inference):
-    def get_ui(self) -> Widget:
-        return None
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # return main_ui.menu
-
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "object detection"
