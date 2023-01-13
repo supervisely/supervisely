@@ -2,6 +2,7 @@
 
 # docs
 from __future__ import annotations
+import numpy as np
 import cv2
 from copy import deepcopy
 from typing import List, Tuple, Dict, Optional, Union
@@ -192,8 +193,11 @@ class GraphNodes(Geometry):
         self._nodes = nodes
         if isinstance(nodes, list):
             self._nodes = {}
-            for node in nodes:
-                self._nodes[node._label] = Node(node._location)
+            for i, node in enumerate(nodes):
+                if node._label is not None:
+                    self._nodes[node._label] = Node(node._location)
+                else:
+                    self._nodes[str(i)] = Node(node._location)
 
     @property
     def nodes(self) -> Dict[str, Dict]:
@@ -607,7 +611,7 @@ class GraphNodes(Geometry):
         return [AnyGeometry, Rectangle]
 
 
-class KeypointsTemplate:
+class KeypointsTemplate(GraphNodes, Geometry):
     def __init__(self):
         self.config = {"nodes": {}, "edges": []}
 
@@ -620,11 +624,11 @@ class KeypointsTemplate:
                 disabled: bool = False
                 ):
         self.config["nodes"][label] = {
-                                    "label": label,
-                                    "loc": [row, col],
-                                    "color": color,
-                                    "disabled": disabled
-                                    }
+                                        "label": label,
+                                        "loc": [row, col],
+                                        "color": color,
+                                        "disabled": disabled
+                                        }
 
     def add_edge(
                 self,
@@ -632,4 +636,21 @@ class KeypointsTemplate:
                 dst: str,
                 color: list = [0, 255, 0]
                 ):
+        for elem in (src, dst):
+            if elem not in self.config["nodes"]:
+                raise ValueError("There is no such node in the graph: {}".format(elem))
         self.config["edges"].append({"src": src, "dst": dst, "color": color})
+
+    def get_nodes(self):
+        self._nodes = {}
+        for node in self.config["nodes"]:
+            loc = self.config["nodes"][node]["loc"]
+            disabled = self.config["nodes"][node]["disabled"]
+            self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
+
+    def draw(self, image: np.ndarray):
+        self.get_nodes()
+        self._draw_bool_compatible(self._draw_impl, bitmap=image, color=[0, 255, 0], thickness=3, config=self.config)
+
+    def to_json(self):
+        return self.config_to_json(self.config)
