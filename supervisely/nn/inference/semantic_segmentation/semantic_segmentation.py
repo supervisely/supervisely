@@ -9,18 +9,10 @@ from supervisely.nn.inference.inference import Inference
 from supervisely.task.progress import Progress
 import numpy as np
 
-class SemanticSegmentation(Inference):
-    def _get_templates_dir(self):
-        # template_dir = os.path.join(
-        #     Path(__file__).parent.absolute(), "dashboard/templates"
-        # )
-        # return template_dir
-        return None
 
-    def _get_layout(self) -> Widget:
+class SemanticSegmentation(Inference):
+    def get_ui(self) -> Widget:
         return None
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # return main_ui.menu
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -57,8 +49,12 @@ class SemanticSegmentation(Inference):
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionSegmentation]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionSegmentation]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+    def predict_raw(
+        self, image_path: str, settings: Dict[str, Any]
+    ) -> List[PredictionSegmentation]:
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui

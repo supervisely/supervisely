@@ -10,17 +10,8 @@ from supervisely.task.progress import Progress
 
 
 class InstanceSegmentation(Inference):
-    def _get_templates_dir(self):
-        # template_dir = os.path.join(
-        #     Path(__file__).parent.absolute(), "dashboard/templates"
-        # )
-        # return template_dir
+    def get_ui(self) -> Widget:
         return None
-
-    def _get_layout(self) -> Widget:
-        return None
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # return main_ui.menu
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -55,7 +46,9 @@ class InstanceSegmentation(Inference):
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionMask]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui

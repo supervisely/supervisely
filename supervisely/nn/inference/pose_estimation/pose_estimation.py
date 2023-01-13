@@ -11,16 +11,7 @@ from supervisely.geometry.graph import Node
 
 
 class PoseEstimation(Inference):
-    def _get_templates_dir(self):
-        # template_dir = os.path.join(
-        #     Path(__file__).parent.absolute(), "dashboard/templates"
-        # )
-        # return template_dir
-        return None
-
-    def _get_layout(self) -> Widget:
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # return main_ui.menu
+    def get_ui(self) -> Widget:
         return None
 
     def get_info(self):
@@ -54,7 +45,9 @@ class PoseEstimation(Inference):
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
@@ -68,5 +61,3 @@ class PoseEstimation(Inference):
         Progress("Deploying model ...", 1)
         super().serve()
         Progress("Model deployed", 1).iter_done_report()
-
-    
