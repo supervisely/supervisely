@@ -31,6 +31,7 @@ def _process_image_path(image_path: str, rect: Rectangle) -> Tuple[str, Tuple[in
     sly_image.write(image_crop_path, image_crop)
     return image_crop_path, image_size
 
+
 def _scale_ann_to_original_size(
     ann: Annotation, original_size: Tuple[int, int], rect: Rectangle
 ) -> Annotation:
@@ -57,28 +58,35 @@ def _scale_ann_to_original_size(
     ann = ann.clone(img_size=original_size, labels=updated_labels)
     return ann
 
+
 def _apply_agnostic_nms(labels: List[Label], iou_thres: Optional[float] = 0.5) -> List[Label]:
     import torch
     import torchvision
+
     # TODO: where we can get iou_th and conf_th?
     boxes = []
     scores = []
     for label in labels:
         label: Label
         label_rect: Rectangle = label.geometry.to_bbox()
-        boxes.append([
-            float(label_rect.left), 
-            float(label_rect.top), 
-            float(label_rect.right), 
-            float(label_rect.bottom)
-        ])
+        boxes.append(
+            [
+                float(label_rect.left),
+                float(label_rect.top),
+                float(label_rect.right),
+                float(label_rect.bottom),
+            ]
+        )
         conf_score: Tag = label.tags.get("confidence", None)
         if conf_score is None:
             raise ValueError("Label don't have confidence score tag named 'confidence'.")
         scores.append(conf_score.value)
-    boxes = torch.tensor(boxes)
-    scores = torch.tensor(scores)
-    saved_inds = torchvision.ops.nms(boxes, scores, iou_thres)
+    if len(boxes) > 0 and len(scores) > 0:
+        boxes = torch.tensor(boxes)
+        scores = torch.tensor(scores)
+        saved_inds = torchvision.ops.nms(boxes, scores, iou_thres)
+    else:
+        saved_inds = []
     saved_labels = []
     for ind in saved_inds:
         saved_labels.append(labels[ind])
@@ -102,6 +110,7 @@ def process_image_roi(func):
     :return: Annotation in json format
     :rtype: :class:`dict`
     """
+
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
         settings = kwargs["settings"]
@@ -120,9 +129,7 @@ def process_image_roi(func):
             image_crop_np = sly_image.crop(image_np, rectangle)
             kwargs["image_np"] = image_crop_np
             ann = func(*args, **kwargs)
-            ann = _scale_ann_to_original_size(
-                ann, original_image_size, rectangle
-            )
+            ann = _scale_ann_to_original_size(ann, original_image_size, rectangle)
         elif "image_path" in kwargs.keys():
             image_path = kwargs["image_path"]
             if not isinstance(image_path, str):
@@ -130,9 +137,7 @@ def process_image_roi(func):
             image_crop_path, original_image_size = _process_image_path(image_path, rectangle)
             kwargs["image_path"] = image_crop_path
             ann = func(*args, **kwargs)
-            ann = _scale_ann_to_original_size(
-                ann, original_image_size, rectangle
-            )
+            ann = _scale_ann_to_original_size(ann, original_image_size, rectangle)
             silent_remove(image_crop_path)
         else:
             raise ValueError("image_np or image_path not provided!")
@@ -179,9 +184,7 @@ def process_image_sliding_window(func):
             image_crop_path, original_image_size = _process_image_path(image_path, rect)
             kwargs["image_path"] = image_crop_path
             slice_ann: Annotation = func(*args, **kwargs)
-            slice_ann = _scale_ann_to_original_size(
-                slice_ann, original_image_size, rect
-            )
+            slice_ann = _scale_ann_to_original_size(slice_ann, original_image_size, rect)
             data_to_return["slides"].append(
                 {
                     "rectangle": rect.to_json(),
@@ -195,11 +198,8 @@ def process_image_sliding_window(func):
             all_json_labels.extend(slide["labels"])
 
         full_rect = Rectangle(0, 0, img_h, img_w)
-        all_labels_slide = {
-            "rectangle": full_rect.to_json(),
-            "labels": all_json_labels
-        }
-        data_to_return["slides"].append(all_labels_slide) # for visualization
+        all_labels_slide = {"rectangle": full_rect.to_json(), "labels": all_json_labels}
+        data_to_return["slides"].append(all_labels_slide)  # for visualization
         ann = Annotation.from_img_path(image_path)
 
         if sliding_window_mode == "advanced":
@@ -207,7 +207,7 @@ def process_image_sliding_window(func):
             ann = ann.add_labels(labels_after_nms)
             all_labels_after_nms_slide = {
                 "rectangle": full_rect.to_json(),
-                "labels": [l.to_json() for l in labels_after_nms]
+                "labels": [l.to_json() for l in labels_after_nms],
             }
             data_to_return["slides"].append(all_labels_after_nms_slide)
         else:

@@ -71,6 +71,8 @@ def create_debug_task(team_id, port="8000"):
             session.details["status"] == str(api.app.Status.QUEUED)
         ):
             task = session.details
+            if "id" not in task:
+                task["id"] = task["taskId"]
             logger.info(f"Debug task already exists: {task['id']}")
             break
     workspaces = api.workspace.get_list(team_id)

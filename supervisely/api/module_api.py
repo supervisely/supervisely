@@ -441,6 +441,12 @@ class ApiField:
     """"""
     SKIP_VALIDATION = "skipValidation"
     """"""
+    PAGINATION_MODE = "pagination_mode"
+    """"""
+    PER_PAGE = "per_page"
+    """"""
+    SKIP_BOUNDS_VALIDATION = "skipBoundsValidation"
+    """"""
 
 
 def _get_single_item(items):
@@ -557,8 +563,61 @@ class ModuleApiBase(_JsonConvertibleModule):
         if limit is not None:
             results = results[:limit]
         if return_first_response:
-            return [convert_func(item) for item in results], first_response 
+            return [convert_func(item) for item in results], first_response
         return [convert_func(item) for item in results]
+
+    def get_list_all_pages_generator(
+        self,
+        method,
+        data,
+        progress_cb=None,
+        convert_json_info_cb=None,
+        limit: int = None,
+        return_first_response: bool = False,
+    ):
+        """get_list_all_pages generator"""
+        if convert_json_info_cb is None:
+            convert_func = self._convert_json_info
+        else:
+            convert_func = convert_json_info_cb
+
+        if ApiField.SORT not in data:
+            data = self._add_sort_param(data)
+        first_response = self._api.post(method, data).json()
+        total = first_response["total"]
+        per_page = first_response["perPage"]
+        after = first_response["after"]
+        # pages_count = first_response["pagesCount"]
+
+        limit_exceeded = False
+        results = first_response["entities"]
+        processed = len(results)
+        yield [convert_func(item) for item in results]
+        if limit is not None and len(results) > limit:
+            limit_exceeded = True
+
+        if progress_cb is not None:
+            progress_cb(len(results))
+        if len(first_response["entities"]) == total or limit_exceeded is True:
+            pass
+        else:
+            while after is not None:
+                temp_resp = self._api.post(method, {**data, "after": after}).json()
+                after = temp_resp.get("after")
+                results = temp_resp["entities"]
+                # results.extend(temp_items)
+                if progress_cb is not None:
+                    progress_cb(len(results))
+                processed += len(results)
+                yield [convert_func(item) for item in results]
+                if limit is not None and processed > limit:
+                    limit_exceeded = True
+                    break
+
+            if processed != total and limit is None:
+                raise RuntimeError(
+                    "Method {!r}: error during pagination, some items are missed".format(method)
+                )
 
     @staticmethod
     def _get_info_by_name(get_info_by_filters_fn, name):

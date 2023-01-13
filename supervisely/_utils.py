@@ -23,7 +23,6 @@ def rand_str(length):
     return "".join((random.choice(chars)) for _ in range(length))
 
 
-# @TODO: use in API? or remove
 def generate_free_name(used_names, possible_name, with_ext=False, extend_used_names=False):
     res_name = possible_name
     new_suffix = 1

@@ -22,7 +22,12 @@ import supervisely.io.fs as sly_fs
 
 from supervisely.io.fs import ensure_base_path
 from supervisely._utils import batched, is_development, abs_url, rand_str
-from supervisely.video.video import get_info, get_video_streams, gen_video_stream_name
+from supervisely.video.video import (
+    get_info,
+    get_video_streams,
+    gen_video_stream_name,
+    validate_ext,
+)
 
 from supervisely.task.progress import Progress
 
@@ -503,6 +508,9 @@ class VideoApi(RemoveableBulkModuleApi):
             return results
         if len(names) != len(items):
             raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
+
+        for name in names:
+            validate_ext(os.path.splitext(name)[1])
 
         for batch in batched(list(zip(names, items, metas))):
             images = []

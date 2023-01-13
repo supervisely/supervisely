@@ -89,8 +89,6 @@ class Text(Widget):
         self.update_data()
         DataJson().send_changes()
 
-    def set(
-        self, text: str, status: Literal["text", "info", "success", "warning", "error"]
-    ):
+    def set(self, text: str, status: Literal["text", "info", "success", "warning", "error"]):
         self.text = text
         self.status = status

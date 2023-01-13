@@ -123,6 +123,7 @@ from supervisely._utils import (
     compress_image_url,
     get_datetime,
     get_readable_datetime,
+    generate_free_name,
 )
 import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
@@ -155,9 +156,13 @@ from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
 )
 from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
-from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import PointcloudEpisodeFrameCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
+    PointcloudEpisodeFrameCollection,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
-from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import PointcloudEpisodeTagCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
+    PointcloudEpisodeTagCollection,
+)
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
@@ -211,3 +216,5 @@ from supervisely.project.volume_project import (
 )
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
+
+import supervisely.team_files as team_files
