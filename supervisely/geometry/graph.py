@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict, Optional, Union
 from supervisely.geometry.image_rotator import ImageRotator
 
 
-from supervisely.imaging.color import rgb2hex, hex2rgb
+from supervisely.imaging.color import rgb2hex, hex2rgb, _validate_color
 from supervisely.io.json import JsonSerializable
 
 from supervisely.geometry.point import Point
@@ -662,6 +662,9 @@ class KeypointsTemplate(GraphNodes, Geometry):
     def add_point(
         self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
     ):
+        _validate_color(color)
+        if label in self._config["nodes"]:
+            raise KeyError(f"Label {label} already exists in the graph")
         self._config["nodes"][label] = {
             "label": label,
             "loc": [row, col],
@@ -670,9 +673,10 @@ class KeypointsTemplate(GraphNodes, Geometry):
         }
 
     def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
+        _validate_color(color)
         for elem in (src, dst):
             if elem not in self._config["nodes"]:
-                raise ValueError("There is no such node in the graph: {}".format(elem))
+                raise ValueError(f"There is no such node in the graph: {elem}")
         self._config["edges"].append({"src": src, "dst": dst, "color": color})
 
     def get_nodes(self):
