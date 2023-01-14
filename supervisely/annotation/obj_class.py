@@ -68,7 +68,7 @@ class ObjClass(KeyObject, JsonSerializable):
         name: str,
         geometry_type: type,
         color: Optional[List[int]] = None,
-        geometry_config: Optional[Union[Dict, Type[KeypointsTemplate]]] = None,
+        geometry_config: Optional[Union[Dict, KeypointsTemplate]] = None,
         sly_id: Optional[int] = None,
         hotkey: Optional[str] = None,
     ):
