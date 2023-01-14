@@ -500,7 +500,9 @@ class GraphNodes(Geometry):
 
     @staticmethod
     def _get_nested_or_default(dict, keys_path, default=None):
-        """ """
+        """
+        _get_nested_or_default
+        """
         result = dict
         for key in keys_path:
             if result is not None:
@@ -508,7 +510,9 @@ class GraphNodes(Geometry):
         return result if result is not None else default
 
     def _draw_contour_impl(self, bitmap, color=None, thickness=1, config=None):
-        """ """
+        """
+        _draw_contour_impl
+        """
         if config is not None:
             # If a config with edges and colors is passed, make sure it is
             # consistent with the our set of points.
@@ -642,7 +646,9 @@ class GraphNodes(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        allowed_transforms
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
 
@@ -651,12 +657,12 @@ class GraphNodes(Geometry):
 
 class KeypointsTemplate(GraphNodes, Geometry):
     def __init__(self):
-        self.config = {"nodes": {}, "edges": []}
+        self._config = {"nodes": {}, "edges": []}
 
     def add_point(
         self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
     ):
-        self.config["nodes"][label] = {
+        self._config["nodes"][label] = {
             "label": label,
             "loc": [row, col],
             "color": color,
@@ -665,22 +671,26 @@ class KeypointsTemplate(GraphNodes, Geometry):
 
     def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
         for elem in (src, dst):
-            if elem not in self.config["nodes"]:
+            if elem not in self._config["nodes"]:
                 raise ValueError("There is no such node in the graph: {}".format(elem))
-        self.config["edges"].append({"src": src, "dst": dst, "color": color})
+        self._config["edges"].append({"src": src, "dst": dst, "color": color})
 
     def get_nodes(self):
         self._nodes = {}
-        for node in self.config["nodes"]:
-            loc = self.config["nodes"][node]["loc"]
-            disabled = self.config["nodes"][node]["disabled"]
+        for node in self._config["nodes"]:
+            loc = self._config["nodes"][node]["loc"]
+            disabled = self._config["nodes"][node]["disabled"]
             self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
 
     def draw(self, image: np.ndarray):
         self.get_nodes()
         self._draw_bool_compatible(
-            self._draw_impl, bitmap=image, color=[0, 255, 0], thickness=3, config=self.config
+            self._draw_impl, bitmap=image, color=[0, 255, 0], thickness=3, config=self._config
         )
 
     def to_json(self):
-        return self.config_to_json(self.config)
+        return self.config_to_json(self._config)
+
+    @property
+    def config(self):
+        return self._config
