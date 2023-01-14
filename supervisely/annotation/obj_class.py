@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 from copy import deepcopy
-from typing import List, Optional, Dict, Union, Type
+from typing import List, Optional, Dict, Union
 
 from supervisely.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
 from supervisely.io.json import JsonSerializable
