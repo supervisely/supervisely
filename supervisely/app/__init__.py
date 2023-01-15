@@ -12,5 +12,9 @@ from supervisely.app.exceptions import (
     show_dialog,
 )
 
+<<<<<<< HEAD
 # from supervisely.app.fastapi.request import Request
 from supervisely.app.export_template import Export
+=======
+from supervisely.app.import_template import Import
+>>>>>>> master

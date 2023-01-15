@@ -1,6 +1,6 @@
 from __future__ import annotations
 from supervisely.app import StateJson, DataJson
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Widget, ConditionalWidget
 from typing import List, Dict, Optional
 
 try:
@@ -41,7 +41,7 @@ except ImportError:
 #     print(f"new value is: {value}")
 
 
-class Select(Widget):
+class Select(ConditionalWidget):
     class Routes:
         VALUE_CHANGED = "value_changed"
 
@@ -84,7 +84,6 @@ class Select(Widget):
         if items is not None and groups is not None:
             raise ValueError("Only one of the arguments has to be defined: items or groups")
 
-        self._items = items
         self._groups = groups
         self._filterable = filterable
         self._placeholder = placeholder
@@ -92,12 +91,12 @@ class Select(Widget):
         self._size = size
         self._multiple = multiple
 
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        super().__init__(items=items, widget_id=widget_id, file_path=__file__)
 
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
             return self._items[0]
-        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0]) > 0:
+        if self._groups is not None and len(self._groups) > 0 and len(self._groups[0].items) > 0:
             return self._groups[0].items[0]
         return None
 

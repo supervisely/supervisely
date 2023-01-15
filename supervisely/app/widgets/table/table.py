@@ -1,4 +1,5 @@
 import copy
+import io
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,8 @@ from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
+import traceback
+from fastapi.responses import StreamingResponse, RedirectResponse
 
 
 class PackerUnpacker:
@@ -98,6 +101,7 @@ def show_image(datapoint: sly.app.widgets.Table.ClickedDataPoint):
 class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
+        DOWNLOAD_AS_CSV = "download_as_csv"
 
     class ClickedDataPoint:
         def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
@@ -156,6 +160,7 @@ class Table(Widget):
                 "perPage": self._per_page,
                 "pageSizes": self._page_sizes,
                 "fixColumns": self._fix_columns,
+                "customDownloadUrl": None,
             },
             "loading": self._loading,
         }
@@ -282,6 +287,30 @@ class Table(Widget):
             "cell_value": row[column_name],
         }
 
+    def download_as_csv(self, func):
+        route_path = self.get_route_path(Table.Routes.DOWNLOAD_AS_CSV)
+        server = self._sly_app.get_server()
+        DataJson()[self.widget_id]["table_options"]["customDownloadUrl"] = route_path
+
+        @server.get(route_path)
+        def _click():
+            try:
+                df = func()
+                df_name = df.index.name
+                if df_name is None:
+                    df_name = "table"
+                stream = io.StringIO()
+                df.to_csv(stream, index=False)
+                response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+                response.headers["Content-Disposition"] = f"attachment; filename={df_name}.csv"
+                return response
+
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                raise e
+
+        return _click
+
     def click(self, func):
         route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
@@ -289,11 +318,15 @@ class Table(Widget):
 
         @server.post(route_path)
         def _click():
-            value_dict = self.get_selected_cell(StateJson())
-            if value_dict is None:
-                return
-            datapoint = Table.ClickedDataPoint(**value_dict)
-            func(datapoint)
+            try:
+                value_dict = self.get_selected_cell(StateJson())
+                if value_dict is None:
+                    return
+                datapoint = Table.ClickedDataPoint(**value_dict)
+                func(datapoint)
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                raise e
 
         return _click
 
@@ -348,5 +381,18 @@ class Table(Widget):
 
         col_index = self._parsed_data["columns"].index(column_name)
         self._parsed_data["data"][row_indices[0]][col_index] = new_value
+        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson().send_changes()
+
+    def update_matching_cells(self, key_column_name, key_cell_value, column_name, new_value):
+        key_col_index = self._parsed_data["columns"].index(key_column_name)
+        row_indices = []
+        for idx, row in enumerate(self._parsed_data["data"]):
+            if row[key_col_index] == key_cell_value:
+                row_indices.append(idx)
+
+        col_index = self._parsed_data["columns"].index(column_name)
+        for row_idx in row_indices:
+            self._parsed_data["data"][row_idx][col_index] = new_value
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()

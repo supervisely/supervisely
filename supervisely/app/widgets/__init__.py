@@ -1,3 +1,4 @@
+from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
@@ -13,6 +14,7 @@ from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.project_thumbnail.project_thumbnail import ProjectThumbnail
 from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.widgets.line_chart.line_chart import LineChart
+from supervisely.app.widgets.scatter_chart.scatter_chart import ScatterChart
 from supervisely.app.widgets.heatmap_chart.heatmap_chart import HeatmapChart
 from supervisely.app.widgets.table.table import Table
 from supervisely.app.widgets.labeled_image.labeled_image import LabeledImage
@@ -50,3 +52,10 @@ from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSp
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea
 from supervisely.app.widgets.destination_project.destination_project import DestinationProject
+from supervisely.app.widgets.image.image import Image
+from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
+from supervisely.app.widgets.video_player.video_player import VideoPlayer
+from supervisely.app.widgets.radio_group.radio_group import RadioGroup
+from supervisely.app.widgets.input_tag.input_tag import InputTag
+from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
+from supervisely.app.widgets.switch.switch import Switch

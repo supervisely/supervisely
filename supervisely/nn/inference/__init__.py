@@ -5,3 +5,9 @@ from supervisely.nn.inference.instance_segmentation.instance_segmentation import
 from supervisely.nn.inference.object_detection.object_detection import (
     ObjectDetection
 )
+from supervisely.nn.inference.semantic_segmentation.semantic_segmentation import (
+    SemanticSegmentation
+)
+from supervisely.nn.inference.pose_estimation.pose_estimation import (
+    PoseEstimation
+)

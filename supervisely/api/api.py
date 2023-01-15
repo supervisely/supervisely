@@ -88,7 +88,7 @@ class Api:
         self,
         server_address: str = None,
         token: str = None,
-        retry_count: Optional[int] = None,
+        retry_count: Optional[int] = 10,
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[logger] = None,
         ignore_task_id: Optional[bool] = False,
@@ -108,7 +108,7 @@ class Api:
         self.server_address = Api.normalize_server_address(server_address)
 
         if retry_count is None:
-            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "20"))
+            retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "10"))
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
@@ -165,7 +165,7 @@ class Api:
         return result
 
     @classmethod
-    def from_env(cls, retry_count: int = 5, ignore_task_id: bool = False) -> Api:
+    def from_env(cls, retry_count: int = 10, ignore_task_id: bool = False) -> Api:
         """
         Initialize API use environment variables.
 

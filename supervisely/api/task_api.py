@@ -528,7 +528,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if module_id is not None:
             data[ApiField.MODULE_ID] = module_id
         resp = self._api.post(method="tasks.run.app", data=data)
-        return resp.json()
+        task = resp.json()[0]
+        if "id" not in task:
+            task["id"] = task.get("taskId")
+        return task
 
     def stop(self, id: int):
         """stop"""

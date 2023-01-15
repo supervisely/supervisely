@@ -11,8 +11,10 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.image import resize_inter_nearest, restore_proportional_size
 
 
+if not hasattr(np, 'bool'): np.bool = np.bool_
+
 # TODO: rename to resize_bitmap_and_origin
-def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> (PointLocation, np.ndarray):
+def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Tuple[PointLocation, np.ndarray]:
     """
     Change PointLocation and resize numpy array to match a certain size.
 

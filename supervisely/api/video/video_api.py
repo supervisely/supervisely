@@ -22,7 +22,12 @@ import supervisely.io.fs as sly_fs
 
 from supervisely.io.fs import ensure_base_path
 from supervisely._utils import batched, is_development, abs_url, rand_str
-from supervisely.video.video import get_info, get_video_streams, gen_video_stream_name
+from supervisely.video.video import (
+    get_info,
+    get_video_streams,
+    gen_video_stream_name,
+    validate_ext,
+)
 
 from supervisely.task.progress import Progress
 
@@ -504,6 +509,9 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(names) != len(items):
             raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
 
+        for name in names:
+            validate_ext(os.path.splitext(name)[1])
+
         for batch in batched(list(zip(names, items, metas))):
             images = []
             for name, item, meta in batch:
@@ -605,8 +613,9 @@ class VideoApi(RemoveableBulkModuleApi):
             end_fr= 35
             response = api.video.download_range_by_id(video_id, start_fr, end_fr)
         """
-        path_original = self.get_info_by_id(id).path_original
-        return self.downalod_range_by_path(path_original, frame_start, frame_end, is_stream)
+        raise NotImplementedError("Method is not supported")
+        # path_original = self.get_info_by_id(id).path_original
+        # return self.download_range_by_path(path_original, frame_start, frame_end, is_stream)
 
     def download_range_by_path(
         self,
@@ -643,15 +652,16 @@ class VideoApi(RemoveableBulkModuleApi):
             end_fr= 35
             video_info = api.video.get_info_by_id(video_id)
             path_sl = video_info.path_original
-            response = api.video.downalod_range_by_path(path_sl, start_fr, end_fr)
+            response = api.video.download_range_by_path(path_sl, start_fr, end_fr)
         """
-        response = self._api.get(
-            method="image-converter/transcode" + path_original,
-            params={"startFrame": frame_start, "endFrame": frame_end, "transmux": True},
-            stream=is_stream,
-            use_public_api=False,
-        )
-        return response
+        raise NotImplementedError("Method is not supported")
+        # response = self._api.get(
+        #     method="image-converter/transcode" + path_original,
+        #     params={"startFrame": frame_start, "endFrame": frame_end, "transmux": True},
+        #     stream=is_stream,
+        #     use_public_api=False,
+        # )
+        # return response
 
     def download_save_range(
         self, video_id: int, frame_start: int, frame_end: int, save_path: str
@@ -688,11 +698,12 @@ class VideoApi(RemoveableBulkModuleApi):
             print(result)
             # Output: /home/admin/work/projects/videos/MOT16-03.mp4
         """
-        response = self.download_range_by_id(video_id, frame_start, frame_end)
-        with open(save_path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=128):
-                fd.write(chunk)
-        return save_path
+        raise NotImplementedError("Method is not supported")
+        # response = self.download_range_by_id(video_id, frame_start, frame_end)
+        # with open(save_path, "wb") as fd:
+        #     for chunk in response.iter_content(chunk_size=128):
+        #         fd.write(chunk)
+        # return save_path
 
     def notify_progress(
         self,
@@ -1097,3 +1108,64 @@ class VideoApi(RemoveableBulkModuleApi):
             )[0]
         else:
             return self.upload_hash(dataset_id, name, video_info.hash)
+
+    def _remove_batch_api_method_name(self):
+        """ """
+        return "images.bulk.remove"
+
+    def _remove_batch_field_name(self):
+        """ """
+        return ApiField.IMAGE_IDS
+
+    def remove_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Callable] = None,
+        batch_size: Optional[int] = 50,
+    ):
+        """
+        Remove videos from supervisely by ids.
+
+        :param ids: List of Videos IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking progress of removing.
+        :type progress_cb: Progress, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [2389126, 2389127]
+            api.video.remove_batch(video_ids)
+        """
+        super(VideoApi, self).remove_batch(ids, progress_cb=progress_cb, batch_size=batch_size)
+
+    def remove(self, video_id: int):
+        """
+        Remove video from supervisely by id.
+
+        :param video_id: Videos ID in Supervisely.
+        :type video_id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_id = 2389126
+            api.video.remove(video_id)
+        """
+        super(VideoApi, self).remove(video_id)

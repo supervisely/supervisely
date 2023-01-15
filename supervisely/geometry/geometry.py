@@ -4,15 +4,30 @@ from copy import deepcopy
 
 import numpy as np
 from supervisely.io.json import JsonSerializable
-from supervisely.geometry.constants import ANY_SHAPE, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    ANY_SHAPE,
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    ID,
+    CLASS_ID,
+)
 from supervisely import logger
 
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
 
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
-    """
-    """
-    def __init__(self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
+    """ """
+
+    def __init__(
+        self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None
+    ):
         self.sly_id = sly_id
         self.labeler_login = labeler_login
         self.updated_at = updated_at
@@ -20,8 +35,7 @@ class Geometry(JsonSerializable):
         self.class_id = class_id
 
     def _add_creation_info(self, d):
-        """
-        """
+        """ """
         if self.labeler_login is not None:
             d[LABELER_LOGIN] = self.labeler_login
         if self.updated_at is not None:
@@ -34,8 +48,7 @@ class Geometry(JsonSerializable):
             d[CLASS_ID] = self.class_id
 
     def _copy_creation_info_inplace(self, g):
-        """
-        """
+        """ """
         self.labeler_login = g.labeler_login
         self.updated_at = g.updated_at
         self.created_at = g.created_at
@@ -56,7 +69,7 @@ class Geometry(JsonSerializable):
         raise NotImplementedError()
 
     def relative_crop(self, rect):
-        """ Crops object like "crop" method, but return results with coordinates relative to rect
+        """Crops object like "crop" method, but return results with coordinates relative to rect
         :param rect:
         :return: list of Geometry
         """
@@ -110,8 +123,7 @@ class Geometry(JsonSerializable):
         raise NotImplementedError()
 
     def _draw_bool_compatible(self, draw_fn, bitmap, color, thickness, config=None):
-        """
-        """
+        """ """
         if bitmap.dtype == np.bool:
             # Cannot draw on the canvas directly, create a temporary with different type.
             temp_bitmap = np.zeros(bitmap.shape[:2], dtype=np.uint8)
@@ -139,7 +151,7 @@ class Geometry(JsonSerializable):
         raise NotImplementedError()
 
     def draw_contour(self, bitmap, color, thickness=1, config=None):
-        """ Draws the figure contour on a given bitmap canvas
+        """Draws the figure contour on a given bitmap canvas
         :param bitmap: np.ndarray
         :param color: [R, G, B]
         :param thickness: (int)
@@ -148,7 +160,7 @@ class Geometry(JsonSerializable):
         self._draw_bool_compatible(self._draw_contour_impl, bitmap, color, thickness, config)
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """ Draws the figure contour on a given bitmap canvas
+        """Draws the figure contour on a given bitmap canvas
         :param bitmap: np.ndarray
         :param color: [R, G, B]
         :param thickness: (int)
@@ -173,41 +185,39 @@ class Geometry(JsonSerializable):
         return deepcopy(self)
 
     def validate(self, obj_class_shape, settings):
-        """
-        """
+        """ """
         if obj_class_shape != ANY_SHAPE:
             if self.geometry_name() != obj_class_shape:
-                raise ValueError('Geometry validation error: shape names are mismatched!')
+                raise ValueError("Geometry validation error: shape names are mismatched!")
 
     @staticmethod
     def config_from_json(config):
-        """
-        """
+        """ """
         return config
 
     @staticmethod
     def config_to_json(config):
-        """
-        """
+        """ """
         return config
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
-        #raise NotImplementedError("{!r}".format(cls.geometry_name()))
+        """ """
+        # raise NotImplementedError("{!r}".format(cls.geometry_name()))
         return []
 
     def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
-        """
-        """
+        """ """
         from supervisely.geometry.any_geometry import AnyGeometry
+
         if type(self) == new_geometry or new_geometry == AnyGeometry:
             return [self]
 
         allowed_transforms = self.allowed_transforms()
         if new_geometry not in allowed_transforms:
-            raise NotImplementedError("from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name()))
+            raise NotImplementedError(
+                "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
+            )
 
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
@@ -223,5 +233,9 @@ class Geometry(JsonSerializable):
             res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
 
         if len(res) == 0:
-            logger.warn('Can not convert geometry {} to {} because geometry to convert is very small'.format(self.geometry_name(), new_geometry.geometry_name()))
+            logger.warn(
+                "Can not convert geometry {} to {} because geometry to convert is very small".format(
+                    self.geometry_name(), new_geometry.geometry_name()
+                )
+            )
         return res
