@@ -13,7 +13,7 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
-from supervisely.geometry.graph import KeypointsTemplate
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 
 
 class ObjClassJsonFields:
@@ -75,6 +75,9 @@ class ObjClass(KeyObject, JsonSerializable):
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
+        if geometry_type == GraphNodes and geometry_config is None:
+            raise ValueError("sly.GraphNodes requires geometry_config to be passed to sly.ObjClass")
+
         if isinstance(geometry_config, KeypointsTemplate):
             geometry_config = geometry_config.config
         self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
