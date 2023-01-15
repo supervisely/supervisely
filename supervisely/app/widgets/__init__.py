@@ -59,3 +59,4 @@ from supervisely.app.widgets.radio_group.radio_group import RadioGroup
 from supervisely.app.widgets.input_tag.input_tag import InputTag
 from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
+from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
