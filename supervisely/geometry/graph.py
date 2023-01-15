@@ -686,10 +686,14 @@ class KeypointsTemplate(GraphNodes, Geometry):
             disabled = self._config["nodes"][node]["disabled"]
             self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
 
-    def draw(self, image: np.ndarray):
+    def draw(self, image: np.ndarray, thickness=7):
         self.get_nodes()
         self._draw_bool_compatible(
-            self._draw_impl, bitmap=image, color=[0, 255, 0], thickness=3, config=self._config
+            self._draw_impl,
+            bitmap=image,
+            color=[0, 255, 0],
+            thickness=thickness,
+            config=self._config,
         )
 
     def to_json(self):
