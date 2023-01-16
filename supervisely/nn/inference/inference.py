@@ -33,6 +33,7 @@ from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 
 try:
     from typing import Literal
@@ -44,9 +45,15 @@ except ImportError:
 class Inference:
     def __init__(
         self,
-        location: Optional[Union[str, List[str]]] = None, # folders of files with model or configs, from Team Files or external links
-        custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, # dict with settings or path to .yml file
+        location: Optional[
+            Union[str, List[str]]
+        ] = None,  # folders of files with model or configs, from Team Files or external links
+        custom_inference_settings: Optional[
+            Union[Dict[str, Any], str]
+        ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
+        point_names: Optional[List[str]] = None,
+        keypoints_template: Optional[KeypointsTemplate] = None,
     ):
         self._model_meta = None
         self._confidence = "confidence"
@@ -54,17 +61,19 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
+        self.point_names = point_names
+        self.keypoints_template = keypoints_template
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
-                with open(custom_inference_settings, 'r') as f:
+                with open(custom_inference_settings, "r") as f:
                     custom_inference_settings = f.read()
             else:
                 raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
         self._headless = True
-        
+
         self._prepare_model_files(location)
 
     def _download_from_location(self, location_link, local_files_path):
@@ -76,7 +85,9 @@ class Inference:
             if fs.dir_exists(location_link) or fs.file_exists(location_link):
                 # only during debug, has no effect in production
                 local_path = os.path.abspath(location_link)
-            elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith('/'): # folder from Team Files
+            elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith(
+                "/"
+            ):  # folder from Team Files
                 logger.info(f"Remote directory in Team Files: {location_link}")
                 logger.info(f"Local directory: {local_path}")
                 sizeb = self.api.file.get_directory_size(team_id, location_link)
@@ -88,13 +99,14 @@ class Inference:
                     progress.iters_done_report,
                 )
                 print(f"📥 Directory {basename} has been successfully downloaded from Team Files")
-            elif self.api.file.exists(team_id, location_link): # file from Team Files
+            elif self.api.file.exists(team_id, location_link):  # file from Team Files
                 file_info = self.api.file.get_info_by_path(env.team_id(), location_link)
                 progress.set(current=0, total=file_info.sizeb)
-                self.api.file.download(team_id, location_link, local_path,
-                                            progress_cb=progress.iters_done_report)
+                self.api.file.download(
+                    team_id, location_link, local_path, progress_cb=progress.iters_done_report
+                )
                 print(f"📥 File {basename} has been successfully downloaded from Team Files")
-            else: # external url
+            else:  # external url
                 fs.download(location_link, local_path, progress=progress)
                 print(f"📥 File {basename} has been successfully downloaded.")
             print(f"File {basename} path: {local_path}")
@@ -166,7 +178,7 @@ class Inference:
         if self._api is None:
             self._api = Api()
         return self._api
-    
+
     def _get_obj_class_shape(self):
         raise NotImplementedError("Have to be implemented in child class")
 
@@ -176,7 +188,16 @@ class Inference:
             colors = get_predefined_colors(len(self.get_classes()))
             classes = []
             for name, rgb in zip(self.get_classes(), colors):
-                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+                if self._get_obj_class_shape() == GraphNodes:
+                    classes.append(
+                        ObjClass(
+                            name,
+                            self._get_obj_class_shape(),
+                            geometry_config=self.keypoints_template,
+                        )
+                    )
+                else:
+                    classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
             self._model_meta = ProjectMeta(classes)
             self._get_confidence_tag_meta()
         return self._model_meta
@@ -195,7 +216,9 @@ class Inference:
     def _create_label(self, dto: Prediction) -> Label:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def _predictions_to_annotation(self, image_path: str, predictions: List[Prediction]) -> Annotation:
+    def _predictions_to_annotation(
+        self, image_path: str, predictions: List[Prediction]
+    ) -> Annotation:
         labels = []
         for prediction in predictions:
             label = self._create_label(prediction)
@@ -223,14 +246,13 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
-
     @process_image_sliding_window
     @process_image_roi
     def _inference_image_path(
         self,
         image_path: str,
         settings: Dict,
-        data_to_return: Dict, # for decorators
+        data_to_return: Dict,  # for decorators
     ):
         logger.debug("Input path", extra={"path": image_path})
         inference_mode = settings.get("inference_mode", "full_image")
@@ -247,7 +269,9 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
@@ -256,7 +280,7 @@ class Inference:
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
         settings["sliding_window_mode"] = self.sliding_window_mode
-        
+
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
                 logger.warn(
@@ -270,15 +294,17 @@ class Inference:
         return self._app
 
     def visualize(
-        self, 
-        predictions: List[Prediction], 
-        image_path: str, 
-        vis_path: str, 
-        thickness: Optional[int] = None
+        self,
+        predictions: List[Prediction],
+        image_path: str,
+        vis_path: str,
+        thickness: Optional[int] = None,
     ):
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
-        ann.draw_pretty(bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False)
+        ann.draw_pretty(
+            bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False
+        )
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Input state", extra={"state": state})
@@ -317,7 +343,9 @@ class Inference:
         fs.mkdir(temp_dir)
         for info in infos:
             paths.append(os.path.join(temp_dir, f"{rand_str(10)}_{info.name}"))
-        api.image.download_paths(infos[0].dataset_id, ids, paths) # TODO: check if this is correct (from the same ds)
+        api.image.download_paths(
+            infos[0].dataset_id, ids, paths
+        )  # TODO: check if this is correct (from the same ds)
         results = self._inference_images_dir(paths, state)
         fs.remove_dir(temp_dir)
         return results
@@ -368,18 +396,19 @@ class Inference:
         )
         fs.silent_remove(image_path)
         return {"annotation": ann.to_json(), "data": data_to_return}
-    
+
     def _inference_video_id(self, api: Api, state: dict):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
+
         logger.debug("Input data", extra={"state": state})
-        video_info = api.video.get_info_by_id(state['videoId'])
+        video_info = api.video.get_info_by_id(state["videoId"])
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
         inf_video_interface = InferenceVideoInterface(
             api=api,
-            start_frame_index=state.get('startFrameIndex', 0),
-            frames_count=state.get('framesCount', video_info.frames_count - 1),
-            frames_direction=state.get('framesDirection', 'forward'),
+            start_frame_index=state.get("startFrameIndex", 0),
+            frames_count=state.get("framesCount", video_info.frames_count - 1),
+            frames_direction=state.get("framesDirection", "forward"),
             video_info=video_info,
             imgs_dir=video_images_path,
         )
@@ -443,37 +472,41 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return {'ann': self._inference_video_id(request.api, request.state)}
+            return {"ann": self._inference_video_id(request.api, request.state)}
 
         @server.post("/inference_image")
-        def inference_image(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+        def inference_image(
+            response: Response, files: List[UploadFile], settings: str = Form("{}")
+        ):
             if len(files) != 1:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'Only one file expected but got {len(files)}'
+                return f"Only one file expected but got {len(files)}"
             try:
                 state = json.loads(settings)
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
-                    return 'Settings is not json object'
+                    return "Settings is not json object"
                 return self._inference_image(state, files[0])
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'Cannot decode settings: {e}'
+                return f"Cannot decode settings: {e}"
             except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
         @server.post("/inference_batch")
-        def inference_batch(response: Response, files: List[UploadFile], settings: str = Form("{}")):
+        def inference_batch(
+            response: Response, files: List[UploadFile], settings: str = Form("{}")
+        ):
             try:
                 state = json.loads(settings)
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
-                    return 'Settings is not json object'
+                    return "Settings is not json object"
                 return self._inference_batch(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'Cannot decode settings: {e}'
+                return f"Cannot decode settings: {e}"
             except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return f'File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}'
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"

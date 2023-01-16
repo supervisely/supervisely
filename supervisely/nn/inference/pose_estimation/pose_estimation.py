@@ -7,7 +7,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.nn.inference.inference import Inference
 from supervisely.task.progress import Progress
 import supervisely as sly
-from supervisely.geometry.graph import Node
+from supervisely.geometry.graph import Node, KeypointsTemplate
 
 
 class PoseEstimation(Inference):
@@ -37,35 +37,15 @@ class PoseEstimation(Inference):
         return GraphNodes
 
     def _create_label(self, dto: PredictionKeypoints):
-        point_names = [
-            "nose",
-            "left_eye",
-            "right_eye",
-            "left_ear",
-            "right_ear",
-            "left_shoulder",
-            "right_shoulder",
-            "left_elbow",
-            "right_elbow",
-            "left_wrist",
-            "right_wrist",
-            "left_hip",
-            "right_hip",
-            "left_knee",
-            "right_knee",
-            "left_ankle",
-            "right_ankle",
-        ]
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if obj_class is None:
             raise KeyError(
                 f"Class {dto.class_name} not found in model classes {self.get_classes()}"
             )
         nodes = []
-        for i, keypoint in enumerate(dto.keypoints):
-            x, y, score = keypoint
-            if score >= dto.point_threshold:
-                nodes.append(Node(label=point_names[i], row=y, col=x))
+        for label, coordinate in zip(dto.labels, dto.coordinates):
+            x, y = coordinate
+            nodes.append(Node(label=label, row=y, col=x))
         label = Label(GraphNodes(nodes), obj_class)
         return label
 

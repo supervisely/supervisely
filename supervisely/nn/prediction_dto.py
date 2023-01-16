@@ -27,7 +27,7 @@ class PredictionSegmentation(Prediction):
 
 
 class PredictionKeypoints(Prediction):
-    def __init__(self, class_name: str, keypoints: np.ndarray, point_threshold: float):
+    def __init__(self, class_name: str, labels: List[str], coordinates: List[float]):
         super(PredictionKeypoints, self).__init__(class_name=class_name)
-        self.keypoints = keypoints
-        self.point_threshold = point_threshold
+        self.labels = labels
+        self.coordinates = coordinates
