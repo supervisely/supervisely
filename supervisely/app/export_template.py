@@ -9,17 +9,7 @@ import supervisely as sly
 from typing import NamedTuple
 from supervisely.project.project_type import ProjectType
 from supervisely.io.fs import silent_remove, remove_dir
-
-# @TODO: add from imports for downloading anns
-# @TODO: add progress for uploading file/dir
-
-try:
-    from typing import Literal
-except ImportError:
-    # for compatibility with python 3.7
-    from typing_extensions import Literal
-
-ARCHIVE_EXT = ["zip", "tar", "rar", "tar.gz", "7z"]
+import os
 
 
 class Export:
@@ -129,6 +119,13 @@ class Export:
         team_id = env.team_id()
         workspace_id = env.workspace_id()
 
+        app_name = "test-export-app"
+
+        if is_production():
+            module_id = os.environ["modal.state.slyEcosystemItemId"]
+            app_info = api.app.get_info(module_id)
+            app_name = app_info["name"].lower().replace(" ", "-")
+
         project_id = env.project_id(raise_not_found=False)
         dataset_id = env.dataset_id(raise_not_found=False)
 
@@ -145,35 +142,58 @@ class Export:
             dataset_id=dataset_id,
         )
 
-        local_path, app_name = self.process(context=context)
+        local_path = self.process(context=context)
 
         if type(local_path) is not str:
             raise ValueError("Path must be a 'string'")
 
+        upload_progress = []
+
+        def _print_progress(monitor, upload_progress):
+            if len(upload_progress) == 0:
+                upload_progress.append(
+                    sly.Progress(
+                        message="Uploading {!r}".format(local_path),
+                        total_cnt=monitor.len,
+                        ext_logger=sly.logger,
+                        is_size=True,
+                    )
+                )
+            upload_progress[0].set_current_value(monitor.bytes_read)
+
         if isfile(local_path):
-            # progress = Progress(message="Uploading file", total_cnt=1)
             remote_path = join(
                 sly.team_files.RECOMMENDED_EXPORT_PATH,
                 app_name,
                 f"{task_id}_{get_file_name_with_ext(local_path)}",
             )
-            file_info = api.file.upload(team_id=team_id, src=local_path, dst=remote_path)
+            file_info = api.file.upload(
+                team_id=team_id,
+                src=local_path,
+                dst=remote_path,
+                progress_cb=lambda m: _print_progress(m, upload_progress),
+            )
             api.task.set_output_archive(
                 task_id=task_id, file_id=file_info.id, file_name=file_info.name
             )
             print(f"Remote file: id={file_info.id}, name={file_info.name}")
             silent_remove(local_path)
         elif isdir(local_path):
-            # progress = Progress(message="Uploading file", total_cnt=1)
             remote_path = join(
                 sly.team_files.RECOMMENDED_EXPORT_PATH, app_name, basename(local_path)
             )
-            file_info = api.file.upload_directory(
+            remote_path = api.file.upload_directory(
                 team_id=team_id,
                 local_dir=local_path,
                 remote_dir=remote_path,
                 change_name_if_conflict=True,
+                progress_size_cb=lambda m: _print_progress(m, upload_progress),
             )
+            remote_dir_files = api.file.listdir(team_id, remote_path)
+            for curr_file in remote_dir_files:
+                file_info = api.file.get_info_by_path(team_id, curr_file)
+                if file_info is not None:
+                    break
             api.task.set_output_directory(
                 task_id=task_id, file_id=file_info.id, directory_path=file_info.name
             )
