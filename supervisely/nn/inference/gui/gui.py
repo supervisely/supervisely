@@ -1,11 +1,19 @@
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Callable
 import supervisely.app.widgets as Widgets
 
 
 class InferenceGUI:
-    def get_container(self) -> Widgets.Widget:
+    def get_deploying_event(self) -> Callable:
+        # return self.serve_button.click
         raise NotImplementedError("Have to be implemented in child class")
+
+    def get_device(self) -> str:
+        # return "cpu"
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def get_container(self) -> Widgets.Widget:
         # return Widgets.Container(widgets_list)
+        raise NotImplementedError("Have to be implemented in child class")
 
 
 class SimpleInferenceGUI(InferenceGUI):
@@ -13,7 +21,6 @@ class SimpleInferenceGUI(InferenceGUI):
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
         support_custom_models: Optional[bool] = False,
-        support_device: Optional[bool] = False,
         support_submodels: Optional[bool] = False,
     ):
         if support_submodels:
@@ -22,16 +29,13 @@ class SimpleInferenceGUI(InferenceGUI):
             assert isinstance(models, list)
         self._models = models
         self._support_custom_models = support_custom_models
-        self._support_device = support_device
         self._support_submodels = support_submodels
 
-        self.serve_button = Widgets.Button("SERVE")
-        if support_device:
-            # TODO: provide available device values from the app
-            self._device_select = Widgets.SelectString(
-                ["cuda:0", "cuda:1", "cuda:2", "cuda:3", "cpu"]
-            )
-            self._device_field = Widgets.Field(self._device_select, title="Device")
+        self._serve_button = Widgets.Button("SERVE")
+
+        # TODO: provide available device values from the app
+        self._device_select = Widgets.SelectString(["cuda:0", "cuda:1", "cuda:2", "cuda:3", "cpu"])
+        self._device_field = Widgets.Field(self._device_select, title="Device")
         if support_submodels:
             self._model_select = Widgets.SelectString()
 
@@ -53,8 +57,6 @@ class SimpleInferenceGUI(InferenceGUI):
             )
 
     def get_device(self) -> str:
-        if not self._support_device:
-            return None  # TODO: or raise Error?
         return self._device_select.get_value()
 
     def get_model_info(self) -> Union[Dict[str, str], Dict[str, Dict[str, str]]]:
@@ -76,11 +78,13 @@ class SimpleInferenceGUI(InferenceGUI):
             return None  # TODO: or raise Error?
         return self._model_path_input.get_value()
 
+    def get_deploying_event(self) -> Callable:
+        return self._serve_button.click
+
     def get_container(self) -> Widgets.Widget:
         widgets = []
         if self._support_custom_models:
             widgets.append(self._tabs)
-        if self._support_device:
-            widgets.append(self._device_field)
-        widgets.append(self.serve_button)
+        widgets.append(self._device_field)
+        widgets.append(self._serve_button)
         return Widgets.Container(widgets)

@@ -44,14 +44,14 @@ class ObjectDetection(Inference):
         )
 
     def serve(self):
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
+        if self.gui is not None:
 
-        # @deploy_ui.deploy_btn.click
-        # def deploy_model():
-        # device = deploy_ui.device.get_value()
-        # self.load_on_device(self._device)
-        # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
+            @self.gui.get_deploying_event()
+            def load_model():
+                device = self.gui.get_device()
+                self.load_on_device(device)
+                print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
+
         Progress("Deploying model ...", 1)
         super().serve()
         Progress("Model deployed", 1).iter_done_report()
