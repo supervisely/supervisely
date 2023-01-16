@@ -6,10 +6,9 @@ from supervisely._utils import abs_url
 
 
 class FolderThumbnail(Widget):
-    def __init__(self, info=None, name="Folder in Team files", widget_id: str = None):
+    def __init__(self, info=None, widget_id: str = None):
         self._id: int = None
         self._info: info = None
-        self._name: str = name
         self._description: str = None
         self._url: str = None
         self._set_info(info)
@@ -19,7 +18,7 @@ class FolderThumbnail(Widget):
     def get_json_data(self):
         return {
             "id": self._id,
-            "name": self._name,
+            "name": "Folder in Team files",
             "description": self._description,
             "url": self._url,
             "description": self._description,
