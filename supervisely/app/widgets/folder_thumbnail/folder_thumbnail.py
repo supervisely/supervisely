@@ -37,7 +37,7 @@ class FolderThumbnail(Widget):
             return
         self._id = info.id
         self._info = info
-        self._description = f"Path: {os.path.dirname(info.path)}"
+        self._description = os.path.dirname(info.path)
         self._url = abs_url(f"/files/{info.id}")
 
     def set(self, info):
