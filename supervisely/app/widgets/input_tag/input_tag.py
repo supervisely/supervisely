@@ -22,7 +22,7 @@ class InputTag(Widget):
     def __init__(self, tag_meta: TagMeta, widget_id: int = None):
         self._tag_meta = tag_meta
         self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]
-        self._name = self._tag_meta.name
+        self._name = f"<b>{self._tag_meta.name}</b>"
         self._activation_widget = Switch()
         self._input_widget = self._get_input_component()
 
