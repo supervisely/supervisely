@@ -23,7 +23,7 @@ class FolderThumbnail(Widget):
             "url": self._url,
             "description": self._description,
             "icon": {
-                "className": "zmdi zmdi-file",
+                "className": "zmdi zmdi-storage",
                 "color": "#ffffff",
                 "bgColor": "#009aff",
             },
