@@ -155,7 +155,7 @@ class Export:
             if len(upload_progress) == 0:
                 upload_progress.append(
                     sly.Progress(
-                        message="Uploading {!r}".format(os.path.basename(local_path)),
+                        message=f"Uploading '{task_id}_{basename(local_path)}'",
                         total_cnt=monitor.len,
                         ext_logger=sly.logger,
                         is_size=True,
@@ -182,7 +182,9 @@ class Export:
             silent_remove(local_path)
         elif isdir(local_path):
             remote_path = join(
-                sly.team_files.RECOMMENDED_EXPORT_PATH, app_name, basename(local_path)
+                sly.team_files.RECOMMENDED_EXPORT_PATH,
+                app_name,
+                f"{task_id}_{basename(local_path)}",
             )
             remote_path = api.file.upload_directory(
                 team_id=team_id,
