@@ -37,24 +37,45 @@ class PoseEstimation(Inference):
         return GraphNodes
 
     def _create_label(self, dto: PredictionKeypoints):
+        point_names = [
+            "nose",
+            "left_eye",
+            "right_eye",
+            "left_ear",
+            "right_ear",
+            "left_shoulder",
+            "right_shoulder",
+            "left_elbow",
+            "right_elbow",
+            "left_wrist",
+            "right_wrist",
+            "left_hip",
+            "right_hip",
+            "left_knee",
+            "right_knee",
+            "left_ankle",
+            "right_ankle",
+        ]
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if obj_class is None:
             raise KeyError(
                 f"Class {dto.class_name} not found in model classes {self.get_classes()}"
             )
-        nodes = {}
+        nodes = []
         for i, keypoint in enumerate(dto.keypoints):
-            x, y = keypoint
-            nodes[str(i)] = Node(sly.PointLocation(y, x), disabled=False)
-        geometry = GraphNodes(nodes)
-        label = Label(geometry, obj_class)
+            x, y, score = keypoint
+            if score >= dto.point_threshold:
+                nodes.append(Node(label=point_names[i], row=y, col=x))
+        label = Label(GraphNodes(nodes), obj_class)
         return label
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
@@ -68,5 +89,3 @@ class PoseEstimation(Inference):
         Progress("Deploying model ...", 1)
         super().serve()
         Progress("Model deployed", 1).iter_done_report()
-
-    
