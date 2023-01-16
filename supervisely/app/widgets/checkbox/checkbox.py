@@ -12,12 +12,10 @@ class Checkbox(Widget):
         self,
         content: Union[Widget, str],
         checked: bool = False,
-        display_as_switch: bool = False,
         widget_id: str = None,
     ):
         self._content = content
         self._checked = checked
-        self._display_as_switch = display_as_switch
         if type(self._content) is str:
             self._content = [Text(self._content)][0]
         self._changes_handled = False

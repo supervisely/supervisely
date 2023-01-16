@@ -162,7 +162,7 @@ class AugmentationsWithTabs(Widget):
     def __init__(
         self,
         image_info = None, 
-        templates: Optional[list[dict]] = None,
+        templates: Optional[List[Dict[str, str]]] = None,
         task_type: str = None,
         remote_preview_path: str = '/temp/preview_augs.jpg',
         widget_id=None
@@ -174,6 +174,8 @@ class AugmentationsWithTabs(Widget):
         
         self._augs1 = Augmentations()
         self._augs2 = Augmentations()
+        self._augs2._editor.hide()
+        self._augs2._button_preview.hide()
         self._template_path_input = Input(placeholder="Path to .json file in Team Files")
         self._template_selector = Select(
             items=[Select.Item(value=t['value'], label=t['label']) for t in templates], 
@@ -216,8 +218,14 @@ class AugmentationsWithTabs(Widget):
 
         @self._button_template_update.click
         def update_template():
-            self.load_existing_pipeline(self._template_path_input.get_value())
-        
+            custom_template_path = self._template_path_input.get_value()
+            if g.api.file.exists(team_id=g.team.id, remote_path=custom_template_path.strip()):
+                self.load_existing_pipeline(custom_template_path)
+                self._augs2._editor.show()
+                self._augs2._button_preview.show()
+            else:
+                raise FileExistsError("Team files does't contains file by passed path.")
+
         self._content = Container([self._radio_tabs])
         super().__init__(widget_id=widget_id, file_path=__file__)
 
