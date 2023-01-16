@@ -46,11 +46,11 @@ class ObjectDetection(Inference):
     def serve(self):
         if self.gui is not None:
 
-            @self.gui.get_deploying_event()
+            @self.gui._serve_button.click  # TODO: change
             def load_model():
                 device = self.gui.get_device()
                 self.load_on_device(device)
-                print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
+                self.gui.set_deployed()
 
         Progress("Deploying model ...", 1)
         super().serve()
