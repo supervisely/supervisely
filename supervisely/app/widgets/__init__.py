@@ -60,3 +60,4 @@ from supervisely.app.widgets.input_tag.input_tag import InputTag
 from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
+from supervisely.app.widgets.file_thumbnail.file_thumbnail import FileThumbnail
