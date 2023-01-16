@@ -1,3 +1,4 @@
+import os
 from supervisely.api.file_api import FileInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
@@ -5,10 +6,10 @@ from supervisely._utils import abs_url
 
 
 class FolderThumbnail(Widget):
-    def __init__(self, info=None, widget_id: str = None):
+    def __init__(self, info=None, name="Folder in Team files", widget_id: str = None):
         self._id: int = None
         self._info: info = None
-        self._name: str = None
+        self._name: str = name
         self._description: str = None
         self._url: str = None
         self._set_info(info)
@@ -23,9 +24,9 @@ class FolderThumbnail(Widget):
             "url": self._url,
             "description": self._description,
             "icon": {
-                "className": "zmdi zmdi-storage",
-                "color": "#ffffff",
-                "bgColor": "#009aff",
+                "className": "zmdi zmdi-folder",
+                "color": "#4977ff",
+                "bgColor": "#ddf2ff",
             },
         }
 
@@ -37,8 +38,7 @@ class FolderThumbnail(Widget):
             return
         self._id = info.id
         self._info = info
-        self._name = info.name
-        self._description = f"Path to file in team files: {info.path}"
+        self._description = f"Path in team files: {os.path.dirname(info.path)}"
         self._url = abs_url(f"/files/{info.id}")
 
     def set(self, info):
