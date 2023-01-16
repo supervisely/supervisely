@@ -77,45 +77,49 @@ class InferenceVideoInterface:
 
     def _download_entire_video(self):
         def videos_to_frames(video_path, frames_range=None):
-            def check_rotation(path_video_file):
-                # this returns meta-data of the video file in form of a dictionary
-                meta_dict = ffmpeg.probe(path_video_file)
+            # def check_rotation(path_video_file):
+            #     # this returns meta-data of the video file in form of a dictionary
+            #     meta_dict = ffmpeg.probe(path_video_file)
 
-                # from the dictionary, meta_dict['streams'][0]['tags']['rotate'] is the key
-                # we are looking for
-                rotate_code = None
-                try:
-                    # @TODO: process -90/-180/-270 (issue #1695)
-                    if int(meta_dict["streams"][0]["tags"]["rotate"]) == 90:
-                        rotate_code = cv2.ROTATE_90_CLOCKWISE
-                    elif int(meta_dict["streams"][0]["tags"]["rotate"]) == 180:
-                        rotate_code = cv2.ROTATE_180
-                    elif int(meta_dict["streams"][0]["tags"]["rotate"]) == 270:
-                        rotate_code = cv2.ROTATE_90_COUNTERCLOCKWISE
-                except Exception as ex:
-                    pass
+            #     # from the dictionary, meta_dict['streams'][0]['tags']['rotate'] is the key
+            #     # we are looking for
+            #     rotate_code = None
+            #     try:
+            #         # @TODO: process -90/-180/-270 (issue #1695)
+            #         if int(meta_dict["streams"][0]["tags"]["rotate"]) == 90:
+            #             rotate_code = cv2.ROTATE_90_CLOCKWISE
+            #         elif int(meta_dict["streams"][0]["tags"]["rotate"]) == 180:
+            #             rotate_code = cv2.ROTATE_180
+            #         elif int(meta_dict["streams"][0]["tags"]["rotate"]) == 270:
+            #             rotate_code = cv2.ROTATE_90_COUNTERCLOCKWISE
+            #     except Exception as ex:
+            #         pass
 
-                return rotate_code
+            #     return rotate_code
 
-            def correct_rotation(frame, rotate_code):
-                return cv2.rotate(frame, rotate_code)
+            # def correct_rotation(frame, rotate_code):
+            #     return cv2.rotate(frame, rotate_code)
 
             vidcap = cv2.VideoCapture(video_path)
+            vidcap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+
             success, image = vidcap.read()
             count = 0
-            rotateCode = check_rotation(video_path)
+            # rotateCode = check_rotation(video_path)
+            # rotateCode = None
+            
 
             while success:
                 output_image_path = os.path.join(f"{self._frames_path}", f"frame{count:06d}.png")
                 if frames_range:
                     if frames_range[0] <= count <= frames_range[1]:
-                        if rotateCode is not None:
-                            image = correct_rotation(image, rotateCode)
+                        # if rotateCode is not None:
+                        #     image = correct_rotation(image, rotateCode)
                         cv2.imwrite(output_image_path, image)  # save frame as PNG file
                         self.images_paths.append(output_image_path)
                 else:
-                    if rotateCode is not None:
-                        image = correct_rotation(image, rotateCode)
+                    # if rotateCode is not None:
+                    #     image = correct_rotation(image, rotateCode)
                     cv2.imwrite(output_image_path, image)  # save frame as PNG file
                     self.images_paths.append(output_image_path)
                 success, image = vidcap.read()
