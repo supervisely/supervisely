@@ -134,7 +134,9 @@ class Export:
             raise ValueError(
                 f"Project with ID: {project_id} either archived or you don't have access to it"
             )
-        print(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
+        sly.logger.info(
+            f"Exporting Project: id={project.id}, name={project.name}, type={project.type}"
+        )
 
         context = self.prepare(
             api=api,
@@ -153,7 +155,7 @@ class Export:
             if len(upload_progress) == 0:
                 upload_progress.append(
                     sly.Progress(
-                        message="Uploading {!r}".format(local_path),
+                        message="Uploading {!r}".format(os.path.basename(local_path)),
                         total_cnt=monitor.len,
                         ext_logger=sly.logger,
                         is_size=True,
@@ -176,7 +178,7 @@ class Export:
             api.task.set_output_archive(
                 task_id=task_id, file_id=file_info.id, file_name=file_info.name
             )
-            print(f"Remote file: id={file_info.id}, name={file_info.name}")
+            sly.logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
             silent_remove(local_path)
         elif isdir(local_path):
             remote_path = join(
@@ -195,7 +197,7 @@ class Export:
                 if file_info is not None:
                     break
             api.task.set_output_directory(
-                task_id=task_id, file_id=file_info.id, directory_path=file_info.name
+                task_id=task_id, file_id=file_info.id, directory_path=remote_path
             )
-            print(f"Remote directory: id={file_info.id}, name={file_info.name}")
+            sly.logger.info(f"Remote directory: id={file_info.id}, name={remote_path}")
             remove_dir(local_path)
