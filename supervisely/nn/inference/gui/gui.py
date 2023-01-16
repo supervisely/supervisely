@@ -16,15 +16,10 @@ def get_models_table_gui(models: List[Dict[str, str]]):
     cols = list(models[0].keys())
     rows = [list(model.values()) for model in models]
     models_table = RadioTable(cols, rows)
-    model_path_input = Input(placeholder="Path to model file or folder in Team Files")
-    model_path_field = Field(
-        model_path_input, title="Path to model file/folder", description="Copy path in Team Files"
-    )
-    tabs = RadioTabs(
-        titles=["Pretrained models", "Custom weights"],
-        contents=[models_table, model_path_field],
+    models_table_field = Field(
+        models_table, title="Pretrained Models", description="Choose model to serve"
     )
     device_select = SelectString(["cuda:0", "cuda:1", "cuda:2", "cuda:3", "cpu"])
     device_field = Field(device_select, title="Device")
     serve_btn = Button("SERVE")
-    return Container([tabs, device_field, serve_btn])
+    return Container([models_table_field, device_field, serve_btn])
