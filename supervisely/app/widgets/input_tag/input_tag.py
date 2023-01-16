@@ -4,44 +4,42 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets import (
     Switch,
-    Field,
     Empty,
     Input,
     InputNumber,
     RadioGroup,
-    Flexbox,
-    Text,
-    Container,
 )
 
+
+VALUE_TYPE_NAME = {
+    "none": "NONE",
+    "any_string": "TEXT",
+    "oneof_string": "ONE OF",
+    "any_number": "NUMBER"
+}
 
 class InputTag(Widget):
     def __init__(self, tag_meta: TagMeta, widget_id: int = None):
         self._tag_meta = tag_meta
-        self._component = self._get_tag_component(tag_meta)
-        self._activation_widget = self._component._widgets[0]._widgets[0]
-        self._input_widget = self._component._widgets[1]
+        self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]
+        self._name = self._tag_meta.name
+        self._activation_widget = Switch()
+        self._input_widget = self._get_input_component()
 
         super().__init__(widget_id=widget_id, file_path=__file__)   
 
-    def _get_tag_component(self, tag_meta: TagMeta):
-        def _wrap_in_switch(widget: Widget, title: str):
-            return Container(widgets=[
-                Flexbox(widgets=[Switch(), Text(title)]),
-                widget
-            ], gap=3)
-
-        if tag_meta.value_type == str(TagValueType.NONE):
-            return _wrap_in_switch(widget = Empty(), title=tag_meta.name)
-        if tag_meta.value_type == str(TagValueType.ANY_NUMBER):
-            return _wrap_in_switch(InputNumber(controls=False, debounce=500), title=tag_meta.name)
-        if tag_meta.value_type == str(TagValueType.ANY_STRING):
-            return _wrap_in_switch(Input(), title=tag_meta.name)
-        if tag_meta.value_type == str(TagValueType.ONEOF_STRING):
+    def _get_input_component(self):
+        if self._tag_meta.value_type == str(TagValueType.NONE):
+            return Empty()
+        if self._tag_meta.value_type == str(TagValueType.ANY_NUMBER):
+            return InputNumber(debounce=500)
+        if self._tag_meta.value_type == str(TagValueType.ANY_STRING):
+            return Input()
+        if self._tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             items = [
-                RadioGroup.Item(pv, pv, Empty()) for pv in tag_meta.possible_values
+                RadioGroup.Item(pv, pv, Empty()) for pv in self._tag_meta.possible_values
             ]
-            return _wrap_in_switch(RadioGroup(items=items), title=tag_meta.name)
+            return RadioGroup(items=items)
 
     def get_tag_meta(self):
         return self._tag_meta
@@ -105,7 +103,7 @@ class InputTag(Widget):
             self._input_widget.set_value(None)
 
     def get_json_data(self):
-        return None
+        return {"name": self._name, "value_type": self._value_type_name}
 
     def get_json_state(self) -> Dict:
         return None

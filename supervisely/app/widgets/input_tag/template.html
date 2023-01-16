@@ -1,1 +1,10 @@
-{{{ widget._component }}}
+<div>
+    <div style="display: flex; gap: 10px;">
+        {{{widget._activation_widget}}}
+        <span v-html="data.{{{widget.widget_id}}}.name"></span>
+        <span style="font-size: 12px; color: #8492A6; line-height: initial;">
+            <span v-html="data.{{{widget.widget_id}}}.value_type"></span>
+        </span>
+    </div>
+    {{{widget._input_widget}}}
+</div>
