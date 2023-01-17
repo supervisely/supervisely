@@ -7,7 +7,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.nn.inference.inference import Inference
 from supervisely.task.progress import Progress
 import supervisely as sly
-from supervisely.geometry.graph import Node, KeypointsTemplate
+from supervisely.geometry.graph import Node
 
 
 class PoseEstimation(Inference):
