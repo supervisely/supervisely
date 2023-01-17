@@ -79,6 +79,10 @@ class Export:
 
         if is_production():
             module_id = os.environ["modal.state.slyEcosystemItemId"]
+            if app_info is None:
+                raise ValueError(
+                    f"App with ID: {module_id} doesn't exist, archived or you don't have access to it"
+                )
             app_info = api.app.get_info(module_id)
             app_name = app_info["name"].lower().replace(" ", "-")
 
