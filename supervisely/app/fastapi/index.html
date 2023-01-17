@@ -88,7 +88,7 @@
             :session="session"
             :data="data"
             :state="state"
-            :style="{'margin-left': state.app_body_padding, 'margin-top': state.app_body_padding}"
+            :style="{ padding: `${state.app_body_padding} ${state.app_body_padding} 0` }"
           ></sly-app-header>
           <div :style="{'padding': state.app_body_padding}">
             {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
