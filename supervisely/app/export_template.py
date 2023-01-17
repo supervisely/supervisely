@@ -1,6 +1,6 @@
 import os
 from os.path import basename, isdir, isfile, join
-from typing import NamedTuple
+from requests.exceptions import HTTPError
 
 import supervisely.io.env as env
 from supervisely import Progress
@@ -50,24 +50,6 @@ class Export:
     def process(self, context) -> str:
         raise NotImplementedError()  # implement your own method when inherit
 
-    def prepare(
-        self,
-        api: Api,
-        team: int,
-        workspace: int,
-        project: ProjectInfo,
-        dataset_id: int = None,
-    ):
-
-        if dataset_id is None:
-            datasets = api.dataset.get_list(project_id=project.id)
-        else:
-            datasets = [api.dataset.get_info_by_id(id=dataset_id)]
-
-        return self.Context(
-            team_id=team, workspace_id=workspace, project=project, datasets=datasets
-        )
-
     def run(self):
         api = Api.from_env()
         task_id = env.task_id()
@@ -79,8 +61,9 @@ class Export:
 
         if is_production():
             module_id = os.environ["modal.state.slyEcosystemItemId"]
-            app_info = api.app.get_info(module_id)
-            if app_info is None:
+            try:
+                app_info = api.app.get_info(module_id)
+            except HTTPError:
                 raise ValueError(
                     f"App with ID: {module_id} doesn't exist, archived or you don't have access to it"
                 )
@@ -96,12 +79,13 @@ class Export:
             )
         logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
 
-        context = self.prepare(
-            api=api,
-            team=team_id,
-            workspace=workspace_id,
-            project=project,
-            dataset_id=dataset_id,
+        if dataset_id is None:
+            datasets = api.dataset.get_list(project_id=project.id)
+        else:
+            datasets = [api.dataset.get_info_by_id(id=dataset_id)]
+
+        context = self.Context(
+            team_id=team_id, workspace_id=workspace_id, project=project, datasets=datasets
         )
 
         local_path = self.process(context=context)
