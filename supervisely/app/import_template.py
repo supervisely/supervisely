@@ -124,6 +124,9 @@ class Import:
             path = file
             is_directory = False
 
+        if not self.is_path_required() and path is None:
+            is_directory = False
+
         project_id = env.project_id(raise_not_found=False)
         dataset_id = env.dataset_id(raise_not_found=False)
 
