@@ -42,19 +42,20 @@ class PoseEstimation(Inference):
             raise KeyError(
                 f"Class {dto.class_name} not found in model classes {self.get_classes()}"
             )
-        nodes = {}
-        for i, keypoint in enumerate(dto.keypoints):
-            x, y = keypoint
-            nodes[str(i)] = Node(sly.PointLocation(y, x), disabled=False)
-        geometry = GraphNodes(nodes)
-        label = Label(geometry, obj_class)
+        nodes = []
+        for label, coordinate in zip(dto.labels, dto.coordinates):
+            x, y = coordinate
+            nodes.append(Node(label=label, row=y, col=x))
+        label = Label(GraphNodes(nodes), obj_class)
         return label
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:
-        raise NotImplementedError("Have to be implemented in child class If sliding_window_mode is 'advanced'.")
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
@@ -68,5 +69,3 @@ class PoseEstimation(Inference):
         Progress("Deploying model ...", 1)
         super().serve()
         Progress("Model deployed", 1).iter_done_report()
-
-    
