@@ -9,6 +9,7 @@ import supervisely as sly
 from typing import NamedTuple
 from supervisely.project.project_type import ProjectType
 from supervisely.io.fs import silent_remove, remove_dir
+from supervisely.api.project_api import ProjectInfo
 import os
 
 
@@ -16,7 +17,7 @@ class Export:
     class Context:
         def __init__(
             self,
-            project: tuple,
+            project: ProjectInfo,
             datasets: list,
             items: dict,
             anns: dict,
@@ -37,7 +38,7 @@ class Export:
             )
 
         @property
-        def project(self) -> tuple:
+        def project(self) -> ProjectInfo:
             return self._project
 
         @property
@@ -62,7 +63,7 @@ class Export:
     def prepare(
         self,
         api: Api,
-        project: NamedTuple,
+        project: ProjectInfo,
         dataset_id: int = None,
     ):
 
