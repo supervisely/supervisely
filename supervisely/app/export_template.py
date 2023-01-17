@@ -17,25 +17,15 @@ from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 class Export:
     class Context:
-        def __init__(
-            self,
-            project: ProjectInfo,
-            datasets: list,
-            items: dict,
-            anns: dict,
-        ):
+        def __init__(self, project: ProjectInfo, datasets: list):
             self._project = project
             self._datasets = datasets
-            self._items = items
-            self._anns = anns
             self._work_dir = join(get_data_dir(), "work_dir")
 
         def __str__(self):
             return (
                 f"Project: {self._project}\n"
                 f"Dataset: {self._datasets}\n"
-                f"Items: {self._items}\n"
-                f"Anns: {self._anns}\n"
                 f"Working directory: {self._work_dir}\n"
             )
 
@@ -46,14 +36,6 @@ class Export:
         @property
         def datasets(self) -> list:
             return self._datasets
-
-        @property
-        def items(self) -> dict:
-            return self._items
-
-        @property
-        def anns(self) -> dict:
-            return self._anns
 
         @property
         def work_dir(self) -> bool:
@@ -74,46 +56,7 @@ class Export:
         else:
             datasets = [api.dataset.get_info_by_id(id=dataset_id)]
 
-        items = {}
-        anns = {}
-        for dataset in datasets:
-            if project.type == ProjectType.IMAGES.value:
-                items[dataset.name] = api.image.get_list(dataset_id=dataset.id)
-                entity_ids = [item_info.id for item_info in items[dataset.name]]
-                anns[dataset.name] = api.annotation.download_batch(
-                    dataset_id=dataset.id, image_ids=entity_ids
-                )
-            if project.type == ProjectType.VIDEOS.value:
-                items[dataset.name] = api.video.get_list(dataset_id=dataset.id)
-                entity_ids = [item_info.id for item_info in items[dataset.name]]
-                anns[dataset.name] = api.video.annotation.download_bulk(
-                    dataset_id=dataset.id, entity_ids=entity_ids
-                )
-            if project.type == ProjectType.VOLUMES.value:
-                items[dataset.name] = api.volume.get_list(dataset_id=dataset.id)
-                entity_ids = [item_info.id for item_info in items[dataset.name]]
-                anns[dataset.name] = api.volume.annotation.download_bulk(
-                    dataset_id=dataset.id, entity_ids=entity_ids
-                )
-            if project.type == ProjectType.POINT_CLOUDS.value:
-                items[dataset.name] = api.pointcloud.get_list(dataset_id=dataset.id)
-                entity_ids = [item_info.id for item_info in items[dataset.name]]
-                anns[dataset.name] = api.pointcloud.annotation.download_bulk(
-                    dataset_id=dataset.id, entity_ids=entity_ids
-                )
-            if project.type == ProjectType.POINT_CLOUD_EPISODES.value:
-                items[dataset.name] = api.pointcloud_episode.get_list(dataset_id=dataset.id)
-                entity_ids = [item_info.id for item_info in items[dataset.name]]
-                anns[dataset.name] = api.pointcloud_episode.annotation.download_bulk(
-                    dataset_id=dataset.id, entity_ids=entity_ids
-                )
-
-        return self.Context(
-            project=project,
-            datasets=datasets,
-            items=items,
-            anns=anns,
-        )
+        return self.Context(project=project, datasets=datasets)
 
     def run(self):
         api = Api.from_env()
