@@ -1,9 +1,8 @@
-from typing import List, Dict, Optional, Union, Callable
+from typing import List, Dict, Union
 import supervisely.app.widgets as Widgets
-from supervisely.app.content import StateJson
 
 
-class InferenceGUI:
+class BaseInferenceGUI:
     @property
     def serve_button(self) -> Widgets.Widget:
         # return self.serve_button
@@ -21,7 +20,7 @@ class InferenceGUI:
         raise NotImplementedError("Have to be implemented in child class")
 
 
-class SimpleInferenceGUI(InferenceGUI):
+class InferenceGUI(BaseInferenceGUI):
     def __init__(
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],

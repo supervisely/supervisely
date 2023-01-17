@@ -1,5 +1,4 @@
 from typing import Dict, List, Any
-from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.prediction_dto import PredictionBBox
 from supervisely.annotation.label import Label

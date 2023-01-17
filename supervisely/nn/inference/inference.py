@@ -143,8 +143,8 @@ class Inference:
             return None
         return self.gui.get_ui()
 
-    def get_ui_class(self) -> GUI.InferenceGUI:
-        return GUI.SimpleInferenceGUI
+    def get_ui_class(self) -> GUI.BaseInferenceGUI:
+        return GUI.InferenceGUI
 
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         raise RuntimeError("Have to be implemented in child class after inheritance")
@@ -194,7 +194,7 @@ class Inference:
         return self._api
 
     @property
-    def gui(self) -> GUI.InferenceGUI:
+    def gui(self) -> GUI.BaseInferenceGUI:
         return self._gui
 
     def _get_obj_class_shape(self):
@@ -467,7 +467,6 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            # TODO: уточнить ждет ли применялка лист или дикт тоже понимает
             return self._inference_image_id(request.api, request.state)
 
         @server.post("/inference_image_url")
