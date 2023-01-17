@@ -437,6 +437,23 @@ class Inference:
         return results
 
     def serve(self):
+        Progress("Deploying model ...", 1)
+        if self._use_gui:
+            models = self.get_models()
+            if isinstance(models, list):
+                models = self._preprocess_models_list(models)
+            elif isinstance(models, dict):
+                for model_group in models.keys():
+                    models[model_group] = self._preprocess_models_list(models[model_group])
+            self._gui = self.get_ui_class()(models)
+
+            @self.gui.serve_button.click
+            def load_model():
+                device = self.gui.get_device()
+                # TODO: write to location
+                self.load_on_device(device)
+                self.gui.set_deployed()
+
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
             logger.warn(
@@ -452,6 +469,8 @@ class Inference:
 
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
+
+        Progress("Model deployed", 1).iter_done_report()
 
         @server.post(f"/get_session_info")
         def get_session_info():

@@ -52,16 +52,3 @@ class SemanticSegmentation(Inference):
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
-
-    def serve(self):
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
-
-        # @deploy_ui.deploy_btn.click
-        # def deploy_model():
-        # device = deploy_ui.device.get_value()
-        # self.load_on_device(self._device)
-        # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
-        Progress("Deploying model ...", 1)
-        super().serve()
-        Progress("Model deployed", 1).iter_done_report()

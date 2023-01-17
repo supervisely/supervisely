@@ -41,24 +41,3 @@ class ObjectDetection(Inference):
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
-
-    def serve(self):
-        if self._use_gui is not None:
-            models = self.get_models()
-            if isinstance(models, list):
-                models = self._preprocess_models_list(models)
-            elif isinstance(models, dict):
-                for model_group in models.keys():
-                    models[model_group] = self._preprocess_models_list(models[model_group])
-            self._gui = self.get_ui_class()(models)
-
-            @self.gui.serve_button.click
-            def load_model():
-                device = self.gui.get_device()
-                # TODO: write to location
-                self.load_on_device(device)
-                self.gui.set_deployed()
-
-        Progress("Deploying model ...", 1)
-        super().serve()
-        Progress("Model deployed", 1).iter_done_report()
