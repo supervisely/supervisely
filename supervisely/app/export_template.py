@@ -17,17 +17,27 @@ from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 class Export:
     class Context:
-        def __init__(self, project: ProjectInfo, datasets: list):
+        def __init__(self, team_id: int, workspace_id: int, project: ProjectInfo, datasets: list):
+            self._team_id = team_id
+            self._workspace_id = workspace_id
             self._project = project
             self._datasets = datasets
-            self._work_dir = join(get_data_dir(), "work_dir")
 
         def __str__(self):
             return (
+                f"Team: {self._team}\n"
+                f"Workspace: {self._workspace}\n"
                 f"Project: {self._project}\n"
                 f"Dataset: {self._datasets}\n"
-                f"Working directory: {self._work_dir}\n"
             )
+
+        @property
+        def team(self) -> int:
+            return self._team_id
+
+        @property
+        def workspace(self) -> int:
+            return self._workspace_id
 
         @property
         def project(self) -> ProjectInfo:
@@ -37,16 +47,14 @@ class Export:
         def datasets(self) -> list:
             return self._datasets
 
-        @property
-        def work_dir(self) -> bool:
-            return self._work_dir
-
     def process(self, context) -> str:
         raise NotImplementedError()  # implement your own method when inherit
 
     def prepare(
         self,
         api: Api,
+        team: int,
+        workspace: int,
         project: ProjectInfo,
         dataset_id: int = None,
     ):
@@ -56,7 +64,9 @@ class Export:
         else:
             datasets = [api.dataset.get_info_by_id(id=dataset_id)]
 
-        return self.Context(project=project, datasets=datasets)
+        return self.Context(
+            team_id=team, workspace_id=workspace, project=project, datasets=datasets
+        )
 
     def run(self):
         api = Api.from_env()
@@ -84,6 +94,8 @@ class Export:
 
         context = self.prepare(
             api=api,
+            team=team_id,
+            workspace=workspace_id,
             project=project,
             dataset_id=dataset_id,
         )
