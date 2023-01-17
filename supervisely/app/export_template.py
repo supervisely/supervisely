@@ -142,6 +142,17 @@ class Export:
                 file_info = api.file.get_info_by_path(team_id, curr_file)
                 if file_info is not None:
                     break
+            if file_info is None:
+                logger.warn(
+                    f"There are no files in the results directory {remote_path}, check you input data."
+                )
+                with open(join(local_path, "result_link.txt"), "w") as file:
+                    file.write("result_link")
+            file_info = api.file.upload(
+                team_id=team_id,
+                src=join(local_path, "result_link.txt"),
+                dst=join(remote_path, "result_link.txt"),
+            )
             api.task.set_output_directory(
                 task_id=task_id, file_id=file_info.id, directory_path=remote_path
             )
