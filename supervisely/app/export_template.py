@@ -25,18 +25,18 @@ class Export:
 
         def __str__(self):
             return (
-                f"Team: {self._team_id}\n"
-                f"Workspace: {self._workspace_id}\n"
+                f"Team ID: {self._team_id}\n"
+                f"Workspace ID: {self._workspace_id}\n"
                 f"Project: {self._project}\n"
-                f"Dataset: {self._datasets}\n"
+                f"Datasets: {self._datasets}\n"
             )
 
         @property
-        def team(self) -> int:
+        def team_id(self) -> int:
             return self._team_id
 
         @property
-        def workspace(self) -> int:
+        def workspace_id(self) -> int:
             return self._workspace_id
 
         @property
@@ -63,11 +63,11 @@ class Export:
             module_id = os.environ["modal.state.slyEcosystemItemId"]
             try:
                 app_info = api.app.get_info(module_id)
-            except HTTPError:
+                app_name = app_info["name"].lower().replace(" ", "-")
+            except HTTPError as e:
                 raise ValueError(
-                    f"App with ID: {module_id} doesn't exist, archived or you don't have access to it"
+                    f"App with ID: {module_id} doesn't exist, archived or you don't have access to it. Error {e}"
                 )
-            app_name = app_info["name"].lower().replace(" ", "-")
 
         project_id = env.project_id(raise_not_found=False)
         dataset_id = env.dataset_id(raise_not_found=False)
