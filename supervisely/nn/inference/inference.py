@@ -53,7 +53,7 @@ class Inference:
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
-        gui: Optional[GUI.InferenceGUI] = None,
+        use_gui: Optional[bool] = False,
     ):
         self._model_meta = None
         self._confidence = "confidence"
@@ -70,7 +70,8 @@ class Inference:
             else:
                 raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
-        self._gui = gui
+        self._use_gui = use_gui
+        self._gui = None
 
         self._prepare_model_files(location)
 
@@ -138,24 +139,27 @@ class Inference:
                 device = "cpu"
 
     def get_ui(self) -> Widget:
-        if self.gui is None:
+        if not self._use_gui:
             return None
-        return self.gui.get_container()
+        return self.gui.get_ui()
 
-    # def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    #     # fill skipped columns
-    #     all_columns = []
-    #     for model_dict in models_list:
-    #         cols = model_dict.keys()
-    #         all_columns.extend([col for col in cols if col not in all_columns])
-    #     for i, model_dict in enumerate(models_list):
-    #         for col in all_columns:
-    #             if col not in model_dict.keys():
-    #                 models_list[i][col] = "-"
-    #     return models_list
+    def get_ui_class(self) -> GUI.InferenceGUI:
+        return GUI.SimpleInferenceGUI
 
-    # def get_models_list(self) -> List[Dict[str, str]]:
-    #     raise RuntimeError("Have to be implemented in child class after inheritance")
+    def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
+        raise RuntimeError("Have to be implemented in child class after inheritance")
+
+    def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        # fill skipped columns
+        all_columns = []
+        for model_dict in models_list:
+            cols = model_dict.keys()
+            all_columns.extend([col for col in cols if col not in all_columns])
+        for i, model_dict in enumerate(models_list):
+            for col in all_columns:
+                if col not in model_dict.keys():
+                    models_list[i][col] = "-"
+        return models_list
 
     def load_on_device(
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"

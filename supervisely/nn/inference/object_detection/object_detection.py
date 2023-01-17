@@ -44,9 +44,16 @@ class ObjectDetection(Inference):
         )
 
     def serve(self):
-        if self.gui is not None:
+        if self._use_gui is not None:
+            models = self.get_models()
+            if isinstance(models, list):
+                models = self._preprocess_models_list(models)
+            elif isinstance(models, dict):
+                for model_group in models.keys():
+                    models[model_group] = self._preprocess_models_list(models[model_group])
+            self._gui = self.get_ui_class()(models)
 
-            @self.gui.get_deploying_event()
+            @self.gui.serve_button.click
             def load_model():
                 device = self.gui.get_device()
                 # TODO: write to location

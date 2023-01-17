@@ -4,8 +4,9 @@ from supervisely.app.content import StateJson
 
 
 class InferenceGUI:
-    def get_deploying_event(self) -> Callable:
-        # return self.serve_button.click
+    @property
+    def serve_button(self) -> Widgets.Widget:
+        # return self.serve_button
         raise NotImplementedError("Have to be implemented in child class")
 
     def get_device(self) -> str:
@@ -15,7 +16,7 @@ class InferenceGUI:
     def set_deployed(self) -> None:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def get_container(self) -> Widgets.Widget:
+    def get_ui(self) -> Widgets.Widget:
         # return Widgets.Container(widgets_list)
         raise NotImplementedError("Have to be implemented in child class")
 
@@ -112,14 +113,15 @@ class SimpleInferenceGUI(InferenceGUI):
             return None  # TODO: or raise Error?
         return self._model_path_input.get_value()
 
-    def get_deploying_event(self) -> Callable:
-        return self._serve_button.click
+    @property
+    def serve_button(self) -> Widgets.Widget:
+        return self._serve_button
 
     def set_deployed(self):
         self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
         self._success_label.show()
 
-    def get_container(self) -> Widgets.Widget:
+    def get_ui(self) -> Widgets.Widget:
         widgets = []
         if self._support_custom_models:
             widgets.append(self._tabs)
