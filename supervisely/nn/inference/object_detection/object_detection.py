@@ -46,9 +46,10 @@ class ObjectDetection(Inference):
     def serve(self):
         if self.gui is not None:
 
-            @self.gui._serve_button.click  # TODO: change
+            @self.gui.get_deploying_event()
             def load_model():
                 device = self.gui.get_device()
+                # TODO: write to location
                 self.load_on_device(device)
                 self.gui.set_deployed()
 

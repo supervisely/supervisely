@@ -62,7 +62,7 @@ class RadioTable(Widget):
                 frow.append(self.format_value(col, val))
             self._frows.append(frow)
 
-    def get_selected_row(self, state):
+    def get_selected_row(self, state=StateJson()):
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
