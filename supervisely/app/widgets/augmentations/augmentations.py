@@ -172,8 +172,8 @@ class AugmentationsWithTabs(Widget):
         self._task_type = task_type
         self._remote_preview_path = remote_preview_path
         
-        self._augs1 = Augmentations()
-        self._augs2 = Augmentations()
+        self._augs1 = Augmentations(image_info=self._image_info, task_type=self._task_type)
+        self._augs2 = Augmentations(image_info=self._image_info, task_type=self._task_type)
         self._augs2._editor.hide()
         self._augs2._button_preview.hide()
         self._template_path_input = Input(placeholder="Path to .json file in Team Files")
