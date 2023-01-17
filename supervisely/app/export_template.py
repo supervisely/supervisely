@@ -25,8 +25,8 @@ class Export:
 
         def __str__(self):
             return (
-                f"Team: {self._team}\n"
-                f"Workspace: {self._workspace}\n"
+                f"Team: {self._team_id}\n"
+                f"Workspace: {self._workspace_id}\n"
                 f"Project: {self._project}\n"
                 f"Dataset: {self._datasets}\n"
             )
