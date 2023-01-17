@@ -140,7 +140,7 @@ class Export:
             remote_dir_files = api.file.listdir(team_id, remote_path)
             if len(remote_dir_files) == 0:
                 raise ValueError(
-                    f"There are no files in the results directory {remote_path}, check you input data."
+                    f"Remote directory is empty check you input data. Remote path: '{remote_path}'"
                 )
             for curr_file in remote_dir_files:
                 file_info = api.file.get_info_by_path(team_id, curr_file)
