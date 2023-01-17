@@ -1,16 +1,18 @@
-from supervisely._utils import is_production
-import supervisely.io.env as env
-from supervisely.api.api import Api
-from supervisely.app import get_data_dir
-from os.path import join, isdir, isfile, basename
-from supervisely.io.fs import get_file_name_with_ext
-from supervisely import Progress
-import supervisely as sly
-from typing import NamedTuple
-from supervisely.project.project_type import ProjectType
-from supervisely.io.fs import silent_remove, remove_dir
-from supervisely.api.project_api import ProjectInfo
 import os
+from os.path import basename, isdir, isfile, join
+from typing import NamedTuple
+
+import supervisely.io.env as env
+from supervisely import Progress
+from supervisely._utils import is_production
+from supervisely.api.api import Api
+from supervisely.api.project_api import ProjectInfo
+from supervisely.app import get_data_dir
+from supervisely.io.fs import get_file_name_with_ext, remove_dir, silent_remove
+from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
+from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 
 class Export:
@@ -135,9 +137,7 @@ class Export:
             raise ValueError(
                 f"Project with ID: {project_id} either archived or you don't have access to it"
             )
-        sly.logger.info(
-            f"Exporting Project: id={project.id}, name={project.name}, type={project.type}"
-        )
+        logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
 
         context = self.prepare(
             api=api,
@@ -155,10 +155,10 @@ class Export:
         def _print_progress(monitor, upload_progress):
             if len(upload_progress) == 0:
                 upload_progress.append(
-                    sly.Progress(
+                    Progress(
                         message=f"Uploading '{task_id}_{basename(local_path)}'",
                         total_cnt=monitor.len,
-                        ext_logger=sly.logger,
+                        ext_logger=logger,
                         is_size=True,
                     )
                 )
@@ -166,7 +166,7 @@ class Export:
 
         if isfile(local_path):
             remote_path = join(
-                sly.team_files.RECOMMENDED_EXPORT_PATH,
+                RECOMMENDED_EXPORT_PATH,
                 app_name,
                 f"{task_id}_{get_file_name_with_ext(local_path)}",
             )
@@ -179,11 +179,11 @@ class Export:
             api.task.set_output_archive(
                 task_id=task_id, file_id=file_info.id, file_name=file_info.name
             )
-            sly.logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
+            logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
             silent_remove(local_path)
         elif isdir(local_path):
             remote_path = join(
-                sly.team_files.RECOMMENDED_EXPORT_PATH,
+                RECOMMENDED_EXPORT_PATH,
                 app_name,
                 f"{task_id}_{basename(local_path)}",
             )
@@ -202,5 +202,5 @@ class Export:
             api.task.set_output_directory(
                 task_id=task_id, file_id=file_info.id, directory_path=remote_path
             )
-            sly.logger.info(f"Remote directory: id={file_info.id}, name={remote_path}")
+            logger.info(f"Remote directory: id={file_info.id}, name={remote_path}")
             remove_dir(local_path)
