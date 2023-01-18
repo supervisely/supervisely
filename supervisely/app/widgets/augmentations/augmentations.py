@@ -5,7 +5,7 @@ from typing import List, Optional, Dict
 from collections import namedtuple
 
 import supervisely as sly
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Container, Widget, RadioTabs, Editor, GridGallery, Select, Input, Field, Button
 
 import src.sly_globals as g
@@ -157,6 +157,22 @@ class Augmentations(Widget):
         py_code = sly.imgaug_utils.pipeline_to_python(config["pipeline"], config["random_order"])
         return pipeline, py_code
 
+    def disable(self):
+        self._disabled = True
+        self._editor.disable()
+        self._grid_gallery.disable()
+        self._button_preview.disable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._disabled = False
+        self._editor.enable()
+        self._grid_gallery.enable()
+        self._button_preview.enable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
 
 class AugmentationsWithTabs(Widget):
     def __init__(
@@ -242,3 +258,17 @@ class AugmentationsWithTabs(Widget):
         custom_pipeline_path = os.path.join(g.data_dir, sly.fs.get_file_name_with_ext(remote_path))
         g.api.file.download(g.team.id, remote_path, custom_pipeline_path)
         self._current_augs.update_augmentations(custom_pipeline_path)
+
+    def disable(self):
+        self._disabled = True
+        self._current_augs.disable()
+        self._radio_tabs.disable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._disabled = False
+        self._current_augs.enable()
+        self._radio_tabs.enable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
