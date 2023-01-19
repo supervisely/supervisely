@@ -17,6 +17,7 @@ class BindedInputNumber(Widget):
         self._min = min
         self._max = max
         self._proportional = proportional
+        self._disabled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -27,7 +28,8 @@ class BindedInputNumber(Widget):
                     "width": self._width,
                     "height": self._height
                 }
-            }
+            },
+            "disabled": self._disabled
         }
 
     def get_json_state(self):
@@ -58,7 +60,6 @@ class BindedInputNumber(Widget):
         height =  StateJson()[self.widget_id]['value']["height"]
         return width, height
 
-
     @property
     def proportional(self):
         return self._proportional
@@ -87,4 +88,15 @@ class BindedInputNumber(Widget):
     def max(self, value):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
+        DataJson().send_changes()
+
+
+    def disable(self):
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()

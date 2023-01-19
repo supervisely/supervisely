@@ -14,7 +14,7 @@ class Stepper(Widget):
         self.titles = titles
         if len(titles) == 0:
             titles = ['' for x in range(len(widgets))]
-        self.content = zip(titles, widgets)
+        self.content = list(zip(titles, widgets))
         self.active_step = active_step
         super().__init__(widget_id=widget_id, file_path=__file__)
 

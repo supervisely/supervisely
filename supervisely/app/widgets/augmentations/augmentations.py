@@ -27,7 +27,14 @@ class Augmentations(Widget):
         self._pipeline = None
         self._py_code = None
 
-        self._editor = Editor(language_mode='python', height_px=250, readonly=True)
+        self._editor = Editor(
+            language_mode='python', 
+            height_px=250, 
+            readonly=True, 
+            show_line_numbers=True,
+            highlight_active_line=False,
+            restore_default_button=False,
+        )
         self._grid_gallery = GridGallery(
             columns_number=2,
             annotations_opacity=0.3,
@@ -261,14 +268,20 @@ class AugmentationsWithTabs(Widget):
 
     def disable(self):
         self._disabled = True
-        self._current_augs.disable()
         self._radio_tabs.disable()
+        self._current_augs.disable()
+        self._template_selector.disable()
+        self._template_path_input.disable()
+        self._button_template_update.disable()
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
 
     def enable(self):
         self._disabled = False
-        self._current_augs.enable()
         self._radio_tabs.enable()
+        self._current_augs.enable()
+        self._template_selector.enable()
+        self._template_path_input.enable()
+        self._button_template_update.enable()
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
