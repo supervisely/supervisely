@@ -3,7 +3,7 @@ from os.path import basename, isdir, join
 import supervisely.io.env as env
 from supervisely import Progress
 from supervisely.api.api import Api
-from supervisely.api.project_api import ProjectInfo
+from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -64,6 +64,13 @@ class Export:
                 f"Project with ID: {project_id} either archived or you don't have access to it"
             )
         logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
+
+        if dataset_id is not None:
+            dataset = api.dataset.get_info_by_id(id=dataset_id)
+            if dataset is None:
+                raise ValueError(
+                    f"Dataset with ID: {dataset_id} either archived or you don't have access to it"
+                )
 
         context = self.Context(
             team_id=team_id, workspace_id=workspace_id, project_id=project_id, dataset_id=dataset_id
