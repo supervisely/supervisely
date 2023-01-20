@@ -99,7 +99,7 @@ class Export:
             upload_progress[0].set_current_value(monitor.bytes_read)
 
         if isdir(local_path):
-            archive_path = local_path + ".tar"
+            archive_path = f"{local_path}.tar"
             archive_directory(local_path, archive_path)
             local_path = archive_path
 
