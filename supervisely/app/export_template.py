@@ -9,6 +9,7 @@ from supervisely.task.progress import Progress
 from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 from supervisely.io.fs import archive_directory
 from typing import Optional
+from supervisely._utils import is_production
 
 
 class Export:
@@ -50,7 +51,9 @@ class Export:
 
     def run(self):
         api = Api.from_env()
-        task_id = env.task_id()
+        task_id = None
+        if is_production():
+            task_id = env.task_id()
 
         team_id = env.team_id()
         workspace_id = env.workspace_id()
@@ -102,18 +105,21 @@ class Export:
             archive_directory(local_path, archive_path)
             local_path = archive_path
 
-        remote_path = join(
-            RECOMMENDED_EXPORT_PATH,
-            app_name,
-            str(task_id),
-            f"{get_file_name_with_ext(local_path)}",
-        )
-        file_info = api.file.upload(
-            team_id=team_id,
-            src=local_path,
-            dst=remote_path,
-            progress_cb=lambda m: _print_progress(m, upload_progress),
-        )
-        api.task.set_output_archive(task_id=task_id, file_id=file_info.id, file_name=file_info.name)
-        logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
-        silent_remove(local_path)
+        if is_production():
+            remote_path = join(
+                RECOMMENDED_EXPORT_PATH,
+                app_name,
+                str(task_id),
+                f"{get_file_name_with_ext(local_path)}",
+            )
+            file_info = api.file.upload(
+                team_id=team_id,
+                src=local_path,
+                dst=remote_path,
+                progress_cb=lambda m: _print_progress(m, upload_progress),
+            )
+            api.task.set_output_archive(
+                task_id=task_id, file_id=file_info.id, file_name=file_info.name
+            )
+            logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
+            silent_remove(local_path)
