@@ -63,7 +63,7 @@ class Export:
         project = api.project.get_info_by_id(id=project_id)
         if project is None:
             raise ValueError(
-                f"Project with ID: {project_id} either doesn't exist, archived or you don't have access to it"
+                f"Project with ID: '{project_id}' either doesn't exist, archived or you don't have access to it"
             )
         logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
 
