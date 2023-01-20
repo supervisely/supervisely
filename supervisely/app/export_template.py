@@ -86,26 +86,26 @@ class Export:
         if type(local_path) is not str:
             raise ValueError("Path must be a 'string'")
 
-        upload_progress = []
-
-        def _print_progress(monitor, upload_progress):
-            if len(upload_progress) == 0:
-                upload_progress.append(
-                    Progress(
-                        message=f"Uploading '{basename(local_path)}'",
-                        total_cnt=monitor.len,
-                        ext_logger=logger,
-                        is_size=True,
-                    )
-                )
-            upload_progress[0].set_current_value(monitor.bytes_read)
-
         if isdir(local_path):
             archive_path = f"{local_path}.tar"
             archive_directory(local_path, archive_path)
             local_path = archive_path
 
         if is_production():
+            upload_progress = []
+
+            def _print_progress(monitor, upload_progress):
+                if len(upload_progress) == 0:
+                    upload_progress.append(
+                        Progress(
+                            message=f"Uploading '{basename(local_path)}'",
+                            total_cnt=monitor.len,
+                            ext_logger=logger,
+                            is_size=True,
+                        )
+                    )
+                upload_progress[0].set_current_value(monitor.bytes_read)
+
             remote_path = join(
                 RECOMMENDED_EXPORT_PATH,
                 app_name,
