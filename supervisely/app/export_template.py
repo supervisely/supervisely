@@ -3,7 +3,6 @@ from os.path import basename, isdir, join
 import supervisely.io.env as env
 from supervisely import Progress
 from supervisely.api.api import Api
-from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
