@@ -207,11 +207,11 @@ class VolumeApi(RemoveableBulkModuleApi):
                     for i in batch:
                         normal = Plane.get_normal(plane)
 
-                        if plane == str(Plane.SAGITTAL):
+                        if plane == Plane.SAGITTAL:
                             pixel_data = np_data[i, :, :]
-                        elif plane == str(Plane.CORONAL):
+                        elif plane == Plane.CORONAL:
                             pixel_data = np_data[:, i, :]
-                        elif plane == str(Plane.AXIAL):
+                        elif plane == Plane.AXIAL:
                             pixel_data = np_data[:, :, i]
                         else:
                             raise ValueError(f"Unknown plane {plane}")
