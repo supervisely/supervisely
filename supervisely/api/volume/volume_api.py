@@ -20,7 +20,11 @@ from supervisely._utils import batched
 from supervisely import logger
 from supervisely.task.progress import Progress
 from supervisely.imaging.image import read_bytes
-from supervisely.volume.plane_name import PlaneName
+from supervisely.volume_annotation.plane import Plane
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 
 class VolumeInfo(NamedTuple):
@@ -192,21 +196,22 @@ class VolumeApi(RemoveableBulkModuleApi):
         # x = 1 - sagittal
         # y = 1 - coronal
         # z = 1 - axial
+        planes = [Plane.SAGITTAL, Plane.CORONAL, Plane.AXIAL]
 
-        for (plane, dimension) in zip(PlaneName.values(), np_data.shape):
+        for (plane, dimension) in zip(planes, np_data.shape):
             for batch in batched(list(range(dimension))):
                 slices = []
                 slices_bytes = []
                 slices_hashes = []
                 try:
                     for i in batch:
-                        normal = volume.get_normal_by_name(plane)
+                        normal = Plane.get_normal(plane)
 
-                        if plane == str(PlaneName.SAGITTAL):
+                        if plane == str(Plane.SAGITTAL):
                             pixel_data = np_data[i, :, :]
-                        elif plane == str(PlaneName.CORONAL):
+                        elif plane == str(Plane.CORONAL):
                             pixel_data = np_data[:, i, :]
-                        elif plane == str(PlaneName.AXIAL):
+                        elif plane == str(Plane.AXIAL):
                             pixel_data = np_data[:, :, i]
                         else:
                             raise ValueError(f"Unknown plane {plane}")
@@ -319,11 +324,11 @@ class VolumeApi(RemoveableBulkModuleApi):
         self,
         volume_id: int,
         slice_index: int,
-        plane: PlaneName,
+        plane: Literal["sagittal", "coronal", "axial"],
         window_center: float = None,
         window_width: int = None,
     ):
-        normal = volume.get_normal_by_name(plane)
+        normal = Plane.get_normal(plane)
         meta = self.get_info_by_id(volume_id).meta
 
         if window_center is None:

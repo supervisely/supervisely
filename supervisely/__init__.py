@@ -200,7 +200,6 @@ from supervisely.io import github_utils as git
 from supervisely.aug import imgaug_utils
 
 import supervisely.volume as volume
-from supervisely.volume.plane_name import PlaneName
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (

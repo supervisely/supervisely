@@ -15,7 +15,4 @@ from .volume import (
     inspect_nrrd_series,
     read_nrrd_serie_volume,
     read_nrrd_serie_volume_np,
-    get_normal_by_name,
 )
-
-from .plane_name import PlaneName

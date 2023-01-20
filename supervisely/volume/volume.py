@@ -11,7 +11,6 @@ import stringcase
 from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
-from supervisely.volume.plane_name import PlaneName
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -318,12 +317,3 @@ def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
-
-
-def get_normal_by_name(plane: PlaneName) -> dict:
-    if str(plane) not in PlaneName.values():
-        raise ValueError(f'Incorrect plane name: "{plane}".')
-    normal = {"x": 0, "y": 0, "z": 0}
-    normal[str(plane)] = 1
-
-    return normal
