@@ -22,6 +22,7 @@ from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.fs import (
     get_file_hash,
+    get_file_name,
     get_file_ext,
     get_file_size,
     list_files_recursively,

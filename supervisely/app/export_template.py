@@ -3,13 +3,14 @@ from os.path import basename, isdir, join
 import supervisely.io.env as env
 from supervisely import Progress
 from supervisely.api.api import Api
-from supervisely.io.fs import get_file_name_with_ext, silent_remove
+from supervisely.io.fs import get_file_name_with_ext, silent_remove, remove_dir
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 from supervisely.io.fs import archive_directory
 from typing import Optional
 from supervisely._utils import is_production
+from supervisely.app.fastapi import get_name_from_env
 
 
 class Export:
@@ -46,7 +47,7 @@ class Export:
         def dataset_id(self) -> int:
             return self._dataset_id
 
-    def process(self, context: Context) -> tuple:
+    def process(self, context: Context) -> str:
         raise NotImplementedError()  # implement your own method when inherit
 
     def run(self):
@@ -63,7 +64,7 @@ class Export:
         project = api.project.get_info_by_id(id=project_id)
         if project is None:
             raise ValueError(
-                f"Project with ID: {project_id} either archived or you don't have access to it"
+                f"Project with ID: {project_id} either archived or not exist or you don't have access to it"
             )
         logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
 
@@ -71,7 +72,7 @@ class Export:
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             if dataset is None:
                 raise ValueError(
-                    f"Dataset with ID: {dataset_id} either archived or you don't have access to it"
+                    f"Dataset with ID: {dataset_id} either archived or not exist or you don't have access to it"
                 )
             logger.info(
                 f"Exporting Dataset: id={dataset.id}, name={dataset.name}, type={dataset.type}"
@@ -81,7 +82,7 @@ class Export:
             team_id=team_id, workspace_id=workspace_id, project_id=project_id, dataset_id=dataset_id
         )
 
-        local_path, app_name = self.process(context=context)
+        local_path = self.process(context=context)
 
         if type(local_path) is not str:
             raise ValueError("Path must be a 'string'")
@@ -89,6 +90,7 @@ class Export:
         if isdir(local_path):
             archive_path = f"{local_path}.tar"
             archive_directory(local_path, archive_path)
+            remove_dir(local_path)
             local_path = archive_path
 
         if is_production():
@@ -108,7 +110,7 @@ class Export:
 
             remote_path = join(
                 RECOMMENDED_EXPORT_PATH,
-                app_name,
+                get_name_from_env(),
                 str(task_id),
                 f"{get_file_name_with_ext(local_path)}",
             )
