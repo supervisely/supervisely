@@ -1,16 +1,16 @@
 from os.path import basename, isdir, join
+from typing import Optional
 
 import supervisely.io.env as env
 from supervisely import Progress
+from supervisely._utils import is_production
 from supervisely.api.api import Api
-from supervisely.io.fs import get_file_name_with_ext, silent_remove, remove_dir
+from supervisely.app.fastapi import get_name_from_env
+from supervisely.io.fs import (archive_directory, get_file_name_with_ext,
+                               remove_dir, silent_remove)
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.team_files import RECOMMENDED_EXPORT_PATH
-from supervisely.io.fs import archive_directory
-from typing import Optional
-from supervisely._utils import is_production
-from supervisely.app.fastapi import get_name_from_env
 
 
 class Export:
