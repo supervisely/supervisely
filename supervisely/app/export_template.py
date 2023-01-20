@@ -6,8 +6,7 @@ from supervisely import Progress
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import get_name_from_env
-from supervisely.io.fs import (archive_directory, get_file_name_with_ext,
-                               remove_dir, silent_remove)
+from supervisely.io.fs import archive_directory, get_file_name_with_ext, remove_dir, silent_remove
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.team_files import RECOMMENDED_EXPORT_PATH
@@ -64,7 +63,7 @@ class Export:
         project = api.project.get_info_by_id(id=project_id)
         if project is None:
             raise ValueError(
-                f"Project with ID: {project_id} either archived or not exist or you don't have access to it"
+                f"Project with ID: {project_id} either doesn't exist, archived or you don't have access to it"
             )
         logger.info(f"Exporting Project: id={project.id}, name={project.name}, type={project.type}")
 
@@ -72,7 +71,7 @@ class Export:
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             if dataset is None:
                 raise ValueError(
-                    f"Dataset with ID: {dataset_id} either archived or not exist or you don't have access to it"
+                    f"Dataset with ID: '{dataset_id}' either doesn't exist, archived or you don't have access to it"
                 )
             logger.info(
                 f"Exporting Dataset: id={dataset.id}, name={dataset.name}, type={dataset.type}"
