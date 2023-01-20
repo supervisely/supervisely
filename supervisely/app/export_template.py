@@ -71,6 +71,9 @@ class Export:
                 raise ValueError(
                     f"Dataset with ID: {dataset_id} either archived or you don't have access to it"
                 )
+            logger.info(
+                f"Exporting Dataset: id={dataset.id}, name={dataset.name}, type={dataset.type}"
+            )
 
         context = self.Context(
             team_id=team_id, workspace_id=workspace_id, project_id=project_id, dataset_id=dataset_id
