@@ -39,14 +39,14 @@ class Export:
             return self._workspace_id
 
         @property
-        def project_id(self) -> ProjectInfo:
+        def project_id(self) -> int:
             return self._project_id
 
         @property
-        def dataset_id(self) -> list:
+        def dataset_id(self) -> int:
             return self._dataset_id
 
-    def process(self, context: Context) -> str:
+    def process(self, context: Context) -> tuple:
         raise NotImplementedError()  # implement your own method when inherit
 
     def run(self):
