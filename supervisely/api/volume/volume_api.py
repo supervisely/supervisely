@@ -19,6 +19,8 @@ import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely._utils import batched
 from supervisely import logger
 from supervisely.task.progress import Progress
+from supervisely.imaging.image import read_bytes
+from supervisely.volume.plane_name import PlaneName
 
 
 class VolumeInfo(NamedTuple):
@@ -191,24 +193,21 @@ class VolumeApi(RemoveableBulkModuleApi):
         # y = 1 - coronal
         # z = 1 - axial
 
-        for (plane, dimension) in zip(["sagittal", "coronal", "axial"], np_data.shape):
+        for (plane, dimension) in zip(PlaneName.values(), np_data.shape):
             for batch in batched(list(range(dimension))):
                 slices = []
                 slices_bytes = []
                 slices_hashes = []
                 try:
                     for i in batch:
-                        normal = {"x": 0, "y": 0, "z": 0}
+                        normal = volume.get_normal_by_name(plane)
 
-                        if plane == "sagittal":
+                        if plane == str(PlaneName.SAGITTAL):
                             pixel_data = np_data[i, :, :]
-                            normal["x"] = 1
-                        elif plane == "coronal":
+                        elif plane == str(PlaneName.CORONAL):
                             pixel_data = np_data[:, i, :]
-                            normal["y"] = 1
-                        elif plane == "axial":
+                        elif plane == str(PlaneName.AXIAL):
                             pixel_data = np_data[:, :, i]
-                            normal["z"] = 1
                         else:
                             raise ValueError(f"Unknown plane {plane}")
 
@@ -315,3 +314,39 @@ class VolumeApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(1)
         return volume_infos
+
+    def download_slice_np(
+        self,
+        volume_id: int,
+        slice_index: int,
+        plane: PlaneName,
+        window_center: float = None,
+        window_width: int = None,
+    ):
+        normal = volume.get_normal_by_name(plane)
+        meta = self.get_info_by_id(volume_id).meta
+
+        if window_center is None:
+            if "windowCenter" in meta:
+                window_center = meta["windowCenter"]
+            else:
+                window_center = meta["intensity"]["min"] + meta["windowWidth"] / 2
+
+        if window_width is None:
+            if "windowWidth" in meta:
+                window_width = meta["windowWidth"]
+            else:
+                window_width = meta["intensity"]["max"] - meta["intensity"]["min"]
+
+        data = {
+            "volumeId": volume_id,
+            "sliceIndex": slice_index,
+            "normal": normal,
+            "windowCenter": window_center,
+            "windowWidth": window_width,
+        }
+        image_bytes = self._api.post(
+            method="volumes.slices.images.download", data=data, stream=True
+        ).content
+
+        return read_bytes(image_bytes)
