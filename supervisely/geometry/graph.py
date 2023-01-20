@@ -212,9 +212,9 @@ class GraphNodes(Geometry):
             self._nodes = {}
             for i, node in enumerate(nodes):
                 if node._label is not None:
-                    self._nodes[node._label] = Node(node._location)
+                    self._nodes[node._label] = Node(node._location, node._disabled)
                 else:
-                    self._nodes[str(i)] = Node(node._location)
+                    self._nodes[str(i)] = Node(node._location, node._disabled)
 
     @property
     def nodes(self) -> Dict[str, Dict]:
