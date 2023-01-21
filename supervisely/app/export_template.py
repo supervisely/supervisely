@@ -47,7 +47,7 @@ class Export:
             return self._dataset_id
 
     def process(self, context: Context) -> str:
-        raise NotImplementedError()  # implement your own method when inherit
+        raise NotImplementedError("implement your own method when inherit") 
 
     def run(self):
         api = Api.from_env()
