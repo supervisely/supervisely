@@ -47,7 +47,7 @@ class Export:
             return self._dataset_id
 
     def process(self, context: Context) -> str:
-        raise NotImplementedError("implement your own method when inherit") 
+        raise NotImplementedError("implement your own method when inherit")
 
     def run(self):
         api = Api.from_env()
@@ -73,9 +73,7 @@ class Export:
                 raise ValueError(
                     f"Dataset with ID: '{dataset_id}' either doesn't exist, archived or you don't have access to it"
                 )
-            logger.info(
-                f"Exporting Dataset: id={dataset.id}, name={dataset.name}, type={dataset.type}"
-            )
+            logger.info(f"Exporting Dataset: id={dataset.id}, name={dataset.name}")
 
         context = self.Context(
             team_id=team_id, workspace_id=workspace_id, project_id=project_id, dataset_id=dataset_id
