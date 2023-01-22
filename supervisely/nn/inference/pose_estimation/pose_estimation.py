@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union, Optional
 from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.graph import GraphNodes
 from supervisely.nn.prediction_dto import PredictionKeypoints
@@ -7,10 +7,34 @@ from supervisely.annotation.tag import Tag
 from supervisely.nn.inference.inference import Inference
 from supervisely.task.progress import Progress
 import supervisely as sly
-from supervisely.geometry.graph import Node
+from supervisely.geometry.graph import Node, KeypointsTemplate
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.annotation.obj_class import ObjClass
+
+try:
+    from typing import Literal
+except ImportError:
+    # for compatibility with python 3.7
+    from typing_extensions import Literal
 
 
 class PoseEstimation(Inference):
+    def __init__(
+        self,
+        location: Optional[
+            Union[str, List[str]]
+        ] = None,  # folders of files with model or configs, from Team Files or external links
+        custom_inference_settings: Optional[
+            Union[Dict[str, Any], str]
+        ] = None,  # dict with settings or path to .yml file
+        sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
+        point_names: Optional[List[str]] = None,
+        keypoints_template: Optional[KeypointsTemplate] = None,
+    ):
+        Inference.__init__(self, location, custom_inference_settings, sliding_window_mode)
+        self.point_names = point_names
+        self.keypoints_template = keypoints_template
+
     def _get_templates_dir(self):
         # template_dir = os.path.join(
         #     Path(__file__).parent.absolute(), "dashboard/templates"
@@ -35,6 +59,22 @@ class PoseEstimation(Inference):
 
     def _get_obj_class_shape(self):
         return GraphNodes
+
+    @property
+    def model_meta(self) -> ProjectMeta:
+        if self._model_meta is None:
+            classes = []
+            for name in self.get_classes():
+                classes.append(
+                    ObjClass(
+                        name,
+                        self._get_obj_class_shape(),
+                        geometry_config=self.keypoints_template,
+                    )
+                )
+            self._model_meta = ProjectMeta(classes)
+            self._get_confidence_tag_meta()
+        return self._model_meta
 
     def _create_label(self, dto: PredictionKeypoints):
         obj_class = self.model_meta.get_obj_class(dto.class_name)

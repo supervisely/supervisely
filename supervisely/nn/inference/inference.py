@@ -33,7 +33,6 @@ from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 
 try:
     from typing import Literal
@@ -52,8 +51,6 @@ class Inference:
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
-        point_names: Optional[List[str]] = None,
-        keypoints_template: Optional[KeypointsTemplate] = None,
     ):
         self._model_meta = None
         self._confidence = "confidence"
@@ -61,8 +58,6 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
-        self.point_names = point_names
-        self.keypoints_template = keypoints_template
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -188,16 +183,7 @@ class Inference:
             colors = get_predefined_colors(len(self.get_classes()))
             classes = []
             for name, rgb in zip(self.get_classes(), colors):
-                if self._get_obj_class_shape() == GraphNodes:
-                    classes.append(
-                        ObjClass(
-                            name,
-                            self._get_obj_class_shape(),
-                            geometry_config=self.keypoints_template,
-                        )
-                    )
-                else:
-                    classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
             self._model_meta = ProjectMeta(classes)
             self._get_confidence_tag_meta()
         return self._model_meta
