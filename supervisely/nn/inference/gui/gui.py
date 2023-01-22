@@ -1,5 +1,6 @@
 from typing import List, Dict, Union
 import supervisely.app.widgets as Widgets
+from supervisely.task.progress import Progress
 
 
 class BaseInferenceGUI:
@@ -19,6 +20,17 @@ class BaseInferenceGUI:
         # return Widgets.Container(widgets_list)
         raise NotImplementedError("Have to be implemented in child class")
 
+    def get_location(self) -> Union[str, List[str]]:
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def get_custom_files(self, custom_link: str) -> Dict[str, str]:
+        # weights_remote_dir = os.path.dirname(custom_link)
+        # return {
+        #     "weights_file": custom_link,
+        #     "config_file": os.path.join(weights_remote_dir, 'config.py')
+        # }
+        return None
+
 
 class InferenceGUI(BaseInferenceGUI):
     def __init__(
@@ -31,7 +43,11 @@ class InferenceGUI(BaseInferenceGUI):
             self._support_submodels = False
         self._models = models
         self._support_custom_models = True  # TODO: temporary solution
+        self._support_pretrained_models = True  # TODO: check If get_models() method is implemented
+        assert self._support_custom_models or self._support_pretrained_models
 
+        self._weights_file_key = "weights_file"
+        self._config_file_key = "config_file"
         device_values = []
         device_names = []
         try:
@@ -52,15 +68,22 @@ class InferenceGUI(BaseInferenceGUI):
         self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
         if self._support_submodels:
+            # TODO: add paper_from and year
+            # for model_name, model_data in models.items():
+            #     for param_name, param_val in model_data.items():
+            #         if param_name == "checkpoints":
+            #             continue
+            #         elif param_name == "paper_from":
+
             self._model_select = Widgets.SelectString(list(models.keys()))
             selected_model = self._model_select.get_value()
-            cols = list(models[selected_model][0].keys())
-            rows = [list(model.values()) for model in models[selected_model]]
+            cols = list(models[selected_model]["checkpoints"][0].keys())
+            rows = [list(model.values()) for model in models[selected_model]["checkpoints"]]
 
             @self._model_select.value_changed
             def update_table(value):
-                cols = list(self._models[value][0].keys())
-                rows = [list(model.values()) for model in self._models[value]]
+                cols = list(self._models[value]["checkpoints"][0].keys())
+                rows = [list(model.values()) for model in self._models[value]["checkpoints"]]
                 self._models_table.columns = cols
                 self._models_table.rows = rows
 
@@ -93,13 +116,18 @@ class InferenceGUI(BaseInferenceGUI):
     def get_device(self) -> str:
         return self._device_select.get_value()
 
-    def get_model_info(self) -> Union[Dict[str, str], Dict[str, Dict[str, str]]]:
+    def get_model_info(self) -> Dict[str, Dict[str, str]]:
+        if not self._support_submodels:
+            return None
+        selected_model = self._model_select.get_value()
+        selected_model_info = self._models[selected_model].copy()
+        del selected_model_info["checkpoints"]
+        return {selected_model: selected_model_info}
+
+    def get_checkpoint_info(self) -> Dict[str, str]:
         model_cols = self._models_table.columns
         model_row = self._models_table.get_selected_row()
         row_dict = {col: val for col, val in zip(model_cols, model_row)}
-        if self._support_submodels:
-            model_group_name = self._model_select.get_value()
-            row_dict = {model_group_name: row_dict}
         return row_dict
 
     def get_model_source(self) -> str:
@@ -107,10 +135,23 @@ class InferenceGUI(BaseInferenceGUI):
             return "Pretrained models"
         return self._tabs.get_active_tab()
 
-    def get_custom_model_link(self) -> str:
-        if not self._support_custom_models:
-            return None  # TODO: or raise Error?
-        return self._model_path_input.get_value()
+    def get_location(self) -> Dict[str, str]:
+        location = {}
+        if self.get_model_source() == "Pretrained models":
+            checkpoint_info = self.get_checkpoint_info()
+            if self._weights_file_key in checkpoint_info.keys():
+                location[self._weights_file_key] = checkpoint_info[self._weights_file_key]
+            if self._config_file_key in checkpoint_info.keys():
+                location[self._config_file_key] = checkpoint_info[self._config_file_key]
+        elif self.get_model_source() == "Custom models":
+            custom_weights_link = self._model_path_input.get_value()
+            custom_files = self.get_custom_files(custom_weights_link)
+            if custom_files is not None:
+                for file_key, file_link in custom_files.items():
+                    location[file_key] = file_link
+            else:
+                location["weights_file"] = custom_weights_link
+        return location
 
     @property
     def serve_button(self) -> Widgets.Widget:
@@ -119,6 +160,7 @@ class InferenceGUI(BaseInferenceGUI):
     def set_deployed(self):
         self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
         self._success_label.show()
+        Progress("Model deployed", 1).iter_done_report()
 
     def get_ui(self) -> Widgets.Widget:
         widgets = []
