@@ -3,8 +3,6 @@ import os
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
-    is_production,
-    is_development,
     is_debug_with_sly_net,
     rand_str,
 )
@@ -30,6 +28,7 @@ from supervisely.nn.prediction_dto import Prediction
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.task.progress import Progress
+from supervisely.nn.inference import FilesContext
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
@@ -56,6 +55,7 @@ class Inference:
         use_gui: Optional[bool] = False,
     ):
         self._model_meta = None
+        self._location = location
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
@@ -72,59 +72,6 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
         self._use_gui = use_gui
         self._gui = None
-
-        self._prepare_model_files(location)
-
-    def _download_from_location(self, location_link, local_files_path):
-        if fs.is_on_agent(location_link) or is_production():
-            team_id = env.team_id()
-            basename = os.path.basename(os.path.normpath(location_link))
-            local_path = os.path.join(local_files_path, basename)
-            progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
-            if fs.dir_exists(location_link) or fs.file_exists(location_link):
-                # only during debug, has no effect in production
-                local_path = os.path.abspath(location_link)
-            elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith(
-                "/"
-            ):  # folder from Team Files
-                logger.info(f"Remote directory in Team Files: {location_link}")
-                logger.info(f"Local directory: {local_path}")
-                sizeb = self.api.file.get_directory_size(team_id, location_link)
-                progress.set(current=0, total=sizeb)
-                self.api.file.download_directory(
-                    team_id,
-                    location_link,
-                    local_path,
-                    progress.iters_done_report,
-                )
-                print(f"📥 Directory {basename} has been successfully downloaded from Team Files")
-            elif self.api.file.exists(team_id, location_link):  # file from Team Files
-                file_info = self.api.file.get_info_by_path(env.team_id(), location_link)
-                progress.set(current=0, total=file_info.sizeb)
-                self.api.file.download(
-                    team_id, location_link, local_path, progress_cb=progress.iters_done_report
-                )
-                print(f"📥 File {basename} has been successfully downloaded from Team Files")
-            else:  # external url
-                fs.download(location_link, local_path, progress=progress)
-                print(f"📥 File {basename} has been successfully downloaded.")
-            print(f"File {basename} path: {local_path}")
-        else:
-            local_path = os.path.abspath(location_link)
-        return local_path
-
-    def _prepare_model_files(self, location: Optional[Union[str, List[str]]] = None):
-        self._location = None
-        if location is None:
-            return
-        local_files_path = os.path.join(get_data_dir(), "model")
-        fs.mkdir(local_files_path)
-        if isinstance(location, str):
-            self._location = self._download_from_location(location, local_files_path)
-        else:
-            self._location = []
-            for location_link in location:
-                self._location.append(self._download_from_location(location_link, local_files_path))
 
     def _prepare_device(self, device):
         if device is None:
@@ -148,6 +95,14 @@ class Inference:
 
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         raise RuntimeError("Have to be implemented in child class after inheritance")
+
+    def get_file_context(self, location: Dict[str, str]) -> FilesContext:
+        return FilesContext(location)
+
+    def get_custom_files(self, custom_link: str) -> Dict[str, str]:
+        if self.gui is not None:
+            return self.gui.get_custom_files(custom_link)
+        return None
 
     def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
         # fill skipped columns
@@ -173,15 +128,10 @@ class Inference:
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "model_files": self.location,
             "number_of_classes": len(self.get_classes()),
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
         }
-
-    @property
-    def location(self) -> Union[str, List[str]]:
-        return self._location
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -268,10 +218,9 @@ class Inference:
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
-            ann = self._predictions_to_annotation(image_path, predictions)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-            ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(image_path, predictions)
         return ann
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -449,9 +398,11 @@ class Inference:
 
             @self.gui.serve_button.click
             def load_model():
+                # TODO: maybe add custom logic?
                 device = self.gui.get_device()
-                # TODO: write to location
-                self.load_on_device(device)
+                location = self.gui.get_location()
+                file_context = self.get_file_context(location)
+                self.load_on_device(file_context, device)
                 self.gui.set_deployed()
 
         if is_debug_with_sly_net():
@@ -470,7 +421,8 @@ class Inference:
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
 
-        Progress("Model deployed", 1).iter_done_report()
+        if not self._use_gui:
+            Progress("Model deployed", 1).iter_done_report()
 
         @server.post(f"/get_session_info")
         def get_session_info():

@@ -1,5 +1,6 @@
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.inference.gui.gui import InferenceGUI, BaseInferenceGUI
+from supervisely.nn.inference.context import FilesContext, FilesContextItem, FileContextType
 from supervisely.nn.inference.instance_segmentation.instance_segmentation import (
     InstanceSegmentation,
 )
