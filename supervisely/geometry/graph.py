@@ -669,6 +669,10 @@ class KeypointsTemplate(GraphNodes, Geometry):
         _validate_color(color)
         if label in self._config["nodes"]:
             raise KeyError(f"Label {label} already exists in the graph")
+        if disabled:
+            raise NotImplementedError(
+                "Functionality for disabling nodes will be added in future supervisely versions"
+            )
         self._config["nodes"][label] = {
             "label": label,
             "loc": [row, col],
