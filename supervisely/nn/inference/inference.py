@@ -28,7 +28,7 @@ from supervisely.nn.prediction_dto import Prediction
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.task.progress import Progress
-from supervisely.nn.inference import FilesContext
+from supervisely.nn.inference.context import FilesContext
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
@@ -45,9 +45,6 @@ except ImportError:
 class Inference:
     def __init__(
         self,
-        location: Optional[
-            Union[str, List[str]]
-        ] = None,  # folders of files with model or configs, from Team Files or external links
         custom_inference_settings: Optional[
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
@@ -55,7 +52,6 @@ class Inference:
         use_gui: Optional[bool] = False,
     ):
         self._model_meta = None
-        self._location = location
         self._confidence = "confidence"
         self._app: Application = None
         self._api: Api = None
@@ -96,8 +92,8 @@ class Inference:
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         raise RuntimeError("Have to be implemented in child class after inheritance")
 
-    def get_file_context(self, location: Dict[str, str]) -> FilesContext:
-        return FilesContext(location)
+    def get_context(self, location: Dict[str, str]) -> FilesContext:
+        return FilesContext(self.api, location)
 
     def get_custom_files(self, custom_link: str) -> Dict[str, str]:
         if self.gui is not None:
@@ -117,7 +113,8 @@ class Inference:
         return models_list
 
     def load_on_device(
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
+        files_context: FilesContext,
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
@@ -393,7 +390,9 @@ class Inference:
                 models = self._preprocess_models_list(models)
             elif isinstance(models, dict):
                 for model_group in models.keys():
-                    models[model_group] = self._preprocess_models_list(models[model_group])
+                    models[model_group]["checkpoints"] = self._preprocess_models_list(
+                        models[model_group]["checkpoints"]
+                    )
             self._gui = self.get_ui_class()(models)
 
             @self.gui.serve_button.click
@@ -401,7 +400,7 @@ class Inference:
                 # TODO: maybe add custom logic?
                 device = self.gui.get_device()
                 location = self.gui.get_location()
-                file_context = self.get_file_context(location)
+                file_context = self.get_context(location)
                 self.load_on_device(file_context, device)
                 self.gui.set_deployed()
 

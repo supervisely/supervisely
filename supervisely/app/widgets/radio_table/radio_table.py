@@ -69,6 +69,12 @@ class RadioTable(Widget):
             selected_row_index = widget_actual_state["selectedRow"]
             return self.rows[selected_row_index]
 
+    def get_selected_row_index(self, state=StateJson()):
+        widget_actual_state = state[self.widget_id]
+        widget_actual_data = DataJson()[self.widget_id]
+        if widget_actual_state is not None and widget_actual_data is not None:
+            return widget_actual_state["selectedRow"]
+
     @property
     def rows(self):
         return self._rows

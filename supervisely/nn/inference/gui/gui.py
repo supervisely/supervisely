@@ -77,13 +77,35 @@ class InferenceGUI(BaseInferenceGUI):
 
             self._model_select = Widgets.SelectString(list(models.keys()))
             selected_model = self._model_select.get_value()
-            cols = list(models[selected_model]["checkpoints"][0].keys())
-            rows = [list(model.values()) for model in models[selected_model]["checkpoints"]]
+            cols = [
+                model_key
+                for model_key in models[selected_model]["checkpoints"][0].keys()
+                if model_key not in [self._weights_file_key, self._config_file_key]
+            ]
+            rows = [
+                [
+                    value
+                    for param_name, value in model.items()
+                    if param_name not in [self._config_file_key, self._weights_file_key]
+                ]
+                for model in models[selected_model]["checkpoints"]
+            ]
 
             @self._model_select.value_changed
-            def update_table(value):
-                cols = list(self._models[value]["checkpoints"][0].keys())
-                rows = [list(model.values()) for model in self._models[value]["checkpoints"]]
+            def update_table(selected_model):
+                cols = [
+                    model_key
+                    for model_key in self._models[selected_model]["checkpoints"][0].keys()
+                    if model_key not in [self._weights_file_key, self._config_file_key]
+                ]
+                rows = [
+                    [
+                        value
+                        for param_name, value in model.items()
+                        if param_name not in [self._config_file_key, self._weights_file_key]
+                    ]
+                    for model in self._models[selected_model]["checkpoints"]
+                ]
                 self._models_table.columns = cols
                 self._models_table.rows = rows
 
@@ -125,10 +147,10 @@ class InferenceGUI(BaseInferenceGUI):
         return {selected_model: selected_model_info}
 
     def get_checkpoint_info(self) -> Dict[str, str]:
-        model_cols = self._models_table.columns
-        model_row = self._models_table.get_selected_row()
-        row_dict = {col: val for col, val in zip(model_cols, model_row)}
-        return row_dict
+        selected_model = self._model_select.get_value()
+        model_row = self._models_table.get_selected_row_index()
+        checkpoint_info = self._models[selected_model]["checkpoints"][model_row]
+        return checkpoint_info
 
     def get_model_source(self) -> str:
         if not self._support_custom_models:

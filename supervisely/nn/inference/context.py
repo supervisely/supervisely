@@ -45,10 +45,6 @@ class FilesContext(KeyIndexedCollection):
 
     def __init__(self, api: sly.Api, location: Dict[str, str] = None):
         self._api = api
-        self._weights_file = None
-        self._additional_files = None
-        self._folder = None
-        self._file_from_url = None
         items = self._prepare_model_files(location)
         super(FilesContext, self).__init__(items=items)
 
