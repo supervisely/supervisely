@@ -28,11 +28,9 @@ class PoseEstimation(Inference):
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
-        point_names: Optional[List[str]] = None,
         keypoints_template: Optional[KeypointsTemplate] = None,
     ):
         Inference.__init__(self, location, custom_inference_settings, sliding_window_mode)
-        self.point_names = point_names
         self.keypoints_template = keypoints_template
 
     def _get_templates_dir(self):
