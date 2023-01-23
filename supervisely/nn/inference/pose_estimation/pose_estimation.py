@@ -1,6 +1,7 @@
 from typing import Dict, List, Any, Union, Optional
 from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.prediction_dto import PredictionKeypoints
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
@@ -10,6 +11,12 @@ import supervisely as sly
 from supervisely.geometry.graph import Node, KeypointsTemplate
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.imaging import image as sly_image
+from supervisely.decorators.inference import _scale_ann_to_original_size, _process_image_path
+from supervisely.io.fs import silent_remove
+from supervisely.sly_logger import logger
+import functools
+import numpy as np
 
 try:
     from typing import Literal
@@ -94,6 +101,70 @@ class PoseEstimation(Inference):
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
+
+    def process_image_crop(func):
+        """
+        Decorator for processing annotation labels before and after inference.
+        Crops input image before inference if kwargs['state']['rectangle_crop'] provided
+        and then scales annotation back to original image size.
+        Keyword arguments:
+        :param image_np: Image in numpy.ndarray format (use image_path or image_np, not both)
+        :type image_np: numpy.ndarray
+        :param image_path: Path to image (use image_path or image_np, not both)
+        :type image_path: str
+        :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
+        :return: Annotation in json format
+        :rtype: :class:`dict`
+        """
+
+        @functools.wraps(func)
+        def wrapper_inference(*args, **kwargs):
+            settings = kwargs["settings"]
+            rectangle_json = settings.get("rectangle")
+
+            if rectangle_json is None:
+                raise ValueError(
+                    """Pose estimation task requires target object
+                to be outlined in a rectangle before applying neural network."""
+                )
+
+            rectangle = Rectangle.from_json(rectangle_json)
+            if "image_np" in kwargs.keys():
+                image_np = kwargs["image_np"]
+                if not isinstance(image_np, np.ndarray):
+                    raise ValueError("Invalid input. Image path must be numpy.ndarray")
+                original_image_size = image_np.shape[:2]
+                image_crop_np = sly_image.crop(image_np, rectangle)
+                kwargs["image_np"] = image_crop_np
+                ann = func(*args, **kwargs)
+                ann = _scale_ann_to_original_size(ann, original_image_size, rectangle)
+            elif "image_path" in kwargs.keys():
+                image_path = kwargs["image_path"]
+                if not isinstance(image_path, str):
+                    raise ValueError("Invalid input. Image path must be str")
+                image_crop_path, original_image_size = _process_image_path(image_path, rectangle)
+                kwargs["image_path"] = image_crop_path
+                ann = func(*args, **kwargs)
+                ann = _scale_ann_to_original_size(ann, original_image_size, rectangle)
+                silent_remove(image_crop_path)
+            else:
+                raise ValueError("image_np or image_path not provided!")
+
+            return ann
+
+        return wrapper_inference
+
+    @process_image_crop
+    def _inference_image_path(
+        self,
+        image_path: str,
+        settings: Dict,
+        data_to_return: Dict,  # for decorators
+    ):
+        logger.debug("Input path", extra={"path": image_path})
+        predictions = self.predict(image_path=image_path, settings=settings)
+        ann = self._predictions_to_annotation(image_path, predictions)
+        return ann
 
     def serve(self):
         # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
