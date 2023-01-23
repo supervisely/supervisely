@@ -408,7 +408,7 @@ class Inference:
         image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
         fs.download(image_url, image_path)
         logger.debug("Inference settings:", extra=settings)
-        logger.debug("Image downloaded path:", extra=image_path)
+        logger.debug(f"Downloaded path: {image_path}")
         data_to_return = {}
         ann = self._inference_image_path(
             image_path=image_path,
