@@ -388,7 +388,7 @@ class Inference:
         logger.debug(
             "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
         )
-        logger.debug("Image downloaded path:", extra=image_path)
+        logger.debug(f"Downloaded path: {image_path}")
         data_to_return = {}
         ann = self._inference_image_path(
             image_path=image_path,
@@ -451,7 +451,7 @@ class Inference:
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
-            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra=dict(image_path=image_path))
+            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
             data_to_return = {}
             ann = self._inference_image_path(
                 image_path=image_path,
