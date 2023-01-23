@@ -50,6 +50,16 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
         current_local_path: pathlib.Path = current_path.local_path
         current_url_path: pathlib.Path = static_dir_path / current_path.url_path
 
+        def _remove_python_files(path):
+            bad_exts = ['.py', '.pyc', '.md', '.sh']
+            for dirpath, _, filenames in os.walk(path):
+
+                if filenames:
+                    for file in filenames:
+                        if os.path.splitext(os.path.basename(file))[1] in bad_exts:
+                            filepath = pathlib.Path(dirpath, file)
+                            pathlib.Path.unlink(filepath)
+
         if current_local_path.is_dir():
             current_url_path.mkdir(parents=True, exist_ok=True)
             copy_tree(
@@ -57,6 +67,8 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
                 current_url_path.as_posix(),
                 preserve_symlinks=True,
             )
+
+            _remove_python_files(current_url_path.as_posix())
 
 
 def dump_html_to_dir(static_dir_path, template):
