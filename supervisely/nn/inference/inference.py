@@ -255,8 +255,9 @@ class Inference:
         data_to_return: Dict,  # for decorators
     ):
         inference_mode = settings.get("inference_mode", "full_image")
-        logger.debug("Input path", extra={"path": image_path, "inference_mode": inference_mode})
-        logger.debug("Settings:", extra=settings)
+        logger.debug(
+            "Inferring image_path:", extra={"inference_mode": inference_mode, "path": image_path}
+        )
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
@@ -265,7 +266,7 @@ class Inference:
             predictions = self.predict(image_path=image_path, settings=settings)
             ann = self._predictions_to_annotation(image_path, predictions)
 
-        logger.debug(f"'inference_image_path' done. n_predictions={len(predictions)}")
+        logger.debug(f"Inferring image_path done. n_predictions={len(predictions)}")
         return ann
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -434,7 +435,7 @@ class Inference:
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
-            logger.debug(f"Inferring frame {i}/{n_frames-1}:", extra=dict(image_path=image_path))
+            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra=dict(image_path=image_path))
             data_to_return = {}
             ann = self._inference_image_path(
                 image_path=image_path,
@@ -443,7 +444,7 @@ class Inference:
             )
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(
-                f"Frame {i} done. result annotation:",
+                f"Frame {i+1} done. result_annotation:",
                 extra=dict(img_size=ann.img_size, n_labels=len(ann.labels)),
             )
         fs.remove_dir(video_images_path)
