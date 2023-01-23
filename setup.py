@@ -20,6 +20,7 @@ version = response.json()["tag_name"]
 # already have PyTorch installed.
 setup(
     name="supervisely",
+    author="Max Kolomeychenko",
     version=version,
     python_requires=">=3.7.1",
     classifiers=[
