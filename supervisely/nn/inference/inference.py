@@ -256,6 +256,7 @@ class Inference:
     ):
         logger.debug("Input path", extra={"path": image_path})
         inference_mode = settings.get("inference_mode", "full_image")
+        logger.debug(f"inference_mode={inference_mode}")
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
@@ -263,6 +264,8 @@ class Inference:
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
             ann = self._predictions_to_annotation(image_path, predictions)
+
+        logger.debug(f"inference_image_path ends, n_predictions={len(predictions)}")
         return ann
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -402,6 +405,9 @@ class Inference:
 
         logger.debug("Input data", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
+        logger.debug(
+            f"Starting video inference: w={video_info.frame_width}, h={video_info.frame_height}, n_frames={video_info.frames_count}"
+        )
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
         inf_video_interface = InferenceVideoInterface(
@@ -415,8 +421,14 @@ class Inference:
 
         inf_video_interface.download_frames()
         settings = self._get_inference_settings(state)
+        logger.debug(f"Got settings:", extra=settings)
+
+        n_frames = len(inf_video_interface.images_paths)
         results = []
-        for image_path in inf_video_interface.images_paths:
+        for i, image_path in enumerate(inf_video_interface.images_paths):
+            logger.debug(
+                f"Inferring frame {i}/{n_frames}. {image_path}, {video_info.frame_width}, {video_info.frame_height}"
+            )
             data_to_return = {}
             ann = self._inference_image_path(
                 image_path=image_path,
@@ -424,6 +436,7 @@ class Inference:
                 data_to_return=data_to_return,
             )
             results.append({"annotation": ann.to_json(), "data": data_to_return})
+            logger.debug(f"Frame {i} done. pred=", extra=ann.__dict__)
         fs.remove_dir(video_images_path)
         return results
 
