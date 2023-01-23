@@ -268,7 +268,7 @@ class Inference:
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
-            extra=dict(img_size=ann.img_size, n_labels=len(ann.labels)),
+            extra=dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels)),
         )
         return ann
 
