@@ -266,7 +266,10 @@ class Inference:
             predictions = self.predict(image_path=image_path, settings=settings)
             ann = self._predictions_to_annotation(image_path, predictions)
 
-        logger.debug(f"Inferring image_path done. n_predictions={len(predictions)}")
+        logger.debug(
+            f"Inferring image_path done. pred_annotation:",
+            extra=dict(img_size=ann.img_size, n_labels=len(ann.labels)),
+        )
         return ann
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -409,9 +412,9 @@ class Inference:
         logger.debug(
             f"Starting video inference:",
             extra=dict(
-                w={video_info.frame_width},
-                h={video_info.frame_height},
-                n_frames={video_info.frames_count},
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                n_frames=video_info.frames_count,
                 state=state,
             ),
         )
@@ -443,10 +446,7 @@ class Inference:
                 data_to_return=data_to_return,
             )
             results.append({"annotation": ann.to_json(), "data": data_to_return})
-            logger.debug(
-                f"Frame {i+1} done. result_annotation:",
-                extra=dict(img_size=ann.img_size, n_labels=len(ann.labels)),
-            )
+            logger.debug(f"Frame {i+1} done.")
         fs.remove_dir(video_images_path)
         return results
 
