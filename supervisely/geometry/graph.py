@@ -662,6 +662,7 @@ class GraphNodes(Geometry):
 class KeypointsTemplate(GraphNodes, Geometry):
     def __init__(self):
         self._config = {"nodes": {}, "edges": []}
+        self._point_names = []
 
     def add_point(
         self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
@@ -673,6 +674,7 @@ class KeypointsTemplate(GraphNodes, Geometry):
             raise NotImplementedError(
                 "Functionality for disabling nodes will be added in future supervisely versions"
             )
+        self._point_names.append(label)
         self._config["nodes"][label] = {
             "label": label,
             "loc": [row, col],
@@ -710,3 +712,7 @@ class KeypointsTemplate(GraphNodes, Geometry):
     @property
     def config(self):
         return self._config
+    
+    @property
+    def point_names(self):
+        return self._point_names
