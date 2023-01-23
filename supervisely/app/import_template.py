@@ -4,13 +4,7 @@ import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
-from pathlib import Path
-
-try:
-    from typing import Literal
-except ImportError:
-    # for compatibility with python 3.7
-    from typing_extensions import Literal
+from supervisely.sly_logger import logger
 
 
 class Import:
@@ -135,13 +129,13 @@ class Import:
             project = api.project.get_info_by_id(id=project_id)
             if project is None:
                 raise ValueError(f"Project with ID: '{project_id}' is not found or either archived")
-            print(f"Importing to existing Project: id={project.id}, name={project.name}")
+            logger.info(f"Importing to existing Project: id={project.id}, name={project.name}")
         if dataset_id is not None:
             # lets validate that dataset exists
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             if dataset is None:
                 raise ValueError(f"Project with ID: '{dataset_id}' is not found or either archived")
-            print(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
+            logger.info(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
             if path is not None:
@@ -170,4 +164,4 @@ class Import:
         if type(project_id) is int and is_production():
             info = api.project.get_info_by_id(project_id)
             api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
-            print(f"Result project: id={info.id}, name={info.name}")
+            logger.info(f"Result project: id={info.id}, name={info.name}")
