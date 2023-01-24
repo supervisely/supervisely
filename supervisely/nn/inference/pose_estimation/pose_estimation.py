@@ -34,10 +34,13 @@ class PoseEstimation(Inference):
         custom_inference_settings: Optional[
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
-        sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
         keypoints_template: Optional[KeypointsTemplate] = None,
     ):
-        Inference.__init__(self, location, custom_inference_settings, sliding_window_mode)
+        super().__init__(
+            location=location,
+            custom_inference_settings=custom_inference_settings,
+            sliding_window_mode="none",
+        )
         self.keypoints_template = keypoints_template
 
     def _get_templates_dir(self):
