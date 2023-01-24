@@ -62,6 +62,10 @@ class Node(JsonSerializable):
         if None not in (location, row, col) or all(item is None for item in (location, row, col)):
             raise ValueError("Either location or row and col must be specified")
         self._location = location
+        if disabled is True:
+            raise NotImplementedError(
+                "Functionality for disabling nodes will be added in future supervisely versions"
+            )
         self._disabled = disabled
         self._label = label
         if None not in [row, col]:
@@ -658,6 +662,7 @@ class GraphNodes(Geometry):
 class KeypointsTemplate(GraphNodes, Geometry):
     def __init__(self):
         self._config = {"nodes": {}, "edges": []}
+        self._point_names = []
 
     def add_point(
         self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
@@ -665,6 +670,11 @@ class KeypointsTemplate(GraphNodes, Geometry):
         _validate_color(color)
         if label in self._config["nodes"]:
             raise KeyError(f"Label {label} already exists in the graph")
+        if disabled is True:
+            raise NotImplementedError(
+                "Functionality for disabling nodes will be added in future supervisely versions"
+            )
+        self._point_names.append(label)
         self._config["nodes"][label] = {
             "label": label,
             "loc": [row, col],
@@ -702,3 +712,10 @@ class KeypointsTemplate(GraphNodes, Geometry):
     @property
     def config(self):
         return self._config
+
+    @property
+    def point_names(self):
+        """
+        Return point names in order in which they were added
+        """
+        return self._point_names
