@@ -50,9 +50,9 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
         current_local_path: pathlib.Path = current_path.local_path
         current_url_path: pathlib.Path = static_dir_path / current_path.url_path
 
-        def _remove_python_files(path):
+        def _filter_static_files(path: pathlib.Path):
             extensions_to_delete = ['.py', '.pyc', '.md', '.sh']
-            for dirpath, _, filenames in os.walk(path):
+            for dirpath, _, filenames in os.walk(path.as_posix()):
 
                 if filenames:
                     for file in filenames:
@@ -68,7 +68,7 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
                 preserve_symlinks=True,
             )
 
-            _remove_python_files(current_url_path.as_posix())
+            _filter_static_files(current_url_path)
 
 
 def dump_html_to_dir(static_dir_path, template):
