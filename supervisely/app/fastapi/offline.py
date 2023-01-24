@@ -56,12 +56,9 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
 
                 if filenames:
                     for file in filenames:
-                        if os.path.splitext(os.path.basename(file))[1] == '.md':
-                            filepath = pathlib.Path(dirpath, file)
-                            print(filepath)
                         if os.path.splitext(os.path.basename(file))[1] in extensions_to_delete:
                             filepath = pathlib.Path(dirpath, file)
-                            pathlib.Path.unlink(filepath)
+                            pathlib.Path.unlink(filepath, missing_ok=True)
 
         if current_local_path.is_dir():
             current_url_path.mkdir(parents=True, exist_ok=True)
