@@ -2,7 +2,7 @@ from io import StringIO
 from pathlib import Path
 from typing import List, Optional, Dict
 
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget, Editor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -33,8 +33,10 @@ class TabsDynamic(Widget):
         self,
         filepath_or_raw_yaml: str,
         type: Optional[Literal["card", "border-card"]] = "border-card",
+        disabled: Optional[bool] = False,
         widget_id=None,
     ):  
+        self._disabled = disabled
         if Path(filepath_or_raw_yaml[-50:]).is_file():
             data_source = open(filepath_or_raw_yaml, "r")
         else:
@@ -50,6 +52,8 @@ class TabsDynamic(Widget):
             if isinstance(yaml_fragment, CommentedMap):
                 yaml_str = yaml.dump(yaml_fragment)
                 editor = Editor(yaml_str, language_mode='yaml', height_px=250)
+                if self._disabled:
+                    editor.readonly = True
                 self._items_dict[label] = editor
                 self._items.append(TabsDynamic.TabPane(label=label, content=editor))
                 del self._common_data[label]
@@ -58,6 +62,8 @@ class TabsDynamic(Widget):
         if len(self._common_data) > 0:
             yaml_str = yaml.dump(self._common_data)
             editor = Editor(yaml_str, language_mode='yaml', height_px=250)
+            if self._disabled:
+                editor.readonly = True
             self._items_dict['hyparameters'] = editor
             self._items.append(TabsDynamic.TabPane(label='hyparameters', content=editor))
 
@@ -69,7 +75,10 @@ class TabsDynamic(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        return {"type": self._type}
+        return {
+            "type": self._type,
+            "disabled": self._disabled
+        }
 
     def get_json_state(self) -> Dict:
         return {"value": self._value}
@@ -96,3 +105,17 @@ class TabsDynamic(Widget):
         if as_dict:
             return yaml_data
         return yaml.dump(yaml_data)
+    
+    def disable(self):
+        self._disabled = True
+        for key, editor in self._items_dict.items():
+            editor.readonly = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        for key, editor in self._items_dict.items():
+            editor.readonly = False
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
