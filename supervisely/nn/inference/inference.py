@@ -68,6 +68,9 @@ class Inference:
                 raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
         self._headless = True
+        self._is_inferring = False
+        self._inference_progress = {"done": 0, "total": 1}
+        self._cancel_inference = False
 
         self._prepare_model_files(location)
 
@@ -435,8 +438,12 @@ class Inference:
         n_frames = len(inf_video_interface.images_paths)
         logger.debug(f"Total frames to infer: {n_frames}")
 
+        self._inference_progress = {"done": 0, "total": n_frames}
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
+            if self._cancel_inference:
+                logger.debug("Cancelling inference for video...")
+                break
             logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
             data_to_return = {}
             ann = self._inference_image_path(
@@ -444,10 +451,19 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
+            self._inference_progress["done"] += 1
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(f"Frame {i+1} done.")
         fs.remove_dir(video_images_path)
         return results
+
+    def _on_inference_start(self):
+        self._inference_progress = {"done": 0, "total": 1}
+        self._is_inferring = True
+        self._cancel_inference = False
+
+    def _on_inference_stop(self):
+        self._is_inferring = False
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -494,7 +510,10 @@ class Inference:
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return {"ann": self._inference_video_id(request.api, request.state)}
+            self._on_inference_start()
+            result = {"ann": self._inference_video_id(request.api, request.state)}
+            self._on_inference_stop()
+            return result
 
         @server.post("/inference_image")
         def inference_image(
@@ -533,8 +552,12 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
-        @server.post(f"/get_inferring_status")
-        def get_inferring_status():
-            resp = {"is_inferring": True}
-            print(resp)
-            return resp
+        @server.post(f"/get_inference_progress")
+        def get_inference_progress():
+            result = {"is_inferring": self._is_inferring, **self._inference_progress}
+            print(result)
+            return result
+
+        @server.post(f"/stop_inference")
+        def stop_inference():
+            self._cancel_inference = True
