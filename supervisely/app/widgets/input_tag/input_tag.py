@@ -18,15 +18,22 @@ VALUE_TYPE_NAME = {
     "any_number": "NUMBER"
 }
 
+
 class InputTag(Widget):
-    def __init__(self, tag_meta: TagMeta, widget_id: int = None):
+    def __init__(
+        self,
+        tag_meta: TagMeta,
+        max_width: int = 300,
+        widget_id: int = None,
+    ):
         self._tag_meta = tag_meta
         self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]
         self._name = f"<b>{self._tag_meta.name}</b>"
+        self._max_width = self._get_max_width(max_width)
         self._activation_widget = Switch()
         self._input_widget = self._get_input_component()
 
-        super().__init__(widget_id=widget_id, file_path=__file__)   
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_input_component(self):
         if self._tag_meta.value_type == str(TagValueType.NONE):
@@ -40,6 +47,11 @@ class InputTag(Widget):
                 RadioGroup.Item(pv, pv, Empty()) for pv in self._tag_meta.possible_values
             ]
             return RadioGroup(items=items)
+
+    def _get_max_width(self, value):
+        if value < 150:
+            value = 150
+        return f"{value}px"
 
     def get_tag_meta(self):
         return self._tag_meta
@@ -63,7 +75,7 @@ class InputTag(Widget):
 
     def is_valid_value(self, value):
         return self._tag_meta.is_valid_value(value)
-    
+
     def set(self, tag: Union[Tag, None]):
         if tag is None:
             self._set_default_value()
@@ -103,7 +115,11 @@ class InputTag(Widget):
             self._input_widget.set_value(None)
 
     def get_json_data(self):
-        return {"name": self._name, "value_type": self._value_type_name}
+        return {
+            "name": self._name,
+            "valueType": self._value_type_name,
+            "maxWidth": self._max_width,
+        }
 
     def get_json_state(self) -> Dict:
         return None
