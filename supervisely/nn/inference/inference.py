@@ -1,5 +1,6 @@
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
@@ -70,7 +71,9 @@ class Inference:
         self._headless = True
         self._is_inferring = False
         self._inference_progress = {"done": 0, "total": 1}
+        self._result = None
         self._cancel_inference = False
+        self._executor = ThreadPoolExecutor()
 
         self._prepare_model_files(location)
 
@@ -460,15 +463,18 @@ class Inference:
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(f"Frame {i+1} done.")
         fs.remove_dir(video_images_path)
+        self._result = {"ann": results}
         return results
 
     def _on_inference_start(self):
         self._inference_progress = {"done": 0, "total": 1}
         self._is_inferring = True
         self._cancel_inference = False
+        self._result = None
 
     def _on_inference_end(self):
         self._is_inferring = False
+        print("End: _on_inference_end")
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -519,9 +525,11 @@ class Inference:
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             self._on_inference_start()
-            result = {"ann": self._inference_video_id(request.api, request.state)}
-            self._on_inference_end()
-            return result
+            future = self._executor.submit(self._inference_video_id, request.api, request.state)
+            # result = {"ann": self._inference_video_id(request.api, request.state)}
+            future.add_done_callback(self._on_inference_end)
+            print("End: inference_video_id")
+            return {"message": "inference has started."}
 
         @server.post("/inference_image")
         def inference_image(
@@ -565,7 +573,11 @@ class Inference:
 
         @server.post(f"/get_inference_progress")
         def get_inference_progress():
-            result = {"is_inferring": self._is_inferring, **self._inference_progress}
+            result = {
+                "is_inferring": self._is_inferring,
+                "result": self._result,
+                **self._inference_progress,
+            }
             logger.debug("Inference progress was sent:", extra=result)
             return result
 
