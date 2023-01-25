@@ -451,6 +451,7 @@ class Inference:
         for i, image_path in enumerate(inf_video_interface.images_paths):
             if self._cancel_inference:
                 logger.debug("Cancelling inference for video...")
+                results = []
                 break
             logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
             data_to_return = {}
@@ -463,7 +464,8 @@ class Inference:
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(f"Frame {i+1} done.")
         fs.remove_dir(video_images_path)
-        self._result = {"ann": results}
+        if results:
+            self._result = {"ann": results}
         return results
 
     def _on_inference_start(self):
