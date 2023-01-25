@@ -472,7 +472,7 @@ class Inference:
         self._cancel_inference = False
         self._result = None
 
-    def _on_inference_end(self):
+    def _on_inference_end(self, future):
         self._is_inferring = False
         print("End: _on_inference_end")
 
