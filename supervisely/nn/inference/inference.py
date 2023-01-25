@@ -534,6 +534,6 @@ class Inference:
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
         @server.post(f"/get_inferring_status")
-        def get_inferring_status():
+        def get_inferring_status(request: Request):
             print(5)
             return 5
