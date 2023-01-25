@@ -555,9 +555,10 @@ class Inference:
         @server.post(f"/get_inference_progress")
         def get_inference_progress():
             result = {"is_inferring": self._is_inferring, **self._inference_progress}
-            print(result)
+            logger.debug("Inference progress was sent:", extra=result)
             return result
 
         @server.post(f"/stop_inference")
         def stop_inference():
+            logger.debug("Stopping inference...")
             self._cancel_inference = True
