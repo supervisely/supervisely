@@ -320,7 +320,7 @@ class Inference:
         return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
-        logger.debug("Inferring image batch...", extra={"state": state})
+        logger.debug("Inferring images batch...", extra={"state": state})
         paths = []
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
         fs.mkdir(temp_dir)
@@ -354,8 +354,12 @@ class Inference:
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
         n_imgs = len(img_paths)
+        self._inference_progress = {"done": 0, "total": n_imgs}
         results = []
         for i, image_path in enumerate(img_paths):
+            if self._cancel_inference:
+                logger.debug("Cancelling inference for images_dir (or batch)...")
+                break
             data_to_return = {}
             logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
             ann = self._inference_image_path(
@@ -363,6 +367,7 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
+            self._inference_progress["done"] += 1
             results.append({"annotation": ann.to_json(), "data": data_to_return})
         return results
 
@@ -462,7 +467,7 @@ class Inference:
         self._is_inferring = True
         self._cancel_inference = False
 
-    def _on_inference_stop(self):
+    def _on_inference_end(self):
         self._is_inferring = False
 
     def serve(self):
@@ -506,13 +511,16 @@ class Inference:
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            return self._inference_batch_ids(request.api, request.state)
+            self._on_inference_start()
+            result = self._inference_batch_ids(request.api, request.state)
+            self._on_inference_end()
+            return result
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             self._on_inference_start()
             result = {"ann": self._inference_video_id(request.api, request.state)}
-            self._on_inference_stop()
+            self._on_inference_end()
             return result
 
         @server.post("/inference_image")
@@ -544,7 +552,10 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
-                return self._inference_batch(state, files)
+                self._on_inference_start()
+                result = self._inference_batch(state, files)
+                self._on_inference_end()
+                return result
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"Cannot decode settings: {e}"
@@ -560,5 +571,5 @@ class Inference:
 
         @server.post(f"/stop_inference")
         def stop_inference():
-            logger.debug("Stopping inference...")
             self._cancel_inference = True
+            return {"success": True}
