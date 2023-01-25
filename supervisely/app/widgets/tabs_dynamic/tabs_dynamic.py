@@ -44,7 +44,7 @@ class TabsDynamic(Widget):
         self._data = yaml.load(data_source)
         self._common_data = self._data.copy()
         
-        self._items_dict = {'common': None}
+        self._items_dict = {}
         self._items = []
         for label, yaml_fragment in self._data.items():
             if isinstance(yaml_fragment, CommentedMap):
@@ -54,10 +54,12 @@ class TabsDynamic(Widget):
                 self._items.append(TabsDynamic.TabPane(label=label, content=editor))
                 del self._common_data[label]
 
-        yaml_str = yaml.dump(self._common_data)
-        editor = Editor(yaml_str, language_mode='yaml', height_px=250)
-        self._items_dict['common'] = editor
-        self._items.insert(0, TabsDynamic.TabPane(label='common', content=editor))
+
+        if len(self._common_data) > 0:
+            yaml_str = yaml.dump(self._common_data)
+            editor = Editor(yaml_str, language_mode='yaml', height_px=250)
+            self._items_dict['hyparameters'] = editor
+            self._items.append(TabsDynamic.TabPane(label='hyparameters', content=editor))
 
         assert len(set(self._items_dict.keys())) == len(self._items_dict.keys()), ValueError("All of tab labels should be unique.")
         assert len(self._items_dict.keys()) == len(self._items), ValueError("labels length must be equal to contents length in Tabs widget.")
@@ -82,15 +84,15 @@ class TabsDynamic(Widget):
     
     def get_merged_yaml(self, as_dict: bool = False):
         yaml = MyYAML()
-        yaml_data = yaml.load('common:')
+        yaml_data = yaml.load('hyparameters:')
         for label, editor in self._items_dict.items():
             label_yaml_data = yaml.load(editor.get_text())
-            if label == 'common':
+            if label == 'hyparameters':
                 for key, value in label_yaml_data.items():
                     yaml_data[key] = value
             else:
                 yaml_data[label] = label_yaml_data
-        del yaml_data['common']
+        del yaml_data['hyparameters']
         if as_dict:
             return yaml_data
         return yaml.dump(yaml_data)

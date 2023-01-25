@@ -4,7 +4,7 @@
 >
     {% for tab_pane in widget._items %}
     <el-tab-pane
-        label="{{{tab_pane.label}}}"
+        label="{{{tab_pane.label|capitalize}}}"
         name="{{{tab_pane.name}}}"
     >
         {{{ tab_pane.content }}}
