@@ -478,8 +478,8 @@ class Inference:
         self._result = None
 
     def _on_inference_end(self, future):
+        logger.debug("_on_inference_end() callback")
         self._is_inferring = False
-        logger.debug("Call _on_inference_end()")
 
     def serve(self):
         if is_debug_with_sly_net():
