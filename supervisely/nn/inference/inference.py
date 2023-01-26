@@ -164,6 +164,7 @@ class Inference:
             "number_of_classes": len(self.get_classes()),
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
+            "async_video_inference_support": True,
         }
 
     @property
@@ -357,13 +358,14 @@ class Inference:
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
         n_imgs = len(img_paths)
-        self._inference_progress = {"done": 0, "total": n_imgs}
+        # --- Uncomment all below if you want to add async inference for batch/images_dir ---
+        # self._inference_progress = {"done": 0, "total": n_imgs}
         results = []
         for i, image_path in enumerate(img_paths):
-            if self._cancel_inference:
-                logger.debug("Cancelling inference for images_dir (or batch)...")
-                results = []
-                break
+            # if self._cancel_inference:
+            #     logger.debug("Cancelling inference for images_dir (or batch)...")
+            #     results = []
+            #     break
             data_to_return = {}
             logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
             ann = self._inference_image_path(
@@ -371,10 +373,10 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            self._inference_progress["done"] += 1
+            # self._inference_progress["done"] += 1
             results.append({"annotation": ann.to_json(), "data": data_to_return})
-        if results:
-            self._result = results
+        # if results:
+        # self._result = results
         return results
 
     def _inference_image_id(self, api: Api, state: dict):
