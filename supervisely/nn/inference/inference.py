@@ -362,6 +362,7 @@ class Inference:
         for i, image_path in enumerate(img_paths):
             if self._cancel_inference:
                 logger.debug("Cancelling inference for images_dir (or batch)...")
+                results = []
                 break
             data_to_return = {}
             logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
@@ -372,6 +373,8 @@ class Inference:
             )
             self._inference_progress["done"] += 1
             results.append({"annotation": ann.to_json(), "data": data_to_return})
+        if results:
+            self._result = results
         return results
 
     def _inference_image_id(self, api: Api, state: dict):
@@ -476,7 +479,7 @@ class Inference:
 
     def _on_inference_end(self, future):
         self._is_inferring = False
-        print("End: _on_inference_end")
+        logger.debug("Call _on_inference_end()")
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -520,17 +523,17 @@ class Inference:
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
             self._on_inference_start()
-            result = self._inference_batch_ids(request.api, request.state)
-            self._on_inference_end()
-            return result
+            future = self._executor.submit(self._inference_batch_ids, request.api, request.state)
+            future.add_done_callback(self._on_inference_end)
+            logger.debug("Exiting from inference_batch_ids endpoint")
+            return {"message": "inference has started."}
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             self._on_inference_start()
             future = self._executor.submit(self._inference_video_id, request.api, request.state)
-            # result = {"ann": self._inference_video_id(request.api, request.state)}
             future.add_done_callback(self._on_inference_end)
-            print("End: inference_video_id")
+            logger.debug("Exiting from inference_video_id endpoint")
             return {"message": "inference has started."}
 
         @server.post("/inference_image")
@@ -563,9 +566,10 @@ class Inference:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
                 self._on_inference_start()
-                result = self._inference_batch(state, files)
-                self._on_inference_end()
-                return result
+                future = self._executor.submit(self._inference_batch_ids, state, files)
+                future.add_done_callback(self._on_inference_end)
+                logger.debug("Exiting from inference_batch endpoint")
+                return {"message": "inference has started."}
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"Cannot decode settings: {e}"
@@ -578,9 +582,9 @@ class Inference:
             result = {
                 "is_inferring": self._is_inferring,
                 "result": self._result,
-                **self._inference_progress,
+                "progress": self._inference_progress,
             }
-            logger.debug("Inference progress was sent:", extra=result)
+            logger.debug("Sending inference progress:", extra=result)
             return result
 
         @server.post(f"/stop_inference")
