@@ -323,7 +323,7 @@ class Inference:
         return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
-        logger.debug("Inferring images batch...", extra={"state": state})
+        logger.debug("Inferring batch...", extra={"state": state})
         paths = []
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
         fs.mkdir(temp_dir)
@@ -337,7 +337,7 @@ class Inference:
         return results
 
     def _inference_batch_ids(self, api: Api, state: dict):
-        logger.debug("Inferring image_ids batch...", extra={"state": state})
+        logger.debug("Inferring batch_ids...", extra={"state": state})
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
         paths = []
@@ -566,7 +566,7 @@ class Inference:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
                 self._on_inference_start()
-                future = self._executor.submit(self._inference_batch_ids, state, files)
+                future = self._executor.submit(self._inference_batch, state, files)
                 future.add_done_callback(self._on_inference_end)
                 logger.debug("Exiting from inference_batch endpoint")
                 return {"message": "inference has started."}
