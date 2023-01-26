@@ -522,19 +522,11 @@ class Inference:
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            self._on_inference_start()
-            future = self._executor.submit(self._inference_batch_ids, request.api, request.state)
-            future.add_done_callback(self._on_inference_end)
-            logger.debug("Exiting from inference_batch_ids endpoint")
-            return {"message": "inference has started."}
+            return self._inference_batch_ids(request.api, request.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            self._on_inference_start()
-            future = self._executor.submit(self._inference_video_id, request.api, request.state)
-            future.add_done_callback(self._on_inference_end)
-            logger.debug("Exiting from inference_video_id endpoint")
-            return {"message": "inference has started."}
+            return {"ann": self._inference_video_id(request.api, request.state)}
 
         @server.post("/inference_image")
         def inference_image(
@@ -565,17 +557,21 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
-                self._on_inference_start()
-                future = self._executor.submit(self._inference_batch, state, files)
-                future.add_done_callback(self._on_inference_end)
-                logger.debug("Exiting from inference_batch endpoint")
-                return {"message": "inference has started."}
+                return self._inference_batch(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"Cannot decode settings: {e}"
             except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
+
+        @server.post("/inference_video_id_async")
+        def inference_video_id_async(request: Request):
+            self._on_inference_start()
+            future = self._executor.submit(self._inference_video_id, request.api, request.state)
+            future.add_done_callback(self._on_inference_end)
+            logger.debug("Exiting from inference_video_id endpoint")
+            return {"message": "inference has started."}
 
         @server.post(f"/get_inference_progress")
         def get_inference_progress():
