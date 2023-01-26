@@ -1,4 +1,7 @@
 # coding: utf-8
+import pkg_resources
+
+__version__ = pkg_resources.require("supervisely")[0].version
 
 from supervisely.sly_logger import (
     logger,
