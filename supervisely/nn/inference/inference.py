@@ -570,7 +570,7 @@ class Inference:
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
             self._on_inference_start()
-            print(request.__dict__)
+            print(request.api.__dict__)
             future = self._executor.submit(self._inference_video_id, request.api, request.state)
             future.add_done_callback(self._on_inference_end)
             logger.debug("Inference has scheduled from 'inference_video_id_async' endpoint")
