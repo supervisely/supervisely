@@ -570,7 +570,7 @@ class Inference:
             self._on_inference_start()
             future = self._executor.submit(self._inference_video_id, request.api, request.state)
             future.add_done_callback(self._on_inference_end)
-            logger.debug("Exiting from inference_video_id endpoint")
+            logger.debug("Inference has scheduled from 'inference_video_id_async' endpoint")
             return {"message": "inference has started."}
 
         @server.post(f"/get_inference_progress")
