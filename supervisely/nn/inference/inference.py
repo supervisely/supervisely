@@ -54,6 +54,7 @@ class Inference:
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
+            fs.mkdir(model_dir)
         self._model_dir = model_dir
         self._model_meta = None
         self._confidence = "confidence"
@@ -108,14 +109,14 @@ class Inference:
             ):  # only during debug, has no effect in production
                 dst_path = os.path.abspath(src_path)
                 logger.info(f"File {dst_path} found.")
-            elif self._api.file.dir_exists(team_id, src_path) and src_path.endswith(
+            elif self.api.file.dir_exists(team_id, src_path) and src_path.endswith(
                 "/"
             ):  # folder from Team Files
                 logger.info(f"Remote directory in Team Files: {src_path}")
                 logger.info(f"Local directory: {dst_path}")
-                sizeb = self._api.file.get_directory_size(team_id, src_path)
+                sizeb = self.api.file.get_directory_size(team_id, src_path)
                 progress.set(current=0, total=sizeb)
-                self._api.file.download_directory(
+                self.api.file.download_directory(
                     team_id,
                     src_path,
                     dst_path,
@@ -125,10 +126,10 @@ class Inference:
                     f"📥 Directory {basename} has been successfully downloaded from Team Files"
                 )
                 logger.info(f"Directory {basename} path: {dst_path}")
-            elif self._api.file.exists(team_id, src_path):  # file from Team Files
-                file_info = self._api.file.get_info_by_path(env.team_id(), src_path)
+            elif self.api.file.exists(team_id, src_path):  # file from Team Files
+                file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
                 progress.set(current=0, total=file_info.sizeb)
-                self._api.file.download(
+                self.api.file.download(
                     team_id, src_path, dst_path, progress_cb=progress.iters_done_report
                 )
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
