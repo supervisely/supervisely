@@ -20,17 +20,6 @@ class BaseInferenceGUI:
         # return Widgets.Container(widgets_list)
         raise NotImplementedError("Have to be implemented in child class")
 
-    def get_location(self) -> Union[str, List[str]]:
-        raise NotImplementedError("Have to be implemented in child class")
-
-    def get_custom_files(self, custom_link: str) -> Dict[str, str]:
-        # weights_remote_dir = os.path.dirname(custom_link)
-        # return {
-        #     "weights_file": custom_link,
-        #     "config_file": os.path.join(weights_remote_dir, 'config.py')
-        # }
-        return None
-
 
 class InferenceGUI(BaseInferenceGUI):
     def __init__(
@@ -48,22 +37,18 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._weights_file_key = "weights_file"
         self._config_file_key = "config_file"
-        device_values = []
-        device_names = []
+        device_values = ["cpu"]
+        device_names = ["CPU"]
         try:
             import torch
 
             if torch.cuda.is_available():
                 gpus = torch.cuda.device_count()
-                for i in range(len(gpus)):
+                for i in range(gpus):
                     device_values.append(f"cuda:{i}")
                     device_names.append(f"{torch.cuda.get_device_name(i)} (cuda:{i})")
-            else:
-                device_values = ["cpu"]
-                device_names = ["CPU"]
         except:
-            device_values = ["cpu"]
-            device_names = ["CPU"]
+            pass
 
         self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
@@ -156,24 +141,6 @@ class InferenceGUI(BaseInferenceGUI):
         if not self._support_custom_models:
             return "Pretrained models"
         return self._tabs.get_active_tab()
-
-    def get_location(self) -> Dict[str, str]:
-        location = {}
-        if self.get_model_source() == "Pretrained models":
-            checkpoint_info = self.get_checkpoint_info()
-            if self._weights_file_key in checkpoint_info.keys():
-                location[self._weights_file_key] = checkpoint_info[self._weights_file_key]
-            if self._config_file_key in checkpoint_info.keys():
-                location[self._config_file_key] = checkpoint_info[self._config_file_key]
-        elif self.get_model_source() == "Custom models":
-            custom_weights_link = self._model_path_input.get_value()
-            custom_files = self.get_custom_files(custom_weights_link)
-            if custom_files is not None:
-                for file_key, file_link in custom_files.items():
-                    location[file_key] = file_link
-            else:
-                location["weights_file"] = custom_weights_link
-        return location
 
     @property
     def serve_button(self) -> Widgets.Widget:

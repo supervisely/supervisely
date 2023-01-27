@@ -5,6 +5,7 @@ from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
     is_debug_with_sly_net,
     rand_str,
+    is_production,
 )
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
@@ -28,7 +29,6 @@ from supervisely.nn.prediction_dto import Prediction
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.task.progress import Progress
-from supervisely.nn.inference.context import FilesContext
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
@@ -45,12 +45,16 @@ except ImportError:
 class Inference:
     def __init__(
         self,
+        model_dir: Optional[str] = None,
         custom_inference_settings: Optional[
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
+        if model_dir is None:
+            model_dir = os.path.join(get_data_dir(), "models")
+        self._model_dir = model_dir
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -92,13 +96,51 @@ class Inference:
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         raise RuntimeError("Have to be implemented in child class after inheritance")
 
-    def get_context(self, location: Dict[str, str]) -> FilesContext:
-        return FilesContext(self.api, location)
-
-    def get_custom_files(self, custom_link: str) -> Dict[str, str]:
-        if self.gui is not None:
-            return self.gui.get_custom_files(custom_link)
-        return None
+    def download(self, src_path: str, dst_path: str = None):
+        if dst_path is None:
+            dst_path = os.path.join(self._model_dir, basename)
+        if fs.is_on_agent(src_path) or is_production():
+            team_id = env.team_id()
+            basename = os.path.basename(os.path.normpath(src_path))
+            progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
+            if fs.dir_exists(src_path) or fs.file_exists(
+                src_path
+            ):  # only during debug, has no effect in production
+                dst_path = os.path.abspath(src_path)
+                logger.info(f"File {dst_path} found.")
+            elif self._api.file.dir_exists(team_id, src_path) and src_path.endswith(
+                "/"
+            ):  # folder from Team Files
+                logger.info(f"Remote directory in Team Files: {src_path}")
+                logger.info(f"Local directory: {dst_path}")
+                sizeb = self._api.file.get_directory_size(team_id, src_path)
+                progress.set(current=0, total=sizeb)
+                self._api.file.download_directory(
+                    team_id,
+                    src_path,
+                    dst_path,
+                    progress.iters_done_report,
+                )
+                logger.info(
+                    f"📥 Directory {basename} has been successfully downloaded from Team Files"
+                )
+                logger.info(f"Directory {basename} path: {dst_path}")
+            elif self._api.file.exists(team_id, src_path):  # file from Team Files
+                file_info = self._api.file.get_info_by_path(env.team_id(), src_path)
+                progress.set(current=0, total=file_info.sizeb)
+                self._api.file.download(
+                    team_id, src_path, dst_path, progress_cb=progress.iters_done_report
+                )
+                logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
+                logger.info(f"File {basename} path: {dst_path}")
+            else:  # external url
+                fs.download(src_path, dst_path, progress=progress)
+                logger.info(f"📥 File {basename} has been successfully downloaded.")
+                logger.info(f"File {basename} path: {dst_path}")
+        else:
+            dst_path = os.path.abspath(src_path)
+            logger.info(f"File {dst_path} found.")
+        return dst_path
 
     def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
         # fill skipped columns
@@ -113,7 +155,7 @@ class Inference:
         return models_list
 
     def load_on_device(
-        files_context: FilesContext,
+        model_dir: str,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
@@ -190,6 +232,10 @@ class Inference:
         ann = Annotation.from_img_path(image_path)
         ann = ann.add_labels(labels)
         return ann
+
+    @property
+    def model_dir(self) -> str:
+        return self._model_dir
 
     @property
     def custom_inference_settings(self) -> Union[Dict[str, any], str]:
@@ -399,9 +445,7 @@ class Inference:
             def load_model():
                 # TODO: maybe add custom logic?
                 device = self.gui.get_device()
-                location = self.gui.get_location()
-                file_context = self.get_context(location)
-                self.load_on_device(file_context, device)
+                self.load_on_device(self._model_dir, device)
                 self.gui.set_deployed()
 
         if is_debug_with_sly_net():
