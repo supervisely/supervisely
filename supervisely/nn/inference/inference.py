@@ -442,7 +442,7 @@ class Inference:
         n_frames = len(inf_video_interface.images_paths)
         logger.debug(f"Total frames to infer: {n_frames}")
 
-        if async_inference_request_uuid:
+        if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
             except Exception as ex:
@@ -458,7 +458,10 @@ class Inference:
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
-            if async_inference_request_uuid and inference_request["cancel_inference"]:
+            if (
+                async_inference_request_uuid is not None
+                and inference_request["cancel_inference"] is True
+            ):
                 logger.debug(
                     f"Cancelling inference video...",
                     extra={"inference_request_uuid": async_inference_request_uuid},
@@ -472,7 +475,7 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            if async_inference_request_uuid:
+            if async_inference_request_uuid is not None:
                 sly_progress.iter_done()
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(f"Frame {i+1} done.")
