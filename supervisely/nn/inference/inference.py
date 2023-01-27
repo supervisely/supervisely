@@ -459,7 +459,10 @@ class Inference:
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
             if async_inference_request_uuid and inference_request["cancel_inference"]:
-                logger.debug("Cancelling inference for video...")
+                logger.debug(
+                    f"Cancelling inference video...",
+                    extra={"inference_request_uuid": async_inference_request_uuid},
+                )
                 results = []
                 break
             logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
@@ -589,7 +592,10 @@ class Inference:
                 self._on_inference_end, inference_request_uuid=inference_request_uuid
             )
             future.add_done_callback(end_callback)
-            logger.debug("Inference has scheduled from 'inference_video_id_async' endpoint")
+            logger.debug(
+                "Inference has scheduled from 'inference_video_id_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
             return {
                 "message": "Inference has started.",
                 "inference_request_uuid": inference_request_uuid,
@@ -606,7 +612,10 @@ class Inference:
                 "current": sly_progress.current,
                 "total": sly_progress.total,
             }
-            logger.debug("Sending inference progress:", extra=inference_request)
+            logger.debug(
+                f"Sending inference progress with uuid {inference_request_uuid}:",
+                extra=inference_request,
+            )
             return inference_request
 
         @server.post(f"/stop_inference")
