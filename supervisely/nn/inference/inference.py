@@ -256,14 +256,21 @@ class Inference:
         settings: Dict,
         data_to_return: Dict,  # for decorators
     ):
-        logger.debug("Input path", extra={"path": image_path})
         inference_mode = settings.get("inference_mode", "full_image")
+        logger.debug(
+            "Inferring image_path:", extra={"inference_mode": inference_mode, "path": image_path}
+        )
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
         ann = self._predictions_to_annotation(image_path, predictions)
+
+        logger.debug(
+            f"Inferring image_path done. pred_annotation:",
+            extra=dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels)),
+        )
         return ann
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -308,10 +315,12 @@ class Inference:
         )
 
     def _inference_image(self, state: dict, file: UploadFile):
-        logger.debug("Input state", extra={"state": state})
+        logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
         image_np = sly_image.read_bytes(file.file.read())
+        logger.debug("Inference settings:", extra=settings)
+        logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
         sly_image.write(image_path, image_np)
         data_to_return = {}
         ann = self._inference_image_path(
@@ -323,7 +332,7 @@ class Inference:
         return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
-        logger.debug("Input state", extra={"state": state})
+        logger.debug("Inferring image batch...", extra={"state": state})
         paths = []
         temp_dir = os.path.join(get_data_dir(), rand_str(10))
         fs.mkdir(temp_dir)
@@ -337,6 +346,7 @@ class Inference:
         return results
 
     def _inference_batch_ids(self, api: Api, state: dict):
+        logger.debug("Inferring image_ids batch...", extra={"state": state})
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
         paths = []
@@ -352,10 +362,14 @@ class Inference:
         return results
 
     def _inference_images_dir(self, img_paths: List[str], state: Dict):
+        logger.debug("Inferring images_dir (or batch)...")
         settings = self._get_inference_settings(state)
+        logger.debug("Inference settings:", extra=settings)
+        n_imgs = len(img_paths)
         results = []
-        for image_path in img_paths:
+        for i, image_path in enumerate(img_paths):
             data_to_return = {}
+            logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
             ann = self._inference_image_path(
                 image_path=image_path,
                 settings=settings,
@@ -365,12 +379,17 @@ class Inference:
         return results
 
     def _inference_image_id(self, api: Api, state: dict):
-        logger.debug("Input state", extra={"state": state})
+        logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
         api.image.download_path(image_id, image_path)
+        logger.debug("Inference settings:", extra=settings)
+        logger.debug(
+            "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
+        )
+        logger.debug(f"Downloaded path: {image_path}")
         data_to_return = {}
         ann = self._inference_image_path(
             image_path=image_path,
@@ -381,7 +400,7 @@ class Inference:
         return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_image_url(self, api: Api, state: dict):
-        logger.debug("Input data", extra={"state": state})
+        logger.debug("Inferring image_url...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_url = state["image_url"]
         ext = fs.get_file_ext(image_url)
@@ -389,6 +408,8 @@ class Inference:
             ext = ".jpg"
         image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
         fs.download(image_url, image_path)
+        logger.debug("Inference settings:", extra=settings)
+        logger.debug(f"Downloaded path: {image_path}")
         data_to_return = {}
         ann = self._inference_image_path(
             image_path=image_path,
@@ -401,8 +422,16 @@ class Inference:
     def _inference_video_id(self, api: Api, state: dict):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
 
-        logger.debug("Input data", extra={"state": state})
+        logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                n_frames=video_info.frames_count,
+            ),
+        )
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
         inf_video_interface = InferenceVideoInterface(
@@ -413,11 +442,17 @@ class Inference:
             video_info=video_info,
             imgs_dir=video_images_path,
         )
-
         inf_video_interface.download_frames()
+
         settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
+        n_frames = len(inf_video_interface.images_paths)
+        logger.debug(f"Total frames to infer: {n_frames}")
+
         results = []
-        for image_path in inf_video_interface.images_paths:
+        for i, image_path in enumerate(inf_video_interface.images_paths):
+            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
             data_to_return = {}
             ann = self._inference_image_path(
                 image_path=image_path,
@@ -425,6 +460,7 @@ class Inference:
                 data_to_return=data_to_return,
             )
             results.append({"annotation": ann.to_json(), "data": data_to_return})
+            logger.debug(f"Frame {i+1} done.")
         fs.remove_dir(video_images_path)
         return results
 

@@ -307,8 +307,7 @@ class Table(Widget):
 
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
-                response = RedirectResponse(url="/")
-                return response
+                raise e
 
         return _click
 

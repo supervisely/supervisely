@@ -7,6 +7,7 @@ from supervisely.io.fs import silent_remove
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.graph import GraphNodes, Node
 from supervisely._utils import rand_str as sly_rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
@@ -53,6 +54,16 @@ def _scale_ann_to_original_size(
             )
 
             updated_geometry = Bitmap(data=bitmap_data, origin=bitmap_origin)
+
+        if type(label.geometry) is GraphNodes:
+            new_nodes = []
+            for id, node in label.geometry.nodes.items():
+                new_nodes.append(
+                    Node(label=id, row=node.location.row + rect.top, col=node.location.col + rect.left)
+                )
+
+            updated_geometry = GraphNodes(new_nodes)
+
         updated_labels.append(label.clone(geometry=updated_geometry))
 
     ann = ann.clone(img_size=original_size, labels=updated_labels)
