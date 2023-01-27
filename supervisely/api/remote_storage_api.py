@@ -1,4 +1,5 @@
 # coding: utf-8
+from typing import List
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
@@ -137,6 +138,32 @@ class RemoteStorageApi(ModuleApiBase):
         """
         Provider.validate_path(remote_path)
         return self._upload_paths_batch([local_path], [remote_path])
+
+    def upload_paths_batch(self, local_paths: List[str], remote_paths: List[str]):
+        """
+        Uploads items from given local paths to given remote paths.
+
+        :param local_paths: List of local paths to items that you want to upload.
+        :type local_paths: List[str]
+        :param remote_paths: Remote destination paths.
+        :type remote_paths: List[str]
+        :Usage example:
+
+        .. code-block:: python
+
+            provider = "s3" # can be one of ["s3", "google", "azure"]
+            bucket = "bucket-test-export"
+            paths_in_bucket = ["/demo/image_1.jpg", "/demo/image_2.jpg"]
+            remote_paths = [api.remote_storage.get_remote_path(provider, bucket, path) for path in paths_in_bucket]
+            # or alternatively use this:
+            # remote_paths = [f"{provider}://{bucket}{path}" for path in paths_in_bucket]
+            local_paths=["images/my-cats-1.jpg", "images/my-cats-2.jpg"]
+
+            api.remote_storage.upload_path(local_paths=local_paths, remote_paths=remote_paths)
+        """
+        for remote_path in remote_paths:
+            Provider.validate_path(remote_path)
+        return self._upload_paths_batch(local_paths, remote_paths)
 
     def _upload_paths_batch(self, local_paths, remote_paths):
         """_upload_paths_batch"""
