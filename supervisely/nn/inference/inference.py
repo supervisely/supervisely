@@ -1,5 +1,8 @@
 import json
 import os
+import uuid
+import time
+from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
@@ -69,10 +72,7 @@ class Inference:
                 raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
         self._headless = True
-        self._is_inferring = False
-        self._inference_progress = {"done": 0, "total": 1}
-        self._result = None
-        self._cancel_inference = False
+        self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
 
         self._prepare_model_files(location)
@@ -358,14 +358,8 @@ class Inference:
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
         n_imgs = len(img_paths)
-        # --- Uncomment all below if you want to add async inference for batch/images_dir ---
-        # self._inference_progress = {"done": 0, "total": n_imgs}
         results = []
         for i, image_path in enumerate(img_paths):
-            # if self._cancel_inference:
-            #     logger.debug("Cancelling inference for images_dir (or batch)...")
-            #     results = []
-            #     break
             data_to_return = {}
             logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
             ann = self._inference_image_path(
@@ -373,10 +367,7 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            # self._inference_progress["done"] += 1
             results.append({"annotation": ann.to_json(), "data": data_to_return})
-        # if results:
-        # self._result = results
         return results
 
     def _inference_image_id(self, api: Api, state: dict):
@@ -420,7 +411,7 @@ class Inference:
         fs.silent_remove(image_path)
         return {"annotation": ann.to_json(), "data": data_to_return}
 
-    def _inference_video_id(self, api: Api, state: dict):
+    def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
 
         logger.debug("Inferring video_id...", extra={"state": state})
@@ -451,10 +442,23 @@ class Inference:
         n_frames = len(inf_video_interface.images_paths)
         logger.debug(f"Total frames to infer: {n_frames}")
 
-        self._inference_progress = {"done": 0, "total": n_frames}
+        if async_inference_request_uuid:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = n_frames
+
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
-            if self._cancel_inference:
+            if async_inference_request_uuid and inference_request["cancel_inference"]:
                 logger.debug("Cancelling inference for video...")
                 results = []
                 break
@@ -465,23 +469,28 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            self._inference_progress["done"] += 1
+            if async_inference_request_uuid:
+                sly_progress.iter_done()
             results.append({"annotation": ann.to_json(), "data": data_to_return})
             logger.debug(f"Frame {i+1} done.")
+
         fs.remove_dir(video_images_path)
-        if results:
-            self._result = {"ann": results}
+        if async_inference_request_uuid and results:
+            inference_request["result"] = {"ann": results}
         return results
 
-    def _on_inference_start(self):
-        self._inference_progress = {"done": 0, "total": 1}
-        self._is_inferring = True
-        self._cancel_inference = False
-        self._result = None
+    def _on_inference_start(self, inference_request_uuid):
+        inference_request = {
+            "progress": Progress("Inferring model...", total_cnt=1),
+            "is_inferring": True,
+            "cancel_inference": False,
+            "result": None,
+        }
+        self._inference_requests[inference_request_uuid] = inference_request
 
-    def _on_inference_end(self, future):
+    def _on_inference_end(self, future, inference_request_uuid):
         logger.debug("_on_inference_end() callback")
-        self._is_inferring = False
+        self._inference_requests[inference_request_uuid]["is_inferring"] = False
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -569,24 +578,42 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
-            self._on_inference_start()
-            print(request.api.__dict__)
-            future = self._executor.submit(self._inference_video_id, request.api, request.state)
-            future.add_done_callback(self._on_inference_end)
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._inference_video_id, request.api, request.state, inference_request_uuid
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
             logger.debug("Inference has scheduled from 'inference_video_id_async' endpoint")
-            return {"message": "inference has started."}
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
 
         @server.post(f"/get_inference_progress")
-        def get_inference_progress():
-            result = {
-                "is_inferring": self._is_inferring,
-                "result": self._result,
-                "progress": self._inference_progress,
+        def get_inference_progress(request: Request):
+            inference_request_uuid = request.state.get("inference_request_uuid")
+            if not inference_request_uuid:
+                return {"message": "Error: 'inference_request_uuid' is required."}
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+            sly_progress: Progress = inference_request["progress"]
+            inference_request["progress"] = {
+                "current": sly_progress.current,
+                "total": sly_progress.total,
             }
-            logger.debug("Sending inference progress:", extra=result)
-            return result
+            logger.debug("Sending inference progress:", extra=inference_request)
+            return inference_request
 
         @server.post(f"/stop_inference")
-        def stop_inference():
-            self._cancel_inference = True
-            return {"success": True}
+        def stop_inference(request: Request):
+            inference_request_uuid = request.state.get("inference_request_uuid")
+            if not inference_request_uuid:
+                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+            inference_request = self._inference_requests[inference_request_uuid]
+            inference_request["cancel_inference"] = True
+            return {"message": "Inference will be stopped.", "success": True}
