@@ -481,7 +481,7 @@ class Inference:
             logger.debug(f"Frame {i+1} done.")
 
         fs.remove_dir(video_images_path)
-        if async_inference_request_uuid and results:
+        if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         return results
 
