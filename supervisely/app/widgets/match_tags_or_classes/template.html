@@ -2,7 +2,14 @@
     <el-table class="ultra-table"
               :data="data.{{{widget.widget_id}}}.table"
               ref="Table"
+              @selection-change="
+                (val) => {
+                    state.{{{widget.widget_id}}}.selected = val.map(x => x.name1 ? x.name1 : x.name2);
+                }
+                "
     >
+        <el-table-column type="selection" width="55">
+        </el-table-column>
         <el-table-column sortable prop="name1" label="Classes in GT project">
             <template scope="scope">
                 <div v-if="scope.row.name1">
