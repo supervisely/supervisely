@@ -7,18 +7,16 @@ from supervisely.app.widgets import Widget
 class MatchDatasets(Widget):
     def __init__(
         self,
-        left_datasets: List[DatasetInfo],
-        right_datasets: List[DatasetInfo],
+        left_datasets: List[DatasetInfo] = None,
+        right_datasets: List[DatasetInfo] = None,
         left_name=None,
         right_name=None,
-        load_on_init: bool = False,
         widget_id=None,
     ):
         self._left_ds = left_datasets
         self._right_ds = right_datasets
         self._left_name = "Left Datasets" if left_name is None else left_name
         self._right_name = "Right Datasets" if right_name is None else right_name
-        self._load_on_init = load_on_init
         self._api = Api()
 
         self._done = False
@@ -28,12 +26,8 @@ class MatchDatasets(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-        route_path = self.get_route_path("get_datasets_statistic")
-        server = self._sly_app.get_server()
-        server.post(route_path)(self.load_datasets_statistic)
-
-        if self._load_on_init:
-            self.load_datasets_statistic()
+        if self._left_ds is not None and self._right_ds is not None:
+            self._load_datasets_statistic()
 
     def get_json_data(self):
         return {"left_name": self._left_name, "right_name": self._right_name}
@@ -43,8 +37,8 @@ class MatchDatasets(Widget):
 
     def set(
         self,
-        left_datasets: List[DatasetInfo],
-        right_datasets: List[DatasetInfo],
+        left_datasets: List[DatasetInfo] = None,
+        right_datasets: List[DatasetInfo] = None,
         left_name=None,
         right_name=None,
     ):
@@ -64,13 +58,13 @@ class MatchDatasets(Widget):
         StateJson()[self.widget_id] = self.get_json_state()
         StateJson().send_changes()
 
-        if self._load_on_init:
-            self.load_datasets_statistic()
+        if self._left_ds is not None and self._right_ds is not None:
+            self._load_datasets_statistic()
 
     def get_stat(self):
         return self._stat
 
-    def load_datasets_statistic(self):
+    def _load_datasets_statistic(self):
         self._stat = {}
         ds_info1, ds_images1 = self._get_all_images(self._left_ds)
         ds_info2, ds_images2 = self._get_all_images(self._right_ds)
