@@ -109,7 +109,7 @@ class MatchTagMetasOrClasses(Widget):
             message = row.get("infoMessage")
             name1 = row.get("name1", None)
             name2 = row.get("name2", None)
-            stat[message_to_key[message]] = (name1, name2)
+            stat[message_to_key[message]].append((name1, name2))
         return stat
 
     def get_selected(self):
