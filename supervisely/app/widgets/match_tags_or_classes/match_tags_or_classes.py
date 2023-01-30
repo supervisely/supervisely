@@ -94,20 +94,22 @@ class MatchTagMetasOrClasses(Widget):
             "different_one_of_options": [],
         }
         for row in self._table:
+            message_to_key = {
+                "Match": "match",
+                "Not found in right Project": "only_left",
+                "Not found in left Project": "only_right",
+                "Different shape": "different_shape",
+                "Different value type": "different_value_type",
+                "Type OneOf: conflict of possible values": "different_one_of_options",
+                "Match with suffix": "match_suff",
+                "[Match with suffix] Different shape": "different_shape_suff",
+                "[Match with suffix] Different value type": "different_value_type_suff",
+                "[Match with suffix] Type OneOf: conflict of possible values": "different_one_of_options_suff",
+            }
             message = row.get("infoMessage")
-            name = row["name1"] if "name1" in row.keys() else row["name2"]
-            if message == "Match":
-                stat["match"].append(name)
-            elif message == "Not found in right Project":
-                stat["only_left"].append(name)
-            elif message == "Not found in left Project":
-                stat["only_right"].append(name)
-            elif message == "Different shape":
-                stat["different_shape"].append(name)
-            elif message == "Different value type":
-                stat["different_value_type"].append(name)
-            elif message == "Type OneOf: conflict of possible values":
-                stat["different_one_of_options"].append(name)
+            name1 = row.get("name1", None)
+            name2 = row.get("name2", None)
+            stat[message_to_key[message]] = (name1, name2)
         return stat
 
     def get_selected(self):

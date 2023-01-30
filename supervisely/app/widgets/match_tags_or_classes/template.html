@@ -4,7 +4,7 @@
               ref="Table"
               @selection-change="
                 (val) => {
-                    state.{{{widget.widget_id}}}.selected = val.map(x => x.name1 ? x.name1 : x.name2);
+                    state.{{{widget.widget_id}}}.selected = val.map(x => [x.name1, x.name2]);
                 }
                 "
     >
