@@ -8,14 +8,14 @@ from supervisely import (
     TagValueType,
     color,
 )
-from typing import Union
+from typing import Union, List
 
 
 class MatchTagMetasOrClasses(Widget):
     def __init__(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
-        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        left_collection: Union[TagMetaCollection, ObjClassCollection, List[TagMeta], None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, List[ObjClass], None] = None,
         left_name: str | None = None,
         right_name: str | None = None,
         selectable: bool = False,
@@ -24,6 +24,24 @@ class MatchTagMetasOrClasses(Widget):
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
+        if type(left_collection) is list:
+            if len(left_collection) > 0:
+                if type(left_collection[0]) is TagMeta:
+                    left_collection = TagMetaCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+                else:
+                    left_collection = ObjClassCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+            elif len(right_collection) > 0:
+                if type(right_collection[0]) is TagMeta:
+                    left_collection = TagMetaCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+                else:
+                    left_collection = ObjClassCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+            else:
+                left_collection = None
+                right_collection = None
         self._collections_type = type(left_collection)
         self._left_collection = left_collection
         self._right_collection = right_collection
@@ -63,14 +81,32 @@ class MatchTagMetasOrClasses(Widget):
 
     def set(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
-        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        left_collection: Union[TagMetaCollection, ObjClassCollection, List[TagMeta], None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, List[ObjClass], None] = None,
         left_name: str | None = None,
         right_name: str | None = None,
         selectable: bool | None = None,
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
+        if type(left_collection) is list:
+            if len(left_collection) > 0:
+                if type(left_collection[0]) is TagMeta:
+                    left_collection = TagMetaCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+                else:
+                    left_collection = ObjClassCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+            elif len(right_collection) > 0:
+                if type(right_collection[0]) is TagMeta:
+                    left_collection = TagMetaCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+                else:
+                    left_collection = ObjClassCollection(left_collection)
+                    right_collection = TagMetaCollection(right_collection)
+            else:
+                left_collection = None
+                right_collection = None
         self._collections_type = type(left_collection)
         self._left_collection = left_collection
         self._right_collection = right_collection
@@ -269,3 +305,9 @@ class MatchTagMetasOrClasses(Widget):
         table.extend(missed)
 
         return table
+
+class MatchTagMetas(MatchTagMetasOrClasses):
+    pass
+
+class MatchObjClasses(MatchTagMetasOrClasses):
+    pass
