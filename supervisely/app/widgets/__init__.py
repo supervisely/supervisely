@@ -63,3 +63,4 @@ from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
 from supervisely.app.widgets.file_thumbnail.file_thumbnail import FileThumbnail
 from supervisely.app.widgets.match_tags_or_classes.match_tags_or_classes import MatchTagMetas, MatchObjClasses
+from supervisely.app.widgets.match_datasets.match_datasets import MatchDatasets
