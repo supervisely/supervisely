@@ -10,16 +10,38 @@ from supervisely import (
 )
 from typing import Union
 
+
 class MatchTagMetasOrClasses(Widget):
     def __init__(
         self,
         left_collection: Union[TagMetaCollection, ObjClassCollection],
         right_collection: Union[TagMetaCollection, ObjClassCollection],
+        left_name: str | None = None,
+        right_name: str | None = None,
         selectable: bool = False,
         widget_id: str = None,
     ):
+        if not type(left_collection) is type(right_collection):
+            raise TypeError("Collections should be of same type")
+        self._collections_type = type(left_collection)
         self._left_collection = left_collection
         self._right_collection = right_collection
+        if left_name is None:
+            self._left_name = (
+                "Left Tag Metas"
+                if self._collections_type is TagMetaCollection
+                else "Left Classes"
+            )
+        else:
+            self._left_name = left_name
+        if right_name is None:
+            self._right_name = (
+                "Right Tag Metas"
+                if self._collections_type is TagMetaCollection
+                else "Right Classes"
+            )
+        else:
+            self._right_name = right_name
         self._selectable = selectable
 
         self._table = self._get_table()
@@ -27,22 +49,39 @@ class MatchTagMetasOrClasses(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {"table": self._table, "selectable": self._selectable}
+        return {
+            "table": self._table,
+            "left_name": self._left_name,
+            "right_name": self._right_name,
+            "selectable": self._selectable,
+        }
 
     def get_json_state(self):
         return {"selected": []}
-    
+
     def set(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection, None],
-        right_collection: Union[TagMetaCollection, ObjClassCollection, None],      
+        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        left_name: str | None = None,
+        right_name: str | None = None,
+        selectable: bool | None = None,
     ):
         if left_collection is not None:
-            self._left_collection = left_collection
+            new_left_collection = left_collection
         if right_collection is not None:
-            self._right_collection = right_collection
+            new_right_collection = right_collection
+        if not type(new_left_collection) is type(new_right_collection):
+            raise TypeError("Collections should be of same type")
+        self._collections_type = type(left_collection)
+        self._left_collection = new_left_collection
+        self._right_collection = new_right_collection
+        self._left_name = left_name if left_name is not None else self._left_name
+        self._right_name = right_name if right_name is not None else self._right_name
+        self._selectable = selectable if selectable is not None else self._selectable
+
         self._table = self._get_table()
-        DataJson()[self.widget_id]["table"] = self._table
+        DataJson()[self.widget_id] = self.get_json_data()
         DataJson().send_changes()
         StateJson()[self.widget_id] = self.get_json_state()
         StateJson().send_changes()
@@ -72,6 +111,9 @@ class MatchTagMetasOrClasses(Widget):
             elif message == "Type OneOf: conflict of possible values":
                 stat["different_one_of_options"].append(name)
         return stat
+
+    def get_selected(self):
+        return StateJson()[self.widget_id]["selected"]
 
     def _get_table(self):
         items1 = {item.name: 1 for item in self._left_collection}
@@ -119,7 +161,9 @@ class MatchTagMetasOrClasses(Widget):
                     if meta1.value_type != meta2.value_type:
                         flag = False
                         diff_msg = "Different value type"
-                    if meta1.value_type == TagValueType.ONEOF_STRING and set(meta1.possible_values) != set(meta2.possible_values):
+                    if meta1.value_type == TagValueType.ONEOF_STRING and set(
+                        meta1.possible_values
+                    ) != set(meta2.possible_values):
                         flag = False
                         diff_msg = "Type OneOf: conflict of possible values"
 
@@ -160,6 +204,3 @@ class MatchTagMetasOrClasses(Widget):
         table.extend(missed)
 
         return table
-
-    def get_selected(self):
-        return StateJson()[self.widget_id]["selected"]
