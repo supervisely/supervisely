@@ -5,47 +5,23 @@ from supervisely.app.widgets import Widget
 
 
 class MatchDatasets(Widget):
-    """
-    Compares Images by info.
-    You can select fields to compare by. None to select all fields. Default - compare by hash
-    Available field names:
-    "id"
-    "name"
-    "link"
-    "hash"
-    "mime"
-    "ext"
-    "size"
-    "width"
-    "height"
-    "labels_count"
-    "dataset_id"
-    "created_at"
-    "updated_at"
-    "meta"
-    "path_original"
-    "full_storage_url"
-    "tags"
-    """
-
     def __init__(
         self,
         left_datasets: List[DatasetInfo],
         right_datasets: List[DatasetInfo],
         left_name=None,
         right_name=None,
-        compare_fields: Union[List[str], None] = ["hash"],
+        load_on_init: bool = False,
         widget_id=None,
     ):
         self._left_ds = left_datasets
         self._right_ds = right_datasets
         self._left_name = "Left Datasets" if left_name is None else left_name
         self._right_name = "Right Datasets" if right_name is None else right_name
-        self._compare_fields = compare_fields
+        self._load_on_init = load_on_init
         self._api = Api()
 
         self._done = False
-        self._loading = False
 
         self._results = None
         self._stat = {}
@@ -54,13 +30,16 @@ class MatchDatasets(Widget):
 
         route_path = self.get_route_path("get_datasets_statistic")
         server = self._sly_app.get_server()
-        server.post(route_path)(self._load_datasets_statistic)
+        server.post(route_path)(self.load_datasets_statistic)
+
+        if self._load_on_init:
+            self.load_datasets_statistic()
 
     def get_json_data(self):
         return {"left_name": self._left_name, "right_name": self._right_name}
 
     def get_json_state(self):
-        return {"done2": self._done, "loading2": self._loading}
+        return {"done": self._done}
 
     def set(
         self,
@@ -68,13 +47,11 @@ class MatchDatasets(Widget):
         right_datasets: List[DatasetInfo],
         left_name=None,
         right_name=None,
-        compare_fields: Union[List[str], None] = ["hash"],
     ):
         self._left_ds = left_datasets
         self._right_ds = right_datasets
         self._left_name = self._left_name if left_name is None else left_name
         self._right_name = self._right_name if right_name is None else right_name
-        self._compare_fields = compare_fields
 
         self._done = False
         self._loading = False
@@ -87,13 +64,13 @@ class MatchDatasets(Widget):
         StateJson()[self.widget_id] = self.get_json_state()
         StateJson().send_changes()
 
+        if self._load_on_init:
+            self.load_datasets_statistic()
+
     def get_stat(self):
         return self._stat
 
-    def _load_datasets_statistic(self):
-        StateJson()[self.widget_id]["loading2"] = True
-        StateJson().send_changes()
-
+    def load_datasets_statistic(self):
         self._stat = {}
         ds_info1, ds_images1 = self._get_all_images(self._left_ds)
         ds_info2, ds_images2 = self._get_all_images(self._right_ds)
@@ -101,8 +78,7 @@ class MatchDatasets(Widget):
 
         DataJson()[self.widget_id]["table"] = result
         DataJson().send_changes()
-        StateJson()[self.widget_id]["done2"] = True
-        StateJson()[self.widget_id]["loading2"] = False
+        StateJson()[self.widget_id]["done"] = True
         StateJson().send_changes()
 
     def _process_items(self, ds_info1, collection1, ds_info2, collection2):
@@ -137,25 +113,15 @@ class MatchDatasets(Widget):
             else:
                 img_dict1 = {img_info.name: img_info for img_info in images1}
                 img_dict2 = {img_info.name: img_info for img_info in images1}
-                if self._compare_fields is None:
-                    compare_fields = set(images1[0]._asdict().keys())
-                else:
-                    compare_fields = set(self._compare_fields)
                 matched = []
                 diff = []
                 same_names = img_dict1.keys() & img_dict2.keys()
                 for img_name in same_names:
-                    compare_dict1 = {
-                        key: val
-                        for key, val in img_dict1[img_name]._asdict().items()
-                        if key in compare_fields
-                    }
-                    compare_dict2 = {
-                        key: val
-                        for key, val in img_dict2[img_name]._asdict().items()
-                        if key in compare_fields
-                    }
-                    dest = matched if compare_dict1 == compare_dict2 else diff
+                    dest = (
+                        matched
+                        if img_dict1[img_name].hash == img_dict2[img_name].hash
+                        else diff
+                    )
                     dest.append(
                         {"left": img_dict1[img_name], "right": img_dict2[img_name]}
                     )

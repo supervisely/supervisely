@@ -1,10 +1,5 @@
 <div>
-    <el-button :loading="state.{{{widget.widget_id}}}.loading2"
-               v-if="!state.{{{widget.widget_id}}}.done2"
-               class="regular" type="primary" @click="post('/{{{widget.widget_id}}}/get_datasets_statistic')">
-        Match
-    </el-button>
-    <div v-if="state.{{{widget.widget_id}}}.done2">
+    <div v-if="state.{{{widget.widget_id}}}.done">
         <el-table class="ultra-table"
                   :data="data.{{{widget.widget_id}}}.table"
                   style="width: 100%"
