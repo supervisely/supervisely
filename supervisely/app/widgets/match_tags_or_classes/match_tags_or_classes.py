@@ -14,8 +14,8 @@ from typing import Union, List
 class MatchTagMetasOrClasses(Widget):
     def __init__(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection, List[TagMeta], None] = None,
-        right_collection: Union[TagMetaCollection, ObjClassCollection, List[ObjClass], None] = None,
+        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         left_name: str | None = None,
         right_name: str | None = None,
         selectable: bool = False,
@@ -24,24 +24,6 @@ class MatchTagMetasOrClasses(Widget):
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
-        if type(left_collection) is list:
-            if len(left_collection) > 0:
-                if type(left_collection[0]) is TagMeta:
-                    left_collection = TagMetaCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-                else:
-                    left_collection = ObjClassCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-            elif len(right_collection) > 0:
-                if type(right_collection[0]) is TagMeta:
-                    left_collection = TagMetaCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-                else:
-                    left_collection = ObjClassCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-            else:
-                left_collection = None
-                right_collection = None
         self._collections_type = type(left_collection)
         self._left_collection = left_collection
         self._right_collection = right_collection
@@ -81,38 +63,18 @@ class MatchTagMetasOrClasses(Widget):
 
     def set(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection, List[TagMeta], None] = None,
-        right_collection: Union[TagMetaCollection, ObjClassCollection, List[ObjClass], None] = None,
+        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         left_name: str | None = None,
         right_name: str | None = None,
-        selectable: bool | None = None,
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
-        if type(left_collection) is list:
-            if len(left_collection) > 0:
-                if type(left_collection[0]) is TagMeta:
-                    left_collection = TagMetaCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-                else:
-                    left_collection = ObjClassCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-            elif len(right_collection) > 0:
-                if type(right_collection[0]) is TagMeta:
-                    left_collection = TagMetaCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-                else:
-                    left_collection = ObjClassCollection(left_collection)
-                    right_collection = TagMetaCollection(right_collection)
-            else:
-                left_collection = None
-                right_collection = None
         self._collections_type = type(left_collection)
         self._left_collection = left_collection
         self._right_collection = right_collection
         self._left_name = left_name if left_name is not None else self._left_name
         self._right_name = right_name if right_name is not None else self._right_name
-        self._selectable = selectable if selectable is not None else self._selectable
 
         self._table = self._get_table()
         DataJson()[self.widget_id] = self.get_json_data()
@@ -128,6 +90,10 @@ class MatchTagMetasOrClasses(Widget):
             "different_shape": [],
             "different_value_type": [],
             "different_one_of_options": [],
+            "match_suffix": [],
+            "different_shape_suffix": [],
+            "different_value_type_suffix": [],
+            "different_one_of_options_suffix": [],
         }
         for row in self._table:
             message_to_key = {
@@ -158,7 +124,7 @@ class MatchTagMetasOrClasses(Widget):
         items2 = {item.name: 1 for item in self._right_collection}
         names = items1.keys() | items2.keys()
         mutual = items1.keys() & items2.keys()
-        
+
         def get_mutual_with_suffix(names1, names2, suffix):
             left = {}
             right = {}
@@ -171,14 +137,26 @@ class MatchTagMetasOrClasses(Widget):
                 if name2.rstrip(suffix) in names1:
                     left[name2.rstrip(suffix)] = name2
             return left, right
-        
+
         mutual_with_suffix_left = {}
         mutual_with_suffix_right = {}
         if self._suffix is not None:
-            mutual_with_suffix_left, mutual_with_suffix_right = get_mutual_with_suffix(items1.keys()-mutual, items2.keys()-mutual, self._suffix)
-            
-        diff1 = items1.keys() - mutual - mutual_with_suffix_left.keys() - set(mutual_with_suffix_right.values())
-        diff2 = items2.keys() - mutual - mutual_with_suffix_right.keys() - set(mutual_with_suffix_left.values())
+            mutual_with_suffix_left, mutual_with_suffix_right = get_mutual_with_suffix(
+                items1.keys() - mutual, items2.keys() - mutual, self._suffix
+            )
+
+        diff1 = (
+            items1.keys()
+            - mutual
+            - mutual_with_suffix_left.keys()
+            - set(mutual_with_suffix_right.values())
+        )
+        diff2 = (
+            items2.keys()
+            - mutual
+            - mutual_with_suffix_right.keys()
+            - set(mutual_with_suffix_left.values())
+        )
 
         match = []
         differ = []
@@ -236,12 +214,14 @@ class MatchTagMetasOrClasses(Widget):
                     compare["infoColor"] = "green"
                     compare["infoIcon"] = (["zmdi zmdi-check"],)
                     match.append(compare)
-            elif name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys():
+            elif (
+                name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys()
+            ):
                 if name in mutual_with_suffix_left:
-                    meta2 = self._right_collection.get(name+self._suffix)
+                    meta2 = self._right_collection.get(name + self._suffix)
                     set_info(compare, 2, meta2)
                 else:
-                    meta1 = self._left_collection.get(name+self._suffix)
+                    meta1 = self._left_collection.get(name + self._suffix)
                     set_info(compare, 1, meta1)
                 flag = True
                 if (
@@ -306,8 +286,122 @@ class MatchTagMetasOrClasses(Widget):
 
         return table
 
+
 class MatchTagMetas(MatchTagMetasOrClasses):
-    pass
+    def __init__(
+        self,
+        left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
+        right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
+        left_name: str | None = None,
+        right_name: str | None = None,
+        selectable: bool = False,
+        suffix: str | None = None,
+        widget_id: str = None,
+    ):
+        if type(left_collection) is list:
+            left_collection = TagMetaCollection(left_collection)
+        if type(right_collection) is list:
+            right_collection = TagMetaCollection(right_collection)
+
+        super().__init__(
+            left_collection=left_collection,
+            right_collection=right_collection,
+            left_name=left_name,
+            right_name=right_name,
+            selectable=selectable,
+            suffix=suffix,
+            widget_id=widget_id,
+        )
+
+    def set(
+        self,
+        left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
+        right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
+        left_name: str | None = None,
+        right_name: str | None = None,
+    ):
+        if type(left_collection) is list:
+            left_collection = TagMetaCollection(left_collection)
+        if type(right_collection) is list:
+            right_collection = TagMetaCollection(right_collection)
+
+        super().set(
+            left_collection=left_collection,
+            right_collection=right_collection,
+            left_name=left_name,
+            right_name=right_name,
+        )
+
+    def get_stat(self):
+        stat = super().get_stat()
+        fields = set(
+            "match",
+            "only_left",
+            "only_right",
+            "different_value_type",
+            "different_one_of_options",
+            "match_suffix",
+            "different_value_type_suff",
+            "different_one_of_options_suff",
+        )
+        stat = {key: value for key, value in stat if key in fields}
+        return stat
+
 
 class MatchObjClasses(MatchTagMetasOrClasses):
-    pass
+    def __init__(
+        self,
+        left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
+        right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
+        left_name: str | None = None,
+        right_name: str | None = None,
+        selectable: bool = False,
+        suffix: str | None = None,
+        widget_id: str = None,
+    ):
+        if type(left_collection) is list:
+            left_collection = ObjClassCollection(left_collection)
+        if type(right_collection) is list:
+            right_collection = ObjClassCollection(right_collection)
+
+        super().__init__(
+            left_collection=left_collection,
+            right_collection=right_collection,
+            left_name=left_name,
+            right_name=right_name,
+            selectable=selectable,
+            suffix=suffix,
+            widget_id=widget_id,
+        )
+
+    def set(
+        self,
+        left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
+        right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
+        left_name: str | None = None,
+        right_name: str | None = None,
+    ):
+        if type(left_collection) is list:
+            left_collection = ObjClassCollection(left_collection)
+        if type(right_collection) is list:
+            right_collection = ObjClassCollection(right_collection)
+
+        super().set(
+            left_collection=left_collection,
+            right_collection=right_collection,
+            left_name=left_name,
+            right_name=right_name,
+        )
+
+    def get_stat(self):
+        stat = super().get_stat()
+        fields = set(
+            "match",
+            "only_left",
+            "only_right",
+            "different_shape",
+            "match_suffix",
+            "different_shape_suffix",
+        )
+        stat = {key: value for key, value in stat if key in fields}
+        return stat
