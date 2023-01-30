@@ -14,11 +14,12 @@ from typing import Union
 class MatchTagMetasOrClasses(Widget):
     def __init__(
         self,
-        left_collection: Union[TagMetaCollection, ObjClassCollection],
-        right_collection: Union[TagMetaCollection, ObjClassCollection],
+        left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
+        right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         left_name: str | None = None,
         right_name: str | None = None,
         selectable: bool = False,
+        suffix: str | None = None,
         widget_id: str = None,
     ):
         if not type(left_collection) is type(right_collection):
@@ -43,6 +44,7 @@ class MatchTagMetasOrClasses(Widget):
         else:
             self._right_name = right_name
         self._selectable = selectable
+        self._suffix = suffix
 
         self._table = self._get_table()
 
@@ -67,15 +69,11 @@ class MatchTagMetasOrClasses(Widget):
         right_name: str | None = None,
         selectable: bool | None = None,
     ):
-        if left_collection is not None:
-            new_left_collection = left_collection
-        if right_collection is not None:
-            new_right_collection = right_collection
-        if not type(new_left_collection) is type(new_right_collection):
+        if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
         self._collections_type = type(left_collection)
-        self._left_collection = new_left_collection
-        self._right_collection = new_right_collection
+        self._left_collection = left_collection
+        self._right_collection = right_collection
         self._left_name = left_name if left_name is not None else self._left_name
         self._right_name = right_name if right_name is not None else self._right_name
         self._selectable = selectable if selectable is not None else self._selectable
@@ -116,15 +114,38 @@ class MatchTagMetasOrClasses(Widget):
         return StateJson()[self.widget_id]["selected"]
 
     def _get_table(self):
+        if self._left_collection is None:
+            return []
         items1 = {item.name: 1 for item in self._left_collection}
         items2 = {item.name: 1 for item in self._right_collection}
         names = items1.keys() | items2.keys()
         mutual = items1.keys() & items2.keys()
-        diff1 = items1.keys() - mutual
-        diff2 = items2.keys() - mutual
+        
+        def get_mutual_with_suffix(names1, names2, suffix):
+            left = {}
+            right = {}
+            for name1 in names1:
+                name1: str
+                if name1.rstrip(suffix) in names2:
+                    right[name1.rstrip(suffix)] = name1
+            for name2 in names2:
+                name2: str
+                if name2.rstrip(suffix) in names1:
+                    left[name2.rstrip(suffix)] = name2
+            return left, right
+        
+        mutual_with_suffix_left = {}
+        mutual_with_suffix_right = {}
+        if self._suffix is not None:
+            mutual_with_suffix_left, mutual_with_suffix_right = get_mutual_with_suffix(items1.keys()-mutual, items2.keys()-mutual, self._suffix)
+            
+        diff1 = items1.keys() - mutual - mutual_with_suffix_left.keys() - set(mutual_with_suffix_right.values())
+        diff2 = items2.keys() - mutual - mutual_with_suffix_right.keys() - set(mutual_with_suffix_left.values())
 
         match = []
         differ = []
+        match_suffix = []
+        differ_suffix = []
         missed = []
 
         def set_info(d, index, meta):
@@ -169,7 +190,7 @@ class MatchTagMetasOrClasses(Widget):
 
                 if flag is False:
                     compare["infoMessage"] = diff_msg
-                    compare["infoColor"] = "red"
+                    compare["infoColor"] = "#FFBF00"
                     compare["infoIcon"] = (["zmdi zmdi-flag"],)
                     differ.append(compare)
                 else:
@@ -177,7 +198,43 @@ class MatchTagMetasOrClasses(Widget):
                     compare["infoColor"] = "green"
                     compare["infoIcon"] = (["zmdi zmdi-check"],)
                     match.append(compare)
-            else:
+            elif name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys():
+                if name in mutual_with_suffix_left:
+                    meta2 = self._right_collection.get(name+self._suffix)
+                    set_info(compare, 2, meta2)
+                else:
+                    meta1 = self._left_collection.get(name+self._suffix)
+                    set_info(compare, 1, meta1)
+                flag = True
+                if (
+                    type(meta1) is ObjClass
+                    and meta1.geometry_type != meta2.geometry_type
+                ):
+                    flag = False
+                    diff_msg = "[Match with suffix] Different shape"
+                if type(meta1) is TagMeta:
+                    meta1: TagMeta
+                    meta2: TagMeta
+                    if meta1.value_type != meta2.value_type:
+                        flag = False
+                        diff_msg = "[Match with suffix] Different value type"
+                    if meta1.value_type == TagValueType.ONEOF_STRING and set(
+                        meta1.possible_values
+                    ) != set(meta2.possible_values):
+                        flag = False
+                        diff_msg = "[Match with suffix] Type OneOf: conflict of possible values"
+
+                if flag is False:
+                    compare["infoMessage"] = diff_msg
+                    compare["infoColor"] = "#FFBF00"
+                    compare["infoIcon"] = (["zmdi zmdi-flag"],)
+                    differ_suffix.append(compare)
+                else:
+                    compare["infoMessage"] = "Match with suffix"
+                    compare["infoColor"] = "green"
+                    compare["infoIcon"] = (["zmdi zmdi-check"],)
+                    match_suffix.append(compare)
+            elif name in diff1 | diff2:
                 if name in diff1:
                     compare["infoMessage"] = "Not found in right Project"
                     compare["infoIcon"] = [
@@ -191,7 +248,7 @@ class MatchTagMetasOrClasses(Widget):
                         "zmdi zmdi-long-arrow-left",
                         "zmdi zmdi-alert-circle-o",
                     ]
-                compare["infoColor"] = "#FFBF00"
+                compare["infoColor"] = "red"
                 missed.append(compare)
 
         table = []
@@ -201,6 +258,12 @@ class MatchTagMetasOrClasses(Widget):
         if differ:
             differ.sort(key=lambda x: x["name1"])
         table.extend(differ)
+        if match_suffix:
+            match_suffix.sort(key=lambda x: x["name1"])
+        table.extend(match_suffix)
+        if differ_suffix:
+            differ_suffix.sort(key=lambda x: x["name1"])
+        table.extend(differ_suffix)
         table.extend(missed)
 
         return table
