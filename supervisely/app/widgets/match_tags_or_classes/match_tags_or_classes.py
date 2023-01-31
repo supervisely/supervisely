@@ -16,10 +16,10 @@ class MatchTagMetasOrClasses(Widget):
         self,
         left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
         selectable: bool = False,
-        suffix: str | None = None,
+        suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
         if not type(left_collection) is type(right_collection):
@@ -65,8 +65,8 @@ class MatchTagMetasOrClasses(Widget):
         self,
         left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
@@ -103,10 +103,10 @@ class MatchTagMetasOrClasses(Widget):
                 "Different shape": "different_shape",
                 "Different value type": "different_value_type",
                 "Type OneOf: conflict of possible values": "different_one_of_options",
-                "Match with suffix": "match_suff",
-                "[Match with suffix] Different shape": "different_shape_suff",
-                "[Match with suffix] Different value type": "different_value_type_suff",
-                "[Match with suffix] Type OneOf: conflict of possible values": "different_one_of_options_suff",
+                "Match with suffix": "match_suffix",
+                "[Match with suffix] Different shape": "different_shape_suffix",
+                "[Match with suffix] Different value type": "different_value_type_suffix",
+                "[Match with suffix] Type OneOf: conflict of possible values": "different_one_of_options_suffix",
             }
             message = row.get("infoMessage")
             name1 = row.get("name1", None)
@@ -292,10 +292,10 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         self,
         left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
         right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
         selectable: bool = False,
-        suffix: str | None = None,
+        suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
         if type(left_collection) is list:
@@ -317,8 +317,8 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         self,
         left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
         right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = TagMetaCollection(left_collection)
@@ -334,17 +334,17 @@ class MatchTagMetas(MatchTagMetasOrClasses):
 
     def get_stat(self):
         stat = super().get_stat()
-        fields = set(
+        fields = {
             "match",
             "only_left",
             "only_right",
             "different_value_type",
             "different_one_of_options",
             "match_suffix",
-            "different_value_type_suff",
-            "different_one_of_options_suff",
-        )
-        stat = {key: value for key, value in stat if key in fields}
+            "different_value_type_suffix",
+            "different_one_of_options_suffix",
+        }
+        stat = {key: value for key, value in stat.items() if key in fields}
         return stat
 
 
@@ -353,10 +353,10 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         self,
         left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
         right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
         selectable: bool = False,
-        suffix: str | None = None,
+        suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
         if type(left_collection) is list:
@@ -378,8 +378,8 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         self,
         left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
         right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
-        left_name: str | None = None,
-        right_name: str | None = None,
+        left_name: Union[str, None] = None,
+        right_name: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = ObjClassCollection(left_collection)
@@ -395,13 +395,13 @@ class MatchObjClasses(MatchTagMetasOrClasses):
 
     def get_stat(self):
         stat = super().get_stat()
-        fields = set(
+        fields = {
             "match",
             "only_left",
             "only_right",
             "different_shape",
             "match_suffix",
             "different_shape_suffix",
-        )
-        stat = {key: value for key, value in stat if key in fields}
+        }
+        stat = {key: value for key, value in stat.items() if key in fields}
         return stat
