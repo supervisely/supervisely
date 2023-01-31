@@ -523,7 +523,6 @@ class Inference:
         return results
 
     def serve(self):
-        Progress("Deploying model ...", 1)
         if self._use_gui:
             models = self.get_models()
             if isinstance(models, list):
@@ -537,9 +536,13 @@ class Inference:
 
             @self.gui.serve_button.click
             def load_model():
+                Progress("Deploying model ...", 1)
                 device = self.gui.get_device()
                 self.load_on_device(self._model_dir, device)
                 self.gui.set_deployed()
+
+        else:
+            Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team

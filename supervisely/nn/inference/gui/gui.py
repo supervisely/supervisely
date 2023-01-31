@@ -149,6 +149,11 @@ class InferenceGUI(BaseInferenceGUI):
             return "Pretrained models"
         return self._tabs.get_active_tab()
 
+    def get_custom_link(self) -> str:
+        if not self._support_custom_models:
+            return None
+        return self._model_path_input.get_value()
+
     @property
     def serve_button(self) -> Widgets.Button:
         return self._serve_button
