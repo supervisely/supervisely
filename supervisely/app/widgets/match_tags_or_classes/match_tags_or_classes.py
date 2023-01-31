@@ -67,6 +67,7 @@ class MatchTagMetasOrClasses(Widget):
         right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
@@ -75,6 +76,7 @@ class MatchTagMetasOrClasses(Widget):
         self._right_collection = right_collection
         self._left_name = left_name if left_name is not None else self._left_name
         self._right_name = right_name if right_name is not None else self._right_name
+        self._suffix = suffix
 
         self._table = self._get_table()
         DataJson()[self.widget_id] = self.get_json_data()
@@ -319,6 +321,7 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = TagMetaCollection(left_collection)
@@ -330,6 +333,7 @@ class MatchTagMetas(MatchTagMetasOrClasses):
             right_collection=right_collection,
             left_name=left_name,
             right_name=right_name,
+            suffix=suffix,
         )
 
     def get_stat(self):
@@ -380,6 +384,7 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = ObjClassCollection(left_collection)
@@ -391,6 +396,7 @@ class MatchObjClasses(MatchTagMetasOrClasses):
             right_collection=right_collection,
             left_name=left_name,
             right_name=right_name,
+            suffix=suffix,
         )
 
     def get_stat(self):
