@@ -108,6 +108,7 @@ class InferenceGUI(BaseInferenceGUI):
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
         self._download_progress = Widgets.SlyTqdm("Downloading model...", show_percents=True)
+        self._download_progress.hide()
         if self._support_custom_models:
             self._model_path_input = Widgets.Input(
                 placeholder="Path to model file or folder in Team Files"
@@ -159,7 +160,7 @@ class InferenceGUI(BaseInferenceGUI):
     def set_deployed(self):
         self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
         self._success_label.show()
-        self._serve_button.disable()
+        self._serve_button.hide()
         self._device_select.disable()
         self._models_table.disable()
         if self._support_custom_models:

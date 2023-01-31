@@ -1,5 +1,7 @@
 import json
 import os
+import requests
+from requests.structures import CaseInsensitiveDict
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
@@ -117,7 +119,7 @@ class Inference:
                 "/"
             ):  # folder from Team Files
 
-                def download_dir(team_id, src_path, dst_path, progress_cb):
+                def download_dir(team_id, src_path, dst_path, progress_cb=None):
                     self.api.file.download_directory(
                         team_id,
                         src_path,
@@ -132,36 +134,63 @@ class Inference:
                 if progress is None:
                     download_dir(team_id, src_path, dst_path)
                 else:
+                    self.gui.download_progress.show()
                     with progress(
                         message="Downloading directory from Team Files...", total=sizeb
                     ) as pbar:
                         download_dir(team_id, src_path, dst_path, pbar.update)
+                    self.gui.download_progress.hide()
                 logger.info(
                     f"📥 Directory {basename} has been successfully downloaded from Team Files"
                 )
                 logger.info(f"Directory {basename} path: {dst_path}")
             elif self.api.file.exists(team_id, src_path):  # file from Team Files
 
-                def download_file(team_id, src_path, dst_path, progress_cb):
+                def download_file(team_id, src_path, dst_path, progress_cb=None):
                     self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
 
                 file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
                 if progress is None:
                     download_file(team_id, src_path, dst_path)
                 else:
+                    self.gui.download_progress.show()
                     with progress(
                         message="Downloading file from Team Files...", total=file_info.sizeb
                     ) as pbar:
                         download_file(team_id, src_path, dst_path, pbar.update)
+                    self.gui.download_progress.hide()
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
                 logger.info(f"File {basename} path: {dst_path}")
             else:  # external url
+
+                def download_external_file(url, save_path, progress=None):
+                    def download_content(save_path, progress_cb=None):
+                        with open(save_path, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                                if progress is not None:
+                                    progress_cb(len(chunk))
+
+                    with requests.get(url, stream=True) as r:
+                        r.raise_for_status()
+                        total_size_in_bytes = int(
+                            CaseInsensitiveDict(r.headers).get("Content-Length", "0")
+                        )
+                        if progress is None:
+                            download_content(save_path)
+                        else:
+                            with progress(
+                                message="Downloading file from external URL...",
+                                total=total_size_in_bytes,
+                            ) as pbar:
+                                download_content(save_path, pbar.update)
+
                 if progress is None:
-                    fs.download(src_path, dst_path)
+                    download_external_file(src_path, dst_path)
                 else:
-                    # TODO: size?
-                    with progress(message="Downloading file from external URL...") as pbar:
-                        fs.download(src_path, dst_path, progress=pbar.update)
+                    self.gui.download_progress.show()
+                    download_external_file(src_path, dst_path, progress=progress)
+                    self.gui.download_progress.hide()
                 logger.info(
                     f"📥 File {basename} has been successfully downloaded from external URL."
                 )
