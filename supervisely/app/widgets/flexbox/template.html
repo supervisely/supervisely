@@ -1,9 +1,13 @@
 <div
-  {% if widget._center_content == true %}
-  style="display: flex; gap: {{{widget._gap}}}px; justify-content: center;"
-  {% else %}
-  style="display: flex; gap: {{{widget._gap}}}px;"
-  {% endif %}
+    {% if widget._center_content == true and widget._vertical_align is string %}
+        :style="{display: 'flex', gap: '{{{widget._gap}}}px', 'align-items': '{{{widget._vertical_align }}}', 'justify-content': 'center' }"
+    {% elif widget._center_content == true %}
+        :style="{display: 'flex', gap: '{{{widget._gap}}}px', 'justify-content': 'center' }"
+    {% elif widget._vertical_align is string %}
+        :style="{display: 'flex', gap: '{{{widget._gap}}}px', 'align-items': '{{{widget._vertical_align }}}' }"
+    {% else %}
+        :style="{display: 'flex', gap: '{{{widget._gap}}}px' }"
+    {% endif %}
 >
   {% for w in widget._widgets %}
     {{{w}}}
