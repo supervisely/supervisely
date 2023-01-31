@@ -40,8 +40,6 @@ class InferenceGUI(BaseInferenceGUI):
         self._support_pretrained_models = True  # TODO: check If get_models() method is implemented
         assert self._support_custom_models or self._support_pretrained_models
 
-        self._weights_file_key = "weights_file"
-        self._config_file_key = "config_file"
         device_values = ["cpu"]
         device_names = ["CPU"]
         try:
@@ -67,17 +65,9 @@ class InferenceGUI(BaseInferenceGUI):
 
             self._model_select = Widgets.SelectString(list(models.keys()))
             selected_model = self._model_select.get_value()
-            cols = [
-                model_key
-                for model_key in models[selected_model]["checkpoints"][0].keys()
-                if model_key not in [self._weights_file_key, self._config_file_key]
-            ]
+            cols = list(models[selected_model]["checkpoints"][0].keys())
             rows = [
-                [
-                    value
-                    for param_name, value in model.items()
-                    if param_name not in [self._config_file_key, self._weights_file_key]
-                ]
+                [value for param_name, value in model.items()]
                 for model in models[selected_model]["checkpoints"]
             ]
 
@@ -96,14 +86,16 @@ class InferenceGUI(BaseInferenceGUI):
                     ]
                     for model in self._models[selected_model]["checkpoints"]
                 ]
-                self._models_table.columns = cols
-                self._models_table.rows = rows
+
+                table_subtitles = self._get_table_subtitles(cols)
+                self._models_table.set_data(cols, rows, table_subtitles)
 
         else:
             cols = list(models[0].keys())
             rows = [list(model.values()) for model in models]
 
-        self._models_table = Widgets.RadioTable(cols, rows)
+        table_subtitles = self._get_table_subtitles(cols)
+        self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
@@ -126,6 +118,19 @@ class InferenceGUI(BaseInferenceGUI):
                 titles=["Pretrained models", "Custom weights"],
                 contents=[Widgets.Container(pretrained_tab), self._model_path_field],
             )
+
+    def _get_table_subtitles(self, cols):
+        subtitles = []
+        for col in cols:
+            guess_brackets = col.split("(")
+            if len(guess_brackets) > 1:
+                subtitle = guess_brackets[1]
+                if ")" not in subtitle:
+                    subtitles.append({col: None})
+                subtitle = subtitle.split(")")[0]
+                subtitles.append({col: subtitle})
+            else:
+                subtitles.append({col: None})
 
     def get_device(self) -> str:
         return self._device_select.get_value()
