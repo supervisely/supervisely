@@ -37,6 +37,7 @@ class Flexbox(Widget):
         self._widgets = widgets
         self._gap = gap
         self._center_content = center_content
+        self._vertical_align = None
         if vertical_align is not None and vertical_align in self.ALIGN_NAMES.keys():
             self._vertical_align = self.ALIGN_NAMES[vertical_align]
         super().__init__(widget_id=widget_id, file_path=__file__)
