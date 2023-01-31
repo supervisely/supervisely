@@ -157,7 +157,7 @@ class ConfusionMatrix(Widget):
         return {
             "matrix_data": self._parsed_data_with_totals,
             "matrix_options": {
-                "selectable": len(DataJson().get(self.widget_id, {}).get("widget_routes", {})) > 0,
+                "selectable": True,
                 "horizontalLabel": self.x_label,
                 "verticalLabel": self.y_label,
             },
