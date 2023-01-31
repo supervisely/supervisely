@@ -283,13 +283,15 @@ class FileApi(ModuleApiBase):
             print(files)
             # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
         """
-        files_filtered = set()
-        files = self.list(team_id, path)
-        for f in files:
-            match = re.match(f"{path}/[^/]*", f["path"])
-            if match:
-                files_filtered.add(match.group())
-        return list(files_filtered)
+
+        if self.is_on_agent(path) is True:
+            return self.list_on_agent(team_id, path, recursive=False)
+
+        response = self._api.post(
+            "file-storage.list",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: False},
+        )
+        return response.json()
 
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
@@ -709,6 +711,53 @@ class FileApi(ModuleApiBase):
         resp = self._api.post(
             "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
+
+    def remove_batch(
+        self,
+        team_id: int,
+        paths: List[str],
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Removes list of files from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param paths: List of paths to Files in Team Files.
+        :type paths: List[str]
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            paths_to_del = [
+                "/999_App_Test/ds1/01587.json",
+                "/999_App_Test/ds1/01588.json",
+                "/999_App_Test/ds1/01587.json"
+            ]
+            api.file.remove(8, paths_to_del)
+        """
+
+        for paths_batch in batched(paths, batch_size=100):
+            for path in paths_batch:
+                if self.is_on_agent(path) is True:
+                    logger.warn(
+                        f"Data '{path}' is on agent. File skipped. Method does not support agent storage. Remove your data manually on the computer with agent."
+                    )
+                    paths_batch.remove(path)
+
+            self._api.post(
+                "file-storage.bulk.remove", {ApiField.TEAM_ID: team_id, ApiField.PATHS: paths_batch}
+            )
+            if progress_cb is not None:
+                progress_cb(len(paths_batch))
 
     def exists(self, team_id: int, remote_path: str) -> bool:
         """
