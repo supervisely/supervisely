@@ -98,12 +98,16 @@ class Inference:
         raise RuntimeError("Have to be implemented in child class after inheritance")
 
     def download(self, src_path: str, dst_path: str = None):
+        basename = os.path.basename(os.path.normpath(src_path))
         if dst_path is None:
             dst_path = os.path.join(self._model_dir, basename)
+        if self.gui is not None:
+            progress = self.gui.download_progress
+        else:
+            progress = None
+
         if fs.is_on_agent(src_path) or is_production():
             team_id = env.team_id()
-            basename = os.path.basename(os.path.normpath(src_path))
-            progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
             if fs.dir_exists(src_path) or fs.file_exists(
                 src_path
             ):  # only during debug, has no effect in production
@@ -112,31 +116,55 @@ class Inference:
             elif self.api.file.dir_exists(team_id, src_path) and src_path.endswith(
                 "/"
             ):  # folder from Team Files
+
+                def download_dir(team_id, src_path, dst_path, progress_cb):
+                    self.api.file.download_directory(
+                        team_id,
+                        src_path,
+                        dst_path,
+                        progress_cb=progress_cb,
+                    )
+
                 logger.info(f"Remote directory in Team Files: {src_path}")
                 logger.info(f"Local directory: {dst_path}")
                 sizeb = self.api.file.get_directory_size(team_id, src_path)
-                progress.set(current=0, total=sizeb)
-                self.api.file.download_directory(
-                    team_id,
-                    src_path,
-                    dst_path,
-                    progress.iters_done_report,
-                )
+
+                if progress is None:
+                    download_dir(team_id, src_path, dst_path)
+                else:
+                    with progress(
+                        message="Downloading directory from Team Files...", total=sizeb
+                    ) as pbar:
+                        download_dir(team_id, src_path, dst_path, pbar.update)
                 logger.info(
                     f"📥 Directory {basename} has been successfully downloaded from Team Files"
                 )
                 logger.info(f"Directory {basename} path: {dst_path}")
             elif self.api.file.exists(team_id, src_path):  # file from Team Files
+
+                def download_file(team_id, src_path, dst_path, progress_cb):
+                    self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
+
                 file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
-                progress.set(current=0, total=file_info.sizeb)
-                self.api.file.download(
-                    team_id, src_path, dst_path, progress_cb=progress.iters_done_report
-                )
+                if progress is None:
+                    download_file(team_id, src_path, dst_path)
+                else:
+                    with progress(
+                        message="Downloading file from Team Files...", total=file_info.sizeb
+                    ) as pbar:
+                        download_file(team_id, src_path, dst_path, pbar.update)
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
                 logger.info(f"File {basename} path: {dst_path}")
             else:  # external url
-                fs.download(src_path, dst_path, progress=progress)
-                logger.info(f"📥 File {basename} has been successfully downloaded.")
+                if progress is None:
+                    fs.download(src_path, dst_path)
+                else:
+                    # TODO: size?
+                    with progress(message="Downloading file from external URL...") as pbar:
+                        fs.download(src_path, dst_path, progress=pbar.update)
+                logger.info(
+                    f"📥 File {basename} has been successfully downloaded from external URL."
+                )
                 logger.info(f"File {basename} path: {dst_path}")
         else:
             dst_path = os.path.abspath(src_path)
@@ -480,7 +508,6 @@ class Inference:
 
             @self.gui.serve_button.click
             def load_model():
-                # TODO: maybe add custom logic?
                 device = self.gui.get_device()
                 self.load_on_device(self._model_dir, device)
                 self.gui.set_deployed()

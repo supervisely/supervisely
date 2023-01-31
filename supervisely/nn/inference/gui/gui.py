@@ -5,8 +5,13 @@ from supervisely.task.progress import Progress
 
 class BaseInferenceGUI:
     @property
-    def serve_button(self) -> Widgets.Widget:
-        # return self.serve_button
+    def serve_button(self) -> Widgets.Button:
+        # return self._serve_button
+        raise NotImplementedError("Have to be implemented in child class")
+
+    @property
+    def download_progress(self) -> Widgets.SlyTqdm:
+        # return self._download_progress
         raise NotImplementedError("Have to be implemented in child class")
 
     def get_device(self) -> str:
@@ -102,6 +107,7 @@ class InferenceGUI(BaseInferenceGUI):
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
+        self._download_progress = Widgets.SlyTqdm("Downloading model...", show_percents=True)
         if self._support_custom_models:
             self._model_path_input = Widgets.Input(
                 placeholder="Path to model file or folder in Team Files"
@@ -143,12 +149,21 @@ class InferenceGUI(BaseInferenceGUI):
         return self._tabs.get_active_tab()
 
     @property
-    def serve_button(self) -> Widgets.Widget:
+    def serve_button(self) -> Widgets.Button:
         return self._serve_button
+
+    @property
+    def download_progress(self) -> Widgets.SlyTqdm:
+        return self._download_progress
 
     def set_deployed(self):
         self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
         self._success_label.show()
+        self._serve_button.disable()
+        self._device_select.disable()
+        self._models_table.disable()
+        if self._support_custom_models:
+            self._model_path_input.disable()
         Progress("Model deployed", 1).iter_done_report()
 
     def get_ui(self) -> Widgets.Widget:
@@ -165,6 +180,7 @@ class InferenceGUI(BaseInferenceGUI):
             [
                 self._device_field,
                 self._serve_button,
+                self._download_progress,
                 self._success_label,
             ]
         )
