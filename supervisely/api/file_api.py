@@ -150,7 +150,7 @@ class FileApi(ModuleApiBase):
 
         return results
 
-    def list(self, team_id: int, path: str) -> List[Dict]:
+    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
         """
         List of files in the Team Files.
 
@@ -158,6 +158,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to File or Directory.
         :type path: str
+        :param recursive: If True return all files recursively.
+        :type recursive: bool
         :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[dict]`
         :Usage example:
@@ -212,16 +214,17 @@ class FileApi(ModuleApiBase):
             #     }
             # ]
         """
-
+        if not path.endswith(os.path.sep) and recursive is False:
+            path += os.path.sep
         if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path)
+            return self.list_on_agent(team_id, path, recursive)
 
         response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
+            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive}
         )
         return response.json()
 
-    def list2(self, team_id: int, path: str) -> List[FileInfo]:
+    def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
         List of files in the Team Files.
 
@@ -229,6 +232,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to File or Directory.
         :type path: str
+        :param recursive: If True return all FileInfos recursively.
+        :type recursive: bool
         :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
         :Usage example:
@@ -252,11 +257,11 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        items = self.list(team_id=team_id, path=path)
+        items = self.list(team_id=team_id, path=path, recursive=recursive)
         results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
-    def listdir(self, team_id: int, path: str) -> List[str]:
+    def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
         List dirs and files in the `path` dir.
 
@@ -264,6 +269,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to directory.
         :type path: str
+        :param recursive: If True return all paths recursively.
+        :type recursive: bool
         :return: List of paths
         :rtype: :class:`List[str]`
         :Usage example:
@@ -283,13 +290,9 @@ class FileApi(ModuleApiBase):
             print(files)
             # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
         """
-        files_filtered = set()
-        files = self.list(team_id, path)
-        for f in files:
-            match = re.match(f"{path}/[^/]*", f["path"])
-            if match:
-                files_filtered.add(match.group())
-        return list(files_filtered)
+        files = self.list(team_id, path, recursive)
+        files_paths = [file["path"] for file in files]
+        return files_paths
 
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
