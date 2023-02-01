@@ -29,9 +29,7 @@ class MatchTagMetasOrClasses(Widget):
         self._right_collection = right_collection
         if left_name is None:
             self._left_name = (
-                "Left Tag Metas"
-                if self._collections_type is TagMetaCollection
-                else "Left Classes"
+                "Left Tag Metas" if self._collections_type is TagMetaCollection else "Left Classes"
             )
         else:
             self._left_name = left_name
@@ -67,6 +65,7 @@ class MatchTagMetasOrClasses(Widget):
         right_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
@@ -75,6 +74,7 @@ class MatchTagMetasOrClasses(Widget):
         self._right_collection = right_collection
         self._left_name = left_name if left_name is not None else self._left_name
         self._right_name = right_name if right_name is not None else self._right_name
+        self._suffix = suffix
 
         self._table = self._get_table()
         DataJson()[self.widget_id] = self.get_json_data()
@@ -128,14 +128,15 @@ class MatchTagMetasOrClasses(Widget):
         def get_mutual_with_suffix(names1, names2, suffix):
             left = {}
             right = {}
+            l = len(suffix)
             for name1 in names1:
                 name1: str
-                if name1.rstrip(suffix) in names2:
-                    right[name1.rstrip(suffix)] = name1
+                if name1.endswith(suffix) and name1[:-l] in names2:
+                    right[name1[:-l]] = name1
             for name2 in names2:
                 name2: str
-                if name2.rstrip(suffix) in names1:
-                    left[name2.rstrip(suffix)] = name2
+                if name2.endswith(suffix) and name2[:-l] in names1:
+                    left[name2[:-l]] = name2
             return left, right
 
         mutual_with_suffix_left = {}
@@ -186,10 +187,7 @@ class MatchTagMetasOrClasses(Widget):
 
             if name in mutual:
                 flag = True
-                if (
-                    type(meta1) is ObjClass
-                    and meta1.geometry_type != meta2.geometry_type
-                ):
+                if type(meta1) is ObjClass and meta1.geometry_type != meta2.geometry_type:
                     flag = False
                     diff_msg = "Different shape"
                 if type(meta1) is TagMeta:
@@ -214,9 +212,7 @@ class MatchTagMetasOrClasses(Widget):
                     compare["infoColor"] = "green"
                     compare["infoIcon"] = (["zmdi zmdi-check"],)
                     match.append(compare)
-            elif (
-                name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys()
-            ):
+            elif name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys():
                 if name in mutual_with_suffix_left:
                     meta2 = self._right_collection.get(name + self._suffix)
                     set_info(compare, 2, meta2)
@@ -224,10 +220,7 @@ class MatchTagMetasOrClasses(Widget):
                     meta1 = self._left_collection.get(name + self._suffix)
                     set_info(compare, 1, meta1)
                 flag = True
-                if (
-                    type(meta1) is ObjClass
-                    and meta1.geometry_type != meta2.geometry_type
-                ):
+                if type(meta1) is ObjClass and meta1.geometry_type != meta2.geometry_type:
                     flag = False
                     diff_msg = "[Match with suffix] Different shape"
                 if type(meta1) is TagMeta:
@@ -319,6 +312,7 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         right_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = TagMetaCollection(left_collection)
@@ -330,6 +324,7 @@ class MatchTagMetas(MatchTagMetasOrClasses):
             right_collection=right_collection,
             left_name=left_name,
             right_name=right_name,
+            suffix=suffix,
         )
 
     def get_stat(self):
@@ -380,6 +375,7 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         right_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
         left_name: Union[str, None] = None,
         right_name: Union[str, None] = None,
+        suffix: Union[str, None] = None,
     ):
         if type(left_collection) is list:
             left_collection = ObjClassCollection(left_collection)
@@ -391,6 +387,7 @@ class MatchObjClasses(MatchTagMetasOrClasses):
             right_collection=right_collection,
             left_name=left_name,
             right_name=right_name,
+            suffix=suffix,
         )
 
     def get_stat(self):

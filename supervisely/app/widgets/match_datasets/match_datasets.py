@@ -106,7 +106,7 @@ class MatchDatasets(Widget):
                 self._stat[name] = {"dataset_matched": "left"}
             else:
                 img_dict1 = {img_info.name: img_info for img_info in images1}
-                img_dict2 = {img_info.name: img_info for img_info in images1}
+                img_dict2 = {img_info.name: img_info for img_info in images2}
                 matched = []
                 diff = []
                 same_names = img_dict1.keys() & img_dict2.keys()
