@@ -75,7 +75,7 @@ class RemoteStorageApi(ModuleApiBase):
         folders: bool = True,
         limit: int = 10000,
         start_after: str = "",
-    ) -> dict:
+    ) -> list:
         """
         List files and directories for given remote path.
 
