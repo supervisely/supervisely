@@ -15,7 +15,6 @@ class PullPolicy(Enum):
 
 
 def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progress=True):
-    docker_image_name = "supervisely/agentt"
     logger.info(
         "docker_pull_if_needed args",
         extra={
