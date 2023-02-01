@@ -256,7 +256,7 @@ class FileApi(ModuleApiBase):
         results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
-    def listdir(self, team_id: int, path: str) -> List[str]:
+    def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
         List dirs and files in the `path` dir.
 
@@ -285,11 +285,11 @@ class FileApi(ModuleApiBase):
         """
 
         if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path, recursive=False)
+            return self.list_on_agent(team_id, path, recursive=recursive)
 
         response = self._api.post(
             "file-storage.list",
-            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: False},
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
         return response.json()
 
