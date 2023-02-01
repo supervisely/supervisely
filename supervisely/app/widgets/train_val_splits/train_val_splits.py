@@ -2,7 +2,7 @@ import os
 from typing import List, Optional, Dict, Union, Tuple
 from supervisely import Project, Api
 from supervisely.project.project import ItemInfo
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget, RadioTabs, Container, NotificationBox, SelectDataset, SelectString, Field, SelectTagMeta
 from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
 from supervisely.app import get_data_dir
@@ -121,7 +121,6 @@ class TrainValSplits(Widget):
             direction='vertical',
             gap = 5
         )
-
     
     def _get_datasets_content(self):
         notification_box = NotificationBox(
@@ -209,3 +208,27 @@ class TrainValSplits(Widget):
         if tmp_project_dir is not None:
             remove_dir(tmp_project_dir)
         return train_set, val_set
+
+    def disable(self):
+        self._content.disable()
+        self._random_splits_table.disable()
+        self._train_tag_select.disable()
+        self._val_tag_select.disable()
+        self._untagged_select.disable()
+        self._train_ds_select.disable()
+        self._val_ds_select.disable()
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._content.enable()
+        self._random_splits_table.enable()
+        self._train_tag_select.enable()
+        self._val_tag_select.enable()
+        self._untagged_select.enable()
+        self._train_ds_select.enable()
+        self._val_ds_select.enable()
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
