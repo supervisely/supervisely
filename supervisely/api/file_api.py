@@ -256,7 +256,7 @@ class FileApi(ModuleApiBase):
         results = [self._convert_json_info(info_json) for info_json in items]
         return results
 
-    def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
+    def listdir(self, team_id: int, path: str) -> List[str]:
         """
         List dirs and files in the `path` dir.
 
@@ -283,15 +283,13 @@ class FileApi(ModuleApiBase):
             print(files)
             # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
         """
-
-        if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path, recursive=recursive)
-
-        response = self._api.post(
-            "file-storage.list",
-            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
-        )
-        return response.json()
+        files_filtered = set()
+        files = self.list(team_id, path)
+        for f in files:
+            match = re.match(f"{path}/[^/]*", f["path"])
+            if match:
+                files_filtered.add(match.group())
+        return list(files_filtered)
 
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
