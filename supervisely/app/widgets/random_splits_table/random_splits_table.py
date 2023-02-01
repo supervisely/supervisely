@@ -8,8 +8,10 @@ class RandomSplitsTable(Widget):
         self, 
         items_count: int, 
         start_train_percent: Optional[int] = 80,
+        disabled: Optional[bool] = False,
         widget_id: Optional[int] = None
     ):
+        self._disabled = disabled
         if 1 <= start_train_percent <= 99:
             pass
         else:
@@ -40,6 +42,7 @@ class RandomSplitsTable(Widget):
         return {
             "table_data": self._table_data,
             "items_count": self._items_count,
+            "disabled": self._disabled
         }
 
     def get_json_state(self):
