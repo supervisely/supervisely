@@ -2,7 +2,7 @@
 
 set -o pipefail -e
 
-VERSION='1.0.4'
+VERSION='1.0.5'
 
 usage() {
   echo -e "Supervisely Apps CLI
@@ -140,6 +140,8 @@ function release() {
   parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
   module_name=$(echo "${config}" | sed -nE 's/^ *"name": "(.*)",?/\1/p' | xargs)
   module_release=$(echo "${config}" | sed -nE 's/"release": (\{.*\})/\1/p' | xargs)
+  
+  modal_template_path=$(echo "${modal_template_path}" | sed 's/\r$//')
 
   if [[ "${parsed_slug_config}" ]]; then
     parsed_slug="${parsed_slug_config}"
