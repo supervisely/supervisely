@@ -8,6 +8,10 @@ except ImportError:
 
 
 class Input(Widget):
+
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+        
     def __init__(
             self,
             value: str = "",
@@ -25,6 +29,7 @@ class Input(Widget):
         self._size = size
         self._readonly = readonly
         self._widget_id = widget_id
+        self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -57,3 +62,16 @@ class Input(Widget):
     def disable_readonly(self):
         DataJson()[self.widget_id]["readonly"] = False
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(Input.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            res = self.get_value()
+            self._value = res
+            func(res)
+
+        return _click
