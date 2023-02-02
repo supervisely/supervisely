@@ -14,8 +14,6 @@ import re
 
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ModuleApiBase, ApiField
-from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import mimetypes
@@ -24,10 +22,13 @@ from supervisely.task.progress import Progress
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.fs import (
     get_file_hash,
+    get_file_name,
     get_file_ext,
     get_file_size,
     list_files_recursively,
     silent_remove,
+    ensure_base_path,
+    get_file_name_with_ext,
 )
 from supervisely.sly_logger import logger
 import supervisely.io.env as env

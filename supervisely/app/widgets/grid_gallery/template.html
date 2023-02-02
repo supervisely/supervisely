@@ -17,10 +17,20 @@
           style="text-align: center; margin-top: 5px"
         >
           <el-tag
+            v-if="!annotation.title_url"
             v-html="annotation.title"
             type="primary"
             style="height: 100%"
           ></el-tag>
+          <a
+            v-if="annotation.title_url" 
+            :href="`${annotation.title_url}`">
+            <el-tag
+              v-html="annotation.title"
+              type="primary"
+              style="height: 100%"
+            ></el-tag>
+          </a>
         </div>
       </template>
     </sly-grid-gallery>
@@ -38,10 +48,20 @@
           style="text-align: center; margin-top: 5px"
         >
           <el-tag
+            v-if="!annotation.title_url"
             v-html="annotation.title"
             type="primary"
             style="height: 100%"
           ></el-tag>
+          <a
+            v-if="annotation.title_url" 
+            :href="`${annotation.title_url}`">
+            <el-tag
+              v-html="annotation.title"
+              type="primary"
+              style="height: 100%"
+            ></el-tag>
+          </a>
         </div>
       </template>
     </sly-grid-gallery>

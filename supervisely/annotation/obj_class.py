@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 from copy import deepcopy
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 
 from supervisely.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
 from supervisely.io.json import JsonSerializable
@@ -13,6 +13,7 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 
 
 class ObjClassJsonFields:
@@ -67,13 +68,18 @@ class ObjClass(KeyObject, JsonSerializable):
         name: str,
         geometry_type: type,
         color: Optional[List[int]] = None,
-        geometry_config: Optional[Dict] = None,
+        geometry_config: Optional[Union[Dict, KeypointsTemplate]] = None,
         sly_id: Optional[int] = None,
         hotkey: Optional[str] = None,
     ):
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
+        if geometry_type == GraphNodes and geometry_config is None:
+            raise ValueError("sly.GraphNodes requires geometry_config to be passed to sly.ObjClass")
+
+        if isinstance(geometry_config, KeypointsTemplate):
+            geometry_config = geometry_config.config
         self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")

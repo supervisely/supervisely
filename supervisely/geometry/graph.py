@@ -2,13 +2,14 @@
 
 # docs
 from __future__ import annotations
+import numpy as np
 import cv2
 from copy import deepcopy
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 from supervisely.geometry.image_rotator import ImageRotator
 
 
-from supervisely.imaging.color import rgb2hex, hex2rgb
+from supervisely.imaging.color import rgb2hex, hex2rgb, _validate_color
 from supervisely.io.json import JsonSerializable
 
 from supervisely.geometry.point import Point
@@ -18,15 +19,15 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import LABELER_LOGIN, CREATED_AT, UPDATED_AT, ID, CLASS_ID
 
 
-EDGES = 'edges'
-NODES = 'nodes'
+EDGES = "edges"
+NODES = "nodes"
 
-DISABLED = 'disabled'
-LOC = 'loc'
+DISABLED = "disabled"
+LOC = "loc"
 
-DST = 'dst'
-SRC = 'src'
-COLOR = 'color'
+DST = "dst"
+SRC = "src"
+COLOR = "color"
 
 
 class Node(JsonSerializable):
@@ -37,6 +38,9 @@ class Node(JsonSerializable):
     :type location: PointLocation
     :param disabled: Determines whether to display the Node when drawing or not.
     :type disabled: bool, optional
+    :param label: str
+    :param row: int
+    :param col: int
     :Usage example:
 
      .. code-block:: python
@@ -46,9 +50,26 @@ class Node(JsonSerializable):
 
         vertex = Node(sly.PointLocation(5, 5))
     """
-    def __init__(self, location: PointLocation, disabled: Optional[bool] = True):
+
+    def __init__(
+        self,
+        location: Optional[PointLocation] = None,
+        disabled: Optional[bool] = False,
+        label: Optional[str] = None,
+        row: Optional[int] = None,
+        col: Optional[int] = None,
+    ):
+        if None not in (location, row, col) or all(item is None for item in (location, row, col)):
+            raise ValueError("Either location or row and col must be specified")
         self._location = location
+        if disabled is True:
+            raise NotImplementedError(
+                "Functionality for disabling nodes will be added in future supervisely versions"
+            )
         self._disabled = disabled
+        self._label = label
+        if None not in [row, col]:
+            self._location = PointLocation(row, col)
 
     @property
     def location(self) -> PointLocation:
@@ -90,7 +111,9 @@ class Node(JsonSerializable):
         """
         # TODO validations
         loc = data[LOC]
-        return cls(location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False))
+        return cls(
+            location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False)
+        )
 
     def to_json(self) -> Dict:
         """
@@ -140,7 +163,7 @@ class GraphNodes(Geometry):
     """
     GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
-    :param nodes: Dict containing nodes of graph.
+    :param nodes: Dict or List containing nodes of graph
     :type nodes: dict
     :param sly_id: GraphNodes ID in Supervisely server.
     :type sly_id: int, optional
@@ -166,16 +189,36 @@ class GraphNodes(Geometry):
         nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
         figure = GraphNodes(nodes)
     """
+
     @staticmethod
     def geometry_name():
-        return 'graph'
+        return "graph"
 
-    def __init__(self, nodes: Dict[str, Dict],
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        nodes: Union[Dict[str, Dict], List],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
 
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
         self._nodes = nodes
+        if isinstance(nodes, list):
+            self._nodes = {}
+            for i, node in enumerate(nodes):
+                if node._label is not None:
+                    self._nodes[node._label] = Node(node._location, node._disabled)
+                else:
+                    self._nodes[str(i)] = Node(node._location, node._disabled)
 
     @property
     def nodes(self) -> Dict[str, Dict]:
@@ -216,14 +259,20 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data['nodes'].items()}
+        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data["nodes"].items()}
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return GraphNodes(nodes=nodes, sly_id=sly_id, class_id=class_id,
-                          labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return GraphNodes(
+            nodes=nodes,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def to_json(self) -> Dict[str, Dict]:
         """
@@ -281,7 +330,9 @@ class GraphNodes(Geometry):
 
             crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
         """
-        is_all_nodes_inside = all(rect.contains_point_location(node.location) for node in self._nodes.values())
+        is_all_nodes_inside = all(
+            rect.contains_point_location(node.location) for node in self._nodes.values()
+        )
         return [self] if is_all_nodes_inside else []
 
     def relative_crop(self, rect: Rectangle) -> List[GraphNodes]:
@@ -309,7 +360,9 @@ class GraphNodes(Geometry):
         :return: GraphNodes object
         :rtype: :class:`GraphNodes<GraphNodes>`
         """
-        return GraphNodes(nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()})
+        return GraphNodes(
+            nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()}
+        )
 
     def transform_locations(self, transform_fn) -> GraphNodes:
         """
@@ -452,6 +505,7 @@ class GraphNodes(Geometry):
     @staticmethod
     def _get_nested_or_default(dict, keys_path, default=None):
         """
+        _get_nested_or_default
         """
         result = dict
         for key in keys_path:
@@ -461,6 +515,7 @@ class GraphNodes(Geometry):
 
     def _draw_contour_impl(self, bitmap, color=None, thickness=1, config=None):
         """
+        _draw_contour_impl
         """
         if config is not None:
             # If a config with edges and colors is passed, make sure it is
@@ -471,20 +526,28 @@ class GraphNodes(Geometry):
         for edge in self._get_nested_or_default(config, [EDGES], []):
             src = self._nodes.get(edge[SRC], None)
             dst = self._nodes.get(edge[DST], None)
-            if (src is not None) and (not src.disabled) and (dst is not None) and (not dst.disabled):
+            if (
+                (src is not None)
+                and (not src.disabled)
+                and (dst is not None)
+                and (not dst.disabled)
+            ):
                 edge_color = edge.get(COLOR, color)
-                cv2.line(bitmap,
-                         (src.location.col, src.location.row),
-                         (dst.location.col, dst.location.row),
-                         tuple(edge_color),
-                         thickness)
+                cv2.line(
+                    bitmap,
+                    (src.location.col, src.location.row),
+                    (dst.location.col, dst.location.row),
+                    tuple(edge_color),
+                    thickness,
+                )
 
         nodes_config = self._get_nested_or_default(config, [NODES])
         for node_id, node in self._nodes.items():
             if not node.disabled:
                 effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
                 Point.from_point_location(node.location).draw(
-                    bitmap=bitmap, color=effective_color, thickness=thickness, config=None)
+                    bitmap=bitmap, color=effective_color, thickness=thickness, config=None
+                )
 
     @property
     def area(self) -> float:
@@ -517,7 +580,8 @@ class GraphNodes(Geometry):
             rectangle = figure.to_bbox()
         """
         return Rectangle.from_geometries_list(
-            [Point.from_point_location(node.location) for node in self._nodes.values()])
+            [Point.from_point_location(node.location) for node in self._nodes.values()]
+        )
 
     def clone(self) -> GraphNodes:
         """
@@ -544,7 +608,11 @@ class GraphNodes(Geometry):
 
         nodes_not_in_template = set(self._nodes.keys()) - set(settings[NODES].keys())
         if len(nodes_not_in_template) > 0:
-            raise ValueError('Graph contains nodes not declared in the template: {!r}.'.format(nodes_not_in_template))
+            raise ValueError(
+                "Graph contains nodes not declared in the template: {!r}.".format(
+                    nodes_not_in_template
+                )
+            )
 
     @staticmethod
     def _transform_config_colors(config, transform_fn):
@@ -583,7 +651,71 @@ class GraphNodes(Geometry):
     @classmethod
     def allowed_transforms(cls):
         """
+        allowed_transforms
         """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
+
         return [AnyGeometry, Rectangle]
+
+
+class KeypointsTemplate(GraphNodes, Geometry):
+    def __init__(self):
+        self._config = {"nodes": {}, "edges": []}
+        self._point_names = []
+
+    def add_point(
+        self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
+    ):
+        _validate_color(color)
+        if label in self._config["nodes"]:
+            raise KeyError(f"Label {label} already exists in the graph")
+        if disabled is True:
+            raise NotImplementedError(
+                "Functionality for disabling nodes will be added in future supervisely versions"
+            )
+        self._point_names.append(label)
+        self._config["nodes"][label] = {
+            "label": label,
+            "loc": [row, col],
+            "color": color,
+            "disabled": disabled,
+        }
+
+    def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
+        _validate_color(color)
+        for elem in (src, dst):
+            if elem not in self._config["nodes"]:
+                raise ValueError(f"There is no such node in the graph: {elem}")
+        self._config["edges"].append({"src": src, "dst": dst, "color": color})
+
+    def get_nodes(self):
+        self._nodes = {}
+        for node in self._config["nodes"]:
+            loc = self._config["nodes"][node]["loc"]
+            disabled = self._config["nodes"][node]["disabled"]
+            self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
+
+    def draw(self, image: np.ndarray, thickness=7):
+        self.get_nodes()
+        self._draw_bool_compatible(
+            self._draw_impl,
+            bitmap=image,
+            color=[0, 255, 0],
+            thickness=thickness,
+            config=self._config,
+        )
+
+    def to_json(self):
+        return self.config_to_json(self._config)
+
+    @property
+    def config(self):
+        return self._config
+
+    @property
+    def point_names(self):
+        """
+        Return point names in order in which they were added
+        """
+        return self._point_names

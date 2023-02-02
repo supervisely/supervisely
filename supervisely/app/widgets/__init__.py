@@ -56,6 +56,11 @@ from supervisely.app.widgets.image.image import Image
 from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
 from supervisely.app.widgets.video_player.video_player import VideoPlayer
 from supervisely.app.widgets.radio_group.radio_group import RadioGroup
+from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.input_tag.input_tag import InputTag
 from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
+from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
+from supervisely.app.widgets.file_thumbnail.file_thumbnail import FileThumbnail
+from supervisely.app.widgets.match_tags_or_classes.match_tags_or_classes import MatchTagMetas, MatchObjClasses
+from supervisely.app.widgets.match_datasets.match_datasets import MatchDatasets

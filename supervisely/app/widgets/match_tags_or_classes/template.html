@@ -1,0 +1,48 @@
+<div>   
+    <el-table class="ultra-table"
+              :data="data.{{{widget.widget_id}}}.table"
+              ref="Table"
+              @selection-change="
+                (val) => {
+                    state.{{{widget.widget_id}}}.selected = val.map(x => [x.name1, x.name2]);
+                }
+                "
+    >
+        <el-table-column
+            v-if="data.{{{widget.widget_id}}}.selectable"
+            type="selection" 
+            width="55"
+        >
+        </el-table-column>
+        <el-table-column sortable prop="name1" :label="data.{{{widget.widget_id}}}.left_name">
+            <template scope="scope">
+                <div v-if="scope.row.name1">
+                    <i class="zmdi zmdi-circle" :style="{color: scope.row.color1}"></i>
+                    <span class="mr10 ml10">{{ scope.row.name1 }}</span>
+                    <span style="color: #7f858e;"><i
+                            :class="scope.row.shapeIcon1"></i> {{ scope.row.shape1 }}</span>
+                </div>
+            </template>
+        </el-table-column>
+        <el-table-column prop="info" label="Compare">
+            <template scope="scope">
+                <div :style="{color: scope.row.infoColor}">
+                        <span style="width: 25px; display: inline-block">
+                                <i v-for="icon in scope.row.infoIcon" :class="icon"></i>
+                        </span>
+                    <span class="mr10 ml10">{{ scope.row.infoMessage }}</span>
+                </div>
+            </template>
+        </el-table-column>
+        <el-table-column sortable prop="name2" :label="data.{{{widget.widget_id}}}.right_name">
+            <template scope="scope">
+                <div v-if="scope.row.name2">
+                    <i class="zmdi zmdi-circle" :style="{color: scope.row.color2}"></i>
+                    <span class="mr10 ml10">{{ scope.row.name2 }}</span>
+                    <span style="color: #7f858e;"><i
+                            :class="scope.row.shapeIcon2"></i> {{ scope.row.shape2 }}</span>
+                </div>
+            </template>
+        </el-table-column>
+    </el-table>
+</div>

@@ -9,6 +9,10 @@ from supervisely.app.widgets import Widget
 
 
 class InputNumber(Widget):
+
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         value: Union[int, float] = 1,
@@ -29,6 +33,7 @@ class InputNumber(Widget):
         self._controls = controls
         self._debounce = debounce
         self._precision = precision
+        self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -78,3 +83,16 @@ class InputNumber(Widget):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(InputNumber.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            res = self.get_value()
+            self._value = res
+            func(res)
+
+        return _click
