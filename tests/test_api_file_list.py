@@ -44,7 +44,14 @@ print(listdir)
 listdir_s = api.file.listdir(team_id, f"{PATH}/")
 
 print(listdir_s)
+# before update SDK
 # Output: [] # FIXME: return [] if path ends with "/"
+
+# after update SDK
+# Output: [
+#     '/sly-app-data/object-tags-editor-files',
+#     '/sly-app-data/mark-segments-on-synced-videos-2-files'
+# ]
 
 
 ###############################################################################
