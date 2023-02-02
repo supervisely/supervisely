@@ -17,19 +17,19 @@ PATH = "/sly-app-data"
 files_list = api.file.list(team_id, PATH)
 
 print('Total {} files in "{}" directory.'.format(len(files_list), PATH))
-print(files_list[0])
+print(f"First file in list: {files_list[0]}")
 # Output: 
 # Total 29 files in "/sly-app-data" directory.
-# {'id': 772315, 'isDir': True, 'meta': {'size': 8605}, 'path': '/sly-app-data/ma...}
+# First file in list: {'id': 772315, 'isDir': True, 'meta': {'size': 8605}, 'path': '/sly-app-data/ma...}
 
 
 files_list_2 = api.file.list2(team_id, PATH)
 
 print('Total {} files in "{}" directory.'.format(len(files_list_2), PATH))
-print(files_list_2[0])
+print(f"First FileInfo object in list: {files_list_2[0]}")
 # Output: 
 # Total 29 files in "/sly-app-data" directory.
-# FileInfo(team_id=435, id=18421, user_id=330, name='507_002.tar.gz', hash='+0nrNoDjBxxJA...
+# First FileInfo object in list: FileInfo(team_id=435, id=18421, user_id=330, name='507_002.tar.gz', hash='+0nrNoDjBxxJA...
 
 
 listdir = api.file.listdir(team_id, PATH)
@@ -81,16 +81,16 @@ print(listdir_s)
 # listdir_recursively = api.file.listdir(team_id, PATH, recursive=True)
 
 # print('{} paths has been collected from "{}" directory.'.format(len(listdir_recursively), PATH))
-# print(listdir_recursively[0])
+# print(f"First path in list: {listdir_recursively[0]}")
 # # Output: 
 # # 29 paths has been collected from "/sly-app-data" directory.
-# # '/sly-app-data/mark-segments-on-synced-videos-2-files/project-15918/dataset-54074/Info.json'
+# # "First path in list: '/sly-app-data/mark-segments-on-synced-videos-2-files/project-15918/dataset-54074/Info.json'
 
 
 # listdir_recursively_s = api.file.listdir(team_id, f"{PATH}/", recursive=True)
 
 # print('{} paths has been collected from "{}" directory.'.format(len(listdir_recursively_s), PATH))
-# print(listdir_recursively_s[0])
+# print(f"First path in list: {listdir_recursively_s[0]}")
 # # Output: 
 # # 29 paths has been collected from "/sly-app-data" directory.
-# # '/sly-app-data/mark-segments-on-synced-videos-2-files/project-15918/dataset-54074/Info.json'
+# # "First path in list: '/sly-app-data/mark-segments-on-synced-videos-2-files/project-15918/dataset-54074/Info.json'
