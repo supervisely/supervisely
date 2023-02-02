@@ -19,7 +19,7 @@
 
             <el-slider v-if="scope.row.name === 'train'"
                        v-model="state.{{{widget.widget_id}}}.percent.train"
-                       :disabled="state.{{{widget.widget_id}}}.disabled"
+                       :disabled="data.{{{widget.widget_id}}}.disabled"
                        show-input :min="1" :max="99"
                        style="flex:1; max-width: 99%; margin-left: 15px;"
                        @input=  "
