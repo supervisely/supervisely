@@ -68,7 +68,7 @@ class Import:
                 f"Project ID: {self._project_id}\n"
                 f"Dataset ID: {self._dataset_id}\n"
                 f"Path: {self._path}\n"
-                f"Is directory: {self._is_directory}"
+                f"Is directory: {self._is_directory}\n"
                 f"Is on agent: {self._is_on_agent}"
             )
 
@@ -101,7 +101,8 @@ class Import:
             return self._is_on_agent
 
     def process(self, context: Context) -> Optional[Union[int, None]]:
-        raise NotImplementedError()  # implement your own method when inherit
+        # implement your own method for import
+        raise NotImplementedError()
 
     def is_path_required(self) -> bool:
         return True
