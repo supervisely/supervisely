@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Dict
 from supervisely.app.widgets import Widget, Container, generate_id, LinePlot
 from supervisely.sly_logger import logger
 from supervisely._utils import batched, rand_str
@@ -10,7 +10,7 @@ from supervisely.app.content import StateJson, DataJson
 class GridPlot(Widget):
     def __init__(
         self,
-        data: list[dict or str] = [],
+        data: List[Dict or str] = [],
         columns: int = 1,
         gap: int = 10,
         widget_id: str = None,
