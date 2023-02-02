@@ -5,6 +5,7 @@ from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
 from supervisely.sly_logger import logger
+from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
 
 
 class Import:
@@ -17,6 +18,7 @@ class Import:
             dataset_id: int,
             path: str,
             is_directory: bool = True,
+            is_on_agent: bool = False,
             is_path_required: bool = True,
         ):
             self._team_id = team_id
@@ -40,6 +42,11 @@ class Import:
                 raise ValueError(f"Dataset ID must be 'int': {self._dataset_id}")
 
             self._is_path_required = is_path_required
+            if type(self._is_path_required) is not bool:
+                raise ValueError(
+                    f"Flag 'is_path_required' must be 'bool': {self._is_path_required}"
+                )
+
             self._path = path
             if self._is_path_required is True and self._path is None:
                 raise ValueError(f"Remote path is not specified: {self._path}")
@@ -48,7 +55,11 @@ class Import:
 
             self._is_directory = is_directory
             if self._is_path_required is True and type(self._is_directory) is not bool:
-                raise ValueError(f"Remote path must be 'bool': {self._is_directory}")
+                raise ValueError(f"Flag 'is_directory' must be 'bool': {self._is_directory}")
+
+            self._is_on_agent = is_on_agent
+            if self._is_path_required is True and type(self._is_on_agent) is not bool:
+                raise ValueError(f"Flag 'is_on_agent' must be 'bool': {self._is_on_agent}")
 
         def __str__(self):
             return (
@@ -58,6 +69,7 @@ class Import:
                 f"Dataset ID: {self._dataset_id}\n"
                 f"Path: {self._path}\n"
                 f"Is directory: {self._is_directory}"
+                f"Is on agent: {self._is_on_agent}"
             )
 
         @property
@@ -83,6 +95,10 @@ class Import:
         @property
         def is_directory(self) -> bool:
             return self._is_directory
+
+        @property
+        def is_on_agent(self) -> bool:
+            return self._is_on_agent
 
     def process(self, context: Context) -> Optional[Union[int, None]]:
         raise NotImplementedError()  # implement your own method when inherit
@@ -118,6 +134,8 @@ class Import:
             path = file
             is_directory = False
 
+        is_on_agent = api.file.is_on_agent(path)
+
         if not self.is_path_required() and path is None:
             is_directory = False
 
@@ -140,11 +158,15 @@ class Import:
         if is_production():
             if path is not None:
                 local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
+                if dir_exists(local_save_path):
+                    remove_dir(local_save_path)
                 if is_directory:
                     api.file.download_directory(
                         team_id=team_id, remote_path=path, local_save_path=local_save_path
                     )
                 else:
+                    if file_exists(local_save_path):
+                        silent_remove(local_save_path)
                     api.file.download(
                         team_id=team_id, remote_path=path, local_save_path=local_save_path
                     )
@@ -157,6 +179,7 @@ class Import:
             dataset_id=dataset_id,
             path=path,
             is_directory=is_directory,
+            is_on_agent=is_on_agent,
             is_path_required=self.is_path_required(),
         )
 
