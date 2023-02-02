@@ -55,7 +55,7 @@ print(listdir_s)
 
 
 ###############################################################################
-# https://github.com/supervisely/supervisely/pull/382/files
+# https://github.com/supervisely/supervisely/pull/390
 # added new parameter recursive in list, list2, listdir methods
 # fixed path separator in listdir method
 
