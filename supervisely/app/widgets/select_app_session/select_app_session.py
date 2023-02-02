@@ -1,5 +1,3 @@
-from typing import Dict
-
 try:
     from typing import Literal
 except ImportError:
@@ -7,21 +5,20 @@ except ImportError:
 import supervisely as sly
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.api.api import Api
-from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectAppSession(Widget):
     def __init__(
         self,
         team_id: int = None,
+        allowed_session_tags: list = ["deployed_nn"],
         show_label: bool = False,
         size: Literal["large", "small", "mini"] = "mini",
         widget_id: str = None,
     ):
-        self._api = Api()
         self._session_id = None
         self._team_id = team_id
+        self._allowed_session_tags = allowed_session_tags
         self._show_label = show_label
         self._size = size
 
@@ -31,13 +28,14 @@ class SelectAppSession(Widget):
 
     def get_json_data(self):
         data = {}
+        data["teamId"] = self._team_id
         data["ssOptions"] = {
-            "sessionTags": ["deployed_nn", "deployed_nn_keypoints"],
+            "sessionTags": self._allowed_session_tags,
             "showLabel": self._show_label,
             "size": self._size,
-            "sessionTagsCombination": False,
         }
-        data["teamId"] = self._team_id
+        if len(self._allowed_session_tags) > 1:
+            data["ssOptions"]["sessionTagsCombination"] = False
         return data
 
     def get_json_state(self):
