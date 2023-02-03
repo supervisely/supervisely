@@ -74,27 +74,21 @@ class InferenceGUI(BaseInferenceGUI):
             @self._model_select.value_changed
             def update_table(selected_model):
                 cols = [
-                    model_key
-                    for model_key in self._models[selected_model]["checkpoints"][0].keys()
-                    if model_key not in [self._weights_file_key, self._config_file_key]
+                    model_key for model_key in self._models[selected_model]["checkpoints"][0].keys()
                 ]
                 rows = [
-                    [
-                        value
-                        for param_name, value in model.items()
-                        if param_name not in [self._config_file_key, self._weights_file_key]
-                    ]
+                    [value for param_name, value in model.items()]
                     for model in self._models[selected_model]["checkpoints"]
                 ]
 
-                table_subtitles = self._get_table_subtitles(cols)
+                table_subtitles, cols = self._get_table_subtitles(cols)
                 self._models_table.set_data(cols, rows, table_subtitles)
 
         else:
             cols = list(models[0].keys())
             rows = [list(model.values()) for model in models]
 
-        table_subtitles = self._get_table_subtitles(cols)
+        table_subtitles, cols = self._get_table_subtitles(cols)
         self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
@@ -120,17 +114,23 @@ class InferenceGUI(BaseInferenceGUI):
             )
 
     def _get_table_subtitles(self, cols):
-        subtitles = []
+        subtitles = {}
+        updated_cols = []
         for col in cols:
             guess_brackets = col.split("(")
             if len(guess_brackets) > 1:
                 subtitle = guess_brackets[1]
                 if ")" not in subtitle:
-                    subtitles.append({col: None})
+                    subtitles[col] = None
+                    updated_cols.append(col)
                 subtitle = subtitle.split(")")[0]
-                subtitles.append({col: subtitle})
+                new_col = guess_brackets[0].strip()
+                subtitles[new_col] = subtitle
+                updated_cols.append(new_col)
             else:
-                subtitles.append({col: None})
+                subtitles[col] = None
+                updated_cols.append(col)
+        return subtitles, updated_cols
 
     def get_device(self) -> str:
         return self._device_select.get_value()

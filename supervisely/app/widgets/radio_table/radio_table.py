@@ -86,6 +86,7 @@ class RadioTable(Widget):
     def set_columns(self, columns: List[str], subtitles: Dict[str, str] = {}) -> None:
         self._columns = columns
         self._subtitles = subtitles
+        self._header = []
         for col in columns:
             self._header.append({"title": col, "subtitle": self._subtitles.get(col, None)})
         DataJson()[self.widget_id]["header"] = self._header
@@ -97,6 +98,7 @@ class RadioTable(Widget):
     ) -> None:
         self._columns = columns
         self._subtitles = subtitles
+        self._header = []
         for col in columns:
             self._header.append({"title": col, "subtitle": self._subtitles.get(col, None)})
         DataJson()[self.widget_id]["header"] = self._header
