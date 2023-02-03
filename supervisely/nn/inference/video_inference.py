@@ -86,10 +86,10 @@ class InferenceVideoInterface:
                 output_image_path = os.path.join(f"{self._frames_path}", f"frame{count:06d}.png")
                 if frames_range:
                     if frames_range[0] <= count <= frames_range[1]:
-                        sly.image.write(output_image_path, image)  # save frame as PNG file
+                        cv2.imwrite(output_image_path, image)  # save frame as PNG file
                         self.images_paths.append(output_image_path)
                 else:
-                    sly.image.write(output_image_path, image)  # save frame as PNG file
+                    cv2.imwrite(output_image_path, image)  # save frame as PNG file
                     self.images_paths.append(output_image_path)
                 success, image = vidcap.read()
                 count += 1
