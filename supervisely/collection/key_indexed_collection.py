@@ -109,7 +109,7 @@ class KeyIndexedCollection:
     Field has to be overridden in child class. Before adding object to collection its type is compared with 
     ``item_type`` and ``TypeError`` exception is raised if it differs. Collection is immutable.
     """
-    def __init__(self, items: Optional[Dict]=None):
+    def __init__(self, items: Optional[List[KeyObject]]=None):
         self._collection = {}
         self._add_items_impl(self._collection, take_with_default(items, []))
 
