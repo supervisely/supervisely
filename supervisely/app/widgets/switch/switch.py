@@ -28,8 +28,8 @@ class Switch(ConditionalWidget):
         self._off_color = off_color
         self._changes_handled = False
         items = [
-            ConditionalItem(value="1", label="1", content=on_content),
-            ConditionalItem(value="0", label="0", content=off_content)
+            ConditionalItem(value=True, content=on_content),
+            ConditionalItem(value=False, content=off_content)
         ]
         super().__init__(items=items, widget_id=widget_id, file_path=__file__)
 
@@ -43,19 +43,17 @@ class Switch(ConditionalWidget):
         }
 
     def get_json_state(self) -> Dict:
-        return {"switched": self._switched, "value": str(int(self._switched))}
+        return {"value": self._switched}
 
     def is_switched(self):
-        return StateJson()[self.widget_id]["switched"]
+        return StateJson()[self.widget_id]["value"]
 
     def on(self):
-        StateJson()[self.widget_id]["switched"] = True
-        StateJson()[self.widget_id]["value"] = "1"
+        StateJson()[self.widget_id]["value"] = True
         StateJson().send_changes()
 
     def off(self):
-        StateJson()[self.widget_id]["switched"] = False
-        StateJson()[self.widget_id]["value"] = "0"
+        StateJson()[self.widget_id]["value"] = False
         StateJson().send_changes()
 
     def get_width(self):
@@ -97,8 +95,6 @@ class Switch(ConditionalWidget):
         @server.post(route_path)
         def _click():
             res = self.is_switched()
-            StateJson()[self.widget_id]["value"] = str(int(res))
-            StateJson().send_changes()
             func(res)
 
         return _click
