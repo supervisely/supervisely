@@ -475,9 +475,11 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
+            result = {"annotation": ann.to_json(), "data": data_to_return}
             if async_inference_request_uuid is not None:
                 sly_progress.iter_done()
-            results.append({"annotation": ann.to_json(), "data": data_to_return})
+                inference_request["pending_results"].append(result)
+            results.append(result)
             logger.debug(f"Frame {i+1} done.")
 
         fs.remove_dir(video_images_path)
@@ -491,6 +493,7 @@ class Inference:
             "is_inferring": True,
             "cancel_inference": False,
             "result": None,
+            "pending_results": [],
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -610,6 +613,7 @@ class Inference:
             if not inference_request_uuid:
                 return {"message": "Error: 'inference_request_uuid' is required."}
             inference_request = self._inference_requests[inference_request_uuid].copy()
+            inference_request.pop("pending_results")
             sly_progress: Progress = inference_request["progress"]
             inference_request["progress"] = {
                 "current": sly_progress.current,
@@ -618,6 +622,31 @@ class Inference:
             logger.debug(
                 f"Sending inference progress with uuid {inference_request_uuid}:",
                 extra=inference_request,
+            )
+            return inference_request
+
+        @server.post(f"/pop_inference_results")
+        def pop_inference_results(request: Request):
+            inference_request_uuid = request.state.get("inference_request_uuid")
+            if not inference_request_uuid:
+                return {"message": "Error: 'inference_request_uuid' is required."}
+            # Copy results
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+            inference_request["pending_results"] = inference_request["pending_results"].copy()
+            # Clear the queue `pending_results`
+            self._inference_requests[inference_request_uuid]["pending_results"].clear()
+            # Process response and send it:
+            sly_progress: Progress = inference_request["progress"]
+            inference_request["progress"] = {
+                "current": sly_progress.current,
+                "total": sly_progress.total,
+            }
+            logger.debug(
+                f"Sending inference delta results with uuid {inference_request_uuid}:",
+                extra={
+                    k: v if not isinstance(v, (list, dict)) else len(v)
+                    for k, v in inference_request.items()
+                },
             )
             return inference_request
 
