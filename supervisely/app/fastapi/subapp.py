@@ -147,6 +147,7 @@ def _init(
     templates_dir: str = "templates",
     headless=False,
     process_id=None,
+    static_dir=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -192,6 +193,9 @@ def _init(
             assert resp.status_code == 200
             logger.info("Application has been shut down successfully")
 
+        if static_dir is not None:
+            app.mount("/static", StaticFiles(directory=static_dir), name="static_files")
+
     return app
 
 
@@ -204,7 +208,7 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, layout: "Widget" = None, templates_dir: str = None):
+    def __init__(self, layout: "Widget" = None, templates_dir: str = None, static_dir: str = None):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -244,6 +248,7 @@ class Application(metaclass=Singleton):
             templates_dir=templates_dir,
             headless=headless,
             process_id=self._process_id,
+            static_dir=static_dir,
         )
 
     def get_server(self):
