@@ -63,4 +63,4 @@ from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
 from supervisely.app.widgets.file_thumbnail.file_thumbnail import FileThumbnail
-from supervisely.app.widgets.model_stats.model_stats import ModelStats
+from supervisely.app.widgets.model_info.model_info import ModelInfo

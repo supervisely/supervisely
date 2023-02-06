@@ -8,7 +8,7 @@ from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
 
 
-class ModelStats(Widget):
+class ModelInfo(Widget):
     def __init__(
         self,
         session_id: int = None,
