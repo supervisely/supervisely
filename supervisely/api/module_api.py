@@ -447,6 +447,8 @@ class ApiField:
     """"""
     SKIP_BOUNDS_VALIDATION = "skipBoundsValidation"
     """"""
+    PATHS = "paths"
+    """"""
 
 
 def _get_single_item(items):

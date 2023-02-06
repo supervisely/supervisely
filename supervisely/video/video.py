@@ -320,9 +320,25 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     if cpu_count is None:
         cpu_count = os.cpu_count()
 
-    current_dir = pathlib.Path(__file__).parent.absolute()
     session = subprocess.Popen(
-        ["sh", os.path.join(current_dir, "get_video_info.sh"), video_path, str(cpu_count)],
+        [
+            "ffprobe",
+            "-i",
+            f"{video_path}",
+            "-threads",
+            f"{cpu_count}",
+            "-fflags",
+            "+genpts",
+            "-v",
+            "error",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            "-show_frames",
+            "-show_entries",
+            "frame=stream_index,pkt_pts_time",
+        ],
         stdout=PIPE,
         stderr=PIPE,
     )

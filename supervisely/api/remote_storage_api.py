@@ -38,6 +38,35 @@ class RemoteStorageApi(ModuleApiBase):
         """_convert_json_info"""
         return info
 
+    def get_file_info_by_path(
+        self,
+        path: str,
+    ) -> dict:
+        """
+        Get info about file for given remote path.
+
+        :param path: Remote path to file.
+        :type path: str
+        :returns: List of files in the given remote path
+        :rtype: dict
+
+        """
+
+        Provider.validate_path(path)
+        path = path.rstrip("/")
+        resp = self._api.get(
+            "remote-storage.list",
+            {
+                ApiField.PATH: path,
+                "recursive": False,
+                "files": True,
+                "folders": False,
+                "limit": 1,
+                "startAfter": "",
+            },
+        )
+        return resp.json()[0]
+
     def list(
         self,
         path: str,
@@ -46,7 +75,7 @@ class RemoteStorageApi(ModuleApiBase):
         folders: bool = True,
         limit: int = 10000,
         start_after: str = "",
-    ) -> dict:
+    ) -> list:
         """
         List files and directories for given remote path.
 
