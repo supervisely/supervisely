@@ -123,8 +123,12 @@ class PoseEstimation(Inference):
         @functools.wraps(func)
         def wrapper_inference(*args, **kwargs):
             settings = kwargs["settings"]
-            rectangle_json = settings.get("rectangle")
 
+            if "detected_bboxes" in settings:
+                ann = func(*args, **kwargs)
+                return ann
+
+            rectangle_json = settings.get("rectangle")
             if rectangle_json is None:
                 raise ValueError(
                     """Pose estimation task requires target object
