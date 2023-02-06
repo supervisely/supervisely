@@ -169,8 +169,8 @@ class Inference:
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
                 logger.info(f"File {basename} path: {dst_path}")
             else:  # external url
-                if not fs.dir_exists(os.path.basename(dst_path)):
-                    fs.mkdir(os.path.basename(dst_path))
+                if not fs.dir_exists(os.path.dirname(dst_path)):
+                    fs.mkdir(os.path.dirname(dst_path))
 
                 def download_external_file(url, save_path, progress=None):
                     def download_content(save_path, progress_cb=None):
