@@ -20,7 +20,7 @@
                     state.{{{widget.widget_id}}}.checkboxes = new Array(
                       data.{{{widget.widget_id}}}.table_data.length
                     ).fill(state.{{{widget.widget_id}}}.global_checkbox);
-                    post('/{{{widget.widget_id}}}/class_selected_cb/');
+                    post('/{{{widget.widget_id}}}/class_selected_cb');
                   "
           {%
           else
@@ -50,7 +50,7 @@
             if 
             widget._changes_handled
             %}
-            @change="post('/{{{widget.widget_id}}}/class_selected_cb/');"
+            @change="post('/{{{widget.widget_id}}}/class_selected_cb');"
             {%
             endif
             %}
