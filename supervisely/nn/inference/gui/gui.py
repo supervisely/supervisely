@@ -56,14 +56,18 @@ class InferenceGUI(BaseInferenceGUI):
         self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
         if self._support_submodels:
-            # TODO: add paper_from and year
-            # for model_name, model_data in models.items():
-            #     for param_name, param_val in model_data.items():
-            #         if param_name == "checkpoints":
-            #             continue
-            #         elif param_name == "paper_from":
-
-            self._model_select = Widgets.SelectString(list(models.keys()))
+            model_papers = []
+            model_years = []
+            for _, model_data in models.items():
+                for param_name, param_val in model_data.items():
+                    if param_name == "paper_from":
+                        model_papers.append(param_val)
+                    elif param_name == "year":
+                        model_years.append(param_val)
+            paper_and_year = []
+            for paper, year in zip(model_papers, model_years):
+                paper_and_year.append(f"{paper} {year}")
+            self._model_select = Widgets.SelectString(list(models.keys()), items_info=paper_and_year)
             selected_model = self._model_select.get_value()
             cols = list(models[selected_model]["checkpoints"][0].keys())
             rows = [
@@ -114,6 +118,7 @@ class InferenceGUI(BaseInferenceGUI):
             )
 
     def _get_table_subtitles(self, cols):
+        # Get subtitles from col's round brackets
         subtitles = {}
         updated_cols = []
         for col in cols:

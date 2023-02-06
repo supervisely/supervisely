@@ -46,15 +46,22 @@ class Select(ConditionalWidget):
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        def __init__(self, value, label: str = None, content: Widget = None) -> Select.Item:
+        def __init__(
+            self,
+            value,
+            label: str = None,
+            content: Widget = None,
+            info: str = None,
+        ) -> Select.Item:
             self.value = value
             self.label = label
             if label is None:
                 self.label = str(self.value)
             self.content = content
+            self.info = info
 
         def to_json(self):
-            return {"label": self.label, "value": self.value}
+            return {"label": self.label, "value": self.value, "info": self.info}
 
     class Group:
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
@@ -90,6 +97,12 @@ class Select(ConditionalWidget):
         self._changes_handled = False
         self._size = size
         self._multiple = multiple
+        if items is None:
+            self._with_info = any(
+                [item.info is not None for group in groups for item in group.items]
+            )
+        else:
+            self._with_info = any([item.info is not None for item in items])
 
         super().__init__(items=items, widget_id=widget_id, file_path=__file__)
 
@@ -107,6 +120,7 @@ class Select(ConditionalWidget):
             "multiple": self._multiple,
             "items": None,
             "groups": None,
+            "with_info": self._with_info,
         }
         if self._items is not None:
             res["items"] = [item.to_json() for item in self._items]
@@ -147,9 +161,25 @@ class Select(ConditionalWidget):
                 res.extend(group.items)
         return res
 
-    def set(self, items: List[Select.Item] = None, groups: List[Select.Group] = None):
+    def set(
+        self,
+        items: List[Select.Item] = None,
+        groups: List[Select.Group] = None,
+    ):
+        if items is None and groups is None:
+            raise ValueError("One of the arguments has to be defined: items or groups")
+        if items is not None and groups is not None:
+            raise ValueError("Only one of the arguments has to be defined: items or groups")
+
         self._items = items
         self._groups = groups
+        if items is None:
+            self._with_info = any(
+                [item.info is not None for group in groups for item in group.items]
+            )
+        else:
+            self._with_info = any([item.info is not None for item in items])
+
         self.update_data()
         self.update_state()
         DataJson().send_changes()
@@ -158,23 +188,30 @@ class Select(ConditionalWidget):
 
 class SelectString(Select):
     def __init__(
-        self, 
-        values: List[str], 
+        self,
+        values: List[str],
         labels: Optional[List[str]] = None,
         filterable: Optional[bool] = False,
         placeholder: Optional[str] = "select",
         size: Optional[Literal["large", "small", "mini"]] = None,
         multiple: Optional[bool] = False,
         widget_id: Optional[str] = None,
+        items_info: List[str] = None,
     ):
+        infos = [None] * len(values)
+        if items_info is not None:
+            if len(values) != len(items_info):
+                raise ValueError("info length must be equal to values length.")
+            infos = items_info
+
         if labels is not None:
             if len(values) != len(labels):
                 raise ValueError("values length must be equal to labels length.")
             items = []
-            for value, label in zip(values, labels):
-                items.append(Select.Item(value, label))
+            for value, label, info in zip(values, labels, infos):
+                items.append(Select.Item(value, label, info=info))
         else:
-            items = [Select.Item(value) for value in values]
+            items = [Select.Item(value, info=info) for value, info in zip(values, infos)]
 
         super(SelectString, self).__init__(
             items=items,
@@ -183,7 +220,7 @@ class SelectString(Select):
             placeholder=placeholder,
             multiple=multiple,
             size=size,
-            widget_id=widget_id
+            widget_id=widget_id,
         )
 
     def _get_first_value(self) -> Select.Item:
@@ -194,15 +231,26 @@ class SelectString(Select):
     def get_items(self) -> List[str]:
         return [item.value for item in self._items]
 
-    def set(self, values: List[str], labels: Optional[List[Select.Item]] = None):
+    def set(
+        self,
+        values: List[str],
+        labels: Optional[List[str]] = None,
+        info: Optional[List[str]] = None,
+    ):
+        infos = [None] * len(values)
+        if info is not None:
+            if len(values) != len(info):
+                raise ValueError("info length must be equal to values length.")
+            infos = info
+
         if labels is not None:
             if len(values) != len(labels):
                 raise ValueError("values length must be equal to labels length.")
             self._items = []
-            for value, label in zip(values, labels):
-                self._items.append(Select.Item(value, label))
+            for value, label, info in zip(values, labels, infos):
+                self._items.append(Select.Item(value, label, info=info))
         else:
-            self._items = [Select.Item(value) for value in values]
+            self._items = [Select.Item(value, info=info) for value, info in zip(values, infos)]
         self.update_data()
         self.update_state()
         DataJson().send_changes()

@@ -16,6 +16,8 @@
       :label="item.label"
       :value="item.value"
     >
+      <span v-if="data.{{{widget.widget_id}}}.with_info" style="float: left">{{ item.label }}</span>
+      <span v-if="data.{{{widget.widget_id}}}.with_info" style="float: right; color: #8492a6; font-size: 13px">{{ item.info }}</span>
     </el-option>
   </div>
   <div v-else>
@@ -30,6 +32,8 @@
         :label="item.label"
         :value="item.value"
       >
+        <span v-if="data.{{{widget.widget_id}}}.with_info" style="float: left">{{ item.label }}</span>
+        <span v-if="data.{{{widget.widget_id}}}.with_info" style="float: right; color: #8492a6; font-size: 13px">{{ item.info }}</span>
       </el-option>
     </el-option-group>
   </div>
