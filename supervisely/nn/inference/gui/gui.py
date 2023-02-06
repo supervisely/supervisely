@@ -58,16 +58,23 @@ class InferenceGUI(BaseInferenceGUI):
         if self._support_submodels:
             model_papers = []
             model_years = []
+            model_links = []
             for _, model_data in models.items():
                 for param_name, param_val in model_data.items():
                     if param_name == "paper_from":
                         model_papers.append(param_val)
                     elif param_name == "year":
                         model_years.append(param_val)
+                    elif param_name == "config_url":
+                        model_links.append(param_val)
             paper_and_year = []
             for paper, year in zip(model_papers, model_years):
                 paper_and_year.append(f"{paper} {year}")
-            self._model_select = Widgets.SelectString(list(models.keys()), items_info=paper_and_year)
+            self._model_select = Widgets.SelectString(
+                list(models.keys()),
+                items_info=paper_and_year,
+                items_links=model_links,
+            )
             selected_model = self._model_select.get_value()
             cols = list(models[selected_model]["checkpoints"][0].keys())
             rows = [

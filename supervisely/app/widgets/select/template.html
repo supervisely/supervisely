@@ -38,3 +38,6 @@
     </el-option-group>
   </div>
 </el-select>
+<span v-if="data.{{{widget.widget_id}}}.with_link">
+  <a :href="state.{{{widget.widget_id}}}.links[state.{{{widget.widget_id}}}.value]" target="_blank">Learn more...</a>
+</span>

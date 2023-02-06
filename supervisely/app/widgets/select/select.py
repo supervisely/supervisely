@@ -84,6 +84,7 @@ class Select(ConditionalWidget):
         size: Literal["large", "small", "mini"] = None,
         multiple: bool = False,
         widget_id: str = None,
+        items_links: List[str] = None,
     ) -> Select:
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
@@ -103,6 +104,15 @@ class Select(ConditionalWidget):
             )
         else:
             self._with_info = any([item.info is not None for item in items])
+        self._with_link = False
+        self._links = None
+        if items_links is not None:
+            if items is None:
+                raise ValueError("links are not supported when groups are provided to Select")
+            else:
+                assert len(items_links) == len(items)
+            self._with_link = True
+            self._links = {items[i].value: link for i, link in enumerate(items_links)}
 
         super().__init__(items=items, widget_id=widget_id, file_path=__file__)
 
@@ -121,6 +131,7 @@ class Select(ConditionalWidget):
             "items": None,
             "groups": None,
             "with_info": self._with_info,
+            "with_link": self._with_link,
         }
         if self._items is not None:
             res["items"] = [item.to_json() for item in self._items]
@@ -135,7 +146,7 @@ class Select(ConditionalWidget):
         value = None
         if first_item is not None:
             value = first_item.value
-        return {"value": value}
+        return {"value": value, "links": self._links}
 
     def get_value(self):
         return StateJson()[self.widget_id]["value"]
@@ -197,6 +208,7 @@ class SelectString(Select):
         multiple: Optional[bool] = False,
         widget_id: Optional[str] = None,
         items_info: List[str] = None,
+        items_links: List[str] = None,
     ):
         infos = [None] * len(values)
         if items_info is not None:
@@ -221,6 +233,7 @@ class SelectString(Select):
             multiple=multiple,
             size=size,
             widget_id=widget_id,
+            items_links=items_links,
         )
 
     def _get_first_value(self) -> Select.Item:
