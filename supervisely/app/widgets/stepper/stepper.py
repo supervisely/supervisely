@@ -1,6 +1,6 @@
 from typing import List
 
-from supervisely.app import StateJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
 
