@@ -1,12 +1,12 @@
-from typing import Dict
+from typing import Dict, Optional
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app import StateJson
-from supervisely.app.widgets import Widget, SelectProject, generate_id, Checkbox
+from supervisely.app import StateJson, DataJson
+from supervisely.app.widgets import Widget, SelectProject, generate_id, Checkbox, Empty
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
 from supervisely.app.widgets.select_sly_utils import _get_int_or_env
@@ -24,6 +24,7 @@ class SelectDataset(Widget):
         compact: bool = False,
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
+        disabled: Optional[bool] = False,
         widget_id: str = None,
     ):
         self._api = Api()
@@ -34,8 +35,10 @@ class SelectDataset(Widget):
         self._show_label = show_label
         self._size = size
         self._team_selector = None
-        self._all_datasets_checkbox = None
+        self._all_datasets_checkbox = Empty()
+        self._project_selector = Empty()
         self._changes_handled = False
+        self._disabled = disabled
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyDatasetId")
         if self._default_id is not None:
@@ -70,6 +73,7 @@ class SelectDataset(Widget):
 
     def get_json_data(self) -> Dict:
         res = {}
+        res["disabled"] = self._disabled
         res["projectId"] = self._project_id
         res["options"] = {
             "showLabel": self._show_label,
@@ -137,3 +141,18 @@ class SelectDataset(Widget):
             _process()
 
         return _click
+
+    def disable(self):
+        self._project_selector.disable()
+        self._all_datasets_checkbox.disable()
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        self._all_datasets_checkbox.enable()
+        self._project_selector.enable()
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+        
