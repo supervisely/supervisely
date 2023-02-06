@@ -40,8 +40,8 @@ class InferenceGUI(BaseInferenceGUI):
         self._support_pretrained_models = True  # TODO: check If get_models() method is implemented
         assert self._support_custom_models or self._support_pretrained_models
 
-        device_values = ["cpu"]
-        device_names = ["CPU"]
+        device_values = []
+        device_names = []
         try:
             import torch
 
@@ -52,6 +52,8 @@ class InferenceGUI(BaseInferenceGUI):
                     device_names.append(f"{torch.cuda.get_device_name(i)} (cuda:{i})")
         except:
             pass
+        device_values.append("cpu")
+        device_names.append("CPU")
 
         self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
