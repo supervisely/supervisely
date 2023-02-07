@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import imgaug.augmenters.Sequential
+    try:
+        import imgaug.augmenters.Sequential
+    except:
+        pass
 from typing import Tuple, List, Dict, Optional
 
 import random
@@ -722,7 +725,11 @@ def rotate(
 
 
 def load_imgaug(json_data: Dict) -> imgaug.augmenters.Sequential:
-    import imgaug.augmenters as iaa
+    try:
+        import imgaug.augmenters as iaa
+    except ModuleNotFoundError as e:
+        logger.error(f"{e}. Try to install supervisely[aug]")
+        raise
 
     def _get_function(category_name, aug_name):
         try:

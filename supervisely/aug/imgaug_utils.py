@@ -3,8 +3,11 @@ from collections import OrderedDict
 from supervisely.sly_logger import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.project.project_meta import ProjectMeta
-from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+try:
+    from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+    from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+except:
+    pass
 import numpy as np
 
 
@@ -96,7 +99,11 @@ def get_default_params_by_name(category_name, aug_name):
 
 
 def get_function(category_name, aug_name):
-    import imgaug.augmenters as iaa
+    try:
+        import imgaug.augmenters as iaa
+    except ModuleNotFoundError as e:
+        logger.error(f"{e}. Try to install supervisely[aug]")
+        raise
     try:
         submodule = getattr(iaa, category_name)
         aug_f = getattr(submodule, aug_name)
@@ -108,7 +115,11 @@ def get_function(category_name, aug_name):
 
 
 def build_pipeline(aug_infos, random_order=False):
-    import imgaug.augmenters as iaa
+    try:
+        import imgaug.augmenters as iaa
+    except ModuleNotFoundError as e:
+        logger.error(f"{e}. Try to install supervisely[aug]")
+        raise
     pipeline = []
     for aug_info in aug_infos:
         category_name = aug_info["category"]
@@ -156,7 +167,11 @@ def remove_unexpected_arguments(category_name, aug_name, params):
 
 
 def _apply(augs, img, boxes=None, masks=None):
-    import imgaug.augmenters as iaa
+    try:
+        import imgaug.augmenters as iaa
+    except ModuleNotFoundError as e:
+        logger.error(f"{e}. Try to install supervisely[aug]")
+        raise
     augs: iaa.Sequential
     res = augs(images=[img], bounding_boxes=boxes, segmentation_maps=masks)
     #return image, boxes, masks
