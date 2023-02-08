@@ -71,7 +71,6 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            print(alternative_pkg_name)
             get_distribution(alternative_pkg_name)
             return str(alternative_install_require)
         except DistributionNotFound:
