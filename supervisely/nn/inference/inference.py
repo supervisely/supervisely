@@ -28,7 +28,8 @@ import yaml
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
 from supervisely.app.content import StateJson, get_data_dir
-from supervisely.app.fastapi.request import Request
+from fastapi import Request
+
 from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
 from supervisely.nn.prediction_dto import Prediction
@@ -627,21 +628,25 @@ class Inference:
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
+        @server.post("/new_route")
+        def new_route(request: Request):
+            return {}
+
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            return self._inference_image_id(request.api, request.state)
+            return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            return self._inference_image_url(request.api, request.state)
+            return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            return self._inference_batch_ids(request.api, request.state)
+            return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return {"ann": self._inference_video_id(request.api, request.state)}
+            return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
         def inference_image(
