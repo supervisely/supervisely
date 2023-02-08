@@ -37,8 +37,11 @@ from supervisely.io.fs import ensure_base_path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from imgaug.augmentables.bbs import BoundingBoxesOnImage
-    from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+    try:
+        from imgaug.augmentables.bbs import BoundingBoxesOnImage
+        from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+    except ModuleNotFoundError:
+        pass
 
 ANN_EXT = ".json"
 
@@ -2618,7 +2621,11 @@ class Annotation:
         :return: SegmentationMapsOnImage, otherwise :class:`None`
         :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
         """
-        from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+        try:
+            from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+        except ModuleNotFoundError as e:
+            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            raise e
 
         h = self.img_size[0]
         w = self.img_size[1]
@@ -2644,7 +2651,11 @@ class Annotation:
         :return: BoundingBoxesOnImage, otherwise :class:`None`
         :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
         """
-        from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+        try:
+            from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+        except ModuleNotFoundError as e:
+            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            raise e
 
         boxes = []
         for label in self.labels:
