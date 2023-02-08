@@ -4,6 +4,8 @@ import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
+from os import getenv
+from distutils.util import strtobool
 from supervisely.sly_logger import logger
 from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
 
@@ -135,6 +137,7 @@ class Import:
             path = file
             is_directory = False
 
+        remote_path = path
         is_on_agent = api.file.is_on_agent(path)
 
         if not self.is_path_required() and path is None:
@@ -188,4 +191,9 @@ class Import:
         if type(project_id) is int and is_production():
             info = api.project.get_info_by_id(project_id)
             api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
+            remove_source = bool(strtobool(getenv("modal.state.removeSource", None)))
+            if remove_source and not is_on_agent:
+                api.file.remove(team_id=context.team_id, path=remote_path)
+                remove_dir(context.path)
+                logger.info(msg=f"Source directory: '{remote_path}' was successfully removed.")
             logger.info(f"Result project: id={info.id}, name={info.name}")
