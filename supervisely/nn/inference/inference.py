@@ -27,7 +27,7 @@ import yaml
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.content import StateJson, get_data_dir
+from supervisely.app.content import get_data_dir
 from fastapi import Request
 
 from supervisely.api.api import Api
@@ -223,6 +223,7 @@ class Inference:
         return models_list
 
     def load_on_device(
+        self,
         model_dir: str,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):

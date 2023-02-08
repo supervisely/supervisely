@@ -1,12 +1,9 @@
 from typing import Dict, List, Any
-from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask, PredictionSegmentation
+from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.annotation.label import Label
-from supervisely.annotation.tag import Tag
 from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
-from supervisely.task.progress import Progress
 import numpy as np
 
 

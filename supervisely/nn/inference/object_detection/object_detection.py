@@ -4,7 +4,6 @@ from supervisely.nn.prediction_dto import PredictionBBox
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.nn.inference.inference import Inference
-from supervisely.task.progress import Progress
 
 
 class ObjectDetection(Inference):
