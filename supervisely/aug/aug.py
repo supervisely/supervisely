@@ -728,8 +728,8 @@ def load_imgaug(json_data: Dict) -> imgaug.augmenters.Sequential:
     try:
         import imgaug.augmenters as iaa
     except ModuleNotFoundError as e:
-        logger.error(f"{e}. Try to install supervisely[aug]")
-        raise
+        logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+        raise e
 
     def _get_function(category_name, aug_name):
         try:

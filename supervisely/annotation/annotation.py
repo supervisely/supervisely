@@ -2624,8 +2624,8 @@ class Annotation:
         try:
             from imgaug.augmentables.segmaps import SegmentationMapsOnImage
         except ModuleNotFoundError as e:
-            logger.error(f"{e}. Try to install supervisely[aug]")
-            raise
+            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            raise e
 
         h = self.img_size[0]
         w = self.img_size[1]
@@ -2654,8 +2654,8 @@ class Annotation:
         try:
             from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
         except ModuleNotFoundError as e:
-            logger.error(f"{e}. Try to install supervisely[aug]")
-            raise
+            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            raise e
 
         boxes = []
         for label in self.labels:

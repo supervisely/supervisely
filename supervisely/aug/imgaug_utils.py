@@ -102,8 +102,8 @@ def get_function(category_name, aug_name):
     try:
         import imgaug.augmenters as iaa
     except ModuleNotFoundError as e:
-        logger.error(f"{e}. Try to install supervisely[aug]")
-        raise
+        logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+        raise e
     try:
         submodule = getattr(iaa, category_name)
         aug_f = getattr(submodule, aug_name)
@@ -118,8 +118,8 @@ def build_pipeline(aug_infos, random_order=False):
     try:
         import imgaug.augmenters as iaa
     except ModuleNotFoundError as e:
-        logger.error(f"{e}. Try to install supervisely[aug]")
-        raise
+        logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+        raise e
     pipeline = []
     for aug_info in aug_infos:
         category_name = aug_info["category"]
@@ -170,8 +170,8 @@ def _apply(augs, img, boxes=None, masks=None):
     try:
         import imgaug.augmenters as iaa
     except ModuleNotFoundError as e:
-        logger.error(f"{e}. Try to install supervisely[aug]")
-        raise
+        logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+        raise e
     augs: iaa.Sequential
     res = augs(images=[img], bounding_boxes=boxes, segmentation_maps=masks)
     #return image, boxes, masks
