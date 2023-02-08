@@ -2,9 +2,11 @@ try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
+from typing import Optional
 import supervisely as sly
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
+from supervisely.app.widgets.widget import Disableable
 
 
 class SelectAppSession(Widget):
@@ -14,6 +16,7 @@ class SelectAppSession(Widget):
         allowed_session_tags: list = ["deployed_nn"],
         show_label: bool = False,
         size: Literal["large", "small", "mini"] = "mini",
+        disabled: Optional[bool] = False,
         widget_id: str = None,
     ):
         self._session_id = None
@@ -21,6 +24,7 @@ class SelectAppSession(Widget):
         self._allowed_session_tags = allowed_session_tags
         self._show_label = show_label
         self._size = size
+        self._disabled = disabled
 
         if self._team_id is None:
             self._team_id = sly.env.team_id()
@@ -36,6 +40,7 @@ class SelectAppSession(Widget):
         }
         if len(self._allowed_session_tags) > 1:
             data["ssOptions"]["sessionTagsCombination"] = False
+        data["disabled"] = self._disabled
         return data
 
     def get_json_state(self):
