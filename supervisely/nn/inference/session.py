@@ -166,7 +166,7 @@ class Session:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
         resp, has_started = self._wait_for_async_inference_start()
-        print("Inference has started:", resp)
+        logger.info("Inference has started:", extra=resp)
         frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self)
         return frame_iterator
 
@@ -174,7 +174,7 @@ class Session:
         endpoint = "stop_inference"
         resp = self._get_from_endpoint_for_async_inference(endpoint)
         self._stop_async_inference_flag = True
-        print("Inference will be stopped on the server")
+        logger.info("Inference will be stopped on the server")
         return resp
 
     def _get_inference_progress(self):
@@ -186,7 +186,7 @@ class Session:
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _wait_for_async_inference_start(self, delay=1, timeout=None):
-        print("Video is preparing on the server...")
+        logger.info("The video is preparing on the server, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
@@ -203,7 +203,7 @@ class Session:
         return resp, has_started
 
     def _wait_for_new_pending_results(self, delay=1, timeout=600):
-        print("waiting pending results...")
+        logger.debug("waiting pending results...")
         has_results = False
         timeout_exceeded = False
         t0 = time.time()
@@ -221,14 +221,14 @@ class Session:
             self._on_async_inference_end()
             raise Timeout("Timeout exceeded. Pending results not received from the server.")
         if not pending_results and resp["is_inferring"]:
-            print(
-                "Warning: The model is inferring yet, but pending results not received. "
-                "It may occur that not all samples has been inferred."
+            logger.warn(
+                "The model is inferring yet, but new pending results have not received from the serving app. "
+                "This may lead to not all samples will be inferred."
             )
         return pending_results
 
     def _on_async_inference_end(self):
-        print("_on_async_inference_end")
+        logger.debug("callback: on_async_inference_end")
         self._async_inference_uuid = None
 
     def _post(self, retries=5, *args, **kwargs):
