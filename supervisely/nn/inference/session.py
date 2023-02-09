@@ -57,6 +57,7 @@ class Session:
         self.api = api
         self._task_id = int(task_id)
         # TODO: api.task.get_info_by_id get stuck if the task_id isn't exists on the platform
+        # https://github.com/supervisely/issues/issues/1873
         self._session_token = str(
             session_token or api.task.get_info_by_id(task_id)["meta"]["sessionToken"]
         )
