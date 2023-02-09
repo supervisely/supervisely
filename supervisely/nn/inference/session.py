@@ -25,7 +25,27 @@ class Session:
         session_token: str = None,
         inference_settings: Union[dict, str] = None,
     ):
-        # inference_settings can be a dict or a path to yaml file
+        """A convenient class for inference of deployed models.
+        You need first to serve the NN model you want and then get its task_id.
+        You can also get task_id from the Supervisely platform on `START` -> `App sessions` page.
+        Note: Exactly one of `task_id` or `session_token` has to be passed as a parameter.
+
+        Example:
+        ```
+        task_id = 27001
+        nn_inference = sly.nn.inference.Session(
+            api,
+            task_id=task_id,
+        )
+        print(nn_inference.get_session_info())
+        ```
+
+        Args:
+            api (sly.Api): initialized sly.Api object.
+            task_id (int, optional): if None, the `session_token` will be used.
+            session_token (str, optional): if None, the `task_id` will be used.
+            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
+        """
         if (task_id is None and session_token is None) or (
             task_id is not None and session_token is not None
         ):
@@ -35,6 +55,7 @@ class Session:
 
         self.api = api
         self._task_id = int(task_id)
+        # TODO: api.task.get_info_by_id get stuck if the task_id isn't exists on the platform
         self._session_token = str(
             session_token or api.task.get_info_by_id(task_id)["meta"]["sessionToken"]
         )
@@ -121,7 +142,10 @@ class Session:
         url = f"{self._base_url}/{endpoint}"
         opened_file = open(image_path, "rb")
         settings_json = json.dumps({"settings": self.inference_settings})
-        uploads = [("files", opened_file), ("settings", (None, settings_json, "text/plain"))]
+        uploads = [
+            ("files", opened_file),
+            ("settings", (None, settings_json, "text/plain")),
+        ]
         resp = self._post(url, files=uploads)
         opened_file.close()
         return resp.json()
