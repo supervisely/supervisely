@@ -27,7 +27,7 @@ import yaml
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.content import get_data_dir
+from supervisely.app.content import get_data_dir, StateJson
 from fastapi import Request
 
 from supervisely.api.api import Api
@@ -179,19 +179,21 @@ class Inference:
                             for chunk in r.iter_content(chunk_size=8192):
                                 f.write(chunk)
                                 if progress is not None:
-                                    progress_cb(len(chunk))
+                                    progress_cb(len(chunk) / 1024 / 1024)  # in mb
 
                     with requests.get(url, stream=True) as r:
                         r.raise_for_status()
-                        total_size_in_bytes = int(
-                            CaseInsensitiveDict(r.headers).get("Content-Length", "0")
+                        total_size_in_mbytes = (
+                            int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
+                            / 1024
+                            / 1024
                         )
                         if progress is None:
                             download_content(save_path)
                         else:
                             with progress(
-                                message="Downloading file from external URL...",
-                                total=total_size_in_bytes,
+                                message="Downloading file from external URL (MB)",
+                                total=total_size_in_mbytes,
                             ) as pbar:
                                 download_content(save_path, pbar.update)
 
