@@ -1,7 +1,6 @@
 from io import StringIO
 from pathlib import Path
 from typing import List, Optional, Dict
-import logging
 
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget, Editor
