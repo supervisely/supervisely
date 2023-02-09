@@ -4,23 +4,30 @@ from typing import List, Optional, Dict
 
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget, Editor
-from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
-class MyYAML(YAML):
-    def dump(self, data, stream=None, **kw):
-        inefficient = False
-        if stream is None:
-            inefficient = True
-            stream = StringIO()
-        YAML.dump(self, data, stream, **kw)
-        if inefficient:
-            return stream.getvalue()
+def initialize():
+    try:
+        # imports here because ordinar import cause error https://github.com/supervisely/issues/issues/1872
+        from ruamel.yaml import YAML
+        from ruamel.yaml.comments import CommentedMap
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('This dependency not provided by Supervisely SDK.\nPlease, install it manually if nedeed.\npip install ruamel.yaml')
+    
+    class MyYAML(YAML):
+        def dump(self, data, stream=None, **kw):
+            inefficient = False
+            if stream is None:
+                inefficient = True
+                stream = StringIO()
+            YAML.dump(self, data, stream, **kw)
+            if inefficient:
+                return stream.getvalue()
+    return MyYAML(), CommentedMap
 
 class TabsDynamic(Widget):
     class TabPane:
@@ -42,7 +49,7 @@ class TabsDynamic(Widget):
         else:
             data_source = filepath_or_raw_yaml
 
-        yaml = MyYAML()
+        yaml, CommentedMap = initialize()
         self._data = yaml.load(data_source)
         self._common_data = self._data.copy()
         
@@ -92,7 +99,7 @@ class TabsDynamic(Widget):
         return StateJson()[self.widget_id]["value"]
     
     def get_merged_yaml(self, as_dict: bool = False):
-        yaml = MyYAML()
+        yaml, CommentedMap = initialize()
         yaml_data = yaml.load('hyparameters:')
         for label, editor in self._items_dict.items():
             label_yaml_data = yaml.load(editor.get_text())
