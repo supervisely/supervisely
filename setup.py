@@ -56,7 +56,6 @@ INSTALL_REQUIRES = [
     "numerize",
     "ffmpeg-python==0.2.0",
     "python-multipart==0.0.5",
-    "ruamel.yaml==0.17.21",
 ]
 
 ALT_INSTALL_REQUIRES = {
