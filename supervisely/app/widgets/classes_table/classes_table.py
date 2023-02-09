@@ -19,6 +19,7 @@ type_to_zmdi_icon = {
     sly.Polyline: "zmdi zmdi-gesture",
     sly.Point: "zmdi zmdi-dot-circle-alt",
     sly.Cuboid: "zmdi zmdi-ungroup",  #
+    sly.GraphNodes: "zmdi zmdi-grain",
     Cuboid3d: "zmdi zmdi-codepen",
     Pointcloud: "zmdi zmdi-cloud-outline",  #  # "zmdi zmdi-border-clear"
     sly.MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
@@ -63,9 +64,7 @@ class ClassesTable(Widget):
                 logger.warn(
                     "Both parameters project_id and project_meta were provided to ClassesTable widget. Project meta classes taken from remote project and project_meta parameter is ignored."
                 )
-            project_meta = sly.ProjectMeta.from_json(
-                self._api.project.get_meta(project_id)
-            )
+            project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
         self._project_fs = project_fs
         if project_fs is not None:
             if project_meta is not None:
@@ -94,10 +93,7 @@ class ClassesTable(Widget):
         stats = None
         data_to_show = []
         for obj_class in project_meta.obj_classes:
-            if (
-                self._allowed_types is None
-                or obj_class.geometry_type not in self._allowed_types
-            ):
+            if self._allowed_types is None or obj_class.geometry_type not in self._allowed_types:
                 data_to_show.append(obj_class.to_json())
 
         if self._project_id is not None:
@@ -150,7 +146,10 @@ class ClassesTable(Widget):
         columns = [col.upper() for col in columns]
         if data_to_show:
             table_data = []
-            data_to_show = sorted(data_to_show, key=lambda line: line["objectsCount"], reverse=True)
+            if self._project_id is not None or self._project_fs is not None:
+                data_to_show = sorted(
+                    data_to_show, key=lambda line: line["objectsCount"], reverse=True
+                )
             for line in data_to_show:
                 table_line = []
                 icon = type_to_zmdi_icon[sly.AnyGeometry]
@@ -159,6 +158,8 @@ class ClassesTable(Widget):
                     if geo_type.geometry_name() == line["shape"]:
                         icon = icon_text
                         break
+                if line["shape"] == "graph":
+                    line["shape"] = "graph (keypoints)"
                 table_line.extend(
                     [
                         {
@@ -170,17 +171,11 @@ class ClassesTable(Widget):
                     ]
                 )
                 if "itemsCount" in line.keys():
-                    table_line.append(
-                        {"name": "ITEMS COUNT", "data": line["itemsCount"]}
-                    )
+                    table_line.append({"name": "ITEMS COUNT", "data": line["itemsCount"]})
                 if "objectsCount" in line.keys():
-                    table_line.append(
-                        {"name": "OBJECTS COUNT", "data": line["objectsCount"]}
-                    )
+                    table_line.append({"name": "OBJECTS COUNT", "data": line["objectsCount"]})
                 if "figuresCount" in line.keys():
-                    table_line.append(
-                        {"name": "FIGURES COUNT", "data": line["figuresCount"]}
-                    )
+                    table_line.append({"name": "FIGURES COUNT", "data": line["figuresCount"]})
                 table_data.append(table_line)
             self._table_data = table_data
             self._columns = columns
@@ -202,8 +197,8 @@ class ClassesTable(Widget):
         DataJson()[self.widget_id]["table_data"] = self._table_data
         DataJson()[self.widget_id]["columns"] = self._columns
         DataJson().send_changes()
-        StateJson()["checkboxes"] = self._checkboxes
-        StateJson()["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson().send_changes()
         self.loading = False
 
@@ -217,8 +212,8 @@ class ClassesTable(Widget):
         DataJson()[self.widget_id]["table_data"] = self._table_data
         DataJson()[self.widget_id]["columns"] = self._columns
         DataJson().send_changes()
-        StateJson()["checkboxes"] = self._checkboxes
-        StateJson()["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson().send_changes()
         self.loading = False
 
@@ -235,8 +230,8 @@ class ClassesTable(Widget):
         DataJson()[self.widget_id]["table_data"] = self._table_data
         DataJson()[self.widget_id]["columns"] = self._columns
         DataJson().send_changes()
-        StateJson()["checkboxes"] = self._checkboxes
-        StateJson()["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson().send_changes()
         self.loading = False
 
