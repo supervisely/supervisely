@@ -16,8 +16,8 @@ def initialize():
         # imports here because ordinar import cause error https://github.com/supervisely/issues/issues/1872
         from ruamel.yaml import YAML
         from ruamel.yaml.comments import CommentedMap
-    except ImportError:
-        raise ImportError('This dependency not provided by Supervisely SDK.\nPlease, install it manually if nedeed.\npip install ruamel.yaml')
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('This dependency not provided by Supervisely SDK.\nPlease, install it manually if nedeed.\npip install ruamel.yaml')
     
     class MyYAML(YAML):
         def dump(self, data, stream=None, **kw):
