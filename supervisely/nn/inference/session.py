@@ -38,6 +38,7 @@ class Session:
             task_id=task_id,
         )
         print(nn_inference.get_session_info())
+        pred = nn_inference.infer_image_id(image_id=17551748)
         ```
 
         Args:
