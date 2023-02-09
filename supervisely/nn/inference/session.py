@@ -1,7 +1,7 @@
 import json
 import time
 import requests
-from typing import List, Union
+from typing import List, Union, Iterator, Dict, Any, Tuple
 
 try:
     from typing import Literal
@@ -28,17 +28,20 @@ class Session:
         """A convenient class for inference of deployed models.
         You need first to serve the NN model you want and then get its task_id.
         You can also get task_id from the Supervisely platform on `START` -> `App sessions` page.
-        Note: Exactly one of `task_id` or `session_token` has to be passed as a parameter.
+        Note: Exactly one of `task_id` or `session_token` has to be passed as parameter.
 
         Example:
         ```
         task_id = 27001
-        nn_inference = sly.nn.inference.Session(
+        inference_session = sly.nn.inference.Session(
             api,
             task_id=task_id,
         )
-        print(nn_inference.get_session_info())
-        pred = nn_inference.infer_image_id(image_id=17551748)
+        print(inference_session.get_session_info())
+
+        image_id = 17551748
+        pred = inference_session.inference_image_id(image_id)
+        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
         ```
 
         Args:
@@ -78,12 +81,12 @@ class Session:
     def session_token(self) -> str:
         return self._session_token
 
-    def get_session_info(self):
+    def get_session_info(self) -> Dict[str, Any]:
         if self._session_info is None:
             self._session_info = self._get_from_endpoint("get_session_info")
         return self._session_info
 
-    def get_default_inference_settings(self):
+    def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:
             resp = self._get_from_endpoint("get_custom_inference_settings")
             settings = resp["settings"]
@@ -92,21 +95,21 @@ class Session:
             self._default_inference_settings = settings
         return self._default_inference_settings
 
-    def get_model_project_meta(self):
+    def get_model_project_meta(self) -> sly.ProjectMeta:
         if self._model_project_meta is None:
             meta_json = self._get_from_endpoint("get_output_classes_and_tags")
             self._model_project_meta = sly.ProjectMeta.from_json(meta_json)
         return self._model_project_meta
 
-    def update_inference_settings(self, **inference_settings):
+    def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
         self.inference_settings.update(inference_settings)
         return self.inference_settings
 
-    def set_inference_settings(self, inference_settings):
+    def set_inference_settings(self, inference_settings) -> Dict[str, Any]:
         self._set_inference_settings_dict_or_yaml(inference_settings)
         return self.inference_settings
 
-    def _set_inference_settings_dict_or_yaml(self, dict_or_yaml_path):
+    def _set_inference_settings_dict_or_yaml(self, dict_or_yaml_path) -> None:
         if isinstance(dict_or_yaml_path, str):
             with open(dict_or_yaml_path, "r") as f:
                 self.inference_settings: dict = yaml.safe_load(f)
@@ -115,7 +118,7 @@ class Session:
         else:
             self.inference_settings = {}
 
-    def infer_image_id(self, image_id: int):
+    def inference_image_id(self, image_id: int) -> Dict[str, Any]:
         endpoint = "inference_image_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
@@ -123,7 +126,7 @@ class Session:
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def infer_image_ids(self, image_ids: List[int]):
+    def inference_image_ids(self, image_ids: List[int]) -> Dict[str, Any]:
         endpoint = "inference_batch_ids"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
@@ -131,7 +134,7 @@ class Session:
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def infer_image_url(self, url: str):
+    def inference_image_url(self, url: str) -> Dict[str, Any]:
         endpoint = "inference_image_url"
         endpoint_url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
@@ -139,7 +142,7 @@ class Session:
         resp = self._post(endpoint_url, json=json_body)
         return resp.json()
 
-    def infer_image_path(self, image_path: str):
+    def inference_image_path(self, image_path: str) -> Dict[str, Any]:
         endpoint = "inference_image"
         url = f"{self._base_url}/{endpoint}"
         opened_file = open(image_path, "rb")
@@ -152,7 +155,7 @@ class Session:
         opened_file.close()
         return resp.json()
 
-    def infer_image_paths(self, image_paths: List[str]):
+    def inference_image_paths(self, image_paths: List[str]) -> Dict[str, Any]:
         endpoint = "inference_batch"
         url = f"{self._base_url}/{endpoint}"
         files = [("files", open(f, "rb")) for f in image_paths]
@@ -163,31 +166,31 @@ class Session:
             f.close()
         return resp.json()
 
-    def infer_video_id(
+    def inference_video_id(
         self,
         video_id: int,
-        startFrameIndex: int = None,
-        framesCount: int = None,
-        framesDirection: Literal["forward", "backward"] = None,
-    ):
+        start_frame_index: int = None,
+        frames_count: int = None,
+        frames_direction: Literal["forward", "backward"] = None,
+    ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
         state.update(
-            self._collect_state_for_infer_video(startFrameIndex, framesCount, framesDirection)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def infer_video_id_async(
+    def inference_video_id_async(
         self,
         video_id: int,
-        startFrameIndex: int = None,
-        framesCount: int = None,
-        framesDirection: Literal["forward", "backward"] = None,
-    ):
+        start_frame_index: int = None,
+        frames_count: int = None,
+        frames_direction: Literal["forward", "backward"] = None,
+    ) -> Iterator:
         if self._async_inference_uuid:
             raise RuntimeError("Can processing only one inference at time.")
         endpoint = "inference_video_id_async"
@@ -196,7 +199,7 @@ class Session:
         state = json_body["state"]
         state["videoId"] = video_id
         state.update(
-            self._collect_state_for_infer_video(startFrameIndex, framesCount, framesDirection)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
@@ -206,22 +209,22 @@ class Session:
         frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self)
         return frame_iterator
 
-    def stop_async_inference(self):
+    def stop_async_inference(self) -> Dict[str, Any]:
         endpoint = "stop_inference"
         resp = self._get_from_endpoint_for_async_inference(endpoint)
         self._stop_async_inference_flag = True
         logger.info("Inference will be stopped on the server")
         return resp
 
-    def _get_inference_progress(self):
+    def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _pop_pending_results(self):
+    def _pop_pending_results(self) -> Dict[str, Any]:
         endpoint = "pop_inference_results"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _wait_for_async_inference_start(self, delay=1, timeout=None):
+    def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
         logger.info("The video is preparing on the server, this may take a while...")
         has_started = False
         timeout_exceeded = False
@@ -238,7 +241,7 @@ class Session:
             raise Timeout("Timeout exceeded. The server didn't start the inference")
         return resp, has_started
 
-    def _wait_for_new_pending_results(self, delay=1, timeout=600):
+    def _wait_for_new_pending_results(self, delay=1, timeout=600) -> List[dict]:
         logger.debug("waiting pending results...")
         has_results = False
         timeout_exceeded = False
@@ -256,7 +259,7 @@ class Session:
             self.stop_async_inference()
             self._on_async_inference_end()
             raise Timeout("Timeout exceeded. Pending results not received from the server.")
-        if not pending_results and resp["is_inferring"]:
+        if len(pending_results) == 0 and resp["is_inferring"]:
             logger.warn(
                 "The model is inferring yet, but new pending results have not received from the serving app. "
                 "This may lead to not all samples will be inferred."
@@ -267,7 +270,7 @@ class Session:
         logger.debug("callback: on_async_inference_end()")
         self._async_inference_uuid = None
 
-    def _post(self, *args, retries=5, **kwargs):
+    def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
         for retry_idx in range(retries):
@@ -291,13 +294,13 @@ class Session:
                 if retry_idx + 1 == retries:
                     raise exc
 
-    def _get_from_endpoint(self, endpoint):
+    def _get_from_endpoint(self, endpoint) -> Dict[str, Any]:
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def _get_from_endpoint_for_async_inference(self, endpoint):
+    def _get_from_endpoint_for_async_inference(self, endpoint) -> Dict[str, Any]:
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body_for_async_inference()
         resp = self._post(url, json=json_body)
@@ -305,45 +308,45 @@ class Session:
 
     def _collect_state_for_infer_video(
         self,
-        startFrameIndex: int = None,
-        framesCount: int = None,
-        framesDirection: Literal["forward", "backward"] = None,
-    ):
+        start_frame_index: int = None,
+        frames_count: int = None,
+        frames_direction: Literal["forward", "backward"] = None,
+    ) -> Dict[str, Any]:
         state = {}
-        if startFrameIndex is not None:
-            state["startFrameIndex"] = startFrameIndex
-        if framesCount is not None:
-            state["framesCount"] = framesCount
-        if framesDirection is not None:
-            state["framesDirection"] = framesDirection
+        if start_frame_index is not None:
+            state["startFrameIndex"] = start_frame_index
+        if frames_count is not None:
+            state["framesCount"] = frames_count
+        if frames_direction is not None:
+            state["framesDirection"] = frames_direction
         return state
 
-    def _get_default_json_body(self):
+    def _get_default_json_body(self) -> Dict[str, Any]:
         return {
             "state": {"settings": self.inference_settings},
             "context": {},
             "api_token": self.api.token,
         }
 
-    def _get_default_json_body_for_async_inference(self):
+    def _get_default_json_body_for_async_inference(self) -> Dict[str, Any]:
         json_body = self._get_default_json_body()
         json_body["state"]["inference_request_uuid"] = self._async_inference_uuid
         return json_body
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: Session) -> None:
+    def __init__(self, total, nn_api: Session):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.total
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return self
 
-    def __next__(self):
+    def __next__(self) -> Dict[str, Any]:
         try:
             if self.nn_api._stop_async_inference_flag:
                 raise StopIteration
