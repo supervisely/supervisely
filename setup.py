@@ -56,7 +56,6 @@ INSTALL_REQUIRES = [
     "numerize",
     "ffmpeg-python==0.2.0",
     "python-multipart==0.0.5",
-    "ruamel.yaml==0.17.21",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -136,6 +135,7 @@ setup(
             "scipy>=1.5.2, <2.0.0",
             "sk-video>=1.1.10, <2.0.0",
             "pandas>=1.1.3, <1.4.0",
+            "ruamel.yaml==0.17.21",
         ],
         "apps": [
             "uvicorn[standard]>=0.18.2, <1.0.0",
