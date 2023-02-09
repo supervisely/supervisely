@@ -633,7 +633,7 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'iinference_image_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id' request in json format:{request.json()}")
             return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")

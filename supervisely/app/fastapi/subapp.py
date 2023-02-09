@@ -179,14 +179,19 @@ def _init(
             if not ("application/json" not in request.headers.get("Content-Type", "")):
                 # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
                 content = await request.json()
+
                 request.state.api_token = content.get(
                     "api_token", content.get("context").get("apiToken")
                 )
+                logger.debug(f"middleware request api_token {request.state.api_token}")
                 request.state.server_address = content.get(
                     "server_address", sly_env.server_address(raise_not_found=False)
                 )
+                logger.debug(f"middleware request server_address {request.state.server_address}")
                 request.state.context = content.get("context")
+                logger.debug(f"middleware request context {request.state.context}")
                 request.state.state = content.get("state")
+                logger.debug(f"middleware request state {request.state.state}")
                 request.state.api = Api(request.state.server_address, request.state.api_token)
 
             response = await call_next(request)
