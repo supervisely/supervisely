@@ -35,7 +35,7 @@ class SelectAppSession(Widget):
             "size": self._size,
         }
         if len(self._allowed_session_tags) > 1:
-            data["ssOptions"]["sessionTagsCombination"] = False
+            data["ssOptions"]["sessionTagsOperation"] = "or"
         return data
 
     def get_json_state(self):
