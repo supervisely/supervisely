@@ -83,7 +83,7 @@ setup(
         "numerize",
         "ffmpeg-python==0.2.0",
         "python-multipart==0.0.5",
-        "ruamel.yaml==0.17.21",
+        # "ruamel.yaml==0.17.21",
     ],
     extras_require={
         "extras": [

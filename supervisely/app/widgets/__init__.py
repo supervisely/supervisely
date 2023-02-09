@@ -72,5 +72,5 @@ from supervisely.app.widgets.grid_plot.grid_plot import GridPlot
 from supervisely.app.widgets.binded_input_number.binded_input_number import BindedInputNumber
 from supervisely.app.widgets.augmentations.augmentations import Augmentations, AugmentationsWithTabs
 
-from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
+# from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
