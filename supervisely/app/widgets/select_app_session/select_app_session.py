@@ -11,6 +11,7 @@ from supervisely.app.widgets import Widget
 class SelectAppSession(Widget):
     def __init__(
         self,
+        team_id: int,
         tags: List[str],
         show_label: bool = False,
         size: Literal["large", "small", "mini"] = "mini",
@@ -18,7 +19,7 @@ class SelectAppSession(Widget):
         operation: str = "or",
     ):
         self._session_id = None
-        self._team_id = sly.env.team_id()
+        self._team_id = team_id
         self._tags = tags
         self._show_label = show_label
         self._size = size
