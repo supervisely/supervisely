@@ -498,7 +498,7 @@ class Inference:
         self._inference_requests[inference_request_uuid] = inference_request
 
     def _on_inference_end(self, future, inference_request_uuid):
-        logger.debug("_on_inference_end() callback")
+        logger.debug("callback: on_inference_end()")
         self._inference_requests[inference_request_uuid]["is_inferring"] = False
 
     def serve(self):

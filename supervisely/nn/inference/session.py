@@ -25,7 +25,7 @@ class Session:
         session_token: str = None,
         inference_settings: Union[dict, str] = None,
     ):
-        # inference_settings is a dict with settings or path to .yml file
+        # inference_settings can be a dict or a path to yaml file
         if (task_id is None and session_token is None) or (
             task_id is not None and session_token is not None
         ):
@@ -38,11 +38,8 @@ class Session:
         self._session_token = str(
             session_token or api.task.get_info_by_id(task_id)["meta"]["sessionToken"]
         )
-        self.inference_settings = inference_settings or {}
-        if isinstance(self.inference_settings, str):
-            yaml_path = self.inference_settings
-            with open(yaml_path, "r") as f:
-                self.inference_settings: dict = yaml.safe_load(f)
+
+        self.set_inference_settings(inference_settings)
         self._base_url = f"{self.api.server_address}/net/{self._session_token}"
         self._session_info = None
         self._default_inference_settings = None
@@ -81,6 +78,19 @@ class Session:
     def update_inference_settings(self, **inference_settings):
         self.inference_settings.update(inference_settings)
         return self.inference_settings
+
+    def set_inference_settings(self, inference_settings):
+        self._set_inference_settings_dict_or_yaml(inference_settings)
+        return self.inference_settings
+
+    def _set_inference_settings_dict_or_yaml(self, dict_or_yaml_path):
+        if isinstance(dict_or_yaml_path, str):
+            with open(dict_or_yaml_path, "r") as f:
+                self.inference_settings: dict = yaml.safe_load(f)
+        elif isinstance(dict_or_yaml_path, dict):
+            self.inference_settings = dict_or_yaml_path
+        else:
+            self.inference_settings = {}
 
     def infer_image_id(self, image_id: int):
         endpoint = "inference_image_id"
@@ -228,18 +238,18 @@ class Session:
         return pending_results
 
     def _on_async_inference_end(self):
-        logger.debug("callback: on_async_inference_end")
+        logger.debug("callback: on_async_inference_end()")
         self._async_inference_uuid = None
 
-    def _post(self, retries=5, *args, **kwargs):
-        url = args[0]
-        method = "/net"
-        for retry_idx in range(len(retries)):
+    def _post(self, *args, retries=5, **kwargs):
+        url = kwargs.get("url") or args[0]
+        method = url[len(self._base_url) :]
+        for retry_idx in range(retries):
             try:
                 response = requests.post(*args, **kwargs)
                 if response.status_code != requests.codes.ok:
                     sly.Api._raise_for_status(response)
-                break  # break if no exceptions
+                return response
             except requests.RequestException as exc:
                 process_requests_exception(
                     logger,
@@ -248,11 +258,12 @@ class Session:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=3,
+                    sleep_sec=5,
                     response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
-        return response
+                if retry_idx + 1 == retries:
+                    raise exc
 
     def _get_from_endpoint(self, endpoint):
         url = f"{self._base_url}/{endpoint}"
