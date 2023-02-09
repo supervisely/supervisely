@@ -633,18 +633,22 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
+            logger.debug(f"'iinference_image_id' request in json format:{request.json()}")
             return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
+            logger.debug(f"'inference_image_url' request in json format:{request.json()}")
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
+            logger.debug(f"'inference_batch_ids' request in json format:{request.json()}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
+            logger.debug(f"'inference_video_id' request in json format:{request.json()}")
             return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
@@ -686,12 +690,16 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
+            logger.debug(f"'inference_video_id_async' request in json format:{request.json()}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
-                self._inference_video_id, request.api, request.state, inference_request_uuid
+                self._inference_video_id,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
             )
             end_callback = partial(
                 self._on_inference_end, inference_request_uuid=inference_request_uuid
@@ -708,7 +716,8 @@ class Inference:
 
         @server.post(f"/get_inference_progress")
         def get_inference_progress(request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            logger.debug(f"'get_inference_progress request' in json format:{request.json()}")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if not inference_request_uuid:
                 return {"message": "Error: 'inference_request_uuid' is required."}
             inference_request = self._inference_requests[inference_request_uuid].copy()
@@ -725,7 +734,8 @@ class Inference:
 
         @server.post(f"/stop_inference")
         def stop_inference(request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            logger.debug(f"'stop_inference' request in json format:{request.json()}")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if not inference_request_uuid:
                 return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
             inference_request = self._inference_requests[inference_request_uuid]
