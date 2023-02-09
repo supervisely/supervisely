@@ -629,10 +629,6 @@ class Inference:
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
-        @server.post("/new_route")
-        def new_route(request: Request):
-            return {}
-
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
             return self._inference_image_id(request.state.api, request.state.state)
