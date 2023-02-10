@@ -11,7 +11,7 @@ class Grid(Widget):
         widgets: List[Widget],
         columns: int = 1,
         gap: int = 10,
-        widget_id: str = None,
+        widget_id: int = None,
     ):
         self._widgets = widgets
         self._columns = columns
