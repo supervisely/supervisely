@@ -574,6 +574,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         else:
             meta_json = meta
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
+        return self.get_meta(id)
 
     def _clone_api_method_name(self):
         """ """
@@ -975,4 +976,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.move(id=project_id, workspace_id=workspace_id)
         """
-        self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})
+        self._api.post(
+            "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
+        )
