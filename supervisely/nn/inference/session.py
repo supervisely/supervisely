@@ -16,7 +16,6 @@ from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.sly_logger import logger
 
 
-### InferenceSession
 class Session:
     def __init__(
         self,
@@ -26,9 +25,55 @@ class Session:
         inference_settings: Union[dict, str] = None,
     ):
         """A convenient class for inference of deployed models.
-        You need first to serve the NN model you want and then get its task_id.
-        You can also get task_id from the Supervisely platform on `START` -> `App sessions` page.
-        Note: Exactly one of `task_id` or `session_token` has to be passed as parameter.
+        This class will return predictions in the `sly.Annotation` format.
+        If you want to work with raw JSON dicts, please use the `sly.nn.inference.SessionJSON` class.
+
+        You need first to serve the NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
+
+        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
+
+
+        Example:
+        ```
+        task_id = 27001
+        inference_session = sly.nn.inference.Session(
+            api,
+            task_id=task_id,
+        )
+        print(inference_session.get_session_info())
+
+        image_id = 17551748
+        pred = inference_session.inference_image_id(image_id)
+        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+        ```
+
+        Args:
+            api (sly.Api): initialized sly.Api object.
+            task_id (int, optional): if None, the `session_token` will be used.
+            session_token (str, optional): if None, the `task_id` will be used.
+            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
+        """
+        super().__init__(api, task_id, session_token, inference_settings)
+
+
+class SessionJSON:
+    def __init__(
+        self,
+        api: sly.Api,
+        task_id: int = None,
+        session_token: str = None,
+        inference_settings: Union[dict, str] = None,
+    ):
+        """A convenient class for inference of deployed models.
+        This class will return raw JSON predictions (dict).
+        If you want to work with `sly.Annotation` format, please use the `sly.nn.inference.Session` class.
+
+        You need first to serve the NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
+
+        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
+
 
         Example:
         ```
@@ -335,7 +380,7 @@ class Session:
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: Session):
+    def __init__(self, total, nn_api: SessionJSON):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
