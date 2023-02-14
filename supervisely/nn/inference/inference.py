@@ -499,7 +499,9 @@ class Inference:
 
     def _on_inference_end(self, future, inference_request_uuid):
         logger.debug("callback: on_inference_end()")
-        self._inference_requests[inference_request_uuid]["is_inferring"] = False
+        inference_request = self._inference_requests.get(inference_request_uuid)
+        if inference_request is not None:
+            inference_request["is_inferring"] = False
 
     def serve(self):
         if is_debug_with_sly_net():
