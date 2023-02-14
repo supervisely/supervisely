@@ -9,7 +9,7 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 import yaml
-from requests import Timeout
+from requests import Timeout, HTTPError
 
 import supervisely as sly
 from supervisely.io.network_exceptions import process_requests_exception
@@ -62,12 +62,19 @@ class SessionJSON:
             )
 
         self.api = api
-        self._task_id = int(task_id)
-        # TODO: api.task.get_info_by_id get stuck if the task_id isn't exists on the platform
-        # https://github.com/supervisely/issues/issues/1873
-        self._session_token = str(
-            session_token or api.task.get_info_by_id(task_id)["meta"]["sessionToken"]
-        )
+        self._task_id = task_id
+
+        if task_id is not None:
+            try:
+                # TODO: api.task.get_info_by_id get stuck if the task_id isn't exists on the platform
+                # https://github.com/supervisely/issues/issues/1873
+                task_info = api.task.get_info_by_id(task_id)
+            except HTTPError:
+                raise ValueError(
+                    f"Can't connect to the model. Check if the task_id {task_id} is correct."
+                )
+
+        self._session_token = str(session_token or task_info["meta"]["sessionToken"])
 
         self.set_inference_settings(inference_settings)
         self._base_url = f"{self.api.server_address}/net/{self._session_token}"
@@ -76,6 +83,19 @@ class SessionJSON:
         self._model_meta = None
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
+
+        # Check connection:
+        try:
+            self.get_session_info()
+        except HTTPError:
+            if task_id is not None:
+                raise ValueError(
+                    f"Can't connect to the model. Check if the task_id {self._task_id} is correct."
+                )
+            else:
+                raise ValueError(
+                    f'Can\'t connect to the model. Check if the session_token "{self._session_token}" is correct.'
+                )
 
     @property
     def task_id(self) -> int:
