@@ -7,6 +7,7 @@ ARG tag_ref_name
 RUN pip install nvidia-pyindex
 RUN pip install nvidia-tensorflow
 RUN pip install nvidia-tensorflow[horovod]
+RUN pip install ruamel.yaml==0.17.21
 
 RUN pip install --upgrade supervisely==$tag_ref_name
 RUN pip install --upgrade supervisely[apps]==$tag_ref_name
