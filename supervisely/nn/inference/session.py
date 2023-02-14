@@ -279,8 +279,10 @@ class SessionJSON:
 
     def _on_async_inference_end(self):
         logger.debug("callback: on_async_inference_end()")
-        self._async_inference_uuid = None
-        self._clear_inference_request()
+        try:
+            self._clear_inference_request()
+        finally:
+            self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         url = kwargs.get("url") or args[0]
