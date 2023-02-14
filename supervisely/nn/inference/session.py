@@ -16,47 +16,6 @@ from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.sly_logger import logger
 
 
-class Session:
-    def __init__(
-        self,
-        api: sly.Api,
-        task_id: int = None,
-        session_token: str = None,
-        inference_settings: Union[dict, str] = None,
-    ):
-        """A convenient class for inference of deployed models.
-        This class will return predictions in the `sly.Annotation` format.
-        If you want to work with raw JSON dicts, please use the `sly.nn.inference.SessionJSON` class.
-
-        You need first to serve the NN model you want and get its `task_id`.
-        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
-
-        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
-
-
-        Example:
-        ```
-        task_id = 27001
-        inference_session = sly.nn.inference.Session(
-            api,
-            task_id=task_id,
-        )
-        print(inference_session.get_session_info())
-
-        image_id = 17551748
-        pred = inference_session.inference_image_id(image_id)
-        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
-        ```
-
-        Args:
-            api (sly.Api): initialized sly.Api object.
-            task_id (int, optional): if None, the `session_token` will be used.
-            session_token (str, optional): if None, the `task_id` will be used.
-            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
-        """
-        super().__init__(api, task_id, session_token, inference_settings)
-
-
 class SessionJSON:
     def __init__(
         self,
@@ -114,7 +73,7 @@ class SessionJSON:
         self._base_url = f"{self.api.server_address}/net/{self._session_token}"
         self._session_info = None
         self._default_inference_settings = None
-        self._model_project_meta = None
+        self._model_meta = None
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
 
@@ -140,11 +99,11 @@ class SessionJSON:
             self._default_inference_settings = settings
         return self._default_inference_settings
 
-    def get_model_meta(self) -> sly.ProjectMeta:
-        if self._model_project_meta is None:
+    def get_model_meta(self) -> Dict[str, Any]:
+        if self._model_meta is None:
             meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-            self._model_project_meta = sly.ProjectMeta.from_json(meta_json)
-        return self._model_project_meta
+            self._model_meta = meta_json
+        return self._model_meta
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
         self.inference_settings.update(inference_settings)
@@ -171,7 +130,7 @@ class SessionJSON:
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def inference_image_ids(self, image_ids: List[int]) -> Dict[str, Any]:
+    def inference_image_ids(self, image_ids: List[int]) -> List[Dict[str, Any]]:
         endpoint = "inference_batch_ids"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
@@ -200,7 +159,7 @@ class SessionJSON:
         opened_file.close()
         return resp.json()
 
-    def inference_image_paths(self, image_paths: List[str]) -> Dict[str, Any]:
+    def inference_image_paths(self, image_paths: List[str]) -> List[Dict[str, Any]]:
         endpoint = "inference_batch"
         url = f"{self._base_url}/{endpoint}"
         files = [("files", open(f, "rb")) for f in image_paths]
@@ -235,6 +194,7 @@ class SessionJSON:
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
+        process_fn=None,
     ) -> Iterator:
         if self._async_inference_uuid:
             raise RuntimeError("Can processing only one inference at time.")
@@ -251,7 +211,9 @@ class SessionJSON:
         self._stop_async_inference_flag = False
         resp, has_started = self._wait_for_async_inference_start()
         logger.info("Inference has started:", extra=resp)
-        frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self)
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=process_fn
+        )
         return frame_iterator
 
     def stop_async_inference(self) -> Dict[str, Any]:
@@ -267,6 +229,10 @@ class SessionJSON:
 
     def _pop_pending_results(self) -> Dict[str, Any]:
         endpoint = "pop_inference_results"
+        return self._get_from_endpoint_for_async_inference(endpoint)
+
+    def _clear_inference_request(self) -> Dict[str, Any]:
+        endpoint = "clear_inference_request"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
@@ -314,6 +280,7 @@ class SessionJSON:
     def _on_async_inference_end(self):
         logger.debug("callback: on_async_inference_end()")
         self._async_inference_uuid = None
+        self._clear_inference_request()
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         url = kwargs.get("url") or args[0]
@@ -380,10 +347,11 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: SessionJSON):
+    def __init__(self, total, nn_api: SessionJSON, process_fn=None):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
+        self.process_fn = process_fn
 
     def __len__(self) -> int:
         return self.total
@@ -409,4 +377,124 @@ class AsyncInferenceIterator:
             self.nn_api.stop_async_inference()
             self.nn_api._on_async_inference_end()
             raise ex
-        return self.results_queue.pop(0)
+
+        pred = self.results_queue.pop(0)
+        if self.process_fn is not None:
+            return self.process_fn(pred)
+        else:
+            return pred
+
+
+class Session(SessionJSON):
+    def __init__(
+        self,
+        api: sly.Api,
+        task_id: int = None,
+        session_token: str = None,
+        inference_settings: Union[dict, str] = None,
+    ):
+        """A convenient class for inference of deployed models.
+        This class will return predictions in the `sly.Annotation` format.
+        If you want to work with raw JSON dicts, please use the `sly.nn.inference.SessionJSON` class.
+
+        You need first to serve the NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
+
+        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
+
+
+        Example:
+        ```
+        task_id = 27001
+        inference_session = sly.nn.inference.Session(
+            api,
+            task_id=task_id,
+        )
+        print(inference_session.get_session_info())
+
+        image_id = 17551748
+        pred = inference_session.inference_image_id(image_id)
+        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+        ```
+
+        Args:
+            api (sly.Api): initialized sly.Api object.
+            task_id (int, optional): if None, the `session_token` will be used.
+            session_token (str, optional): if None, the `task_id` will be used.
+            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
+        """
+        super().__init__(api, task_id, session_token, inference_settings)
+
+    def get_model_meta(self) -> sly.ProjectMeta:
+        if not isinstance(self._model_meta, sly.ProjectMeta):
+            model_meta_json = super().get_model_meta()
+            model_meta = sly.ProjectMeta.from_json(model_meta_json)
+            self._model_meta = model_meta
+        return self._model_meta
+
+    def inference_image_id(self, image_id: int) -> sly.Annotation:
+        pred_json = super().inference_image_id(image_id)
+        pred_ann = self._convert_to_sly_annotation(pred_json)
+        return pred_ann
+
+    def inference_image_path(self, image_path: str) -> sly.Annotation:
+        pred_json = super().inference_image_path(image_path)
+        pred_ann = self._convert_to_sly_annotation(pred_json)
+        return pred_ann
+
+    def inference_image_url(self, url: str) -> sly.Annotation:
+        pred_json = super().inference_image_url(url)
+        pred_ann = self._convert_to_sly_annotation(pred_json)
+        return pred_ann
+
+    def inference_image_ids(self, image_ids: List[int]) -> List[sly.Annotation]:
+        pred_list_raw = super().inference_image_ids(image_ids)
+        predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
+        return predictions
+
+    def inference_image_paths(self, image_paths: List[str]) -> List[sly.Annotation]:
+        pred_list_raw = super().inference_image_paths(image_paths)
+        predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
+        return predictions
+
+    def inference_video_id(
+        self,
+        video_id: int,
+        start_frame_index: int = None,
+        frames_count: int = None,
+        frames_direction: Literal["forward", "backward"] = None,
+    ) -> List[sly.Annotation]:
+        pred_list_raw = super().inference_video_id(
+            video_id, start_frame_index, frames_count, frames_direction
+        )
+        pred_list_raw = pred_list_raw["ann"]
+        predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
+        return predictions
+
+    def inference_video_id_async(
+        self,
+        video_id: int,
+        start_frame_index: int = None,
+        frames_count: int = None,
+        frames_direction: Literal["forward", "backward"] = None,
+    ) -> Iterator:
+        frame_iterator = super().inference_video_id_async(
+            video_id,
+            start_frame_index,
+            frames_count,
+            frames_direction,
+            process_fn=self._convert_to_sly_annotation,
+        )
+        return frame_iterator
+
+    def _convert_to_sly_annotation(self, pred_json: dict):
+        model_meta = self.get_model_meta()
+        pred_ann = sly.Annotation.from_json(pred_json["annotation"], model_meta)
+        return pred_ann
+
+    def _convert_to_sly_annotation_batch(self, pred_list_raw: List[dict]):
+        model_meta = self.get_model_meta()
+        predictions = [
+            sly.Annotation.from_json(pred["annotation"], model_meta) for pred in pred_list_raw
+        ]
+        return predictions
