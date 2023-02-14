@@ -520,7 +520,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """ """
         return "projects.editInfo"
 
-    def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
+    def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> Union[Dict, ProjectMeta]:
         """
         Updates given Project with given ProjectMeta.
 
@@ -528,8 +528,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
         :type meta: :class:`ProjectMeta` or dict
-        :return: None
-        :rtype: :class:`NoneType`
+        :return: Updated project meta. Returned type matches the type of the `meta` parameter.
+        :rtype: :class:`ProjectMeta` or dict
         :Usage example:
 
          .. code-block:: python
@@ -574,7 +574,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         else:
             meta_json = meta
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
-        return self.get_meta(id)
+
+        # Return the updated project_meta as the new ids could be assigned.
+        updated_meta_json = self.get_meta(id)
+        if isinstance(meta, ProjectMeta):
+            updated_meta = ProjectMeta.from_json(updated_meta_json)
+            return updated_meta
+        else:
+            return updated_meta_json
 
     def _clone_api_method_name(self):
         """ """
