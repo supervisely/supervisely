@@ -95,7 +95,7 @@ class Session:
             self._default_inference_settings = settings
         return self._default_inference_settings
 
-    def get_model_project_meta(self) -> sly.ProjectMeta:
+    def get_model_meta(self) -> sly.ProjectMeta:
         if self._model_project_meta is None:
             meta_json = self._get_from_endpoint("get_output_classes_and_tags")
             self._model_project_meta = sly.ProjectMeta.from_json(meta_json)
