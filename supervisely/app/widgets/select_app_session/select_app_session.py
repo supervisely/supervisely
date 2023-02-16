@@ -14,7 +14,7 @@ class SelectAppSession(Widget):
         team_id: int,
         tags: List[str],
         show_label: bool = False,
-        size: Literal["large", "small", "mini"] = "mini",
+        size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
         operation: str = "or",
     ):
@@ -36,9 +36,10 @@ class SelectAppSession(Widget):
         data["ssOptions"] = {
             "sessionTags": self._tags,
             "showLabel": self._show_label,
-            "size": self._size,
             "sessionTagsOperation": self._operation,
         }
+        if self._size is not None:
+            data["ssOptions"]["size"] = self._size
         return data
 
     def get_json_state(self):
