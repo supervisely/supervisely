@@ -676,6 +676,7 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
             del self._inference_requests[inference_request_uuid]
+            logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
 
