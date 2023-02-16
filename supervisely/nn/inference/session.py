@@ -499,7 +499,7 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-    ) -> Iterator:
+    ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
             start_frame_index,
