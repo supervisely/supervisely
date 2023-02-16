@@ -217,7 +217,14 @@ class SessionJSON:
         process_fn=None,
     ) -> Iterator:
         if self._async_inference_uuid:
-            raise RuntimeError("Can processing only one inference at time.")
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
         endpoint = "inference_video_id_async"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
