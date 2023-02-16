@@ -425,7 +425,7 @@ class Table(Widget):
         if column_id is not None and type(column_id) is not int:
             raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
         if column_id is not None and column_id < 0:
-            raise ValueError('Incorrect value of "column_id": {column_id}')
+            raise ValueError('Incorrect value of "column_id": {column_id} < 0')
         if direction is not None and direction not in ["asc", "desc"]:
             raise ValueError(
                 f'Incorrect value of "direction": {direction}. Value can be one of "asc" or "desc".'
