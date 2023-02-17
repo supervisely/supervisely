@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -9,19 +9,22 @@ class RadioTable(Widget):
         self,
         columns: List[str],
         rows: List[List[str]],
-        subtitles: Dict = {},  # col_name -> subtitle
+        subtitles: Union[Dict[str, str], List] = {},  # col_name -> subtitle
         column_formatters: Dict = {},
         widget_id: str = None,
     ):
 
         self._columns = columns
         self._rows = rows
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
         self._subtitles = subtitles
         self._column_formatters = column_formatters
 
         self._header = []
-        for col in columns:
-            self._header.append({"title": col, "subtitle": self._subtitles.get(col, None)})
+
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
 
         self._frows = []
 
@@ -80,27 +83,36 @@ class RadioTable(Widget):
         return self._columns
 
     @property
-    def subtitles(self) -> Dict[str, str]:
+    def subtitles(self) -> List[str]:
         return self._subtitles
 
-    def set_columns(self, columns: List[str], subtitles: Dict[str, str] = {}) -> None:
+    def set_columns(
+        self, columns: List[str], subtitles: Union[Dict[str, str], List[str]] = {}
+    ) -> None:
         self._columns = columns
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
         self._subtitles = subtitles
         self._header = []
-        for col in columns:
-            self._header.append({"title": col, "subtitle": self._subtitles.get(col, None)})
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
         DataJson()[self.widget_id]["header"] = self._header
         DataJson().send_changes()
         self.rows = [[] * len(columns)]
 
     def set_data(
-        self, columns: List[str], rows: List[List[str]], subtitles: Dict[str, str] = {}
+        self,
+        columns: List[str],
+        rows: List[List[str]],
+        subtitles: Union[Dict[str, str], List[str]] = {},
     ) -> None:
         self._columns = columns
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
         self._subtitles = subtitles
         self._header = []
-        for col in columns:
-            self._header.append({"title": col, "subtitle": self._subtitles.get(col, None)})
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
         DataJson()[self.widget_id]["header"] = self._header
         DataJson().send_changes()
         self.rows = rows

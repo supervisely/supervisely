@@ -1,4 +1,4 @@
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 import supervisely.app.widgets as Widgets
 from supervisely.task.progress import Progress
 
@@ -10,7 +10,7 @@ class BaseInferenceGUI:
         raise NotImplementedError("Have to be implemented in child class")
 
     @property
-    def download_progress(self) -> Widgets.SlyTqdm:
+    def download_progress(self) -> Widgets.Progress:
         # return self._download_progress
         raise NotImplementedError("Have to be implemented in child class")
 
@@ -30,14 +30,23 @@ class InferenceGUI(BaseInferenceGUI):
     def __init__(
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
+        support_pretrained_models: Optional[bool],
+        support_custom_models: Optional[bool],
     ):
         if isinstance(models, dict):
             self._support_submodels = True
         else:
             self._support_submodels = False
         self._models = models
-        self._support_custom_models = True  # TODO: temporary solution
-        self._support_pretrained_models = True  # TODO: check If get_models() method is implemented
+        if not support_pretrained_models and not support_custom_models:
+            raise ValueError(
+                """
+                You should provide either pretrained models via get_models() 
+                function or allow to use custom models via support_custom_models().
+                """
+            )
+        self._support_custom_models = support_custom_models
+        self._support_pretrained_models = support_pretrained_models
         assert self._support_custom_models or self._support_pretrained_models
 
         device_values = []
@@ -57,57 +66,74 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
-        if self._support_submodels:
-            model_papers = []
-            model_years = []
-            model_links = []
-            for _, model_data in models.items():
-                for param_name, param_val in model_data.items():
-                    if param_name == "paper_from":
-                        model_papers.append(param_val)
-                    elif param_name == "year":
-                        model_years.append(param_val)
-                    elif param_name == "config_url":
-                        model_links.append(param_val)
-            paper_and_year = []
-            for paper, year in zip(model_papers, model_years):
-                paper_and_year.append(f"{paper} {year}")
-            self._model_select = Widgets.SelectString(
-                list(models.keys()),
-                items_info=paper_and_year,
-                items_links=model_links,
-            )
-            selected_model = self._model_select.get_value()
-            cols = list(models[selected_model]["checkpoints"][0].keys())
-            rows = [
-                [value for param_name, value in model.items()]
-                for model in models[selected_model]["checkpoints"]
-            ]
-
-            @self._model_select.value_changed
-            def update_table(selected_model):
-                cols = [
-                    model_key for model_key in self._models[selected_model]["checkpoints"][0].keys()
-                ]
-                rows = [
-                    [value for param_name, value in model.items()]
-                    for model in self._models[selected_model]["checkpoints"]
-                ]
-
-                table_subtitles, cols = self._get_table_subtitles(cols)
-                self._models_table.set_data(cols, rows, table_subtitles)
-
-        else:
-            cols = list(models[0].keys())
-            rows = [list(model.values()) for model in models]
-
-        table_subtitles, cols = self._get_table_subtitles(cols)
-        self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.SlyTqdm("Downloading model...", show_percents=True)
+        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
         self._download_progress.hide()
+
+        tabs_titles = []
+        tabs_contents = []
+        tabs_descriptions = []
+
+        if self._support_pretrained_models:
+            if self._support_submodels:
+                model_papers = []
+                model_years = []
+                model_links = []
+                for _, model_data in models.items():
+                    for param_name, param_val in model_data.items():
+                        if param_name == "paper_from":
+                            model_papers.append(param_val)
+                        elif param_name == "year":
+                            model_years.append(param_val)
+                        elif param_name == "config_url":
+                            model_links.append(param_val)
+                paper_and_year = []
+                for paper, year in zip(model_papers, model_years):
+                    paper_and_year.append(f"{paper} {year}")
+                self._model_select = Widgets.SelectString(
+                    list(models.keys()),
+                    items_right_text=paper_and_year,
+                    items_links=model_links,
+                    filterable=True,
+                )
+                selected_model = self._model_select.get_value()
+                cols = list(models[selected_model]["checkpoints"][0].keys())
+                rows = [
+                    [value for param_name, value in model.items()]
+                    for model in models[selected_model]["checkpoints"]
+                ]
+
+                @self._model_select.value_changed
+                def update_table(selected_model):
+                    cols = [
+                        model_key
+                        for model_key in self._models[selected_model]["checkpoints"][0].keys()
+                    ]
+                    rows = [
+                        [value for param_name, value in model.items()]
+                        for model in self._models[selected_model]["checkpoints"]
+                    ]
+
+                    table_subtitles, cols = self._get_table_subtitles(cols)
+                    self._models_table.set_data(cols, rows, table_subtitles)
+
+            else:
+                cols = list(models[0].keys())
+                rows = [list(model.values()) for model in models]
+
+            table_subtitles, cols = self._get_table_subtitles(cols)
+            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+
+            pretrained_tab_content = []
+            if self._support_submodels:
+                pretrained_tab_content.append(self._model_select)
+            pretrained_tab_content.append(self._models_table)
+            tabs_titles.append("Pretrained models")
+            tabs_contents.append(Widgets.Container(pretrained_tab_content))
+            tabs_descriptions.append("Models trained outside Supervisely")
+
         if self._support_custom_models:
             self._model_path_input = Widgets.Input(
                 placeholder="Path to model file or folder in Team Files"
@@ -117,14 +143,16 @@ class InferenceGUI(BaseInferenceGUI):
                 title="Path to model file/folder",
                 description="Copy path in Team Files",
             )
-            pretrained_tab = []
-            if self._support_submodels:
-                pretrained_tab.append(self._model_select)
-            pretrained_tab.append(self._models_table)
-            self._tabs = Widgets.RadioTabs(
-                titles=["Pretrained models", "Custom weights"],
-                contents=[Widgets.Container(pretrained_tab), self._model_path_field],
-            )
+            custom_tab_content = Widgets.Container([self._model_path_field])
+            tabs_titles.append("Custom models")
+            tabs_contents.append(custom_tab_content)
+            tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
+
+        self._tabs = Widgets.RadioTabs(
+            titles=tabs_titles,
+            contents=tabs_contents,
+            descriptions=tabs_descriptions,
+        )
 
     def _get_table_subtitles(self, cols):
         # Get subtitles from col's round brackets
@@ -158,14 +186,19 @@ class InferenceGUI(BaseInferenceGUI):
         return {selected_model: selected_model_info}
 
     def get_checkpoint_info(self) -> Dict[str, str]:
-        selected_model = self._model_select.get_value()
         model_row = self._models_table.get_selected_row_index()
-        checkpoint_info = self._models[selected_model]["checkpoints"][model_row]
+        if not self._support_submodels:
+            checkpoint_info = self._models[model_row]
+        else:
+            selected_model = self._model_select.get_value()
+            checkpoint_info = self._models[selected_model]["checkpoints"][model_row]
         return checkpoint_info
 
     def get_model_source(self) -> str:
         if not self._support_custom_models:
             return "Pretrained models"
+        elif not self._support_pretrained_models:
+            return "Custom models"
         return self._tabs.get_active_tab()
 
     def get_custom_link(self) -> str:
@@ -178,7 +211,7 @@ class InferenceGUI(BaseInferenceGUI):
         return self._serve_button
 
     @property
-    def download_progress(self) -> Widgets.SlyTqdm:
+    def download_progress(self) -> Widgets.Progress:
         return self._download_progress
 
     def set_deployed(self):
@@ -186,27 +219,19 @@ class InferenceGUI(BaseInferenceGUI):
         self._success_label.show()
         self._serve_button.hide()
         self._device_select.disable()
-        self._models_table.disable()
+        if self._support_pretrained_models:
+            self._models_table.disable()
         if self._support_custom_models:
             self._model_path_input.disable()
         Progress("Model deployed", 1).iter_done_report()
 
     def get_ui(self) -> Widgets.Widget:
-        widgets = []
-        if self._support_custom_models:
-            widgets.append(self._tabs)
-        else:
-            pretrained_tab = []
-            if self._support_submodels:
-                pretrained_tab.append(self._model_select)
-            pretrained_tab.append(self._models_table)
-            widgets.append(Widgets.Container(pretrained_tab))
-        widgets.extend(
+        return Widgets.Container(
             [
+                self._tabs,
                 self._device_field,
                 self._serve_button,
                 self._download_progress,
                 self._success_label,
             ]
         )
-        return Widgets.Container(widgets)

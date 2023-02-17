@@ -5,6 +5,7 @@ from requests.structures import CaseInsensitiveDict
 import uuid
 import time
 from functools import partial
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
@@ -104,8 +105,11 @@ class Inference:
     def get_ui_class(self) -> GUI.BaseInferenceGUI:
         return GUI.InferenceGUI
 
+    def support_custom_models(self) -> bool:
+        return True
+
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
-        raise RuntimeError("Have to be implemented in child class after inheritance")
+        return []
 
     def download(self, src_path: str, dst_path: str = None):
         basename = os.path.basename(os.path.normpath(src_path))
@@ -144,10 +148,9 @@ class Inference:
                 else:
                     self.gui.download_progress.show()
                     with progress(
-                        message="Downloading directory from Team Files...", total=sizeb
+                        message="Downloading directory from Team Files...", total=sizeb, unit='bytes', unit_scale=True
                     ) as pbar:
                         download_dir(team_id, src_path, dst_path, pbar.update)
-                    self.gui.download_progress.hide()
                 logger.info(
                     f"📥 Directory {basename} has been successfully downloaded from Team Files"
                 )
@@ -163,10 +166,9 @@ class Inference:
                 else:
                     self.gui.download_progress.show()
                     with progress(
-                        message="Downloading file from Team Files...", total=file_info.sizeb
+                        message="Downloading file from Team Files...", total=file_info.sizeb, unit='bytes', unit_scale=True
                     ) as pbar:
                         download_file(team_id, src_path, dst_path, pbar.update)
-                    self.gui.download_progress.hide()
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
                 logger.info(f"File {basename} path: {dst_path}")
             else:  # external url
@@ -179,21 +181,20 @@ class Inference:
                             for chunk in r.iter_content(chunk_size=8192):
                                 f.write(chunk)
                                 if progress is not None:
-                                    progress_cb(len(chunk) / 1024 / 1024)  # in mb
+                                    progress_cb(len(chunk)) 
 
                     with requests.get(url, stream=True) as r:
                         r.raise_for_status()
-                        total_size_in_mbytes = (
+                        total_size = (
                             int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
-                            / 1024
-                            / 1024
                         )
                         if progress is None:
                             download_content(save_path)
                         else:
                             with progress(
-                                message="Downloading file from external URL (MB)",
-                                total=total_size_in_mbytes,
+                                message="Downloading file from external URL",
+                                total=total_size,
+                                unit='bytes', unit_scale=True
                             ) as pbar:
                                 download_content(save_path, pbar.update)
 
@@ -202,7 +203,6 @@ class Inference:
                 else:
                     self.gui.download_progress.show()
                     download_external_file(src_path, dst_path, progress=progress)
-                    self.gui.download_progress.hide()
                 logger.info(
                     f"📥 File {basename} has been successfully downloaded from external URL."
                 )
@@ -218,10 +218,27 @@ class Inference:
         for model_dict in models_list:
             cols = model_dict.keys()
             all_columns.extend([col for col in cols if col not in all_columns])
-        for i, model_dict in enumerate(models_list):
+
+        empty_cells = {}
+        for col in all_columns:
+            empty_cells[col] = []
+        # fill empty cells by "-", write empty cells and set cells in column order
+        for i in range(len(models_list)):
+            model_dict = OrderedDict()
             for col in all_columns:
-                if col not in model_dict.keys():
-                    models_list[i][col] = "-"
+                if col not in models_list[i].keys():
+                    model_dict[col] = "-"
+                    empty_cells[col].append(True)
+                else:
+                    model_dict[col] = models_list[i][col]
+                    empty_cells[col].append(False)
+            models_list[i] = model_dict
+        # remove empty columns
+        for col, cells in empty_cells.items():
+            if all(cells):
+                for i, model_dict in enumerate(models_list):
+                    del model_dict[col]
+
         return models_list
 
     def load_on_device(
@@ -581,14 +598,22 @@ class Inference:
     def serve(self):
         if self._use_gui:
             models = self.get_models()
+            support_pretrained_models = True
             if isinstance(models, list):
-                models = self._preprocess_models_list(models)
+                if len(models) > 0:
+                    models = self._preprocess_models_list(models)
+                else:
+                    support_pretrained_models = False
             elif isinstance(models, dict):
                 for model_group in models.keys():
                     models[model_group]["checkpoints"] = self._preprocess_models_list(
                         models[model_group]["checkpoints"]
                     )
-            self._gui = self.get_ui_class()(models)
+            self._gui = self.get_ui_class()(
+                models, 
+                support_pretrained_models=support_pretrained_models,
+                support_custom_models=self.support_custom_models()
+            )
 
             @self.gui.serve_button.click
             def load_model():

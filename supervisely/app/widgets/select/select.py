@@ -51,17 +51,17 @@ class Select(ConditionalWidget):
             value,
             label: str = None,
             content: Widget = None,
-            info: str = None,
+            right_text: str = None,
         ) -> Select.Item:
             self.value = value
             self.label = label
             if label is None:
                 self.label = str(self.value)
             self.content = content
-            self.info = info
+            self.right_text = right_text
 
         def to_json(self):
-            return {"label": self.label, "value": self.value, "info": self.info}
+            return {"label": self.label, "value": self.value, "right_text": self.right_text}
 
     class Group:
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
@@ -98,12 +98,6 @@ class Select(ConditionalWidget):
         self._changes_handled = False
         self._size = size
         self._multiple = multiple
-        if items is None:
-            self._with_info = any(
-                [item.info is not None for group in groups for item in group.items]
-            )
-        else:
-            self._with_info = any([item.info is not None for item in items])
         self._with_link = False
         self._links = None
         if items_links is not None:
@@ -130,7 +124,6 @@ class Select(ConditionalWidget):
             "multiple": self._multiple,
             "items": None,
             "groups": None,
-            "with_info": self._with_info,
             "with_link": self._with_link,
         }
         if self._items is not None:
@@ -184,12 +177,6 @@ class Select(ConditionalWidget):
 
         self._items = items
         self._groups = groups
-        if items is None:
-            self._with_info = any(
-                [item.info is not None for group in groups for item in group.items]
-            )
-        else:
-            self._with_info = any([item.info is not None for item in items])
 
         self.update_data()
         self.update_state()
@@ -207,23 +194,23 @@ class SelectString(Select):
         size: Optional[Literal["large", "small", "mini"]] = None,
         multiple: Optional[bool] = False,
         widget_id: Optional[str] = None,
-        items_info: List[str] = None,
+        items_right_text: List[str] = None,
         items_links: List[str] = None,
     ):
-        infos = [None] * len(values)
-        if items_info is not None:
-            if len(values) != len(items_info):
-                raise ValueError("info length must be equal to values length.")
-            infos = items_info
+        right_text = [None] * len(values)
+        if items_right_text is not None:
+            if len(values) != len(items_right_text):
+                raise ValueError("items_right_text length must be equal to values length.")
+            right_text = items_right_text
 
         if labels is not None:
             if len(values) != len(labels):
                 raise ValueError("values length must be equal to labels length.")
             items = []
-            for value, label, info in zip(values, labels, infos):
-                items.append(Select.Item(value, label, info=info))
+            for value, label, rtext in zip(values, labels, right_text):
+                items.append(Select.Item(value, label, right_text=rtext))
         else:
-            items = [Select.Item(value, info=info) for value, info in zip(values, infos)]
+            items = [Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_text)]
 
         super(SelectString, self).__init__(
             items=items,
@@ -248,22 +235,24 @@ class SelectString(Select):
         self,
         values: List[str],
         labels: Optional[List[str]] = None,
-        info: Optional[List[str]] = None,
+        right_text: Optional[List[str]] = None,
     ):
-        infos = [None] * len(values)
-        if info is not None:
-            if len(values) != len(info):
-                raise ValueError("info length must be equal to values length.")
-            infos = info
+        right_texts = [None] * len(values)
+        if right_text is not None:
+            if len(values) != len(right_text):
+                raise ValueError("right_text length must be equal to values length.")
+            right_texts = right_text
 
         if labels is not None:
             if len(values) != len(labels):
                 raise ValueError("values length must be equal to labels length.")
             self._items = []
-            for value, label, info in zip(values, labels, infos):
-                self._items.append(Select.Item(value, label, info=info))
+            for value, label, rtext in zip(values, labels, right_texts):
+                self._items.append(Select.Item(value, label, right_text=rtext))
         else:
-            self._items = [Select.Item(value, info=info) for value, info in zip(values, infos)]
+            self._items = [
+                Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_texts)
+            ]
         self.update_data()
         self.update_state()
         DataJson().send_changes()
