@@ -159,8 +159,12 @@ class Table(Widget):
         self._width = width
         self._loading = False
 
-        self._sort_column_id = sort_column_id
-        self._sort_direction = sort_direction
+        self._sort_column_id = (
+            sort_column_id if self._validate_sort(column_id=sort_column_id) else 0
+        )
+        self._sort_direction = (
+            sort_direction if self._validate_sort(direction=sort_direction) else "asc"
+        )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -330,11 +334,11 @@ class Table(Widget):
 
     def click(self, func):
         route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
-        update_sort_route_path = self.get_route_path(Table.Routes.UPDATE_SORT)
+        update_sorting_column_route_path = self.get_route_path(Table.Routes.UPDATE_SORT)
         server = self._sly_app.get_server()
 
-        @server.post(update_sort_route_path)
-        def _update_sort():
+        @server.post(update_sorting_column_route_path)
+        def _update_sorting_column():
             StateJson().send_changes()
             return
 
@@ -422,6 +426,18 @@ class Table(Widget):
         DataJson().send_changes()
 
     def sort(self, column_id: int = None, direction: Optional[Literal["asc", "desc"]] = None):
+        self._validate_sort(column_id, direction)
+        if column_id is not None:
+            self._sort_column_id = column_id
+            StateJson()[self.widget_id]["sort"]["columnIdx"] = column_id
+        if direction is not None:
+            self._sort_direction = direction
+            StateJson()[self.widget_id]["sort"]["direction"] = direction
+        StateJson().send_changes()
+
+    def _validate_sort(
+        self, column_id: int = None, direction: Optional[Literal["asc", "desc"]] = None
+    ):
         if column_id is not None and type(column_id) is not int:
             raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
         if column_id is not None and column_id < 0:
@@ -430,10 +446,4 @@ class Table(Widget):
             raise ValueError(
                 f'Incorrect value of "direction": {direction}. Value can be one of "asc" or "desc".'
             )
-        if column_id is not None:
-            self._sort_column_id = column_id
-            StateJson()[self.widget_id]["sort"]["columnIdx"] = column_id
-        if direction is not None:
-            self._sort_direction = direction
-            StateJson()[self.widget_id]["sort"]["direction"] = direction
-        StateJson().send_changes()
+        return True
