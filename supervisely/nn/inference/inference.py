@@ -499,7 +499,9 @@ class Inference:
 
     def _on_inference_end(self, future, inference_request_uuid):
         logger.debug("callback: on_inference_end()")
-        self._inference_requests[inference_request_uuid]["is_inferring"] = False
+        inference_request = self._inference_requests.get(inference_request_uuid)
+        if inference_request is not None:
+            inference_request["is_inferring"] = False
 
     def serve(self):
         if is_debug_with_sly_net():
@@ -666,6 +668,16 @@ class Inference:
             inference_request = self._inference_requests[inference_request_uuid]
             inference_request["cancel_inference"] = True
             return {"message": "Inference will be stopped.", "success": True}
+
+        @server.post(f"/clear_inference_request")
+        def clear_inference_request(response: Response, request: Request):
+            inference_request_uuid = request.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+            del self._inference_requests[inference_request_uuid]
+            logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
+            return {"success": True}
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
