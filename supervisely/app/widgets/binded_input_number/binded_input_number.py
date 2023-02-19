@@ -24,22 +24,19 @@ class BindedInputNumber(Widget):
     def get_json_data(self):
         return {
             "options": {
-                "proportions": {
-                    "width": self._width,
-                    "height": self._height
-                }
+                "proportions": {"width": self._width, "height": self._height},
+                "min": self._min,
+                "max": self._max,
             },
-            "disabled": self._disabled
+            "disabled": self._disabled,
         }
 
     def get_json_state(self):
         return {
             "value": {
-                "min": self._min,
-                "max": self._max,
                 "width": self._width,
                 "height": self._height,
-                "proportional": self._proportional
+                "proportional": self._proportional,
             }
         }
 
@@ -56,8 +53,8 @@ class BindedInputNumber(Widget):
         StateJson().send_changes()
 
     def get_value(self):
-        width =  StateJson()[self.widget_id]['value']["width"]
-        height =  StateJson()[self.widget_id]['value']["height"]
+        width = StateJson()[self.widget_id]["value"]["width"]
+        height = StateJson()[self.widget_id]["value"]["height"]
         return width, height
 
     @property
@@ -72,7 +69,7 @@ class BindedInputNumber(Widget):
     def max(self):
         return self._max
 
-    @min.setter
+    @proportional.setter
     def proportional(self, value):
         self._proportional = value
         DataJson()[self.widget_id]["proportional"] = self._proportional
@@ -89,7 +86,6 @@ class BindedInputNumber(Widget):
         self._max = value
         DataJson()[self.widget_id]["max"] = self._max
         DataJson().send_changes()
-
 
     def disable(self):
         self._disabled = True
