@@ -129,101 +129,93 @@ class Inference:
         else:
             progress = None
 
-        if fs.is_on_agent(src_path) or is_production():
-            team_id = env.team_id()
-            if fs.dir_exists(src_path) or fs.file_exists(
-                src_path
-            ):  # only during debug, has no effect in production
-                dst_path = os.path.abspath(src_path)
-                logger.info(f"File {dst_path} found.")
-            elif self.api.file.dir_exists(team_id, src_path) and src_path.endswith(
-                "/"
-            ):  # folder from Team Files
-
-                def download_dir(team_id, src_path, dst_path, progress_cb=None):
-                    self.api.file.download_directory(
-                        team_id,
-                        src_path,
-                        dst_path,
-                        progress_cb=progress_cb,
-                    )
-
-                logger.info(f"Remote directory in Team Files: {src_path}")
-                logger.info(f"Local directory: {dst_path}")
-                sizeb = self.api.file.get_directory_size(team_id, src_path)
-
-                if progress is None:
-                    download_dir(team_id, src_path, dst_path)
-                else:
-                    self.gui.download_progress.show()
-                    with progress(
-                        message="Downloading directory from Team Files...",
-                        total=sizeb,
-                        unit="bytes",
-                        unit_scale=True,
-                    ) as pbar:
-                        download_dir(team_id, src_path, dst_path, pbar.update)
-                logger.info(
-                    f"📥 Directory {basename} has been successfully downloaded from Team Files"
-                )
-                logger.info(f"Directory {basename} path: {dst_path}")
-            elif self.api.file.exists(team_id, src_path):  # file from Team Files
-
-                def download_file(team_id, src_path, dst_path, progress_cb=None):
-                    self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
-
-                file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
-                if progress is None:
-                    download_file(team_id, src_path, dst_path)
-                else:
-                    self.gui.download_progress.show()
-                    with progress(
-                        message="Downloading file from Team Files...",
-                        total=file_info.sizeb,
-                        unit="bytes",
-                        unit_scale=True,
-                    ) as pbar:
-                        download_file(team_id, src_path, dst_path, pbar.update)
-                logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
-                logger.info(f"File {basename} path: {dst_path}")
-            else:  # external url
-                if not fs.dir_exists(os.path.dirname(dst_path)):
-                    fs.mkdir(os.path.dirname(dst_path))
-
-                def download_external_file(url, save_path, progress=None):
-                    def download_content(save_path, progress_cb=None):
-                        with open(save_path, "wb") as f:
-                            for chunk in r.iter_content(chunk_size=8192):
-                                f.write(chunk)
-                                if progress is not None:
-                                    progress_cb(len(chunk))
-
-                    with requests.get(url, stream=True) as r:
-                        r.raise_for_status()
-                        total_size = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
-                        if progress is None:
-                            download_content(save_path)
-                        else:
-                            with progress(
-                                message="Downloading file from external URL",
-                                total=total_size,
-                                unit="bytes",
-                                unit_scale=True,
-                            ) as pbar:
-                                download_content(save_path, pbar.update)
-
-                if progress is None:
-                    download_external_file(src_path, dst_path)
-                else:
-                    self.gui.download_progress.show()
-                    download_external_file(src_path, dst_path, progress=progress)
-                logger.info(
-                    f"📥 File {basename} has been successfully downloaded from external URL."
-                )
-                logger.info(f"File {basename} path: {dst_path}")
-        else:
+        team_id = env.team_id()
+        if fs.dir_exists(src_path) or fs.file_exists(
+            src_path
+        ):  # only during debug, has no effect in production
             dst_path = os.path.abspath(src_path)
             logger.info(f"File {dst_path} found.")
+        elif self.api.file.dir_exists(team_id, src_path) and src_path.endswith(
+            "/"
+        ):  # folder from Team Files
+
+            def download_dir(team_id, src_path, dst_path, progress_cb=None):
+                self.api.file.download_directory(
+                    team_id,
+                    src_path,
+                    dst_path,
+                    progress_cb=progress_cb,
+                )
+
+            logger.info(f"Remote directory in Team Files: {src_path}")
+            logger.info(f"Local directory: {dst_path}")
+            sizeb = self.api.file.get_directory_size(team_id, src_path)
+
+            if progress is None:
+                download_dir(team_id, src_path, dst_path)
+            else:
+                self.gui.download_progress.show()
+                with progress(
+                    message="Downloading directory from Team Files...",
+                    total=sizeb,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as pbar:
+                    download_dir(team_id, src_path, dst_path, pbar.update)
+            logger.info(f"📥 Directory {basename} has been successfully downloaded from Team Files")
+            logger.info(f"Directory {basename} path: {dst_path}")
+        elif self.api.file.exists(team_id, src_path):  # file from Team Files
+
+            def download_file(team_id, src_path, dst_path, progress_cb=None):
+                self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
+
+            file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
+            if progress is None:
+                download_file(team_id, src_path, dst_path)
+            else:
+                self.gui.download_progress.show()
+                with progress(
+                    message="Downloading file from Team Files...",
+                    total=file_info.sizeb,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as pbar:
+                    download_file(team_id, src_path, dst_path, pbar.update)
+            logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
+            logger.info(f"File {basename} path: {dst_path}")
+        else:  # external url
+            if not fs.dir_exists(os.path.dirname(dst_path)):
+                fs.mkdir(os.path.dirname(dst_path))
+
+            def download_external_file(url, save_path, progress=None):
+                def download_content(save_path, progress_cb=None):
+                    with open(save_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            if progress is not None:
+                                progress_cb(len(chunk))
+
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status()
+                    total_size = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
+                    if progress is None:
+                        download_content(save_path)
+                    else:
+                        with progress(
+                            message="Downloading file from external URL",
+                            total=total_size,
+                            unit="bytes",
+                            unit_scale=True,
+                        ) as pbar:
+                            download_content(save_path, pbar.update)
+
+            if progress is None:
+                download_external_file(src_path, dst_path)
+            else:
+                self.gui.download_progress.show()
+                download_external_file(src_path, dst_path, progress=progress)
+            logger.info(f"📥 File {basename} has been successfully downloaded from external URL.")
+            logger.info(f"File {basename} path: {dst_path}")
         return dst_path
 
     def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -660,8 +652,7 @@ class Inference:
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
         else:
-            self._task_id = env.task_id() # if is_production() else None
-
+            self._task_id = env.task_id()  # if is_production() else None
 
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
