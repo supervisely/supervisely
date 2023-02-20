@@ -6,6 +6,11 @@ import pandas as pd
 import re
 from typing import NamedTuple, Any, List, Optional, Dict
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
@@ -102,6 +107,7 @@ class Table(Widget):
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
         DOWNLOAD_AS_CSV = "download_as_csv"
+        UPDATE_SORT = "update_sort_cb"
 
     class ClickedDataPoint:
         def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
@@ -122,6 +128,8 @@ class Table(Widget):
         per_page: Optional[int] = 10,
         page_sizes: Optional[List[int]] = [10, 15, 30, 50, 100],
         width: Optional[str] = "auto",  # "200px", or "100%"
+        sort_column_id: int = 0,
+        sort_direction: Optional[Literal["asc", "desc"]] = "asc",
         widget_id: Optional[str] = None,
     ):
         """
@@ -151,6 +159,13 @@ class Table(Widget):
         self._width = width
         self._loading = False
 
+        self._sort_column_id = (
+            sort_column_id if self._validate_sort(column_id=sort_column_id) else 0
+        )
+        self._sort_direction = (
+            sort_direction if self._validate_sort(direction=sort_direction) else "asc"
+        )
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -166,7 +181,13 @@ class Table(Widget):
         }
 
     def get_json_state(self):
-        return {"selected_row": {}}
+        return {
+            "selected_row": {},
+            "sort": {
+                "columnIdx": self._sort_column_id,
+                "direction": self._sort_direction,
+            },
+        }
 
     def _update_table_data(self, input_data):
         if input_data is not None:
@@ -313,7 +334,14 @@ class Table(Widget):
 
     def click(self, func):
         route_path = self.get_route_path(Table.Routes.CELL_CLICKED)
+        update_sorting_column_route_path = self.get_route_path(Table.Routes.UPDATE_SORT)
         server = self._sly_app.get_server()
+
+        @server.post(update_sorting_column_route_path)
+        def _update_sorting_column():
+            StateJson().send_changes()
+            return
+
         self._click_handled = True
 
         @server.post(route_path)
@@ -396,3 +424,26 @@ class Table(Widget):
             self._parsed_data["data"][row_idx][col_index] = new_value
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
         DataJson().send_changes()
+
+    def sort(self, column_id: int = None, direction: Optional[Literal["asc", "desc"]] = None):
+        self._validate_sort(column_id, direction)
+        if column_id is not None:
+            self._sort_column_id = column_id
+            StateJson()[self.widget_id]["sort"]["columnIdx"] = column_id
+        if direction is not None:
+            self._sort_direction = direction
+            StateJson()[self.widget_id]["sort"]["direction"] = direction
+        StateJson().send_changes()
+
+    def _validate_sort(
+        self, column_id: int = None, direction: Optional[Literal["asc", "desc"]] = None
+    ):
+        if column_id is not None and type(column_id) is not int:
+            raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
+        if column_id is not None and column_id < 0:
+            raise ValueError(f'Incorrect value of "column_id": {column_id} < 0')
+        if direction is not None and direction not in ["asc", "desc"]:
+            raise ValueError(
+                f'Incorrect value of "direction": {direction}. Value can be one of "asc" or "desc".'
+            )
+        return True
