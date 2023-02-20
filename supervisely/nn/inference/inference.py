@@ -114,6 +114,9 @@ class Inference:
     def add_content_to_custom_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
         return None
 
+    def set_custom_model_link_type(self) -> Literal["file", "folder"]:
+        return "file"
+
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         return []
 
@@ -625,12 +628,15 @@ class Inference:
                     models[model_group]["checkpoints"] = self._preprocess_models_list(
                         models[model_group]["checkpoints"]
                     )
+            custom_model_link_type = self.set_custom_model_link_type()
             self._gui = self.get_ui_class()(
                 models,
+                self.api,
                 support_pretrained_models=support_pretrained_models,
                 support_custom_models=self.support_custom_models(),
                 add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
                 add_content_to_custom_tab=self.add_content_to_custom_tab,
+                custom_model_link_type=custom_model_link_type,
             )
 
             @self.gui.serve_button.click
@@ -654,7 +660,8 @@ class Inference:
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
         else:
-            self._task_id = env.task_id()
+            self._task_id = env.task_id() # if is_production() else None
+
 
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()

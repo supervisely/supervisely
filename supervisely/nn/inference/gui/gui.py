@@ -1,6 +1,9 @@
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Callable, Literal
 import supervisely.app.widgets as Widgets
 from supervisely.task.progress import Progress
+import supervisely.io.env as env
+from supervisely.api.file_api import FileApi
+from supervisely import Api
 
 
 class BaseInferenceGUI:
@@ -30,16 +33,19 @@ class InferenceGUI(BaseInferenceGUI):
     def __init__(
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
+        api: Api,
         support_pretrained_models: Optional[bool],
         support_custom_models: Optional[bool],
-        add_content_to_pretrained_tab: Optional[Widgets.Widget] = None,
-        add_content_to_custom_tab: Optional[Widgets.Widget] = None,
+        add_content_to_pretrained_tab: Optional[Callable] = None,
+        add_content_to_custom_tab: Optional[Callable] = None,
+        custom_model_link_type: Optional[Literal["file", "folder"]] = "file",
     ):
         if isinstance(models, dict):
             self._support_submodels = True
         else:
             self._support_submodels = False
         self._models = models
+        self._api = api
         if not support_pretrained_models and not support_custom_models:
             raise ValueError(
                 """
@@ -76,7 +82,6 @@ class InferenceGUI(BaseInferenceGUI):
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
         )
         self._change_model_button.hide()
-        self.custom_model_type = "file"  # ['file' or 'folder']
 
         tabs_titles = []
         tabs_contents = []
@@ -150,8 +155,29 @@ class InferenceGUI(BaseInferenceGUI):
             tabs_descriptions.append("Models trained outside Supervisely")
 
         if self._support_custom_models:
-            self.model_path_input = Widgets.Input(placeholder="Path to model in Team Files")
-            custom_tab_widgets = []
+            self._file_thumbnail = Widgets.FileThumbnail()
+            team_files_url = f"{env.server_address()}files/"
+
+            self._team_files_link = Widgets.Button(
+                text="Open Team Files",
+                button_type="info",
+                plain=True,
+                icon="zmdi zmdi-folder",
+                link=team_files_url,
+            )
+
+            file_api = FileApi(self._api)
+            self._model_path_input = Widgets.Input(
+                placeholder=f"Path to model {custom_model_link_type} in Team Files"
+            )
+
+            @self._model_path_input.value_changed
+            def change_folder(value):
+                file_info = None
+                if value != "":
+                    file_info = file_api.get_info_by_path(env.team_id(), value)
+                self._file_thumbnail.set(file_info)
+
             # add user widget to top of tab
             widget_to_add = add_content_to_custom_tab(self)
 
@@ -161,21 +187,23 @@ class InferenceGUI(BaseInferenceGUI):
                 )
 
             self._model_path_field = Widgets.Field(
-                self.model_path_input,
-                title=f"Path to model {self.custom_model_type}",
+                self._model_path_input,
+                title=f"Copy path to model {custom_model_link_type} from Team Files and paste to field below.",
                 description="Copy path in Team Files",
             )
 
+            custom_tab_widgets = [
+                self._team_files_link,
+                self._model_path_field,
+                self._file_thumbnail,
+            ]
             self.add_to_custom_tab = widget_to_add
             if self.add_to_custom_tab is not None:
                 custom_tab_widgets.append(self.add_to_custom_tab)
-            custom_tab_widgets.append(self._model_path_field)
             custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
             tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
-            # 1. инитится гуи, в него передается уже виджет который зависит. Значит надо как-то привязать позже.
-            # 2.
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
@@ -277,5 +305,6 @@ class InferenceGUI(BaseInferenceGUI):
                 self._success_label,
                 self._serve_button,
                 self._change_model_button,
-            ]
+            ],
+            gap=3,
         )

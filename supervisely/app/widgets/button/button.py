@@ -23,6 +23,7 @@ class Button(Widget):
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
         icon_gap: int = 5,
         widget_id=None,
+        link: str = None,
     ):
         self._widget_routes = {}
 
@@ -31,6 +32,7 @@ class Button(Widget):
         self._button_size = button_size
         self._plain = plain
         self._icon_gap = icon_gap
+        self._link = link
         if icon is None:
             self._icon = ""
         else:
@@ -52,6 +54,7 @@ class Button(Widget):
             "loading": self._loading,
             "disabled": self._disabled,
             "icon": self._icon,
+            "link": self._link,
         }
 
     def get_json_state(self):
@@ -65,6 +68,16 @@ class Button(Widget):
     def text(self, value):
         self._text = value
         DataJson()[self.widget_id]["text"] = self._text
+        DataJson().send_changes()
+
+    @property
+    def link(self):
+        return self._link
+
+    @link.setter
+    def link(self, value):
+        self._link = value
+        DataJson()[self.widget_id]["link"] = self._link
         DataJson().send_changes()
 
     @property
