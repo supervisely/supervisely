@@ -108,6 +108,12 @@ class Inference:
     def support_custom_models(self) -> bool:
         return True
 
+    def add_content_to_pretrained_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
+        return None
+
+    def add_content_to_custom_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
+        return None
+
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         return []
 
@@ -148,7 +154,10 @@ class Inference:
                 else:
                     self.gui.download_progress.show()
                     with progress(
-                        message="Downloading directory from Team Files...", total=sizeb, unit='bytes', unit_scale=True
+                        message="Downloading directory from Team Files...",
+                        total=sizeb,
+                        unit="bytes",
+                        unit_scale=True,
                     ) as pbar:
                         download_dir(team_id, src_path, dst_path, pbar.update)
                 logger.info(
@@ -166,7 +175,10 @@ class Inference:
                 else:
                     self.gui.download_progress.show()
                     with progress(
-                        message="Downloading file from Team Files...", total=file_info.sizeb, unit='bytes', unit_scale=True
+                        message="Downloading file from Team Files...",
+                        total=file_info.sizeb,
+                        unit="bytes",
+                        unit_scale=True,
                     ) as pbar:
                         download_file(team_id, src_path, dst_path, pbar.update)
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
@@ -181,20 +193,19 @@ class Inference:
                             for chunk in r.iter_content(chunk_size=8192):
                                 f.write(chunk)
                                 if progress is not None:
-                                    progress_cb(len(chunk)) 
+                                    progress_cb(len(chunk))
 
                     with requests.get(url, stream=True) as r:
                         r.raise_for_status()
-                        total_size = (
-                            int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
-                        )
+                        total_size = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
                         if progress is None:
                             download_content(save_path)
                         else:
                             with progress(
                                 message="Downloading file from external URL",
                                 total=total_size,
-                                unit='bytes', unit_scale=True
+                                unit="bytes",
+                                unit_scale=True,
                             ) as pbar:
                                 download_content(save_path, pbar.update)
 
@@ -610,9 +621,11 @@ class Inference:
                         models[model_group]["checkpoints"]
                     )
             self._gui = self.get_ui_class()(
-                models, 
+                models,
                 support_pretrained_models=support_pretrained_models,
-                support_custom_models=self.support_custom_models()
+                support_custom_models=self.support_custom_models(),
+                add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
+                add_content_to_custom_tab=self.add_content_to_custom_tab,
             )
 
             @self.gui.serve_button.click

@@ -6,7 +6,9 @@
   :loading="data.{{{widget.widget_id}}}.loading"
   :size="data.{{{widget.widget_id}}}.button_size"
   :disabled="data.{{{widget.widget_id}}}.disabled"
+  {% if widget._click_handled %}
   @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
+  {% endif %}
 >
   <span v-html="data.{{{widget.widget_id}}}.icon"></span>
   <span v-html="data.{{{widget.widget_id}}}.text"></span>

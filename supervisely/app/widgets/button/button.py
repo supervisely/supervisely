@@ -39,6 +39,7 @@ class Button(Widget):
         self._loading = False
         self._disabled = False
         self._show_loading = show_loading
+        self._click_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -94,6 +95,7 @@ class Button(Widget):
 
         route_path = self.get_route_path(Button.Routes.CLICK)
         server = self._sly_app.get_server()
+        self._click_handled = True
 
         @server.post(route_path)
         def _click():

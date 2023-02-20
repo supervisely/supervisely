@@ -32,6 +32,8 @@ class InferenceGUI(BaseInferenceGUI):
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
         support_pretrained_models: Optional[bool],
         support_custom_models: Optional[bool],
+        add_content_to_pretrained_tab: Optional[Widgets.Widget] = None,
+        add_content_to_custom_tab: Optional[Widgets.Widget] = None,
     ):
         if isinstance(models, dict):
             self._support_submodels = True
@@ -47,7 +49,6 @@ class InferenceGUI(BaseInferenceGUI):
             )
         self._support_custom_models = support_custom_models
         self._support_pretrained_models = support_pretrained_models
-        assert self._support_custom_models or self._support_pretrained_models
 
         device_values = []
         device_names = []
@@ -71,6 +72,11 @@ class InferenceGUI(BaseInferenceGUI):
         self._success_label.hide()
         self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
         self._download_progress.hide()
+        self._change_model_button = Widgets.Button(
+            "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
+        )
+        self._change_model_button.hide()
+        self.custom_model_type = "file"  # ['file' or 'folder']
 
         tabs_titles = []
         tabs_contents = []
@@ -130,29 +136,65 @@ class InferenceGUI(BaseInferenceGUI):
             if self._support_submodels:
                 pretrained_tab_content.append(self._model_select)
             pretrained_tab_content.append(self._models_table)
+            # add user widget after the table
+            widget_to_add = add_content_to_pretrained_tab(self)
+            if widget_to_add is not None and not support_pretrained_models:
+                raise ValueError(
+                    "You can provide content to pretrained models tab only If get_models() is not empty list."
+                )
+            self.add_to_pretrained_tab = widget_to_add
+            if self.add_to_pretrained_tab is not None:
+                pretrained_tab_content.append(self.add_to_pretrained_tab)
             tabs_titles.append("Pretrained models")
             tabs_contents.append(Widgets.Container(pretrained_tab_content))
             tabs_descriptions.append("Models trained outside Supervisely")
 
         if self._support_custom_models:
-            self._model_path_input = Widgets.Input(
-                placeholder="Path to model file or folder in Team Files"
-            )
+            self.model_path_input = Widgets.Input(placeholder="Path to model in Team Files")
+            custom_tab_widgets = []
+            # add user widget to top of tab
+            widget_to_add = add_content_to_custom_tab(self)
+
+            if widget_to_add is not None and not support_custom_models:
+                raise ValueError(
+                    "You can provide content to custom models tab only If support_custom_models() returned True."
+                )
+
             self._model_path_field = Widgets.Field(
-                self._model_path_input,
-                title="Path to model file/folder",
+                self.model_path_input,
+                title=f"Path to model {self.custom_model_type}",
                 description="Copy path in Team Files",
             )
-            custom_tab_content = Widgets.Container([self._model_path_field])
+
+            self.add_to_custom_tab = widget_to_add
+            if self.add_to_custom_tab is not None:
+                custom_tab_widgets.append(self.add_to_custom_tab)
+            custom_tab_widgets.append(self._model_path_field)
+            custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
             tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
+            # 1. инитится гуи, в него передается уже виджет который зависит. Значит надо как-то привязать позже.
+            # 2.
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
             contents=tabs_contents,
             descriptions=tabs_descriptions,
         )
+
+        @self._change_model_button.click
+        def change_model():
+            self._success_label.text = ""
+            self._success_label.hide()
+            self._serve_button.show()
+            self._device_select.enable()
+            self._change_model_button.hide()
+            if self._support_pretrained_models:
+                self._models_table.enable()
+            if self._support_custom_models:
+                self._model_path_input.enable()
+            Progress("model deployment canceled", 1).iter_done_report()
 
     def _get_table_subtitles(self, cols):
         # Get subtitles from col's round brackets
@@ -219,6 +261,7 @@ class InferenceGUI(BaseInferenceGUI):
         self._success_label.show()
         self._serve_button.hide()
         self._device_select.disable()
+        self._change_model_button.show()
         if self._support_pretrained_models:
             self._models_table.disable()
         if self._support_custom_models:
@@ -230,8 +273,9 @@ class InferenceGUI(BaseInferenceGUI):
             [
                 self._tabs,
                 self._device_field,
-                self._serve_button,
                 self._download_progress,
                 self._success_label,
+                self._serve_button,
+                self._change_model_button,
             ]
         )
