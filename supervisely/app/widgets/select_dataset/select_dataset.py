@@ -66,7 +66,7 @@ class SelectDataset(Widget):
 
         if self._multiselect is True:
             self._all_datasets_checkbox = Checkbox(
-                "Select all datasets", checked=False, widget_id=generate_id()
+                "Select all datasets", checked=True, widget_id=generate_id()
             )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -155,4 +155,3 @@ class SelectDataset(Widget):
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
-        
