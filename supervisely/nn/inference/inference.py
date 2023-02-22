@@ -267,6 +267,7 @@ class Inference:
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
+            "tracking_on_videos_support": True,
         }
 
     @property
