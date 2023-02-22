@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import List, Optional, Callable
+from typing import Dict, List, Optional, Callable
 
 import os
 import re
@@ -12,6 +12,7 @@ import tarfile
 import subprocess
 import requests
 from requests.structures import CaseInsensitiveDict
+from collections.abc import Mapping
 
 from supervisely._utils import get_bytes_hash, get_string_hash
 from supervisely.io.fs_cache import FileCache
@@ -648,7 +649,7 @@ def touch(path: str) -> None:
 
 
 def download(
-    url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None
+    url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None, headers: Optional[Dict] = None,
 ) -> str:
     """
     Load image from url to host by target path.
@@ -661,6 +662,8 @@ def download(
     :type cache: FileCache, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
+    :param headers: Http headers.
+    :type headers: Dict, optional.
     :returns: Full path to downloaded image
     :rtype: :class:`str`
     :Usage example:
@@ -673,10 +676,20 @@ def download(
         print(im_path)
         # Output:
         # /home/admin/work/projects/examples/avatar.jpeg
+
+        # if you need to specify some headers
+        headers = {
+            'User-Agent': 'Mozilla/5.0',
+        }
+        im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg', headers=headers)
+        print(im_path)
+        # Output:
+        # /home/admin/work/projects/examples/avatar.jpeg
+
     """
 
     def _download():
-        with requests.get(url, stream=True) as r:
+        with requests.get(url, stream=True, headers=headers) as r:
             r.raise_for_status()
             total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
             if progress is not None and type(progress) is Progress:
