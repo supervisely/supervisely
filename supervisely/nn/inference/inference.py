@@ -654,7 +654,7 @@ class Inference:
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
         else:
-            self._task_id = env.task_id()  # if is_production() else None
+            self._task_id = env.task_id() if is_production() else None
 
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()

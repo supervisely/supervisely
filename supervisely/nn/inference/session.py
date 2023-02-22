@@ -330,7 +330,6 @@ class SessionJSON:
                     verbose=True,
                     swallow_exc=True,
                     sleep_sec=5,
-                    response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
                 if retry_idx + 1 == retries:
