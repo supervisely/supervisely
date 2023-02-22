@@ -249,7 +249,7 @@ class InferenceGUI(BaseInferenceGUI):
 
     def get_model_info(self) -> Dict[str, Dict[str, str]]:
         if not self._support_submodels:
-            return self._models_table.get_selected_row()
+            return None
         selected_model = self._model_select.get_value()
         selected_model_info = self._models[selected_model].copy()
         del selected_model_info["checkpoints"]
