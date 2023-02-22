@@ -759,7 +759,7 @@ class Inference:
 
         @server.post(f"/get_inference_progress")
         def get_inference_progress(response: Response, request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
@@ -784,7 +784,7 @@ class Inference:
 
         @server.post(f"/pop_inference_results")
         def pop_inference_results(response: Response, request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
@@ -809,7 +809,7 @@ class Inference:
 
         @server.post(f"/stop_inference")
         def stop_inference(response: Response, request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
@@ -819,7 +819,7 @@ class Inference:
 
         @server.post(f"/clear_inference_request")
         def clear_inference_request(response: Response, request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
