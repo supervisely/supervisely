@@ -1,13 +1,9 @@
 from typing import Dict, List, Any, Union, Optional
-from supervisely.app.widgets.widget import Widget
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.prediction_dto import PredictionKeypoints
 from supervisely.annotation.label import Label
-from supervisely.annotation.tag import Tag
 from supervisely.nn.inference.inference import Inference
-from supervisely.task.progress import Progress
-import supervisely as sly
 from supervisely.geometry.graph import Node, KeypointsTemplate
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.annotation.obj_class import ObjClass
@@ -28,32 +24,20 @@ except ImportError:
 class PoseEstimation(Inference):
     def __init__(
         self,
-        location: Optional[
-            Union[str, List[str]]
-        ] = None,  # folders of files with model or configs, from Team Files or external links
+        model_dir: Optional[str] = None,
         custom_inference_settings: Optional[
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         keypoints_template: Optional[KeypointsTemplate] = None,
+        use_gui: Optional[bool] = False,
     ):
         super().__init__(
-            location=location,
+            model_dir=model_dir,
             custom_inference_settings=custom_inference_settings,
             sliding_window_mode="none",
+            use_gui=use_gui,
         )
         self.keypoints_template = keypoints_template
-
-    def _get_templates_dir(self):
-        # template_dir = os.path.join(
-        #     Path(__file__).parent.absolute(), "dashboard/templates"
-        # )
-        # return template_dir
-        return None
-
-    def _get_layout(self) -> Widget:
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # return main_ui.menu
-        return None
 
     def get_info(self):
         info = super().get_info()
@@ -172,16 +156,3 @@ class PoseEstimation(Inference):
         predictions = self.predict(image_path=image_path, settings=settings)
         ann = self._predictions_to_annotation(image_path, predictions)
         return ann
-
-    def serve(self):
-        # import supervisely.nn.inference.instance_segmentation.dashboard.main_ui as main_ui
-        # import supervisely.nn.inference.instance_segmentation.dashboard.deploy_ui as deploy_ui
-
-        # @deploy_ui.deploy_btn.click
-        # def deploy_model():
-        # device = deploy_ui.device.get_value()
-        # self.load_on_device(self._device)
-        # print(f"✅ Model has been successfully loaded on {self._device.upper()} device")
-        Progress("Deploying model ...", 1)
-        super().serve()
-        Progress("Model deployed", 1).iter_done_report()

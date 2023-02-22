@@ -127,6 +127,16 @@ def team_files_file(raise_not_found=True):
     )
 
 
+def server_address(raise_not_found=True):
+    return _parse_from_env(
+        name="server_address",
+        keys=["SERVER_ADDRESS"],
+        postprocess_fn=lambda x: str(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
 def file(raise_not_found=True):
     return team_files_file(raise_not_found)
 

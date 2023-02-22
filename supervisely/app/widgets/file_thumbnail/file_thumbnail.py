@@ -6,9 +6,9 @@ from supervisely._utils import abs_url
 
 
 class FileThumbnail(Widget):
-    def __init__(self, info=None, widget_id: str = None):
+    def __init__(self, info: FileInfo = None, widget_id: str = None):
         self._id: int = None
-        self._info: info = None
+        self._info: FileInfo = None
         self._description: str = None
         self._url: str = None
         self._set_info(info)
@@ -34,6 +34,10 @@ class FileThumbnail(Widget):
 
     def _set_info(self, info: FileInfo = None):
         if info is None:
+            self._id: int = None
+            self._info: FileInfo = None
+            self._description: str = None
+            self._url: str = None
             return
         self._id = info.id
         self._info = info
