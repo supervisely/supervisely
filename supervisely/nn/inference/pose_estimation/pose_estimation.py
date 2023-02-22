@@ -29,11 +29,13 @@ class PoseEstimation(Inference):
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
         keypoints_template: Optional[KeypointsTemplate] = None,
+        use_gui: Optional[bool] = False,
     ):
         super().__init__(
             model_dir=model_dir,
             custom_inference_settings=custom_inference_settings,
             sliding_window_mode="none",
+            use_gui=use_gui,
         )
         self.keypoints_template = keypoints_template
 
