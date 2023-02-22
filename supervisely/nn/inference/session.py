@@ -21,7 +21,7 @@ class SessionJSON:
         self,
         api: sly.Api,
         task_id: int = None,
-        session_token: str = None,
+        session_url: str = None,
         inference_settings: Union[dict, str] = None,
     ):
         """A convenient class for inference of deployed models.
@@ -31,7 +31,7 @@ class SessionJSON:
         You need first to serve the NN model you want and get its `task_id`.
         The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
 
-        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
+        Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
 
         Example:
@@ -50,15 +50,15 @@ class SessionJSON:
 
         Args:
             api (sly.Api): initialized sly.Api object.
-            task_id (int, optional): if None, the `session_token` will be used.
-            session_token (str, optional): if None, the `task_id` will be used.
+            task_id (int, optional): if None, the `session_url` will be used.
+            session_url (str, optional): if None, the `task_id` will be used.
             inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
         """
-        if (task_id is None and session_token is None) or (
-            task_id is not None and session_token is not None
+        if (task_id is None and session_url is None) or (
+            task_id is not None and session_url is not None
         ):
             raise RuntimeError(
-                "exactly one of `task_id` or `session_token` has to be passed as parameter."
+                "exactly one of `task_id`, `session_url` or `server_url` has to be passed as parameter."
             )
 
         self.api = api
@@ -73,11 +73,12 @@ class SessionJSON:
                 raise ValueError(
                     f"Can't connect to the model. Check if the task_id {task_id} is correct."
                 )
-
-        self._session_token = str(session_token or task_info["meta"]["sessionToken"])
-
+        if task_id is not None:
+            self._base_url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
+        else:
+            self._base_url = session_url
         self.set_inference_settings(inference_settings)
-        self._base_url = f"{self.api.server_address}/net/{self._session_token}"
+
         self._session_info = None
         self._default_inference_settings = None
         self._model_meta = None
@@ -94,7 +95,7 @@ class SessionJSON:
                 )
             else:
                 raise ValueError(
-                    f'Can\'t connect to the model. Check if the session_token "{self._session_token}" is correct.'
+                    f'Can\'t connect to the model. Check if the session_url "{session_url}" is correct.'
                 )
 
     @property
@@ -102,8 +103,8 @@ class SessionJSON:
         return self._task_id
 
     @property
-    def session_token(self) -> str:
-        return self._session_token
+    def base_url(self) -> str:
+        return self._base_url
 
     def get_session_info(self) -> Dict[str, Any]:
         if self._session_info is None:
@@ -419,7 +420,7 @@ class Session(SessionJSON):
         self,
         api: sly.Api,
         task_id: int = None,
-        session_token: str = None,
+        session_url: str = None,
         inference_settings: Union[dict, str] = None,
     ):
         """A convenient class for inference of deployed models.
@@ -429,7 +430,7 @@ class Session(SessionJSON):
         You need first to serve the NN model you want and get its `task_id`.
         The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
 
-        Note: Either a `task_id` or a `session_token` has to be passed as a parameter (not both).
+        Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
 
         Example:
@@ -448,11 +449,11 @@ class Session(SessionJSON):
 
         Args:
             api (sly.Api): initialized sly.Api object.
-            task_id (int, optional): if None, the `session_token` will be used.
-            session_token (str, optional): if None, the `task_id` will be used.
+            task_id (int, optional): if None, the `session_url` will be used.
+            session_url (str, optional): if None, the `task_id` will be used.
             inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
         """
-        super().__init__(api, task_id, session_token, inference_settings)
+        super().__init__(api, task_id, session_url, inference_settings)
 
     def get_model_meta(self) -> sly.ProjectMeta:
         if not isinstance(self._model_meta, sly.ProjectMeta):
