@@ -13,9 +13,7 @@ def read(fname):
         return fin.read()
 
 
-response = requests.get(
-    "https://api.github.com/repos/supervisely/supervisely/releases/latest"
-)
+response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
 version = response.json()["tag_name"]
 
 
@@ -59,7 +57,11 @@ INSTALL_REQUIRES = [
 ]
 
 ALT_INSTALL_REQUIRES = {
-    "opencv-python>=4.5.5.62, <5.0.0.0": ["opencv-python-headless", "opencv-contrib-python", "opencv-contrib-python-headless"],
+    "opencv-python>=4.5.5.62, <5.0.0.0": [
+        "opencv-python-headless",
+        "opencv-contrib-python",
+        "opencv-contrib-python-headless",
+    ],
 }
 
 
@@ -85,7 +87,9 @@ def get_install_requirements(main_requires, alternative_requires):
     install_requires = []
     for main_require in main_requires:
         if main_require in alternative_requires:
-            main_require = check_alternative_installation(main_require, alternative_requires.get(main_require))
+            main_require = check_alternative_installation(
+                main_require, alternative_requires.get(main_require)
+            )
         install_requires.append(main_require)
 
     return install_requires
@@ -122,9 +126,7 @@ setup(
         "": ["*.html", "*.css", "*.js"],
         "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
     },
-    install_requires=get_install_requirements(
-        INSTALL_REQUIRES, ALT_INSTALL_REQUIRES
-    ),
+    install_requires=get_install_requirements(INSTALL_REQUIRES, ALT_INSTALL_REQUIRES),
     extras_require={
         "extras": [
             "docker>=5.0.3, <6.0.0",
@@ -173,6 +175,7 @@ setup(
         ],
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
-        ]
+            "imagecorruptions>=1.1.2, <2.0.0",
+        ],
     },
 )
