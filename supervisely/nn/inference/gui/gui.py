@@ -1,9 +1,14 @@
-from typing import List, Dict, Union, Optional, Callable, Literal
+from typing import List, Dict, Union, Optional, Callable
 import supervisely.app.widgets as Widgets
 from supervisely.task.progress import Progress
 import supervisely.io.env as env
 from supervisely.api.file_api import FileApi
 from supervisely import Api
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 
 class BaseInferenceGUI:
