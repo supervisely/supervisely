@@ -156,7 +156,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         if self._support_custom_models:
             self._file_thumbnail = Widgets.FileThumbnail()
-            team_files_url = f"{env.server_address()}files/"
+            team_files_url = f"{env.server_address()}/files/"
 
             self._team_files_link = Widgets.Button(
                 text="Open Team Files",
