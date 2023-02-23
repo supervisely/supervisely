@@ -695,7 +695,7 @@ def download(
 
     """
 
-    def _download(timeout):
+    def _download(timeout=None):
         try:
             with requests.get(url, stream=True, headers=headers, timeout=timeout) as r:
                 r.raise_for_status()
@@ -725,7 +725,7 @@ def download(
         cache_path = cache.check_storage_object(get_string_hash(url), get_file_ext(save_path))
         if cache_path is None:
             # file not in cache
-            _download()
+            _download(timeout)
             cache.write_object(save_path, get_string_hash(url))
         else:
             cache.read_object(get_string_hash(url), save_path)
