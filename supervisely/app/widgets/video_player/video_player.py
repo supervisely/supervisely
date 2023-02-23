@@ -25,7 +25,7 @@ class VideoPlayer(Widget):
         return {
             "url": self._url,
             "mimeType": self._mime_type,
-            "mask_path": self._mask_path,
+            "maskPath": self._mask_path,
         }
 
     def get_json_state(self):
@@ -80,10 +80,10 @@ class VideoPlayer(Widget):
 
     def draw_mask(self, path):
         self._mask_path = path
-        DataJson()[self.widget_id]["mask_path"] = self._mask_path
+        DataJson()[self.widget_id]["maskPath"] = self._mask_path
         DataJson().send_changes()
 
     def hide_mask(self):
         self._mask_path = None
-        DataJson()[self.widget_id]["mask_path"] = self._mask_path
+        DataJson()[self.widget_id]["maskPath"] = self._mask_path
         DataJson().send_changes()
