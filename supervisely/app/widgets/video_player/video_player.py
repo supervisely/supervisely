@@ -78,3 +78,8 @@ class VideoPlayer(Widget):
         self._mask_path = path
         DataJson()[self.widget_id]["mask_path"] = self._mask_path
         DataJson().send_changes()
+
+    def hide_mask(self):
+        self._mask_path = ""
+        DataJson()[self.widget_id]["mask_path"] = self._mask_path
+        DataJson().send_changes()
