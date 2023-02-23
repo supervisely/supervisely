@@ -2,6 +2,7 @@
   :time_to_set.sync="state.{{{widget.widget_id}}}.timeToSet"
   :mime_type="data.{{{widget.widget_id}}}.mimeType"
   :url="data.{{{widget.widget_id}}}.url"
+  :mask_path="data.{{{widget.widget_id}}}.mask_path"
   :is_playing.sync="state.{{{widget.widget_id}}}.isPlaying"
   @timeupdate="state.{{{widget.widget_id}}}.currentTime = $event"
 ></html-video>

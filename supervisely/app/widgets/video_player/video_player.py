@@ -11,6 +11,7 @@ class VideoPlayer(Widget):
 
         self._url = url
         self._mime_type = mime_type
+        self._mask_path = ""
 
         self._current_timestamp = 0
         self._is_playing = False
@@ -21,16 +22,13 @@ class VideoPlayer(Widget):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
-        return {
-            "url": self._url,
-            "mimeType": self._mime_type,
-        }
+        return {"url": self._url, "mimeType": self._mime_type, "mask_path": self._mask_path}
 
     def get_json_state(self):
         return {
             "currentTime": 0,
             "timeToSet": 0,
-            "isPlaying": False
+            "isPlaying": False,
         }
 
     @property
@@ -75,3 +73,8 @@ class VideoPlayer(Widget):
         StateJson()[self.widget_id]["timeToSet"] = value
         StateJson().send_changes()
         return self._current_timestamp
+
+    def draw_mask(self, path):
+        self._mask_path = path
+        DataJson()[self.widget_id]["mask_path"] = self._mask_path
+        DataJson().send_changes()
