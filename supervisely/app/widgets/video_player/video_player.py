@@ -11,7 +11,7 @@ class VideoPlayer(Widget):
 
         self._url = url
         self._mime_type = mime_type
-        self._mask_path = ""
+        self._mask_path = None
 
         self._current_timestamp = 0
         self._is_playing = False
@@ -80,6 +80,6 @@ class VideoPlayer(Widget):
         DataJson().send_changes()
 
     def hide_mask(self):
-        self._mask_path = ""
+        self._mask_path = None
         DataJson()[self.widget_id]["mask_path"] = self._mask_path
         DataJson().send_changes()
