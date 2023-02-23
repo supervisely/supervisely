@@ -670,7 +670,7 @@ def download(
     :param headers: A dictionary of HTTP headers to include in the request.
     :type headers: Dict, optional.
     :param timeout: The maximum number of seconds to wait for a response from the server. If the server does not respond within the timeout period, a TimeoutError is raised.
-    :type headers: int, optional.
+    :type timeout: int, optional.
     :returns: Full path to downloaded image
     :rtype: :class:`str`
     :Usage example:
