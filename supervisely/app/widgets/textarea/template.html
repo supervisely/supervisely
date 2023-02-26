@@ -1,9 +1,12 @@
 <el-input
+  {% if widget._changes_handled == true %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
+  v-model="state.{{{widget.widget_id}}}.value"
   type="textarea"
   :placeholder="data.{{{widget.widget_id}}}.placeholder"
   :rows="data.{{{widget.widget_id}}}.rows"
   :autosize="data.{{{widget.widget_id}}}.autosize"
   :readonly="data.{{{widget.widget_id}}}.readonly"
-  v-model="data.{{{widget.widget_id}}}.value"
 >
 </el-input>

@@ -3,6 +3,9 @@ from supervisely.app.widgets import Widget
 
 
 class TextArea(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         value: str = None,
@@ -17,11 +20,12 @@ class TextArea(Widget):
         self._rows = rows
         self._autosize = autosize
         self._readonly = readonly
+        self._changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            "value": self._value,
+            # "value": self._value,
             "placeholder": self._placeholder,
             "rows": self._rows,
             "autosize": self._autosize,
@@ -32,7 +36,7 @@ class TextArea(Widget):
         return {"value": self._value}
 
     def set_value(self, value):
-        self._value = value
+        # self._value = value
         StateJson()[self.widget_id]["value"] = value
         StateJson().send_changes()
 
@@ -51,3 +55,16 @@ class TextArea(Widget):
         self._readonly = False
         DataJson()[self.widget_id]["readonly"] = False
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(TextArea.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            res = self.get_value()
+            self._value = res
+            func(res)
+
+        return _click
