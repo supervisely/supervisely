@@ -34,6 +34,7 @@ class ObjectClassApi(ModuleApi):
         project_id = 1951
         obj_class_infos = api.object_class.get_list(project_id)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -52,24 +53,27 @@ class ObjectClassApi(ModuleApi):
                             created_at='2021-03-02T10:04:33.973Z',
                             updated_at='2021-03-11T09:37:07.111Z')
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.SHAPE,
-                ApiField.COLOR,
-                ApiField.SETTINGS,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT
-                ]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.SHAPE,
+            ApiField.COLOR,
+            ApiField.SETTINGS,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **ObjectClassInfo**.
         """
-        return 'ObjectClassInfo'
+        return "ObjectClassInfo"
 
-    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, project_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         List of ObjClasses in the given Project.
 
@@ -125,7 +129,10 @@ class ObjectClassApi(ModuleApi):
             #     ]
             # ]
         """
-        return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})
+        return self.get_list_all_pages(
+            "advanced.object_classes.list",
+            {ApiField.PROJECT_ID: project_id, "filter": filters or []},
+        )
 
     def get_name_to_id_map(self, project_id: int) -> Dict[str, int]:
         """
@@ -150,6 +157,20 @@ class ObjectClassApi(ModuleApi):
         objects_infos = self.get_list(project_id)
         return {object_info.name: object_info.id for object_info in objects_infos}
 
+    def _get_info_by_id(self, id, method, fields=None):
+        response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)
+        return (
+            self._convert_json_info(response.json(), skip_missing=True)
+            if (response is not None)
+            else None
+        )
+
+    def get_info_by_id(self, id):
+        return self._get_info_by_id(
+            id,
+            "advanced.object_classes.info",
+        )
+
     # def _object_classes_to_json(self, object_classes: KeyIndexedCollection, objclasses_name_id_map=None, project_id=None):
     #     pass #@TODO: implement
     #     # if objclasses_name_id_map is None and project_id is None:
@@ -162,7 +183,7 @@ class ObjectClassApi(ModuleApi):
     #     #     tag_json[ApiField.TAG_ID] = tag_name_id_map[tag.name]
     #     #     tags_json.append(tag_json)
     #     # return tags_json
-    # 
+    #
     # def append_to_video(self, video_id, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
     #     if len(tags) == 0:
     #         return []
@@ -171,12 +192,10 @@ class ObjectClassApi(ModuleApi):
     #     ids = self.append_to_video_json(video_id, tags_json)
     #     KeyIdMap.add_tags_to(key_id_map, [tag.key() for tag in tags], ids)
     #     return ids
-    # 
+    #
     # def append_to_video_json(self, video_id, tags_json):
     #     if len(tags_json) == 0:
     #         return
     #     response = self._api.post('videos.tags.bulk.add', {ApiField.VIDEO_ID: video_id, ApiField.TAGS: tags_json})
     #     ids = [obj[ApiField.ID] for obj in response.json()]
     #     return ids
-
-
