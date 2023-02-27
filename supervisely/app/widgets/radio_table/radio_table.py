@@ -5,6 +5,9 @@ from supervisely.app.widgets import Widget
 
 
 class RadioTable(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         columns: List[str],
@@ -31,6 +34,7 @@ class RadioTable(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         self.rows = rows
+        self._changes_handled = False
 
     def get_json_data(self):
         return {
@@ -77,6 +81,19 @@ class RadioTable(Widget):
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(RadioTable.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+        print(self._changes_handled)
+
+        @server.post(route_path)
+        def _value_changed():
+            res = self.get_selected_row()
+            func(res)
+
+        return _value_changed
 
     @property
     def columns(self) -> List[str]:
