@@ -132,9 +132,9 @@ class SelectDataset(Widget):
                     value = None
                 func(value)
 
-        @self._all_datasets_checkbox.value_changed
-        def _select_all_datasets(is_checked):
-            _process()
+        # @self._all_datasets_checkbox.value_changed
+        # def _select_all_datasets(is_checked):
+        #     _process()
 
         @server.post(route_path)
         def _click():
@@ -155,4 +155,3 @@ class SelectDataset(Widget):
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
-        
