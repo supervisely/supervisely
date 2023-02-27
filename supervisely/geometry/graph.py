@@ -660,9 +660,7 @@ class KeypointsTemplate(GraphNodes, Geometry):
         self._config = {"nodes": {}, "edges": []}
         self._point_names = []
 
-    def add_point(
-        self, label: str, row: int, col: int, color: list = [0, 0, 255], disabled: bool = False
-    ):
+    def add_point(self, label: str, row: int, col: int, color: list = [0, 0, 255]):
         _validate_color(color)
         if label in self._config["nodes"]:
             raise KeyError(f"Label {label} already exists in the graph")
@@ -672,8 +670,6 @@ class KeypointsTemplate(GraphNodes, Geometry):
             "loc": [row, col],
             "color": color,
         }
-        if disabled is True:
-            self._config["nodes"][label]["disabled"] = disabled
 
     def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
         _validate_color(color)
@@ -686,11 +682,7 @@ class KeypointsTemplate(GraphNodes, Geometry):
         self._nodes = {}
         for node in self._config["nodes"]:
             loc = self._config["nodes"][node]["loc"]
-            disabled = self._config["nodes"][node].get("disabled")
-            if disabled is True:
-                self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
-            else:
-                self._nodes[node] = Node(PointLocation(loc[1], loc[0]))
+            self._nodes[node] = Node(PointLocation(loc[1], loc[0]))
 
     def draw(self, image: np.ndarray, thickness=7):
         self.get_nodes()
