@@ -671,8 +671,9 @@ class KeypointsTemplate(GraphNodes, Geometry):
             "label": label,
             "loc": [row, col],
             "color": color,
-            "disabled": disabled,
         }
+        if disabled is True:
+            self._config["nodes"][label]["disabled"] = disabled
 
     def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
         _validate_color(color)
@@ -685,8 +686,11 @@ class KeypointsTemplate(GraphNodes, Geometry):
         self._nodes = {}
         for node in self._config["nodes"]:
             loc = self._config["nodes"][node]["loc"]
-            disabled = self._config["nodes"][node]["disabled"]
-            self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
+            disabled = self._config["nodes"][node].get("disabled")
+            if disabled is True:
+                self._nodes[node] = Node(PointLocation(loc[1], loc[0]), disabled=disabled)
+            else:
+                self._nodes[node] = Node(PointLocation(loc[1], loc[0]))
 
     def draw(self, image: np.ndarray, thickness=7):
         self.get_nodes()
