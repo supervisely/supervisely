@@ -14,6 +14,9 @@
   {%
   endif
   %}
+  :sort="state.{{{widget.widget_id}}}.sort"
+  @update:sort="state.{{{widget.widget_id}}}.sort = $event;
+                post('/{{{widget.widget_id}}}/update_sort_cb')"
 >
 </sly-table>
 <div v-if="data.{{{widget.widget_id}}}.table_data.data.length === 0">

@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import List, Optional, Callable
+from typing import Dict, List, Optional, Callable
 
 import os
 import re
@@ -12,6 +12,7 @@ import tarfile
 import subprocess
 import requests
 from requests.structures import CaseInsensitiveDict
+from collections.abc import Mapping
 
 from supervisely._utils import get_bytes_hash, get_string_hash
 from supervisely.io.fs_cache import FileCache
@@ -648,7 +649,12 @@ def touch(path: str) -> None:
 
 
 def download(
-    url: str, save_path: str, cache: Optional[FileCache] = None, progress: Optional[Callable] = None
+    url: str,
+    save_path: str,
+    cache: Optional[FileCache] = None,
+    progress: Optional[Callable] = None,
+    headers: Optional[Dict] = None,
+    timeout: Optional[int] = None,
 ) -> str:
     """
     Load image from url to host by target path.
@@ -657,10 +663,14 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: FileCache.
+    :param cache: An instance of `FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
     :type cache: FileCache, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
+    :param headers: A dictionary of HTTP headers to include in the request.
+    :type headers: Dict, optional.
+    :param timeout: The maximum number of seconds to wait for a response from the server. If the server does not respond within the timeout period, a TimeoutError is raised.
+    :type timeout: int, optional.
     :returns: Full path to downloaded image
     :rtype: :class:`str`
     :Usage example:
@@ -673,22 +683,41 @@ def download(
         print(im_path)
         # Output:
         # /home/admin/work/projects/examples/avatar.jpeg
+
+        # if you need to specify some headers
+        headers = {
+            'User-Agent': 'Mozilla/5.0',
+        }
+        im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg', headers=headers)
+        print(im_path)
+        # Output:
+        # /home/admin/work/projects/examples/avatar.jpeg
+
     """
 
     def _download():
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
-            if progress is not None and type(progress) is Progress:
-                progress.set(0, total_size_in_bytes)
-            with open(save_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                    if progress is not None:
-                        if type(progress) is Progress:
-                            progress.iters_done_report(len(chunk))
-                        else:
-                            progress(len(chunk))
+        try:
+            with requests.get(url, stream=True, headers=headers, timeout=timeout) as r:
+                r.raise_for_status()
+                total_size_in_bytes = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
+                if progress is not None and type(progress) is Progress:
+                    progress.set(0, total_size_in_bytes)
+                with open(save_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        if progress is not None:
+                            if type(progress) is Progress:
+                                progress.iters_done_report(len(chunk))
+                            else:
+                                progress(len(chunk))
+        except requests.exceptions.Timeout as e:
+            message = (
+                "Request timed out. "
+                "This may be due to server-side security measures, network congestion, or other issues. "
+                "Please check your server logs for more information."
+            )
+            logger.warn(msg=message)
+            raise e
 
     if cache is None:
         _download()

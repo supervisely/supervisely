@@ -1,8 +1,13 @@
 import os
 import json
 import random
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict
 from collections import namedtuple
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 import supervisely as sly
 from supervisely.app import StateJson, DataJson

@@ -1,7 +1,7 @@
 Vue.component("html-video", {
-  props: ["time_to_set", "url", "mime_type", "is_playing"],
+  props: ["time_to_set", "url", "mime_type", "is_playing", "mask_path"],
   template: `
-<div>
+<div style="position: relative;">
     <video ref="video"
         width="100%"
         height="auto"
@@ -12,9 +12,26 @@ Vue.component("html-video", {
     >
         <source ref="video-data" :src="url" :type="mime_type">
     </video>
+    <div v-if="mask_path"
+        ref="mask"
+        style="
+            opacity: 0.4;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            background-size: contain;
+        " 
+        :style="overlayStyle">
+    </div>
 </div>
 `,
-
+  computed: {
+    overlayStyle() {
+      return {
+        backgroundImage: `url("${this.mask_path}")`,
+      };
+    },
+  },
   watch: {
     time_to_set(time) {
       if (Number.isFinite(time)) {

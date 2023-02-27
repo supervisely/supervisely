@@ -5,10 +5,7 @@
     <tr>
         <th v-for="col in data.{{{widget.widget_id}}}['header']">
             <div v-html="col['title']"></div>
-            <div
-                    v-if="col['subtitle']"
-                    style="color: #7f858e; font-weight: normal; font-size: 12px"
-            >
+            <div v-if="col['subtitle']">
                 {{col['subtitle']}}
             </div>
         </th>
@@ -19,12 +16,11 @@
         <td v-for="val, vidx in row">
             <div v-if="vidx === 0" style="text-align: left">
                 <el-radio
-                        style="display: flex"
-                        class="radio"
+                        style="display: flex;"
                         v-model="state.{{{widget.widget_id}}}.selectedRow"
                         :label="ridx"
                 >
-                    <sly-html-compiler :params="{ridx: ridx, vidx: vidx}" :template="val" :data="data" :state="state">
+                    <sly-html-compiler style="color:#000000;" :params="{ridx: ridx, vidx: vidx}" :template="val" :data="data" :state="state">
                     </sly-html-compiler>
 
                 </el-radio>

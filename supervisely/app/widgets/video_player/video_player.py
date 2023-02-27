@@ -11,6 +11,7 @@ class VideoPlayer(Widget):
 
         self._url = url
         self._mime_type = mime_type
+        self._mask_path = None
 
         self._current_timestamp = 0
         self._is_playing = False
@@ -24,13 +25,14 @@ class VideoPlayer(Widget):
         return {
             "url": self._url,
             "mimeType": self._mime_type,
+            "maskPath": self._mask_path,
         }
 
     def get_json_state(self):
         return {
             "currentTime": 0,
             "timeToSet": 0,
-            "isPlaying": False
+            "isPlaying": False,
         }
 
     @property
@@ -75,3 +77,13 @@ class VideoPlayer(Widget):
         StateJson()[self.widget_id]["timeToSet"] = value
         StateJson().send_changes()
         return self._current_timestamp
+
+    def draw_mask(self, path):
+        self._mask_path = path
+        DataJson()[self.widget_id]["maskPath"] = self._mask_path
+        DataJson().send_changes()
+
+    def hide_mask(self):
+        self._mask_path = None
+        DataJson()[self.widget_id]["maskPath"] = self._mask_path
+        DataJson().send_changes()

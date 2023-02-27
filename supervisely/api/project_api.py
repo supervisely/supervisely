@@ -950,3 +950,29 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         server_meta = ProjectMeta.from_json(meta_json)
         meta.obj_classes.refresh_ids_from(server_meta.obj_classes)
         meta.tag_metas.refresh_ids_from(server_meta.tag_metas)
+
+    def move(self, id: int, workspace_id: int) -> None:
+        """
+        Move project between workspaces within current team.
+
+        :param id: Project ID
+        :type id: int
+        :param workspace_id: Workspace ID the project will move in
+        :type workspace_id: int
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            workspace_id = 688
+            project_id = 17173
+
+            api.project.move(id=project_id, workspace_id=workspace_id)
+        """
+        self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Union
 from supervisely.app.jinja2 import create_env
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -9,19 +9,22 @@ class RadioTable(Widget):
         self,
         columns: List[str],
         rows: List[List[str]],
-        subtitles: dict = {},  # col_name -> subtitle
-        column_formatters: dict = {},
+        subtitles: Union[Dict[str, str], List] = {},  # col_name -> subtitle
+        column_formatters: Dict = {},
         widget_id: str = None,
     ):
 
-        self.columns = columns
+        self._columns = columns
         self._rows = rows
-        self.subtitles = subtitles
-        self.column_formatters = column_formatters
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
+        self._subtitles = subtitles
+        self._column_formatters = column_formatters
 
         self._header = []
-        for col in self.columns:
-            self._header.append({"title": col, "subtitle": self.subtitles.get(col)})
+
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
 
         self._frows = []
 
@@ -40,7 +43,7 @@ class RadioTable(Widget):
         return {"selectedRow": 0}
 
     def format_value(self, column_name: str, value):
-        fn = self.column_formatters.get(column_name, self.default_formatter)
+        fn = self._column_formatters.get(column_name, self.default_formatter)
         return fn(f"data.{self.widget_id}.raw_rows_data[params.ridx][params.vidx]")
 
     def default_formatter(self, value):
@@ -62,12 +65,57 @@ class RadioTable(Widget):
                 frow.append(self.format_value(col, val))
             self._frows.append(frow)
 
-    def get_selected_row(self, state):
+    def get_selected_row(self, state=StateJson()):
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = widget_actual_state["selectedRow"]
             return self.rows[selected_row_index]
+
+    def get_selected_row_index(self, state=StateJson()):
+        widget_actual_state = state[self.widget_id]
+        widget_actual_data = DataJson()[self.widget_id]
+        if widget_actual_state is not None and widget_actual_data is not None:
+            return widget_actual_state["selectedRow"]
+
+    @property
+    def columns(self) -> List[str]:
+        return self._columns
+
+    @property
+    def subtitles(self) -> List[str]:
+        return self._subtitles
+
+    def set_columns(
+        self, columns: List[str], subtitles: Union[Dict[str, str], List[str]] = {}
+    ) -> None:
+        self._columns = columns
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
+        self._subtitles = subtitles
+        self._header = []
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
+        DataJson()[self.widget_id]["header"] = self._header
+        DataJson().send_changes()
+        self.rows = [[] * len(columns)]
+
+    def set_data(
+        self,
+        columns: List[str],
+        rows: List[List[str]],
+        subtitles: Union[Dict[str, str], List[str]] = {},
+    ) -> None:
+        self._columns = columns
+        if isinstance(subtitles, dict):
+            subtitles = [subtitles[col] for col in columns]
+        self._subtitles = subtitles
+        self._header = []
+        for col, subtitle in zip(columns, subtitles):
+            self._header.append({"title": col, "subtitle": subtitle})
+        DataJson()[self.widget_id]["header"] = self._header
+        DataJson().send_changes()
+        self.rows = rows
 
     @property
     def rows(self):

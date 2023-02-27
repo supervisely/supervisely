@@ -1,16 +1,18 @@
 import json
 import os
+import requests
+from requests.structures import CaseInsensitiveDict
 import uuid
 import time
 from functools import partial
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
 from fastapi import Form, Response, UploadFile, status
 from supervisely._utils import (
-    is_production,
-    is_development,
     is_debug_with_sly_net,
     rand_str,
+    is_production,
 )
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
@@ -26,9 +28,11 @@ import yaml
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.app.fastapi.subapp import Application
-from supervisely.app.content import StateJson, get_data_dir
-from supervisely.app.fastapi.request import Request
+from supervisely.app.content import get_data_dir, StateJson
+from fastapi import Request
+
 from supervisely.api.api import Api
+from supervisely.app.widgets import Widget
 from supervisely.nn.prediction_dto import Prediction
 import supervisely.app.development as sly_app_development
 from supervisely.imaging.color import get_predefined_colors
@@ -37,6 +41,7 @@ from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
+import supervisely.nn.inference.gui as GUI
 
 try:
     from typing import Literal
@@ -48,14 +53,17 @@ except ImportError:
 class Inference:
     def __init__(
         self,
-        location: Optional[
-            Union[str, List[str]]
-        ] = None,  # folders of files with model or configs, from Team Files or external links
+        model_dir: Optional[str] = None,
         custom_inference_settings: Optional[
             Union[Dict[str, Any], str]
         ] = None,  # dict with settings or path to .yml file
-        sliding_window_mode: Literal["basic", "advanced", "none"] = "basic",
+        sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
+        use_gui: Optional[bool] = False,
     ):
+        if model_dir is None:
+            model_dir = os.path.join(get_data_dir(), "models")
+            fs.mkdir(model_dir)
+        self._model_dir = model_dir
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -71,62 +79,11 @@ class Inference:
             else:
                 raise FileNotFoundError(f"{custom_inference_settings} file not found.")
         self._custom_inference_settings = custom_inference_settings
-        self._headless = True
+
+        self._use_gui = use_gui
+        self._gui = None
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
-
-        self._prepare_model_files(location)
-
-    def _download_from_location(self, location_link, local_files_path):
-        if fs.is_on_agent(location_link) or is_production():
-            team_id = env.team_id()
-            basename = os.path.basename(os.path.normpath(location_link))
-            local_path = os.path.join(local_files_path, basename)
-            progress = Progress(f"Downloading {basename}...", 1, is_size=True, need_info_log=True)
-            if fs.dir_exists(location_link) or fs.file_exists(location_link):
-                # only during debug, has no effect in production
-                local_path = os.path.abspath(location_link)
-            elif self.api.file.dir_exists(team_id, location_link) and location_link.endswith(
-                "/"
-            ):  # folder from Team Files
-                logger.info(f"Remote directory in Team Files: {location_link}")
-                logger.info(f"Local directory: {local_path}")
-                sizeb = self.api.file.get_directory_size(team_id, location_link)
-                progress.set(current=0, total=sizeb)
-                self.api.file.download_directory(
-                    team_id,
-                    location_link,
-                    local_path,
-                    progress.iters_done_report,
-                )
-                print(f"📥 Directory {basename} has been successfully downloaded from Team Files")
-            elif self.api.file.exists(team_id, location_link):  # file from Team Files
-                file_info = self.api.file.get_info_by_path(env.team_id(), location_link)
-                progress.set(current=0, total=file_info.sizeb)
-                self.api.file.download(
-                    team_id, location_link, local_path, progress_cb=progress.iters_done_report
-                )
-                print(f"📥 File {basename} has been successfully downloaded from Team Files")
-            else:  # external url
-                fs.download(location_link, local_path, progress=progress)
-                print(f"📥 File {basename} has been successfully downloaded.")
-            print(f"File {basename} path: {local_path}")
-        else:
-            local_path = os.path.abspath(location_link)
-        return local_path
-
-    def _prepare_model_files(self, location: Optional[Union[str, List[str]]] = None):
-        self._location = None
-        if location is None:
-            return
-        local_files_path = os.path.join(get_data_dir(), "model")
-        fs.mkdir(local_files_path)
-        if isinstance(location, str):
-            self._location = self._download_from_location(location, local_files_path)
-        else:
-            self._location = []
-            for location_link in location:
-                self._location.append(self._download_from_location(location_link, local_files_path))
 
     def _prepare_device(self, device):
         if device is None:
@@ -140,16 +97,162 @@ class Inference:
                 )
                 device = "cpu"
 
-    def _get_templates_dir(self):
-        return None
-        # raise NotImplementedError("Have to be implemented in child class")
+    def get_ui(self) -> Widget:
+        if not self._use_gui:
+            return None
+        return self.gui.get_ui()
 
-    def _get_layout(self):
+    def get_ui_class(self) -> GUI.BaseInferenceGUI:
+        return GUI.InferenceGUI
+
+    def support_custom_models(self) -> bool:
+        return True
+
+    def add_content_to_pretrained_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
         return None
-        # raise NotImplementedError("Have to be implemented in child class")
+
+    def add_content_to_custom_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
+        return None
+
+    def set_custom_model_link_type(self) -> Literal["file", "folder"]:
+        return "file"
+
+    def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
+        return []
+
+    def download(self, src_path: str, dst_path: str = None):
+        basename = os.path.basename(os.path.normpath(src_path))
+        if dst_path is None:
+            dst_path = os.path.join(self._model_dir, basename)
+        if self.gui is not None:
+            progress = self.gui.download_progress
+        else:
+            progress = None
+
+        if fs.dir_exists(src_path) or fs.file_exists(
+            src_path
+        ):  # only during debug, has no effect in production
+            dst_path = os.path.abspath(src_path)
+            logger.info(f"File {dst_path} found.")
+        elif src_path.startswith("/"):  # folder from Team Files
+            team_id = env.team_id()
+
+            if src_path.endswith("/") and self.api.file.dir_exists(team_id, src_path):
+
+                def download_dir(team_id, src_path, dst_path, progress_cb=None):
+                    self.api.file.download_directory(
+                        team_id,
+                        src_path,
+                        dst_path,
+                        progress_cb=progress_cb,
+                    )
+
+                logger.info(f"Remote directory in Team Files: {src_path}")
+                logger.info(f"Local directory: {dst_path}")
+                sizeb = self.api.file.get_directory_size(team_id, src_path)
+
+                if progress is None:
+                    download_dir(team_id, src_path, dst_path)
+                else:
+                    self.gui.download_progress.show()
+                    with progress(
+                        message="Downloading directory from Team Files...",
+                        total=sizeb,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as pbar:
+                        download_dir(team_id, src_path, dst_path, pbar.update)
+                logger.info(
+                    f"📥 Directory {basename} has been successfully downloaded from Team Files"
+                )
+                logger.info(f"Directory {basename} path: {dst_path}")
+            elif self.api.file.exists(team_id, src_path):  # file from Team Files
+
+                def download_file(team_id, src_path, dst_path, progress_cb=None):
+                    self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
+
+                file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
+                if progress is None:
+                    download_file(team_id, src_path, dst_path)
+                else:
+                    self.gui.download_progress.show()
+                    with progress(
+                        message="Downloading file from Team Files...",
+                        total=file_info.sizeb,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as pbar:
+                        download_file(team_id, src_path, dst_path, pbar.update)
+                logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
+                logger.info(f"File {basename} path: {dst_path}")
+        else:  # external url
+            if not fs.dir_exists(os.path.dirname(dst_path)):
+                fs.mkdir(os.path.dirname(dst_path))
+
+            def download_external_file(url, save_path, progress=None):
+                def download_content(save_path, progress_cb=None):
+                    with open(save_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            if progress is not None:
+                                progress_cb(len(chunk))
+
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status()
+                    total_size = int(CaseInsensitiveDict(r.headers).get("Content-Length", "0"))
+                    if progress is None:
+                        download_content(save_path)
+                    else:
+                        with progress(
+                            message="Downloading file from external URL",
+                            total=total_size,
+                            unit="bytes",
+                            unit_scale=True,
+                        ) as pbar:
+                            download_content(save_path, pbar.update)
+
+            if progress is None:
+                download_external_file(src_path, dst_path)
+            else:
+                self.gui.download_progress.show()
+                download_external_file(src_path, dst_path, progress=progress)
+            logger.info(f"📥 File {basename} has been successfully downloaded from external URL.")
+            logger.info(f"File {basename} path: {dst_path}")
+        return dst_path
+
+    def _preprocess_models_list(self, models_list: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        # fill skipped columns
+        all_columns = []
+        for model_dict in models_list:
+            cols = model_dict.keys()
+            all_columns.extend([col for col in cols if col not in all_columns])
+
+        empty_cells = {}
+        for col in all_columns:
+            empty_cells[col] = []
+        # fill empty cells by "-", write empty cells and set cells in column order
+        for i in range(len(models_list)):
+            model_dict = OrderedDict()
+            for col in all_columns:
+                if col not in models_list[i].keys():
+                    model_dict[col] = "-"
+                    empty_cells[col].append(True)
+                else:
+                    model_dict[col] = models_list[i][col]
+                    empty_cells[col].append(False)
+            models_list[i] = model_dict
+        # remove empty columns
+        for col, cells in empty_cells.items():
+            if all(cells):
+                for i, model_dict in enumerate(models_list):
+                    del model_dict[col]
+
+        return models_list
 
     def load_on_device(
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu"
+        self,
+        model_dir: str,
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
@@ -160,16 +263,12 @@ class Inference:
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "model_files": self.location,
             "number_of_classes": len(self.get_classes()),
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
+            "tracking_on_videos_support": True,
         }
-
-    @property
-    def location(self) -> Union[str, List[str]]:
-        return self._location
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -180,6 +279,10 @@ class Inference:
         if self._api is None:
             self._api = Api()
         return self._api
+
+    @property
+    def gui(self) -> GUI.BaseInferenceGUI:
+        return self._gui
 
     def _get_obj_class_shape(self):
         raise NotImplementedError("Have to be implemented in child class")
@@ -229,6 +332,10 @@ class Inference:
         return ann
 
     @property
+    def model_dir(self) -> str:
+        return self._model_dir
+
+    @property
     def custom_inference_settings(self) -> Union[Dict[str, any], str]:
         return self._custom_inference_settings
 
@@ -254,10 +361,9 @@ class Inference:
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             predictions = self.predict_raw(image_path=image_path, settings=settings)
-            ann = self._predictions_to_annotation(image_path, predictions)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-            ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(image_path, predictions)
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
@@ -475,9 +581,11 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
+            result = {"annotation": ann.to_json(), "data": data_to_return}
             if async_inference_request_uuid is not None:
                 sly_progress.iter_done()
-            results.append({"annotation": ann.to_json(), "data": data_to_return})
+                inference_request["pending_results"].append(result)
+            results.append(result)
             logger.debug(f"Frame {i+1} done.")
 
         fs.remove_dir(video_images_path)
@@ -491,14 +599,51 @@ class Inference:
             "is_inferring": True,
             "cancel_inference": False,
             "result": None,
+            "pending_results": [],
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
     def _on_inference_end(self, future, inference_request_uuid):
-        logger.debug("_on_inference_end() callback")
-        self._inference_requests[inference_request_uuid]["is_inferring"] = False
+        logger.debug("callback: on_inference_end()")
+        inference_request = self._inference_requests.get(inference_request_uuid)
+        if inference_request is not None:
+            inference_request["is_inferring"] = False
 
     def serve(self):
+        if self._use_gui:
+            models = self.get_models()
+            support_pretrained_models = True
+            if isinstance(models, list):
+                if len(models) > 0:
+                    models = self._preprocess_models_list(models)
+                else:
+                    support_pretrained_models = False
+            elif isinstance(models, dict):
+                for model_group in models.keys():
+                    models[model_group]["checkpoints"] = self._preprocess_models_list(
+                        models[model_group]["checkpoints"]
+                    )
+            custom_model_link_type = self.set_custom_model_link_type()
+            self._gui = self.get_ui_class()(
+                models,
+                self.api,
+                support_pretrained_models=support_pretrained_models,
+                support_custom_models=self.support_custom_models(),
+                add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
+                add_content_to_custom_tab=self.add_content_to_custom_tab,
+                custom_model_link_type=custom_model_link_type,
+            )
+
+            @self.gui.serve_button.click
+            def load_model():
+                Progress("Deploying model ...", 1)
+                device = self.gui.get_device()
+                self.load_on_device(self._model_dir, device)
+                self.gui.set_deployed()
+
+        else:
+            Progress("Deploying model ...", 1)
+
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
             logger.warn(
@@ -510,11 +655,13 @@ class Inference:
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
         else:
-            self._task_id = env.task_id()
+            self._task_id = env.task_id() if is_production() else None
 
-        # headless=self._headless,
-        self._app = Application(layout=self._get_layout(), templates_dir=self._get_templates_dir())
+        self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
+
+        if not self._use_gui:
+            Progress("Model deployed", 1).iter_done_report()
 
         @server.post(f"/get_session_info")
         def get_session_info():
@@ -530,20 +677,23 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            # TODO: уточнить ждет ли применялка лист или дикт тоже понимает
-            return self._inference_image_id(request.api, request.state)
+            logger.debug(f"'inference_image_id' request in json format:{request.json()}")
+            return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            return self._inference_image_url(request.api, request.state)
+            logger.debug(f"'inference_image_url' request in json format:{request.json()}")
+            return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            return self._inference_batch_ids(request.api, request.state)
+            logger.debug(f"'inference_batch_ids' request in json format:{request.json()}")
+            return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            return {"ann": self._inference_video_id(request.api, request.state)}
+            logger.debug(f"'inference_video_id' request in json format:{request.json()}")
+            return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
         def inference_image(
@@ -584,12 +734,16 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
+            logger.debug(f"'inference_video_id_async' request in json format:{request.json()}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
-                self._inference_video_id, request.api, request.state, inference_request_uuid
+                self._inference_video_id,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
             )
             end_callback = partial(
                 self._on_inference_end, inference_request_uuid=inference_request_uuid
@@ -605,27 +759,90 @@ class Inference:
             }
 
         @server.post(f"/get_inference_progress")
-        def get_inference_progress(request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
-            if not inference_request_uuid:
+        def get_inference_progress(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
+
             inference_request = self._inference_requests[inference_request_uuid].copy()
-            sly_progress: Progress = inference_request["progress"]
-            inference_request["progress"] = {
-                "current": sly_progress.current,
-                "total": sly_progress.total,
-            }
-            logger.debug(
-                f"Sending inference progress with uuid {inference_request_uuid}:",
-                extra=inference_request,
+            inference_request["progress"] = _convert_sly_progress_to_dict(
+                inference_request["progress"]
             )
+
+            # Logging
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, inference_request
+            )
+            logger.debug(
+                f"Sending inference progress with uuid:",
+                extra=log_extra,
+            )
+
+            # Ger rid of `pending_results` to less response size
+            inference_request["pending_results"] = []
+            return inference_request
+
+        @server.post(f"/pop_inference_results")
+        def pop_inference_results(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            # Copy results
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+            inference_request["pending_results"] = inference_request["pending_results"].copy()
+
+            # Clear the queue `pending_results`
+            self._inference_requests[inference_request_uuid]["pending_results"].clear()
+
+            inference_request["progress"] = _convert_sly_progress_to_dict(
+                inference_request["progress"]
+            )
+
+            # Logging
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, inference_request
+            )
+            logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return inference_request
 
         @server.post(f"/stop_inference")
-        def stop_inference(request: Request):
-            inference_request_uuid = request.state.get("inference_request_uuid")
-            if not inference_request_uuid:
+        def stop_inference(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
             inference_request = self._inference_requests[inference_request_uuid]
             inference_request["cancel_inference"] = True
             return {"message": "Inference will be stopped.", "success": True}
+
+        @server.post(f"/clear_inference_request")
+        def clear_inference_request(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+            del self._inference_requests[inference_request_uuid]
+            logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
+            return {"success": True}
+
+
+def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
+    log_extra = {
+        "uuid": inference_request_uuid,
+        "progress": inference_request["progress"],
+        "is_inferring": inference_request["is_inferring"],
+        "cancel_inference": inference_request["cancel_inference"],
+        "has_result": inference_request["result"] is not None,
+        "pending_results": len(inference_request["pending_results"]),
+    }
+    return log_extra
+
+
+def _convert_sly_progress_to_dict(sly_progress: Progress):
+    return {
+        "current": sly_progress.current,
+        "total": sly_progress.total,
+    }

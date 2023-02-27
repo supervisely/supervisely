@@ -158,6 +158,8 @@ class ClassesTable(Widget):
                     if geo_type.geometry_name() == line["shape"]:
                         icon = icon_text
                         break
+                if line["shape"] == "graph":
+                    line["shape"] = "graph (keypoints)"
                 table_line.extend(
                     [
                         {
