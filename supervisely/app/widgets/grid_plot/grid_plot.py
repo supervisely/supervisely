@@ -10,11 +10,11 @@ from supervisely.app.content import StateJson, DataJson
 class GridPlot(Widget):
     def __init__(
         self,
-        data: List[Dict or str] = [],
+        data: List[Dict or str],
         columns: int = 1,
         gap: int = 10,
         widget_id: str = None,
-    ):  
+    ):
         self._widgets = {}
         self._columns = columns
         self._gap = gap
@@ -23,7 +23,7 @@ class GridPlot(Widget):
             if isinstance(plot_data, dict):
                 # self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data.get('series', []), show_legend=plot_data.get('show_legend', True))
                 # передача параметров таким образом в конечном итоге приводит к ошибке JsonPatchConflict
-                self._widgets[plot_data['title']] = LinePlot(**plot_data)
+                self._widgets[plot_data["title"]] = LinePlot(**plot_data)
             else:
                 self._widgets[plot_data] = LinePlot(title=plot_data, series=[])
 
@@ -74,18 +74,22 @@ class GridPlot(Widget):
         return None
 
     def add_scalar(self, identifier: str, y, x):
-        plot_title, series_name = identifier.split('/')
+        plot_title, series_name = identifier.split("/")
         _, series = self._widgets[plot_title].get_series_by_name(series_name)
 
         if series is not None:
             self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": y}])
         else:
             self._widgets[plot_title].add_series(name=series_name, x=[x], y=[y])
-    
+
     def add_scalars(self, plot_title: str, new_values: dict, x):
         for series_name in new_values.keys():
             _, series = self._widgets[plot_title].get_series_by_name(series_name)
             if series is not None:
-                self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[{"x": x, "y": new_values[series_name]}])
+                self._widgets[plot_title].add_to_series(
+                    name_or_id=series_name, data=[{"x": x, "y": new_values[series_name]}]
+                )
             else:
-                self._widgets[plot_title].add_series(name=series_name, x=[x], y=[new_values[series_name]])
+                self._widgets[plot_title].add_series(
+                    name=series_name, x=[x], y=[new_values[series_name]]
+                )
