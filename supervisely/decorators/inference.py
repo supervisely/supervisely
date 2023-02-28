@@ -59,7 +59,11 @@ def _scale_ann_to_original_size(
             new_nodes = []
             for id, node in label.geometry.nodes.items():
                 new_nodes.append(
-                    Node(label=id, row=node.location.row + rect.top, col=node.location.col + rect.left)
+                    Node(
+                        label=id,
+                        row=node.location.row + rect.top,
+                        col=node.location.col + rect.left,
+                    )
                 )
 
             updated_geometry = GraphNodes(new_nodes)
