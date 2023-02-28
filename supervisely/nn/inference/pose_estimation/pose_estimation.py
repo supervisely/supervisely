@@ -158,4 +158,7 @@ class PoseEstimation(Inference):
             ann = self._predictions_to_annotation(image_path, predictions)
             return ann
         except ValueError:
+            logger.info(
+                "No keypoints were detected. Perhaps there are no supported target objects in provided bounding box"
+            )
             return None
