@@ -154,5 +154,8 @@ class PoseEstimation(Inference):
     ):
         logger.debug("Input path", extra={"path": image_path})
         predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
-        return ann
+        try:
+            ann = self._predictions_to_annotation(image_path, predictions)
+            return ann
+        except ValueError:
+            return None
