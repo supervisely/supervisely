@@ -37,44 +37,41 @@ def _scale_ann_to_original_size(
     ann: Annotation, original_size: Tuple[int, int], rect: Rectangle
 ) -> Annotation:
     updated_labels = []
-    if ann is not None:
-        for label in ann.labels:
-            if type(label.geometry) is Rectangle:
-                updated_geometry = Rectangle(
-                    top=label.geometry.top + rect.top,
-                    left=label.geometry.left + rect.left,
-                    bottom=label.geometry.bottom + rect.top,
-                    right=label.geometry.right + rect.left,
-                )
+    for label in ann.labels:
+        if type(label.geometry) is Rectangle:
+            updated_geometry = Rectangle(
+                top=label.geometry.top + rect.top,
+                left=label.geometry.left + rect.left,
+                bottom=label.geometry.bottom + rect.top,
+                right=label.geometry.right + rect.left,
+            )
 
-            if type(label.geometry) is Bitmap:
-                bitmap_data = label.geometry.data
-                bitmap_origin = PointLocation(
-                    label.geometry.origin.row + rect.top,
-                    label.geometry.origin.col + rect.left,
-                )
+        if type(label.geometry) is Bitmap:
+            bitmap_data = label.geometry.data
+            bitmap_origin = PointLocation(
+                label.geometry.origin.row + rect.top,
+                label.geometry.origin.col + rect.left,
+            )
 
-                updated_geometry = Bitmap(data=bitmap_data, origin=bitmap_origin)
+            updated_geometry = Bitmap(data=bitmap_data, origin=bitmap_origin)
 
-            if type(label.geometry) is GraphNodes:
-                new_nodes = []
-                for id, node in label.geometry.nodes.items():
-                    new_nodes.append(
-                        Node(
-                            label=id,
-                            row=node.location.row + rect.top,
-                            col=node.location.col + rect.left,
-                        )
+        if type(label.geometry) is GraphNodes:
+            new_nodes = []
+            for id, node in label.geometry.nodes.items():
+                new_nodes.append(
+                    Node(
+                        label=id,
+                        row=node.location.row + rect.top,
+                        col=node.location.col + rect.left,
                     )
+                )
 
-                updated_geometry = GraphNodes(new_nodes)
+            updated_geometry = GraphNodes(new_nodes)
 
-            updated_labels.append(label.clone(geometry=updated_geometry))
+        updated_labels.append(label.clone(geometry=updated_geometry))
 
-        ann = ann.clone(img_size=original_size, labels=updated_labels)
-        return ann
-    else:
-        return None
+    ann = ann.clone(img_size=original_size, labels=updated_labels)
+    return ann
 
 
 def _apply_agnostic_nms(labels: List[Label], iou_thres: Optional[float] = 0.5) -> List[Label]:

@@ -495,10 +495,7 @@ class Inference:
             data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        if ann is not None:
-            return {"annotation": ann.to_json(), "data": data_to_return}
-        else:
-            return {"annotation": None, "data": data_to_return}
+        return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Inferring image_url...", extra={"state": state})
