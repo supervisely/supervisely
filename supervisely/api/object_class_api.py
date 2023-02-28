@@ -71,7 +71,9 @@ class ObjectClassApi(ModuleApi):
         """
         return "ObjectClassInfo"
 
-    def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, project_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         List of ObjClasses in the given Project.
 
@@ -157,7 +159,11 @@ class ObjectClassApi(ModuleApi):
 
     def _get_info_by_id(self, id, method, fields=None):
         response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)
-        return self._convert_json_info(response.json(), skip_missing=True) if (response is not None) else None
+        return (
+            self._convert_json_info(response.json(), skip_missing=True)
+            if (response is not None)
+            else None
+        )
 
     def get_info_by_id(self, id):
         return self._get_info_by_id(
