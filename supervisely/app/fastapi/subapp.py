@@ -69,14 +69,16 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         @app.post("/session-info")
         async def send_session_info(request: Request):
-            # server_address = os.environ.get(SERVER_ADDRESS)
-            # if server_address is not None:
-            # server_address = Api.normalize_server_address(server_address)
+            server_address = "/"
+            if is_development():
+                server_address = sly_env.server_address()
+                if server_address is not None:
+                    server_address = Api.normalize_server_address(server_address)
 
             response = JSONResponse(
                 content={
                     TASK_ID: os.environ.get(TASK_ID),
-                    SERVER_ADDRESS: "/",
+                    SERVER_ADDRESS: server_address,
                     API_TOKEN: os.environ.get(API_TOKEN),
                 }
             )
@@ -174,7 +176,6 @@ def _init(
 
         @app.middleware("http")
         async def get_state_from_request(request: Request, call_next):
-
             await StateJson.from_request(request)
             if not ("application/json" not in request.headers.get("Content-Type", "")):
                 # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
