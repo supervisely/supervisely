@@ -24,42 +24,46 @@ class SessionJSON:
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
     ):
-        """A convenient class for inference of deployed models.
+        """
+        A convenient class for inference of deployed models.
         This class will return raw JSON predictions (dict).
-        If you want to work with `sly.Annotation` format, please use the `sly.nn.inference.Session` class.
+        If you want to work with `sly.Annotation` format, please use `sly.nn.inference.Session` class.
 
-        You need first to serve the NN model you want and get its `task_id`.
-        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
+        You need first to serve NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
+        :param api: initialized :class:`sly.Api` object.
+        :type api: sly.Api
+        :param task_id: the task_id of served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
+        :type task_id: int, optional
+        :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
+        :type session_url: str, optional
+        :param inference_settings: a dict or a path to YAML file with settings, defaults to None
+        :type inference_settings: Union[dict, str], optional
 
-        Example:
-        ```
-        task_id = 27001
-        inference_session = sly.nn.inference.Session(
-            api,
-            task_id=task_id,
-        )
-        print(inference_session.get_session_info())
 
-        image_id = 17551748
-        pred = inference_session.inference_image_id(image_id)
-        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
-        ```
-
-        Args:
-            api (sly.Api): initialized sly.Api object.
-            task_id (int, optional): if None, the `session_url` will be used.
-            session_url (str, optional): if None, the `task_id` will be used.
-            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
-        """
-        if (task_id is None and session_url is None) or (
-            task_id is not None and session_url is not None
-        ):
-            raise RuntimeError(
-                "exactly one of `task_id`, `session_url` or `server_url` has to be passed as parameter."
+        :Usage example:
+         .. code-block:: python
+            task_id = 27001
+            session = sly.nn.inference.SessionJSON(
+                api,
+                task_id=task_id,
             )
+            print(session.get_session_info())
+
+            image_id = 17551748
+            pred = session.inference_image_id(image_id)
+            predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+
+        """
+        assert not (
+            task_id is None and session_url is None
+        ), "Either `task_id` or `session_url` must be passed."
+        assert (
+            task_id is None or session_url is None
+        ), "Either `task_id` or `session_url` must be passed (not both)."
 
         self.api = api
         self._task_id = task_id
@@ -422,35 +426,38 @@ class Session(SessionJSON):
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
     ):
-        """A convenient class for inference of deployed models.
+        """
+        A convenient class for inference of deployed models.
         This class will return predictions in the `sly.Annotation` format.
-        If you want to work with raw JSON dicts, please use the `sly.nn.inference.SessionJSON` class.
+        If you want to work with raw JSON dicts, please use `sly.nn.inference.SessionJSON` class.
 
-        You need first to serve the NN model you want and get its `task_id`.
-        The `task_id` can be obtained from the Supervisely platform going to `START` -> `App sessions` page.
+        You need first to serve NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
+        :param api: initialized :class:`sly.Api` object.
+        :type api: sly.Api
+        :param task_id: the task_id of served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
+        :type task_id: int, optional
+        :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
+        :type session_url: str, optional
+        :param inference_settings: a dict or a path to YAML file with settings, defaults to None
+        :type inference_settings: Union[dict, str], optional
 
-        Example:
-        ```
-        task_id = 27001
-        inference_session = sly.nn.inference.Session(
-            api,
-            task_id=task_id,
-        )
-        print(inference_session.get_session_info())
 
-        image_id = 17551748
-        pred = inference_session.inference_image_id(image_id)
-        predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
-        ```
+        :Usage example:
+         .. code-block:: python
+            task_id = 27001
+            session = sly.nn.inference.Session(
+                api,
+                task_id=task_id,
+            )
+            print(session.get_session_info())
 
-        Args:
-            api (sly.Api): initialized sly.Api object.
-            task_id (int, optional): if None, the `session_url` will be used.
-            session_url (str, optional): if None, the `task_id` will be used.
-            inference_settings (Union[dict, str], optional): a dict or a path to YAML file with settings.
+            image_id = 17551748
+            predicted_annotation = session.inference_image_id(image_id)
+
         """
         super().__init__(api, task_id, session_url, inference_settings)
 
