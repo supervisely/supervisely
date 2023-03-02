@@ -3,6 +3,7 @@ from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
 from supervisely.project.project_type import ProjectType
+import time
 
 
 class FileViewer(Widget):
@@ -59,6 +60,7 @@ class FileViewer(Widget):
 
     @loading.setter
     def loading(self, value):
+        time.sleep(0.1)
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
