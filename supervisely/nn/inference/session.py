@@ -36,7 +36,7 @@ class SessionJSON:
 
         :param api: initialized :class:`sly.Api` object.
         :type api: sly.Api
-        :param task_id: the task_id of served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
+        :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
         :type session_url: str, optional
@@ -438,7 +438,7 @@ class Session(SessionJSON):
 
         :param api: initialized :class:`sly.Api` object.
         :type api: sly.Api
-        :param task_id: the task_id of served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
+        :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
         :type session_url: str, optional
