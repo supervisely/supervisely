@@ -2511,6 +2511,7 @@ def upload_project(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
             )
 
+        progress_cb = None
         image_ids = [img_info.id for img_info in uploaded_img_infos]
 
         if log_progress and progress_cb is None:
@@ -2520,6 +2521,7 @@ def upload_project(
             )
             progress_cb = ds_progress.iters_done_report
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
+        progress_cb = None
 
     return project.id, project.name
 
