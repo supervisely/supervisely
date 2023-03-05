@@ -12,7 +12,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
     RemoveableModuleApi,
 )
-from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely._utils import is_development, abs_url, compress_image_url, get_datetime
 
 
 class DatasetInfo(NamedTuple):
@@ -36,6 +36,14 @@ class DatasetInfo(NamedTuple):
             res = abs_url(res)
         res = compress_image_url(url=res, height=200)
         return res
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
@@ -162,9 +170,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []},
         )
 
-    def get_info_by_id(
-        self, id: int, raise_error: Optional[bool] = False
-    ) -> DatasetInfo:
+    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> DatasetInfo:
         """
         Get Datasets information by ID.
 

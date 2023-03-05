@@ -6,7 +6,7 @@ import json
 from typing import NamedTuple, List, Dict, Optional
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
-from supervisely._utils import take_with_default
+from supervisely._utils import take_with_default, get_datetime
 
 # from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
 STATE = "state"
@@ -132,6 +132,14 @@ class ModuleInfo(NamedTuple):
     meta: dict
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
     @staticmethod
     def from_json(data: dict) -> ModuleInfo:

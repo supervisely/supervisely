@@ -8,6 +8,7 @@ from supervisely.task.progress import Progress
 
 from collections import namedtuple
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
+from supervisely._utils import get_datetime
 
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,14 @@ class UserInfo(NamedTuple):
     last_login: str
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class UserApi(ModuleApiBase):
@@ -734,9 +743,7 @@ class UserApi(ModuleApiBase):
         df = pd.DataFrame(activity)
         return df
 
-    def add_to_team_by_login(
-        self, user_login: str, team_id: int, role_id: int
-    ) -> Dict[str, int]:
+    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> Dict[str, int]:
         """
         Invite User to Team with given role by login.
 

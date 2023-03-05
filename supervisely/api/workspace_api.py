@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import NamedTuple, List, Dict, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
+from supervisely._utils import get_datetime
 
 
 class WorkspaceInfo(NamedTuple):
@@ -16,6 +17,14 @@ class WorkspaceInfo(NamedTuple):
     team_id: int
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class WorkspaceApi(ModuleApi, UpdateableModule):
@@ -140,9 +149,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []},
         )
 
-    def get_info_by_id(
-        self, id: int, raise_error: Optional[bool] = False
-    ) -> WorkspaceInfo:
+    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> WorkspaceInfo:
         """
         Get Workspace information by ID.
 

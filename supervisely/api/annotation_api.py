@@ -10,7 +10,7 @@ from supervisely.annotation.label import Label
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.module_api import ApiField, ModuleApi
-from supervisely._utils import batched
+from supervisely._utils import batched, get_datetime
 
 
 class AnnotationInfo(NamedTuple):
@@ -23,6 +23,14 @@ class AnnotationInfo(NamedTuple):
     annotation: dict
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class AnnotationApi(ModuleApi):

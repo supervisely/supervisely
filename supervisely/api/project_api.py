@@ -21,7 +21,7 @@ from supervisely.api.module_api import (
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.annotation.annotation import TagCollection
-from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely._utils import is_development, abs_url, compress_image_url, get_datetime
 
 
 class ProjectNotFound(Exception):
@@ -71,6 +71,14 @@ class ProjectInfo(NamedTuple):
         if is_development():
             res = abs_url(res)
         return res
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
@@ -975,4 +983,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.move(id=project_id, workspace_id=workspace_id)
         """
-        self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})
+        self._api.post(
+            "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
+        )

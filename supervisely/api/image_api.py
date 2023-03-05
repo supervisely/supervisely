@@ -12,7 +12,7 @@ import urllib.parse
 import json
 
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely._utils import is_development, abs_url, compress_image_url, get_datetime
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.module_api import (
     ApiField,
@@ -129,6 +129,14 @@ class ImageInfo(NamedTuple):
             res = abs_url(res)
         res = compress_image_url(url=res)
         return res
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class ImageApi(RemoveableBulkModuleApi):

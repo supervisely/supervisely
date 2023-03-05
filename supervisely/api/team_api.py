@@ -8,6 +8,7 @@ from supervisely.task.progress import Progress
 
 from supervisely.api.module_api import ApiField, ModuleNoParent, UpdateableModule
 from supervisely.sly_logger import logger
+from supervisely._utils import get_datetime
 
 
 # @TODO - umar will add meta with review status and duration
@@ -133,6 +134,14 @@ class TeamInfo(NamedTuple):
     role: str
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class TeamApi(ModuleNoParent, UpdateableModule):
@@ -441,9 +450,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         filters = []
         if filter_user_id is not None:
-            filters.append(
-                {"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id}
-            )
+            filters.append({"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id})
         if filter_project_id is not None:
             filters.append(
                 {
@@ -453,9 +460,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 }
             )
         if filter_job_id is not None:
-            filters.append(
-                {"field": ApiField.JOB_ID, "operator": "=", "value": filter_job_id}
-            )
+            filters.append({"field": ApiField.JOB_ID, "operator": "=", "value": filter_job_id})
         if filter_actions is not None:
             if type(filter_actions) is not list:
                 raise TypeError(
@@ -463,9 +468,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                         type(filter_actions), list
                     )
                 )
-            filters.append(
-                {"field": ApiField.TYPE, "operator": "in", "value": filter_actions}
-            )
+            filters.append({"field": ApiField.TYPE, "operator": "in", "value": filter_actions})
 
         def _add_dt_filter(filters, dt, op):
             dt_iso = None
@@ -477,9 +480,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 dt_iso = dt.isoformat()
             else:
                 raise TypeError(
-                    "DT type must be string in ISO8601 format or datetime, not {}".format(
-                        type(dt)
-                    )
+                    "DT type must be string in ISO8601 format or datetime, not {}".format(type(dt))
                 )
             filters.append({"field": ApiField.DATE, "operator": op, "value": dt_iso})
 
@@ -502,9 +503,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             pass
         else:
             for page_idx in range(2, pages_count + 1):
-                temp_resp = self._api.post(
-                    method, {**data, "page": page_idx, "per_page": per_page}
-                )
+                temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
                 if progress_cb is not None:
