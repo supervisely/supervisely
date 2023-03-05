@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, NamedTuple
 
 from enum import IntEnum
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely._utils import get_datetime
 
 
 class RoleInfo(NamedTuple):
@@ -14,6 +15,14 @@ class RoleInfo(NamedTuple):
     role: str
     created_at: str
     updated_at: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class RoleApi(ModuleApiBase):
@@ -42,8 +51,7 @@ class RoleApi(ModuleApiBase):
     """
 
     class DefaultRole(IntEnum):
-        """
-        """
+        """ """
 
         ADMIN = 1
         """"""
@@ -68,17 +76,14 @@ class RoleApi(ModuleApiBase):
                      created_at='2019-12-10T14:31:41.878Z',
                      updated_at='2019-12-10T14:31:41.878Z')
         """
-        return [ApiField.ID,
-                ApiField.ROLE,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [ApiField.ID, ApiField.ROLE, ApiField.CREATED_AT, ApiField.UPDATED_AT]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **RoleInfo**.
         """
-        return 'RoleInfo'
+        return "RoleInfo"
 
     def get_list(self, filters: Optional[List[Dict[str, str]]] = None) -> List[RoleInfo]:
         """
@@ -100,10 +105,9 @@ class RoleApi(ModuleApiBase):
 
             roles = api.role.get_list()
         """
-        return self.get_list_all_pages('roles.list', {ApiField.FILTER: filters or []})
+        return self.get_list_all_pages("roles.list", {ApiField.FILTER: filters or []})
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return RoleInfo(**res._asdict())

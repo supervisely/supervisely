@@ -12,7 +12,7 @@ from pathlib import Path
 import urllib
 import re
 
-from supervisely._utils import batched, rand_str
+from supervisely._utils import batched, rand_str, get_datetime
 from supervisely.api.module_api import ModuleApiBase, ApiField
 import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -50,6 +50,14 @@ class FileInfo(NamedTuple):
     created_at: str
     updated_at: str
     full_storage_url: str
+
+    @property
+    def created(self):
+        return get_datetime(self.created_at)
+
+    @property
+    def updated(self):
+        return get_datetime(self.updated_at)
 
 
 class FileApi(ModuleApiBase):
@@ -221,7 +229,8 @@ class FileApi(ModuleApiBase):
             return self.list_on_agent(team_id, path, recursive)
 
         response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive}
+            "file-storage.list",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
         return response.json()
 
