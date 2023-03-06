@@ -12,34 +12,49 @@ class Checkbox(Widget):
         self,
         content: Union[Widget, str],
         checked: bool = False,
+        disabled: bool = False,
         widget_id: str = None,
     ):
         self._content = content
         self._checked = checked
+        self._disabled = disabled
         if type(self._content) is str:
             self._content = [Text(self._content)][0]
         self._changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        return {}
+        return {"disabled": self._disabled}
 
     def get_json_state(self) -> Dict:
-        return {"checked": self._checked}
+        return {
+            "checked": self._checked,
+            "disabled": self._disabled
+        }
 
     def is_checked(self):
         return StateJson()[self.widget_id]["checked"]
 
     def _set(self, checked: bool):
         self._checked = checked
+        self._disabled = disabled
         StateJson()[self.widget_id]["checked"] = self._checked
+        StateJson()[self.widget_id]["disabled"] = self._disabled
         StateJson().send_changes()
+        self._set_disabled()
+
+    def _set_disabled(self):
+        self._content.set_attr("disabled", self._disabled)
 
     def check(self):
         self._set(True)
 
     def uncheck(self):
         self._set(False)
+
+    def set_disabled(self, disabled: bool):  # New method.
+        self._disabled = disabled
+        self._set_disabled()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Checkbox.Routes.VALUE_CHANGED)
