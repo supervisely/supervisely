@@ -81,7 +81,16 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
 
         self._use_gui = use_gui
-        self._gui = None
+        if use_gui:
+            self.initialize_gui()
+
+            @self.gui.serve_button.click
+            def load_model():
+                Progress("Deploying model ...", 1)
+                device = self.gui.get_device()
+                self.load_on_device(self._model_dir, device)
+                self.gui.set_deployed()
+
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
 
@@ -102,8 +111,28 @@ class Inference:
             return None
         return self.gui.get_ui()
 
-    def get_ui_class(self) -> GUI.BaseInferenceGUI:
-        return GUI.InferenceGUI
+    def initialize_gui(self) -> None:
+        models = self.get_models()
+        support_pretrained_models = True
+        if isinstance(models, list):
+            if len(models) > 0:
+                models = self._preprocess_models_list(models)
+            else:
+                support_pretrained_models = False
+        elif isinstance(models, dict):
+            for model_group in models.keys():
+                models[model_group]["checkpoints"] = self._preprocess_models_list(
+                    models[model_group]["checkpoints"]
+                )
+        self._gui = GUI.InferenceGUI(
+            models,
+            self.api,
+            support_pretrained_models=support_pretrained_models,
+            support_custom_models=self.support_custom_models(),
+            add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
+            add_content_to_custom_tab=self.add_content_to_custom_tab,
+            custom_model_link_type=self.get_custom_model_link_type(),
+        )
 
     def support_custom_models(self) -> bool:
         return True
@@ -114,7 +143,7 @@ class Inference:
     def add_content_to_custom_tab(self, gui: GUI.BaseInferenceGUI) -> Widget:
         return None
 
-    def set_custom_model_link_type(self) -> Literal["file", "folder"]:
+    def get_custom_model_link_type(self) -> Literal["file", "folder"]:
         return "file"
 
     def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
@@ -610,38 +639,7 @@ class Inference:
             inference_request["is_inferring"] = False
 
     def serve(self):
-        if self._use_gui:
-            models = self.get_models()
-            support_pretrained_models = True
-            if isinstance(models, list):
-                if len(models) > 0:
-                    models = self._preprocess_models_list(models)
-                else:
-                    support_pretrained_models = False
-            elif isinstance(models, dict):
-                for model_group in models.keys():
-                    models[model_group]["checkpoints"] = self._preprocess_models_list(
-                        models[model_group]["checkpoints"]
-                    )
-            custom_model_link_type = self.set_custom_model_link_type()
-            self._gui = self.get_ui_class()(
-                models,
-                self.api,
-                support_pretrained_models=support_pretrained_models,
-                support_custom_models=self.support_custom_models(),
-                add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
-                add_content_to_custom_tab=self.add_content_to_custom_tab,
-                custom_model_link_type=custom_model_link_type,
-            )
-
-            @self.gui.serve_button.click
-            def load_model():
-                Progress("Deploying model ...", 1)
-                device = self.gui.get_device()
-                self.load_on_device(self._model_dir, device)
-                self.gui.set_deployed()
-
-        else:
+        if not self._use_gui:
             Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():

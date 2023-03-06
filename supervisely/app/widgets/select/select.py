@@ -236,6 +236,7 @@ class SelectString(Select):
         values: List[str],
         labels: Optional[List[str]] = None,
         right_text: Optional[List[str]] = None,
+        items_links: Optional[List[str]] = None,
     ):
         right_texts = [None] * len(values)
         if right_text is not None:
@@ -253,6 +254,13 @@ class SelectString(Select):
             self._items = [
                 Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_texts)
             ]
+        if items_links is not None:
+            assert len(items_links) == len(values)
+            self._with_link = True
+            self._links = {value: items_links[i] for i, value in enumerate(values)}
+        else:
+            self._with_link = False
+            self._links = None
         self.update_data()
         self.update_state()
         DataJson().send_changes()

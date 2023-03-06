@@ -11,6 +11,7 @@ class SemanticSegmentation(Inference):
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "semantic segmentation"
+        info["tracking_on_videos_support"] = False
         # recommended parameters:
         # info["model_name"] = ""
         # info["checkpoint_name"] = ""
