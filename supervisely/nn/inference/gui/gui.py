@@ -49,7 +49,6 @@ class InferenceGUI(BaseInferenceGUI):
             self._support_submodels = True
         else:
             self._support_submodels = False
-        self._models = models
         self._api = api
         if not support_pretrained_models and not support_custom_models:
             raise ValueError(
@@ -94,32 +93,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         if self._support_pretrained_models:
             if self._support_submodels:
-                model_papers = []
-                model_years = []
-                model_links = []
-                for _, model_data in models.items():
-                    for param_name, param_val in model_data.items():
-                        if param_name == "paper_from":
-                            model_papers.append(param_val)
-                        elif param_name == "year":
-                            model_years.append(param_val)
-                        elif param_name == "config_url":
-                            model_links.append(param_val)
-                paper_and_year = []
-                for paper, year in zip(model_papers, model_years):
-                    paper_and_year.append(f"{paper} {year}")
-                self._model_select = Widgets.SelectString(
-                    list(models.keys()),
-                    items_right_text=paper_and_year,
-                    items_links=model_links,
-                    filterable=True,
-                )
-                selected_model = self._model_select.get_value()
-                cols = list(models[selected_model]["checkpoints"][0].keys())
-                rows = [
-                    [value for param_name, value in model.items()]
-                    for model in models[selected_model]["checkpoints"]
-                ]
+                self._model_select = Widgets.SelectString([], filterable=True)
 
                 @self._model_select.value_changed
                 def update_table(selected_model):
@@ -135,19 +109,18 @@ class InferenceGUI(BaseInferenceGUI):
                     table_subtitles, cols = self._get_table_subtitles(cols)
                     self._models_table.set_data(cols, rows, table_subtitles)
 
-            else:
-                cols = list(models[0].keys())
-                rows = [list(model.values()) for model in models]
-
-            table_subtitles, cols = self._get_table_subtitles(cols)
-            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+            self._models_table = None
+            self._set_pretrained_models(models)
 
             pretrained_tab_content = []
             if self._support_submodels:
                 pretrained_tab_content.append(self._model_select)
             pretrained_tab_content.append(self._models_table)
             # add user widget after the table
-            widget_to_add = add_content_to_pretrained_tab(self)
+            if add_content_to_pretrained_tab is not None:
+                widget_to_add = add_content_to_pretrained_tab(self)
+            else:
+                widget_to_add = None
             if widget_to_add is not None and not support_pretrained_models:
                 raise ValueError(
                     "You can provide content to pretrained models tab only If get_models() is not empty list."
@@ -184,7 +157,10 @@ class InferenceGUI(BaseInferenceGUI):
                 self._file_thumbnail.set(file_info)
 
             # add user widget to top of tab
-            widget_to_add = add_content_to_custom_tab(self)
+            if add_content_to_custom_tab is not None:
+                widget_to_add = add_content_to_custom_tab(self)
+            else:
+                widget_to_add = None
 
             if widget_to_add is not None and not support_custom_models:
                 raise ValueError(
@@ -218,16 +194,59 @@ class InferenceGUI(BaseInferenceGUI):
 
         @self._change_model_button.click
         def change_model():
-            self._success_label.text = ""
-            self._success_label.hide()
-            self._serve_button.show()
-            self._device_select.enable()
-            self._change_model_button.hide()
-            if self._support_pretrained_models:
-                self._models_table.enable()
-            if self._support_custom_models:
-                self._model_path_input.enable()
-            Progress("model deployment canceled", 1).iter_done_report()
+            self.change_model()
+
+    def change_model(self):
+        self._success_label.text = ""
+        self._success_label.hide()
+        self._serve_button.show()
+        self._device_select.enable()
+        self._change_model_button.hide()
+        if self._support_pretrained_models:
+            self._models_table.enable()
+        if self._support_custom_models:
+            self._model_path_input.enable()
+        Progress("model deployment canceled", 1).iter_done_report()
+
+    def _set_pretrained_models(self, models):
+        self._models = models
+        if not self._support_pretrained_models:
+            return
+        if self._support_submodels:
+            model_papers = []
+            model_years = []
+            model_links = []
+            for _, model_data in models.items():
+                for param_name, param_val in model_data.items():
+                    if param_name == "paper_from":
+                        model_papers.append(param_val)
+                    elif param_name == "year":
+                        model_years.append(param_val)
+                    elif param_name == "config_url":
+                        model_links.append(param_val)
+            paper_and_year = []
+            for paper, year in zip(model_papers, model_years):
+                paper_and_year.append(f"{paper} {year}")
+            self._model_select.set(
+                list(models.keys()),
+                right_text=paper_and_year,
+                items_links=model_links,
+            )
+            selected_model = self._model_select.get_value()
+            cols = list(models[selected_model]["checkpoints"][0].keys())
+            rows = [
+                [value for param_name, value in model.items()]
+                for model in models[selected_model]["checkpoints"]
+            ]
+        else:
+            cols = list(models[0].keys())
+            rows = [list(model.values()) for model in models]
+
+        table_subtitles, cols = self._get_table_subtitles(cols)
+        if self._models_table is None:
+            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+        else:
+            self._models_table.set_data(cols, rows, subtitles=table_subtitles)
 
     def _get_table_subtitles(self, cols):
         # Get subtitles from col's round brackets
