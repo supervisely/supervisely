@@ -8,7 +8,13 @@ class ImageRegionSelector(Widget):
     class Routes:
         BBOX_CHANGED = "bbox_changed"
 
-    def __init__(self, image_info: sly.ImageInfo, widget_id: str = None, disabled: bool = False):
+    def __init__(self, 
+        image_info: sly.ImageInfo, 
+        widget_id: str = None, 
+        disabled: bool = False,
+        widget_width: str = "100%",
+        widget_height: str = "100%",
+    ):
         self.image_link = None
         self.image_name = None
         self.image_url = None
@@ -19,6 +25,8 @@ class ImageRegionSelector(Widget):
         self.original_bbox = None
         self.scaled_bbox = None
         self._disabled = disabled
+        self.widget_width = widget_width
+        self.widget_height = widget_height
 
         super().__init__(widget_id=widget_id, file_path=__file__)
         self.image_update(image_info)
@@ -95,6 +103,8 @@ class ImageRegionSelector(Widget):
             'originalBbox': self.original_bbox,
             'scaledBbox': self.scaled_bbox,
             'disabled': self._disabled,
+            'widget_width': self.widget_width,
+            'widget_height': self.widget_height,
             'widget_id': self.widget_id,
         }
 

@@ -13,7 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"></script>
 <smarttool-editor
   :disabled="state.{{{widget.widget_id}}}.isFinished || state.{{{widget.widget_id}}}.isBroken"
-  style="width: 100%; height: 100%;"
+  :style="{width: state.{{{widget.widget_id}}}.widget_width, height: state.{{{widget.widget_id}}}.widget_height}"
   v-if="state.{{{widget.widget_id}}}.imageUrl"
   :image-url="state.{{{widget.widget_id}}}.imageUrl"
   :bbox.sync="state.{{{widget.widget_id}}}.scaledBbox"
