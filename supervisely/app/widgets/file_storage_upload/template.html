@@ -1,9 +1,8 @@
 <div>
-  </sly-file-storage-upload>
   <sly-file-storage-upload
-    v-if="data.{{{widget.widget_id}}}.teamId"
-    :options="{ folder: '/import/import-from-apps/' }"
-    @files-uploaded="state.files = '/import/import-from-apps/'"
+    :options="{ folder: data.{{{widget.widget_id}}}.folderName }"
+    @files-uploaded="state.{{{widget.widget_id}}}.files = $event"
   >
   </sly-file-storage-upload>
+  {{ state.{{{widget.widget_id}}}.files }}
 </div>
