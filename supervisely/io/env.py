@@ -149,3 +149,13 @@ def task_id(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+
+def user_login(raise_not_found=True):
+    return _parse_from_env(
+        name="user_login",
+        keys=["USER_LOGIN", "context.userLogin", "CONTEXT_USERLOGIN"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
