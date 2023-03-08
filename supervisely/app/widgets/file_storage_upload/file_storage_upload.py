@@ -9,59 +9,62 @@ from supervisely.app.widgets import Widget
 class FileStorageUpload(Widget):
     def __init__(
         self,
-        folder_name: str = None,
+        path: str,
         change_name_if_conflict: Optional[bool] = False,
         widget_id: str = None,
     ):
         self._api = Api()
         self._team_id = sly.env.team_id()
-        self._folder_name = None
-        self._files = []
         self._change_name_if_conflict = change_name_if_conflict
-        if folder_name is not None:
-            path = folder_name
-        else:
-            task_id = sly.env.task_id()
-            path = f"/import-from-widget/{task_id}/"
-
-        self._folder_name = self._get_folder_name(path)
+        self._path = self._get_path(path)
+        self._files = []
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def _set_folder_name(self, path: str):
-        self._folder_name = self._get_folder_name(path)
-        DataJson()[self.widget_id]["folderName"] = self._folder_name
+    def _set_path(self, path: str):
+        self._path = self._get_path(path)
+        DataJson()[self.widget_id]["path"] = self._path
         DataJson().send_changes()
 
-    def _get_folder_name(self, path):
+    def _get_path(self, path: str):
         if self._change_name_if_conflict is True:
+            path = f"/{path}" if not path.startswith("/") else path
             return self._api.file.get_free_dir_name(self._team_id, path)
         return path
 
     def get_json_data(self):
-        return {"folderName": self._folder_name}
+        return {"path": self._path}
 
     def get_json_state(self):
         return {"files": self._files}
 
     @property
-    def folder_path(self):
-        return DataJson()[self.widget_id]["folderName"]
+    def path(self):
+        return DataJson()[self.widget_id]["path"]
 
-    @folder_path.setter
-    def folder_path(self, path: str):
-        self._set_folder_name(path)
+    @path.setter
+    def path(self, path: str):
+        self._set_path(path)
 
-    def set_folder_name(self, path: str):
-        self._set_folder_name(path)
+    def set_path(self, path: str):
+        self._set_path(path)
 
-    def get_uploaded_info(self) -> Union[List[sly.api.file_api.FileInfo], None]:
+    def get_uploaded_paths(self) -> Union[List[str], None]:
         response = StateJson()[self.widget_id]["files"]
         uploaded_files = response["uploadedFiles"]
         if len(uploaded_files) == 0:
             return None
+        paths = [file["path"] for file in uploaded_files]
+        return paths
 
-        files_infos = []
-        for item in uploaded_files:
-            files_infos.append(self._api.file.get_info_by_id(item["id"]))
-        return files_infos
+    # def get_uploaded_info(self) -> Union[List[sly.api.file_api.FileInfo], None]:
+    #     response = StateJson()[self.widget_id]["files"]
+    #     uploaded_files = response["uploadedFiles"]
+    #     if len(uploaded_files) == 0:
+    #         return None
+
+    #     files_infos = []
+    #     for item in uploaded_files:
+    #         TODO: convert from json instead of api queries
+    #         files_infos.append(self._api.file.get_info_by_id(item["id"]))
+    #     return files_infos
