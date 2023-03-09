@@ -21,6 +21,7 @@ class Input(Widget):
             size: Literal["mini", "small", "large"] = None,
             readonly: bool = False,
             widget_id: str = None
+            input_type: Literal["text", "password"] = "text",
     ):
         self._value = value
         self._minlength = minlength
@@ -30,6 +31,7 @@ class Input(Widget):
         self._readonly = readonly
         self._widget_id = widget_id
         self._changes_handled = False
+        self._input_type = input_type
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -40,6 +42,7 @@ class Input(Widget):
             "placeholder": self._placeholder,
             "size": self._size,
             "readonly": self._readonly,
+            "type": self._input_type,
         }
 
     def get_json_state(self):
