@@ -169,3 +169,12 @@ def app_name(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+def user_id(raise_not_found=True):
+    return _parse_from_env(
+        name="user_id",
+        keys=["USER_ID", "context.userId", "CONTEXT_USERID"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
