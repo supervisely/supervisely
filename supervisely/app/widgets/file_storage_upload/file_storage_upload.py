@@ -9,12 +9,13 @@ from supervisely.app.widgets import Widget
 class FileStorageUpload(Widget):
     def __init__(
         self,
+        team_id: int,
         path: str,
         change_name_if_conflict: Optional[bool] = False,
         widget_id: str = None,
     ):
         self._api = Api()
-        self._team_id = sly.env.team_id()
+        self._team_id = team_id
         self._change_name_if_conflict = change_name_if_conflict
         self._path = self._get_path(path)
         self._files = []
