@@ -88,3 +88,4 @@ from supervisely.app.widgets.badge.badge import Badge
 from supervisely.app.widgets.date_picker.date_picker import DatePicker
 from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePicker
 from supervisely.app.widgets.transfer.transfer import Transfer
+from supervisely.app.widgets.task_logs.task_logs import TaskLogs
