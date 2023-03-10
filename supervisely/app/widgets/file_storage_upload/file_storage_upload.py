@@ -1,6 +1,5 @@
 from typing import List, Optional, Union
 
-import supervisely as sly
 from supervisely.api.api import Api
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
