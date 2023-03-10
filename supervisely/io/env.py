@@ -156,7 +156,7 @@ def user_login(raise_not_found=True):
         name="user_login",
         keys=["USER_LOGIN", "context.userLogin", "CONTEXT_USERLOGIN"],
         postprocess_fn=lambda x: int(x),
-        default=None,
+        default="user (debug)",
         raise_not_found=raise_not_found,
     )
 
@@ -166,7 +166,7 @@ def app_name(raise_not_found=True):
         name="app_name",
         keys=["APP_NAME"],
         postprocess_fn=lambda x: int(x),
-        default=None,
+        default="Supervisely App (debug)",
         raise_not_found=raise_not_found,
     )
 
