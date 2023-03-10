@@ -15,7 +15,7 @@ class Docstring(Widget):
     def get_json_state(self) -> Dict:
         return {}
 
-    def set_value(self, value):
+    def set_value(self, value: str):
         self._data = value
         DataJson()[self.widget_id]["content"] = value
         DataJson().send_changes()
