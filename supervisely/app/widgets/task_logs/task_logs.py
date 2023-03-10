@@ -1,5 +1,5 @@
-from typing import List, Optional, Dict
-from supervisely.app import StateJson
+from typing import Dict
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 
 try:
@@ -30,3 +30,13 @@ class TaskLogs(Widget):
 
     def get_json_state(self) -> Dict:
         return {}
+
+    def get_task_id(self) -> int:
+        return DataJson()[self.widget_id]["taskId"]
+
+    def set_task_id(self, value: int):
+        DataJson()[self.widget_id]["taskId"] = value
+        DataJson().send_changes()
+
+    def get_task_id(self) -> int:
+        return DataJson()[self.widget_id]["taskId"]
