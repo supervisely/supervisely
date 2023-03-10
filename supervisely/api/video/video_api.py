@@ -919,7 +919,8 @@ class VideoApi(RemoveableBulkModuleApi):
         p = None
         if item_progress is not None and type(item_progress) is bool:
             p = Progress(f"Uploading {name}", total_cnt=get_file_size(path), is_size=True)
-            progress_cb = p.iters_done_report
+            # progress_cb = p.iters_done_report
+            progress_cb = p.set_current_value
 
         results = self.upload_paths(
             dataset_id=dataset_id,
