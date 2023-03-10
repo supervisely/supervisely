@@ -1,0 +1,8 @@
+<sly-copy-to-clipboard :data="state.{{{widget.widget_id}}}.content">
+  <sly-editor
+    :value="state.{{{widget.widget_id}}}.content"
+    @input="state.{{{widget.widget_id}}}.content=$event"
+    :options="data.{{{widget.widget_id}}}.options"
+  ></sly-editor>
+</sly-copy-to-clipboard>
+{{state.{{{widget.widget_id}}}.content}}
