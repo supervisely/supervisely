@@ -81,6 +81,7 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
 
         self._use_gui = use_gui
+        self._gui = None
         if use_gui:
             self.initialize_gui()
 
