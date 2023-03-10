@@ -172,40 +172,40 @@ def _init(
 
     app.mount("/sly", create(process_id, headless))
 
-    if headless is False:
-
-        @app.middleware("http")
-        async def get_state_from_request(request: Request, call_next):
+    @app.middleware("http")
+    async def get_state_from_request(request: Request, call_next):
+        if headless is False:
             await StateJson.from_request(request)
-            if not ("application/json" not in request.headers.get("Content-Type", "")):
-                # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
-                content = await request.json()
 
-                request.state.context = content.get("context")
-                request.state.state = content.get("state")
-                request.state.api_token = content.get(
-                    "api_token",
-                    request.state.context.get("apiToken")
-                    if request.state.context is not None
-                    else None,
-                )
-                logger.debug(f"middleware request api_token {request.state.api_token}")
-                # request.state.server_address = content.get(
-                #     "server_address", sly_env.server_address(raise_not_found=False)
-                # )
-                request.state.server_address = sly_env.server_address(raise_not_found=False)
-                logger.debug(f"middleware request server_address {request.state.server_address}")
+        if not ("application/json" not in request.headers.get("Content-Type", "")):
+            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
+            content = await request.json()
 
-                logger.debug(f"middleware request context {request.state.context}")
+            request.state.context = content.get("context")
+            request.state.state = content.get("state")
+            request.state.api_token = content.get(
+                "api_token",
+                request.state.context.get("apiToken")
+                if request.state.context is not None
+                else None,
+            )
+            # logger.debug(f"middleware request api_token {request.state.api_token}")
+            # request.state.server_address = content.get(
+            #     "server_address", sly_env.server_address(raise_not_found=False)
+            # )
+            request.state.server_address = sly_env.server_address(raise_not_found=False)
+            # logger.debug(f"middleware request server_address {request.state.server_address}")
+            # logger.debug(f"middleware request context {request.state.context}")
+            # logger.debug(f"middleware request state {request.state.state}")
+            if request.state.server_address is not None and request.state.api_token is not None:
+                request.state.api = Api(request.state.server_address, request.state.api_token)
+            else:
+                request.state.api = None
 
-                logger.debug(f"middleware request state {request.state.state}")
-                if request.state.server_address is not None and request.state.api_token is not None:
-                    request.state.api = Api(request.state.server_address, request.state.api_token)
-                else:
-                    request.state.api = None
+        response = await call_next(request)
+        return response
 
-            response = await call_next(request)
-            return response
+    if headless is False:
 
         @app.get("/")
         @available_after_shutdown(app)
