@@ -19,6 +19,9 @@ class TeamFilesSelector(Widget):
         selection_file_type: Literal["folder", "file"] = None,
         hide_header: bool = True,
         hide_empty_table: bool = True,
+        additional_fields: List[
+            Literal["id", "createdAt", "updatedAt", "type", "size", "mimeType"]
+        ] = [],
         widget_id: str = None,
     ):
         self._api = Api()
@@ -29,6 +32,15 @@ class TeamFilesSelector(Widget):
         self._selection_file_type = selection_file_type
         self._hide_header = hide_header
         self._hide_empty_table = hide_empty_table
+
+        available_fields = ["id", "createdAt", "updatedAt", "type", "size", "mimeType"]
+        for field in additional_fields:
+            if field not in available_fields:
+                raise ValueError(
+                    f'"{field}" is not a valid field. Available fields: {available_fields}.'
+                )
+
+        self._additional_fields = additional_fields
         self._selected = []
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -42,6 +54,7 @@ class TeamFilesSelector(Widget):
                 "selectionFileType": self._selection_file_type,
                 "hideHeader": self._hide_header,
                 "hideEmptyTable": self._hide_empty_table,
+                "additionalFields": self._additional_fields,
             },
         }
 
