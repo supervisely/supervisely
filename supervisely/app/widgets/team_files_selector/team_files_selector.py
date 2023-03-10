@@ -14,10 +14,10 @@ class TeamFilesSelector(Widget):
     def __init__(
         self,
         team_id: int,
-        multiple_selection: bool = True,
+        multiple_selection: bool = False,
         max_height: int = 500,
         selection_file_type: Literal["folder", "file"] = None,
-        hide_header: bool = False,
+        hide_header: bool = True,
         hide_empty_table: bool = True,
         widget_id: str = None,
     ):
