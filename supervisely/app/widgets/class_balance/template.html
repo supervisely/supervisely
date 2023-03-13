@@ -1,0 +1,27 @@
+<div>
+  <div>Selected rows: {{state.{{{widget.widget_id}}}.selectedRows }}</div>
+  <div>Clicked item: {{state.{{{widget.widget_id}}}.clickedItem }}</div>
+
+  <sly-class-balance
+    :content="data.{{{widget.widget_id}}}.example1.content"
+    :options="data.{{{widget.widget_id}}}.example1.options"
+    v-model="state.{{{widget.widget_id}}}.selectedRows"
+    {%
+    if
+    widget._click_handled
+    %}
+    :clicked-item="state.{{{widget.widget_id}}}.clickedItem"
+    @update:clicked-item="state.{{{ widget.widget_id }}}.clickedItem = $event;
+              post('/{{{ widget.widget_id }}}/class_balance_clicked_cb')"
+    {%
+    endif
+    %}
+  >
+    <template v-slot:collapse-row="{ row }">
+      <sly-image-slider
+        :data="data.{{{widget.widget_id}}}.example1.imageSliderData[row.name]"
+      />
+    </template>
+  </sly-class-balance>
+</div>
+<!-- :clicked-item.sync="state.{{{widget.widget_id}}}.clickedItem" -->

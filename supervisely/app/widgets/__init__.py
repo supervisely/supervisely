@@ -78,3 +78,4 @@ from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
 from supervisely.app.widgets.slider.slider import Slider
 from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
+from supervisely.app.widgets.class_balance.class_balance import ClassBalance
