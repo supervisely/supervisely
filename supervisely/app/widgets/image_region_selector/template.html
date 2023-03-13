@@ -12,7 +12,7 @@
 <script src="https://rawgit.com/nodeca/pako/1.0.11/dist/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"></script>
 <smarttool-editor
-  :disabled="state.{{{widget.widget_id}}}.isFinished || state.{{{widget.widget_id}}}.isBroken"
+  :disabled="state.{{{widget.widget_id}}}.isFinished || state.{{{widget.widget_id}}}.isBroken || state.{{{widget.widget_id}}}.disabled "
   :style="{width: state.{{{widget.widget_id}}}.widget_width, height: state.{{{widget.widget_id}}}.widget_height}"
   v-if="state.{{{widget.widget_id}}}.imageUrl"
   :image-url="state.{{{widget.widget_id}}}.imageUrl"
