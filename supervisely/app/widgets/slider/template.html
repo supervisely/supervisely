@@ -11,5 +11,8 @@
   :range="data.{{{widget.widget_id}}}.range"
   :vertical="data.{{{widget.widget_id}}}.vertical"
   :height="data.{{{widget.widget_id}}}.height"
+  {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
 >
 </el-slider>
