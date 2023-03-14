@@ -2462,7 +2462,6 @@ def upload_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
-    progress_cb: Optional[Callable] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
     if project_name is None:
@@ -2494,7 +2493,8 @@ def upload_project(
         img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
         ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
 
-        if log_progress and progress_cb is None:
+        progress_cb = None
+        if log_progress:
             ds_progress = Progress(
                 "Uploading images to dataset {!r}".format(dataset.name),
                 total_cnt=len(names),
@@ -2511,17 +2511,15 @@ def upload_project(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
             )
 
-        progress_cb = None
         image_ids = [img_info.id for img_info in uploaded_img_infos]
 
-        if log_progress and progress_cb is None:
+        if log_progress:
             ds_progress = Progress(
                 "Uploading annotations to dataset {!r}".format(dataset.name),
                 total_cnt=len(img_paths),
             )
             progress_cb = ds_progress.iters_done_report
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
-        progress_cb = None
 
     return project.id, project.name
 
