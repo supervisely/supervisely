@@ -46,7 +46,19 @@ class SalientObjectSegmentation(SemanticSegmentation):
         """
 
         # function for bounding boxes padding
-        def bbox_padding(rectangle, padding=0):
+        def bbox_padding(rectangle, padding):
+            padding = padding.strip()  # remove blank spaces
+            if padding.endswith("px"):
+                padding = int(padding[:-2])
+                format = "pixels"
+            elif padding.endswith("%"):
+                padding = int(padding[:-1])
+                padding = round(padding / 100, 2)  # from % to float
+                format = "percentages"
+            else:
+                raise ValueError(
+                    "Unsupported padding unit: only pixels (e.g. 10px) and percentages (e.g. 10%) are supported"
+                )
             if padding < 0:
                 padding = 0
             left, right, top, bottom = (
@@ -55,10 +67,19 @@ class SalientObjectSegmentation(SemanticSegmentation):
                 rectangle.top,
                 rectangle.bottom,
             )
-            pad_left = left - padding
-            pad_right = right + padding
-            pad_top = top - padding
-            pad_bottom = bottom + padding
+            if format == "pixels":
+                pad_left = left - padding
+                pad_right = right + padding
+                pad_top = top - padding
+                pad_bottom = bottom + padding
+            elif format == "percentages":
+                width, height = rectangle.width, rectangle.height
+                width_padding = int(width * padding)
+                height_padding = int(height * padding)
+                pad_left = left - width_padding
+                pad_right = right + width_padding
+                pad_top = top - height_padding
+                pad_bottom = bottom + height_padding
             return Rectangle(pad_top, pad_left, pad_bottom, pad_right)
 
         # function for padded bounding boxes processing
