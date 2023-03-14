@@ -245,10 +245,10 @@ def read_dicom_serie_volume(paths, anonymize=True):
     return sitk_volume, meta
 
 
-def compose_ijk_2_world_mat(spacing, origin, directions):
+def compose_ijk_2_world_mat(meta):
     mat = np.eye(4)
-    mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
-    mat[:3, 3] = origin
+    mat[:3, :3] = (np.array(meta["directions"]).reshape(3, 3) * meta["spacing"]).T
+    mat[:3, 3] = meta["origin"]
     return mat
 
 
