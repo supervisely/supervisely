@@ -10,8 +10,6 @@ from supervisely.project.project_type import ProjectType
 
 
 class DestinationProject(Widget):
-    class Routes:
-        VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
@@ -74,17 +72,3 @@ class DestinationProject(Widget):
 
     def get_dataset_name(self):
         return StateJson()[self.widget_id]["dataset_name"]
-
-    def value_changed(self, func):
-        route_path = self.get_route_path(DestinationProject.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-
-        @server.post(route_path)
-        def _click():
-            value = self.get_selected_dataset_id()
-            if value == "":
-                value = None
-            func(value)
-
-        return _click
