@@ -56,6 +56,17 @@ Vue.component('smarttool-editor', {
     imageUrl() {
       console.log('image url was changed')
       // this.methods.init()
+      this.group.clear()
+      const viewBox = getViewBox(this.bboxEl.bbox());
+      this.sceneEl.viewbox(viewBox)
+      this.backgroundEl = this.sceneEl.image(this.imageUrl).loaded(() => {
+        this.pointSize = POINT_SIZE * (viewBox.w / this.container.width.baseVal.value);
+        this.initPoints();
+      });
+      this.group.add(
+        this.backgroundEl,
+        this.bboxEl
+      );
     },
     bbox() {
       const bboxSize = getBBoxSize(this.bbox);
