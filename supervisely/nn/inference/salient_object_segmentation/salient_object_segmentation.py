@@ -10,7 +10,9 @@ from supervisely.imaging import image as sly_image
 from supervisely.decorators.inference import _scale_ann_to_original_size, _process_image_path
 from supervisely.io.fs import silent_remove
 from supervisely.decorators.inference import process_image_sliding_window
-from supervisely.nn.inference.semantic_segmentation import SemanticSegmentation
+from supervisely.nn.inference.semantic_segmentation.semantic_segmentation import (
+    SemanticSegmentation,
+)
 
 
 class SalientObjectSegmentation(SemanticSegmentation):
