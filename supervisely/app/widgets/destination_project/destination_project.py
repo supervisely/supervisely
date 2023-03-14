@@ -35,7 +35,7 @@ class DestinationProject(Widget):
         self._dataset_name = ""
 
         self._workspace_id = workspace_id
-        self._project_type = project_type
+        self._project_type = str(project_type)
         self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
