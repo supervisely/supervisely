@@ -30,7 +30,7 @@ class ClassBalance(Widget):
         self._segments = segments
         self._rows_data = rows_data
         self._slider_data = slider_data
-        self._click_handled = True
+        self._click_handled = False
 
         if self._max_value is None and len(self._rows_data) != 0:
             check_max_value = []
