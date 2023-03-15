@@ -1,6 +1,13 @@
 <el-slider
   style="padding: 20px"
-  v-model="state.{{{widget.widget_id}}}.value"
+
+  {% if widget._range == true %}
+    :value="state.{{{widget.widget_id}}}.value.slice(0)"
+  {% else %}
+    :value="state.{{{widget.widget_id}}}.value"
+  {% endif %}
+  
+  @input="state.{{{widget.widget_id}}}.value = $event"
   :min="data.{{{widget.widget_id}}}.min"
   :max="data.{{{widget.widget_id}}}.max"
   :step="data.{{{widget.widget_id}}}.step"
