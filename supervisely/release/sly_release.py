@@ -84,6 +84,21 @@ def get_appKey(repo: git.Repo, sub_app_path: str):
     return appKey
 
 
+def get_instance_version(token, server):
+    headers = {
+        "x-api-key": token,
+        "Content-Type": "application/json",
+    }
+    r = requests.post(
+        f'{server.rstrip("/")}/public/api/v3/instance.version', headers=headers
+    )
+    if r.status_code == 403:
+        raise PermissionError()
+    if r.status_code == 404:
+        raise NotImplementedError()
+    return r.json()
+
+
 def get_app_from_instance(appKey: str, token, server):
     headers = {
         "x-api-key": token,

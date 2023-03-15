@@ -1,11 +1,15 @@
-import json
+import sys
 import os
+import json
 import click
 import re
 import subprocess
 import git
 from dotenv import load_dotenv
 from rich.console import Console
+
+
+LAST_SUPPORTED_INSTANCE_VERSION = "6.7.21"
 
 from supervisely.release.sly_release import (
     find_tag_in_repo,
@@ -17,6 +21,7 @@ from supervisely.release.sly_release import (
     release,
     slug_is_valid,
     delete_tag,
+    get_instance_version,
 )
 
 
@@ -78,12 +83,9 @@ def _check_git(repo: git.Repo):
     return result
 
 
-def _ask_release(repo: git.Repo):
+def _ask_release_version(repo: git.Repo):
     console = Console()
     if repo.active_branch.name in ("main", "master"):
-        release_name = console.input(
-            "Enter release name:\n",
-        )
         try:
             sly_release_tags = [
                 tag.name
@@ -111,30 +113,26 @@ def _ask_release(repo: git.Repo):
             if release_version == "":
                 release_version = "v" + suggested_release_version
                 break
-            if re.fullmatch("v\d+\.\d+\.\d+", release_version):
+            if _check_release_version(release_version):
                 break
             console.print("Wrong version format. Should be of format vX.X.X")
     else:
-        release_name = console.input("Enter release name:\n")
         console.print(
             f'Release version will be "{repo.active_branch.name}" as the branch name'
         )
         release_version = repo.active_branch.name
-    return release_name, release_version
+    return release_version
 
 
-def _ask_confirmation(
-    module_name, module_exists_label, release_version, release_name, server, branch_name
-):
+def _ask_release_name():
     console = Console()
-    console.print()
-    console.print(
-        f'Application "{module_name}"([blue]{release_version}[/] "{release_name}") will be {module_exists_label} at "{server}" Supervisely instance.'
+    release_name = console.input(
+        "Enter release name:\n",
     )
-    if branch_name in ["main", "master"]:
-        console.print(
-            f'Git tag "sly-release-{release_version}" will be added and pushed to origin'
-        )
+    return release_name
+
+
+def _ask_confirmation():
     while True:
         confirmed = input("Confirm? [y/n]:\n")
         if confirmed.lower() in ["y", "yes"]:
@@ -143,32 +141,78 @@ def _ask_confirmation(
             return False
 
 
-def _run(app_directory, sub_app_directory, slug):
+def _check_release_version(release_version):
+    return re.fullmatch("v\d+\.\d+\.\d+", release_version)
+
+
+def _check_instance_version(instance_version):
+    last_supported = [int(x) for x in LAST_SUPPORTED_INSTANCE_VERSION.split(".")]
+    version_numbers = [int(x) for x in instance_version.split(".")]
+    for number, supported in zip(version_numbers, last_supported):
+        if number < supported:
+            return False
+    return True
+
+
+def _run(
+    app_directory, sub_app_directory, slug, autoconfirm, release_version, release_name
+):
     console = Console()
     console.print("\nSupervisely Release App\n", style="bold")
 
-    # 0) get variables
-    if slug is not None and not slug_is_valid(slug):
+    # check slug
+    if slug and not slug_is_valid(slug):
         console.print("[red][Error][/] Invalid slug")
         return False
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+    # get module path and check if it is a git repo
     module_root = get_module_root(app_directory)
     module_path = get_module_path(module_root, sub_app_directory)
-    console.print(f"Application directory:\t[green]{module_path}[/]")
+    try:
+        repo = git.Repo(module_root)
+    except git.InvalidGitRepositoryError:
+        console.print(
+            f"[red][Error][/] Module path [green]{module_path}[/] is not a git repository"
+        )
+        return False
+
+    # get server address
+    load_dotenv(os.path.expanduser("~/supervisely.env"))
     server_address = os.getenv("SERVER_ADDRESS", None)
     if server_address is None:
         console.print(
             '[red][Error][/] Cannot find [green]SERVER_ADDRESS[/]. Add it to your "~/supervisely.env" file or to environment variables'
         )
         return False
-    console.print(f"Server address:\t\t[green]{server_address}[/]")
+
+    # get api token
     api_token = os.getenv("API_TOKEN", None)
     if api_token is None:
         console.print(
             '[red][Error][/] Cannot find [green]API_TOKEN[/]. Add it to your "~/supervisely.env" file or to environment variables'
         )
         return False
-    console.print(f"Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+
+    # check instance version
+    try:
+        instance_version = get_instance_version(api_token, server_address)
+        if not _check_instance_version(instance_version["version"]):
+            console.print(
+                f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {LAST_SUPPORTED_INSTANCE_VERSION} or higher'
+            )
+            return False
+    except NotImplementedError:
+        console.print(
+            f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {LAST_SUPPORTED_INSTANCE_VERSION} or higher'
+        )
+        return False
+    except PermissionError:
+        console.print(
+            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
+        )
+        return False
+
+    # get config
     try:
         with open(module_path.joinpath("config.json"), "r") as f:
             config = json.load(f)
@@ -182,29 +226,16 @@ def _run(app_directory, sub_app_directory, slug):
             f'[red][red][Error][/][/] Cannot decode config json file at "{module_path.joinpath("config.json")}": {str(e)}'
         )
         return False
-    module_name = config.get("name", None)
-    if module_name is None:
+
+    # get app name
+    app_name = config.get("name", None)
+    if app_name is None:
         console.print(
             f'[red][Error][/] Missing "name" field in config json file at "{module_path.joinpath("config.json")}"'
         )
         return False
 
-    # 1) get git repo
-    try:
-        repo = git.Repo(module_root)
-    except git.InvalidGitRepositoryError:
-        console.print(
-            f"[red][Error][/] [green]{module_path}[/] is not a git repository"
-        )
-        return False
-    console.print(f"git branch:\t\t[green]{repo.active_branch}[/]")
-
-    # 2) check that everything is commited and pushed
-    result = _check_git(repo)
-    if not result:
-        return False
-
-    # 3) get modal template
+    # get modal template
     modal_template = ""
     if "modal_template" in config:
         modal_template_path = module_root.joinpath(config["modal_template"])
@@ -216,10 +247,21 @@ def _run(app_directory, sub_app_directory, slug):
         with open(modal_template_path, "r") as f:
             modal_template = f.read()
 
-    # 4) get appKey
+    # print details
+    console.print(f"Application directory:\t[green]{module_path}[/]")
+    console.print(f"Server address:\t\t[green]{server_address}[/]")
+    console.print(f"Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+    console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
+
+    # check that everything is commited and pushed
+    success = _check_git(repo)
+    if not success:
+        return False
+
+    # get appKey
     appKey = get_appKey(repo, sub_app_directory)
 
-    # 5) get app from instance ecosystem.info
+    # check if app exist or not
     module_exists_label = "[yellow bold]updated[/]"
     try:
         app_data = get_app_from_instance(appKey, api_token, server_address)
@@ -227,27 +269,42 @@ def _run(app_directory, sub_app_directory, slug):
             module_exists_label = "[green bold]created[/]"
     except PermissionError:
         console.print(
-            "[red][Error][/] Permission denied. Check that all credentials are set correctly.\n"
+            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
         )
         return False
 
-    # 6) get release name and version from user
-    release_name, release_version = _ask_release(repo)
+    # get and check release version
+    if release_version is None:
+        release_version = _ask_release_version(repo)
+    if not _check_release_version(release_version):
+        console.print(
+            '[red][Error][/] Incorrect release version. Should be of format "vX.X.X"'
+        )
+        return False
 
-    # 7) confirm
-    confirmed = _ask_confirmation(
-        module_name,
-        module_exists_label,
-        release_version,
-        release_name,
-        server_address,
-        repo.active_branch.name,
+    # get release name
+    if release_name is None:
+        release_name = _ask_release_name()
+
+    # print summary
+    console.print(
+        f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_name}"'
     )
+    if repo.active_branch.name in ["main", "master"]:
+        console.print(
+            f'Git tag "sly-release-{release_version}" will be added and pushed to origin'
+        )
+
+    # ask for confiramtion if needed
+    if autoconfirm:
+        confirmed = True
+    else:
+        confirmed = _ask_confirmation()
     if not confirmed:
         console.print("Release cancelled")
         return False
 
-    # 8) add tag and push
+    # add tag and push
     tag_created = False
     if repo.active_branch.name in ["main", "master"]:
         tag_name = f"sly-release-{release_version}"
@@ -265,7 +322,7 @@ def _run(app_directory, sub_app_directory, slug):
             )
             return False
 
-    # 9) release
+    # release
     console.print("Uploading archive...")
     success = True
     response = release(
@@ -294,7 +351,16 @@ def _run(app_directory, sub_app_directory, slug):
         )
         success = False
 
-    if not success:
+    # delete tag in case of release failure
+    try:
+        message = response.json()["details"]["message"]
+        if message.startswith("version") and message.endswith("already exists"):
+            version_exist = True
+        else:
+            version_exist = False
+    except:
+        version_exist = False
+    if not success and not version_exist:
         if tag_created:
             console.print(f'Deleting tag "sly-release-{release_version}" from remote')
             try:
@@ -308,42 +374,46 @@ def _run(app_directory, sub_app_directory, slug):
     return True
 
 
-# def cli_run():
-#     parser = argparse.ArgumentParser(
-#         description="This app allows you to release your aplication to supervisely platform",
-#     )
-#     parser.add_argument(
-#         "-p", "--path", required=False, help="Path to the directory with application"
-#     )
-#     parser.add_argument(
-#         "-a",
-#         "--sub-app",
-#         required=False,
-#         help="Path to subApp relative to application directory",
-#     )
-#     parser.add_argument("-s", "--slug", required=False)
-#     args = parser.parse_args()
-#     console = Console()
-#     try:
-#         success = _run(
-#             app_directory=args.path, sub_app_directory=args.sub_app, slug=args.slug
-#         )
-#         console.print("App released sucessfully!" if success else "App not released")
-#     except KeyboardInterrupt:
-#         console.print("Aborting...")
-#         console.print("App not released")
-
-@click.command(help="This app allows you to release your aplication to Supervisely platform")
-@click.option("-p", "--path", required=False, help="[Optional] Path to the directory with application")
-@click.option("-a", "--sub-app", required=False, help="[Optional] Path to sub-app relative to application directory")
-@click.option("-s", "--slug", required=False, help="[Optional]")
-def cli_run(path, sub_app, slug):
-    console = Console()
+@click.command(
+    help="This app allows you to release your aplication to Supervisely platform"
+)
+@click.option(
+    "-p",
+    "--path",
+    required=False,
+    help="[Optional] Path to the directory with application",
+)
+@click.option(
+    "-a",
+    "--sub-app",
+    required=False,
+    help="[Optional] Path to sub-app relative to application directory",
+)
+@click.option(
+    "--release-version",
+    required=False,
+    help='[Optional] Release version in format "vX.X.X"',
+)
+@click.option("--release-name", required=False, help="[Optional] Release name")
+@click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
+@click.option("-s", "--slug", required=False, help="[Optional] For internal use")
+def cli_run(path, sub_app, slug, y, release_version, release_name):
     try:
         success = _run(
-            app_directory=path, sub_app_directory=sub_app, slug=slug
+            app_directory=path,
+            sub_app_directory=sub_app,
+            slug=slug,
+            autoconfirm=y,
+            release_version=release_version,
+            release_name=release_name,
         )
-        console.print("App released sucessfully!" if success else "App not released")
+        if success:
+            print("App released sucessfully!")
+            sys.exit(0)
+        else:
+            print("App not released")
+            sys.exit(1)
     except KeyboardInterrupt:
-        console.print("Aborting...")
-        console.print("App not released")
+        print("Aborting...")
+        print("App not released")
+        sys.exit(1)
