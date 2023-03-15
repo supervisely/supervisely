@@ -6,9 +6,10 @@ Vue.component("html-video", {
         width="100%"
         height="auto"
         controls
-        @timeupdate="$emit('timeupdate', $refs['video'].currentTime)"
+        @timeupdate="timeUpdated"
         @play="$emit('update:is-playing', true)"
         @pause="$emit('update:is-playing', false)"
+        preload="metadata"
     >
         <source ref="video-data" :src="url" :type="mimeType">
     </video>
@@ -34,6 +35,7 @@ Vue.component("html-video", {
   },
   watch: {
     timeToSet(time) {
+      console.log("timeToSet: ", time, Number.isFinite(time));
       if (Number.isFinite(time)) {
         this.$refs["video"].currentTime = time;
         this.$emit("update:time-to-set", null);
@@ -41,15 +43,15 @@ Vue.component("html-video", {
     },
     url: {
       handler() {
+        console.log("URL: ", this.url);
         this.updateVideoSrc();
       },
-      immediate: true,
     },
     mimeType: {
       handler() {
+        console.log("mimeType: ", this.mimeType);
         this.updateVideoSrc();
       },
-      immediate: true,
     },
     isPlaying: {
       handler(value) {
@@ -58,6 +60,8 @@ Vue.component("html-video", {
     },
   },
   mounted() {
+    console.log("mounted", this.$refs["video"]);
+    this.updateVideoSrc();
     if (this.isPlaying) {
       this.$emit("update:is-playing", false);
     }
@@ -66,14 +70,23 @@ Vue.component("html-video", {
     updateVideoSrc() {
       const video = this.$refs["video"];
       const source = this.$refs["video-data"];
-
+      console.log("updateVideoSrc video", video);
+      console.log("updateVideoSrc source", source);
+      console.log("updateVideoSrc url", this.url);
+      console.log("updateVideoSrc mimeType", this.mimeType);
       if (!this.url || !this.mimeType || !video) {
         return;
       }
       video.pause();
       source.setAttribute("src", this.url);
       source.setAttribute("type", this.mimeType);
-      video.load();
+      //   video.src = this.url;
+      //   video.setAttribute("src", this.url);
+      //    <source ref="video-data" src="" type=""></source>
+      console.log("updateVideoSrc: SUCCESS");
+      this.$nextTick(() => {
+        video.load();
+      });
     },
     playPause() {
       const video = this.$refs["video"];
@@ -81,6 +94,11 @@ Vue.component("html-video", {
         return;
       }
       this.isPlaying ? video.play() : video.pause();
+    },
+    timeUpdated() {
+      console.log("ref video:", this.$refs["video"]);
+      console.log("currentTime:", this.$refs["video"].currentTime);
+      this.$emit("timeupdate", this.$refs["video"].currentTime);
     },
   },
 });

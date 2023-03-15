@@ -5,5 +5,10 @@
   :mask-path="data.{{{widget.widget_id}}}.maskPath"
   :is-playing.sync="state.{{{widget.widget_id}}}.isPlaying"
   @timeupdate="state.{{{widget.widget_id}}}.currentTime = $event"
+  key="{{{widget.widget_id}}}"
 >
 </html-video>
+<!-- 
+<video controls>
+  <source :src="data.{{{widget.widget_id}}}.url" type="video/mp4" />
+</video> -->
