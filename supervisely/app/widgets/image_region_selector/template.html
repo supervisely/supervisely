@@ -1,16 +1,6 @@
-<head>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/svg.select.js@3.0.1/dist/svg.select.min.css"/>
-  <!-- TODO How to include CSS correctly? -->
-  <!-- <link rel="stylesheet" href="./static/styles.css"/> -->
-  <!-- <link rel="stylesheet" href="./sly/css/app/widgets/image_region_selector/static/styles.css"/> -->
-</head>
-<script src="https://cdn.jsdelivr.net/npm/svg.js@2.7.1/dist/svg.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/svg.select.js@3.0.1/dist/svg.select.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/svg.resize.js@1.4.3/dist/svg.resize.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/svg.draggable.js@2.2.2/dist/svg.draggable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/svg.panzoom.js@1.2.3/dist/svg.panzoom.min.js"></script>
-<script src="https://rawgit.com/nodeca/pako/1.0.11/dist/pako.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/svg.select.js@3.0.1/dist/svg.select.min.css"/>
+<link rel="stylesheet" href="./sly/css/app/widgets/image_region_selector/styles.css"/>
+
 <smarttool-editor
   :disabled="state.{{{widget.widget_id}}}.isFinished || state.{{{widget.widget_id}}}.isBroken || state.{{{widget.widget_id}}}.disabled "
   :style="{width: state.{{{widget.widget_id}}}.widget_width, height: state.{{{widget.widget_id}}}.widget_height}"

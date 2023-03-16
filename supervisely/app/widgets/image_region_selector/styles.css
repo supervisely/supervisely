@@ -18,6 +18,11 @@
     stroke: wheat !important;
 }
 
+circle.svg_select_points {
+    stroke: black;
+    fill: white;
+}
+
 .svg_select_points_rot {
     display: none;
 }

@@ -36,30 +36,14 @@ class ImageRegionSelector(Widget):
             self.image_update(image_info)
 
         script_path = "./sly/css/app/widgets/image_region_selector/script.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "1"
-        ] = "https://cdn.jsdelivr.net/npm/svg.js@2.7.1/dist/svg.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "2"
-        ] = "https://cdn.jsdelivr.net/npm/svg.select.js@3.0.1/dist/svg.select.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "3"
-        ] = "https://cdn.jsdelivr.net/npm/svg.resize.js@1.4.3/dist/svg.resize.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "4"
-        ] = "https://cdn.jsdelivr.net/npm/svg.draggable.js@2.2.2/dist/svg.draggable.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "5"
-        ] = "https://cdn.jsdelivr.net/npm/svg.panzoom.js@1.2.3/dist/svg.panzoom.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "6"
-        ] = "https://rawgit.com/nodeca/pako/1.0.11/dist/pako.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__ + "7"
-        ] = "https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"
-        JinjaWidgets().context["__widget_scripts__"][
-            self.__class__.__name__
-        ] = script_path
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "1"] = "https://cdn.jsdelivr.net/npm/svg.js@2.7.1/dist/svg.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "2"] = "https://cdn.jsdelivr.net/npm/svg.select.js@3.0.1/dist/svg.select.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "3"] = "https://cdn.jsdelivr.net/npm/svg.resize.js@1.4.3/dist/svg.resize.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "4"] = "https://cdn.jsdelivr.net/npm/svg.draggable.js@2.2.2/dist/svg.draggable.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "5"] = "https://cdn.jsdelivr.net/npm/svg.panzoom.js@1.2.3/dist/svg.panzoom.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "6"] = "https://rawgit.com/nodeca/pako/1.0.11/dist/pako.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "7"] = "https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def image_update(self, image_info: sly.ImageInfo):
         self.image_link = image_info.preview_url
@@ -183,8 +167,6 @@ class ImageRegionSelector(Widget):
     def get_relative_coordinates(self, abs_coordinates):
         box_width, box_height = self.get_bbox_size(current_bbox=self.scaled_bbox)
         return {
-            "x": (abs_coordinates["position"][0][0] - self.scaled_bbox[0][0])
-            / box_width,
-            "y": (abs_coordinates["position"][0][1] - self.scaled_bbox[0][1])
-            / box_height,
+            "x": (abs_coordinates["position"][0][0] - self.scaled_bbox[0][0]) / box_width,
+            "y": (abs_coordinates["position"][0][1] - self.scaled_bbox[0][1]) / box_height,
         }
