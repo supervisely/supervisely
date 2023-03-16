@@ -1,6 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import Union, List, Dict, Tuple
+from typing import List
 
 
 class Timeline(Widget):
@@ -9,12 +9,13 @@ class Timeline(Widget):
 
     def __init__(
         self,
-        pointer: int,
-        frames_count: int,
+        pointer: int = 0,
+        frames_count: int = 0,
         intervals: List = [],
         colors: List = [],
         height: int = 30,
-        pointer_color: Tuple = (151, 151, 151, 1),
+        pointer_color: str = "",
+        selected_segment: List = None,
         widget_id: str = None,
     ):
 
@@ -24,181 +25,91 @@ class Timeline(Widget):
         self._colors = colors
         self._height = f"{height}px"
         self._pointer_color = pointer_color
-        self._click_handled = True
-
-        if self._max_value is None and len(self._rows_data) != 0:
-            check_max_value = []
-            for curr_row in self._rows_data:
-                check_max_value.append(curr_row["total"])
-
-            self._max_value = max(check_max_value)
-
-        for curr_row in self._rows_data:
-            if curr_row.get("segments") is None:
-                curr_row["segments"] = {}
-
-        self._content = {
-            "maxValue": self._max_value,
-            "segments": self._segments,
-            "rows": self._rows_data,
-        }
+        self._selected_segment = selected_segment
+        self._click_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            "example1": {
-                "content": self._content,
-                "options": {
-                    "selectable": self._selectable,
-                    "collapsable": self._collapsable,
-                    "clickableName": self._clickable_name,
-                    "clickableSegment": self._clickable_segment,
-                    "maxHeight": self._max_height,
-                },
-                "imageSliderData": self._slider_data,
-            }
+            "framesCount": self._frames_count,
+            "intervals": self._intervals,
+            "colors": self._colors,
+            "options": {"height": self._height, "pointerColor": self._pointer_color},
         }
 
     def get_json_state(self):
-        return {"selectedRows": [], "clickedItem": None}
+        return {"pointer": self._pointer, "selectedSegment": self._selected_segment}
 
-    # def get_max_value(self):
-    #     return DataJson()[self.widget_id]["example1"]["content"]["maxValue"]
+    def set_pointer(self, value: int):
+        self._pointer = value
+        StateJson()[self.widget_id]["pointer"] = self._pointer
+        StateJson().send_changes()
 
-    # def set_max_value(self, value: int):
-    #     self._max_value = value
-    #     DataJson()[self.widget_id]["example1"]["content"]["maxValue"] = self._max_value
-    #     DataJson().send_changes()
+    def get_pointer(self):
+        return StateJson()[self.widget_id]["pointer"]
 
-    # def set_max_height(self, value: int):
-    #     self._max_height = f"{value}px"
-    #     DataJson()[self.widget_id]["example1"]["options"]["maxHeight"] = self._max_height
-    #     DataJson().send_changes()
+    def set_frames_count(self, value: int):
+        self._frames_count = value
+        DataJson()[self.widget_id]["framesCount"] = self._frames_count
+        DataJson().send_changes()
 
-    # def get_max_height(self):
-    #     self._max_height = DataJson()[self.widget_id]["example1"]["options"]["maxHeight"]
-    #     return int(self._height[:-2])
+    def get_frames_count(self):
+        return DataJson()[self.widget_id]["framesCount"]
 
-    # def disable_selectable(self):
-    #     self._selectable = False
-    #     DataJson()[self.widget_id]["example1"]["options"]["selectable"] = self._selectable
-    #     DataJson().send_changes()
+    def add_intervals(self, intervals: List = [], colors: List = []):
+        self._intervals.extend(intervals)
+        self._colors.extend(colors)
+        if self._intervals[-1][1] > self._frames_count:
+            self._frames_count = self._intervals[-1][1]
+            DataJson()[self.widget_id]["framesCount"] = self._frames_count
+        DataJson()[self.widget_id]["intervals"] = self._intervals
+        DataJson()[self.widget_id]["colors"] = self._colors
+        DataJson().send_changes()
 
-    # def unable_selectable(self):
-    #     self._selectable = True
-    #     DataJson()[self.widget_id]["example1"]["options"]["selectable"] = self._selectable
-    #     DataJson().send_changes()
+    def set_intervals(self, intervals: List = [], colors: List = []):
+        self._intervals = intervals
+        self._colors = colors
+        self._frames_count = self._intervals[-1][1]
+        DataJson()[self.widget_id]["framesCount"] = self._frames_count
+        DataJson()[self.widget_id]["intervals"] = self._intervals
+        DataJson()[self.widget_id]["colors"] = self._colors
+        DataJson().send_changes()
 
-    # def get_selectable(self):
-    #     return DataJson()[self.widget_id]["example1"]["options"]["selectable"]
+    def get_intervals(self):
+        return DataJson()[self.widget_id]["intervals"]
 
-    # def disable_collapsable(self):
-    #     self._collapsable = False
-    #     DataJson()[self.widget_id]["example1"]["options"]["collapsable"] = self._collapsable
-    #     DataJson().send_changes()
+    def get_colors(self):
+        return DataJson()[self.widget_id]["colors"]
 
-    # def unable_collapsable(self):
-    #     self._collapsable = True
-    #     DataJson()[self.widget_id]["example1"]["options"]["collapsable"] = self._collapsable
-    #     DataJson().send_changes()
+    def set_height(self, value: int):
+        self._height = f"{value}px"
+        DataJson()[self.widget_id]["options"]["height"] = self._height
+        DataJson().send_changes()
 
-    # def get_collapsable(self):
-    #     return DataJson()[self.widget_id]["example1"]["options"]["collapsable"]
+    def get_height(self):
+        return DataJson()[self.widget_id]["options"]["height"]
 
-    # def disable_clickable_name(self):
-    #     self._clickable_name = False
-    #     DataJson()[self.widget_id]["example1"]["options"]["clickableName"] = self._clickable_name
-    #     DataJson().send_changes()
+    def set_pointer_color(self, value: str):
+        self._pointer_color = value
+        DataJson()[self.widget_id]["options"]["pointerColor"] = self._pointer_color
+        DataJson().send_changes()
 
-    # def unable_clickable_name(self):
-    #     self._clickable_name = True
-    #     DataJson()[self.widget_id]["example1"]["options"]["clickableName"] = self._clickable_name
-    #     DataJson().send_changes()
+    def get_pointer_color(self):
+        return DataJson()[self.widget_id]["options"]["pointerColor"]
 
-    # def get_clickable_name(self):
-    #     return DataJson()[self.widget_id]["example1"]["options"]["clickableName"]
+    def click(self, func):
+        route_path = self.get_route_path(Timeline.Routes.CLICK)
+        server = self._sly_app.get_server()
 
-    # def disable_clickable_segment(self):
-    #     self._clickable_segment = False
-    #     DataJson()[self.widget_id]["example1"]["options"][
-    #         "clickableSegment"
-    #     ] = self._clickable_segment
-    #     DataJson().send_changes()
+        self._click_handled = True
 
-    # def unable_clickable_segment(self):
-    #     self._clickable_segment = True
-    #     DataJson()[self.widget_id]["example1"]["options"][
-    #         "clickableSegment"
-    #     ] = self._clickable_segment
-    #     DataJson().send_changes()
+        @server.post(route_path)
+        def _click():
+            res = (
+                StateJson()[self.widget_id]["pointer"],
+                StateJson()[self.widget_id]["selectedSegment"],
+            )
+            func(res)
 
-    # def get_clickable_segment(self):
-    #     return DataJson()[self.widget_id]["example1"]["options"]["clickableSegment"]
-
-    # def add_segments(self, segments: List[Dict] = [], send_changes=True):
-    #     for curr_segment in segments:
-    #         self._segments.append(curr_segment)
-
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def get_segments(self):
-    #     return DataJson()[self.widget_id]["example1"]["content"]["segments"]
-
-    # def set_segments(self, segments: List[Dict] = [], send_changes=True):
-    #     self._content["segments"] = segments
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def add_rows_data(self, rows_data: List[Dict] = [], send_changes=True):
-    #     for curr_rows_data in rows_data:
-    #         self._rows_data.append(curr_rows_data)
-
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def get_rows_data(self):
-    #     return DataJson()[self.widget_id]["example1"]["content"]["rows"]
-
-    # def set_rows_data(self, rows_data: List[Dict] = [], send_changes=True):
-    #     self._content["rows"] = rows_data
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def add_slider_data(self, slider_data: Dict = {}, send_changes=True):
-    #     for slider_key, slider_value in slider_data.items():
-    #         self._slider_data[slider_key] = slider_value
-
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def get_slider_data(self):
-    #     return DataJson()[self.widget_id]["example1"]["imageSliderData"]
-
-    # def set_slider_data(self, slider_data: Dict = {}, send_changes=True):
-    #     self._slider_data = slider_data
-    #     self.update_data()
-    #     if send_changes:
-    #         DataJson().send_changes()
-
-    # def get_selected_rows(self):
-    #     return StateJson()[self.widget_id]["selectedRows"]
-
-    # def click(self, func):
-    #     route_path = self.get_route_path(ClassBalance.Routes.CLICK)
-    #     server = self._sly_app.get_server()
-
-    #     self._click_handled = True
-
-    #     @server.post(route_path)
-    #     def _click():
-    #         res = StateJson()[self.widget_id]["clickedItem"]
-    #         func(res)
-
-    #     return _click
+        return _click
