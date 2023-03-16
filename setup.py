@@ -121,6 +121,7 @@ setup(
     entry_points={
         "console_scripts": [
             "sly-release=supervisely.release.run:cli_run",
+            "supervisely=supervisely.cli.cli:cli"
         ]
     },
     python_requires=">=3.7.1",

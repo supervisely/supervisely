@@ -1,4 +1,4 @@
-from .sly_release import (
+from supervisely.release.sly_release import (
     slug_is_valid,
     get_module_root,
     get_module_path,

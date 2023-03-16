@@ -154,7 +154,7 @@ def _check_instance_version(instance_version):
     return True
 
 
-def _run(
+def run(
     app_directory, sub_app_directory, slug, autoconfirm, release_version, release_name
 ):
     console = Console()
@@ -399,7 +399,7 @@ def _run(
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
 def cli_run(path, sub_app, slug, y, release_version, release_name):
     try:
-        success = _run(
+        success = run(
             app_directory=path,
             sub_app_directory=sub_app,
             slug=slug,
