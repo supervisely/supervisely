@@ -276,7 +276,7 @@ def run(
     # get and check release version
     if release_version is None:
         release_version = _ask_release_version(repo)
-    if not _check_release_version(release_version):
+    if repo.active_branch.name in ["main", "master"] and not _check_release_version(release_version):
         console.print(
             '[red][Error][/] Incorrect release version. Should be of format "vX.X.X"'
         )
@@ -291,8 +291,9 @@ def run(
         f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_name}"'
     )
     if repo.active_branch.name in ["main", "master"]:
+        remote_name = repo.active_branch.tracking_branch().name
         console.print(
-            f'Git tag "sly-release-{release_version}" will be added and pushed to origin'
+            f'Git tag "sly-release-{release_version}" will be added and pushed to remote "{remote_name}"'
         )
 
     # ask for confiramtion if needed
