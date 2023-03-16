@@ -763,7 +763,10 @@ def resize_inter_nearest(
 
                    After
     """
-    import skimage.transform
+    try:
+        import skimage.transform
+    except ModuleNotFoundError:
+        print(f"Warning! There was an error: {error}.\nPlease install additional packages with: 'pip install supervisely[extras]'.")
 
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     resize_kv_args = dict(order=0, preserve_range=True, mode="constant")
@@ -914,7 +917,10 @@ def rotate(
 
                    After origin_size mode
     """
-    import skimage.transform
+    try:
+        import skimage.transform
+    except ModuleNotFoundError:
+        print(f"Warning! There was an error: {error}.\nPlease install additional packages with: 'pip install supervisely[extras]'.")
 
     rotator = ImageRotator(imsize=img.shape[:2], angle_degrees_ccw=degrees_angle)
     if mode == RotateMode.KEEP_BLACK:
