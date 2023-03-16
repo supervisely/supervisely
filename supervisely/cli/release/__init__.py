@@ -1,4 +1,4 @@
-from supervisely.release.sly_release import (
+from supervisely.cli.release.release import (
     slug_is_valid,
     get_module_root,
     get_module_path,
@@ -12,5 +12,4 @@ from supervisely.release.sly_release import (
     delete_tag,
     push_tag,
 )
-
-__version__ = "v1.0.0"
+from supervisely.cli.release.run import run, cli_run

@@ -29,7 +29,7 @@ def cli():
 @click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
 def release(path, sub_app, slug, y, release_version, release_description):
-    from supervisely.release.run import run
+    from supervisely.cli.release import run
     import sys
     try:
         success = run(

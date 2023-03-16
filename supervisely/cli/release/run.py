@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 
-LAST_SUPPORTED_INSTANCE_VERSION = "6.7.21"
+MIN_SUPPORTED_INSTANCE_VERSION = "6.7.21"
 
-from supervisely.release.sly_release import (
+from supervisely.cli.release.release import (
     find_tag_in_repo,
     push_tag,
     get_app_from_instance,
@@ -141,7 +141,7 @@ def _check_release_version(release_version):
 
 
 def _check_instance_version(instance_version):
-    last_supported = [int(x) for x in LAST_SUPPORTED_INSTANCE_VERSION.split(".")]
+    last_supported = [int(x) for x in MIN_SUPPORTED_INSTANCE_VERSION.split(".")]
     version_numbers = [int(x) for x in instance_version.split(".")]
     for number, supported in zip(version_numbers, last_supported):
         if number < supported:
@@ -193,12 +193,12 @@ def run(
         instance_version = get_instance_version(api_token, server_address)
         if not _check_instance_version(instance_version["version"]):
             console.print(
-                f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {LAST_SUPPORTED_INSTANCE_VERSION} or higher'
+                f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {MIN_SUPPORTED_INSTANCE_VERSION} or higher'
             )
             return False
     except NotImplementedError:
         console.print(
-            f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {LAST_SUPPORTED_INSTANCE_VERSION} or higher'
+            f'[red][Error][/] Instance "{server_address}" does not support releasing apps via sly-release. Please update your instance to version {MIN_SUPPORTED_INSTANCE_VERSION} or higher'
         )
         return False
     except PermissionError:
