@@ -15,7 +15,6 @@ class Timeline(Widget):
         colors: List = [],
         height: int = 30,
         pointer_color: str = "",
-        selected_segment: List = None,
         widget_id: str = None,
     ):
 
@@ -25,7 +24,7 @@ class Timeline(Widget):
         self._colors = colors
         self._height = f"{height}px"
         self._pointer_color = pointer_color
-        self._selected_segment = selected_segment
+        self._selected_segment = None
         self._click_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -98,6 +97,9 @@ class Timeline(Widget):
     def get_pointer_color(self):
         return DataJson()[self.widget_id]["options"]["pointerColor"]
 
+    def get_select_segment(self):
+        return StateJson()[self.widget_id]["selectedSegment"]
+
     def click(self, func):
         route_path = self.get_route_path(Timeline.Routes.CLICK)
         server = self._sly_app.get_server()
@@ -106,10 +108,7 @@ class Timeline(Widget):
 
         @server.post(route_path)
         def _click():
-            res = (
-                StateJson()[self.widget_id]["pointer"],
-                StateJson()[self.widget_id]["selectedSegment"],
-            )
+            res = StateJson()[self.widget_id]["selectedSegment"]
             func(res)
 
         return _click

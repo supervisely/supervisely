@@ -29,6 +29,7 @@
   >
     <template slot-scope="{ activeInterval }">
       <span v-if="activeInterval">
+        <div>Pointer: {{state.{{{widget.widget_id}}}.pointer}}</div>
         <span
           >Interval: {{ activeInterval.interval[0] }} - {{
           activeInterval.interval[1] }}</span
