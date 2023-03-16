@@ -27,6 +27,9 @@ class Timeline(Widget):
         self._selected_segment = None
         self._click_handled = False
 
+        if self._frames_count == 0 and len(self._intervals) != 0:
+            self._frames_count = self._intervals[-1][1]
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
