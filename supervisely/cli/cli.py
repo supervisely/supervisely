@@ -25,10 +25,10 @@ def cli():
     required=False,
     help='[Optional] Release version in format "vX.X.X"',
 )
-@click.option("--release-name", required=False, help="[Optional] Release name")
+@click.option("--release-description", required=False, help="[Optional] Release description (max length is 64 symbols)")
 @click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
-def release(path, sub_app, slug, y, release_version, release_name):
+def release(path, sub_app, slug, y, release_version, release_description):
     from supervisely.release.run import run
     import sys
     try:
@@ -38,7 +38,7 @@ def release(path, sub_app, slug, y, release_version, release_name):
             slug=slug,
             autoconfirm=y,
             release_version=release_version,
-            release_name=release_name,
+            release_description=release_description,
         )
         if success:
             print("App released sucessfully!")

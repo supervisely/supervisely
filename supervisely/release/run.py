@@ -85,51 +85,46 @@ def _check_git(repo: git.Repo):
 
 def _ask_release_version(repo: git.Repo):
     console = Console()
-    if repo.active_branch.name in ("main", "master"):
-        try:
-            sly_release_tags = [
-                tag.name
-                for tag in repo.tags
-                if re.match("^sly-release-v\d+\.\d+\.\d+$", tag.name)
+    try:
+        sly_release_tags = [
+            tag.name
+            for tag in repo.tags
+            if re.match("^sly-release-v\d+\.\d+\.\d+$", tag.name)
+        ]
+        sly_release_tags.sort(
+            key=lambda tag: [
+                int(n) for n in tag.split("sly-release-v")[-1].split(".")
             ]
-            sly_release_tags.sort(
-                key=lambda tag: [
-                    int(n) for n in tag.split("sly-release-v")[-1].split(".")
-                ]
-            )
-            current_release_version = sly_release_tags[-1][13:]
-            suggested_release_version = ".".join(
-                [
-                    *current_release_version.split(".")[:-1],
-                    str(int(current_release_version.split(".")[-1]) + 1),
-                ]
-            )
-        except Exception:
-            current_release_version = None
-            suggested_release_version = "0.0.1"
-        while True:
-            input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]{suggested_release_version}[/]):\n'
-            release_version = console.input(input_msg)
-            if release_version == "":
-                release_version = "v" + suggested_release_version
-                break
-            if _check_release_version(release_version):
-                break
-            console.print("Wrong version format. Should be of format vX.X.X")
-    else:
-        console.print(
-            f'Release version will be "{repo.active_branch.name}" as the branch name'
         )
-        release_version = repo.active_branch.name
+        current_release_version = sly_release_tags[-1][13:]
+        suggested_release_version = ".".join(
+            [
+                *current_release_version.split(".")[:-1],
+                str(int(current_release_version.split(".")[-1]) + 1),
+            ]
+        )
+    except Exception:
+        current_release_version = None
+        suggested_release_version = "0.0.1"
+    while True:
+        input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]{suggested_release_version}[/]):\n'
+        release_version = console.input(input_msg)
+        if release_version == "":
+            release_version = "v" + suggested_release_version
+            break
+        if _check_release_version(release_version):
+            break
+        console.print("Wrong version format. Should be of format vX.X.X")
+    
     return release_version
 
 
-def _ask_release_name():
+def _ask_release_description():
     console = Console()
-    release_name = console.input(
-        "Enter release name:\n",
+    release_description = console.input(
+        "Enter release description:\n",
     )
-    return release_name
+    return release_description
 
 
 def _ask_confirmation():
@@ -155,7 +150,7 @@ def _check_instance_version(instance_version):
 
 
 def run(
-    app_directory, sub_app_directory, slug, autoconfirm, release_version, release_name
+    app_directory, sub_app_directory, slug, autoconfirm, release_version, release_description
 ):
     console = Console()
     console.print("\nSupervisely Release App\n", style="bold")
@@ -274,21 +269,27 @@ def run(
         return False
 
     # get and check release version
-    if release_version is None:
-        release_version = _ask_release_version(repo)
-    if repo.active_branch.name in ["main", "master"] and not _check_release_version(release_version):
+    if repo.active_branch.name in ["main", "master"]:
+        if release_version is None:
+            release_version = _ask_release_version(repo)
+        if not _check_release_version(release_version):
+            console.print(
+                '[red][Error][/] Incorrect release version. Should be of format "vX.X.X"'
+            )
+            return False
+    else:
         console.print(
-            '[red][Error][/] Incorrect release version. Should be of format "vX.X.X"'
+            f'Release version will be "{repo.active_branch.name}" as the branch name'
         )
-        return False
+        release_version = repo.active_branch.name
 
     # get release name
-    if release_name is None:
-        release_name = _ask_release_name()
+    if release_description is None:
+        release_description = _ask_release_description()
 
     # print summary
     console.print(
-        f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_name}"'
+        f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_description}"'
     )
     if repo.active_branch.name in ["main", "master"]:
         remote_name = repo.active_branch.tracking_branch().name
@@ -332,7 +333,7 @@ def run(
         appKey,
         repo,
         config,
-        release_name,
+        release_description,
         release_version,
         modal_template,
         slug,
@@ -395,10 +396,10 @@ def run(
     required=False,
     help='[Optional] Release version in format "vX.X.X"',
 )
-@click.option("--release-name", required=False, help="[Optional] Release name")
+@click.option("--release-description", required=False, help="[Optional] Release description")
 @click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
-def cli_run(path, sub_app, slug, y, release_version, release_name):
+def cli_run(path, sub_app, slug, y, release_version, release_description):
     try:
         success = run(
             app_directory=path,
@@ -406,7 +407,7 @@ def cli_run(path, sub_app, slug, y, release_version, release_name):
             slug=slug,
             autoconfirm=y,
             release_version=release_version,
-            release_name=release_name,
+            release_description=release_description,
         )
         if success:
             print("App released sucessfully!")

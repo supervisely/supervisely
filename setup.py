@@ -57,6 +57,7 @@ INSTALL_REQUIRES = [
     "GitPython",
     "giturlparse",
     "rich",
+    "click",
 ]
 
 ALT_INSTALL_REQUIRES = {
