@@ -12,5 +12,3 @@ def run_sync(coroutine):
     except RuntimeError as ex:
         print(repr(ex))
         return None
-
-
