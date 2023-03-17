@@ -1,13 +1,15 @@
-<div class="block"
-
-    {% if widget._changes_handled == true %}
-    @change="post('/{{{widget.widget_id}}}/value_changed')"
-    {% endif %}
-    
-    >
-    <el-color-picker 
-    v-model="state.{{{widget.widget_id}}}.color" 
+<div class="block">
+  <el-color-picker
+  v-model="state.{{{widget.widget_id}}}.color"
+  {% if widget._changes_handled == true %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
     :show-alpha="data.{{{widget.widget_id}}}.show_alpha"
     :color-format="data.{{{widget.widget_id}}}.color_format"
-    ></el-color-picker>
+  ></el-color-picker>
 </div>
+
+
+
+
+

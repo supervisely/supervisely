@@ -1,6 +1,5 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List, Optional, Dict
 
 try:
     from typing import Literal
@@ -15,12 +14,12 @@ class ColorPicker(Widget):
     def __init__(
         self,
         show_alpha: bool = False,
-        color_format: Literal["hsl", "hsv", "hex", "rgb"] = "rgb",
+        color_format: Literal["hsl", "hsv", "hex", "rgb"] = "hex",
         widget_id: str = None,
     ):
         self._show_alpha = show_alpha
         self._color_format = color_format
-        self._color = None
+        self._color = "#20a0ff"
         self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -36,6 +35,32 @@ class ColorPicker(Widget):
 
     def get_value(self):
         return StateJson()[self.widget_id]["color"]
+
+    def set_value(self, value: str):
+        self._color = value
+        StateJson()[self.widget_id]["color"] = self._color
+        StateJson().send_changes()
+
+    def check_show_alpha(self):
+        return DataJson()[self.widget_id]["show_alpha"]
+
+    def disable_show_alpha(self):
+        self._show_alpha = False
+        DataJson()[self.widget_id]["show_alpha"] = self._show_alpha
+        DataJson().send_changes()
+
+    def unable_show_alpha(self):
+        self._show_alpha = True
+        DataJson()[self.widget_id]["show_alpha"] = self._show_alpha
+        DataJson().send_changes()
+
+    def get_color_format(self):
+        return DataJson()[self.widget_id]["color_format"]
+
+    def set_color_format(self, value: str):
+        self._color_format = value
+        DataJson()[self.widget_id]["color_format"] = self._color_format
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(ColorPicker.Routes.VALUE_CHANGED)
