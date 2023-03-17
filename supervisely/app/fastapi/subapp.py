@@ -21,6 +21,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.custom_static_files import CustomStaticFiles
 from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -220,7 +221,7 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount("/static", StaticFiles(directory=static_dir), name="static_files")
+            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
 
     return app
 
