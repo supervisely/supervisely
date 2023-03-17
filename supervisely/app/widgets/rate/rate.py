@@ -52,8 +52,12 @@ class Rate(Widget):
             "disabled_void_color": self._disabled_void_color,
         }
 
+
     def get_json_state(self):
         return {"value": self._value}
+    
+    def get_value(self):
+        return StateJson()[self.widget_id]["value"]
 
     def get_current_value(self):
         return StateJson()[self.widget_id]["value"]
