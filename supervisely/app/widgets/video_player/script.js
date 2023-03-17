@@ -11,7 +11,7 @@ Vue.component("html-video", {
         @pause="$emit('update:is-playing', false)"
         preload="metadata"
     >
-        <source ref="video-data" :src="url" :type="mimeType">
+        <source ref="video-data" src="" type="">
     </video>
     <div v-if="maskPath"
         ref="mask"
