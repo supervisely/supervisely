@@ -10,12 +10,14 @@ import json
 import numpy as np
 import random
 from datetime import datetime
+import time
+
 import copy
 from typing import Optional
 from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
 
-random.seed(datetime.now())
+random.seed(time.time())
 
 
 def rand_str(length):

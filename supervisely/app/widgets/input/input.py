@@ -8,19 +8,19 @@ except ImportError:
 
 
 class Input(Widget):
-
     class Routes:
         VALUE_CHANGED = "value_changed"
-        
+
     def __init__(
-            self,
-            value: str = "",
-            minlength: int = 0,
-            maxlength: int = 1000,
-            placeholder: str = "",
-            size: Literal["mini", "small", "large"] = None,
-            readonly: bool = False,
-            widget_id: str = None
+        self,
+        value: str = "",
+        minlength: int = 0,
+        maxlength: int = 1000,
+        placeholder: str = "",
+        size: Literal["mini", "small", "large"] = None,
+        readonly: bool = False,
+        type: Literal["text", "password"] = "text",
+        widget_id: str = None,
     ):
         self._value = value
         self._minlength = minlength
@@ -30,6 +30,7 @@ class Input(Widget):
         self._readonly = readonly
         self._widget_id = widget_id
         self._changes_handled = False
+        self._type = type
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -40,6 +41,7 @@ class Input(Widget):
             "placeholder": self._placeholder,
             "size": self._size,
             "readonly": self._readonly,
+            "type": self._type,
         }
 
     def get_json_state(self):
