@@ -1,0 +1,21 @@
+<div class="block"
+
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+    
+    >
+  <el-rate
+    v-model="state.{{{widget.widget_id}}}.value"
+    :colors="data.{{{widget.widget_id}}}.colors"
+    :max="data.{{{widget.widget_id}}}.max"
+    :disabled="data.{{{widget.widget_id}}}.disabled"
+    :allow-half="data.{{{widget.widget_id}}}.allow_half"
+    :texts="data.{{{widget.widget_id}}}.texts"
+    :show-text="data.{{{widget.widget_id}}}.show_text"
+    :text-color="data.{{{widget.widget_id}}}.text_color"
+    :void-color="data.{{{widget.widget_id}}}.void_color"
+    :disabled-void-color="data.{{{widget.widget_id}}}.disabled_void_color"
+  >
+  </el-rate>
+</div>
