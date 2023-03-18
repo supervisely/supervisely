@@ -1,0 +1,24 @@
+
+
+    <el-time-select
+
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+
+    v-model="state.{{{widget.widget_id}}}.value"
+    :picker-options="data.{{{widget.widget_id}}}.picker_options"
+    :placeholder="data.{{{widget.widget_id}}}.placeholder"
+    :size="data.{{{widget.widget_id}}}.size"
+    :popper-class="data.{{{widget.widget_id}}}.popper_class"
+  >
+  </el-time-select>
+
+
+{{state.{{{widget.widget_id}}}}}
+
+<!-- :picker-options="{
+  start: data.{{{widget.widget_id}}}.start,
+  step: data.{{{widget.widget_id}}}.step,
+  end: data.{{{widget.widget_id}}}.end
+}" -->
