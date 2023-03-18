@@ -50,3 +50,114 @@ def release(path, sub_app, slug, y, release_version, release_description):
         print("Aborting...")
         print("App not released")
         sys.exit(1)
+
+
+# training tensorboard template
+@cli.command(
+    help="Download project data from supervisely to local directory"
+)
+@click.option(
+    "--project-id",
+    required=True,
+    help="Supervisely project ID",
+)
+@click.option(
+    "--save-dir",
+    required=True,
+    help="Save directory",
+)
+def download_project(project_id, save_dir):
+    from supervisely.cli.project import download_project
+    import sys
+    try:
+        success = download_project(
+            project_id = project_id,
+            save_dir = save_dir,
+        )
+        if success:
+            print("Project downloaded sucessfully!")
+            sys.exit(0)
+        else:
+            print(f"Project not downloaded with following error: {success[1]}")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Aborting...")
+        print("Project not downloaded")
+        sys.exit(1)
+
+
+@cli.command(
+    help="Upload local files to supervisely teamfiles"
+)
+@click.option(
+    "--team-id",
+    required=True,
+    help="Supervisely team ID",
+)
+@click.option(
+    "--from-local-dir",
+    required=True,
+    help="Path to local directory from which files are uploaded",
+)
+@click.option(
+    "--to-teamfiles-dir",
+    required=True,
+    help="Path to teamfiles directory to which files are uploaded",
+)
+def upload_to_teamfiles(team_id, from_local_dir, to_teamfiles_dir):
+    from supervisely.cli.teamfiles import upload_to_teamfiles
+    import sys
+    try:
+        success = upload_to_teamfiles(
+            team_id = team_id,
+            from_local_dir = from_local_dir,
+            to_teamfiles_dir = to_teamfiles_dir
+        )
+        if success:
+            print("Local directory uploaded to teamfiles sucessfully!")
+            sys.exit(0)
+        else:
+            print("Upload failed")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Aborting...")
+        print("Upload aborted")
+        sys.exit(1)
+
+@cli.command(
+    help="Set link to teamfiles directory at workspace tasks interface"
+)
+@click.option(
+    "--team-id",
+    required=True,
+    help="Supervisely team ID",
+)
+@click.option(
+    "--task-id",
+    required=True,
+    help="Supervisely task ID",
+)
+@click.option(
+    "--teamfiles-dir",
+    required=True,
+    help="Path to teamfiles directory",
+)
+def set_task_output_dir(team_id, task_id, teamfiles_dir):
+    from supervisely.cli.teamfiles import set_task_output_dir
+    import sys
+    try:
+        success = set_task_output_dir(
+            team_id = team_id,
+            task_id = task_id,
+            teamfiles_dir = teamfiles_dir,
+        )
+        if success:
+            print("Setting task output directory succeed")
+            sys.exit(0)
+        else:
+            print(f"Setting task output directory failed")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Aborting...")
+        print("Setting task output directory aborted")
+        sys.exit(1)

@@ -122,7 +122,10 @@ setup(
     entry_points={
         "console_scripts": [
             "sly-release=supervisely.release.run:cli_run",
-            "supervisely=supervisely.cli.cli:cli"
+            "supervisely=supervisely.cli.cli:cli",
+            "download-project=supervisely.project.download:download_project",
+            "upload-to-teamfiles=supervisely.teamfiles.upload:upload_to_teamfiles",
+            "set-task-output-dir=supervisely.teamfiles.upload:set_task_output_dir"
         ]
     },
     python_requires=">=3.7.1",
