@@ -125,6 +125,38 @@ def upload_to_teamfiles(team_id, from_local_dir, to_teamfiles_dir):
         sys.exit(1)
 
 @cli.command(
+    help="Remove directory (folder or file) from supervisely teamfiles"
+)
+@click.option(
+    "--team-id",
+    required=True,
+    help="Supervisely team ID",
+)
+@click.option(
+    "--path",
+    required=True,
+    help="Path to remove",
+)
+def teamfiles_remove(team_id, path):
+    from supervisely.cli.teamfiles import remove
+    import sys
+    try:
+        success = remove(
+            team_id = team_id,
+            path = path,
+        )
+        if success:
+            sys.exit(0)
+        else:
+            print(f"Removing directory failed")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Aborting...")
+        print("Removing directory aborted")
+        sys.exit(1)
+
+
+@cli.command(
     help="Set link to teamfiles directory at workspace tasks interface"
 )
 @click.option(

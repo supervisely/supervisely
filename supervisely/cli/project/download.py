@@ -19,6 +19,7 @@ def download_project(project_id, save_dir):
     try:
         sly.download_project(api, project_id, save_dir)
         return True
+    
     except Exception as e:
         console.print(f'Error: {e}')
         return False
