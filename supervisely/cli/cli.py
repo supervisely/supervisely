@@ -78,7 +78,7 @@ def download_project(project_id, save_dir):
             print("Project downloaded sucessfully!")
             sys.exit(0)
         else:
-            print(f"Project not downloaded with following error: {success[1]}")
+            print(f"Project not downloaded")
             sys.exit(1)
     except KeyboardInterrupt:
         print("Aborting...")
