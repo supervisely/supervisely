@@ -53,6 +53,7 @@ class ProjectInfo(NamedTuple):
     type: str
     reference_image_url: str
     custom_data: dict
+    meta: dict
 
     @property
     def image_preview_url(self):
@@ -138,6 +139,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TYPE,
             ApiField.REFERENCE_IMAGE_URL,
             ApiField.CUSTOM_DATA,
+            ApiField.META,
         ]
 
     @staticmethod
@@ -976,3 +978,70 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api.project.move(id=project_id, workspace_id=workspace_id)
         """
         self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})
+        
+    def remove_projects_permanently(self, projects: list) -> None:
+        """
+        Remove Projects by ID and save backup URL into metadata for every Project.
+
+        :param projects: Project ID in Supervisely.
+        :type projects: list
+        :return: None
+        :rtype: :class: `NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            projects = [
+                {'id': 18464, 'archiveUrl': 'https://www.dropbox.com/...'},
+                {'id': 18461, 'archiveUrl': 'https://www.dropbox.com/...'}
+                ]
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.remove_projects_permanently(projects)
+        """
+        for project in projects:
+            id = project["id"]
+            archiveUrl = project["archiveUrl"]
+            self._api.post(
+                "projects.remove.permanently",
+                {
+                    ApiField.PROJECTS: [
+                        {ApiField.ID: id, ApiField.ARCHIVE_URL: archiveUrl}
+                    ]
+                },
+            )
+
+    def remove_project_permanently(self, id: int, archiveUrl: str) -> None:
+        """
+        Remove Project by ID and save backup URL into metadata.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param archiveUrl: URL of backuped archive/folder on Dropbox.
+        :type archiveUrl: str
+        :return: None
+        :rtype: :class: `NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            project_id = 18464
+            dropbox_url = 'https://www.dropbox.com/...'
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.remove_permanently(project_id, dropbox_url)
+        """
+        
+        
+        project = {ApiField.ID: id, ApiField.ARCHIVE_URL: archiveUrl}
+        self.remove_projects_permanently([project])

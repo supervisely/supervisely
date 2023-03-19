@@ -449,7 +449,10 @@ class ApiField:
     """"""
     PATHS = "paths"
     """"""
-
+    PROJECTS = "projects"
+    """"""
+    ARCHIVE_URL = "archiveUrl"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
