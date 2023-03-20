@@ -1,5 +1,4 @@
 
-
     <el-time-select
 
     {% if widget._changes_handled == true %}
@@ -10,15 +9,9 @@
     :picker-options="data.{{{widget.widget_id}}}.picker_options"
     :placeholder="data.{{{widget.widget_id}}}.placeholder"
     :size="data.{{{widget.widget_id}}}.size"
-    :popper-class="data.{{{widget.widget_id}}}.popper_class"
+    :readonly="data.{{{widget.widget_id}}}.readonly"
+    :disabled="data.{{{widget.widget_id}}}.disabled"
+    :editable="data.{{{widget.widget_id}}}.editable"
+    :clearable="data.{{{widget.widget_id}}}.clearable"
   >
   </el-time-select>
-
-
-{{state.{{{widget.widget_id}}}}}
-
-<!-- :picker-options="{
-  start: data.{{{widget.widget_id}}}.start,
-  step: data.{{{widget.widget_id}}}.step,
-  end: data.{{{widget.widget_id}}}.end
-}" -->

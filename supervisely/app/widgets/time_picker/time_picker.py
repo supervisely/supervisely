@@ -1,6 +1,5 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List, Optional, Dict
 
 try:
     from typing import Literal
@@ -17,9 +16,12 @@ class TimePicker(Widget):
         start: str = "09:00",
         step: str = "00:15",
         end: str = "22:30",
-        placeholder: str = "Select time",
+        placeholder: str = None,
         size: Literal["large", "small", "mini"] = None,
-        popper_class: str = None,
+        readonly: bool = False,
+        disabled: bool = False,
+        editable: bool = True,
+        clearable: bool = True,
         widget_id: str = None,
     ):
         self._start = start
@@ -27,7 +29,10 @@ class TimePicker(Widget):
         self._end = end
         self._placeholder = placeholder
         self._size = size
-        self._popper_class = popper_class
+        self._readonly = readonly
+        self._disabled = disabled
+        self._editable = editable
+        self._clearable = clearable
 
         self._changes_handled = False
         self._value = None
@@ -37,7 +42,10 @@ class TimePicker(Widget):
         return {
             "placeholder": self._placeholder,
             "size": self._size,
-            "popper_class": self._popper_class,
+            "readonly": self._readonly,
+            "disabled": self._disabled,
+            "editable": self._editable,
+            "clearable": self._clearable,
             "picker_options": {"start": self._start, "step": self._step, "end": self._end},
         }
 
@@ -46,6 +54,24 @@ class TimePicker(Widget):
 
     def get_value(self):
         return StateJson()[self.widget_id]["value"]
+
+    def get_picker_options(self):
+        return DataJson()[self.widget_id]["picker_options"]
+
+    def set_start(self, value: str):
+        self._start = value
+        DataJson()[self.widget_id]["picker_options"]["start"] = self._start
+        DataJson().send_changes()
+
+    def set_end(self, value: str):
+        self._end = value
+        DataJson()[self.widget_id]["picker_options"]["end"] = self._end
+        DataJson().send_changes()
+
+    def set_step(self, value: str):
+        self._step = value
+        DataJson()[self.widget_id]["picker_options"]["step"] = self._step
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(TimePicker.Routes.VALUE_CHANGED)
