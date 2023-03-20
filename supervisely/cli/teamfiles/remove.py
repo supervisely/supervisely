@@ -15,10 +15,10 @@ def remove(team_id, path):
     try:
         api.file.remove(team_id, path)
 
-        console.print(f'Directory {path} removed')
+        console.print(f"Directory '{path}' removed")
         return True
     
     except Exception as e:
-        console.print(f'Error: {e}')
+        console.print(f"Error: {e}")
         return False
 

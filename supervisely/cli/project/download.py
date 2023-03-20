@@ -10,7 +10,7 @@ api: sly.Api = sly.Api.from_env()
 
 def download_project(project_id, save_dir):
     console = Console()
-    console.print(f"\nDownloading data from {project_id} to directory: {save_dir}...\n", style="bold")
+    console.print(f"\nDownloading data from project with ID={project_id} to directory: '{save_dir}' ...\n", style="bold")
 
     if os.path.exists(save_dir):
         console.print(f"Deleting existing folder...")
