@@ -10,7 +10,7 @@ from supervisely.app.widgets import (
     SelectWorkspace,
     generate_id,
 )
-from supervisely.app import StateJson
+from supervisely.app import DataJson, StateJson
 from supervisely.api.api import Api
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -37,6 +37,7 @@ class SelectProject(Widget):
         self._show_label = show_label
         self._size = size
         self._ws_selector = None
+        self._disabled = False
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyProjectId")
         if self._default_id is not None:
@@ -72,6 +73,7 @@ class SelectProject(Widget):
 
     def get_json_data(self) -> Dict:
         res = {}
+        res["disabled"] = self._disabled
         res["workspaceId"] = self._ws_id
         res["options"] = {
             "showLabel": self._show_label,
@@ -90,3 +92,17 @@ class SelectProject(Widget):
 
     def get_selected_id(self):
         return StateJson()[self.widget_id]["projectId"]
+
+    def disable(self):
+        if self._compact is False:
+            self._ws_selector.disable()
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        if self._compact is False:
+            self._ws_selector.enable()
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
