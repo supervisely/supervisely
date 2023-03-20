@@ -453,6 +453,9 @@ class ApiField:
     """"""
     ARCHIVE_URL = "archiveUrl"
     """"""
+    BACKUP_ARCHIVE = "backupArchive"
+    """"""
+
 
 def _get_single_item(items):
     """_get_single_item"""
