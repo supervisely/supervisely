@@ -137,7 +137,7 @@ def upload_to_teamfiles(team_id, from_local_dir, to_teamfiles_dir):
     required=True,
     help="Path to remove",
 )
-def teamfiles_remove(team_id, path):
+def remove_teamfiles(team_id, path):
     from supervisely.cli.teamfiles import remove
     import sys
     try:
