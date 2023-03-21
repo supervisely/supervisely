@@ -5,7 +5,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app import StateJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget, SelectTeam, generate_id
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
@@ -29,6 +29,7 @@ class SelectWorkspace(Widget):
         self._show_label = show_label
         self._size = size
         self._team_selector = None
+        self._disabled = False
 
         self._default_id = _get_int_or_env(self._default_id, "context.workspaceId")
         if self._default_id is not None:
@@ -59,6 +60,7 @@ class SelectWorkspace(Widget):
 
     def get_json_data(self) -> Dict:
         res = {}
+        res["disabled"] = self._disabled
         res["teamId"] = self._team_id
         res["options"] = {
             "showLabel": self._show_label,
@@ -79,3 +81,17 @@ class SelectWorkspace(Widget):
 
     def get_selected_id(self):
         return StateJson()[self.widget_id]["workspaceId"]
+
+    def disable(self):
+        if self._compact is False:
+            self._team_selector.disable()
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def enable(self):
+        if self._compact is False:
+            self._team_selector.enable()
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
