@@ -981,7 +981,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
         )
 
-    def archive_projects(self, projects: List[Dict[int, str]]) -> None:
+    def archive_projects(self, projects: List[Dict[str, Union[int, str]]]) -> None:
         """
         Archive Projects by ID and save backup URL in Project info for every Project.
 
