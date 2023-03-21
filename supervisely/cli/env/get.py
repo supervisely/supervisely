@@ -3,7 +3,8 @@ import supervisely as sly
 import click
 from dotenv import load_dotenv
 
-load_dotenv(os.path.expanduser("~/supervisely.env"))
+# debug only
+# load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 
 def get_project_name(project_id, replace_space=False):

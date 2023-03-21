@@ -68,11 +68,17 @@ def release(path, sub_app, slug, y, release_version, release_description):
     required=True,
     help="Download directory",
 )
-def download_project(id, dir):
+@click.option(
+    "-t",
+    "--type",
+    required=True,
+    help="Choose one of project types to download (images, video, volume project, pointcloud project, pointcloud episode project). Shorthands: ['img', 'vid', 'vol', 'ptcl', 'ptclep'] ",
+)
+def download_project(id, dir, type):
     from supervisely.cli.project import download_project
     import sys
     try:
-        success = download_project(id, dir)
+        success = download_project(id, dir, type)
         if success:
             print("Project is downloaded sucessfully!")
             sys.exit(0)
@@ -228,7 +234,7 @@ def set_task_output_dir(team_id, task_id, dir):
 )
 @click.option(
     "-id",
-    "--project-id",
+    "--id",
     required=True,
     help="Supervisely project ID",
 )
@@ -239,11 +245,11 @@ def set_task_output_dir(team_id, task_id, dir):
     is_flag=True,
     help="Replace spaces with underlines",
 )
-def get_project_name(project_id, replace_space):
+def get_project_name(id, replace_space):
     from supervisely.cli.env import get_project_name
     import sys
     try:
-        success = get_project_name(project_id, replace_space)
+        success = get_project_name(id, replace_space)
         if success:
             sys.exit(0)
         else:
@@ -271,3 +277,4 @@ def get_synced_dir():
         print("Aborting...")
         print("Getting synced directory aborted")
         sys.exit(1)
+
