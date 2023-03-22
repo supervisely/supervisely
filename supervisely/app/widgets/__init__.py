@@ -76,3 +76,4 @@ from supervisely.app.widgets.augmentations.augmentations import Augmentations, A
 
 from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
+from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePicker
