@@ -58,7 +58,7 @@ def release(path, sub_app, slug, y, release_version, release_description):
 )
 @click.option(
     "-id",
-    "--id",
+    "--project-id",
     required=True,
     help="Supervisely project ID",
 )
@@ -68,17 +68,11 @@ def release(path, sub_app, slug, y, release_version, release_description):
     required=True,
     help="Download directory",
 )
-@click.option(
-    "-t",
-    "--type",
-    required=True,
-    help="Choose one of project types to download (images, video, volume project, pointcloud project, pointcloud episode project). Shorthands: ['img', 'vid', 'vol', 'ptcl', 'ptclep'] ",
-)
-def download_project(id, dir, type):
+def download(project_id, dir):
     from supervisely.cli.project import download_project
     import sys
     try:
-        success = download_project(id, dir, type)
+        success = download_project(project_id, dir)
         if success:
             print("Project is downloaded sucessfully!")
             sys.exit(0)
@@ -91,12 +85,11 @@ def download_project(id, dir, type):
         sys.exit(1)
 
 
-
 @cli.command(
     help="Remove file from supervisely teamfiles"
 )
 @click.option(
-    "-idte",
+    "-id",
     "--team-id",
     required=True,
     help="Supervisely team ID",
@@ -107,12 +100,13 @@ def download_project(id, dir, type):
     required=True,
     help="File path to remove",
 )
-def remove(team_id, path):
-    from supervisely.cli.teamfiles import remove_
+def remove_file(team_id, path):
+    from supervisely.cli.teamfiles import remove_file
     import sys
     try:
-        success = remove_(team_id, path)
+        success = remove_file(team_id, path)
         if success:
+            print(f"File '{path}' successfully removed")
             sys.exit(0)
         else:
             print(f"Removing file failed")
@@ -126,7 +120,7 @@ def remove(team_id, path):
     help="Remove directory from supervisely teamfiles"
 )
 @click.option(
-    "-idte",
+    "-id",
     "--team-id",
     required=True,
     help="Supervisely team ID",
@@ -143,6 +137,7 @@ def remove_dir(team_id, path):
     try:
         success = remove_dir(team_id, path)
         if success:
+            print(f"Directory '{path}' successfully removed")
             sys.exit(0)
         else:
             print(f"Removing directory failed")
@@ -157,7 +152,7 @@ def remove_dir(team_id, path):
     help="Upload local files to supervisely teamfiles"
 )
 @click.option(
-    "-idte",
+    "-id",
     "--team-id",
     required=True,
     help="Supervisely team ID",
@@ -174,7 +169,7 @@ def remove_dir(team_id, path):
     required=True,
     help="Path to teamfiles remote directory to which files are uploaded",
 )
-def upload_to_teamfiles(team_id, local_dir, remote_dir):
+def upload(team_id, local_dir, remote_dir):
     from supervisely.cli.teamfiles import upload_to_teamfiles
     import sys
     try:
@@ -194,13 +189,12 @@ def upload_to_teamfiles(team_id, local_dir, remote_dir):
     help="Set link to teamfiles directory at workspace tasks interface"
 )
 @click.option(
-    "-idte",
+    "-id",
     "--team-id",
     required=True,
     help="Supervisely team ID",
 )
 @click.option(
-    "-idta",
     "--task-id",
     required=True,
     help="Supervisely task ID",

@@ -73,4 +73,3 @@ def set_task_output_dir(team_id, task_id, dir):
         print(f'Error: {e}')
         return False
     
-
