@@ -1,10 +1,9 @@
-import os
 import supervisely as sly
+import traceback
 
+import os
 from dotenv import load_dotenv
-
-# debug only
-# load_dotenv(os.path.expanduser("~/supervisely.env"))
+load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 
 def remove_file(team_id, path):
@@ -21,8 +20,8 @@ def remove_file(team_id, path):
         api.file.remove(team_id, path)
         return True
     
-    except Exception as e:
-        print(f"Error: {e}")
+    except:
+        traceback.print_exc()
         return False
     
 def remove_dir(team_id, path):
@@ -38,5 +37,5 @@ def remove_dir(team_id, path):
         return False
     
     except Exception as e:
-        print(f"Error: {e}")
+        traceback.print_exc()
         return False

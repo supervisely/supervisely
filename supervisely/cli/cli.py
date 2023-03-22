@@ -1,4 +1,4 @@
-import click
+import click, sys
 
 
 @click.group()
@@ -30,7 +30,6 @@ def cli():
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
 def release(path, sub_app, slug, y, release_version, release_description):
     from supervisely.cli.release import run
-    import sys
     try:
         success = run(
             app_directory=path,
@@ -52,7 +51,6 @@ def release(path, sub_app, slug, y, release_version, release_description):
         sys.exit(1)
 
 
-# training tensorboard template
 @cli.command(
     help="Download project data from supervisely to local directory"
 )
@@ -64,15 +62,14 @@ def release(path, sub_app, slug, y, release_version, release_description):
 )
 @click.option(
     "-d",
-    "--dir",
+    "--dst",
     required=True,
-    help="Download directory",
+    help="Download destination directory",
 )
-def download(project_id, dir):
-    from supervisely.cli.project import download_project
-    import sys
+def download(project_id, dst):
+    from supervisely.cli.project import download
     try:
-        success = download_project(project_id, dir)
+        success = download(project_id, dst)
         if success:
             print("Project is downloaded sucessfully!")
             sys.exit(0)
@@ -80,8 +77,7 @@ def download(project_id, dir):
             print(f"Project is not downloaded")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
-        print("Project is not downloaded")
+        print("Download aborted")
         sys.exit(1)
 
 
@@ -102,7 +98,6 @@ def download(project_id, dir):
 )
 def remove_file(team_id, path):
     from supervisely.cli.teamfiles import remove_file
-    import sys
     try:
         success = remove_file(team_id, path)
         if success:
@@ -112,7 +107,6 @@ def remove_file(team_id, path):
             print(f"Removing file failed")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
         print("Removing file aborted")
         sys.exit(1)
 
@@ -133,7 +127,6 @@ def remove_file(team_id, path):
 )
 def remove_dir(team_id, path):
     from supervisely.cli.teamfiles import remove_dir
-    import sys
     try:
         success = remove_dir(team_id, path)
         if success:
@@ -143,13 +136,12 @@ def remove_dir(team_id, path):
             print(f"Removing directory failed")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
         print("Removing directory aborted")
         sys.exit(1)
 
 
 @cli.command(
-    help="Upload local files to supervisely teamfiles"
+    help="Upload local source files with destination to supervisely teamfiles"
 )
 @click.option(
     "-id",
@@ -158,22 +150,21 @@ def remove_dir(team_id, path):
     help="Supervisely team ID",
 )
 @click.option(
-    "-l",
-    "--local-dir",
+    "-s",
+    "--src",
     required=True,
-    help="Path to local directory from which files are uploaded",
+    help="Path to local source directory from which files are uploaded",
 )
 @click.option(
-    "-r",
-    "--remote-dir",
+    "-d",
+    "--dst",
     required=True,
-    help="Path to teamfiles remote directory to which files are uploaded",
+    help="Path to teamfiles remote destination directory to which files are uploaded",
 )
-def upload(team_id, local_dir, remote_dir):
+def upload(team_id, src, dst):
     from supervisely.cli.teamfiles import upload_to_teamfiles
-    import sys
     try:
-        success = upload_to_teamfiles(team_id, local_dir, remote_dir)
+        success = upload_to_teamfiles(team_id, src, dst)
         if success:
             print("Local directory uploaded to teamfiles sucessfully!")
             sys.exit(0)
@@ -181,7 +172,6 @@ def upload(team_id, local_dir, remote_dir):
             print("Upload failed")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
         print("Upload aborted")
         sys.exit(1)
         
@@ -207,7 +197,6 @@ def upload(team_id, local_dir, remote_dir):
 )
 def set_task_output_dir(team_id, task_id, dir):
     from supervisely.cli.teamfiles import set_task_output_dir
-    import sys
     try:
         success = set_task_output_dir(team_id, task_id, dir)
         if success:
@@ -232,25 +221,16 @@ def set_task_output_dir(team_id, task_id, dir):
     required=True,
     help="Supervisely project ID",
 )
-@click.option(
-    "-rs",
-    "--replace-space",
-    required=False,
-    is_flag=True,
-    help="Replace spaces with underlines",
-)
-def get_project_name(id, replace_space):
+def get_project_name(id):
     from supervisely.cli.env import get_project_name
-    import sys
     try:
-        success = get_project_name(id, replace_space)
+        success = get_project_name(id)
         if success:
             sys.exit(0)
         else:
             print("Getting project name failed")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
         print("Getting project name directory aborted")
         sys.exit(1)
 
@@ -259,7 +239,6 @@ def get_project_name(id, replace_space):
 )
 def get_synced_dir():
     from supervisely.cli.env import get_synced_dir
-    import sys
     try:
         success = get_synced_dir()
         if success:
@@ -268,7 +247,6 @@ def get_synced_dir():
             print("Getting synced directory failed")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("Aborting...")
         print("Getting synced directory aborted")
         sys.exit(1)
 

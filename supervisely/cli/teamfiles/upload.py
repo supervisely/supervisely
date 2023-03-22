@@ -1,15 +1,14 @@
-import os
 import supervisely as sly
 from functools import partial
 
 from tqdm import tqdm
 
-from dotenv import load_dotenv
+import traceback
 from rich.console import Console
 
-
-# debug only
-# load_dotenv(os.path.expanduser("~/supervisely.env"))
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 
 def upload_to_teamfiles(team_id, local_dir, remote_dir):
@@ -42,8 +41,8 @@ def upload_to_teamfiles(team_id, local_dir, remote_dir):
         )
         return True
     
-    except Exception as e:
-        print(f'Error: {e}')
+    except:
+        traceback.print_exc()
         return False
 
 def set_task_output_dir(team_id, task_id, dir):
@@ -51,25 +50,31 @@ def set_task_output_dir(team_id, task_id, dir):
     api = sly.Api.from_env()
        
     try:
-        directory = api.file.list2(team_id, dir, recursive=False)
+        files = api.file.list2(team_id, dir, recursive=True)
+
+        breakpoint()
         
-        if len(directory) == 0:
+        if len(files) == 0:
             print(f"Error: No files in teamfiles directory: {dir}")
             return False
-        
-        for elem in directory:
-            elem_info = api.file.get_info_by_path(team_id, elem.path)
 
-            if elem_info is None: # directory
-                continue
-            else: # file
-                api.task.set_output_directory(task_id, elem_info.id, dir)
-                return True
+        api.task.set_output_directory(task_id, files[0].id, dir)
 
-        print(f"Error: No files in teamfiles directory: {dir}")
-        return False
+        # for file in files:
+        #     info = api.file.get_info_by_path(team_id, file.path)
 
-    except Exception as e:
-        print(f'Error: {e}')
+        #     api.file.
+
+        #     if info is None: # directory
+        #         continue
+        #     else: # file
+        #         api.task.set_output_directory(task_id, info.id, dir)
+        #         return True
+
+        # print(f"Error: No files in teamfiles directory: {dir}")
+        # return False
+
+    except:
+        traceback.print_exc()
         return False
     
