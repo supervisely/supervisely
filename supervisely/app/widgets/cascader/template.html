@@ -6,7 +6,7 @@
 
 
   v-model="state.{{{widget.widget_id}}}.selectedOptions"
-  :expand-trigger="data.{{{widget.widget_id}}}.hover"
+  :expand-trigger="data.{{{widget.widget_id}}}.expand_trigger"
   :options="data.{{{widget.widget_id}}}.options"
   :props="data.{{{widget.widget_id}}}.props"
   :size="data.{{{widget.widget_id}}}.size"
@@ -18,7 +18,4 @@
   :change-on-select="data.{{{widget.widget_id}}}.change_on_select"
 >
 </el-cascader>
-
-{{state.{{{widget.widget_id}}}}}
-
 

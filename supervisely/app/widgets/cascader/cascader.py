@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import StateJson, DataJson
-from supervisely.app.widgets import Widget, ConditionalWidget
-from typing import List, Dict, Optional
+from supervisely.app.widgets import Widget
+from typing import List, Dict
 
 try:
     from typing import Literal
@@ -47,8 +47,8 @@ class Cascader(Widget):
         items: List[Cascader.Item] = None,
         filterable: bool = False,
         placeholder: str = "select",
-        size: Literal["large", "small", "mini"] = "small",
-        hover: Literal["click", "hover"] = "click",
+        size: Literal["large", "small", "mini"] = None,
+        expand_trigger: Literal["click", "hover"] = "click",
         disabled: bool = False,
         clearable: bool = False,
         show_all_levels: bool = True,
@@ -62,7 +62,7 @@ class Cascader(Widget):
         self._placeholder = placeholder
         self._changes_handled = False
         self._size = size
-        self._hover = hover
+        self._expand_trigger = expand_trigger
         self._disabled = disabled
         self._clearable = clearable
         self._show_all_levels = show_all_levels
@@ -72,11 +72,14 @@ class Cascader(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    def _set_items(self):
+        return [item.to_json() for item in self._items]
+
     def get_json_data(self) -> Dict:
         res = {
             "filterable": self._filterable,
             "placeholder": self._placeholder,
-            "hover": self._hover,
+            "expand_trigger": self._expand_trigger,
             "size": self._size,
             "disabled": self._disabled,
             "clearable": self._clearable,
@@ -90,7 +93,7 @@ class Cascader(Widget):
             },
         }
         if self._items is not None:
-            res["options"] = [item.to_json() for item in self._items]
+            res["options"] = self._set_items()
 
         return res
 
@@ -99,6 +102,44 @@ class Cascader(Widget):
 
     def get_value(self):
         return StateJson()[self.widget_id]["selectedOptions"]
+
+    def set_value(self, value: List[str]):
+        self._selected_options = value
+        StateJson()[self.widget_id]["selectedOptions"] = self._selected_options
+        StateJson().send_changes()
+
+    def get_items(self):
+        return DataJson()[self.widget_id]["options"]
+
+    def set_items(self, value: List[Cascader.Item]):
+        self._items = value
+        DataJson()[self.widget_id]["options"] = self._set_items()
+        DataJson().send_changes()
+
+    def add_items(self, value: List[Cascader.Item]):
+        self._items.extend(value)
+        DataJson()[self.widget_id]["options"] = self._set_items()
+        DataJson().send_changes()
+
+    def expand_to_hover(self):
+        self._expand_trigger = "hover"
+        DataJson()[self.widget_id]["expand_trigger"] = self._expand_trigger
+        DataJson().send_changes()
+
+    def expand_to_click(self):
+        self._expand_trigger = "click"
+        DataJson()[self.widget_id]["expand_trigger"] = self._expand_trigger
+        DataJson().send_changes()
+
+    def set_disabled(self):
+        self._disabled = True
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    def set_unabled(self):
+        self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Cascader.Routes.VALUE_CHANGED)
