@@ -1,6 +1,8 @@
 import supervisely as sly
 from functools import partial
 
+import json
+
 from tqdm import tqdm
 
 import traceback
@@ -52,27 +54,21 @@ def set_task_output_dir(team_id, task_id, dir):
     try:
         files = api.file.list2(team_id, dir, recursive=True)
 
-        breakpoint()
-        
         if len(files) == 0:
-            print(f"Error: No files in teamfiles directory: {dir}")
-            return False
+            # some data to create dummy .json file to get file id
+            data = {"team_id": team_id, "task_id": task_id, "directory": dir}
 
-        api.task.set_output_directory(task_id, files[0].id, dir)
+            with open("/tmp/info.json", "w") as f:
+                json.dump(data, f)
 
-        # for file in files:
-        #     info = api.file.get_info_by_path(team_id, file.path)
+            src_path = os.path.join( os.getcwd(), "/tmp/info.json")
+            dst_path = os.path.join( dir, "/tmp/info.json")
+            file_id = api.file.upload(team_id, src_path, dst_path).id
+        else:
+            file_id = files[0].id
 
-        #     api.file.
-
-        #     if info is None: # directory
-        #         continue
-        #     else: # file
-        #         api.task.set_output_directory(task_id, info.id, dir)
-        #         return True
-
-        # print(f"Error: No files in teamfiles directory: {dir}")
-        # return False
+        api.task.set_output_directory(task_id, file_id, dir)
+        return True
 
     except:
         traceback.print_exc()
