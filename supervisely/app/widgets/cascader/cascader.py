@@ -9,7 +9,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class Cascader(ConditionalWidget):
+class Cascader(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
 
@@ -19,81 +19,83 @@ class Cascader(ConditionalWidget):
             value,
             label: str = None,
             children: List[Cascader.Item] = [],
-            # content: Widget = None,
-            # right_text: str = None,
+            disabled: bool = False,
         ) -> Cascader.Item:
             self.value = value
             self.label = label
             if label is None:
                 self.label = str(self.value)
             self.children = children
-            # self.content = content
-            # self.right_text = right_text
-
-        # def to_json(self):
-        #     return {"label": self.label, "value": self.value, "right_text": self.right_text}
+            self.disabled = disabled
 
         def to_json(self):
             children = []
             for child in self.children:
                 children.append(child.to_json())
-            return {"label": self.label, "value": self.value, "children": children}
+            if len(children) == 0:
+                return {"label": self.label, "value": self.value, "disabled": self.disabled}
+            else:
+                return {
+                    "label": self.label,
+                    "value": self.value,
+                    "disabled": self.disabled,
+                    "children": children,
+                }
 
     def __init__(
         self,
         items: List[Cascader.Item] = None,
         filterable: bool = False,
         placeholder: str = "select",
-        size: Literal["large", "small", "mini"] = None,
+        size: Literal["large", "small", "mini"] = "small",
+        hover: Literal["click", "hover"] = "click",
+        disabled: bool = False,
+        clearable: bool = False,
+        show_all_levels: bool = True,
+        change_on_select: bool = False,
+        selected_options: List[str] = None,
         widget_id: str = None,
-        # items_links: List[str] = None,
     ):
 
+        self._items = items
         self._filterable = filterable
         self._placeholder = placeholder
         self._changes_handled = False
         self._size = size
-        self._with_link = False
-        self._links = None
-        self._changes_handled = True
-        # if items_links is not None:
-        #     if items is None:
-        #         raise ValueError("links are not supported when groups are provided to Select")
-        #     else:
-        #         assert len(items_links) == len(items)
-        #     self._with_link = True
-        #     self._links = {items[i].value: link for i, link in enumerate(items_links)}
+        self._hover = hover
+        self._disabled = disabled
+        self._clearable = clearable
+        self._show_all_levels = show_all_levels
+        self._change_on_select = change_on_select
+        self._selected_options = selected_options
+        self._changes_handled = False
 
-        super().__init__(items=items, widget_id=widget_id, file_path=__file__)
-
-    def _get_first_value(self) -> Cascader.Item:
-        if self._items is not None and len(self._items) > 0:
-            return self._items[0]
-        return None
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
         res = {
             "filterable": self._filterable,
             "placeholder": self._placeholder,
-            # "items": None,
-            # "with_link": self._with_link,
+            "hover": self._hover,
+            "size": self._size,
+            "disabled": self._disabled,
+            "clearable": self._clearable,
+            "show_all_levels": self._show_all_levels,
+            "change_on_select": self._change_on_select,
+            "props": {
+                "label": "label",
+                "value": "value",
+                "children": "children",
+                "disabled": "disabled",
+            },
         }
-
         if self._items is not None:
             res["options"] = [item.to_json() for item in self._items]
-        if self._size is not None:
-            res["size"] = self._size
 
         return res
 
     def get_json_state(self) -> Dict:
-        first_item = self._get_first_value()
-        value = None
-        if first_item is not None:
-            value = first_item.value
-
-        return {"selectedOptions": value}
-        # return {"value": value, "links": self._links}
+        return {"selectedOptions": self._selected_options}
 
     def get_value(self):
         return StateJson()[self.widget_id]["selectedOptions"]
@@ -109,116 +111,3 @@ class Cascader(ConditionalWidget):
             func(res)
 
         return _click
-
-
-#     def get_items(self) -> List[Select.Item]:
-#         res = []
-#         if self._items is not None:
-#             res.extend(self._items)
-#         if self._groups is not None:
-#             for group in self._groups:
-#                 res.extend(group.items)
-#         return res
-
-#     def set(
-#         self,
-#         items: List[Select.Item] = None,
-#         groups: List[Select.Group] = None,
-#     ):
-#         if items is None and groups is None:
-#             raise ValueError("One of the arguments has to be defined: items or groups")
-#         if items is not None and groups is not None:
-#             raise ValueError("Only one of the arguments has to be defined: items or groups")
-
-#         self._items = items
-#         self._groups = groups
-
-#         self.update_data()
-#         self.update_state()
-#         DataJson().send_changes()
-#         StateJson().send_changes()
-
-
-# class SelectString(Select):
-#     def __init__(
-#         self,
-#         values: List[str],
-#         labels: Optional[List[str]] = None,
-#         filterable: Optional[bool] = False,
-#         placeholder: Optional[str] = "select",
-#         size: Optional[Literal["large", "small", "mini"]] = None,
-#         multiple: Optional[bool] = False,
-#         widget_id: Optional[str] = None,
-#         items_right_text: List[str] = None,
-#         items_links: List[str] = None,
-#     ):
-#         right_text = [None] * len(values)
-#         if items_right_text is not None:
-#             if len(values) != len(items_right_text):
-#                 raise ValueError("items_right_text length must be equal to values length.")
-#             right_text = items_right_text
-
-#         if labels is not None:
-#             if len(values) != len(labels):
-#                 raise ValueError("values length must be equal to labels length.")
-#             items = []
-#             for value, label, rtext in zip(values, labels, right_text):
-#                 items.append(Select.Item(value, label, right_text=rtext))
-#         else:
-#             items = [
-#                 Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_text)
-#             ]
-
-#         super(SelectString, self).__init__(
-#             items=items,
-#             groups=None,
-#             filterable=filterable,
-#             placeholder=placeholder,
-#             multiple=multiple,
-#             size=size,
-#             widget_id=widget_id,
-#             items_links=items_links,
-#         )
-
-#     def _get_first_value(self) -> Select.Item:
-#         if self._items is not None and len(self._items) > 0:
-#             return self._items[0]
-#         return None
-
-#     def get_items(self) -> List[str]:
-#         return [item.value for item in self._items]
-
-#     def set(
-#         self,
-#         values: List[str],
-#         labels: Optional[List[str]] = None,
-#         right_text: Optional[List[str]] = None,
-#         items_links: Optional[List[str]] = None,
-#     ):
-#         right_texts = [None] * len(values)
-#         if right_text is not None:
-#             if len(values) != len(right_text):
-#                 raise ValueError("right_text length must be equal to values length.")
-#             right_texts = right_text
-
-#         if labels is not None:
-#             if len(values) != len(labels):
-#                 raise ValueError("values length must be equal to labels length.")
-#             self._items = []
-#             for value, label, rtext in zip(values, labels, right_texts):
-#                 self._items.append(Select.Item(value, label, right_text=rtext))
-#         else:
-#             self._items = [
-#                 Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_texts)
-#             ]
-#         if items_links is not None:
-#             assert len(items_links) == len(values)
-#             self._with_link = True
-#             self._links = {value: items_links[i] for i, value in enumerate(values)}
-#         else:
-#             self._with_link = False
-#             self._links = None
-#         self.update_data()
-#         self.update_state()
-#         DataJson().send_changes()
-#         StateJson().send_changes()
