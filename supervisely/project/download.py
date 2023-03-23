@@ -5,7 +5,7 @@ from supervisely.project.pointcloud_project import download_pointcloud_project
 from supervisely.project.pointcloud_episode_project import download_pointcloud_episode_project
 from supervisely.project.project_type import ProjectType
 
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
+from typing import List, Optional, Callable
 from supervisely.api.api import Api
 
 

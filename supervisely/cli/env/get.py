@@ -1,21 +1,19 @@
 import supervisely as sly
 import click
 
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.expanduser("~/supervisely.env"))
+import traceback
 
-
-def get_project_name(project_id, replace_space=False):
+def get_project_name(project_id):
 
     api = sly.Api.from_env()
+
     try:
         project_info = api.project.get_info_by_id(project_id)
-        click.echo(f"{project_info.name}")
+        click.echo(project_info.name)
         return True
     
-    except Exception as e:
-        print(f"Error: {e}")
+    except:
+        traceback.print_exc()
         return False
     
 def get_synced_dir():
@@ -24,7 +22,7 @@ def get_synced_dir():
         click.echo(synced_dir)
         return True
     
-    except Exception as e:
-        print(f"Error: {e}")
+    except:
+        traceback.print_exc()
         return False
 
