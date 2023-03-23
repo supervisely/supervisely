@@ -12,61 +12,61 @@ from rich.console import Console
 
 def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
 
+    class ProgressBar(tqdm):
+        def update_to(self, n: int) -> None:
+            self.update(n - self.n)
+
+    def upload_monitor_console(monitor, progress: sly.Progress, tqdm_pb: ProgressBar):
+        if progress.total == 0:
+            progress.set(monitor.bytes_read, monitor.len, report=False)
+            tqdm_pb.total = monitor.len
+        else:
+            progress.set_current_value(monitor.bytes_read, report=False)
+            tqdm_pb.update_to(monitor.bytes_read)
+
+ 
+
     api = sly.Api.from_env()
+    task_id = sly.env.task_id()
 
-    # if sly.is_development():
-    #     class ProgressBar(tqdm):
-    #         def update_to(self, n: int) -> None:
-    #             self.update(n - self.n)
+    def _set_progress(index, api, task_id, message, current_label, total_label, current, total):
+        fields = [
+            {"field": f"data.progressName{index}", "payload": message},
+            {"field": f"data.currentProgressLabel{index}", "payload": current_label},
+            {"field": f"data.totalProgressLabel{index}", "payload": total_label},
+            {"field": f"data.currentProgress{index}", "payload": current},
+            {"field": f"data.totalProgress{index}", "payload": total},
+        ]
+        api.task.set_fields(task_id, fields)
 
-    #     def upload_monitor_console(monitor, progress: sly.Progress, tqdm_pb: ProgressBar):
-    #         if progress.total == 0:
-    #             progress.set(monitor.bytes_read, monitor.len, report=False)
-    #             tqdm_pb.total = monitor.len
-    #         else:
-    #             progress.set_current_value(monitor.bytes_read, report=False)
-    #             tqdm_pb.update_to(monitor.bytes_read)
+    def _update_progress_ui(api, task_id, progress: sly.Progress, index):
+        _set_progress(index, api, task_id, progress.message, progress.current_label, progress.total_label, progress.current, progress.total)
 
-
-    # else:
-    #     task_id = sly.env.task_id()
-
-    #     def _set_progress(index, api, task_id, message, current_label, total_label, current, total):
-    #         fields = [
-    #             {"field": f"data.progressName{index}", "payload": message},
-    #             {"field": f"data.currentProgressLabel{index}", "payload": current_label},
-    #             {"field": f"data.totalProgressLabel{index}", "payload": total_label},
-    #             {"field": f"data.currentProgress{index}", "payload": current},
-    #             {"field": f"data.totalProgress{index}", "payload": total},
-    #         ]
-    #         api.task.set_fields(task_id, fields)
-
-    #     def _update_progress_ui(api, task_id, progress: sly.Progress, index):
-    #         _set_progress(index, api, task_id, progress.message, progress.current_label, progress.total_label, progress.current, progress.total)
-
-    #     def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
-    #         if progress.total == 0:
-    #             progress.set(monitor.bytes_read, monitor.len, report=False)
-    #         else:
-    #             progress.set_current_value(monitor.bytes_read, report=False)
-    #         _update_progress_ui(api, task_id, progress, 2)
+    def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
+        if progress.total == 0:
+            progress.set(monitor.bytes_read, monitor.len, report=False)
+        else:
+            progress.set_current_value(monitor.bytes_read, report=False)
+        _update_progress_ui(api, task_id, progress, 2)
                 
+
+    api = sly.Api.from_env()
 
     console = Console()
     console.print(f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n", style="bold")
 
     try:
-    #     if sly.is_development():
-    #         progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
-    #         progress_size_cb = partial(upload_monitor_console, progress=progress, tqdm_pb=ProgressBar())
-    #     else:
-    #         progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
-    #         progress_size_cb = partial(upload_monitor_instance, api, task_id, progress)
+        if sly.is_development():
+            progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
+            progress_size_cb = partial(upload_monitor_console, progress=progress, tqdm_pb=ProgressBar())
+        else:
+            progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
+            progress_size_cb = partial(upload_monitor_instance, api, task_id, progress)
 
         api.file.upload_directory(
             team_id, local_dir, remote_dir,
             change_name_if_conflict=True,
-            # progress_size_cb=progress_size_cb
+            progress_size_cb=progress_size_cb
         )
 
         return True
