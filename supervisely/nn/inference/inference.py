@@ -126,6 +126,7 @@ class Inference:
                     models[model_group]["checkpoints"]
                 )
         self._gui = GUI.InferenceGUI(
+            self,
             models,
             self.api,
             support_pretrained_models=support_pretrained_models,

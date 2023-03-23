@@ -1,4 +1,6 @@
 from typing import List, Dict, Union, Optional, Callable
+
+import yaml
 import supervisely.app.widgets as Widgets
 from supervisely.task.progress import Progress
 import supervisely.io.env as env
@@ -37,6 +39,7 @@ class BaseInferenceGUI:
 class InferenceGUI(BaseInferenceGUI):
     def __init__(
         self,
+        inference,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
         api: Api,
         support_pretrained_models: Optional[bool],
@@ -45,6 +48,8 @@ class InferenceGUI(BaseInferenceGUI):
         add_content_to_custom_tab: Optional[Callable] = None,
         custom_model_link_type: Optional[Literal["file", "folder"]] = "file",
     ):
+        from supervisely.nn.inference import Inference
+        self._inference : Inference = inference
         if isinstance(models, dict):
             self._support_submodels = True
         else:
@@ -86,6 +91,13 @@ class InferenceGUI(BaseInferenceGUI):
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
         )
         self._change_model_button.hide()
+
+        self._model_info_widget = Widgets.ModelInfo()
+        self._model_inference_settings_widget = Widgets.Editor(readonly=True, restore_default_button=False)
+        self._model_classes_widget = Widgets.ClassesTable(selectable=False)
+        self._model_inference_settings_widget.hide()
+        self._model_classes_widget.hide()
+        self._model_info_widget.hide()
 
         tabs_titles = []
         tabs_contents = []
@@ -206,6 +218,9 @@ class InferenceGUI(BaseInferenceGUI):
             self._models_table.enable()
         if self._support_custom_models:
             self._model_path_input.enable()
+        self._model_inference_settings_widget.hide()
+        self._model_classes_widget.hide()
+        self._model_info_widget.hide()
         Progress("model deployment canceled", 1).iter_done_report()
 
     def _set_pretrained_models(self, models):
@@ -318,6 +333,13 @@ class InferenceGUI(BaseInferenceGUI):
             self._models_table.disable()
         if self._support_custom_models:
             self._model_path_input.disable()
+        inference_settings_str = yaml.dump(self._inference.custom_inference_settings_dict)
+        self._model_inference_settings_widget.set_text(inference_settings_str, "yaml")
+        self._model_classes_widget.set_project_meta(self._inference.model_meta)
+        self._model_info_widget.set_model_info(self._inference._task_id, self._inference.get_info())
+        self._model_inference_settings_widget.show()
+        self._model_classes_widget.show()
+        self._model_info_widget.show()
         Progress("Model deployed", 1).iter_done_report()
 
     def get_ui(self) -> Widgets.Widget:
@@ -329,6 +351,9 @@ class InferenceGUI(BaseInferenceGUI):
                 self._success_label,
                 self._serve_button,
                 self._change_model_button,
+                self._model_info_widget,
+                self._model_inference_settings_widget,
+                self._model_classes_widget
             ],
             gap=3,
         )
