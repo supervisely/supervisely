@@ -26,7 +26,7 @@ def remove_dir(team_id:int, path:str) -> bool:
     
     try:
         api.file.remove_dir(team_id, path)
-        console.print(f"\nFile '{path}' successfully removed\n", style='bold green')
+        console.print(f"\nDirectory '{path}' successfully removed\n", style='bold green')
         return True
     
     except:

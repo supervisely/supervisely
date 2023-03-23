@@ -4,6 +4,11 @@ from rich.console import Console
 from tqdm import tqdm
 
 def download(id:int, dest_dir:str) -> bool:
+
+    assert id not in [None, ""], ValueError('ID cannot be empty')
+    assert isinstance(id, int), TypeError('Wrong ID type. Please input integer')
+    assert dest_dir not in [None, ""], ValueError('ID cannot be empty')
+    assert isinstance(dest_dir, str), TypeError('Wrong dest_dir type. Please input string')
     
     api = sly.Api.from_env()
 
