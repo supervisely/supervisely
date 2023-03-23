@@ -21,7 +21,7 @@ class DateTimePicker(Widget):
         clearable: bool = True,
         size: Literal["large", "small", "mini"] = None,
         placeholder: str = "Select date and time",
-        type: Literal[
+        w_type: Literal[
             "year", "month", "date", "datetime", "week", "datetimerange", "daterange"
         ] = "datetime",
         format: str = "yyyy-MM-dd HH:mm:ss",
@@ -34,7 +34,7 @@ class DateTimePicker(Widget):
         self._clearable = clearable
         self._size = size
         self._placeholder = placeholder
-        self._type = type
+        self._w_type = w_type
         self._format = format
         self._changes_handled = False
 
@@ -48,27 +48,22 @@ class DateTimePicker(Widget):
             "disabled": self._disabled,
             "editable": self._editable,
             "clearable": self._clearable,
-            "type": self._type,
+            "type": self._w_type,
             "format": self._format,
         }
 
     def get_json_state(self):
         return {"value": self._value}
 
-    def clear_value(self):
-        self._value = None
-        StateJson()[self.widget_id]["value"] = self._value
-        StateJson().send_changes()
-
     def get_value(self):
         if "value" not in StateJson()[self.widget_id].keys():
             return None
         value = StateJson()[self.widget_id]["value"]
-        if self._type in ["datetimerange", "daterange"] and any(
+        if self._w_type in ["datetimerange", "daterange"] and any(
             [bool(date) is False for date in value]
         ):
             return None
-        elif self._type not in ["datetimerange", "daterange"] and value == "":
+        elif self._w_type not in ["datetimerange", "daterange"] and value == "":
             return None
         return value
 
@@ -80,13 +75,13 @@ class DateTimePicker(Widget):
         - str, int, datetime
         """
 
-        if self._type in ["datetimerange", "daterange"]:
+        if self._w_type in ["datetimerange", "daterange"]:
             raise ValueError(
-                f'Datetime picker type "{self._type}" is not abailable for this method. Try "set_range_values()"'
+                f'Datetime picker type "{self._w_type}" is not abailable for this method. Try "set_range_values()"'
             )
         if type(value) not in [str, int, datetime]:
             raise ValueError(
-                f'Value type {type(value)} is not matching for "{self._type}" picker type.'
+                f'Value type {type(value)} is not matching for "{self._w_type}" picker type.'
             )
         if isinstance(value, datetime):
             value = str(value)
@@ -106,13 +101,13 @@ class DateTimePicker(Widget):
             ]
         """
 
-        if self._type not in ["datetimerange", "daterange"]:
+        if self._w_type not in ["datetimerange", "daterange"]:
             raise ValueError(
-                f'Datetime picker type "{self._type}" is not abailable for this method. Try "set_value()"'
+                f'Datetime picker type "{self._w_type}" is not abailable for this method. Try "set_value()"'
             )
         if type(values) not in [list, tuple]:
             raise ValueError(
-                f'Value type {type(values)} is not matching for "{self._type}" picker type.'
+                f'Value type {type(values)} is not matching for "{self._w_type}" picker type.'
             )
         if len(values) != 2:
             raise ValueError(f"Value length has to be equal 2: {len(values)} != 2")
