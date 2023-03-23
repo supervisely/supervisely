@@ -58,6 +58,7 @@ def release(path, sub_app, slug, y, release_version, release_description):
     "-id",
     "--id",
     required=True,
+    type=int,
     help="Supervisely project ID",
 )
 def get_project_name(id:int) -> None:
@@ -80,15 +81,17 @@ def get_project_name(id:int) -> None:
     "-id",
     "--project-id",
     required=True,
+    type=int,
     help="Supervisely project ID",
 )
 @click.option(
     "-d",
     "--dst",
     required=True,
+    type=str,
     help="Download destination directory",
 )
-def download(project_id:int, dst:str) -> None:
+def download(project_id:id, dst:str) -> None:
     from supervisely.cli.project import download
     try:
         success = download(project_id, dst)
@@ -108,12 +111,14 @@ def download(project_id:int, dst:str) -> None:
     "-id",
     "--team-id",
     required=True,
+    type=int,
     help="Supervisely team ID",
 )
 @click.option(
     "-p",
     "--path",
     required=True,
+    type=str,
     help="File path to remove",
 )
 def remove_file(team_id:int, path:str) -> None:
@@ -135,12 +140,14 @@ def remove_file(team_id:int, path:str) -> None:
     "-id",
     "--team-id",
     required=True,
+    type=int,
     help="Supervisely team ID",
 )
 @click.option(
     "-p",
     "--path",
     required=True,
+    type=str,
     help="Path to remove directory",
 )
 def remove_dir(team_id:int, path:str) -> None:
@@ -163,18 +170,21 @@ def remove_dir(team_id:int, path:str) -> None:
     "-id",
     "--team-id",
     required=True,
+    type=int,
     help="Supervisely team ID",
 )
 @click.option(
     "-s",
     "--src",
     required=True,
+    type=str,
     help="Path to local source directory from which files are uploaded",
 )
 @click.option(
     "-d",
     "--dst",
     required=True,
+    type=str,
     help="Path to teamfiles remote destination directory to which files are uploaded",
 )
 def upload(team_id:int, src:str, dst:str) -> None:
@@ -196,17 +206,20 @@ def upload(team_id:int, src:str, dst:str) -> None:
     "-id",
     "--team-id",
     required=True,
+    type=int,
     help="Supervisely team ID",
 )
 @click.option(
     "--task-id",
     required=True,
+    type=int,
     help="Supervisely task ID",
 )
 @click.option(
     "-d",
     "--dir",
     required=True,
+    type=str,
     help="Path to teamfiles directory",
 )
 def set_task_output_dir(team_id:int, task_id:str, dir:str) -> None:
