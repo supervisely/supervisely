@@ -23,31 +23,32 @@ def download(
 
         if project_info.type == ProjectType.IMAGES.value:
             download_project(
-                api, project_id, dest_dir, dataset_ids, 
-                log_progress=log_progress,
+                api=api, project_id=project_id, dest_dir=dest_dir, 
+                dataset_ids=dataset_ids, log_progress=log_progress,
                 progress_cb=progress_cb
             )            
         elif project_info.type == ProjectType.VIDEOS.value:
             download_video_project(
-                api, project_id, dest_dir, dataset_ids, 
-                log_progress=log_progress,
+                api=api, project_id=project_id, dest_dir=dest_dir, 
+                dataset_ids=dataset_ids, log_progress=log_progress,
                 progress_cb=progress_cb
             )  
         elif project_info.type == ProjectType.VOLUMES.value:
             download_volume_project(
-                api, project_id, dest_dir, dataset_ids, 
-                log_progress=log_progress,
+                api=api, project_id=project_id, dest_dir=dest_dir, 
+                dataset_ids=dataset_ids, log_progress=log_progress,
             )
+
         elif project_info.type == ProjectType.POINT_CLOUDS.value:
             download_pointcloud_project(
-                api, project_id, dest_dir, dataset_ids, 
-                log_progress=log_progress, 
+                api=api, project_id=project_id, dest_dir=dest_dir,
+                dataset_ids=dataset_ids, log_progress=log_progress, 
                 progress_cb=progress_cb
             )
         elif project_info.type == ProjectType.POINT_CLOUD_EPISODES.value:
             download_pointcloud_episode_project(
-                api, project_id, dest_dir, dataset_ids, 
-                log_progress=log_progress, 
+                api=api, project_id=project_id, dest_dir=dest_dir,
+                dataset_ids=dataset_ids, log_progress=log_progress, 
                 progress_cb=progress_cb
             )
         else:

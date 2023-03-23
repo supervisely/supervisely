@@ -3,7 +3,7 @@ import traceback
 from rich.console import Console
 from tqdm import tqdm
 
-def download(id:int, dest_dir:str) -> bool:
+def download_run(id:int, dest_dir:str) -> bool:
 
     api = sly.Api.from_env()
 
@@ -18,9 +18,12 @@ def download(id:int, dest_dir:str) -> bool:
             
     n_count = project_info.items_count
     try:
-        with tqdm(total=n_count) as pbar:
-            sly.download(api, id, dest_dir, progress_cb=pbar.update)
-
+        if sly.is_development():
+            with tqdm(total=n_count) as pbar:
+                sly.download(api, id, dest_dir, progress_cb=pbar.update)
+        else:
+            sly.download(api, id, dest_dir, log_progress=True)
+            
         console.print("\nProject is downloaded sucessfully!\n", style="bold green")
         return True
     except:
