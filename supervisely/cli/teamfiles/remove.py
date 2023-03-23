@@ -4,7 +4,7 @@ import traceback
 from rich.console import Console
 
 
-def remove_file(team_id, path):
+def remove_file(team_id:int, path:str) -> bool:
 
     console = Console()
     api = sly.Api.from_env()
@@ -19,7 +19,7 @@ def remove_file(team_id, path):
         traceback.print_exc()
         return False
     
-def remove_dir(team_id, path):
+def remove_dir(team_id:int, path:str) -> bool:
 
     console = Console()
     api = sly.Api.from_env()

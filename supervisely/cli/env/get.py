@@ -3,7 +3,7 @@ import click
 
 import traceback
 
-def get_project_name(project_id):
+def get_project_name(project_id:int) -> bool:
 
     api = sly.Api.from_env()
 
@@ -16,13 +16,4 @@ def get_project_name(project_id):
         traceback.print_exc()
         return False
     
-def get_synced_dir():
-    try:
-        synced_dir = sly.app.get_synced_data_dir()
-        click.echo(synced_dir)
-        return True
-    
-    except:
-        traceback.print_exc()
-        return False
 

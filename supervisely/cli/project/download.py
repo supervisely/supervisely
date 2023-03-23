@@ -3,7 +3,7 @@ import traceback
 from rich.console import Console
 from tqdm import tqdm
 
-def download(id, dest_dir):
+def download(id:int, dest_dir:str) -> bool:
     
     api = sly.Api.from_env()
 

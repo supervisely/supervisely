@@ -9,7 +9,7 @@ import traceback
 from rich.console import Console
 
 
-def upload_to_teamfiles(team_id, local_dir, remote_dir):
+def upload_to_teamfiles(team_id:int, local_dir:str, remote_dir:str) -> bool:
     
     class ProgressBar(tqdm):
         def update_to(self, n: int) -> None:
@@ -45,7 +45,7 @@ def upload_to_teamfiles(team_id, local_dir, remote_dir):
         traceback.print_exc()
         return False
 
-def set_task_output_dir(team_id, task_id, dir):
+def set_task_output_dir(team_id:int, task_id:str, dir:str) -> bool:
 
     console = Console()
     api = sly.Api.from_env()

@@ -60,7 +60,7 @@ def release(path, sub_app, slug, y, release_version, release_description):
     required=True,
     help="Supervisely project ID",
 )
-def get_project_name(id):
+def get_project_name(id:int) -> None:
     from supervisely.cli.env import get_project_name
     try:
         success = get_project_name(id)
@@ -71,22 +71,6 @@ def get_project_name(id):
             sys.exit(1)
     except KeyboardInterrupt:
         print("Getting project name directory aborted")
-        sys.exit(1)
-
-@cli.command(
-    help="Get synced directory"
-)
-def get_synced_dir():
-    from supervisely.cli.env import get_synced_dir
-    try:
-        success = get_synced_dir()
-        if success:
-            sys.exit(0)
-        else:
-            print("Getting synced directory failed")
-            sys.exit(1)
-    except KeyboardInterrupt:
-        print("Getting synced directory aborted")
         sys.exit(1)
 
 @cli.command(
@@ -104,7 +88,7 @@ def get_synced_dir():
     required=True,
     help="Download destination directory",
 )
-def download(project_id, dst):
+def download(project_id:int, dst:str) -> None:
     from supervisely.cli.project import download
     try:
         success = download(project_id, dst)
@@ -132,7 +116,7 @@ def download(project_id, dst):
     required=True,
     help="File path to remove",
 )
-def remove_file(team_id, path):
+def remove_file(team_id:int, path:str) -> None:
     from supervisely.cli.teamfiles import remove_file
     try:
         success = remove_file(team_id, path)
@@ -159,7 +143,7 @@ def remove_file(team_id, path):
     required=True,
     help="Path to remove directory",
 )
-def remove_dir(team_id, path):
+def remove_dir(team_id:int, path:str) -> None:
     from supervisely.cli.teamfiles import remove_dir
     try:
         success = remove_dir(team_id, path)
@@ -193,7 +177,7 @@ def remove_dir(team_id, path):
     required=True,
     help="Path to teamfiles remote destination directory to which files are uploaded",
 )
-def upload(team_id, src, dst):
+def upload(team_id:int, src:str, dst:str) -> None:
     from supervisely.cli.teamfiles import upload_to_teamfiles
     try:
         success = upload_to_teamfiles(team_id, src, dst)
@@ -225,7 +209,7 @@ def upload(team_id, src, dst):
     required=True,
     help="Path to teamfiles directory",
 )
-def set_task_output_dir(team_id, task_id, dir):
+def set_task_output_dir(team_id:int, task_id:str, dir:str) -> None:
     from supervisely.cli.teamfiles import set_task_output_dir
     try:
         success = set_task_output_dir(team_id, task_id, dir)
