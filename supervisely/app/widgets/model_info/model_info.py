@@ -18,6 +18,7 @@ class ModelInfo(Widget):
         self._api = Api()
         self._session_id = session_id
         self._team_id = team_id
+        self._model_info = None
 
         if self._team_id is None:
             self._team_id = sly.env.team_id()
@@ -28,14 +29,10 @@ class ModelInfo(Widget):
         data = {}
         data["teamId"] = self._team_id
         if self._session_id is not None:
-            data["model_info"] = self._api.task.send_request(
-                self._session_id, "get_session_info", data={}
-            )
-        else:
-            data["model_info"] = None
-        if self._session_id is not None:
+            data["model_info"] = self._model_info
             data["model_connected"] = True
         else:
+            data["model_info"] = None
             data["model_connected"] = False
         return data
 
@@ -46,6 +43,17 @@ class ModelInfo(Widget):
 
     def set_session_id(self, session_id):
         self._session_id = session_id
+        self._model_info = self._api.task.send_request(
+            self._session_id, "get_session_info", data={}
+        )
+        self.update_data()
+        self.update_state()
+        DataJson().send_changes()
+        StateJson().send_changes()
+
+    def set_model_info(self, session_id: int, model_info: dict):
+        self._session_id = session_id
+        self._model_info = model_info
         self.update_data()
         self.update_state()
         DataJson().send_changes()
