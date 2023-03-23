@@ -170,9 +170,11 @@ def download_volume_project(
                             total_cnt=volume_info.sizeb,
                             is_size=True,
                         )
-                    api.volume.download_path(
-                        volume_id, volume_file_path, item_progress.iters_done_report
-                    )
+                        api.volume.download_path(
+                            volume_id, volume_file_path, item_progress.iters_done_report
+                        )
+                    else:
+                        api.volume.download_path(volume_id, volume_file_path, None)
                 else:
                     touch(volume_file_path)
 
@@ -192,8 +194,8 @@ def download_volume_project(
                     figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                     mesh_paths.append(figure_path)
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
-
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
     project_fs.set_key_id_map(key_id_map)
 
 
