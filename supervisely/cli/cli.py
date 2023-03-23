@@ -1,5 +1,7 @@
 import sys
 import click
+from rich.console import Console
+
 
 from supervisely.cli.download import download_run
 from supervisely.cli.upload import upload_to_teamfiles_run, set_task_output_dir_run
@@ -191,9 +193,11 @@ def remove_dir(team_id:int, path:str) -> None:
     help="Path to teamfiles remote destination directory to which files are uploaded",
 )
 def upload(team_id:int, src:str, dst:str) -> None:
+    console = Console()
     try:
         success = upload_to_teamfiles_run(team_id, src, dst)
         if success:
+            console.print("\nLocal directory uploaded to teamfiles sucessfully!\n", style='bold green')
             sys.exit(0)
         else:
             sys.exit(1)
