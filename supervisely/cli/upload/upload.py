@@ -11,6 +11,8 @@ from rich.console import Console
 
 def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
 
+    api = sly.Api.from_env()
+
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
         return False         
@@ -35,7 +37,6 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
         progress.update(readed_percent - progress.n)
 
 
-    api = sly.Api.from_env()
     progress_bar = sly.app.widgets.Progress()
 
     console = Console()
@@ -63,6 +64,9 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
         return False
 
 def set_task_output_dir_run(team_id:int, task_id:int, dst_dir:str) -> bool:
+    
+    console = Console()
+    api = sly.Api.from_env()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
@@ -73,9 +77,7 @@ def set_task_output_dir_run(team_id:int, task_id:int, dst_dir:str) -> bool:
     if not api.file.dir_exists(team_id, dst_dir):
         console.print(f"\nError: directory '{dst_dir}' not exists in teamfiles\n", style='bold red')
         return False
-        
-    console = Console()
-    api = sly.Api.from_env()
+
        
     try:
         files = api.file.list2(team_id, dst_dir, recursive=True)
