@@ -714,6 +714,68 @@ class FileApi(ModuleApiBase):
             "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
         )
 
+    def remove_file(self, team_id: int, path: str) -> None:
+        """
+        Removes file from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to File in Team Files.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.file.remove_file(8, "/999_App_Test/ds1/01587.json")
+        """
+
+        file_info = self.get_info_by_path(team_id, path)
+
+        if file_info is None:
+            raise ValueError( f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')")
+
+        self.remove(team_id, path)
+
+    def remove_dir(self, team_id: int, path: str) -> None:
+        """
+        Removes folder from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to folder in Team Files.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.file.remove_dir(8, "/999_App_Test/ds1/")
+        """
+
+        file_info = self.get_info_by_path(team_id, path)
+
+        if not file_info is None:
+            raise ValueError( f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')")
+
+        self.remove(team_id, path)
+
+
+
     def remove_batch(
         self,
         team_id: int,
