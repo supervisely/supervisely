@@ -11,6 +11,16 @@ from rich.console import Console
 
 def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
 
+    if api.team.get_info_by_id(team_id) is None:
+        console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
+        return False         
+    if not api.file.dir_exists(team_id, remote_dir):
+        console.print(f"\nError: directory '{remote_dir}' not exists in teamfiles\n", style='bold red')
+        return False
+    if not (os.path.exists(local_dir) and os.path.isdir(local_dir) ):
+        console.print(f"\nError: local directory '{local_dir}' not exists\n", style='bold red')
+        return False
+
     class ProgressBar(tqdm):
         def update_to(self, n: int) -> None:
             self.update(n - self.n)
@@ -45,7 +55,7 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
             with progress_bar(message=f"Uploading training results directory to teamfiles...", total=100) as pbar:
                 progress_size_cb = partial(upload_monitor_instance, progress=pbar)
                 api.file.upload_directory(team_id, local_dir, remote_dir, change_name_if_conflict=True, progress_size_cb=progress_size_cb)
-                pbar.message = 'Success (100/100%)'
+                pbar.message = 'Success'
                 pbar.refresh()
                         
         return True
@@ -57,6 +67,16 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
 
 def set_task_output_dir_run(team_id:int, task_id:int, dst_dir:str) -> bool:
 
+    if api.team.get_info_by_id(team_id) is None:
+        console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
+        return False     
+    if api.task.get_info_by_id(task_id) is None:
+        console.print(f"\nError: Task with ID={task_id} not exists\n", style='bold red')
+        return False           
+    if not api.file.dir_exists(team_id, dst_dir):
+        console.print(f"\nError: directory '{dst_dir}' not exists in teamfiles\n", style='bold red')
+        return False
+        
     console = Console()
     api = sly.Api.from_env()
        

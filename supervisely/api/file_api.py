@@ -740,7 +740,7 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if file_info is None:
-            raise ValueError( f"Not a file. Maybe you entered directory? (Path: '{path}')")
+            raise ValueError( f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')")
 
         self.remove(team_id, path)
 
@@ -770,7 +770,7 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if not file_info is None:
-            raise ValueError( f"Not a folder. Maybe you entered file path? (Path: '{path}')")
+            raise ValueError( f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')")
 
         self.remove(team_id, path)
 

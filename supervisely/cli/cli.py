@@ -9,7 +9,6 @@ from supervisely.cli.remove import remove_file_run, remove_dir_run
 from supervisely.cli.get import get_project_name_run 
 
 
-
 @click.group()
 def cli():
     pass
@@ -100,9 +99,11 @@ def get_project_name(id:int) -> None:
     help="Download destination directory",
 )
 def download(project_id:id, dst:str) -> None:
+    console = Console()
     try:
         success = download_run(project_id, dst)
         if success:
+            console.print("\nProject is downloaded sucessfully!\n", style="bold green")
             sys.exit(0)
         else:
             sys.exit(1)

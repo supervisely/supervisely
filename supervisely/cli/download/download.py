@@ -1,7 +1,9 @@
-import supervisely as sly
 import traceback
+
 from rich.console import Console
 from tqdm import tqdm
+import supervisely as sly
+
 
 def download_run(id:int, dest_dir:str) -> bool:
 
@@ -24,7 +26,6 @@ def download_run(id:int, dest_dir:str) -> bool:
         else:
             sly.download(api, id, dest_dir, log_progress=True)
             
-        console.print("\nProject is downloaded sucessfully!\n", style="bold green")
         return True
     except:
         console.print(f"\nProject is not downloaded\n", style='bold red')
