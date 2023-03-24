@@ -89,12 +89,12 @@ def set_task_output_dir_run(task_id:int, team_id:int, dst_dir:str) -> bool:
         if len(files) == 0:
             # some data to create dummy .json file to get file id
             data = {"team_id": team_id, "task_id": task_id, "directory": dst_dir}
-
-            with open("/tmp/info.json", "w") as f:
+            
+            src_path = os.path.join( os.getcwd(), "info.json")
+            with open(src_path, "w") as f:
                 json.dump(data, f)
-
-            src_path = os.path.join( os.getcwd(), "/tmp/info.json")
-            dst_path = os.path.join( dst_dir, "/tmp/info.json")
+            
+            dst_path = os.path.join( dst_dir, "info.json")
             file_id = api.file.upload( team_id, src_path, dst_path ).id
 
         else:
