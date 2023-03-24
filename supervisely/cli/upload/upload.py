@@ -5,7 +5,6 @@ from functools import partial
 import json
 from tqdm import tqdm
 
-import time
 import traceback
 from rich.console import Console
 
@@ -24,51 +23,31 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
             progress.set_current_value(monitor.bytes_read, report=False)
             tqdm_pb.update_to(monitor.bytes_read)
 
- 
+    def upload_monitor_instance(monitor, progress):
+        readed_percent = round(monitor.bytes_read / monitor.len * 100)
+        progress.update(readed_percent - progress.n)
+
 
     api = sly.Api.from_env()
-    task_id = sly.env.task_id()
-
-    def _set_progress(index, api, task_id, message, current_label, total_label, current, total):
-        fields = [
-            {"field": f"data.progressName{index}", "payload": message},
-            {"field": f"data.currentProgressLabel{index}", "payload": current_label},
-            {"field": f"data.totalProgressLabel{index}", "payload": total_label},
-            {"field": f"data.currentProgress{index}", "payload": current},
-            {"field": f"data.totalProgress{index}", "payload": total},
-        ]
-        api.task.set_fields(task_id, fields)
-
-    def _update_progress_ui(api, task_id, progress: sly.Progress, index):
-        _set_progress(index, api, task_id, progress.message, progress.current_label, progress.total_label, progress.current, progress.total)
-
-    def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
-        if progress.total == 0:
-            progress.set(monitor.bytes_read, monitor.len, report=False)
-        else:
-            progress.set_current_value(monitor.bytes_read, report=False)
-        _update_progress_ui(api, task_id, progress, 2)
-                
-
-    api = sly.Api.from_env()
+    progress_bar = sly.app.widgets.Progress()
 
     console = Console()
     console.print(f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n", style="bold")
 
     try:
+    
         if sly.is_development():
-            progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
+            progress = sly.Progress("Uploading training results directory to teamfiles...", 0, is_size=True)
             progress_size_cb = partial(upload_monitor_console, progress=progress, tqdm_pb=ProgressBar())
+            api.file.upload_directory(team_id, local_dir, remote_dir, change_name_if_conflict=True, progress_size_cb=progress_size_cb)
+        
         else:
-            progress = sly.Progress("Upload artefacts directory to teamfiles...", 0, is_size=True)
-            progress_size_cb = partial(upload_monitor_instance, api, task_id, progress)
-
-        api.file.upload_directory(
-            team_id, local_dir, remote_dir,
-            change_name_if_conflict=True,
-            progress_size_cb=progress_size_cb
-        )
-
+            with progress_bar(message=f"Uploading training results directory to teamfiles...", total=100) as pbar:
+                progress_size_cb = partial(upload_monitor_instance, progress=pbar)
+                api.file.upload_directory(team_id, local_dir, remote_dir, change_name_if_conflict=True, progress_size_cb=progress_size_cb)
+                pbar.message = 'Success (100/100%)'
+                pbar.refresh()
+                        
         return True
     
     except:
@@ -93,7 +72,7 @@ def set_task_output_dir_run(team_id:int, task_id:int, dst_dir:str) -> bool:
 
             src_path = os.path.join( os.getcwd(), "/tmp/info.json")
             dst_path = os.path.join( dst_dir, "/tmp/info.json")
-            file_id = api.file.upload(team_id, src_path, dst_path).id
+            file_id = api.file.upload( team_id, src_path, dst_path ).id
 
         else:
             file_id = files[0].id
