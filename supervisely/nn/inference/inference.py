@@ -85,12 +85,13 @@ class Inference:
         if use_gui:
             self.initialize_gui()
 
-            @self.gui.serve_button.click
-            def load_model():
+            def on_serve_callback(gui: GUI.InferenceGUI):
                 Progress("Deploying model ...", 1)
-                device = self.gui.get_device()
+                device = gui.get_device()
                 self.load_on_device(self._model_dir, device)
-                self.gui.set_deployed()
+                gui.show_deployed_model_info(self)
+
+            self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
@@ -126,7 +127,6 @@ class Inference:
                     models[model_group]["checkpoints"]
                 )
         self._gui = GUI.InferenceGUI(
-            self,
             models,
             self.api,
             support_pretrained_models=support_pretrained_models,
@@ -312,7 +312,7 @@ class Inference:
         return self._api
 
     @property
-    def gui(self) -> GUI.BaseInferenceGUI:
+    def gui(self) -> GUI.InferenceGUI:
         return self._gui
 
     def _get_obj_class_shape(self):
