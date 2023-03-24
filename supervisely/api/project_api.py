@@ -123,6 +123,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         type='images',
                         reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
                         custom_data={}
+                        backup_archive={}
         """
         return [
             ApiField.ID,
@@ -192,7 +193,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+            #             custom_data={},
+            #             backup_archive={}),
             # ProjectInfo(id=999,
             #             name='Cat_breeds',
             #             description='',
@@ -205,7 +208,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-17T17:44:28.158Z',
             #             updated_at='2021-03-01T10:51:57.545Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             custom_data={},
+            #             backup_archive={})
             # ]
 
             # Filtered Project list
@@ -223,7 +228,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-17T17:44:28.158Z',
             #                     updated_at='2021-03-01T10:51:57.545Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
             # ]
 
         """
@@ -276,7 +283,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
+
 
         """
         info = self._get_info_by_id(id, "projects.info")
@@ -327,7 +337,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
         """
         info = super().get_info_by_name(parent_id, name)
         self._check_project_info(
@@ -500,7 +512,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2021-03-11T09:28:42.585Z',
             #                     updated_at='2021-03-11T09:28:42.585Z',
             #                     type='images',
-            #                     reference_image_url=None)
+            #                     reference_image_url=None),
+            #                     custom_data={},
+            #                     backup_archive={})
+
         """
         effective_name = self._get_effective_new_name(
             parent_id=workspace_id,
