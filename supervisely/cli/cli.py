@@ -59,34 +59,17 @@ def release(path, sub_app, slug, y, release_version, release_description):
         sys.exit(1)
 
 
-@cli.command(
-    help="Get project name"
-)
-@click.option(
-    "-id",
-    "--id",
-    required=True,
-    type=int,
-    help="Supervisely project ID",
-)
-def get_project_name(id:int) -> None:    
-    try:
-        success = get_project_name_run(id)
-        if success:
-            sys.exit(0)
-        else:
-            print("Getting project name failed")
-            sys.exit(1)
-    except KeyboardInterrupt:
-        print("Getting project name directory aborted")
-        sys.exit(1)
+@cli.group()
+def project():
+    """Commands: download, get-name"""
+    pass
 
-@cli.command(
+@project.command(
     help="Download project data from supervisely to local directory"
 )
 @click.option(
     "-id",
-    "--project-id",
+    "--id",
     required=True,
     type=int,
     help="Supervisely project ID",
@@ -98,10 +81,10 @@ def get_project_name(id:int) -> None:
     type=str,
     help="Download destination directory",
 )
-def download(project_id:id, dst:str) -> None:
+def download(id:id, dst:str) -> None:
     console = Console()
     try:
-        success = download_run(project_id, dst)
+        success = download_run(id, dst)
         if success:
             console.print("\nProject is downloaded sucessfully!\n", style="bold green")
             sys.exit(0)
@@ -111,13 +94,40 @@ def download(project_id:id, dst:str) -> None:
         print("\nDownload aborted\n")
         sys.exit(1)
 
+@project.command(
+    help="Get project name"
+)
+@click.option(
+    "-id",
+    "--id",
+    required=True,
+    type=int,
+    help="Supervisely project ID",
+)
+def get_name(id:int) -> None:    
+    try:
+        success = get_project_name_run(id)
+        if success:
+            sys.exit(0)
+        else:
+            print("Getting project name failed")
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Getting project name directory aborted")
+        sys.exit(1)
 
-@cli.command(
+
+@cli.group()
+def teamfiles():
+    """Commands: remove-file, remove-dir, upload"""
+    pass
+
+@teamfiles.command(
     help="Remove file from supervisely teamfiles"
 )
 @click.option(
     "-id",
-    "--team-id",
+    "--id",
     required=True,
     type=int,
     help="Supervisely team ID",
@@ -129,9 +139,9 @@ def download(project_id:id, dst:str) -> None:
     type=str,
     help="File path to remove",
 )
-def remove_file(team_id:int, path:str) -> None:
+def remove_file(id:int, path:str) -> None:
     try:
-        success = remove_file_run(team_id, path)
+        success = remove_file_run(id, path)
         if success:
             sys.exit(0)
         else:
@@ -140,12 +150,12 @@ def remove_file(team_id:int, path:str) -> None:
         print("\nRemoving file aborted\n")
         sys.exit(1)
 
-@cli.command(
+@teamfiles.command(
     help="Remove directory from supervisely teamfiles"
 )
 @click.option(
     "-id",
-    "--team-id",
+    "--id",
     required=True,
     type=int,
     help="Supervisely team ID",
@@ -157,9 +167,9 @@ def remove_file(team_id:int, path:str) -> None:
     type=str,
     help="Path to remove directory",
 )
-def remove_dir(team_id:int, path:str) -> None:
+def remove_dir(id:int, path:str) -> None:
     try:
-        success = remove_dir_run(team_id, path)
+        success = remove_dir_run(id, path)
         if success:
             sys.exit(0)
         else:
@@ -168,13 +178,12 @@ def remove_dir(team_id:int, path:str) -> None:
         print("Removing directory aborted")
         sys.exit(1)
 
-
-@cli.command(
+@teamfiles.command(
     help="Upload local source files with destination to supervisely teamfiles"
 )
 @click.option(
     "-id",
-    "--team-id",
+    "--id",
     required=True,
     type=int,
     help="Supervisely team ID",
@@ -193,10 +202,10 @@ def remove_dir(team_id:int, path:str) -> None:
     type=str,
     help="Path to teamfiles remote destination directory to which files are uploaded",
 )
-def upload(team_id:int, src:str, dst:str) -> None:
+def upload(id:int, src:str, dst:str) -> None:
     console = Console()
     try:
-        success = upload_to_teamfiles_run(team_id, src, dst)
+        success = upload_to_teamfiles_run(id, src, dst)
         if success:
             console.print("\nLocal directory uploaded to teamfiles sucessfully!\n", style='bold green')
             sys.exit(0)
@@ -205,22 +214,27 @@ def upload(team_id:int, src:str, dst:str) -> None:
     except KeyboardInterrupt:
         print("Upload aborted")
         sys.exit(1)
-        
-@cli.command(
+
+@cli.group()
+def task():
+    """Commands: set-output-dir"""
+    pass
+
+@task.command(
     help="Set link to teamfiles directory at workspace tasks interface"
 )
 @click.option(
     "-id",
+    "--id",
+    required=True,
+    type=int,
+    help="Supervisely task ID",
+)
+@click.option(
     "--team-id",
     required=True,
     type=int,
     help="Supervisely team ID",
-)
-@click.option(
-    "--task-id",
-    required=True,
-    type=int,
-    help="Supervisely task ID",
 )
 @click.option(
     "-d",
@@ -229,9 +243,9 @@ def upload(team_id:int, src:str, dst:str) -> None:
     type=str,
     help="Path to teamfiles directory",
 )
-def set_task_output_dir(team_id:int, task_id:int, dir:str) -> None:
+def set_output_dir(id:int, team_id:int, dir:str) -> None:
     try:
-        success = set_task_output_dir_run(team_id, task_id, dir)
+        success = set_task_output_dir_run(id, team_id, dir)
         if success:
             sys.exit(0)
         else:

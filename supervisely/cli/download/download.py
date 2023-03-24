@@ -1,4 +1,6 @@
+import os
 import traceback
+from dotenv import load_dotenv
 
 from rich.console import Console
 from tqdm import tqdm
@@ -6,6 +8,9 @@ import supervisely as sly
 
 
 def download_run(id:int, dest_dir:str) -> bool:
+
+    if None in (os.environ.get('SERVER_ADDRESS'), os.environ.get('API_TOKEN')):
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
 
     api = sly.Api.from_env()
 

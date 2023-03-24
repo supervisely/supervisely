@@ -1,6 +1,7 @@
 import os
 import supervisely as sly
 from functools import partial
+from dotenv import load_dotenv
 
 import json
 from tqdm import tqdm
@@ -10,6 +11,9 @@ from rich.console import Console
 
 
 def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
+
+    if None in (os.environ.get('SERVER_ADDRESS'), os.environ.get('API_TOKEN')):
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
 
     console = Console()
     api = sly.Api.from_env()
@@ -63,7 +67,7 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
         traceback.print_exc()
         return False
 
-def set_task_output_dir_run(team_id:int, task_id:int, dst_dir:str) -> bool:
+def set_task_output_dir_run(task_id:int, team_id:int, dst_dir:str) -> bool:
     
     console = Console()
     api = sly.Api.from_env()

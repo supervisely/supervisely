@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import traceback
 
 import supervisely as sly
@@ -5,6 +7,9 @@ from rich.console import Console
 
 
 def remove_file_run(team_id:int, path:str) -> bool:
+
+    if None in (os.environ.get('SERVER_ADDRESS'), os.environ.get('API_TOKEN')):
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
 
     console = Console()
     api = sly.Api.from_env()
