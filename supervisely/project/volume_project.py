@@ -174,7 +174,7 @@ def download_volume_project(
                             volume_id, volume_file_path, item_progress.iters_done_report
                         )
                     else:
-                        api.volume.download_path(volume_id, volume_file_path, None)
+                        api.volume.download_path(volume_id, volume_file_path)
                 else:
                     touch(volume_file_path)
 
