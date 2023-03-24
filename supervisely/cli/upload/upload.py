@@ -14,9 +14,6 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
         return False         
-    if not api.file.dir_exists(team_id, remote_dir):
-        console.print(f"\nError: directory '{remote_dir}' not exists in teamfiles\n", style='bold red')
-        return False
     if not (os.path.exists(local_dir) and os.path.isdir(local_dir) ):
         console.print(f"\nError: local directory '{local_dir}' not exists\n", style='bold red')
         return False
