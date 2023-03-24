@@ -126,7 +126,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
         try:
             item_key = uuid.UUID(data[KEY])
-        except ValueError:
+        except Exception as e:
             item_key = uuid.uuid4()
 
         if key_id_map is not None:
