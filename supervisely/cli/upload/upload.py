@@ -11,7 +11,10 @@ from rich.console import Console
 
 def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
 
+    console = Console()
     api = sly.Api.from_env()
+
+    progress_bar = sly.app.widgets.Progress()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
@@ -37,9 +40,6 @@ def upload_to_teamfiles_run(team_id:int, local_dir:str, remote_dir:str) -> bool:
         progress.update(readed_percent - progress.n)
 
 
-    progress_bar = sly.app.widgets.Progress()
-
-    console = Console()
     console.print(f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n", style="bold")
 
     try:
