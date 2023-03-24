@@ -81,7 +81,7 @@ def project():
     type=str,
     help="Download destination directory",
 )
-def download(id:id, dst:str) -> None:
+def download(id: int, dst: str) -> None:
     console = Console()
     try:
         success = download_run(id, dst)
