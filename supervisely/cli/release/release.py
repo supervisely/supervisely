@@ -126,6 +126,7 @@ def upload_archive(
     appKey,
     release,
     config,
+    readme,
     modal_template,
     slug,
 ):
@@ -134,6 +135,7 @@ def upload_archive(
         "appKey": appKey,
         "release": json.dumps(release),
         "config": json.dumps(config),
+        "readme": readme,
         "archive": (
             "arhcive.tar.gz",
             f,
@@ -191,6 +193,7 @@ def release(
     appKey,
     repo: git.Repo,
     config,
+    readme,
     release_name,
     release_version,
     modal_template="",
@@ -205,6 +208,7 @@ def release(
         appKey,
         release,
         config,
+        readme,
         modal_template,
         slug,
     )
