@@ -105,6 +105,7 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             )
 
         else:
+            print('@@@@@@@@@@@@@@@')
             progress = sly.Progress(
                 "Upload directory with training artifacts to Team Files", 0, is_size=True
             )
