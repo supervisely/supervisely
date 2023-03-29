@@ -45,10 +45,10 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     ):
 
         if progress.need_report():
-            print('progress.message', progress.message)
-            print('Current', progress.current_label)
-            print('Total', progress.total_label)
-            print('progPercent', math.floor(progress.current * 100 / progress.total))
+            # print('progress.message', progress.message)
+            # print('Current', progress.current_label)
+            # print('Total', progress.total_label)
+            # print('progPercent', math.floor(progress.current * 100 / progress.total))
             fields = [
                 {"field": f"data.progress{index}", "payload": progress.message},
                 {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
@@ -65,6 +65,7 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
 
     def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
         if progress.total == 0:
+            print(monitor.len)
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
             progress.set_current_value(monitor.bytes_read, report=False)
