@@ -6,9 +6,9 @@ import supervisely as sly
 
 def get_project_name_run(project_id:int) -> bool:
 
-    if None in (os.environ.get('SERVER_ADDRESS'), os.environ.get('API_TOKEN')):
-        load_dotenv(os.path.expanduser("~/supervisely.env"))
-
+    if sly.is_development():
+        sly.Api.from_env_file()
+       
     api = sly.Api.from_env()
 
     try:

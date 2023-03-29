@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 import traceback
 
 import supervisely as sly
@@ -8,15 +6,15 @@ from rich.console import Console
 
 def remove_file_run(team_id:int, path:str) -> bool:
 
-    if None in (os.environ.get('SERVER_ADDRESS'), os.environ.get('API_TOKEN')):
-        load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-    console = Console()
+    if sly.is_development():
+        sly.Api.from_env_file()
+       
     api = sly.Api.from_env()
+    console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')
-        return False 
+        return False
 
     try:
         api.file.remove_file(team_id, path)
@@ -30,8 +28,11 @@ def remove_file_run(team_id:int, path:str) -> bool:
     
 def remove_dir_run(team_id:int, path:str) -> bool:
 
-    console = Console()
+    if sly.is_development():
+        sly.Api.from_env_file()
+       
     api = sly.Api.from_env()
+    console = Console()
     
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style='bold red')

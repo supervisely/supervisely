@@ -7,6 +7,8 @@ import requests
 import json
 from typing import List, Optional, NamedTuple, Dict
 from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
+from dotenv import load_dotenv
+
 
 import supervisely.api.team_api as team_api
 import supervisely.api.workspace_api as workspace_api
@@ -194,9 +196,29 @@ class Api:
             ignore_task_id=ignore_task_id,
         )
     
-    # @staticmethod
-    # def from_env_file(PATH="~/sup"):
-    #     PATH
+    @staticmethod
+    def from_env_file(path: str = "~/supervisely.env") -> None:
+        """
+        Initialize environment variables with .env file. Shorthand for API initialization with local variables.
+
+        :param path: Path to your .env file.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            if sly.is_development():
+                sly.Api.from_env_file()
+            
+            api = sly.Api.from_env()
+        """
+        if None in (os.environ.get("SERVER_ADDRESS"), os.environ.get("API_TOKEN")):
+            load_dotenv(os.path.expanduser(path))
 
     def add_header(self, key: str, value: str) -> None:
         """

@@ -1,7 +1,6 @@
 import os
 import supervisely as sly
 from functools import partial
-from dotenv import load_dotenv
 
 import json
 from tqdm import tqdm
@@ -9,18 +8,14 @@ from tqdm import tqdm
 import traceback
 from rich.console import Console
 
-import math
-
 
 def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
-    if None in (os.environ.get("SERVER_ADDRESS"), os.environ.get("API_TOKEN")):
-        load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-    console = Console()
+    if sly.is_development():
+        sly.Api.from_env_file()
+       
     api = sly.Api.from_env()
-
-    # task_id = sly.env.task_id()
+    console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
@@ -68,7 +63,7 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             progress_size_cb = partial(
                 upload_monitor_instance, progress=progress
             )
-            
+
         api.file.upload_directory(
             team_id,
             local_dir,
@@ -87,8 +82,11 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
 
 def set_task_output_dir_run(task_id: int, team_id: int, dst_dir: str) -> bool:
 
-    console = Console()
+    if sly.is_development():
+        sly.Api.from_env_file()
+       
     api = sly.Api.from_env()
+    console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
