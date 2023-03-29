@@ -63,10 +63,10 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
-            if progress.need_report():
-                print('Report', monitor.bytes_read)
-                progress.set_current_value(monitor.bytes_read, report=False)
-                progress.report_progress()
+            # if progress.need_report():
+            print('Report', monitor.bytes_read)
+            progress.set_current_value(monitor.bytes_read, report=False)
+            progress.report_progress()
 
         # _update_progress_ui("UploadDir", api, task_id, progress)
 
