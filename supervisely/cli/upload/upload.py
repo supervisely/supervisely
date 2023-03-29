@@ -61,30 +61,21 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             )
 
         if sly.is_development():
-
-            # progress.report_progress
             progress_size_cb = partial(
                 upload_monitor_console, progress=progress, tqdm_pb=ProgressBar()
             )
-            api.file.upload_directory(
-                team_id,
-                local_dir,
-                remote_dir,
-                change_name_if_conflict=True,
-                progress_size_cb=progress_size_cb,
-            )
-
         else:
             progress_size_cb = partial(
                 upload_monitor_instance, progress=progress
             )
-            api.file.upload_directory(
-                team_id,
-                local_dir,
-                remote_dir,
-                change_name_if_conflict=True,
-                progress_size_cb=progress_size_cb,
-            )
+            
+        api.file.upload_directory(
+            team_id,
+            local_dir,
+            remote_dir,
+            change_name_if_conflict=True,
+            progress_size_cb=progress_size_cb,
+        )
 
         return True
 
