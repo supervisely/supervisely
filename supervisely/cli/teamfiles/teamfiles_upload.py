@@ -45,13 +45,13 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
                 progress.report_progress()
 
     console.print(
-        f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n",
+        f"\nUploading local directory from '{local_dir}' to Team files directory: '{remote_dir}' ...\n",
         style="bold",
     )
 
     try:
         progress = sly.Progress(
-                "Uploading training results directory to teamfiles...", 0, is_size=True
+                "Uploading local directory to Team files...", 0, is_size=True
             )
 
         if sly.is_development():
@@ -77,5 +77,3 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
         console.print("\nUpload failed\n", style="bold red")
         traceback.print_exc()
         return False
-
-
