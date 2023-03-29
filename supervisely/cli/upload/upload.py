@@ -46,16 +46,9 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
-            print('current', progress.current )
-            print('repevery', progress.report_every )
-            print('repcnt', progress.reported_cnt )
-            print('cond %', (progress.current % progress.report_every == 0))
-            print('cond //', ((progress.reported_cnt - 1) < (progress.current // progress.report_every)))
+            progress.set_current_value(monitor.bytes_read, report=False)
             if progress.need_report():
-                progress.set_current_value(monitor.bytes_read, report=False)
                 progress.report_progress()
-
-        # _update_progress_ui("UploadDir", api, task_id, progress)
 
     console.print(
         f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n",
