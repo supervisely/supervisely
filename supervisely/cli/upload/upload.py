@@ -41,30 +41,12 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             progress.set_current_value(monitor.bytes_read, report=False)
             tqdm_pb.update_to(monitor.bytes_read)
 
-    def _update_progress_ui(
-        index, api: sly.Api, task_id, progress: sly.Progress
-    ):
-
-        if progress.need_report():
-            # fields = [
-            #     {"field": f"data.progress{index}", "payload": progress.message},
-            #     {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
-            #     {"field": f"data.progressTotal{index}", "payload": progress.total_label},
-            #     {
-            #         "field": f"data.progressPercent{index}",
-            #         "payload": math.floor(progress.current * 100 / progress.total),
-            #     },
-            # ]
-            # api.app.set_fields(task_id, fields)
-
-            progress.report_progress()
 
     def upload_monitor_instance(monitor, progress: sly.Progress):
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
             # if progress.need_report():
-            print('Report', monitor.bytes_read)
             progress.set_current_value(monitor.bytes_read, report=False)
             progress.report_progress()
 
