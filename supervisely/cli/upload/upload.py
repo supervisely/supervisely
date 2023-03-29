@@ -45,7 +45,10 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     ):
 
         if progress.need_report():
-            print('Report', progress.current_label)
+            print('progress.message', progress.message)
+            print('Current', progress.current_label)
+            print('Total', progress.total_label)
+            print('progPercent', math.floor(progress.current * 100 / progress.total))
             fields = [
                 {"field": f"data.progress{index}", "payload": progress.message},
                 {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
