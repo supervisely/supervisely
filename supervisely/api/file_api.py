@@ -682,11 +682,11 @@ class FileApi(ModuleApiBase):
 
     def remove(self, team_id: int, path: str) -> None:
         """
-        Removes file from Team Files.
+        Removes path from Team Files.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :param path: Path to File in Team Files.
+        :param path: Path in Team Files.
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
@@ -700,7 +700,8 @@ class FileApi(ModuleApiBase):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.file.remove(8, "/999_App_Test/ds1/01587.json")
+            api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
+            api.file.remove(8, "/999_App_Test/ds1/") # remove folder
         """
 
         if self.is_on_agent(path) is True:
@@ -740,7 +741,7 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if file_info is None:
-            raise ValueError( f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')")
+            raise ValueError( f"File not found in Team files. Maybe you entered directory? (Path: '{path}')")
 
         self.remove(team_id, path)
 
@@ -767,14 +768,13 @@ class FileApi(ModuleApiBase):
             api.file.remove_dir(8, "/999_App_Test/ds1/")
         """
 
-        file_info = self.get_info_by_path(team_id, path)
+        if not os.path.isdir(path):
+            raise ValueError( f"Entered path is not a directory. Maybe you entered file? (Path: '{path}')")
 
-        if not file_info is None:
-            raise ValueError( f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')")
+        if not self.dir_exists():
+            raise ValueError( f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
-
-
 
     def remove_batch(
         self,
