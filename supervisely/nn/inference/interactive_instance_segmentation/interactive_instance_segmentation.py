@@ -20,6 +20,7 @@ from supervisely.decorators.inference import (
 )
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
+from supervisely import json as sly_json
 
 from supervisely.nn.inference import InstanceSegmentation
 from . import utils
@@ -39,6 +40,9 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
             self.x = x
             self.y = y
             self.is_positive = is_positive
+
+        def __repr__(self) -> str:
+            return f"{self.__class__.__name__} ({self.__hash__()}): {str(self.__dict__)}"
 
     def __init__(self, model_dir: Optional[str] = None, custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic", use_gui: Optional[bool] = False):
         super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
@@ -112,18 +116,22 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
                 image_np = utils.crop_image(crop, image_np)
                 self.current_image_path = os.path.join(get_data_dir(), f"{rand_str(10)}.jpg")
                 sly_image.write(self.current_image_path, image_np)
-                self.on_image_changed(self.current_image_path)
+                # self.on_image_changed(self.current_image_path)
                 
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = utils.transform_clicks_to_crop(crop, clicks)
+
             new_clicks = utils.get_new_clicks(self.current_clicks, clicks)
             if new_clicks is not None:
                 print(f"Exactly one! {new_clicks=}")
                 self.current_clicks += new_clicks
             else:
+                is_image_changed = True
                 new_clicks = clicks
                 self.current_clicks = clicks
+
+            # new_clicks = clicks
             self.current_smtool_state = smtool_state
 
             clicks_to_predict = [self.Click(c['x'], c['y'], c['is_positive']) for c in new_clicks]
@@ -134,8 +142,10 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
 
             bitmap = Bitmap(pred_mask.mask)
             bitmap_origin, bitmap_data = utils.format_bitmap(bitmap, crop)
-            sly_image.write("pred.png", bitmap.data*255)
 
+            sly_image.write("pred.png", bitmap.data*255)
+            sly_json.dump_json_file(request.state.context, "context.json")
+            
             response = {
                 "origin": bitmap_origin,
                 "bitmap": bitmap_data,

@@ -107,6 +107,7 @@ def get_new_clicks(current_clicks, incoming_clicks):
 
 def format_bitmap(bitmap: sly.Bitmap, crop: dict):
     bitmap_json = bitmap.to_json()["bitmap"]
-    bitmap_origin = {"x": crop[0]["x"], "y": crop[0]["y"]}
+    bitmap_origin = bitmap_json["origin"]
+    bitmap_origin = {"x": crop[0]["x"] + bitmap_origin[0], "y": crop[0]["y"] + bitmap_origin[1]}
     bitmap_data = bitmap_json["data"]
     return bitmap_origin, bitmap_data
