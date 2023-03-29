@@ -90,6 +90,7 @@ class Inference:
                 Progress("Deploying model ...", 1)
                 device = self.gui.get_device()
                 self.load_on_device(self._model_dir, device)
+                self._on_model_deployed()
                 self.gui.set_deployed()
 
         self._inference_requests = {}
@@ -286,6 +287,9 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _on_model_deployed(self):
+        pass
+    
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
