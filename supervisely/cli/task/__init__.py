@@ -1,0 +1,1 @@
+from supervisely.cli.task.set import set_task_output_dir_run

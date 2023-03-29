@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 import traceback
 
 import supervisely as sly
@@ -23,5 +21,3 @@ def get_project_name_run(project_id:int) -> bool:
     except:
         traceback.print_exc()
         return False
-    
-

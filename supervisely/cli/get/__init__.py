@@ -1,1 +1,0 @@
-from supervisely.cli.get.env import get_project_name_run

@@ -3,10 +3,9 @@ import click
 from rich.console import Console
 
 
-from supervisely.cli.download import download_run
-from supervisely.cli.upload import upload_to_teamfiles_run, set_task_output_dir_run
-from supervisely.cli.remove import remove_file_run, remove_dir_run
-from supervisely.cli.get import get_project_name_run 
+from supervisely.cli.project import download_run, get_project_name_run
+from supervisely.cli.task import set_task_output_dir_run
+from supervisely.cli.teamfiles import remove_file_run, remove_dir_run, upload_to_teamfiles_run
 
 
 @click.group()
