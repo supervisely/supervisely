@@ -55,7 +55,7 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     ):
 
         if progress.need_report():
-            print('Report')
+            print('Report', progress.current_label)
             fields = [
                 {"field": f"data.progress{index}", "payload": progress.message},
                 {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
@@ -107,8 +107,9 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
         else:
             print('@@@@@@@@@@@@@@@')
             progress = sly.Progress(
-                "Upload directory with training artifacts to Team Files", 0, is_size=True
+                "Upload directory to Team Files", 0, is_size=True
             )
+            # from supervisely.app.widgets import Progress
             progress_size_cb = partial(
                 upload_monitor_instance, api=api, task_id=task_id, progress=progress
             )
