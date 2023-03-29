@@ -62,10 +62,16 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
 
             progress.report_progress()
 
+    from pathlib import Path
+
+    root_directory = Path(local_dir)
+    print(
+        sum(f.stat().st_size for f in root_directory.glob('**/*') if f.is_file())
+    )
+
 
     def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
         if progress.total == 0:
-            print(os.path.getsize(local_dir))
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
             progress.set_current_value(monitor.bytes_read, report=False)
