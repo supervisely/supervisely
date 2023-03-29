@@ -84,6 +84,7 @@ class Api:
         api = sly.Api.from_env()
     """
 
+
     def __init__(
         self,
         server_address: str = None,
@@ -192,6 +193,10 @@ class Api:
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
         )
+    
+    # @staticmethod
+    # def from_env_file(PATH="~/sup"):
+    #     PATH
 
     def add_header(self, key: str, value: str) -> None:
         """

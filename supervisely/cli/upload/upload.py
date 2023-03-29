@@ -19,7 +19,8 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
 
     console = Console()
     api = sly.Api.from_env()
-    task_id = sly.env.task_id()
+
+    # task_id = sly.env.task_id()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
@@ -45,37 +46,29 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     ):
 
         if progress.need_report():
-            # print('progress.message', progress.message)
-            # print('Current', progress.current_label)
-            # print('Total', progress.total_label)
-            # print('progPercent', math.floor(progress.current * 100 / progress.total))
-            fields = [
-                {"field": f"data.progress{index}", "payload": progress.message},
-                {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
-                {"field": f"data.progressTotal{index}", "payload": progress.total_label},
-                {
-                    "field": f"data.progressPercent{index}",
-                    "payload": math.floor(progress.current * 100 / progress.total),
-                },
-            ]
-            api.app.set_fields(task_id, fields)
+            # fields = [
+            #     {"field": f"data.progress{index}", "payload": progress.message},
+            #     {"field": f"data.progressCurrent{index}", "payload": progress.current_label},
+            #     {"field": f"data.progressTotal{index}", "payload": progress.total_label},
+            #     {
+            #         "field": f"data.progressPercent{index}",
+            #         "payload": math.floor(progress.current * 100 / progress.total),
+            #     },
+            # ]
+            # api.app.set_fields(task_id, fields)
 
             progress.report_progress()
 
-    from pathlib import Path
-
-    root_directory = Path(local_dir)
-    print(
-        sum(f.stat().st_size for f in root_directory.glob('**/*') if f.is_file())
-    )
-
-
-    def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
+    def upload_monitor_instance(monitor, progress: sly.Progress):
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
         else:
-            progress.set_current_value(monitor.bytes_read, report=False)
-        _update_progress_ui("UploadDir", api, task_id, progress)
+            if progress.need_report():
+                print('Report', monitor.bytes_read)
+                progress.set_current_value(monitor.bytes_read, report=False)
+                progress.report_progress()
+
+        # _update_progress_ui("UploadDir", api, task_id, progress)
 
     console.print(
         f"\nUploading local directory from '{local_dir}' to teamfiles directory: '{remote_dir}' ...\n",
@@ -83,12 +76,13 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     )
 
     try:
-
-        if sly.is_development():
-            progress = sly.Progress(
+        progress = sly.Progress(
                 "Uploading training results directory to teamfiles...", 0, is_size=True
             )
-            progress.report_progress
+
+        if sly.is_development():
+
+            # progress.report_progress
             progress_size_cb = partial(
                 upload_monitor_console, progress=progress, tqdm_pb=ProgressBar()
             )
@@ -101,12 +95,8 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             )
 
         else:
-            progress = sly.Progress(
-                "Upload directory to Team Files", 0, is_size=True
-            )
-            # from supervisely.app.widgets import Progress
             progress_size_cb = partial(
-                upload_monitor_instance, api=api, task_id=task_id, progress=progress
+                upload_monitor_instance, progress=progress
             )
             api.file.upload_directory(
                 team_id,

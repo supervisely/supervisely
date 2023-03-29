@@ -14,6 +14,11 @@ def download_run(id:int, dest_dir:str) -> bool:
 
     api = sly.Api.from_env()
 
+    # if sly.is_development():
+    #     api = sly.Api.from_env()
+    # else:
+    #     api = sly.Api.from_env()
+
     console = Console()
     console.print(f"\nDownloading data from project with ID={id} to directory: '{dest_dir}' ...\n", style="bold")
 
