@@ -768,10 +768,10 @@ class FileApi(ModuleApiBase):
             api.file.remove_dir(8, "/999_App_Test/ds1/")
         """
 
-        if not os.path.isdir(path):
-            raise ValueError( f"Entered path is not a directory. Maybe you entered file? (Path: '{path}')")
+        if not path.endswith("/"):
+            raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
-        if not self.dir_exists():
+        if not self.dir_exists(team_id, path):
             raise ValueError( f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
