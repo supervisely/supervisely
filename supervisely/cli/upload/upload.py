@@ -19,11 +19,7 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
 
     console = Console()
     api = sly.Api.from_env()
-
     task_id = sly.env.task_id()
-    print("Task_id", task_id)
-
-    # progress_bar = sly.app.widgets.Progress()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
@@ -36,8 +32,6 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
         def update_to(self, n: int) -> None:
             self.update(n - self.n)
 
-    progress_bar = ProgressBar()
-
     def upload_monitor_console(monitor, progress: sly.Progress, tqdm_pb: ProgressBar):
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
@@ -46,12 +40,8 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             progress.set_current_value(monitor.bytes_read, report=False)
             tqdm_pb.update_to(monitor.bytes_read)
 
-    # def update_progress(count, index, api: sly.Api, task_id, progress: sly.Progress):
-    #     progress.iters_done(count)
-    #     _update_progress_ui(index, api, task_id, progress)
-
     def _update_progress_ui(
-        index, api: sly.Api, task_id, progress: sly.Progress, stdout_print=False
+        index, api: sly.Api, task_id, progress: sly.Progress
     ):
 
         if progress.need_report():
@@ -66,13 +56,9 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
                 },
             ]
             api.app.set_fields(task_id, fields)
-            # if stdout_print is True:
-            #     #progress.print_progress()
+
             progress.report_progress()
 
-    # def upload_monitor_instance(monitor, progress):
-    #     readed_percent = round(monitor.bytes_read / monitor.len * 100)
-    #     progress.update(readed_percent - progress.n)
 
     def upload_monitor_instance(monitor, api: sly.Api, task_id, progress: sly.Progress):
         if progress.total == 0:
@@ -105,7 +91,6 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             )
 
         else:
-            print('@@@@@@@@@@@@@@@')
             progress = sly.Progress(
                 "Upload directory to Team Files", 0, is_size=True
             )
