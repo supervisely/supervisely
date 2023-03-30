@@ -86,7 +86,6 @@ class Api:
         api = sly.Api.from_env()
     """
 
-
     def __init__(
         self,
         server_address: str = None,
@@ -195,16 +194,22 @@ class Api:
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
         )
-    
+
     @staticmethod
-    def from_env_file(path: str = "~/supervisely.env") -> None:
+    def from_env_file(
+        path: str = "~/supervisely.env", retry_count: int = 10, ignore_task_id: bool = False
+    ) -> Api:
         """
         Initialize environment variables with .env file. Shorthand for API initialization with local variables.
 
         :param path: Path to your .env file.
         :type path: str
-        :return: None
-        :rtype: :class:`NoneType`
+        :param retry_count: The number of attempts to connect to the server.
+        :type retry_count: int
+        :param ignore_task_id:
+        :type ignore_task_id: bool
+        :return: Api object
+        :rtype: :class:`Api<supervisely.api.api.Api>`
 
         :Usage example:
 
@@ -212,13 +217,28 @@ class Api:
 
             import supervisely as sly
 
-            if sly.is_development():
-                sly.Api.from_env_file()
-            
-            api = sly.Api.from_env()
+            api = sly.Api.from_env_file()
         """
-        if None in (os.environ.get("SERVER_ADDRESS"), os.environ.get("API_TOKEN")):
-            load_dotenv(os.path.expanduser(path))
+        mode = os.environ.get("ENV", "development")
+        env_path = os.path.expanduser(path)
+
+        if mode != "production":
+            if os.path.exists(env_path):
+                _, extension = os.path.splitext(env_path)
+                if extension == ".env":
+                    if None in (os.environ.get("SERVER_ADDRESS"), os.environ.get("API_TOKEN")):
+                        load_dotenv(env_path)
+                else:
+                    raise ValueError(f"Extension not .env: '{extension}'")
+            else:
+                raise FileNotFoundError(f"File not found: '{env_path}'")
+
+        return Api(
+            os.environ[SERVER_ADDRESS],
+            os.environ[API_TOKEN],
+            retry_count=retry_count,
+            ignore_task_id=ignore_task_id,
+        )
 
     def add_header(self, key: str, value: str) -> None:
         """
@@ -310,7 +330,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
@@ -369,7 +389,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
                 )

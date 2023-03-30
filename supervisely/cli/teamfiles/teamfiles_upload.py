@@ -10,10 +10,7 @@ from rich.console import Console
 
 def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
-    if sly.is_development():
-        sly.Api.from_env_file()
-       
-    api = sly.Api.from_env()
+    api = sly.Api.from_env_file()
     console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
@@ -35,7 +32,6 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
             progress.set_current_value(monitor.bytes_read, report=False)
             tqdm_pb.update_to(monitor.bytes_read)
 
-
     def upload_monitor_instance(monitor, progress: sly.Progress):
         if progress.total == 0:
             progress.set(monitor.bytes_read, monitor.len, report=False)
@@ -50,18 +46,14 @@ def upload_to_teamfiles_run(team_id: int, local_dir: str, remote_dir: str) -> bo
     )
 
     try:
-        progress = sly.Progress(
-                "Uploading local directory to Team files...", 0, is_size=True
-            )
+        progress = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
 
         if sly.is_development():
             progress_size_cb = partial(
                 upload_monitor_console, progress=progress, tqdm_pb=ProgressBar()
             )
         else:
-            progress_size_cb = partial(
-                upload_monitor_instance, progress=progress
-            )
+            progress_size_cb = partial(upload_monitor_instance, progress=progress)
 
         api.file.upload_directory(
             team_id,
