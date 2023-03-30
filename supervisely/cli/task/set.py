@@ -1,7 +1,4 @@
-import os
 import supervisely as sly
-
-import json
 
 import traceback
 from rich.console import Console
@@ -23,23 +20,7 @@ def set_task_output_dir_run(task_id: int, team_id: int, dst_dir: str) -> bool:
         return False
 
     try:
-        files = api.file.list2(team_id, dst_dir, recursive=True)
-
-        if len(files) == 0:
-            # some data to create dummy .json file to get file id
-            data = {"team_id": team_id, "task_id": task_id, "directory": dst_dir}
-
-            src_path = os.path.join(os.getcwd(), "info.json")
-            with open(src_path, "w") as f:
-                json.dump(data, f)
-
-            dst_path = os.path.join(dst_dir, "info.json")
-            file_id = api.file.upload(team_id, src_path, dst_path).id
-
-        else:
-            file_id = files[0].id
-
-        api.task.set_output_directory(task_id, file_id, dst_dir)
+        sly.output.set_directory(task_id, dst_dir)
         console.print("\nSetting task output directory succeed\n", style="bold green")
         return True
 
