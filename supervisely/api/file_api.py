@@ -221,7 +221,8 @@ class FileApi(ModuleApiBase):
             return self.list_on_agent(team_id, path, recursive)
 
         response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive}
+            "file-storage.list",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
         return response.json()
 
@@ -682,7 +683,8 @@ class FileApi(ModuleApiBase):
 
     def remove(self, team_id: int, path: str) -> None:
         """
-        Removes path from Team Files.
+        Removes a file from the Team Files. If the specified path is a directory,
+        the entire directory (including all recursively included files) will be removed.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -741,7 +743,9 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if file_info is None:
-            raise ValueError( f"File not found in Team files. Maybe you entered directory? (Path: '{path}')")
+            raise ValueError(
+                f"File not found in Team files. Maybe you entered directory? (Path: '{path}')"
+            )
 
         self.remove(team_id, path)
 
@@ -772,7 +776,7 @@ class FileApi(ModuleApiBase):
             raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
         if not self.dir_exists(team_id, path):
-            raise ValueError( f"Folder not found in Team files. (Path: '{path}')")
+            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
 
