@@ -37,6 +37,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_id = 186648102
         ann_info = api.video.annotation.download(video_id)
     """
+
     _method_download_bulk = 'videos.annotations.bulk.info'
     _entity_ids_str = ApiField.VIDEO_IDS
 
@@ -77,6 +78,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             #     "frames": []
             # }
         """
+
         video_info = self._api.video.get_info_by_id(video_id)
         return self._download(video_info.dataset_id, video_id)
 
@@ -106,6 +108,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             video_id = 198704259
             api.video.annotation.append(video_id, video_ann)
         """
+
         info = self._api.video.get_info_by_id(video_id)
         self._append(self._api.video.tag, self._api.video.object, self._api.video.figure,
                      info.project_id, info.dataset_id, video_id,
