@@ -123,7 +123,12 @@ class PointcloudAnnotation(VideoAnnotation):
         :param key_id_map: KeyIdMap class object
         :return: PointcloudAnnotation class object
         """
-        item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+
+        try:
+            item_key = uuid.UUID(data[KEY])
+        except Exception as e:
+            item_key = uuid.uuid4()
+
         if key_id_map is not None:
             key_id_map.add_video(item_key, data.get(POINTCLOUD_ID, None))
         description = data.get(DESCRIPTION, "")

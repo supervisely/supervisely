@@ -309,11 +309,12 @@ class VolumeApi(RemoveableBulkModuleApi):
         names,
         paths,
         progress_cb=None,
+        log_progress=True,
     ):
         volume_infos = []
         for name, path in zip(names, paths):
             info = self.upload_nrrd_serie_path(
-                dataset_id, name, path, log_progress=True
+                dataset_id, name, path, log_progress=log_progress
             )
             volume_infos.append(info)
             if progress_cb is not None:

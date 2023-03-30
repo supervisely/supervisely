@@ -101,7 +101,9 @@ class ImageRegionSelector(Widget):
         StateJson().send_changes()
 
     def get_json_data(self):
-        return {}
+        return {
+            "disabled": self._disabled,
+        }
 
     def get_json_state(self):
         return {
@@ -116,7 +118,6 @@ class ImageRegionSelector(Widget):
             "datasetId": self.dataset_id,
             "originalBbox": self.original_bbox,
             "scaledBbox": self.scaled_bbox,
-            "disabled": self._disabled,
             "widget_width": self.widget_width,
             "widget_height": self.widget_height,
             "widget_id": self.widget_id,
