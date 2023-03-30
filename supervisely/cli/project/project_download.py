@@ -26,9 +26,11 @@ def download_run(id: int, dest_dir: str) -> bool:
         if sly.is_development():
             with tqdm(total=n_count) as pbar:
                 sly.download(api, id, dest_dir, progress_cb=pbar.update)
+                pbar.refresh()
         else:
             sly.download(api, id, dest_dir, log_progress=True)
 
+        console.print("\nProject is downloaded sucessfully!\n", style="bold green")
         return True
     except:
         console.print(f"\nProject is not downloaded\n", style="bold red")

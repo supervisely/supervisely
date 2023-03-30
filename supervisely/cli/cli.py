@@ -1,6 +1,5 @@
 import sys
 import click
-from rich.console import Console
 
 
 from supervisely.cli.project import download_run, get_project_name_run
@@ -84,11 +83,9 @@ def project():
     help="Download destination directory",
 )
 def download(id: int, dst: str) -> None:
-    console = Console()
     try:
         success = download_run(id, dst)
         if success:
-            console.print("\nProject is downloaded sucessfully!\n", style="bold green")
             sys.exit(0)
         else:
             sys.exit(1)
@@ -201,13 +198,9 @@ def remove_dir(id: int, path: str) -> None:
     help="Path to Team files remote destination directory to which files are uploaded",
 )
 def upload(id: int, src: str, dst: str) -> None:
-    console = Console()
     try:
         success = upload_directory_run(id, src, dst)
         if success:
-            console.print(
-                "\nLocal directory uploaded to teamfiles sucessfully!\n", style="bold green"
-            )
             sys.exit(0)
         else:
             sys.exit(1)
