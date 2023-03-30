@@ -21,6 +21,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.custom_static_files import CustomStaticFiles
 from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -119,8 +120,14 @@ def enable_hot_reload_on_debug(app: FastAPI):
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
         import arel
+        
+        # List of directories to exclude from the hot reload.
+        exclude = [".venv", ".git", "tmp"]
 
-        hot_reload = arel.HotReload(paths=[arel.Path(".")])
+        hot_reload = arel.HotReload(
+            paths=[arel.Path(path) for path in os.listdir() if path not in exclude]
+        )
+
         app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
         app.add_event_handler("startup", hot_reload.startup)
         app.add_event_handler("shutdown", hot_reload.shutdown)
@@ -220,7 +227,7 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount("/static", StaticFiles(directory=static_dir), name="static_files")
+            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
 
     return app
 

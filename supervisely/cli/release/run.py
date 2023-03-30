@@ -221,6 +221,13 @@ def run(
             f'[red][red][Error][/][/] Cannot decode config json file at "{module_path.joinpath("config.json")}": {str(e)}'
         )
         return False
+    
+    # get readme
+    try:
+        with open(module_path.joinpath("README.md"), "r") as f:
+            readme = f.read()
+    except:
+        readme = ""
 
     # get app name
     app_name = config.get("name", None)
@@ -333,6 +340,7 @@ def run(
         appKey,
         repo,
         config,
+        readme,
         release_description,
         release_version,
         modal_template,
