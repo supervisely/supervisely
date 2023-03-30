@@ -7,7 +7,7 @@ import supervisely as sly
 
 def download_run(id: int, dest_dir: str) -> bool:
 
-    api = sly.Api.from_env_file()
+    api = sly.Api.from_env()
     console = Console()
 
     console.print(

@@ -4,7 +4,7 @@ import traceback
 from rich.console import Console
 
 
-def set_task_output_dir_run(task_id: int, team_id: int, dst_dir: str) -> bool:
+def set_output_directory_run(task_id: int, team_id: int, dst_dir: str) -> bool:
 
     api = sly.Api.from_env()
     console = Console()

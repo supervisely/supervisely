@@ -6,7 +6,7 @@ from rich.console import Console
 
 def remove_file_run(team_id: int, path: str) -> bool:
 
-    api = sly.Api.from_env_file()
+    api = sly.Api.from_env()
     console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
@@ -26,7 +26,7 @@ def remove_file_run(team_id: int, path: str) -> bool:
 
 def remove_dir_run(team_id: int, path: str) -> bool:
 
-    api = sly.Api.from_env_file()
+    api = sly.Api.from_env()
     console = Console()
 
     if api.team.get_info_by_id(team_id) is None:

@@ -167,7 +167,12 @@ class Api:
         return result
 
     @classmethod
-    def from_env(cls, retry_count: int = 10, ignore_task_id: bool = False) -> Api:
+    def from_env(
+        cls,
+        retry_count: int = 10,
+        ignore_task_id: bool = False,
+        env_file: str = "~/supervisely.env",
+    ) -> Api:
         """
         Initialize API use environment variables.
 
@@ -175,65 +180,51 @@ class Api:
         :type retry_count: int
         :param ignore_task_id:
         :type ignore_task_id: bool
-        :return: Api object
-        :rtype: :class:`Api<supervisely.api.api.Api>`
-
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-        """
-        return cls(
-            os.environ[SERVER_ADDRESS],
-            os.environ[API_TOKEN],
-            retry_count=retry_count,
-            ignore_task_id=ignore_task_id,
-        )
-
-    @staticmethod
-    def from_env_file(
-        path: str = "~/supervisely.env", retry_count: int = 10, ignore_task_id: bool = False
-    ) -> Api:
-        """
-        Initialize environment variables with .env file. Shorthand for API initialization with local variables.
-
         :param path: Path to your .env file.
         :type path: str
-        :param retry_count: The number of attempts to connect to the server.
-        :type retry_count: int
-        :param ignore_task_id:
-        :type ignore_task_id: bool
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
         :Usage example:
 
+         .. code-block:: "~/supervisely.env"
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
          .. code-block:: python
 
             import supervisely as sly
-
-            api = sly.Api.from_env_file()
+            api = sly.Api.from_env()
         """
+        server_address = os.environ.get(SERVER_ADDRESS, None)
+        token = os.environ.get(API_TOKEN, None)
+
         mode = os.environ.get("ENV", "development")
-        env_path = os.path.expanduser(path)
+        env_path = os.path.expanduser(env_file)
 
         if mode != "production":
             if os.path.exists(env_path):
                 _, extension = os.path.splitext(env_path)
                 if extension == ".env":
-                    if None in (os.environ.get("SERVER_ADDRESS"), os.environ.get("API_TOKEN")):
+                    if None in (server_address, token):
                         load_dotenv(env_path)
+                        server_address = os.environ.get(SERVER_ADDRESS, None)
+                        token = os.environ.get(API_TOKEN, None)
                 else:
                     raise ValueError(f"Extension not .env: '{extension}'")
             else:
                 raise FileNotFoundError(f"File not found: '{env_path}'")
 
-        return Api(
+        if server_address is None:
+            raise ValueError(
+                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
+        if token is None:
+            raise ValueError(
+                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
+
+        return cls(
             os.environ[SERVER_ADDRESS],
             os.environ[API_TOKEN],
             retry_count=retry_count,

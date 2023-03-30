@@ -5,7 +5,7 @@ import supervisely as sly
 
 def get_project_name_run(project_id: int) -> bool:
 
-    api = sly.Api.from_env_file()
+    api = sly.Api.from_env()
 
     try:
         project_info = api.project.get_info_by_id(project_id)
