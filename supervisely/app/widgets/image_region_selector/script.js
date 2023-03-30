@@ -54,8 +54,6 @@ Vue.component('smarttool-editor', {
   },
   watch: {
     imageUrl() {
-      console.log('image url was changed')
-      // this.methods.init()
       this.group.clear()
       const viewBox = getViewBox(this.bboxEl.bbox());
       this.sceneEl.viewbox(viewBox)
@@ -121,7 +119,6 @@ Vue.component('smarttool-editor', {
           if (y < 0) { y = 0 }
           if ((x + w) > image_width) { w = image_width - x}
           if ((y + h) > image_height) { h = image_height - y}
-          console.log(x, y, w, h)
           this.$emit('update:bbox', [[x, y], [x + w, y + h]]);
         });
 
