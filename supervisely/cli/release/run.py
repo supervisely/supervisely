@@ -34,8 +34,11 @@ def _check_git(repo: git.Repo):
             "[red][Error][/] You have untracked files. Commit all changes before releasing the app."
         )
         console.print("  Untracked files:")
-        for i, file in enumerate(repo.untracked_files):
-            console.print(f"  {i+1}) " + file)
+        console.print("\n".join(
+            [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][:20]
+        ))
+        if len(repo.untracked_files) > 20:
+            console.print(f"  ... and {len(repo.untracked_files) - 20} more.")
         print()
         result = False
 
