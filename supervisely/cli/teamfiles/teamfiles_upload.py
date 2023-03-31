@@ -10,6 +10,23 @@ from rich.console import Console
 
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
+    """
+    Note: to extract new res_remote_dir (==$TEAMFILES_DIR) in case of name conflict (change_name_if_conflict=True) use following bash command:
+
+    ```bash
+        output=$(supervisely teamfiles upload -id $TEAM_ID --src "/src/path/" --dst "/dst/path/" | tee /dev/tty)
+
+        string=$(echo $output | grep -o "Team files directory: '[^']*'\!")
+        TEAMFILES_DIR=$(echo $string | grep -o "'[^']*'" | sed "s/'//g")
+
+        if [ "$TEAMFILES_DIR" != "/dst/path/"  ]
+        then
+            echo "local and remote directories not matching!" #do your code here
+            echo "Actual Team files directory: $TEAMFILES_DIR"
+        fi
+
+    Please, note the importance of '!' literal so the output greps correctly.
+    """
 
     api = sly.Api.from_env()
     console = Console()
@@ -66,11 +83,15 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
         if res_remote_dir != remote_dir:
             console.print(
-                f"\nWarning: Team files directory '{remote_dir}' already exists. Name changed to '{res_remote_dir}'.",
+                f"\nWarning: '{remote_dir}' already exists. New Team files directory: '{res_remote_dir}'!",
                 style="bold red",
             )
+        else:
+            print(
+                f"\nTeam files directory: '{remote_dir}'!",
+            )
 
-        console.print("\nLocal directory uploaded to teamfiles sucessfully!\n", style="bold green")
+        console.print("\nLocal directory uploaded to Team files sucessfully!\n", style="bold green")
         return True
 
     except:
