@@ -426,7 +426,7 @@ class VideoApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            video_id = 198702499
+            video_id = 19371139
             video_info = api.video.get_info_by_id(video_id)
             print(video_info)
             # Output:
@@ -1564,7 +1564,7 @@ class VideoApi(RemoveableBulkModuleApi):
             
             # Output: 
             # VideoInfo(
-            #     id=19371139,
+            #     id=19371140,
             #     name='sea lion.mp4'
             #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
             #     link=None,
