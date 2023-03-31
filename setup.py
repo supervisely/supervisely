@@ -58,6 +58,7 @@ INSTALL_REQUIRES = [
     "giturlparse",
     "rich",
     "click",
+    "imutils==0.5.4",
 ]
 
 ALT_INSTALL_REQUIRES = {
