@@ -40,7 +40,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         return False
 
     console.print(
-        f"\nUploading local directory from '{local_dir}' to Team files directory: '{remote_dir}' ...\n",
+        f"\nUploading local directory '{local_dir}' to Team files ...\n",
         style="bold",
     )
 
@@ -86,7 +86,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
         if res_remote_dir != remote_dir:
             console.print(
-                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files: '{res_remote_dir}'",
+                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files.",
                 style="bold yellow",
             )
         else:
