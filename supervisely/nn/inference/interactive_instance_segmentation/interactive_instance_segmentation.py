@@ -8,11 +8,11 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
-from supervisely import json as sly_json
 from supervisely.nn.inference import InstanceSegmentation
 from . import functional
 
 from typing import Dict, List, Any, Optional, Union
+
 try:
     from typing import Literal
 except ImportError:
@@ -21,7 +21,6 @@ except ImportError:
 
 
 class InteractiveInstanceSegmentation(InstanceSegmentation):
-
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
@@ -31,7 +30,13 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
         def __repr__(self) -> str:
             return f"{self.__class__.__name__} ({self.__hash__()}): {str(self.__dict__)}"
 
-    def __init__(self, model_dir: Optional[str] = None, custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic", use_gui: Optional[bool] = False):
+    def __init__(
+        self,
+        model_dir: Optional[str] = None,
+        custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
+        sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
+        use_gui: Optional[bool] = False,
+    ):
         super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
         self.current_smtool_state = None
         self.current_image_path = None
@@ -53,10 +58,10 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
         if self.current_smtool_state is not None:
             prev_state = self.current_smtool_state.copy()
             smtool_state = smtool_state.copy()
-            smtool_state.pop('positive')
-            smtool_state.pop('negative')
-            prev_state.pop('positive')
-            prev_state.pop('negative')
+            smtool_state.pop("positive")
+            smtool_state.pop("negative")
+            prev_state.pop("positive")
+            prev_state.pop("negative")
             return smtool_state != prev_state
         else:
             return True
@@ -86,8 +91,11 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
                 settings = self._get_inference_settings(state)
                 smtool_state = request.state.context
                 api = request.state.api
-                crop = smtool_state['crop']
-                positive_clicks, negative_clicks = smtool_state['positive'], smtool_state['negative']
+                crop = smtool_state["crop"]
+                positive_clicks, negative_clicks = (
+                    smtool_state["positive"],
+                    smtool_state["negative"],
+                )
                 if len(positive_clicks) + len(negative_clicks) == 0:
                     logger.debug("No clicks received.")
                     response = {
@@ -113,13 +121,13 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
                 image_np = functional.crop_image(crop, image_np)
                 self.current_image_path = os.path.join(app_dir, f"{rand_str(10)}.jpg")
                 sly_image.write(self.current_image_path, image_np)
-                
+
             self.current_smtool_state = smtool_state
 
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = functional.transform_clicks_to_crop(crop, clicks)
-            clicks_to_predict = [self.Click(c['x'], c['y'], c['is_positive']) for c in clicks]
+            clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
 
             pred_mask = self.predict(self.current_image_path, clicks_to_predict, settings)
 
@@ -127,7 +135,7 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
 
             bitmap = Bitmap(pred_mask.mask)
             bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
-            
+
             response = {
                 "origin": bitmap_origin,
                 "bitmap": bitmap_data,
