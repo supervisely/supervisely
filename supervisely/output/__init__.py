@@ -4,6 +4,7 @@ import os
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 import supervisely.io.env as sly_env
+from supervisely import rand_str
 
 
 def set_project(id: int):
@@ -16,7 +17,7 @@ def set_project(id: int):
 
 
 def set_directory(task_id: int, teamfiles_dir: str):
-    if is_production() is True:
+    if is_production():
         api = Api()
         team_id = sly_env.team_id()
 
@@ -25,7 +26,7 @@ def set_directory(task_id: int, teamfiles_dir: str):
             # some data to create dummy .json file to get file id
             data = {"team_id": team_id, "task_id": task_id, "directory": teamfiles_dir}
 
-            src_path = os.path.join(os.getcwd(), "info.json")
+            src_path = os.path.join("/tmp/", f"{rand_str(10)}.json")
             with open(src_path, "w") as f:
                 json.dump(data, f)
 

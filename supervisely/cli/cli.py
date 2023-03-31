@@ -4,7 +4,7 @@ import click
 
 from supervisely.cli.project import download_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
-from supervisely.cli.teamfiles import remove_file_run, remove_dir_run, upload_directory_run
+from supervisely.cli.teamfiles import remove_file_run, remove_directory_run, upload_directory_run
 
 
 @click.group()
@@ -165,7 +165,7 @@ def remove_file(id: int, path: str) -> None:
 )
 def remove_dir(id: int, path: str) -> None:
     try:
-        success = remove_dir_run(id, path)
+        success = remove_directory_run(id, path)
         if success:
             sys.exit(0)
         else:

@@ -11,12 +11,12 @@ from rich.console import Console
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     """
-    Note: to extract new res_remote_dir (==$TEAMFILES_DIR) in case of name conflict (change_name_if_conflict=True) use following bash command:
+    Note: to extract actual res_remote_dir (==$TEAMFILES_DIR) in case of name conflict (change_name_if_conflict=True) use following bash command:
 
     ```bash
         output=$(supervisely teamfiles upload -id $TEAM_ID --src "/src/path/" --dst "/dst/path/" | tee /dev/tty)
 
-        string=$(echo $output | grep -o "Team files directory: '[^']*'\!")
+        string=$(echo $output | grep -o "Local directory was sucessfully uploaded to Team files directory: '[^']*'")
         TEAMFILES_DIR=$(echo $string | grep -o "'[^']*'" | sed "s/'//g")
 
         if [ "$TEAMFILES_DIR" != "/dst/path/"  ]
@@ -24,15 +24,16 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             echo "local and remote directories not matching!" #do your code here
             echo "Actual Team files directory: $TEAMFILES_DIR"
         fi
-
-    Please, note the importance of '!' literal so the output greps correctly.
     """
 
     api = sly.Api.from_env()
     console = Console()
 
     if api.team.get_info_by_id(team_id) is None:
-        console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
+        console.print(
+            f"\nError: Team with ID={team_id} is either not exist or not found in your acocunt\n",
+            style="bold red",
+        )
         return False
     if not os.path.isdir(local_dir):
         console.print(f"\nError: local directory '{local_dir}' not exists\n", style="bold red")
@@ -54,11 +55,13 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     progress.refresh()  # refresh progress bar to show completion
                     progress.close()  # close progress bar
 
+            # api.file.upload_directory may be slow depending on the number of folders
             print("Please wait ...")
-            pbar = tqdm(total=0, unit="B", unit_scale=True)
-            progress_size_cb = partial(upload_monitor_console, progress=pbar)
 
-            time.sleep(1)
+            progress = tqdm(total=0, unit="B", unit_scale=True)
+            progress_size_cb = partial(upload_monitor_console, progress=progress)
+
+            time.sleep(1)  # for better UX
 
         else:
 
@@ -70,8 +73,8 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     if progress.need_report():
                         progress.report_progress()
 
-            pbar = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
-            progress_size_cb = partial(upload_monitor_instance, progress=pbar)
+            progress = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
+            progress_size_cb = partial(upload_monitor_instance, progress=progress)
 
         res_remote_dir = api.file.upload_directory(
             team_id,
@@ -83,15 +86,16 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
         if res_remote_dir != remote_dir:
             console.print(
-                f"\nWarning: '{remote_dir}' already exists. New Team files directory: '{res_remote_dir}'!",
-                style="bold red",
+                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files: '{res_remote_dir}'",
+                style="bold yellow",
             )
         else:
-            print(
-                f"\nTeam files directory: '{remote_dir}'!",
-            )
+            res_remote_dir = remote_dir
 
-        console.print("\nLocal directory uploaded to Team files sucessfully!\n", style="bold green")
+        console.print(
+            f"\nLocal directory was sucessfully uploaded to Team files directory: '{res_remote_dir}'.\n",
+            style="bold green",
+        )
         return True
 
     except:

@@ -24,7 +24,7 @@ def remove_file_run(team_id: int, path: str) -> bool:
         return False
 
 
-def remove_dir_run(team_id: int, path: str) -> bool:
+def remove_directory_run(team_id: int, path: str) -> bool:
 
     api = sly.Api.from_env()
     console = Console()

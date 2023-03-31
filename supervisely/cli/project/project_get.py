@@ -11,7 +11,7 @@ def get_project_name_run(project_id: int) -> bool:
         project_info = api.project.get_info_by_id(project_id)
         if project_info is None:
             print(
-                f"Project with id {project_id} is either archived, doesn't exist or you don't have enough permissions to access it"
+                f"Project with ID={project_id} is either archived, doesn't exist or you don't have enough permissions to access it"
             )
             return False
 

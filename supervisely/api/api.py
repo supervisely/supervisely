@@ -37,6 +37,7 @@ import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.github_api as github_api
 import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
+import supervisely.io.env as sly_env
 
 
 from supervisely.io.network_exceptions import (
@@ -185,48 +186,55 @@ class Api:
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
-        :Usage example:
-
-         .. code-block:: "~/supervisely.env"
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        :Usage examples:
 
          .. code-block:: python
 
             import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            api = sly.Api.from_env()
+
+         .. code-block:: python
+            # alternatively you can store SERVER_ADDRESS and API_TOKEN
+            # in "~/supervisely.env" .env file
+
             api = sly.Api.from_env()
         """
-        server_address = os.environ.get(SERVER_ADDRESS, None)
-        token = os.environ.get(API_TOKEN, None)
+        from supervisely import is_development
 
-        mode = os.environ.get("ENV", "development")
+        server_address = sly_env.server_address()
+        token = sly_env.api_token()
+
         env_path = os.path.expanduser(env_file)
 
-        if mode != "production":
+        if is_development():
             if os.path.exists(env_path):
                 _, extension = os.path.splitext(env_path)
                 if extension == ".env":
                     if None in (server_address, token):
                         load_dotenv(env_path)
-                        server_address = os.environ.get(SERVER_ADDRESS, None)
-                        token = os.environ.get(API_TOKEN, None)
+                        server_address = sly_env.server_address()
+                        token = sly_env.api_token()
                 else:
-                    raise ValueError(f"Extension not .env: '{extension}'")
+                    raise ValueError(f"'{env_path}' is not an '*.env' file")
             else:
                 raise FileNotFoundError(f"File not found: '{env_path}'")
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
             )
 
         return cls(
-            os.environ[SERVER_ADDRESS],
-            os.environ[API_TOKEN],
+            sly_env.server_address(),
+            sly_env.api_token(),
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
         )
