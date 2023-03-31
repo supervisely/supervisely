@@ -207,7 +207,9 @@ class ImageRegionSelector(Widget):
         StateJson().send_changes()
 
     def get_json_data(self):
-        return {}
+        return {
+            "disabled": self._disabled,
+        }
 
     def get_json_state(self):
         return {

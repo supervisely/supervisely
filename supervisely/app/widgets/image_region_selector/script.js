@@ -444,10 +444,17 @@ Vue.component('smarttool-editor', {
           "fill-opacity": 0,
         })
         .on('resizedone', () => {
-          const x = this.bboxEl.x();
-          const y = this.bboxEl.y();
-          const w = this.bboxEl.width();
-          const h = this.bboxEl.height();
+          let x = this.bboxEl.x();
+          let y = this.bboxEl.y();
+          let w = this.bboxEl.width();
+          let h = this.bboxEl.height();
+          let image_width = this.backgroundEl.node.width.baseVal.value;
+          let image_height = this.backgroundEl.node.height.baseVal.value;
+
+          if (x < 0) { x = 0 }
+          if (y < 0) { y = 0 }
+          if ((x + w) > image_width) { w = image_width - x}
+          if ((y + h) > image_height) { h = image_height - y}
           this.$emit('update:bbox', [[x, y], [x + w, y + h]]);
         });
 

@@ -124,7 +124,7 @@ class Annotation:
 
     def __init__(
         self,
-        img_size: Tuple[int, int],
+        img_size: Union[Tuple[int, int], Tuple[None, None]],
         labels: Optional[List[Label]] = None,
         img_tags: Optional[Union[TagCollection, List[Tag]]] = None,
         img_description: Optional[str] = "",
