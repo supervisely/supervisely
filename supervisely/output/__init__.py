@@ -25,12 +25,13 @@ def set_directory(task_id: int, teamfiles_dir: str):
         if len(files) == 0:
             # some data to create dummy .json file to get file id
             data = {"team_id": team_id, "task_id": task_id, "directory": teamfiles_dir}
+            filename = f"{rand_str(10)}.json"
 
-            src_path = os.path.join("/tmp/", f"{rand_str(10)}.json")
+            src_path = os.path.join("/tmp/", filename)
             with open(src_path, "w") as f:
                 json.dump(data, f)
 
-            dst_path = os.path.join(teamfiles_dir, f"{rand_str(10)}.json")
+            dst_path = os.path.join(teamfiles_dir, filename)
             file_id = api.file.upload(team_id, src_path, dst_path).id
 
         else:
