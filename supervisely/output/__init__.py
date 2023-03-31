@@ -30,7 +30,7 @@ def set_directory(task_id: int, teamfiles_dir: str):
             with open(src_path, "w") as f:
                 json.dump(data, f)
 
-            dst_path = os.path.join(teamfiles_dir, "info.json")
+            dst_path = os.path.join(teamfiles_dir, f"{rand_str(10)}.json")
             file_id = api.file.upload(team_id, src_path, dst_path).id
 
         else:

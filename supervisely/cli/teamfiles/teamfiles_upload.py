@@ -73,7 +73,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     if progress.need_report():
                         progress.report_progress()
 
-            progress = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
+            progress = sly.Progress("Uploading to Team files...", 0, is_size=True)
             progress_size_cb = partial(upload_monitor_instance, progress=progress)
 
         res_remote_dir = api.file.upload_directory(
