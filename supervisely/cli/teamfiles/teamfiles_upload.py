@@ -3,6 +3,7 @@ import supervisely as sly
 from functools import partial
 
 from tqdm import tqdm
+import time
 
 import traceback
 from rich.console import Console
@@ -28,34 +29,21 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     try:
         if sly.is_development():
 
-            def upload_monitor_console(tqdm_pb, monitor):
-                bytes_uploaded = monitor.bytes_read
-                tqdm_pb.update(bytes_uploaded - tqdm_pb.n)
+            def upload_monitor(tqdm_pb, monitor):
+                if tqdm_pb.total == 0:
+                    tqdm_pb.total = monitor.len
+                tqdm_pb.update(monitor.bytes_read - tqdm_pb.n)
+                if monitor.bytes_read == monitor.len:
+                    tqdm_pb.refresh()  # refresh progress bar to show completion
+                    tqdm_pb.close()  # close progress bar
 
-            # get filesize recursively
-            file_size = sum(
-                os.path.getsize(os.path.join(dirpath, filename))
-                for dirpath, _, filenames in os.walk(local_dir)
-                for filename in filenames
-            )
-            pbar = tqdm(total=file_size, unit="B", unit_scale=True)
-
-            res_remote_dir = api.file.upload_directory(
-                team_id,
-                local_dir,
-                remote_dir,
-                change_name_if_conflict=True,
-                progress_size_cb=partial(upload_monitor_console, pbar),
-            )
-            # keep output progress stdout
-            pbar.n = file_size
-            pbar.refresh()
-
-            pbar.close()
+            print("Please wait ...")
+            pbar = tqdm(total=0, unit="B", unit_scale=True)
+            time.sleep(1)
 
         else:
 
-            def upload_monitor_instance(monitor, progress: sly.Progress):
+            def upload_monitor(monitor, progress: sly.Progress):
                 if progress.total == 0:
                     progress.set(monitor.bytes_read, monitor.len, report=False)
                 else:
@@ -63,15 +51,15 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     if progress.need_report():
                         progress.report_progress()
 
-            progress = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
+            pbar = sly.Progress("Uploading local directory to Team files...", 0, is_size=True)
 
-            res_remote_dir = api.file.upload_directory(
-                team_id,
-                local_dir,
-                remote_dir,
-                change_name_if_conflict=True,
-                progress_size_cb=partial(upload_monitor_instance, progress=progress),
-            )
+        res_remote_dir = api.file.upload_directory(
+            team_id,
+            local_dir,
+            remote_dir,
+            change_name_if_conflict=True,
+            progress_size_cb=partial(upload_monitor, pbar),
+        )
 
         if res_remote_dir != remote_dir:
             console.print(
