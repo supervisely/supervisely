@@ -1,29 +1,16 @@
-import functools
 import os
-import numpy as np
-from fastapi import Form, Response, Request, UploadFile, status
+from fastapi import Response, Request, status
 
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
-from supervisely.annotation.label import Label
 from supervisely.sly_logger import logger
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
-from supervisely.decorators.inference import (
-    _scale_ann_to_original_size,
-    _process_image_path,
-)
 from supervisely.io.fs import silent_remove
-from supervisely.decorators.inference import (
-    process_image_roi,
-    process_image_sliding_window,
-)
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely import json as sly_json
-
 from supervisely.nn.inference import InstanceSegmentation
-from . import utils
+from . import functional
 
 from typing import Dict, List, Any, Optional, Union
 try:
@@ -47,7 +34,6 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
     def __init__(self, model_dir: Optional[str] = None, custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None, sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic", use_gui: Optional[bool] = False):
         super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
         self.current_smtool_state = None
-        self.current_clicks = []
         self.current_image_path = None
 
     def get_info(self) -> dict:
@@ -59,13 +45,9 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
         self,
         image_path: str,
         clicks: List[Click],
-        image_changed: bool,
         settings: Dict[str, Any],
     ) -> PredictionMask:
         raise NotImplementedError("Have to be implemented in child class")
-
-    def on_image_changed(self, image_path: str):
-        pass
 
     def _check_image_changed(self, smtool_state):
         if self.current_smtool_state is not None:
@@ -84,7 +66,6 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
 
     def _reset_current_state(self):
         self.current_smtool_state = None
-        self.current_clicks = []
         self.current_image_path = None
 
     def serve(self):
@@ -93,6 +74,11 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
+            # 1. parse request
+            # 2. download image
+            # 3. make crop
+            # 4. predict
+
             logger.debug(f"smart_segmentation inference: context=", extra=request.state.context)
 
             try:
@@ -102,49 +88,45 @@ class InteractiveInstanceSegmentation(InstanceSegmentation):
                 api = request.state.api
                 crop = smtool_state['crop']
                 positive_clicks, negative_clicks = smtool_state['positive'], smtool_state['negative']
+                if len(positive_clicks) + len(negative_clicks) == 0:
+                    logger.debug("No clicks received.")
+                    response = {
+                        "origin": None,
+                        "bitmap": None,
+                        "success": True,
+                        "error": None,
+                    }
+                    return response
             except Exception as exc:
                 logger.warn("Error parsing request:" + str(exc), exc_info=True)
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error 400. Bad request.", "success": False}
+                return {"message": "400: Bad request.", "success": False}
 
+            # if something has changed (except clicks) we will re-download the image
             is_image_changed = self._check_image_changed(smtool_state)
             if is_image_changed:
                 if self.current_image_path is not None:
                     silent_remove(self.current_image_path)
                 self._reset_current_state()
-                image_np = utils.download_image_from_context(smtool_state, api, self.model_dir)
-                image_np = utils.crop_image(crop, image_np)
-                self.current_image_path = os.path.join(get_data_dir(), f"{rand_str(10)}.jpg")
+                app_dir = get_data_dir()
+                image_np = functional.download_image_from_context(smtool_state, api, app_dir)
+                image_np = functional.crop_image(crop, image_np)
+                self.current_image_path = os.path.join(app_dir, f"{rand_str(10)}.jpg")
                 sly_image.write(self.current_image_path, image_np)
-                # self.on_image_changed(self.current_image_path)
                 
-            clicks = [{**click, "is_positive": True} for click in positive_clicks]
-            clicks += [{**click, "is_positive": False} for click in negative_clicks]
-            clicks = utils.transform_clicks_to_crop(crop, clicks)
-
-            new_clicks = utils.get_new_clicks(self.current_clicks, clicks)
-            if new_clicks is not None:
-                print(f"Exactly one! {new_clicks=}")
-                self.current_clicks += new_clicks
-            else:
-                is_image_changed = True
-                new_clicks = clicks
-                self.current_clicks = clicks
-
-            # new_clicks = clicks
             self.current_smtool_state = smtool_state
 
-            clicks_to_predict = [self.Click(c['x'], c['y'], c['is_positive']) for c in new_clicks]
-            pred_mask = self.predict(self.current_image_path, clicks_to_predict, is_image_changed, settings)
-            # ann = self._predictions_to_annotation(self.current_image_path, pred_mask)
+            clicks = [{**click, "is_positive": True} for click in positive_clicks]
+            clicks += [{**click, "is_positive": False} for click in negative_clicks]
+            clicks = functional.transform_clicks_to_crop(crop, clicks)
+            clicks_to_predict = [self.Click(c['x'], c['y'], c['is_positive']) for c in clicks]
+
+            pred_mask = self.predict(self.current_image_path, clicks_to_predict, settings)
 
             logger.debug(f"smart_segmentation inference done")
 
             bitmap = Bitmap(pred_mask.mask)
-            bitmap_origin, bitmap_data = utils.format_bitmap(bitmap, crop)
-
-            sly_image.write("pred.png", bitmap.data*255)
-            sly_json.dump_json_file(request.state.context, "context.json")
+            bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
             
             response = {
                 "origin": bitmap_origin,

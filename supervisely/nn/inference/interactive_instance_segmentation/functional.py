@@ -1,4 +1,3 @@
-import functools
 import os
 import numpy as np
 
@@ -29,17 +28,11 @@ def download_volume_slice_as_np(
     return sly.image.read_bytes(image_bytes)
 
 
-@functools.lru_cache(maxsize=100)
 def get_image_by_hash(hash, save_path, api: sly.Api):
     api.image.download_paths_by_hashes([hash], [save_path])
     base_image = sly.image.read(save_path)
     silent_remove(save_path)
     return base_image
-
-
-@functools.lru_cache(maxsize=100)
-def get_image_by_id(image_id, api: sly.Api):
-    return api.image.download_np(image_id)
 
 
 def download_image_from_context(context: dict, api: sly.Api, output_dir: str):
@@ -84,25 +77,6 @@ def transform_clicks_to_crop(crop, clicks: dict):
         click["y"] -= crop[0]["y"]
         assert click["x"] >= 0 and click["y"] >= 0, "Invalid click coords: below zero"
     return clicks
-
-
-def get_hash(d: dict):
-    hash = ''.join([str(v) for v in d.values()])
-    return hash
-
-
-def get_new_clicks(current_clicks, incoming_clicks):
-    current_clicks_hashed = {get_hash(click) : click for click in current_clicks}
-    incoming_clicks_hashed = {get_hash(click) : click for click in incoming_clicks}
-    base_diff = set(current_clicks_hashed) - set(incoming_clicks_hashed)
-    new_diff = set(incoming_clicks_hashed) - set(current_clicks_hashed)
-    if len(new_diff) == 1 and len(base_diff) == 0:
-        # exactly 1 new click added
-        new_click_hash = next(iter(new_diff))
-        new_click = incoming_clicks_hashed[new_click_hash]
-        return [new_click]
-    else:
-        return None
 
 
 def format_bitmap(bitmap: sly.Bitmap, crop: dict):
