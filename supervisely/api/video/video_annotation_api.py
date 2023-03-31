@@ -14,7 +14,7 @@ from supervisely.io.json import load_json_file
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
     """
-    VideoAnnotation for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
+    :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -38,7 +38,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         ann_info = api.video.annotation.download(video_id)
     """
 
-    _method_download_bulk = 'videos.annotations.bulk.info'
+    _method_download_bulk = "videos.annotations.bulk.info"
     _entity_ids_str = ApiField.VIDEO_IDS
 
     def download(self, video_id: int) -> Dict:
@@ -82,7 +82,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_info = self._api.video.get_info_by_id(video_id)
         return self._download(video_info.dataset_id, video_id)
 
-    def append(self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None) -> None:
+    def append(
+        self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None
+    ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
 
@@ -110,12 +112,26 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         """
 
         info = self._api.video.get_info_by_id(video_id)
-        self._append(self._api.video.tag, self._api.video.object, self._api.video.figure,
-                     info.project_id, info.dataset_id, video_id,
-                     ann.tags, ann.objects, ann.figures, key_id_map)
+        self._append(
+            self._api.video.tag,
+            self._api.video.object,
+            self._api.video.figure,
+            info.project_id,
+            info.dataset_id,
+            video_id,
+            ann.tags,
+            ann.objects,
+            ann.figures,
+            key_id_map,
+        )
 
-    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta,
-                     progress_cb: Optional[Callable] = None) -> None:
+    def upload_paths(
+        self,
+        video_ids: List[int],
+        ann_paths: List[str],
+        project_meta: ProjectMeta,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
 

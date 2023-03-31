@@ -14,7 +14,7 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoTagApi(TagApi):
     """
-    :class:`VideoTag<video_annotation.video_tag.VideoTag>` for a single video. :class:`VideoTagApi<VideoTagApi>` object is immutable.
+    :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` for a single video. :class:`VideoTagApi<VideoTagApi>` object is immutable.
     """
 
     _entity_id_field = ApiField.VIDEO_ID
@@ -149,7 +149,7 @@ class VideoTagApi(TagApi):
         :type video_id: int
         :param tag: VideoTag j,ject.
         :type tag: VideoTag
-        :param update_id_inplace: Specify if 
+        :param update_id_inplace: Specify if
         :return: VideoTag ID in Supervisely
         :rtype: int
         :Usage example:

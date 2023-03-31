@@ -34,7 +34,7 @@ from supervisely.task.progress import Progress
 
 class VideoInfo(NamedTuple):
     """
-    Object with video parameters from Supervisely.
+    Object with :class:`Video<supervisely.video.video>` parameters from Supervisely.
 
     :Example:
 
@@ -877,7 +877,7 @@ class VideoApi(RemoveableBulkModuleApi):
     ):
         """
         Send message to the Annotation Tool and return info if tracking was stopped
- 
+
         :param track_id: int
         :param video_id: int
         :param frame_start: int
@@ -1123,7 +1123,6 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         """
 
-
         progress_cb = item_progress
         p = None
         if item_progress is not None and type(item_progress) is bool:
@@ -1297,7 +1296,7 @@ class VideoApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             dataset_id = 56443
             video_ids = [19388386, 19388387, 19388388]
             video_infos = api.video.get_list(
@@ -1369,7 +1368,7 @@ class VideoApi(RemoveableBulkModuleApi):
             names = ["dog1", "dog2", "dog3"]
             hashes = []
             infos = []
-            
+
             for i, l in enumerate(links):
                 local_path = os.path.join(os.getcwd(), names[i])
                 sly.fs.download(l, local_path)
@@ -1380,12 +1379,12 @@ class VideoApi(RemoveableBulkModuleApi):
                 sly.fs.silent_remove(local_path)
             video_infos = api.video.upload_links(dataset_id, names, hashes, links, infos)
             print(video_infos)
-            
+
             # Output: [
                 VideoInfo(id=19593405, ...),
                 VideoInfo(id=19593406, ...),
                 VideoInfo(id=19593407, ...)
-            ] 
+            ]
         """
 
         if infos is not None:
@@ -1400,9 +1399,9 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param video_id: Videos ID in Supervisely.
         :type video_id: in
-        :param metas: Metadata dict with custom values. 
-            Note: Do not recommend changing metas as it affects displaying 
-            data in label tools. In case changing the metadata is necessary, 
+        :param metas: Metadata dict with custom values.
+            Note: Do not recommend changing metas as it affects displaying
+            data in label tools. In case changing the metadata is necessary,
             make sure to include an `streams` field with its value in the request body.
         :type metas: dict
         :return: Return updating result
@@ -1466,10 +1465,10 @@ class VideoApi(RemoveableBulkModuleApi):
             dataset_id = 55847
             link = "https://video...040243048_main.mp4"
             name = "dog"
-            
+
             info = api.video.upload_link(dataset_id, link, name)
             print(info)
-            
+
             # Output: [
             #     VideoInfo(
             #         id=19371139,
@@ -1561,8 +1560,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
             new_info = api.video.add_existing(dataset_id, video_info, "sea lion.mp4")
             print(new_info)
-            
-            # Output: 
+
+            # Output:
             # VideoInfo(
             #     id=19371140,
             #     name='sea lion.mp4'
