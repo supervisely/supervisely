@@ -362,7 +362,7 @@ class VideoApi(RemoveableBulkModuleApi):
             print(video_info)
             # Output:
             # VideoInfo(
-            #     id=19371139,
+            #     id=198702499,
             #     name='Videos_dataset_animals_sea_lion.mp4'
             #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
             #     link=None,
@@ -541,7 +541,7 @@ class VideoApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            dst_dataset_id = 466654
+            dst_dataset_id = 55846
             src_video_id = 186580617
             video_info = api.video.get_info_by_id(src_video_id)
             hash = video_info.hash
@@ -1479,7 +1479,7 @@ class VideoApi(RemoveableBulkModuleApi):
             #         team_id=435,
             #         workspace_id=684,
             #         project_id=17208,
-            #         dataset_id=55846,
+            #         dataset_id=55847,
             #         path_original='/h5ung-public/videos/Z/d/HD/lfgipl...NXrg5vz.mp4',
             #         frames_to_timecodes=[],
             #         frames_count=245,
@@ -1554,8 +1554,8 @@ class VideoApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            dataset_id = 55847
-            video_id = 19402023
+            dataset_id = 55846
+            video_id = 19371139
 
             video_info = api.video.get_info_by_id(video_id)
 
