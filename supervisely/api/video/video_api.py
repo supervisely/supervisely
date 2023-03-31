@@ -1395,6 +1395,36 @@ class VideoApi(RemoveableBulkModuleApi):
         )
 
     def update_custom_data(self, id: int, data: dict):
+        """
+        Upload custom data info in VideoInfo object.
+
+        :param video_id: Videos ID in Supervisely.
+        :type video_id: in
+        :param metas: Dictionary with custom data.
+        :type metas: dict
+        :return: Return updating result
+        :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video.video import get_info
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_id = 19402023
+
+            api.video.update_custom_data(video_id, {"field": "value"})
+
+            video_info = api.video.get_info_by_id(video_id)
+            print(video_info.custom_data)
+
+            # Output: {'field': 'value'}
+        """
+
         resp = self._api.post(
             "videos.custom-data.set", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
         )
