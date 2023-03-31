@@ -46,17 +46,17 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     try:
         if sly.is_development():
 
-            def upload_monitor_console(tqdm_pb, monitor):
-                if tqdm_pb.total == 0:
-                    tqdm_pb.total = monitor.len
-                tqdm_pb.update(monitor.bytes_read - tqdm_pb.n)
+            def upload_monitor_console(monitor, progress: tqdm):
+                if progress.total == 0:
+                    progress.total = monitor.len
+                progress.update(monitor.bytes_read - progress.n)
                 if monitor.bytes_read == monitor.len:
-                    tqdm_pb.refresh()  # refresh progress bar to show completion
-                    tqdm_pb.close()  # close progress bar
+                    progress.refresh()  # refresh progress bar to show completion
+                    progress.close()  # close progress bar
 
             print("Please wait ...")
             pbar = tqdm(total=0, unit="B", unit_scale=True)
-            progress_size_cb = partial(upload_monitor_console, pbar)
+            progress_size_cb = partial(upload_monitor_console, progress=pbar)
 
             time.sleep(1)
 
