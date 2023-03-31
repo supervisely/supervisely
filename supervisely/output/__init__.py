@@ -22,6 +22,7 @@ def set_directory(task_id: int, teamfiles_dir: str):
         team_id = sly_env.team_id()
 
         files = api.file.list2(team_id, teamfiles_dir, recursive=True)
+        # if directory is empty or not exists 
         if len(files) == 0:
             # some data to create dummy .json file to get file id
             data = {"team_id": team_id, "task_id": task_id, "directory": teamfiles_dir}
