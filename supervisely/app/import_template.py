@@ -1,10 +1,11 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 from supervisely._utils import is_production
 import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
 from pathlib import Path
+import supervisely as sly
 
 try:
     from typing import Literal
@@ -12,8 +13,106 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 
+from supervisely.app.widgets import (
+    Container,
+    Card,
+    Checkbox,
+    Text,
+    FileStorageUpload,
+    Button,
+    DestinationProject,
+    RadioTabs,
+    # TeamFilesSelector,
+)
+from supervisely.project.project_type import ProjectType
+
 
 class Import:
+    def __init__(self) -> None:
+        self._team_id = env.team_id()
+        self._workspace_id = env.workspace_id()
+        self._app = None
+        self._run_button = None
+
+    def initiate_import_widgets(
+        self,
+        input_path: str = "/import",
+        current_widgets: List = [],
+        project_type: ProjectType = ProjectType.IMAGES,
+    ):
+        self.file_upload = FileStorageUpload(
+            team_id=self._team_id, path=input_path, change_name_if_conflict=True
+        )
+        self.team_files = Text(text="Team Files here")  # TODO check it
+        self.drag_drop_title = "Drag & drop"
+        team_files_title = "Team files"
+        titles = [self.drag_drop_title, team_files_title]
+        contents = [self.file_upload, self.team_files]
+        self.radio_tabs = RadioTabs(titles=titles, contents=contents)
+        widgets = Container(widgets=[self.radio_tabs])
+        card_upload_or_tf = Card(content=widgets)
+
+        input_card = Card(
+            title="Input Menu",
+            content=Container(widgets=[card_upload_or_tf]),
+        )
+
+        temporary_files_main_text = Text(text="Remove temporary files after successful import")
+        temporary_files_add_text = Text(
+            text="Removes source directory from Team Files after successful import"
+        )
+        temporary_files_checkboxes_data = Container(
+            widgets=[temporary_files_main_text, temporary_files_add_text], direction="vertical"
+        )
+        self.temporary_files = Checkbox(content=temporary_files_checkboxes_data, checked=True)
+
+        checkboxes_data = Container(
+            widgets=[
+                self.temporary_files,
+            ],
+            direction="vertical",
+            gap=15,
+        )
+
+        checkboxes = Card(
+            content=checkboxes_data,
+        )
+
+        current_app_container = Container(widgets=current_widgets)
+        self.current_app_widgets = Card(title="Current APP widgets", content=current_app_container)
+
+        self.destination_project = DestinationProject(
+            workspace_id=self._workspace_id, project_type=project_type
+        )
+
+        destination_card = Card(
+            content=self.destination_project,
+        )
+
+        self._run_button = Button(text="Run import")
+
+        layout = Container(
+            widgets=[
+                input_card,
+                checkboxes,
+                self.current_app_widgets,
+                destination_card,
+                self.run_button,
+            ],
+            direction="vertical",
+            gap=15,
+        )
+
+        self._app = sly.Application(layout=layout)
+
+    @property
+    def app(self):
+        return self._app
+
+    @property
+    def run_button(self):
+        return self._run_button
+
     class Context:
         def __init__(
             self,
@@ -102,9 +201,6 @@ class Import:
         if is_production():
             task_id = env.task_id()
 
-        team_id = env.team_id()
-        workspace_id = env.workspace_id()
-
         file = env.file(raise_not_found=False)
         folder = env.folder(raise_not_found=False)
 
@@ -141,17 +237,17 @@ class Import:
                 local_save_path = join(get_data_dir(), basename(path.rstrip("/")))
                 if is_directory:
                     api.file.download_directory(
-                        team_id=team_id, remote_path=path, local_save_path=local_save_path
+                        team_id=self._team_id, remote_path=path, local_save_path=local_save_path
                     )
                 else:
                     api.file.download(
-                        team_id=team_id, remote_path=path, local_save_path=local_save_path
+                        team_id=self._team_id, remote_path=path, local_save_path=local_save_path
                     )
                 path = local_save_path
 
         context = Import.Context(
-            team_id=team_id,
-            workspace_id=workspace_id,
+            team_id=self._team_id,
+            workspace_id=self._workspace_id,
             project_id=project_id,
             dataset_id=dataset_id,
             path=path,
