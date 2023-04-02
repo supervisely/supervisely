@@ -221,7 +221,8 @@ class FileApi(ModuleApiBase):
             return self.list_on_agent(team_id, path, recursive)
 
         response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive}
+            "file-storage.list",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
         return response.json()
 
@@ -740,7 +741,9 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if file_info is None:
-            raise ValueError( f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')")
+            raise ValueError(
+                f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')"
+            )
 
         self.remove(team_id, path)
 
@@ -770,11 +773,11 @@ class FileApi(ModuleApiBase):
         file_info = self.get_info_by_path(team_id, path)
 
         if not file_info is None:
-            raise ValueError( f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')")
+            raise ValueError(
+                f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')"
+            )
 
         self.remove(team_id, path)
-
-
 
     def remove_batch(
         self,
@@ -1123,7 +1126,9 @@ class FileApi(ModuleApiBase):
             res_remote_dir = remote_dir
 
         local_files = list_files_recursively(local_dir)
-        remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
+        remote_files = [
+            file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/")) for file in local_files
+        ]
 
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
