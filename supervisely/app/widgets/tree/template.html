@@ -1,0 +1,29 @@
+<el-tree
+  :current-node-key="state.{{{widget.widget_id}}}.current_node_key"
+  {%
+  if
+  widget._node_click
+  %}
+  @node-click="state.{{{widget.widget_id}}}.current_node_key = $event; 
+              post('/{{{widget.widget_id}}}/node_click')"
+  {%
+  endif
+  %}
+  :checked-key="state.{{{widget.widget_id}}}.checked_key"
+  {%
+  if
+  widget._check_change
+  %}
+  @check-change="state.{{{widget.widget_id}}}.checked_key = $event; 
+                post('/{{{widget.widget_id}}}/check_change')"
+  {%
+  endif
+  %}
+  :data="data.{{{widget.widget_id}}}.data"
+  :node_key="data.{{{widget.widget_id}}}.node_key"
+  :show-checkbox="data.{{{widget.widget_id}}}.show_checkbox"
+  :props="data.{{{widget.widget_id}}}.defaultProps"
+  :empty-text="data.{{{widget.widget_id}}}.empty_text"
+  :accordion="data.{{{widget.widget_id}}}.accordion"
+>
+</el-tree>
