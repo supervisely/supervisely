@@ -1,0 +1,7 @@
+<div>
+  <sly-select-team-files
+    :team-id.sync="data.{{{widget.widget_id}}}.teamId"
+    :options="data.{{{widget.widget_id}}}.options"
+    @items-selected="state.{{{widget.widget_id}}}.selected = $event"
+  />
+</div>
