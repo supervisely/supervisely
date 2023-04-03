@@ -13,7 +13,7 @@ def set_output_directory_run(dst_dir: str) -> bool:
     if is_production():
 
         api = sly.Api.from_env()
-        task_id: sly_env.task_id()
+        task_id = sly_env.task_id()
 
         if api.task.get_info_by_id(task_id) is None:
             console.print(

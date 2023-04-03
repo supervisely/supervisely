@@ -23,7 +23,7 @@ def set_directory(teamfiles_dir: str):
     if is_production():
 
         api = Api()
-        task_id: sly_env.task_id()
+        task_id = sly_env.task_id()
         team_id = api.task.get_info_by_id(task_id)["teamId"]
 
         files = api.file.list2(team_id, teamfiles_dir, recursive=True)
