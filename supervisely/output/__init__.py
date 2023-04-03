@@ -16,17 +16,20 @@ def set_project(id: int):
         print(f"Output project: id={id}")
 
 
-def set_directory(task_id: int, teamfiles_dir: str):
+def set_directory(teamfiles_dir: str):
     if is_production():
+
         api = Api()
-        team_id = sly_env.team_id()
+        task_id: sly_env.task_id()
+        team_id = api.task.get_info_by_id(task_id)["teamId"]
 
         files = api.file.list2(team_id, teamfiles_dir, recursive=True)
-        # if directory is empty or not exists 
+
+        # if directory is empty or not exists
         if len(files) == 0:
             # some data to create dummy .json file to get file id
             data = {"team_id": team_id, "task_id": task_id, "directory": teamfiles_dir}
-            filename = f"{rand_str(10)}.json"
+            filename = f"info.json"
 
             src_path = os.path.join("/tmp/", filename)
             with open(src_path, "w") as f:
@@ -39,5 +42,10 @@ def set_directory(task_id: int, teamfiles_dir: str):
             file_id = files[0].id
 
         api.task.set_output_directory(task_id, file_id, teamfiles_dir)
+
+        # remove dummy file
+        if len(files) == 0:
+            api.file.remove_file(team_id, dst_path)
+
     else:
-        print(f"Output directory for task with ID={task_id}: '{teamfiles_dir}'")
+        print(f"Output directory: '{teamfiles_dir}'")

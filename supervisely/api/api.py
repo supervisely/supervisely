@@ -38,6 +38,7 @@ import supervisely.api.github_api as github_api
 import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
 import supervisely.io.env as sly_env
+from supervisely._utils import is_development
 
 
 from supervisely.io.network_exceptions import (
@@ -203,25 +204,24 @@ class Api:
 
             api = sly.Api.from_env()
         """
-        from supervisely import is_development
-
-        server_address = sly_env.server_address()
-        token = sly_env.api_token()
-
-        env_path = os.path.expanduser(env_file)
-
+        
         if is_development():
+            env_path = os.path.expanduser(env_file)
             if os.path.exists(env_path):
                 _, extension = os.path.splitext(env_path)
                 if extension == ".env":
-                    if None in (server_address, token):
-                        load_dotenv(env_path)
-                        server_address = sly_env.server_address()
-                        token = sly_env.api_token()
+                    
+                    load_dotenv(env_path)
+                    server_address = sly_env.server_address()
+                    token = sly_env.api_token()
                 else:
                     raise ValueError(f"'{env_path}' is not an '*.env' file")
             else:
                 raise FileNotFoundError(f"File not found: '{env_path}'")
+        else:
+            server_address = sly_env.server_address()
+            token = sly_env.api_token()
+
 
         if server_address is None:
             raise ValueError(
@@ -233,8 +233,8 @@ class Api:
             )
 
         return cls(
-            sly_env.server_address(),
-            sly_env.api_token(),
+            server_address,
+            token,
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
         )

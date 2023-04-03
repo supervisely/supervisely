@@ -34,7 +34,7 @@ def remove_directory_run(team_id: int, path: str) -> bool:
         return False
 
     try:
-        api.file.remove_dir(team_id, path)
+        api.file.remove_directory(team_id, path)
         console.print(f"\nDirectory '{path}' successfully removed\n", style="bold green")
         return True
 

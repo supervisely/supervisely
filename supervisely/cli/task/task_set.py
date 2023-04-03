@@ -26,7 +26,7 @@ def set_output_directory_run(task_id: int, team_id: int, dst_dir: str) -> bool:
         return False
 
     try:
-        sly.output.set_directory(task_id, dst_dir)
+        sly.output.set_directory(dst_dir)
         console.print("\nSetting task output directory succeed\n", style="bold green")
         return True
 

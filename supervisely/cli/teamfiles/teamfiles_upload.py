@@ -86,14 +86,14 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
         if res_remote_dir != remote_dir:
             console.print(
-                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files.",
+                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files: '{res_remote_dir}'",
                 style="bold yellow",
             )
         else:
             res_remote_dir = remote_dir
 
         console.print(
-            f"\nLocal directory was sucessfully uploaded to Team files directory: '{res_remote_dir}'.\n",
+            f"\nLocal directory was sucessfully uploaded to Team files with following path: '{res_remote_dir}'.\n",
             style="bold green",
         )
         return True
