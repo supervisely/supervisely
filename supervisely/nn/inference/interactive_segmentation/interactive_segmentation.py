@@ -120,7 +120,7 @@ class InteractiveSegmentation(Inference):
                     smtool_state["negative"],
                 )
                 if len(positive_clicks) + len(negative_clicks) == 0:
-                    logger.debug("No clicks received.")
+                    logger.warn("No clicks received.")
                     response = {
                         "origin": None,
                         "bitmap": None,
@@ -150,19 +150,37 @@ class InteractiveSegmentation(Inference):
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = functional.transform_clicks_to_crop(crop, clicks)
+            is_in_bbox = functional.validate_click_bounds(crop, clicks)
+            if not is_in_bbox:
+                logger.warn(f"Invalid value: click is out of bbox bounds.")
+                return {
+                    "origin": None,
+                    "bitmap": None,
+                    "success": True,
+                    "error": None,
+                }
+
+            # predict
             clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
-
             pred_mask = self.predict(self._current_image_path, clicks_to_predict, settings)
+            pred_mask = pred_mask.mask
 
-            logger.debug(f"smart_segmentation inference done")
-
-            bitmap = Bitmap(pred_mask.mask)
-            bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
-
-            response = {
-                "origin": bitmap_origin,
-                "bitmap": bitmap_data,
-                "success": True,
-                "error": None,
-            }
+            if pred_mask.any():
+                bitmap = Bitmap(pred_mask)
+                bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
+                logger.debug(f"smart_segmentation inference done!")
+                response = {
+                    "origin": bitmap_origin,
+                    "bitmap": bitmap_data,
+                    "success": True,
+                    "error": None,
+                }
+            else:
+                logger.debug(f"Predicted mask is empty.")
+                response = {
+                    "origin": None,
+                    "bitmap": None,
+                    "success": True,
+                    "error": None,
+                }
             return response

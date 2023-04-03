@@ -11,7 +11,7 @@ def download_volume_slice_as_np(
     normal: dict,
     window_center: float,
     window_width: int,
-    api: sly.Api
+    api: sly.Api,
 ) -> np.ndarray:
     data = {
         "volumeId": volume_id,
@@ -21,9 +21,7 @@ def download_volume_slice_as_np(
         "windowWidth": window_width,
     }
 
-    image_bytes = api.post(
-        method="volumes.slices.images.download", data=data, stream=True
-    ).content
+    image_bytes = api.post(method="volumes.slices.images.download", data=data, stream=True).content
 
     return sly.image.read_bytes(image_bytes)
 
@@ -40,7 +38,7 @@ def download_image_from_context(context: dict, api: sly.Api, output_dir: str):
         return api.image.download_np(context["image_id"])
     elif "image_hash" in context:
         img_path = os.path.join(output_dir, "base_image.png")
-        return get_image_by_hash(context["image_hash"], img_path)
+        return get_image_by_hash(context["image_hash"], img_path, api=api)
     elif "volume" in context:
         volume_id = context["volume"]["volume_id"]
         slice_index = context["volume"]["slice_index"]
@@ -53,6 +51,7 @@ def download_image_from_context(context: dict, api: sly.Api, output_dir: str):
             normal=normal,
             window_center=window_center,
             window_width=window_width,
+            api=api,
         )
     elif "video" in context:
         return api.video.frame.download_np(
@@ -75,8 +74,19 @@ def transform_clicks_to_crop(crop, clicks: dict):
     for click in clicks:
         click["x"] -= crop[0]["x"]
         click["y"] -= crop[0]["y"]
-        assert click["x"] >= 0 and click["y"] >= 0, "Invalid click coords: below zero"
     return clicks
+
+
+def validate_click_bounds(crop, clicks: dict):
+    x_max = crop[1]["x"] - crop[0]["x"]  # width
+    y_max = crop[1]["y"] - crop[0]["y"]  # height
+    for click in clicks:
+        is_in_bbox = (
+            click["x"] >= 0 and click["y"] >= 0 and click["x"] <= x_max and click["y"] <= y_max
+        )
+        if not is_in_bbox:
+            return False
+    return True
 
 
 def format_bitmap(bitmap: sly.Bitmap, crop: dict):
