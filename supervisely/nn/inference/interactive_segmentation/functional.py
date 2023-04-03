@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 import numpy as np
 
 import supervisely as sly
@@ -69,15 +70,15 @@ def crop_image(crop, image_np):
     return img_crop
 
 
-def transform_clicks_to_crop(crop, clicks: dict):
-    clicks = clicks.copy()
+def transform_clicks_to_crop(crop, clicks: list):
+    clicks = deepcopy(clicks)
     for click in clicks:
         click["x"] -= crop[0]["x"]
         click["y"] -= crop[0]["y"]
     return clicks
 
 
-def validate_click_bounds(crop, clicks: dict):
+def validate_click_bounds(crop, clicks: list):
     x_max = crop[1]["x"] - crop[0]["x"]  # width
     y_max = crop[1]["y"] - crop[0]["y"]  # height
     for click in clicks:
@@ -89,7 +90,7 @@ def validate_click_bounds(crop, clicks: dict):
     return True
 
 
-def format_bitmap(bitmap: sly.Bitmap, crop: dict):
+def format_bitmap(bitmap: sly.Bitmap, crop):
     bitmap_json = bitmap.to_json()["bitmap"]
     bitmap_origin = bitmap_json["origin"]
     bitmap_origin = {"x": crop[0]["x"] + bitmap_origin[0], "y": crop[0]["y"] + bitmap_origin[1]}
