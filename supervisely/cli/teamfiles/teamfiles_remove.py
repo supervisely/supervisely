@@ -15,7 +15,7 @@ def remove_file_run(team_id: int, path: str) -> bool:
 
     try:
         api.file.remove_file(team_id, path)
-        console.print(f"\nFile '{path}' successfully removed\n", style="bold green")
+        console.print(f"\nFile '{path}' was successfully removed\n", style="bold green")
         return True
 
     except:
@@ -35,7 +35,7 @@ def remove_directory_run(team_id: int, path: str) -> bool:
 
     try:
         api.file.remove_directory(team_id, path)
-        console.print(f"\nDirectory '{path}' successfully removed\n", style="bold green")
+        console.print(f"\nDirectory '{path}' was successfully removed\n", style="bold green")
         return True
 
     except:

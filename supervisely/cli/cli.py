@@ -217,28 +217,15 @@ def task():
 
 @task.command(help="Set link to Team files directory at workspace tasks interface")
 @click.option(
-    "-id",
-    "--id",
-    required=True,
-    type=int,
-    help="Supervisely task ID",
-)
-@click.option(
-    "--team-id",
-    required=True,
-    type=int,
-    help="Supervisely team ID",
-)
-@click.option(
     "-d",
     "--dir",
     required=True,
     type=str,
     help="Path to Team files directory",
 )
-def set_output_dir(id: int, team_id: int, dir: str) -> None:
+def set_output_dir(dir: str) -> None:
     try:
-        success = set_output_directory_run(id, team_id, dir)
+        success = set_output_directory_run(dir)
         if success:
             sys.exit(0)
         else:
