@@ -20,7 +20,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class InteractiveInstanceSegmentation(InstanceSegmentation):
+class InteractiveSegmentation(InstanceSegmentation):
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
