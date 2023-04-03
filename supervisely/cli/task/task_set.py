@@ -17,7 +17,7 @@ def set_output_directory_run(dst_dir: str) -> bool:
 
         if api.task.get_info_by_id(task_id) is None:
             console.print(
-                f"\nError: Task with ID={task_id} is either not exist or not found in your acocunt\n",
+                f"\nError: Task with ID={task_id} is either not exist or not found in your account\n",
                 style="bold red",
             )
             return False
@@ -26,14 +26,14 @@ def set_output_directory_run(dst_dir: str) -> bool:
 
         if api.team.get_info_by_id(team_id) is None:
             console.print(
-                f"\nError: Team with ID={team_id} is either not exist or not found in your acocunt\n",
+                f"\nError: Team with ID={team_id} is either not exist or not found in your account\n",
                 style="bold red",
             )
             return False
 
         if not api.file.dir_exists(team_id, dst_dir):
             console.print(
-                f"\nError: directory '{dst_dir}' not exists in teamfiles\n", style="bold red"
+                f"\nError: directory '{dst_dir}' not exists in Team files\n", style="bold red"
             )
             return False
 

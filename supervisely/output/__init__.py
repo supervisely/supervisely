@@ -17,6 +17,9 @@ def set_project(id: int):
 
 
 def set_directory(teamfiles_dir: str):
+    """
+    Sets a link to a teamfiles directory in workspace tasks interface
+    """
     if is_production():
 
         api = Api()
