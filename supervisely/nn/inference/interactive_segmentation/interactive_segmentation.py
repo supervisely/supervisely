@@ -2,13 +2,15 @@ import os
 from fastapi import Response, Request, status
 
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask
+from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.sly_logger import logger
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
-from supervisely.nn.inference import InstanceSegmentation
+from supervisely.nn.inference import Inference
+from supervisely import ProjectMeta, ObjClass, Label
+
 from . import functional
 
 from typing import Dict, List, Any, Optional, Union
@@ -20,7 +22,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class InteractiveSegmentation(InstanceSegmentation):
+class InteractiveSegmentation(Inference):
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
@@ -28,7 +30,7 @@ class InteractiveSegmentation(InstanceSegmentation):
             self.is_positive = is_positive
 
         def __repr__(self) -> str:
-            return f"{self.__class__.__name__} ({self.__hash__()}): {str(self.__dict__)}"
+            return f"{self.__class__.__name__}: {str(self.__dict__)}"
 
     def __init__(
         self,
@@ -38,25 +40,46 @@ class InteractiveSegmentation(InstanceSegmentation):
         use_gui: Optional[bool] = False,
     ):
         super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        self.current_smtool_state = None
-        self.current_image_path = None
+        self._current_smtool_state = None
+        self._current_image_path = None
+        self._class_names = ["mask_prediction"]
+        color = [255, 0, 0]
+        self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
 
     def get_info(self) -> dict:
         info = super().get_info()
-        info["task type"] = "interactive instance segmentation"
+        info["task type"] = "interactive segmentation"
+        info["videos_support"] = False
+        info["async_video_inference_support"] = False
+        info["tracking_on_videos_support"] = False
         return info
+
+    def _get_obj_class_shape(self):
+        return Bitmap
+
+    def _create_label(self, dto: PredictionSegmentation):
+        obj_class = self.model_meta.get_obj_class(self.get_classes()[0])
+        if not dto.mask.any():  # skip empty masks
+            logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
+            return None
+        geometry = Bitmap(dto.mask)
+        label = Label(geometry, obj_class)
+        return label
 
     def predict(
         self,
         image_path: str,
         clicks: List[Click],
         settings: Dict[str, Any],
-    ) -> PredictionMask:
+    ) -> PredictionSegmentation:
         raise NotImplementedError("Have to be implemented in child class")
 
+    def get_classes(self) -> List[str]:
+        return self._class_names
+
     def _check_image_changed(self, smtool_state):
-        if self.current_smtool_state is not None:
-            prev_state = self.current_smtool_state.copy()
+        if self._current_smtool_state is not None:
+            prev_state = self._current_smtool_state.copy()
             smtool_state = smtool_state.copy()
             smtool_state.pop("positive")
             smtool_state.pop("negative")
@@ -70,8 +93,8 @@ class InteractiveSegmentation(InstanceSegmentation):
         self._reset_current_state()
 
     def _reset_current_state(self):
-        self.current_smtool_state = None
-        self.current_image_path = None
+        self._current_smtool_state = None
+        self._current_image_path = None
 
     def serve(self):
         super().serve()
@@ -113,23 +136,23 @@ class InteractiveSegmentation(InstanceSegmentation):
             # if something has changed (except clicks) we will re-download the image
             is_image_changed = self._check_image_changed(smtool_state)
             if is_image_changed:
-                if self.current_image_path is not None:
-                    silent_remove(self.current_image_path)
+                if self._current_image_path is not None:
+                    silent_remove(self._current_image_path)
                 self._reset_current_state()
                 app_dir = get_data_dir()
                 image_np = functional.download_image_from_context(smtool_state, api, app_dir)
                 image_np = functional.crop_image(crop, image_np)
-                self.current_image_path = os.path.join(app_dir, f"{rand_str(10)}.jpg")
-                sly_image.write(self.current_image_path, image_np)
+                self._current_image_path = os.path.join(app_dir, f"{rand_str(10)}.jpg")
+                sly_image.write(self._current_image_path, image_np)
 
-            self.current_smtool_state = smtool_state
+            self._current_smtool_state = smtool_state
 
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = functional.transform_clicks_to_crop(crop, clicks)
             clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
 
-            pred_mask = self.predict(self.current_image_path, clicks_to_predict, settings)
+            pred_mask = self.predict(self._current_image_path, clicks_to_predict, settings)
 
             logger.debug(f"smart_segmentation inference done")
 
