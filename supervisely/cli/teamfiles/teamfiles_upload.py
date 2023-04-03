@@ -10,21 +10,6 @@ from rich.console import Console
 
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
-    """
-    Note: to extract actual res_remote_dir (==$TEAMFILES_DIR) in case of name conflict (change_name_if_conflict=True) use following bash command:
-
-    ```bash
-        output=$(supervisely teamfiles upload -id $TEAM_ID --src "/src/path/" --dst "/dst/path/" | tee /dev/tty)
-
-        string=$(echo $output | grep -o "Local directory was sucessfully uploaded to Team files directory: '[^']*'")
-        TEAMFILES_DIR=$(echo $string | grep -o "'[^']*'" | sed "s/'//g")
-
-        if [ "$TEAMFILES_DIR" != "/dst/path/"  ]
-        then
-            echo "local and remote directories not matching!" #do your code here
-            echo "Actual Team files directory: $TEAMFILES_DIR"
-        fi
-    """
 
     api = sly.Api.from_env()
     console = Console()
@@ -35,15 +20,32 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             style="bold red",
         )
         return False
+
+    # force directories to end with slash '/'
+    if not local_dir.endswith(os.path.sep):
+        local_dir = os.path.join(local_dir, "")
+    if not remote_dir.endswith(os.path.sep):
+        remote_dir = os.path.join(remote_dir, "")
+
     if not os.path.isdir(local_dir):
         console.print(f"\nError: local directory '{local_dir}' not exists\n", style="bold red")
         return False
+
+    files = api.file.list2(team_id, remote_dir, recursive=True)
+    if len(files) > 0:
+        if files[0].path.startswith(remote_dir):
+            console.print(
+                f"\nError: Team files folder '{remote_dir}' already exists. Please enter unique path for your folder.\n",
+                style="bold red",
+            )
+            return False
+    else:
+        pass  # new folder
 
     console.print(
         f"\nUploading local directory '{local_dir}' to Team files ...\n",
         style="bold",
     )
-
     try:
         if sly.is_development():
 
@@ -76,24 +78,16 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             progress = sly.Progress("Uploading to Team files...", 0, is_size=True)
             progress_size_cb = partial(upload_monitor_instance, progress=progress)
 
-        res_remote_dir = api.file.upload_directory(
+        # no need in change_name_if_conflict due to previous exception handling
+        api.file.upload_directory(
             team_id,
             local_dir,
             remote_dir,
-            change_name_if_conflict=True,
             progress_size_cb=progress_size_cb,
         )
 
-        if res_remote_dir != remote_dir:
-            console.print(
-                f"\nWarning: '{remote_dir}' already exists. Creating a new directory in Team files: '{res_remote_dir}'",
-                style="bold yellow",
-            )
-        else:
-            res_remote_dir = remote_dir
-
         console.print(
-            f"\nLocal directory was sucessfully uploaded to Team files with following path: '{res_remote_dir}'.\n",
+            f"\nLocal directory was sucessfully uploaded to Team files with following path: '{remote_dir}'.\n",
             style="bold green",
         )
         return True
