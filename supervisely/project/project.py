@@ -2468,6 +2468,10 @@ def upload_project(
     if project_name is None:
         project_name = project_fs.name
 
+    external_progress_cb = True
+    if progress_cb is None:
+        external_progress_cb = False
+
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
@@ -2494,6 +2498,9 @@ def upload_project(
         img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
         ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
 
+        if external_progress_cb is False:
+            progress_cb = None
+
         if log_progress and progress_cb is None:
             ds_progress = Progress(
                 "Uploading images to dataset {!r}".format(dataset.name),
@@ -2512,6 +2519,9 @@ def upload_project(
             )
 
         image_ids = [img_info.id for img_info in uploaded_img_infos]
+
+        if external_progress_cb is False:
+            progress_cb = None
 
         if log_progress and progress_cb is None:
             ds_progress = Progress(

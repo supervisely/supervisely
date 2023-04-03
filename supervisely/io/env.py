@@ -86,7 +86,13 @@ def workspace_id(raise_not_found=True):
 def project_id(raise_not_found=True):
     return _parse_from_env(
         name="project_id",
-        keys=["CONTEXT_PROJECTID", "context.projectId", "modal.state.slyProjectId", "PROJECT_ID"],
+        keys=[
+            "CONTEXT_PROJECTID",
+            "context.projectId",
+            "modal.state.slyProjectId",
+            "PROJECT_ID",
+            "modal.state.inputProjectId",
+        ],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -96,7 +102,13 @@ def project_id(raise_not_found=True):
 def dataset_id(raise_not_found=True):
     return _parse_from_env(
         name="dataset_id",
-        keys=["CONTEXT_DATASETID", "context.datasetId", "modal.state.slyDatasetId", "DATASET_ID"],
+        keys=[
+            "CONTEXT_DATASETID",
+            "context.datasetId",
+            "modal.state.slyDatasetId",
+            "DATASET_ID",
+            "modal.state.inputDatasetId",
+        ],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -145,6 +157,36 @@ def task_id(raise_not_found=True):
     return _parse_from_env(
         name="task_id",
         keys=["TASK_ID"],
+        postprocess_fn=lambda x: int(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def user_login(raise_not_found=True):
+    return _parse_from_env(
+        name="user_login",
+        keys=["USER_LOGIN", "context.userLogin", "CONTEXT_USERLOGIN"],
+        postprocess_fn=lambda x: int(x),
+        default="user (debug)",
+        raise_not_found=raise_not_found,
+    )
+
+
+def app_name(raise_not_found=True):
+    return _parse_from_env(
+        name="app_name",
+        keys=["APP_NAME"],
+        postprocess_fn=lambda x: int(x),
+        default="Supervisely App (debug)",
+        raise_not_found=raise_not_found,
+    )
+
+
+def user_id(raise_not_found=True):
+    return _parse_from_env(
+        name="user_id",
+        keys=["USER_ID", "context.userId", "CONTEXT_USERID"],
         postprocess_fn=lambda x: int(x),
         default=None,
         raise_not_found=raise_not_found,

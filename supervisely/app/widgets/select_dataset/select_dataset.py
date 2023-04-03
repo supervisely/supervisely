@@ -5,7 +5,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app import StateJson, DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget, SelectProject, generate_id, Checkbox, Empty
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
@@ -64,6 +64,8 @@ class SelectDataset(Widget):
                 size=self._size,
                 widget_id=generate_id(),
             )
+            if self._disabled is True:
+                self._project_selector.disable()
 
         if self._multiselect is True:
             self._all_datasets_checkbox = Checkbox(
@@ -133,9 +135,11 @@ class SelectDataset(Widget):
                     value = None
                 func(value)
 
-        @self._all_datasets_checkbox.value_changed
-        def _select_all_datasets(is_checked):
-            _process()
+        if self._multiselect is True:
+
+            @self._all_datasets_checkbox.value_changed
+            def _select_all_datasets(is_checked):
+                _process()
 
         @server.post(route_path)
         def _click():
@@ -154,5 +158,15 @@ class SelectDataset(Widget):
         self._all_datasets_checkbox.enable()
         self._project_selector.enable()
         self._disabled = False
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
+
+    @property
+    def is_disabled(self) -> bool:
+        return self._disabled
+
+    @is_disabled.setter
+    def is_disabled(self, value: int):
+        self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()

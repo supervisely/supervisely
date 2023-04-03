@@ -2,7 +2,7 @@
 
 set -o pipefail -e
 
-VERSION='1.0.5'
+VERSION='1.0.6'
 
 usage() {
   echo -e "Supervisely Apps CLI
@@ -140,7 +140,6 @@ function release() {
   parsed_slug_config=$(echo "${config}" | sed -nE 's/"slug": "(.*)",?/\1/p' | xargs)
   module_name=$(echo "${config}" | sed -nE 's/^ *"name": "(.*)",?/\1/p' | xargs)
   module_release=$(echo "${config}" | sed -nE 's/"release": (\{.*\})/\1/p' | xargs)
-  
   modal_template_path=$(echo "${modal_template_path}" | sed 's/\r$//')
 
   if [[ "${parsed_slug_config}" ]]; then
@@ -205,7 +204,8 @@ function release() {
   echo "Packing the following files to ${archive_path}/archive.tar.gz:"
 
   if [ -f "${module_root}/.gitignore" ] && command -v git > /dev/null 2>&1; then
-    echo "$(git ls-files -c --others --exclude-standard)"
+    files_to_exclude=($(git ls-files --cached -i --exclude-standard))
+    files_to_exclude+=('.gitignore')
 
     folder_name=$(basename ${module_root})
 
@@ -213,7 +213,11 @@ function release() {
 
     while IFS= read -r line; do
       file_name=${line}
-      files_list+=( "${folder_name}/${file_name}" )
+
+      if [[ ! " ${files_to_exclude[*]} " =~ " ${file_name} " ]]; then
+        echo "$file_name"
+        files_list+=( "${folder_name}/${file_name}" )
+      fi
     done <<< "$(git ls-files -c --others --exclude-standard)"
 
     tar -czf "${archive_path}/archive.tar.gz" -C "$(dirname $module_root)" "${files_list[@]}"

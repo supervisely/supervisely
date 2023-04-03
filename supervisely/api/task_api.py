@@ -731,7 +731,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     ) -> Dict:
         """set_output_project"""
         if project_name is None:
-            project = self._api.project.get_info_by_id(project_id)
+            project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name
 
         output = {ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}}
