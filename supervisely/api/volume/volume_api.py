@@ -244,7 +244,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
+        :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
         :type sort: :class:`str`
