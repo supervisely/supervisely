@@ -27,14 +27,14 @@ def set_directory(teamfiles_dir: str):
         task_id = sly_env.task_id()
 
         if api.task.get_info_by_id(task_id) is None:
-            raise RuntimeError(
+            raise KeyError(
                 f"Task with ID={task_id} is either not exist or not found in your account"
             )
 
         team_id = api.task.get_info_by_id(task_id)["teamId"]
 
         if api.team.get_info_by_id(team_id) is None:
-            raise RuntimeError(
+            raise KeyError(
                 f"Team with ID={team_id} is either not exist or not found in your account"
             )
 
