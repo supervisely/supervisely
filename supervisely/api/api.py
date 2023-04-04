@@ -209,19 +209,18 @@ class Api:
         server_address = sly_env.server_address()
         token = sly_env.api_token()
 
-        if is_development():
-            if None in (server_address, token):
-                env_path = os.path.expanduser(env_file)
-                if os.path.exists(env_path):
-                    _, extension = os.path.splitext(env_path)
-                    if extension == ".env":
-                        load_dotenv(env_path)
-                        server_address = sly_env.server_address()
-                        token = sly_env.api_token()
-                    else:
-                        raise ValueError(f"'{env_path}' is not an '*.env' file")
+        if is_development() and None in (server_address, token):
+            env_path = os.path.expanduser(env_file)
+            if os.path.exists(env_path):
+                _, extension = os.path.splitext(env_path)
+                if extension == ".env":
+                    load_dotenv(env_path)
+                    server_address = sly_env.server_address()
+                    token = sly_env.api_token()
                 else:
-                    raise FileNotFoundError(f"File not found: '{env_path}'")
+                    raise ValueError(f"'{env_path}' is not an '*.env' file")
+            else:
+                raise FileNotFoundError(f"File not found: '{env_path}'")
 
         if server_address is None:
             raise ValueError(

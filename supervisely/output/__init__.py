@@ -5,6 +5,7 @@ from supervisely._utils import is_production
 from supervisely.api.api import Api
 import supervisely.io.env as sly_env
 from supervisely import rand_str
+from supervisely.io.fs import silent_remove
 
 
 def set_project(id: int):
@@ -24,7 +25,21 @@ def set_directory(teamfiles_dir: str):
 
         api = Api()
         task_id = sly_env.task_id()
+
+        if api.task.get_info_by_id(task_id) is None:
+            raise RuntimeError(
+                f"Task with ID={task_id} is either not exist or not found in your account"
+            )
+
         team_id = api.task.get_info_by_id(task_id)["teamId"]
+
+        if api.team.get_info_by_id(team_id) is None:
+            raise RuntimeError(
+                f"Team with ID={team_id} is either not exist or not found in your account"
+            )
+
+        if not api.file.dir_exists(team_id, teamfiles_dir):
+            raise RuntimeError(f"Directory '{teamfiles_dir}' not exists in Team files")
 
         files = api.file.list2(team_id, teamfiles_dir, recursive=True)
 
@@ -41,7 +56,7 @@ def set_directory(teamfiles_dir: str):
             dst_path = os.path.join(teamfiles_dir, filename)
             file_id = api.file.upload(team_id, src_path, dst_path).id
 
-            os.remove(src_path)
+            silent_remove(src_path)
 
         else:
             file_id = files[0].id
