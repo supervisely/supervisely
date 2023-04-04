@@ -38,9 +38,6 @@ def set_directory(teamfiles_dir: str):
                 f"Team with ID={team_id} is either not exist or not found in your account"
             )
 
-        if not api.file.dir_exists(team_id, teamfiles_dir):
-            raise RuntimeError(f"Directory '{teamfiles_dir}' not exists in Team files")
-
         files = api.file.list2(team_id, teamfiles_dir, recursive=True)
 
         # if directory is empty or not exists
