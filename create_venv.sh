@@ -16,4 +16,7 @@ source .venv/bin/activate && \
 echo "Install requirements..." && \
 pip3 install . && \
 echo "Requirements have been successfully installed" && \
+echo "Testing imports, please wait a minute ..." && \
+python -c "import supervisely as sly" && \
+echo "Success!" && \
 deactivate
