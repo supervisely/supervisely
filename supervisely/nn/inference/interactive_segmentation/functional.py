@@ -14,17 +14,17 @@ def download_volume_slice_as_np(
     window_width: int,
     api: sly.Api,
 ) -> np.ndarray:
-    data = {
-        "volumeId": volume_id,
-        "sliceIndex": slice_index,
-        "normal": {"x": normal["x"], "y": normal["y"], "z": normal["z"]},
-        "windowCenter": window_center,
-        "windowWidth": window_width,
-    }
-
-    image_bytes = api.post(method="volumes.slices.images.download", data=data, stream=True).content
-
-    return sly.image.read_bytes(image_bytes)
+    # x - 'sagittal', y - 'coronal', z - 'axial'
+    if normal["x"] == 1:
+        plane = sly.Plane.SAGITTAL
+    elif normal["y"] == 1:
+        plane = sly.Plane.CORONAL
+    elif normal["z"] == 1:
+        plane = sly.Plane.AXIAL
+    img = api.volume.download_slice_np(
+        volume_id, slice_index, plane, window_center, window_width
+    )
+    return img
 
 
 def get_image_by_hash(hash, save_path, api: sly.Api):
@@ -83,7 +83,10 @@ def validate_click_bounds(crop, clicks: list):
     y_max = crop[1]["y"] - crop[0]["y"]  # height
     for click in clicks:
         is_in_bbox = (
-            click["x"] >= 0 and click["y"] >= 0 and click["x"] <= x_max and click["y"] <= y_max
+            click["x"] >= 0
+            and click["y"] >= 0
+            and click["x"] <= x_max
+            and click["y"] <= y_max
         )
         if not is_in_bbox:
             return False
@@ -93,6 +96,9 @@ def validate_click_bounds(crop, clicks: list):
 def format_bitmap(bitmap: sly.Bitmap, crop):
     bitmap_json = bitmap.to_json()["bitmap"]
     bitmap_origin = bitmap_json["origin"]
-    bitmap_origin = {"x": crop[0]["x"] + bitmap_origin[0], "y": crop[0]["y"] + bitmap_origin[1]}
+    bitmap_origin = {
+        "x": crop[0]["x"] + bitmap_origin[0],
+        "y": crop[0]["y"] + bitmap_origin[1],
+    }
     bitmap_data = bitmap_json["data"]
     return bitmap_origin, bitmap_data
