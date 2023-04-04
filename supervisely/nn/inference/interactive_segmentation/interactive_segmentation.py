@@ -10,8 +10,7 @@ from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely.nn.inference import Inference
 from supervisely import ProjectMeta, ObjClass, Label
-
-from . import functional
+from supervisely.nn.inference.interactive_segmentation import functional
 
 from typing import Dict, List, Any, Optional, Union
 
@@ -58,7 +57,9 @@ class InteractiveSegmentation(Inference):
         return Bitmap
 
     def _create_label(self, dto: PredictionSegmentation):
-        obj_class = self.model_meta.get_obj_class(self.get_classes()[0])
+        classes = self.get_classes()
+        assert len(classes) == 1, "InteractiveSegmentation can't be used for multi-class inference"
+        obj_class = self.model_meta.get_obj_class(classes[0])
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
@@ -107,7 +108,10 @@ class InteractiveSegmentation(Inference):
             # 3. make crop
             # 4. predict
 
-            logger.debug(f"smart_segmentation inference: context=", extra=request.state.context)
+            logger.debug(
+                f"smart_segmentation inference: context=",
+                extra={**request.state.context, "api_token": "***"},
+            )
 
             try:
                 state = request.state.state
