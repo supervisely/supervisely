@@ -41,6 +41,8 @@ def set_directory(teamfiles_dir: str):
             dst_path = os.path.join(teamfiles_dir, filename)
             file_id = api.file.upload(team_id, src_path, dst_path).id
 
+            os.remove(src_path)
+
         else:
             file_id = files[0].id
 

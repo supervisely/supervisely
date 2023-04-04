@@ -749,7 +749,7 @@ class FileApi(ModuleApiBase):
 
         self.remove(team_id, path)
 
-    def remove_directory(self, team_id: int, path: str) -> None:
+    def remove_dir(self, team_id: int, path: str) -> None:
         """
         Removes folder from Team Files.
 

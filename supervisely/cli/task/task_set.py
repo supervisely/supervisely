@@ -6,7 +6,10 @@ import traceback
 from rich.console import Console
 
 
-def set_output_directory_run(dst_dir: str) -> bool:
+def set_output_directory_run(task_id: int, team_id: int, dst_dir: str) -> bool:
+    """
+    Note: arguments task_id and team_id were kept for backward compatibility
+    """
 
     console = Console()
 
