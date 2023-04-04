@@ -10,18 +10,122 @@ from supervisely.io.json import load_json_file
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
+    """
+    :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>` for a single volume. :class:`VolumeAnnotationAPI<VolumeAnnotationAPI>` object is immutable.
+
+    :param api: API connection to the server.
+    :type api: Api
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        volume_id = 19581134
+        ann_info = api.volume.annotation.download(volume_id)
+    """
+
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
     def download(self, volume_id):
         """
-        :param video_id: int
-        :return: video annotation to given id in json format
+        Download information about VolumeAnnotation by volume ID from API.
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :return: Information about VolumeAnnotation in json format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            from pprint import pprint
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 19581134
+            ann_info = api.volume.annotation.download(volume_id)
+            print(ann_info)
+            # Output: 
+            # {
+            #     'createdAt': '2023-03-29T12:30:37.078Z',
+            #     'datasetId': 61803,
+            #     'description': '',
+            #     'objects': [],
+            #     'planes': [],
+            #     'spatialFigures': [],
+            #     'tags': [{'createdAt': '2023-04-03T13:21:53.368Z',
+            #             'id': 12259702,
+            #             'labelerLogin': 'almaz',
+            #             'name': 'info',
+            #             'tagId': 385328,
+            #             'updatedAt': '2023-04-03T13:21:53.368Z',
+            #             'value': 'age 31'}],
+            #     'updatedAt': '2023-03-29T12:30:37.078Z',
+            #     'volumeId': 19581134,
+            #     'volumeMeta': {
+            #             'ACS': 'RAS',
+            #             'IJK2WorldMatrix': [0.7617, 0, 0,
+            #                                 -194.2384, 0, 0.76171,
+            #                                 0, -217.5384, 0,
+            #                                 0, 2.5, -347.75,
+            #                                 0, 0, 0, 1],
+            #             'channelsCount': 1,
+            #             'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+            #             'intensity': {'max': 3071, 'min': -3024},
+            #             'rescaleIntercept': 0,
+            #             'rescaleSlope': 1,
+            #             'windowCenter': 23.5,
+            #             'windowWidth': 6095
+            # },
+            #     'volumeName': 'CTChest.nrrd'
+            # }
         """
+
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
     def append(self, volume_id, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+        """
+        Loads an VolumeAnnotation to a given volume ID in the API.
+
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :param ann: VolumeAnnotation object.
+        :type ann: VolumeAnnotation
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 19581134
+            api.volume.annotation.append(volume_id, volume_ann)
+        """
+
         info = self._api.volume.get_info_by_id(volume_id)
         self._append(
             self._api.volume.tag,
@@ -44,6 +148,35 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         interpolation_dirs=None,
         progress_cb=None,
     ):
+        """
+        Loads an VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
+
+        :param volume_ids: Volumes IDs in Supervisely.
+        :type volume_ids: List[int]
+        :param ann_paths: Paths to annotations on local machine.
+        :type ann_paths: List[str]
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
+        :type project_meta: ProjectMeta
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_ids = [121236918, 121236919]
+            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
+        """
+
         if interpolation_dirs is None:
             interpolation_dirs = [None] * len(ann_paths)
 
