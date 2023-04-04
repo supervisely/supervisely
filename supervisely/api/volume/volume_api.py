@@ -244,7 +244,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Volumes/paths/~1volumes.list/get
+        :param filters: List of parameters to sort output Volumes. See: https://dev.supervise.ly/api-docs/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
         :type sort: :class:`str`
@@ -274,7 +274,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             filtered_volume_infos = api.volume.get_list(dataset_id, filters=[{'field': 'id', 'operator': '=', 'value': '19581135'}])
             print(filtered_volume_infos)
-            # Output: [VideoInfo(id=19581135, ...)]
+            # Output: [VolumeInfo(id=19581135, ...)]
         """
 
         return self.get_list_all_pages(
@@ -294,7 +294,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param id: Volume ID in Supervisely.
         :type id: int
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VideoInfo`
+        :rtype: :class:`VolumeInfo`
 
         :Usage example:
 
@@ -465,7 +465,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
         :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[VideoInfo]`
+        :rtype: :class:`List[VolumeInfo]`
         :Usage example:
 
          .. code-block:: python
