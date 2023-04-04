@@ -201,6 +201,7 @@ class Api:
          .. code-block:: python
             # alternatively you can store SERVER_ADDRESS and API_TOKEN
             # in "~/supervisely.env" .env file
+            # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
 
             api = sly.Api.from_env()
         """
