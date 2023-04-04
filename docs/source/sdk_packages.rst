@@ -289,6 +289,66 @@ API
 
     WorkspaceApi
 
+Video API
+------------
+**Video API**
+- API for working with videos in Supervisely.
+
+.. currentmodule:: supervisely.api.video.video_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoApi
+    VideoInfo
+
+.. currentmodule:: supervisely.api.video.video_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoAnnotationAPI
+
+
+.. currentmodule:: supervisely.api.video.video_figure_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoFigureApi
+
+.. currentmodule:: supervisely.api.video.video_frame_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoFrameAPI
+
+.. currentmodule:: supervisely.api.video.video_object_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoObjectApi
+
+.. currentmodule:: supervisely.api.video.video_tag_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoTagApi
 
 Augmentation
 ------------
