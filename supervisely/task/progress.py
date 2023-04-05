@@ -80,6 +80,10 @@ class Progress:
         self.current = 0
         self.is_total_unknown = total_cnt == 0
 
+        self.iteration_value = 0
+        self.iteration_number = 0
+        self.iteration_locked = False
+
         self.total_label = ""
         self.current_label = ""
         self._refresh_labels()
