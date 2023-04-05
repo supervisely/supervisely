@@ -2,13 +2,20 @@ import os
 import supervisely as sly
 from functools import partial
 
+
 from tqdm import tqdm
 import time
-from supervisely.io.fs import get_directory_size
+from supervisely.io.fs import list_files_recursively
 
 import traceback
 from rich.console import Console
 
+class MyTqdm(tqdm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.iteration_value = 0
+        self.iteration_number = 0
+        self.iteration_locked = False
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
@@ -48,29 +55,42 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         style="bold",
     )
     
-    total_size = get_directory_size(local_dir)    
+    file_paths = list_files_recursively(local_dir)
+    sizes = {}
+    for file_path in file_paths:
+        with open(file_path, "rb") as file_obj:
+            bytes_data = file_obj.read()
+            stream_size = len(bytes_data)
+            sizes[file_path] = stream_size
+    total_size = sum(sizes.values())    
         
     try:
         if sly.is_development():
             
             
-            def upload_monitor_console(monitor, progress: tqdm):                
+            def upload_monitor_console(monitor, progress: MyTqdm):                
                 if progress.total == 0:
                     progress.total = monitor.len
-                progress.update(monitor.bytes_read - progress.n)
-                if monitor.bytes_read == monitor.len:
-                    progress.initial = monitor.bytes_read                
+                if not progress.iteration_locked:                    
+                    progress.update(progress.iteration_value + monitor.bytes_read - progress.n)
+                if monitor.bytes_read == monitor.len and not progress.iteration_locked:
+                    progress.iteration_value += monitor.len
+                    progress.iteration_number += 1
+                    progress.iteration_locked = True            
                 if monitor.bytes_read == monitor.len:                                  
-                    progress.refresh() # refresh progress bar to show completion
-                    # progress.close() # close progress bar
-                    progress.initial = monitor.bytes_read
+                    progress.refresh() # refresh progress bar to show completion                    
+                if monitor.bytes_read < monitor.len:
+                    progress.iteration_locked = False
+                if progress.n == progress.total:
+                    progress.refresh()
+                    progress.close() # close progress bar
                 
 
             # api.file.upload_directory may be slow depending on the number of folders
             print("Please wait ...")          
             
             
-            progress = tqdm(total=total_size, unit="B", unit_scale=True, )
+            progress = MyTqdm(total=total_size, unit="B", unit_scale=True, )
             progress_size_cb = partial(upload_monitor_console, progress=progress)
                         
             time.sleep(1)  # for better UX
