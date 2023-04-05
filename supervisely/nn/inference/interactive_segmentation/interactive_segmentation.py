@@ -138,7 +138,7 @@ class InteractiveSegmentation(Inference):
 
             # download image if needed (using cache)
             app_dir = get_data_dir()
-            hash_str = functional.get_hash_str(smtool_state)
+            hash_str = functional.get_hash_from_context(smtool_state)
             if run_sync(self._inference_image_cache.get(hash_str)) is None:
                 logger.debug(f"downloading image: {hash_str}")
                 image_np = functional.download_image_from_context(smtool_state, api, app_dir)

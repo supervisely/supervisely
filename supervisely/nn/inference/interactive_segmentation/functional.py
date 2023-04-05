@@ -75,7 +75,7 @@ def format_bitmap(bitmap: sly.Bitmap, crop):
     return bitmap_origin, bitmap_data
 
 
-def get_hash_str(context: dict):
+def get_hash_from_context(context: dict):
     if "image_id" in context:
         return str(context["image_id"])
     elif "image_hash" in context:
