@@ -10,12 +10,14 @@ from supervisely.io.fs import list_files_recursively
 import traceback
 from rich.console import Console
 
+
 class MyTqdm(tqdm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.iteration_value = 0
         self.iteration_number = 0
         self.iteration_locked = False
+
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
@@ -68,7 +70,10 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         if sly.is_development():
             
             
-            def upload_monitor_console(monitor, progress: MyTqdm):                
+            def upload_monitor_console(monitor, progress: MyTqdm):
+                if progress.n >= progress.total:                    
+                    progress.refresh()                    
+                    progress.close()              
                 if progress.total == 0:
                     progress.total = monitor.len
                 if not progress.iteration_locked:                    
@@ -76,21 +81,17 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                 if monitor.bytes_read == monitor.len and not progress.iteration_locked:
                     progress.iteration_value += monitor.len
                     progress.iteration_number += 1
-                    progress.iteration_locked = True            
-                if monitor.bytes_read == monitor.len:                                  
-                    progress.refresh() # refresh progress bar to show completion                    
+                    progress.iteration_locked = True
+                    progress.refresh()                 
                 if monitor.bytes_read < monitor.len:
                     progress.iteration_locked = False
-                if progress.n == progress.total:
-                    progress.refresh()
-                    progress.close() # close progress bar
                 
 
             # api.file.upload_directory may be slow depending on the number of folders
             print("Please wait ...")          
             
             
-            progress = MyTqdm(total=total_size, unit="B", unit_scale=True, )
+            progress = MyTqdm(total=total_size, unit="B", unit_scale=True)
             progress_size_cb = partial(upload_monitor_console, progress=progress)
                         
             time.sleep(1)  # for better UX
