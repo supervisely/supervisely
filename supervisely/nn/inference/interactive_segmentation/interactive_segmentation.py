@@ -1,5 +1,9 @@
 import os
 from fastapi import Response, Request, status
+from aiocache import Cache
+import threading
+from supervisely.app.fastapi import run_sync
+import time
 
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionSegmentation
@@ -39,11 +43,11 @@ class InteractiveSegmentation(Inference):
         use_gui: Optional[bool] = False,
     ):
         super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        self._current_smtool_state = None
-        self._current_image_path = None
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
+        self._inference_image_lock = threading.Lock()
+        self._inference_image_cache = Cache(Cache.MEMORY, ttl=60)
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -77,25 +81,6 @@ class InteractiveSegmentation(Inference):
 
     def get_classes(self) -> List[str]:
         return self._class_names
-
-    def _check_image_changed(self, smtool_state):
-        if self._current_smtool_state is not None:
-            prev_state = self._current_smtool_state.copy()
-            smtool_state = smtool_state.copy()
-            smtool_state.pop("positive")
-            smtool_state.pop("negative")
-            prev_state.pop("positive")
-            prev_state.pop("negative")
-            return smtool_state != prev_state
-        else:
-            return True
-
-    def _on_model_deployed(self):
-        self._reset_current_state()
-
-    def _reset_current_state(self):
-        self._current_smtool_state = None
-        self._current_image_path = None
 
     def serve(self):
         super().serve()
@@ -137,20 +122,7 @@ class InteractiveSegmentation(Inference):
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "400: Bad request.", "success": False}
 
-            # if something has changed (except clicks) we will re-download the image
-            is_image_changed = self._check_image_changed(smtool_state)
-            if is_image_changed:
-                if self._current_image_path is not None:
-                    silent_remove(self._current_image_path)
-                self._reset_current_state()
-                app_dir = get_data_dir()
-                image_np = functional.download_image_from_context(smtool_state, api, app_dir)
-                image_np = functional.crop_image(crop, image_np)
-                self._current_image_path = os.path.join(app_dir, f"{rand_str(10)}.jpg")
-                sly_image.write(self._current_image_path, image_np)
-
-            self._current_smtool_state = smtool_state
-
+            # collect clicks
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = functional.transform_clicks_to_crop(crop, clicks)
@@ -164,10 +136,32 @@ class InteractiveSegmentation(Inference):
                     "error": None,
                 }
 
-            # predict
-            clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
-            pred_mask = self.predict(self._current_image_path, clicks_to_predict, settings)
-            pred_mask = pred_mask.mask
+            # download image if needed (using cache)
+            app_dir = get_data_dir()
+            hash_str = functional.get_hash_from_context(smtool_state)
+            if run_sync(self._inference_image_cache.get(hash_str)) is None:
+                logger.debug(f"downloading image: {hash_str}")
+                image_np = functional.download_image_from_context(smtool_state, api, app_dir)
+                run_sync(self._inference_image_cache.set(hash_str, image_np))
+            else:
+                logger.debug(f"image found in cache: {hash_str}")
+                image_np = run_sync(self._inference_image_cache.get(hash_str))
+
+            # crop
+            image_np = functional.crop_image(crop, image_np)
+            image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
+            sly_image.write(image_path, image_np)
+
+            self._inference_image_lock.acquire()
+            try:
+                # predict
+                logger.debug(f"predict: {smtool_state['request_uid']}")
+                clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
+                pred_mask = self.predict(image_path, clicks_to_predict, settings).mask
+            finally:
+                logger.debug(f"predict done: {smtool_state['request_uid']}")
+                self._inference_image_lock.release()
+                silent_remove(image_path)
 
             if pred_mask.any():
                 bitmap = Bitmap(pred_mask)
