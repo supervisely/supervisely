@@ -18,6 +18,13 @@ class MyTqdm(tqdm):
         self.iteration_number = 0
         self.iteration_locked = False
 
+class MySlyProgress(sly.Progress):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.iteration_value = 0
+        self.iteration_number = 0
+        self.iteration_locked = False
+
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
@@ -113,7 +120,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     if monitor.bytes_read < monitor.len:
                         progress.iteration_locked = False
                     
-            progress = sly.Progress("Uploading to Team files...", total_size, is_size=True)                                  
+            progress = MySlyProgress("Uploading to Team files...", total_size, is_size=True)                                  
             progress_size_cb = partial(upload_monitor_instance, progress=progress)
         
         
