@@ -2,6 +2,7 @@ import os
 from fastapi import Response, Request, status
 from aiocache import Cache
 import asyncio
+import threading
 from supervisely.app.fastapi import run_sync
 import time
 
@@ -46,7 +47,8 @@ class InteractiveSegmentation(Inference):
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
-        self._inference_image_lock = asyncio.Lock()
+        # self._inference_image_lock = asyncio.Lock()
+        self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(Cache.MEMORY, ttl=60)
 
     def get_info(self) -> dict:
@@ -152,12 +154,17 @@ class InteractiveSegmentation(Inference):
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
-            run_sync(self._inference_image_lock.acquire())  # await lock.acquire()
+            # loop = asyncio.get_event_loop()
+            # t = loop.create_task(self._inference_image_lock.acquire())
+            # r = loop.run_until_complete(t)
+            self._inference_image_lock.acquire()
             try:
                 # predict
+                logger.debug(f"predict: {smtool_state['request_uid']}")
                 clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
                 pred_mask = self.predict(image_path, clicks_to_predict, settings).mask
             finally:
+                logger.debug(f"predict done: {smtool_state['request_uid']}")
                 self._inference_image_lock.release()
                 silent_remove(image_path)
 
