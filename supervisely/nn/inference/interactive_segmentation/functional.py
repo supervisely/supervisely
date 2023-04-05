@@ -73,3 +73,22 @@ def format_bitmap(bitmap: sly.Bitmap, crop):
     }
     bitmap_data = bitmap_json["data"]
     return bitmap_origin, bitmap_data
+
+
+def get_hash_str(context: dict):
+    if "image_id" in context:
+        return str(context["image_id"])
+    elif "image_hash" in context:
+        return context["image_hash"]
+    elif "volume" in context:
+        volume_id = context["volume"]["volume_id"]
+        slice_index = context["volume"]["slice_index"]
+        normal = context["volume"]["normal"]
+        window_center = context["volume"]["window_center"]
+        window_width = context["volume"]["window_width"]
+        plane = sly.Plane.get_name(normal)
+        return "_".join(map(str, volume_id, slice_index, plane, window_center, window_width))
+    elif "video" in context:
+        return "_".join(map(str, context["video"]["video_id"], context["video"]["frame_index"]))
+    else:
+        raise Exception("Project type is not supported")
