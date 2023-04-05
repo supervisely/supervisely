@@ -87,8 +87,8 @@ def get_hash_str(context: dict):
         window_center = context["volume"]["window_center"]
         window_width = context["volume"]["window_width"]
         plane = sly.Plane.get_name(normal)
-        return "_".join(map(str, volume_id, slice_index, plane, window_center, window_width))
+        return "_".join(map(str, [volume_id, slice_index, plane, window_center, window_width]))
     elif "video" in context:
-        return "_".join(map(str, context["video"]["video_id"], context["video"]["frame_index"]))
+        return "_".join(map(str, [context["video"]["video_id"], context["video"]["frame_index"]]))
     else:
         raise Exception("Project type is not supported")

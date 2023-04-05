@@ -1,7 +1,6 @@
 import os
 from fastapi import Response, Request, status
 from aiocache import Cache
-import asyncio
 import threading
 from supervisely.app.fastapi import run_sync
 import time
@@ -47,7 +46,6 @@ class InteractiveSegmentation(Inference):
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
-        # self._inference_image_lock = asyncio.Lock()
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(Cache.MEMORY, ttl=60)
 
@@ -154,9 +152,6 @@ class InteractiveSegmentation(Inference):
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
-            # loop = asyncio.get_event_loop()
-            # t = loop.create_task(self._inference_image_lock.acquire())
-            # r = loop.run_until_complete(t)
             self._inference_image_lock.acquire()
             try:
                 # predict
