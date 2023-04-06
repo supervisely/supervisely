@@ -11,7 +11,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 class ImageRegionSelector(Widget):
     class Routes:
-        BBOX_CHANGED = "bbox_changed"
+        BBOX_CHANGED = "bbox-changed"
         POSITIVE_CHANGED = "positive-updated"
         NEGATIVE_CHANGED = "negative-updated"
 
@@ -21,6 +21,7 @@ class ImageRegionSelector(Widget):
         mask: sly.Bitmap = None,
         mask_opacity: int = 50,
         bbox: List[int] = None,
+        points_disabled: bool = False,
         widget_id: str = None,
         disabled: bool = False,
         widget_width: str = "100%",
@@ -41,9 +42,10 @@ class ImageRegionSelector(Widget):
         self._original_bbox = None
         self._scaled_bbox = None
         self._disabled = disabled
+        self._points_disabled = points_disabled
         self._widget_width = widget_width
         self._widget_height = widget_height
-        self._changes_handled = False
+        self._bbox_changes_handled = False
         self._pos_points_changes_handled = False
         self._neg_points_changes_handled = False
 
@@ -153,7 +155,7 @@ class ImageRegionSelector(Widget):
     def bbox_changed(self, func, page_path=""):
         route_path = page_path + self.get_route_path(ImageRegionSelector.Routes.BBOX_CHANGED)
         server = self._sly_app.get_server()
-        self._changes_handled = True
+        self._bbox_changes_handled = True
 
         @server.post(route_path)
         def _click():
@@ -227,6 +229,7 @@ class ImageRegionSelector(Widget):
             "originalBbox": self._original_bbox,
             "scaledBbox": self._scaled_bbox,
             "disabled": self._disabled,
+            "pointsDisabled": self._points_disabled,
             "widget_width": self._widget_width,
             "widget_height": self._widget_height,
             "widget_id": self.widget_id,
