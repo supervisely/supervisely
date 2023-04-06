@@ -1,19 +1,73 @@
+from __future__ import annotations
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from typing import List, Optional, Dict
 
+import itertools
+
 
 class Tree(Widget):
+    id: int = itertools.count()
+
     class Routes:
         NODE_CLICK = "node_click"
         CHECK_CHANGE = "check_change"
 
+    class Children:
+        def __init__(self, parent: int, label: str = "", disabled: bool = False) -> Tree.Children:
+            self._parent = parent
+            self._id = Tree.id.__next__()
+            self._label = label
+            self._disabled = disabled
+
+        def to_json(self):
+            return {
+                "parent_id": self._parent_id,
+                "id": self._id,
+                "label": self._label,
+                "disabled": self._disabled,
+            }
+
+        def from_json(self, data: dict):
+            return Tree.Children(data["label"], data["disabled"])
+
+    class Node:
+        def __init__(
+            self, label: str, children: List[Tree.Children] = [], disabled: bool = False
+        ) -> dict:
+            self._id = Tree.id.__next__()
+            self._label = label
+            self._children = children
+            self._disabled = disabled
+
+        def to_json(self):
+            res = {
+                "id": self._id,
+                "label": self._label,
+                "children": None,
+                "disabled": self._disabled,
+            }
+
+            if self._children is not None:
+                unpacked_childrens = [child.to_json() for child in self._children]
+                res["children"] = unpacked_childrens
+            return res
+
+        def from_json(self, json: dict):
+            self._label = json["label"]
+            self._children = json["children"]
+            self._disabled = json["disabled"]
+            return Tree.Node(self._label, self._children, self._disabled)
+
+        def get_id(self):
+            return self._id
+
+        def add_children(self, children: Tree.Children):
+            self._children.append(children)
+
     def __init__(
         self,
-        data: List[Dict] = [],
-        label: str = "label",
-        children: str = "children",
-        disabled: str = "disabled",
+        data: List[Tree.Node] = [],
         node_key: str = "id",
         show_checkbox: bool = False,
         current_node_key: Optional[str or int] = None,
@@ -22,9 +76,6 @@ class Tree(Widget):
         widget_id: str = None,
     ):
         self._data = data
-        self._label = label
-        self._children = children
-        self._disabled = disabled
         self._node_key = node_key
         self._show_checkbox = show_checkbox
         self._current_node_key = current_node_key
@@ -38,18 +89,17 @@ class Tree(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {
-            "data": self._data,
+        res = {
+            "data": None,
             "node_key": self._node_key,
             "show_checkbox": self._show_checkbox,
             "empty_text": self._empty_text,
             "accordion": self._accordion,
-            "defaultProps": {
-                "label": self._label,
-                "children": self._children,
-                "disabled": self._disabled,
-            },
         }
+
+        if self._data is not None:
+            res["data"] = [node.to_json() for node in self._data]
+        return res
 
     def get_json_state(self):
         return {
@@ -58,7 +108,8 @@ class Tree(Widget):
         }
 
     def get_current_node(self):
-        return StateJson()[self.widget_id]["current_node_key"]
+        node_json = StateJson()[self.widget_id]["current_node_key"]
+        return self.get_node(id=node_json["id"])
 
     def get_current_check(self):
         return StateJson()[self.widget_id]["checked_key"]
@@ -68,33 +119,25 @@ class Tree(Widget):
 
     def set_data(self, value: List[Dict]):
         self._data = value
-        DataJson()[self.widget_id]["data"] = self._data
+        DataJson()[self.widget_id]["data"] = self._data_json
         DataJson().send_changes()
 
-    def add_data(self, value: List[Dict]):
+    def add_node(self, value):
+        if type(value) is not dict:
+            value = value.to_json()
+        self._data.append(value)
+        DataJson()[self.widget_id]["data"] = self._data_json
+        DataJson().send_changes()
+
+    def add_nodes(self, value: List[Dict]):
         self._data.extend(value)
-        DataJson()[self.widget_id]["data"] = self._data
+        DataJson()[self.widget_id]["data"] = self._data_json
         DataJson().send_changes()
 
-    def set_label(self, value: str):
-        self._label = value
-        DataJson()[self.widget_id]["label"] = self._label
-        DataJson().send_changes()
-
-    def set_children(self, value: str):
-        self._children = value
-        DataJson()[self.widget_id]["children"] = self._children
-        DataJson().send_changes()
-
-    def unable_checkbox(self):
-        self._show_checkbox = True
-        DataJson()[self.widget_id]["show_checkbox"] = self._show_checkbox
-        DataJson().send_changes()
-
-    def disable_checkbox(self):
-        self._show_checkbox = False
-        DataJson()[self.widget_id]["show_checkbox"] = self._show_checkbox
-        DataJson().send_changes()
+    def get_node(self, id: int):
+        for node in self._data:
+            if node.get_id() == id:
+                return node
 
     def node_click(self, func):
         route_path = self.get_route_path(Tree.Routes.NODE_CLICK)
