@@ -21,6 +21,7 @@ from supervisely import logger
 from supervisely.task.progress import Progress
 from supervisely.imaging.image import read_bytes
 from supervisely.volume_annotation.plane import Plane
+
 try:
     from typing import Literal
 except ImportError:
@@ -130,7 +131,7 @@ class VolumeInfo(NamedTuple):
     team_id: int
 
     #: :class:`int`: :class:`WorkspaceApi<supervisely.api.workspace_api.WorkspaceApi>` ID in Supervisely.
-    workspace_id:  int
+    workspace_id: int
 
     #: :class:`int`: :class:`Project<supervisely.project.project.Project>` ID in Supervisely.
     project_id: int
@@ -328,7 +329,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             #         'rescaleSlope': 1,
             #         'windowCenter': 23.5,
             #         'channelsCount': 1,
-            #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139}, 
+            #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
             #         'IJK2WorldMatrix': [0.7617189884185793, 0, 0, -194.238403081894, 0, 0.7617189884185793, 0, -217.5384061336518, 0, 0, 2.5, -347.7500000000001, 0, 0, 0, 1],
             #         'rescaleIntercept': 0
             #     },
@@ -516,6 +517,10 @@ class VolumeApi(RemoveableBulkModuleApi):
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, progress_cb=None, metas=None
     ):
+        """
+        Private method. Bulk upload volumes to Dataset.
+        """
+
         results = []
 
         if len(names) == 0:
@@ -702,7 +707,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             dicom_dir_name = "src/upload/MRHead_dicom/"
             series_infos = sly.volume.inspect_dicom_series(root_dir=dicom_dir_name)
 
@@ -731,6 +736,19 @@ class VolumeApi(RemoveableBulkModuleApi):
         return self.get_info_by_name(dataset_id, name)
 
     def _upload_slices_bulk(self, volume_id, items, progress_cb=None):
+        """
+        Private method for volume slices bulk uploading.
+
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :param items: Volume slices to upload
+        :type items: list
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :return: List of responses
+        :rtype: list
+        """
+
         results = []
         if len(items) == 0:
             return results
@@ -769,7 +787,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             local_path = "src/upload/nrrd/MRHead.nrrd"
 
             nrrd_info = api.volume.upload_nrrd_serie_path(
@@ -793,9 +811,18 @@ class VolumeApi(RemoveableBulkModuleApi):
         return self.get_info_by_name(dataset_id, name)
 
     def _download(self, id, is_stream=False):
-        response = self._api.post(
-            "volumes.download", {ApiField.ID: id}, stream=is_stream
-        )
+        """
+        Private method for volume volume downloading.
+
+        :param id: Volume ID in Supervisely.
+        :type id: int
+        :param stream: Define, if you'd like to get the raw socket response from the server.
+        :type stream: bool, optional
+        :return: Response object
+        :rtype: :class:`Response`
+        """
+
+        response = self._api.post("volumes.download", {ApiField.ID: id}, stream=is_stream)
         return response
 
     def download_path(self, id, path, progress_cb=None):
@@ -820,7 +847,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             volume_id = volume_infos[0].id
             volume_info = api.volume.get_info_by_id(id=volume_id)
 
@@ -882,7 +909,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             local_dir_name = "src/upload/nrrd/"
             all_nrrd_names = os.listdir(local_dir_name)
             names = [f"1_{name}" for name in all_nrrd_names]
@@ -938,7 +965,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            
+
             slice_index = 60
 
             image_np = api.volume.download_slice_np(

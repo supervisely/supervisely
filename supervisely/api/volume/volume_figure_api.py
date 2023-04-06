@@ -150,6 +150,10 @@ class VolumeFigureApi(FigureApi):
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
 
     def _download_geometries_batch(self, ids):
+        """
+        Private method. Download figures geometries with given IDs from storage.
+        """
+
         for batch_ids in batched(ids):
             response = self._api.post(
                 "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
@@ -159,9 +163,7 @@ class VolumeFigureApi(FigureApi):
                 content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
                 # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
                 # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                figure_id = int(
-                    re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1]
-                )
+                figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield figure_id, part
 
     def download_stl_meshes(self, ids, paths):
@@ -324,6 +326,15 @@ class VolumeFigureApi(FigureApi):
 
     # def _upload_geometries_batch(ids, )
     def _upload_meshes_batch(self, figure2bytes):
+        """
+        Private method. Upload figures geometry by given  to storage.
+
+        :param figure2bytes: Dictionary with figures IDs and geometries.
+        :type figure2bytes: dict
+        :rtype: :class:`NoneType`
+        :Usage example:
+        """
+
         for figure_id, figure_bytes in figure2bytes.items():
             content_dict = {
                 ApiField.FIGURE_ID: str(figure_id),
