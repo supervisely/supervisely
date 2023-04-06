@@ -27,7 +27,7 @@
       v-for="group in data.{{{widget.widget_id}}}.groups"
       :key="group.label"
       :label="group.label"
-      :disabled="item.disabled"
+      :disabled="group.disabled"
     >
       <el-option
         v-for="item in group.options"
