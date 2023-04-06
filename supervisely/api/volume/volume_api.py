@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import List, NamedTuple
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
 from supervisely.api.volume.volume_object_api import VolumeObjectApi
@@ -239,7 +239,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return VolumeInfo(**res._asdict())
 
-    def get_list(self, dataset_id, filters=None, sort="id", sort_order="asc"):
+    def get_list(
+        self,
+        dataset_id: int,
+        filters=None,
+        sort: Literal["id", "name", "description", "createdAt", "updatedAt"] = "id",
+        sort_order: Literal["asc", "desc"] = "asc",
+    ):
         """
         Get list of information about all volumes for a given dataset ID.
 
@@ -288,7 +294,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             },
         )
 
-    def get_info_by_id(self, id):
+    def get_info_by_id(self, id: int):
         """
         Get Volume information by ID in VolumeInfo<VolumeInfo> format.
 
@@ -364,7 +370,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         return self._get_info_by_id(id, "volumes.info")
 
-    def upload_hash(self, dataset_id, name, hash, meta=None):
+    def upload_hash(self, dataset_id: int, name: str, hash: str, meta: dict = None):
         """
         Upload Volume from given hash to Dataset.
 
@@ -451,7 +457,14 @@ class VolumeApi(RemoveableBulkModuleApi):
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
 
-    def upload_hashes(self, dataset_id, names, hashes, progress_cb=None, metas=None):
+    def upload_hashes(
+        self,
+        dataset_id: int,
+        names: List[str],
+        hashes: List[str],
+        progress_cb=None,
+        metas: List[dict] = None,
+    ):
         """
         Upload Volumes from given hashes to Dataset.
 
@@ -526,17 +539,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         if len(names) == 0:
             return results
         if len(names) != len(items):
-            raise RuntimeError(
-                'Can not match "names" and "items" lists, len(names) != len(items)'
-            )
+            raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
 
         if metas is None:
             metas = [{}] * len(names)
         else:
             if len(names) != len(metas):
-                raise RuntimeError(
-                    'Can not match "names" and "metas" len(names) != len(metas)'
-                )
+                raise RuntimeError('Can not match "names" and "metas" len(names) != len(metas)')
 
         for batch in batched(list(zip(names, items, metas))):
             volumes = []
@@ -559,7 +568,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         return results
 
     def upload_np(
-        self, dataset_id, name, np_data, meta, progress_cb=None, batch_size=30
+        self,
+        dataset_id: int,
+        name: str,
+        np_data,
+        meta: dict,
+        progress_cb=None,
+        batch_size: int = 30,
     ):
         """
         Upload given Volume in numpy format with given name to Dataset.
@@ -601,9 +616,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         ext = get_file_ext(name)
         if ext != ".nrrd":
-            raise ValueError(
-                "Name has to be with .nrrd extension, for example: my_volume.nrrd"
-            )
+            raise ValueError("Name has to be with .nrrd extension, for example: my_volume.nrrd")
         from timeit import default_timer as timer
 
         logger.info("Start volume compression before upload...")
@@ -615,9 +628,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
-        logger.info(
-            f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds"
-        )
+        logger.info(f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds")
         volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
         if progress_cb is not None:
             progress_cb(1)  # upload volume
@@ -681,7 +692,14 @@ class VolumeApi(RemoveableBulkModuleApi):
                     )
         return volume_info
 
-    def upload_dicom_serie_paths(self, dataset_id, name, paths, log_progress=True, anonymize=True):
+    def upload_dicom_serie_paths(
+        self,
+        dataset_id: int,
+        name: str,
+        paths: List[str],
+        log_progress: bool = True,
+        anonymize: bool = True,
+    ):
         """
         Upload given DICOM series from given paths to Dataset.
 
@@ -729,13 +747,11 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_np, volume_meta = volume.read_dicom_serie_volume_np(paths, anonymize=anonymize)
         progress_cb = None
         if log_progress is True:
-            progress_cb = Progress(
-                f"Upload volume {name}", sum(volume_np.shape)
-            ).iters_done_report
+            progress_cb = Progress(f"Upload volume {name}", sum(volume_np.shape)).iters_done_report
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
 
-    def _upload_slices_bulk(self, volume_id, items, progress_cb=None):
+    def _upload_slices_bulk(self, volume_id: int, items, progress_cb=None):
         """
         Private method for volume slices bulk uploading.
 
@@ -763,7 +779,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             results.extend(response.json())
         return results
 
-    def upload_nrrd_serie_path(self, dataset_id, name, path, log_progress=True):
+    def upload_nrrd_serie_path(self, dataset_id: int, name: str, path: str, log_progress=True):
         """
         Upload NRRD format volume from given path to Dataset.
 
@@ -804,13 +820,11 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
         progress_cb = None
         if log_progress is True:
-            progress_cb = Progress(
-                f"Upload volume {name}", sum(volume_np.shape)
-            ).iters_done_report
+            progress_cb = Progress(f"Upload volume {name}", sum(volume_np.shape)).iters_done_report
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
 
-    def _download(self, id, is_stream=False):
+    def _download(self, id: int, is_stream: bool = False):
         """
         Private method for volume volume downloading.
 
@@ -825,7 +839,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         response = self._api.post("volumes.download", {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id, path, progress_cb=None):
+    def download_path(self, id: int, path: str, progress_cb=None):
         """
         Download volume with given ID to local directory.
 
@@ -878,11 +892,11 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def upload_nrrd_series_paths(
         self,
-        dataset_id,
-        names,
-        paths,
+        dataset_id: int,
+        names: str,
+        paths: str,
         progress_cb=None,
-        log_progress=True,
+        log_progress: bool = True,
     ):
         """
         Upload NRRD format volumes from given paths to Dataset.
@@ -924,9 +938,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         volume_infos = []
         for name, path in zip(names, paths):
-            info = self.upload_nrrd_serie_path(
-                dataset_id, name, path, log_progress=log_progress
-            )
+            info = self.upload_nrrd_serie_path(dataset_id, name, path, log_progress=log_progress)
             volume_infos.append(info)
             if progress_cb is not None:
                 progress_cb(1)

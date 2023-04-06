@@ -13,7 +13,7 @@ class VolumeObjectApi(ObjectApi):
     """
 
     def append_bulk(
-        self, volume_id, objects: VolumeObjectCollection, key_id_map: KeyIdMap = None
+        self, volume_id: int, objects: VolumeObjectCollection, key_id_map: KeyIdMap = None
     ):
         """
         Add Tags to Annotation Objects

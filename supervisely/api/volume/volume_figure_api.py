@@ -21,11 +21,11 @@ class VolumeFigureApi(FigureApi):
 
     def create(
         self,
-        volume_id,
-        object_id,
-        plane_name,
-        slice_index,
-        geometry_json,
+        volume_id: int,
+        object_id: int,
+        plane_name: str,
+        slice_index: int,
+        geometry_json: dict,
         geometry_type,
         # track_id=None,
     ):
@@ -92,7 +92,7 @@ class VolumeFigureApi(FigureApi):
             # track_id,
         )
 
-    def append_bulk(self, volume_id, figures, key_id_map: KeyIdMap):
+    def append_bulk(self, volume_id: int, figures: List[VolumeFigure], key_id_map: KeyIdMap):
         """
         Add VolumeFigures to given Volume by ID.
 
@@ -149,15 +149,13 @@ class VolumeFigureApi(FigureApi):
         # Figure is missing required field \"meta.normal\"","index":0}}
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
 
-    def _download_geometries_batch(self, ids):
+    def _download_geometries_batch(self, ids: List[int]):
         """
         Private method. Download figures geometries with given IDs from storage.
         """
 
         for batch_ids in batched(ids):
-            response = self._api.post(
-                "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
-            )
+            response = self._api.post("figures.bulk.download.geometry", {ApiField.IDS: batch_ids})
             decoder = MultipartDecoder.from_response(response)
             for part in decoder.parts:
                 content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
@@ -166,7 +164,7 @@ class VolumeFigureApi(FigureApi):
                 figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield figure_id, part
 
-    def download_stl_meshes(self, ids, paths):
+    def download_stl_meshes(self, ids: List[int], paths: List[str]):
         """
         Download STL meshes for the specified figure IDs and saves them to the specified paths.
 
@@ -211,9 +209,7 @@ class VolumeFigureApi(FigureApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise RuntimeError(
-                'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
-            )
+            raise RuntimeError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
 
         id_to_path = {id: path for id, path in zip(ids, paths)}
         for img_id, resp_part in self._download_geometries_batch(ids):
@@ -221,10 +217,7 @@ class VolumeFigureApi(FigureApi):
             with open(id_to_path[img_id], "wb") as w:
                 w.write(resp_part.content)
 
-
-    def interpolate(
-        self, volume_id, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
-    ):
+    def interpolate(self, volume_id: int, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
         """
         Interpolate a spatial figure with a ClosedSurfaceMesh geometry.
 
@@ -345,7 +338,7 @@ class VolumeFigureApi(FigureApi):
 
     def upload_stl_meshes(
         self,
-        volume_id,
+        volume_id: int,
         spatial_figures: List[VolumeFigure],
         key_id_map: KeyIdMap,
         interpolation_dir=None,

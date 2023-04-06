@@ -1,5 +1,5 @@
 # coding: utf-8
-
+from typing import Union
 from supervisely.api.module_api import ApiField
 from supervisely.api.entity_annotation.tag_api import TagApi
 
@@ -12,7 +12,7 @@ class VolumeTagApi(TagApi):
     _entity_id_field = ApiField.ENTITY_ID
     _method_bulk_add = "volumes.tags.bulk.add"
 
-    def remove_from_volume(self, tag_id):
+    def remove_from_volume(self, tag_id: int):
         """
         Remove tag from volume.
 
@@ -36,7 +36,7 @@ class VolumeTagApi(TagApi):
 
         self._api.post("volumes.tags.remove", {ApiField.ID: tag_id})
 
-    def update_value(self, tag_id, tag_value):
+    def update_value(self, tag_id: int, tag_value: Union[str, int]):
         """
         Update VolumeTag value.
 

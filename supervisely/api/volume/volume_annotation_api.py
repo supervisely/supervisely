@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import json
+from typing import List
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
@@ -38,7 +39,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
-    def download(self, volume_id):
+    def download(self, volume_id: int):
         """
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
@@ -99,7 +100,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
-    def append(self, volume_id, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -142,8 +143,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
     def upload_paths(
         self,
-        volume_ids,
-        ann_paths,
+        volume_ids: List[int],
+        ann_paths: List[str],
         project_meta,
         interpolation_dirs=None,
         progress_cb=None,
