@@ -60,7 +60,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_id = 19581134
             ann_info = api.volume.annotation.download(volume_id)
             print(ann_info)
-            # Output: 
+            # Output:
             # {
             #     'createdAt': '2023-03-29T12:30:37.078Z',
             #     'datasetId': 61803,
@@ -101,7 +101,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
     def append(self, volume_id, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
         """
-        Loads an VolumeAnnotation to a given volume ID in the API.
+        Loads VolumeAnnotation to a given volume ID in the API.
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
@@ -149,7 +149,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         progress_cb=None,
     ):
         """
-        Loads an VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
+        Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
 
         :param volume_ids: Volumes IDs in Supervisely.
         :type volume_ids: List[int]
@@ -189,9 +189,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             self.append(volume_id, ann, key_id_map)
 
             # create empty figures for meshes
-            self._api.volume.figure.append_bulk(
-                volume_id, ann.spatial_figures, key_id_map
-            )
+            self._api.volume.figure.append_bulk(volume_id, ann.spatial_figures, key_id_map)
             # upload existing interpolations or create on the fly and and add them to empty mesh figures
             self._api.volume.figure.upload_stl_meshes(
                 volume_id, ann.spatial_figures, key_id_map, interpolation_dir
