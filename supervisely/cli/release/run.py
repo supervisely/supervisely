@@ -227,7 +227,7 @@ def run(
     
     # get readme
     try:
-        with open(module_path.joinpath("README.md"), "r") as f:
+        with open(module_path.joinpath("README.md"), "rb") as f:
             readme = f.read()
     except:
         readme = ""
