@@ -33,7 +33,9 @@ class DestinationProject(Widget):
 
         self._project_name = ""
         self._dataset_name = ""
-
+        
+        self._use_project_datasets_structure = False
+        
         self._workspace_id = workspace_id
         self._project_type = str(project_type)
         self._changes_handled = False
@@ -53,6 +55,7 @@ class DestinationProject(Widget):
             "dataset_mode": self._dataset_mode,
             "dataset_id": self._dataset_id,
             "dataset_name": self._dataset_name,
+            "use_project_datasets_structure": self._use_project_datasets_structure,
         }
 
     def get_selected_project_id(self):
@@ -72,3 +75,6 @@ class DestinationProject(Widget):
 
     def get_dataset_name(self):
         return StateJson()[self.widget_id]["dataset_name"]
+
+    def use_project_datasets_structure(self):
+        return StateJson()[self.widget_id]["use_project_datasets_structure"]
