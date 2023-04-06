@@ -10,25 +10,22 @@ import traceback
 from rich.console import Console
 
 
-class MyTqdm(tqdm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.iteration_value = 0
-        self.iteration_number = 0
-        self.iteration_locked = False
-        self.total_monitor_size = 0
-
-
-class MySlyProgress(sly.Progress):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.iteration_value = 0
-        self.iteration_number = 0
-        self.iteration_locked = False
-        self.total_monitor_size = 0
-
-
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
+    class MyTqdm(tqdm):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.iteration_value = 0
+            self.iteration_number = 0
+            self.iteration_locked = False
+            self.total_monitor_size = 0
+
+    class MySlyProgress(sly.Progress):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.iteration_value = 0
+            self.iteration_number = 0
+            self.iteration_locked = False
+            self.total_monitor_size = 0
 
     api = sly.Api.from_env()
     console = Console()
