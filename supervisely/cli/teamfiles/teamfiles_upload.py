@@ -17,6 +17,7 @@ class MyTqdm(tqdm):
         self.iteration_value = 0
         self.iteration_number = 0
         self.iteration_locked = False
+        self.total_monitor_size = 0
 
 class MySlyProgress(sly.Progress):
     def __init__(self, *args, **kwargs):
@@ -24,6 +25,7 @@ class MySlyProgress(sly.Progress):
         self.iteration_value = 0
         self.iteration_number = 0
         self.iteration_locked = False
+        self.total_monitor_size = 0
 
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
@@ -83,6 +85,10 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     progress.close()              
                 if progress.total == 0:
                     progress.total = monitor.len
+                if  monitor.bytes_read == 8192:
+                    progress.total_monitor_size += monitor.len
+                if progress.total_monitor_size > progress.total:
+                    progress.total = progress.total_monitor_size 
                 if not progress.iteration_locked:                    
                     progress.update(progress.iteration_value + monitor.bytes_read - progress.n)
                 if monitor.bytes_read == monitor.len and not progress.iteration_locked:
@@ -109,6 +115,10 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                 if progress.total == 0:
                     progress.set(monitor.bytes_read, monitor.len, report=False)            
                 else:
+                    if  monitor.bytes_read == 8192:
+                        progress.total_monitor_size += monitor.len
+                    if progress.total_monitor_size > progress.total:
+                        progress.total = progress.total_monitor_size 
                     if not progress.iteration_locked:
                         progress.set_current_value(progress.iteration_value + monitor.bytes_read, report=False)
                     if progress.need_report():
@@ -116,9 +126,10 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
                     if monitor.bytes_read == monitor.len and not progress.iteration_locked:
                         progress.iteration_value += monitor.len
                         progress.iteration_number += 1
-                        progress.iteration_locked = True
+                        progress.iteration_locked = True                
                     if monitor.bytes_read < monitor.len:
                         progress.iteration_locked = False
+                    
                     
             progress = MySlyProgress("Uploading to Team files...", total_size, is_size=True)                                  
             progress_size_cb = partial(upload_monitor_instance, progress=progress)
