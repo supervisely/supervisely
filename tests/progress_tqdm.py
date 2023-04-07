@@ -63,11 +63,11 @@ def test_progress(x, progress):
     batch_size = 30
     for batch in sly.batched(seq=x, batch_size=batch_size):
         progress.update(len(batch))
-        sleep(0.5)
 
 
 progress_tqdm = MyTqdm(message="Uploading data", total_cnt=data_len)
 test_progress(data_list, progress_tqdm)
+progress_tqdm.close()
 
 
 # size = api.file.get_directory_size(439, "/test.tar")
