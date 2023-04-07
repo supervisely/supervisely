@@ -44,26 +44,26 @@ class MyTqdm(tqdm):
                 min_report_percent=self.min_report_percent,
             )
 
-        super().__init__(total=total_cnt, desc=message, *args, **kwargs)
-
-    def write(self, count):
         if sly.is_development():
-            for _ in range(count):
-                super().update(1)
-                sleep(0.1)
+            super().__init__(total=total_cnt, desc=message, *args, **kwargs)
+
+    def update(self, count):
+        if sly.is_development():
+            super().update(count)
         else:
             self.progress.iters_done_report(count)
 
 
 data_len = 145
-data_list = [i for i in range(data_len)]
+data_list = list(range(data_len))
 
 
 def test_progress(x, progress):
 
     batch_size = 30
     for batch in sly.batched(seq=x, batch_size=batch_size):
-        progress.write(len(batch))
+        progress.update(len(batch))
+        sleep(0.5)
 
 
 progress_tqdm = MyTqdm(message="Uploading data", total_cnt=data_len)
