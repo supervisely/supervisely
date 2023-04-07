@@ -14,7 +14,7 @@ api = sly.Api()
 # os.environ["ENV"] = "production"
 
 
-class MyTqdm(tqdm):
+class MyTqdm(tqdm, sly.Progress):
     def __init__(
         self,
         message,
@@ -46,6 +46,8 @@ class MyTqdm(tqdm):
 
         if sly.is_development():
             super().__init__(total=total_cnt, desc=message, *args, **kwargs)
+        else:
+            super().__init__(disable=True)
 
     def update(self, count):
         if sly.is_development():
@@ -76,5 +78,6 @@ progress_tqdm.close()
 #     team_id=439,
 #     remote_path="/test.tar",
 #     local_save_path="/home/alex/Downloads/test.tar",
-#     progress_cb=progress_tqdm_file.write,
+#     progress_cb=progress_tqdm_file.update,
 # )
+# progress_tqdm_file.close()
