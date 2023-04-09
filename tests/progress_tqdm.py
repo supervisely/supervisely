@@ -26,7 +26,6 @@ class MyTqdm(tqdm, sly.Progress):
         *args,
         **kwargs,
     ):
-
         self.message = message
         self.total = total_cnt
         self.ext_logger = ext_logger
@@ -61,23 +60,22 @@ data_list = list(range(data_len))
 
 
 def test_progress(x, progress):
-
     batch_size = 30
     for batch in sly.batched(seq=x, batch_size=batch_size):
         progress.update(len(batch))
 
 
-# progress_tqdm = MyTqdm(message="Uploading data", total_cnt=data_len)
-# test_progress(data_list, progress_tqdm)
-# progress_tqdm.close()
+progress_tqdm = MyTqdm(message="Uploading data", total_cnt=data_len)
+test_progress(data_list, progress_tqdm)
+progress_tqdm.close()
 
 
-size = api.file.get_directory_size(439, "/test.tar")
-progress_tqdm_file = MyTqdm("File downloaded: ", total_cnt=size, is_size=True)
-api.file.download(
-    team_id=439,
-    remote_path="/test.tar",
-    local_save_path="/home/alex/Downloads/test.tar",
-    progress_cb=progress_tqdm_file.update,
-)
-progress_tqdm_file.close()
+# size = api.file.get_directory_size(439, "/test.tar")
+# progress_tqdm_file = MyTqdm("File downloaded: ", total_cnt=size, is_size=True)
+# api.file.download(
+#     team_id=439,
+#     remote_path="/test.tar",
+#     local_save_path="/home/alex/Downloads/test.tar",
+#     progress_cb=progress_tqdm_file.update,
+# )
+# progress_tqdm_file.close()
