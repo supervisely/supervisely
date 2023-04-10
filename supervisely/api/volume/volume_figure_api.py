@@ -37,7 +37,7 @@ class VolumeFigureApi(FigureApi):
                 ApiField.META: {
                     constants.SLICE_INDEX: slice_index,
                     constants.NORMAL: Plane.get_normal(plane_name),
-                },
+                }
             },
             geometry_json,
             geometry_type,
