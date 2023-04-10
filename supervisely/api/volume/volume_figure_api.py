@@ -31,12 +31,13 @@ class VolumeFigureApi(FigureApi):
             volume_id,
             object_id,
             {
+                constants.SLICE_INDEX: slice_index, 
+                constants.NORMAL: Plane.get_normal(plane_name),
+                # for backward compatibility
                 ApiField.META: {
                     constants.SLICE_INDEX: slice_index,
                     constants.NORMAL: Plane.get_normal(plane_name),
                 },
-                constants.SLICE_INDEX: slice_index,  # for backward compatibility
-                constants.NORMAL: Plane.get_normal(plane_name),  # for backward compatibility
             },
             geometry_json,
             geometry_type,
