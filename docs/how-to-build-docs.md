@@ -3,9 +3,9 @@ Build documentation guide for debug puproses
 **all commands must be executed from the `docs` folder**
 
 - install `doc-requirements.txt`
-- then run one of the following commands to build documentation      
+- then run one of the following commands to build documentation
   - run `./build_html.sh`
-  - run `sphinx-build source/ build/` 
+  - run `sphinx-build source/ build/`
   - `make html`
 
 after building the documentation the `build` folder should appear

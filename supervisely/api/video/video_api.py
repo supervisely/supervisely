@@ -125,7 +125,7 @@ class VideoInfo(NamedTuple):
     #: :class:`str`: Time of last video update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: :class:`list`: Video :class:`VideoTag<superviselyvideo_annotation.video_tag.VideoTag>` list.
+    #: :class:`list`: Video :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` list.
     #: e.g. "[{'entityId': 19371139, 'tagId': 377141, 'id': 12241539, 'labelerLogin': 'admin',
     #: 'createdAt': '2023-02-07T19:35:01.808Z', 'updatedAt': '2023-02-07T19:35:01.808Z',
     #: 'frameRange': [244, 244]}, {...}]".
