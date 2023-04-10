@@ -80,8 +80,10 @@ class VolumeFigureApi(FigureApi):
         return super().create(
             volume_id,
             object_id,
-            # TODO: double meta field, maybe send just value without meta key?
             {
+                constants.SLICE_INDEX: slice_index, 
+                constants.NORMAL: Plane.get_normal(plane_name),
+                # for backward compatibility
                 ApiField.META: {
                     constants.SLICE_INDEX: slice_index,
                     constants.NORMAL: Plane.get_normal(plane_name),
