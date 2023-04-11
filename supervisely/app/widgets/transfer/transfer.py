@@ -332,7 +332,7 @@ class Transfer(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
         
-    def add(self, items: [Union[List[Item], List[str]]]):
+    def add(self, items: Union[List[Item], List[str]]):
         """Adds new items to the current list of items. If the list of items is specified as strings,
         Transfer.Item objects will be created from them.
         If the list of adding items contains any items with the same key as the items in the current list,
@@ -364,7 +364,7 @@ class Transfer(Widget):
             DataJson().send_changes()
             StateJson().send_changes()
             
-    def remove(self, items_keys: [List[str]]):
+    def remove(self, items_keys: List[str]):
         """Removes items from the current list of items. The list of items to be removed should contain
         keys of the items which should be removed. If there are no items with the specified keys in the current list,
         nothing will be removed and no error will be raised.
