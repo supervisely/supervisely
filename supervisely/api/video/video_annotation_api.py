@@ -16,6 +16,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
     """
     :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
 
+    Inherits from :class:`EntityAnnotationAPI<supervisely.api.entity_annotation.EntityAnnotationAPI>`:
+        - `download_bulk` method: `api.video.annotation.download_bulk(dataset_id: int, entity_ids: List[int])`
+
     :param api: API connection to the server.
     :type api: Api
     :Usage example:

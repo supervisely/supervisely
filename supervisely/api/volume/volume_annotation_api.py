@@ -10,6 +10,11 @@ from supervisely.io.json import load_json_file
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
+    """
+    Inherits from :class:`EntityAnnotationAPI<supervisely.api.entity_annotation.EntityAnnotationAPI>`:
+        - `download_bulk` method: `api.volume.annotation.download_bulk(dataset_id: int, entity_ids: List[int])`
+    """
+
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
