@@ -94,3 +94,8 @@ class LinePlot(Widget):
         series_id, series_data = next(((i, series) for i, series in enumerate(series_list) if series['name'] == name), (None, None))
         # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
         return series_id, series_data
+    
+    def clean_up(self):
+        self._series = []
+        DataJson()[self.widget_id]['series'] = self._series
+        DataJson().send_changes()
