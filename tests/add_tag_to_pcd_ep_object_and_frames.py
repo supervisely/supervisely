@@ -41,14 +41,10 @@ project_tag_metas = PROJECT_META.tag_metas
 
 try:
     new_tags_collection = project_tag_metas.add(new_tag_meta)
-    new_project_meta = sly.ProjectMeta(
-        tag_metas=new_tags_collection, obj_classes=project_classes
-    )
+    new_project_meta = sly.ProjectMeta(tag_metas=new_tags_collection, obj_classes=project_classes)
     api.project.update_meta(PROJECT_ID, new_project_meta)
 except DuplicateKeyError:
-    sly.logger.warning(
-        f"New tag ['{new_tag_meta.name}'] already exists in project metadata"
-    )
+    sly.logger.warning(f"New tag ['{new_tag_meta.name}'] already exists in project metadata")
     new_tag_meta = project_tag_metas.get(new_tag_meta.name)
 
 
@@ -67,12 +63,11 @@ for object in pcd_ep_ann.objects:
         new_obj = object.clone(tags=new_tag_collection)
         new_objects_list.append(new_obj)
 
-new_objects_col = PointcloudObjectCollection(new_objects_list)
-new_objects_ann = pcd_ep_ann.clone(objects=new_objects_col)
+new_pcd_ann = pcd_ep_ann.clone(objects=new_objects_list)
 
 api.pointcloud_episode.tag.append_to_objects(
     entity_id=pcd_entity_id,
     project_id=PROJECT_ID,
-    objects=new_objects_ann.objects,
+    objects=new_pcd_ann.objects,
     key_id_map=key_id_map,
 )
