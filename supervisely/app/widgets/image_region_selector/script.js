@@ -141,6 +141,10 @@ Vue.component('smarttool-editor', {
       type: Boolean,
       default: false,
     },
+    pointsDisabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -468,8 +472,10 @@ Vue.component('smarttool-editor', {
       this.group.add(this.backgroundEl, this.maskEl, this.bboxEl);
 
       this.pt = this.container.createSVGPoint();
-
-      this.bboxEl.click(this.pointHandler);
+      
+      if (!this.pointsDisabled) {
+        this.bboxEl.click(this.pointHandler);
+      }
       // this.bboxEl.on('contextmenu', this.pointHandler);
     },
   },
