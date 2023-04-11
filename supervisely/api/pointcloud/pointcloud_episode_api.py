@@ -10,7 +10,8 @@ from supervisely.api.pointcloud.pointcloud_episode_annotation_api import Pointcl
 
 class PointcloudEpisodeApi(PointcloudApi):
     """
-    API for working with :class:`PointcloudEpisode<supervisely.pointcloud_episodes.pointcloud_episodes>`.
+    
+    API for working with :class:`PointcloudEpisodes<supervisely.pointcloud_episodes.pointcloud_episodes>`.
     :class:`PointcloudEpisodeApi<PointcloudEpisodeApi>` object is immutable.
     Inherits from :class:`PointcloudApi<supervisely.api.pointcloud.PointcloudApi>`.
 

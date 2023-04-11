@@ -10,7 +10,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     """
-    :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudAnnotation>` for a point clouds episodes.
+    :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>` for a point clouds episodes.
     :class:`PointcloudEpisodeAnnotationAPI<PointcloudEpisodeAnnotationAPI>` object is immutable.
 
     :param api: API connection to the server.
@@ -125,7 +125,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :type pointcloud_id: int
         :param ann: PointcloudEpisodeAnnotation object.
         :type ann: PointcloudEpisodeAnnotation
-        :param frame_to_pointcloud_ids  List of dictionaries with frame_id and name of pointcloud episodes
+        :param frame_to_pointcloud_ids:  List of dictionaries with frame_id and name of pointcloud episodes
         :type frame_to_pointcloud_ids: List[dict]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional

@@ -21,6 +21,23 @@ class UnsupportedVolumeFormat(Exception):
 
 
 def get_extension(path: str):
+    """
+    Get extension for given path.
+
+    :param path: Path to volume.
+    :type path: str
+    :return: Path extension
+    :rtype: str
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "src/upload/folder/CTACardio.nrrd"
+        ext = sly.volume.get_extension(path=path)
+    """
+
     # magic.from_file("path", mime=True)
     # for nrrd:
     # application/octet-stream
@@ -43,6 +60,23 @@ def get_extension(path: str):
 
 
 def is_valid_ext(ext: str) -> bool:
+    """
+    Checks if given extension is supported.
+
+    :param ext: Volume file extension.
+    :type ext: str
+    :return: bool
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        sly.video.is_valid_ext(".mp4")  # True
+        sly.video.is_valid_ext(".jpeg") # False
+    """
+
     return ext.lower() in ALLOWED_VOLUME_EXTENSIONS
 
 
