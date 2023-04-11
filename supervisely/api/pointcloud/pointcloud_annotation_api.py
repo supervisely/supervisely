@@ -15,10 +15,6 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     """
     :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` for a single point cloud. :class:`PointcloudAnnotationAPI<PointcloudAnnotationAPI>` object is immutable.
 
-    Inherits from :class:`EntityAnnotationAPI<supervisely.api.entity_annotation.EntityAnnotationAPI>`:
-        - `download_bulk` method: `api.pointcloud.annotation.download_bulk(dataset_id: int, entity_ids: List[int])`
-
-
     :param api: API connection to the server.
     :type api: Api
     :Usage example:

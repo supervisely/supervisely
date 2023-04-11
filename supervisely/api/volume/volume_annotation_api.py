@@ -14,9 +14,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     """
     :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>` for a single volume. :class:`VolumeAnnotationAPI<VolumeAnnotationAPI>` object is immutable.
 
-    Inherits from :class:`EntityAnnotationAPI<supervisely.api.entity_annotation.EntityAnnotationAPI>`:
-        - `download_bulk` method: `api.volume.annotation.download_bulk(dataset_id: int, entity_ids: List[int])`
-
     :param api: API connection to the server.
     :type api: Api
     :Usage example:
