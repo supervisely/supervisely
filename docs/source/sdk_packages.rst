@@ -401,6 +401,75 @@ Volume API
 
     VolumeTagApi
 
+Pointcloud API
+------------
+**Pointcloud API**
+- API for working with pointclouds in Supervisely.
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudApi
+    PointcloudInfo
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudAnnotationAPI
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeAnnotationAPI
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_figure_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudFigureApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_object_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudObjectApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_tag_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTagApi
+
 Augmentation
 ------------
 **Augmentation**
