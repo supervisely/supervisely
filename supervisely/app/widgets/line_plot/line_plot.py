@@ -97,5 +97,7 @@ class LinePlot(Widget):
     
     def clean_up(self):
         self._series = []
+        self._ymin = 0
+        self._ymax = 10
         DataJson()[self.widget_id]['series'] = self._series
         DataJson().send_changes()
