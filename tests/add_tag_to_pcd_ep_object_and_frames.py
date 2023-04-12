@@ -1,7 +1,6 @@
 import os
 import supervisely as sly
 from dotenv import load_dotenv
-from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )
