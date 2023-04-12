@@ -172,19 +172,87 @@ class VolumeAnnotation:
         self.validate_figures_bounds()
 
     @property
-    def volume_meta(self):
+    def volume_meta(self) -> dict:
+        """
+        Volume meta data.
+
+        :returns: Sagittal plane of the volume.
+        :rtype: dict
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            volume_meta = vol_ann.volume_meta
+        """
+
         return deepcopy(self._volume_meta)
 
     @property
     def plane_sagittal(self):
+        """
+        Sagital plane of the volume.
+
+        :returns: Sagittal plane of the volume.
+        :rtype: Plane
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            plane_sagittal = vol_ann.plane_sagittal
+        """
+
         return self._plane_sagittal
 
     @property
     def plane_coronal(self):
+        """
+        Coronal plane of the volume.
+
+        :returns: Coronal plane of the volume.
+        :rtype: Plane
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            plane_coronal = vol_ann.plane_coronal
+        """
+
         return self._plane_coronal
 
     @property
     def plane_axial(self):
+        """
+        Axial plane of the volume.
+
+        :returns: Axial plane of the volume.
+        :rtype: Plane
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            plane_axial = vol_ann.plane_axial
+        """
+
         return self._plane_axial
 
     @property
@@ -200,7 +268,7 @@ class VolumeAnnotation:
 
             import supervisely as sly
 
-            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            path = "/Users/Downloads/volumes/Demo volumes_ds1_CTChest.nrrd"
             volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
 
             # VolumeObjectCollection
@@ -223,28 +291,128 @@ class VolumeAnnotation:
 
     @property
     def tags(self):
+        """
+        VolumeTag objects.
+
+        :returns: VolumeTagCollection
+        :rtype: :class:`VolumeTagCollection`
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            tags = vol_ann.tags
+        """
+
         return self._tags
 
     @property
     def spatial_figures(self):
+        """
+        Get a list of spatial figures.
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            spatial_figures = vol_ann.spatial_figures
+        """
+
         return self._spatial_figures
 
     @property
-    def figures(self):
+    def figures(self) -> list:
+        """
+        VolumeFigure objects.
+
+        :returns: List of VolumeFigure objects from VolumeAnnotation object.
+        :rtype: list
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            figures = vol_ann.figures
+        """
+
         all_figures = []
         for plane in [self.plane_sagittal, self.plane_coronal, self.plane_axial]:
             all_figures.extend(plane.figures)
         return all_figures
 
     def key(self):
+        """
+        Volume annotation key value.
+
+        :returns: Key value of VolumeAnnotation object.
+        :rtype: str
+        
+        :Usage examle:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+            key = vol_ann.key()
+        """
         return self._key
 
     def validate_figures_bounds(self):
+        """
+        Checks if all slices in each plane contains figures.
+
+        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of slices images bounds
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            plane_axial = sly.Plane(sly.Plane.AXIAL, frames, volume_meta=volume_meta)
+            volume_ann = sly.VolumeAnnotation(volume_meta, objects, plane_axial=plane_axial)
+            volume_ann.validate_figures_bounds()
+        """
+
         self.plane_sagittal.validate_figures_bounds()
         self.plane_coronal.validate_figures_bounds()
         self.plane_axial.validate_figures_bounds()
 
     def is_empty(self):
+        """
+        Check whether volume annotation contains objects or tags, or not.
+
+        :returns: True if volume annotation is empty, False otherwise.
+        :rtype: :class:`bool`
+
+        :Usage exmaple:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            vol_ann = sly.VolumeAnnotation(volume_meta)
+
+            is_empty = vol_ann.is_empty()
+        """
+
         if len(self.objects) == 0 and len(self.tags) == 0:
             return True
         else:
@@ -260,6 +428,40 @@ class VolumeAnnotation:
         tags=None,
         spatial_figures=None,
     ):
+        """
+        Makes a copy of VolumeAnnotation with new fields, if fields are given, otherwise it will use fields of the original VolumeAnnotation.
+
+        :param volume_meta: Metadata of the volume.
+        :type volume_meta: dict
+        :param objects: VolumeObjectCollection object.
+        :type objects: VolumeObjectCollection, optional
+        :param plane_sagittal: Sagittal plane of the volume.
+        :type plane_sagittal: Plane, optional
+        :param plane_coronal: Coronal plane of the volume.
+        :type plane_coronal: Plane, optional
+        :param plane_axial: Axial plane of the volume.
+        :type plane_axial: Plane, optional
+        :param tags: VolumeTagCollection object.
+        :type tags: VolumeTagCollection, optional
+        :param spatial_figures: List of spatial figures associated with the volume.
+        :type spatial_figures: List[VolumeFigure], optional
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            volume_ann = sly.VolumeAnnotation(volume_meta)
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            video_obj_heart = sly.VolumeObject(obj_class_heart)
+            new_objects = sly.VolumeObjectCollection([volume_obj_heart])
+            new_volume_ann = volume_ann.clone(objects=new_objects)
+        """
+
         return VolumeAnnotation(
             volume_meta=take_with_default(volume_meta, self.volume_meta),
             objects=take_with_default(objects, self.objects),

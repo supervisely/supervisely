@@ -422,11 +422,23 @@ class Tag(KeyObject):
 
     @classmethod
     def get_header_ptable(cls):
-        """ """
+        """
+        Get header of the table with tags.
+
+        :return: List of table header values.
+        :rtype: List[str]
+        """
+
         return ["Name", "Value type", "Value"]
 
     def get_row_ptable(self):
-        """ """
+        """
+        Get row with tag properties.
+
+        :return: List of tag properties.
+        :rtype: List[str]
+        """
+
         return [self._meta.name, self._meta.value_type, self.value]
 
     def _set_id(self, id: int):

@@ -55,7 +55,7 @@ class VolumeFigure(VideoFigure):
         slice_index = 7
         plane_name = "axial"
         geometry = sly.Rectangle(0, 0, 100, 100)
-        volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, slice_index)
+        volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
         volume_figure_heart_json = volume_figure_heart.to_json()
         print(volume_figure_heart_json)
         # Output: {
@@ -109,41 +109,154 @@ class VolumeFigure(VideoFigure):
 
     @property
     def volume_object(self) -> VolumeObject:
-        """Get a parent VolumeObject object of volume figure."""
+        """
+        Get a parent VolumeObject object of volume figure.
+
+        :return: Parent VolumeObject object of volume figure.
+        :rtype: VolumeObject
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.parent_object)
+            # Output:
+            # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f95f0950b50>
+        """
         
         return self._video_object
 
     @property
     def video_object(self):
+        """Property "video_object" is only available for videos."""
         raise NotImplementedError(
             'Property "video_object" is only available for videos'
         )
 
     @property
     def parent_object(self) -> VolumeObject:
-        """Get a parent VolumeObject object of volume figure."""
+        """
+        Get a parent VolumeObject object of volume figure.
+
+        :return: VolumeObject object
+        :rtype: VolumeObject
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.parent_object)
+            # Output:
+            # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f786a3f8bd0>
+        """
 
         return self.volume_object
 
     @property
     def frame_index(self):
+        """Property "frame_index" is only available for videos."""
         raise NotImplementedError('Property "frame_index" is only available for videos')
 
     @property
     def slice_index(self):
-        """Get a slice index of volume figure."""
+        """
+        Get a slice index of volume figure.
+
+        :return: Slice index of volume figure.
+        :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.slice_index)
+            # Output: 7
+        """
 
         return self._slice_index
 
     @property
     def plane_name(self):
-        """Get a plane name of volume figure."""
+        """
+        Get a plane name of volume figure.
+
+        :return: Plane name of volume figure.
+        :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.plane_name)
+            # Output: axial
+        """
 
         return self._plane_name
 
     @property
     def normal(self):
-        """Get a normal vector associated with a plane name."""
+        """
+        Get a normal vector associated with a plane name.
+
+        :return: Dictionary with normal vector associated with a plane name.
+        :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.normal)
+            # Output: {'x': 0, 'y': 0, 'z': 1}
+        """
 
         from supervisely.volume_annotation.plane import Plane
 
@@ -294,6 +407,26 @@ class VolumeFigure(VideoFigure):
     def get_meta(self):
         """
         Get a dictionary with metadata associated with volume figure.
+
+        :return: Dictionary with metadata associated with volume figure.
+        :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7
+            )
+
+            print(volume_figure_heart.get_meta())
+            # {'sliceIndex': 7, 'planeName': 'axial', 'normal': {'x': 0, 'y': 0, 'z': 1}}
         """
 
         return {

@@ -76,8 +76,25 @@ class VolumeTag(Tag):
         )
         self._key = take_with_default(key, uuid.uuid4())
 
-    def key(self):
-        """Get key value."""
+    def key(self) -> str:
+        """
+        Get key value.
+
+        :return: Get key value.
+        :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.volume_annotation.volume_tag import VolumeTag
+
+            meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
+            tag_heart = VolumeTag(meta_heart)
+
+            print(tag_heart.key()) 
+            # Output: 2d9cd2cd-f89c-40a9-8675-1b0773fa250d
+        """
         return self._key
 
     def to_json(self, key_id_map: KeyIdMap = None):
@@ -93,6 +110,7 @@ class VolumeTag(Tag):
          .. code-block:: python
 
             import supervisely as sly
+
             from supervisely.volume_annotation.volume_tag import VolumeTag
             meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
             tag_heart = VolumeTag(meta_heart)
