@@ -15,8 +15,9 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api.from_env()
 
 
-PROJECT_ID = sly.env.project_id(False)
+PROJECT_ID = sly.env.project_id()
 DATASET_ID = sly.env.dataset_id()
+
 PROJECT_META_JSON = api.project.get_meta(PROJECT_ID)
 PROJECT_META = sly.ProjectMeta.from_json(data=PROJECT_META_JSON)
 
@@ -28,6 +29,9 @@ pcd_ep_ann_json = api.pointcloud_episode.annotation.download(DATASET_ID)
 pcd_ep_ann = sly.PointcloudEpisodeAnnotation.from_json(
     data=pcd_ep_ann_json, project_meta=PROJECT_META, key_id_map=key_id_map
 )
+project_classes = PROJECT_META.obj_classes
+project_tag_metas = PROJECT_META.tag_metas
+
 
 new_tag_meta = sly.TagMeta(
     "Tram",
@@ -36,26 +40,23 @@ new_tag_meta = sly.TagMeta(
     possible_values=["city", "suburb"],
 )
 
-project_classes = PROJECT_META.obj_classes
-project_tag_metas = PROJECT_META.tag_metas
 
-try:
+existing_tag_meta = project_tag_metas.get(new_tag_meta.name)
+if existing_tag_meta is None:
     new_tags_collection = project_tag_metas.add(new_tag_meta)
     new_project_meta = sly.ProjectMeta(tag_metas=new_tags_collection, obj_classes=project_classes)
     api.project.update_meta(PROJECT_ID, new_project_meta)
-except DuplicateKeyError:
-    sly.logger.warning(f"New tag ['{new_tag_meta.name}'] already exists in project metadata")
-    new_tag_meta = project_tag_metas.get(new_tag_meta.name)
-
+else:
+    new_tag_meta = existing_tag_meta
 
 new_tag = sly.PointcloudEpisodeTag(
     meta=new_tag_meta,
     value="suburb",
-    frame_range=[12, 13],  # in case you want to add tag to frames
+    # frame_range=[12, 13],  # in case you want to add tag to frames
 )
 new_tag_collection = PointcloudEpisodeTagCollection([new_tag])
-new_objects_list = []
 
+new_objects_list = []
 for object in pcd_ep_ann.objects:
     # object_tags = object.tags.items() # in case you want to filter objects with the same tag
     # has_this_tag = any(tag.name == new_tag.name for tag in object_tags) # in case you want to filter objects with the same tag
