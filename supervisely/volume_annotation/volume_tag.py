@@ -30,7 +30,7 @@ class VolumeTag(Tag):
      .. code-block:: python
 
         import supervisely as sly
-        from supervisely.video_annotation.video_tag import VolumeTag
+        from supervisely.volume_annotation.volume_tag import VolumeTag
 
         meta_brain = sly.TagMeta('brain', sly.TagValueType.NONE)
         # Now we can create a VolumeTag using our TagMeta
