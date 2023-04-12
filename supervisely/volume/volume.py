@@ -377,6 +377,10 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
 
 
 def compose_ijk_2_world_mat(spacing, origin, directions):
+    """
+    Calculate a 4x4 transformation matrix for converting from IJK to world coordinates 
+    """
+
     mat = np.eye(4)
     mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
     mat[:3, 3] = origin
@@ -384,7 +388,9 @@ def compose_ijk_2_world_mat(spacing, origin, directions):
 
 
 def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}):
-
+    """
+    Get normalized meta-data for a volume.
+    """
     # x = 1 - sagittal
     # y = 1 - coronal
     # z = 1 - axial
@@ -413,13 +419,45 @@ def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directio
     return volume_meta
 
 
-def inspect_nrrd_series(root_dir: str):
+def inspect_nrrd_series(root_dir: str) -> List[str]:
+    """
+    Inspect a directory for NRRD series by recursively listing files with the ".nrrd" extension and returns a list of NRRD file paths found in the directory.
+
+    :param root_dir: Directory to inspect for NRRD series.
+    :type root_dir: str
+    :return: List of NRRD file paths found in the given directory.
+    :rtype: List[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/"
+        nrrd_paths = sly.volume.inspect_nrrd_series(root_dir=path)
+    """
+
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
     logger.info(f"Total {len(nrrd_paths)} nnrd series in directory {root_dir}")
     return nrrd_paths
 
 
 def read_nrrd_serie_volume(path: str):
+    """
+    Read NRRD volume with given path.
+
+    :param path: Paths to DICOM volume files.
+    :type path: List[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+        sitk_volume, meta = sly.volume.read_nrrd_serie_volume(path)
+    """
+
     import SimpleITK as sitk
 
     # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
@@ -444,6 +482,23 @@ def read_nrrd_serie_volume(path: str):
 
 
 def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
+    """
+    Read NRRD volume with given path.
+
+    :param path: Paths to NRRD volume file.
+    :type path: List[str]
+    :return: volume data in NumPy array format and dictionary with metadata
+    :rtype: np.ndarray, dict
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+        np_volume, meta = sly.volume.read_nrrd_serie_volume_np(path)
+    """
+
     import SimpleITK as sitk
 
     sitk_volume, meta = read_nrrd_serie_volume(paths)
