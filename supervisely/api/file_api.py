@@ -215,8 +215,8 @@ class FileApi(ModuleApiBase):
             # ]
         """
 
-        if not path.endswith(os.path.sep) and recursive is False:
-            path += os.path.sep
+        if not path.endswith("/") and recursive is False:
+            path += "/"
         if self.is_on_agent(path) is True:
             return self.list_on_agent(team_id, path, recursive)
 
@@ -480,8 +480,8 @@ class FileApi(ModuleApiBase):
 
             api.file.download_directory(9, path_to_dir, local_save_path)
         """
-        if not remote_path.endswith(os.path.sep):
-            remote_path += os.path.sep
+        if not remote_path.endswith("/"):
+            remote_path += "/"
 
         if self.is_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
@@ -518,8 +518,8 @@ class FileApi(ModuleApiBase):
         content_dict[ApiField.NAME] = item
 
         dst_dir = os.path.dirname(dst)
-        if not dst_dir.endswith(os.path.sep):
-            dst_dir += os.path.sep
+        if not dst_dir.endswith("/"):
+            dst_dir += "/"
         content_dict[ApiField.PATH] = dst_dir  # os.path.basedir ...
         content_dict["file"] = (
             item,
