@@ -15,13 +15,20 @@ class Container(Widget):
         direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 10,
         fractions: List[int] = None,
-        overflow: Literal["scroll", "wrap", None] = "scroll",
+        overflow: Literal["scroll", "wrap"] = "scroll",
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
         self._overflow = overflow
+        
+        if self._overflow not in ["scroll", "wrap"]:
+            raise ValueError("overflow can be only 'scroll' or 'wrap'")
+        
+        if self._direction == "vertical" and self._overflow == "wrap":
+            raise ValueError("overflow can be 'wrap' only with horizontal direction")
+        
         if self._direction == "vertical" and fractions is not None:
             raise ValueError("fractions can be defined only with horizontal direction")
 
