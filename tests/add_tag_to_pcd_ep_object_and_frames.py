@@ -5,9 +5,6 @@ from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_object_collection import (
-    PointcloudObjectCollection,
-)
 
 
 load_dotenv("local.env")
