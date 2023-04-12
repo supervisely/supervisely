@@ -100,4 +100,6 @@ class LinePlot(Widget):
         self._ymin = 0
         self._ymax = 10
         DataJson()[self.widget_id]['series'] = self._series
+        DataJson()[self.widget_id]['ymin'] = self._ymin
+        DataJson()[self.widget_id]['ymax'] = self._ymax
         DataJson().send_changes()
