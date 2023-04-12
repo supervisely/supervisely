@@ -29,7 +29,7 @@ class Collapse(Widget):
         self,
         labels: List[str],
         contents: List[Union[str, Widget]],
-        accordion: bool = False,
+        accordion: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
         if len(labels) != len(contents):
