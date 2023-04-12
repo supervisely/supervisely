@@ -735,10 +735,10 @@ class ModuleApi(ModuleApiBase):
     """Base class for entities that have a parent object in the system."""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """"""
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
 
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """"""
+    """Number of seconds for intervals between attempts."""
 
 
     def __init__(self, api):
@@ -852,11 +852,10 @@ class CloneableModuleApi(ModuleApi):
     """CloneableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _clone_api_method_name(self):
         """_clone_api_method_name"""
@@ -942,11 +941,10 @@ class RemoveableModuleApi(ModuleApi):
     """RemoveableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _remove_api_method_name(self):
         """_remove_api_method_name"""
@@ -980,11 +978,10 @@ class RemoveableBulkModuleApi(ModuleApi):
     """RemoveableBulkModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _remove_batch_api_method_name(self):
         """_remove_batch_api_method_name"""
