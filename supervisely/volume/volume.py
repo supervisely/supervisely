@@ -246,9 +246,18 @@ def read_dicom_serie_volume(paths, anonymize=True):
 
 
 def compose_ijk_2_world_mat(meta):
+    try:
+        spacing = meta["spacing"]
+        origin = meta["origin"]
+        directions = meta["directions"]
+    except KeyError as e:
+        raise IOError(
+            f"Need the meta '{e}'' field to determine the mapping from voxels to world coordinates."
+        )
+
     mat = np.eye(4)
-    mat[:3, :3] = (np.array(meta["directions"]).reshape(3, 3) * meta["spacing"]).T
-    mat[:3, 3] = meta["origin"]
+    mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
+    mat[:3, 3] = origin
     return mat
 
 
@@ -257,7 +266,6 @@ def world_2_ijk_mat(ijk_2_world):
 
 
 def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}):
-
     # x = 1 - sagittal
     # y = 1 - coronal
     # z = 1 - axial
