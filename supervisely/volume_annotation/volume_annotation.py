@@ -56,7 +56,7 @@ class VolumeAnnotation:
         path = "/home/admin/work/volumes/vol_01.nrrd"
         volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
         volume_ann = sly.VolumeAnnotation(volume_meta)
-        print(video_ann.to_json())
+        print(volume_ann.to_json())
         # Output: {
         # {
         #     "key": "56107223943346e5900fc256b8dcd7f0",
@@ -190,28 +190,30 @@ class VolumeAnnotation:
     @property
     def objects(self):
         """
-        VideoAnnotation objects.
+        VolumeAnnotation objects.
 
-        :return: VideoObjectCollection object
-        :rtype: :class:`VideoObjectCollection`
+        :return: VolumeObjectCollection object
+        :rtype: :class:`VolumeObjectCollection`
         :Usage example:
 
          .. code-block:: python
 
             import supervisely as sly
 
-            height, width = 500, 700
-            frames_count = 1
-            # VideoObjectCollection
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
-            print(video_ann.objects.to_json())
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+
+            # VolumeObjectCollection
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            objects = sly.VolumeObjectCollection([volume_obj_heart])
+            volume_ann = sly.VolumeAnnotation(volume_meta, objects)
+
+            print(volume_ann.objects.to_json())
             # Output: [
             #     {
-            #         "key": "79fc07a4a6ca4b2796279bc033b9ec9a",
-            #         "classTitle": "car",
+            #         "key": "2b5d70baa5a74d06a525b950b5f2b756",
+            #         "classTitle": "heart",
             #         "tags": []
             #     }
             # ]
@@ -403,7 +405,7 @@ class VolumeAnnotation:
             volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
             volume_ann = sly.VolumeAnnotation(volume_meta)
 
-            print(video_ann.to_json())
+            print(volume_ann.to_json())
             # Output: {
             # {
             #     "key": "56107223943346e5900fc256b8dcd7f0",
