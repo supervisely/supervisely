@@ -3,7 +3,7 @@ from collections import namedtuple
 from supervisely.app.widgets import Widget
 from supervisely.app.content import DataJson, StateJson
 
-from typing import List, Dict, Union, Optional, Callable
+from typing import List, Dict, Union, Optional, Callable, Any
 
 class Transfer(Widget):
     """Widget for transfering items between source and target lists.
@@ -85,24 +85,31 @@ class Transfer(Widget):
         VALUE_CHANGED = "value_changed"
         
     class Item:
-        """Class for representing items in the Transfer widget. Each item has a key, label and disabled flag.
-        Key is required and should be unique. Label is optional and will be displayed in the widget. If not specified,
-        label will be equal to the key. Disabled flag is optional and if True, the item will be disabled and won't
-        be transferable. Disabled flag is False by default.
+        """
+        Class for representing items in the Transfer widget.
 
-        Args:
-            key (str): the key of the item which is mostly used for identifying the item (like value).
-                It's important to note, that the keys of the items should be unique.
-            label (Optional[str], optional): the label of the item, which will be displayed in the widget.
-                If not specified, the key will be used as label. Defaults to None.
-            disabled (Optional[bool], optional): if True, the item will be disabled and won't be transferable.
-                Defaults to False.
-            
-        Example:
+        Each item has a key, label and disabled flag. Key is required and should be unique. Label is optional and will be
+        displayed in the widget. If not specified, label will be equal to the key. Disabled flag is optional and if True,
+        the item will be disabled and won't be transferable. Disabled flag is False by default.
+
+        :param key: The key of the item which is mostly used for identifying the item (like value).
+            It's important to note, that the keys of the items should be unique.
+        :type key: str
+        :param label: The label of the item, which will be displayed in the widget. If not specified, the key will be used
+            as label. Defaults to None.
+        :type label: Optional[str]
+        :param disabled: If True, the item will be disabled and won't be transferable. Defaults to False.
+        :type disabled: Optional[bool]
+
+        :Usage example:
+
+         .. code-block:: python
+
             disabled_item = Transfer.Item(key="dog", label="Dog", disabled=True)
             item_with_label = Transfer.Item(key="cat", label="Cat")
             simple_item = Transfer.Item(key="mouse")
         """
+
         def __init__(self, key: str, label: Optional[str] = None, disabled: Optional[bool] = False):
             self.key = key
             if not label:
@@ -151,20 +158,21 @@ class Transfer(Widget):
     
     
     def __checked_items(self, items: Optional[Union[List[Item], List[str]]]) -> List[Transfer.Item]:
-        """If the list of items is specified as a list of strings, they will be converted to Transfer.Item objects.
-        List of Transfer items will be checked for uniqueness of the keys. If the keys of the items are not unique,
-        an error will be raised.
-
-        Args:
-            items (Optional[Union[List[Item], List[str]]]): the list of items can either be a list of Transfer.Item
-                objects or a list of strings, containing the keys for Transfer.Item objects to be created.
-
-        Raises:
-            ValueError: if the keys of the items are not unique
-
-        Returns:
-            List[Transfer.Item]: the list of Transfer.Item objects with unique keys.
         """
+        If the list of items is specified as a list of strings, they will be converted to Transfer.Item objects. List of
+        Transfer items will be checked for uniqueness of the keys. If the keys of the items are not unique, an error will be
+        raised.
+
+        :param items: The list of items can either be a list of Transfer.Item objects or a list of strings, containing the
+            keys for Transfer.Item objects to be created.
+        :type items: Optional[Union[List[Item], List[str]]]
+
+        :raises ValueError: If the keys of the items are not unique.
+
+        :return: The list of Transfer.Item objects with unique keys.
+        :rtype: List[Transfer.Item]
+        """
+
         if isinstance(items[0], str):
             # If items are specified as strings, they will be converted to Transfer.Item objects.
             if len(set(items)) != len(items):
@@ -182,20 +190,21 @@ class Transfer(Widget):
         return checked_items
     
     def __checked_transferred_items(self, transferred_items: List[str]) -> List[str]:
-        """If the self._items is specified, the list of transferred items will be checked for the keys of the items.
-        Since transferred items are specified by keys of the items, each key of the transferred items should exist
-        in the list of items. Otherwise, an error will be raised.
-
-        Args:
-            transferred_items (List[str]): list of keys of the items to be shown in the right (target) list.
-
-        Raises:
-            ValueError: if transferred items are specified, but the list of items is not specified
-            ValueError: if any of transferred items keys is not in the list of items
-
-        Returns:
-            List[str]: _description_
         """
+        If the self._items is specified, the list of transferred items will be checked for the keys of the items. Since
+        transferred items are specified by keys of the items, each key of the transferred items should exist in the list of
+        items. Otherwise, an error will be raised.
+
+        :param transferred_items: List of keys of the items to be shown in the right (target) list.
+        :type transferred_items: List[str]
+
+        :raises ValueError: If transferred items are specified, but the list of items is not specified.
+        :raises ValueError: If any of transferred items keys is not in the list of items.
+
+        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :rtype: List[str]
+        """
+
         if not self._items:
             # If the list of items is not specified, the list of transferred items can't be specified since
             # the keys of the items should be specified in the list of transferred items.
@@ -210,73 +219,87 @@ class Transfer(Widget):
             else:
                 return transferred_items
     
-    def get_json_data(self) -> Dict[str, Any]:
-        """Returns the data of the widget in JSON format. Data will contain the list of items and the list of transferred items.
-
-        Returns:
-            Dict[str, Any]: the data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}
-                items - the list of items in the widget in JSON format. Each item is represented as Transfer.Item object.
-                transferred_items - the list of transferred items (keys of the items which should be displayed in the right list).
+    def get_json_data(self) -> Dict[str, List[Dict[str, Union[str, bool]]]]:
         """
+        Returns the data of the widget in JSON format.
+
+        Data will contain the list of items and the list of transferred items.
+
+        :return: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
+            "items" - the list of items in the widget in JSON format. Each item is represented as Transfer.Item object.
+            "transferred_items" - the list of transferred items (keys of the items which should be displayed in the right list).
+        :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
+        """
+
         res = {
             "items": None,
-            "transferred_items": None,
         }
         if self._items is not None:
             res["items"] = [item.to_json() for item in self._items]
-        if self._transferred_items is not None:
-            res["transferred_items"] = self._transferred_items
 
         return res
     
     def get_json_state(self) -> Dict[str, List[str]]:
-        """Returns the state of the widget in JSON format. State will contain the list of transferred items.
-
-        Returns:
-            Dict[str, List[str]]: the state of the widget in JSON format: {"transferred_items": List[str]}
-                transferred_items - the list of transferred items (keys of the items which should be displayed in the right list).
         """
+        Returns the state of the widget in JSON format.
+
+        State will contain the list of transferred items.
+
+        :return: The state of the widget in JSON format: {"transferred_items": List[str]}. "transferred_items" - the list of
+            transferred items (keys of the items which should be displayed in the right list).
+        :rtype: Dict[str, List[str]]
+        """
+
         transferred_items = self._transferred_items
         
         return {"transferred_items": transferred_items}
     
     def get_transferred_items(self) -> List[str]:        
-        """Returns the list of transferred items.
-
-        Returns:
-            List[str]: the list of transferred items (keys of the items which should be displayed in the right list).
         """
+        Returns the list of transferred items.
+
+        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :rtype: List[str]
+        """
+
         return StateJson()[self.widget_id]["transferred_items"]
     
     
     def get_untransferred_items(self) -> List[str]:
-        """Returns the list of untransferred items.
-
-        Returns:
-            List[str]: the list of untransferred items (keys of the items which should be displayed in the left list).
         """
+        Returns the list of untransferred items.
+
+        :return: List of untransferred items (keys of the items which should be displayed in the left list).
+        :rtype: List[str]
+        """
+
         return [item.key for item in self._items if item.key not in self.get_transferred_items()]
     
     
     def value_changed(self, func: Callable) -> Callable:
-        """Decorates a function which will be called when the the items in right list are changed (moved in or out of the list).
-        
-        Args:
-            func Callable: function to be wrapped with the decorator. The function should have one argument
-                which will contain namedtuple with the following fields: transferred_items, untransferred_items.
+        """
+        Decorates a function which will be called when the the items in right list are changed (moved in or out of the list).
 
-        Returns:
-            Callable: wrapped function.
-            
-        Example:
+        :param func: Function to be wrapped with the decorator. The function should have one argument which will contain
+            namedtuple with the following fields: transferred_items, untransferred_items.
+        :type func: Callable
+
+        :return: Wrapped function.
+        :rtype: Callable
+        
+        :Usage example:
+
+         .. code-block:: python
+
             tr = Transfer(items=["item1", "item2", "item3"], transferred_items=["item1"])
-            
+
             # Move "item2" from the left list to the right list. 
             @tr.value_changed
             def func(items):        
                 print(items.transferred_items) # ["item1", "item2"]
                 print(items.untransferred_items) # ["item3"]
         """
+
         
         route_path = self.get_route_path(Transfer.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -294,21 +317,27 @@ class Transfer(Widget):
         return _click
     
     def set_items(self, items: Union[List[Transfer.Item], List[str]]):
-        """Sets the list of items for the widget. If the list of items is specified as strings,
-        they will be converted to Transfer.Item objects.
-        Note: this method will REPLACE the current list of items with the new one. 
-        If you want to add new items to the current list, use .add() method.
+        """
+        Sets the list of items for the widget.
 
-        Args:
-            items (Union[List[Transfer.Item], List[str]]): _description_
-            
-        Example:
+        If the list of items is specified as strings, they will be converted to Transfer.Item objects.
+        Note: this method will REPLACE the current list of items with the new one. If you want to add new items to the current
+        list, use .add() method.
+
+        :param items: List of items to be set as the new list of items for the widget. Can be specified as Transfer.Item
+            objects or as strings of the item keys.
+        :type items: Union[List[Transfer.Item], List[str]]
+
+        :Usage example:
+
+         .. code-block:: python
+
             tr = Transfer(items=["cat", "dog"])
             print(tr.get_untransferred_items()) # ["cat", "dog"]
-            
+                
             tr.set(items=["bird", "mouse"])
             print(tr.get_untransferred_items()) # ["bird", "mouse"]
-            
+
             # As you can see, the list of items was replaced with the new one.
         """
 
@@ -320,12 +349,13 @@ class Transfer(Widget):
         StateJson().send_changes()
 
     def set_transferred_items(self, transferred_items: List[str]):
-        """Sets the list of transferred items. The list should contain only the 
-        keys of the items specified in the list of items. Otherwise, an error will be raised.
-
-        Args:
-            transferred_items (List[str]): list of keys of the items which should be displayed in the right list.\
         """
+        Sets the list of transferred items.
+        The list should contain only the keys of the items specified in the list of items. Otherwise, an error will be raised.
+        :param transferred_items: List of keys of the items which should be displayed in the right list.
+        :type transferred_items: List[str]
+        """
+
         self._transferred_items = self.__checked_transferred_items(transferred_items)
         self.update_data()
         self.update_state()
@@ -333,26 +363,29 @@ class Transfer(Widget):
         StateJson().send_changes()
         
     def add(self, items: Union[List[Item], List[str]]):
-        """Adds new items to the current list of items. If the list of items is specified as strings,
-        Transfer.Item objects will be created from them.
-        If the list of adding items contains any items with the same key as the items in the current list,
-        an error will be raised.
+        """
+        Adds new items to the current list of items.
 
-        Args:
-            items ([Union[List[Item], List[str]]]): list of items to be added to the current list of items.
-                Can be specified as Transfer.Item objects or as strings of the item keys.
+        If the list of items is specified as strings, Transfer.Item objects will be created from them. If the list of adding 
+        items contains any items with the same key as the items in the current list, an error will be raised.
 
-        Raises:
-            ValueError: if the list of adding items contains any items with the same key as
-                the items in the current list.
-                
-        Example:
+        :param items: List of items to be added to the current list of items. Can be specified as Transfer.Item objects or
+            as strings of the item keys.
+        :type items: Union[List[Item], List[str]]
+
+        :raises ValueError: If the list of adding items contains any items with the same key as the items in the current list.
+
+        :Usage example:
+
+         .. code-block:: python
+
             tr = Transfer(items=["cat", "dog"])
             print(tr.get_untransferred_items()) # ["cat", "dog"]
-            
+                
             tr.add(items=["bird", "mouse"])
             print(tr.get_untransferred_items()) # ["cat", "dog", "bird", "mouse"]
         """
+
         items = self.__checked_items(items)
         
         if any([item.key in [item.key for item in self._items] for item in items]):
@@ -365,14 +398,16 @@ class Transfer(Widget):
             StateJson().send_changes()
             
     def remove(self, items_keys: List[str]):
-        """Removes items from the current list of items. The list of items to be removed should contain
-        keys of the items which should be removed. If there are no items with the specified keys in the current list,
-        nothing will be removed and no error will be raised.
-
-        Args:
-            items_keys (List[str]]): list of keys of the items which should be removed from the current list of items.
         """
-        
+        Removes items from the current list of items.
+
+        The list of items to be removed should contain keys of the items which should be removed. If there are no items with 
+        the specified keys in the current list, nothing will be removed and no error will be raised.
+
+        :param items_keys: List of keys of the items to be removed.
+        :type items_keys: List[str]
+        """
+
         self._items = [item for item in self._items if item.key not in items_keys]
         self._transferred_items = [item for item in self._transferred_items if item not in items_keys]
         self.update_data()
@@ -381,9 +416,11 @@ class Transfer(Widget):
         StateJson().send_changes()
     
     def get_items_keys(self) -> List[str]:
-        """Returns the list of keys of the items.
-
-        Returns:
-            List[str]: list of keys of the items in the current list of items.
         """
+        Returns the list of keys of the items.
+
+        :return: List of keys of the items.
+        :rtype: List[str]
+        """
+
         return [item.key for item in self._items]
