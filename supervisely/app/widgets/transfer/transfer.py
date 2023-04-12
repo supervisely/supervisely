@@ -16,66 +16,71 @@ class Transfer(Widget):
     the same as the argument 'transferred_items' in the constructor:
     you should pass keys of the items in the 'items' list.
 
-    Args:
-        items (Union[List[Transfer.Item], List[str]], optional): the list, containing items to be displayed
-            in the widget. Basically, it's a list of Transfer.Item objects, but you can also pass a list of
-            strings, if you don't want to specify any additional parameters (label, disabled) for the items.
-            In this case, the items will be generated automatically, using the strings in the list as keys.
-            Defaults to None.
-        transferred_items (List[str], optional): the list, containing keys of the items, which should be
-            displayed in the right (target) list. Defaults to None. It's important to note, that this list
-            contains keys of the items in the 'items' list, NOT NEW items. Defaults to None.
-        widget_id (str, optional): if needed, you can specify the id of the widget. Defaults to None.
-        filterable (bool, optional): if True, the widget will have a filter input. Defaults to False.
-        filter_placeholder (str, optional): if specified, the filter input will have this placeholder.
-            Remember, that this placeholder will be displayed only if the filterable argument is True.
-            Defaults to None.
-        titles (List[str], optional): the list, containing titles for the source and target lists. If not
-            specified, the default titles will be used (Source and Target). Defaults to None.
-        button_texts (List[str], optional): the list, containing texts for the buttons, which transfer
-            items between the lists. If not specified, the buttons will have only icons (> and <). Defaults to None.
-        left_checked (List[str], optional): the list of keys of the items in the left (source) list, which
-            should be checked at widget initialization. Defaults to None.
-        right_checked (List[str], optional): the list of keys of the items in the right (target) list, which
-            should be checked at widget initialization. Defaults to None.
+    :param items: A list of Transfer.Item objects or a list of strings (keys), which will be automatically
+                transformed into Transfer.Item objects. Defaults to None.
+    :type items: Union[List[Transfer.Item], List[str]], optional
+    :param transferred_items: A list of keys of the items to be displayed in the right (target) list. This list
+                            contains keys of the items in the 'items' list, not new items. Defaults to None.
+    :type transferred_items: List[str], optional
+    :param widget_id: The id of the widget. Defaults to None.
+    :type widget_id: str, optional
+    :param filterable: If True, the widget will have a filter input. Defaults to False.
+    :type filterable: bool, optional
+    :param filter_placeholder: The placeholder for the filter input. This placeholder will be displayed only if
+                            the filterable argument is True. Defaults to None.
+    :type filter_placeholder: str, optional
+    :param titles: A list of titles for the source and target lists. If not specified, the default titles will be
+                used ('Source' and 'Target'). Defaults to None.
+    :type titles: List[str], optional
+    :param button_texts: A list of texts for the buttons, which transfer items between the lists. If not
+                        specified, the buttons will have only icons (> and <). Defaults to None.
+    :type button_texts: List[str], optional
+    :param left_checked: A list of keys of the items in the left (source) list, which should be checked at widget
+                        initialization. Defaults to None.
+    :type left_checked: List[str], optional
+    :param right_checked: A list of keys of the items in the right (target) list, which should be checked at widget
+                        initialization. Defaults to None.
+    :type right_checked: List[str], optional
             
-    Methods:
-        get_transferred_items(): returns the list of keys of the items, which are currently displayed in the
-            right (target) list.
-        get_untransferred_items(): returns the list of keys of the items, which are currently displayed in the
-            left (source) list.
-        @value_changed(func): decorator function, which can be used to handle the events, when the list of
-            transferred items is changed (transferred items are moved from the left to the right list or vice versa).
-            Function under this decorator should recieve one argument - the list of transferred items (keys of the
-            items which are currently displayed in the right list).
-        set_items(): sets the list of items to be displayed in the widget. Likewise in the class constructor,
-            the list of items can either be a list of Transfer.Item objects or a list of strings.
-        set_transferred_items(): sets the list of transferred items (keys of the items which should be displayed
-            in the right list).
-        add(): adds new items to the widget. Likewise in the class constructor, the list of items can either be
-            a list of Transfer.Item objects or a list of strings. Must not contain items with the same keys as
-            in the current list of items.
-        remove(): removes items from the widget by their keys.
-        get_items_keys(): returns the list of keys of the items, which are currently displayed in the widget.
+    :Methods:
+    get_transferred_items(): returns the list of keys of the items, which are currently displayed in the
+        right (target) list.
+    get_untransferred_items(): returns the list of keys of the items, which are currently displayed in the
+        left (source) list.
+    @value_changed(func): decorator function, which can be used to handle the events, when the list of
+        transferred items is changed (transferred items are moved from the left to the right list or vice versa).
+        Function under this decorator should recieve one argument - the list of transferred items (keys of the
+        items which are currently displayed in the right list).
+    set_items(): sets the list of items to be displayed in the widget. Likewise in the class constructor,
+        the list of items can either be a list of Transfer.Item objects or a list of strings.
+    set_transferred_items(): sets the list of transferred items (keys of the items which should be displayed
+        in the right list).
+    add(): adds new items to the widget. Likewise in the class constructor, the list of items can either be
+        a list of Transfer.Item objects or a list of strings. Must not contain items with the same keys as
+        in the current list of items.
+    remove(): removes items from the widget by their keys.
+    get_items_keys(): returns the list of keys of the items, which are currently displayed in the widget.
 
-    Example:
+    :Usage example:
+
+     .. code-block:: python
         from supervisely.app.widgets import Transfer
-        
+
         # Creating widget items with Transfer.Item objects.
         item1 = Transfer.Item(key="cat", label="Cat", disabled=True)
         item2 = Transfer.Item(key="dog", label="Dog")
-        
+
         # Creating Transfer widget with the list of Transfer.Item objects. The item "dog" will be displayed
         # in the right (target) list at widget initialization.
         transfer = Transfer(items=[item1, item2], transferred_items=["dog"])
-        
+
         # Setting new transferred items. The item "cat" will be displayed in the right (target) list.
         # Note: items that was in transferred_items list before, but not in the new list, will be moved
         # to untransferred items list (left).
         transfer.set_transferred_items(["cat"])
         print(transfer.get_transferred_items()) # ["cat"]
         print(transfer.get_untransferred_items()) # ["dog"]
-        
+
         # Creating empty Transfer widget.
         transfer = Transfer()
         # Adding items (as strings) to the widget. The item "dog" will be displayed in the right (target) list.
@@ -219,7 +224,7 @@ class Transfer(Widget):
             else:
                 return transferred_items
     
-    def get_json_data(self) -> Dict[str, List[Dict[str, Union[str, bool]]]]:
+    def get_json_data(self) -> Dict[str, Union[List[Dict[str, Union[str, bool]]], None]]:
         """
         Returns the data of the widget in JSON format.
 
