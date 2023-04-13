@@ -31,41 +31,15 @@ class PointcloudTagApi(TagApi):
         :return: ID of the tag assigned to the object
         :rtype: int
         """
-        if value is not None and frame_range is not None:
-            response = self._api.post(
-                "annotation-objects.tags.add",
-                {
-                    ApiField.TAG_ID: tag_id,
-                    ApiField.OBJECT_ID: object_id,
-                    ApiField.VALUE: value,
-                    ApiField.FRAME_RANGE: frame_range,
-                },
-            )
-        elif value is not None:
-            response = self._api.post(
-                "annotation-objects.tags.add",
-                {
-                    ApiField.TAG_ID: tag_id,
-                    ApiField.OBJECT_ID: object_id,
-                    ApiField.VALUE: value,
-                },
-            )
-        elif frame_range is not None:
-            response = self._api.post(
-                "annotation-objects.tags.add",
-                {
-                    ApiField.TAG_ID: tag_id,
-                    ApiField.OBJECT_ID: object_id,
-                    ApiField.FRAME_RANGE: frame_range,
-                },
-            )
-        else:
-            response = self._api.post(
-                "annotation-objects.tags.add",
-                {
-                    ApiField.TAG_ID: tag_id,
-                    ApiField.OBJECT_ID: object_id,
-                },
-            )
+        payload = {
+            ApiField.TAG_ID: tag_id,
+            ApiField.OBJECT_ID: object_id,
+        }
+        if value is not None:
+            payload[ApiField.VALUE] = value
+        if frame_range is not None:
+            payload[ApiField.FRAME_RANGE] = frame_range
+
+        response = self._api.post("annotation-objects.tags.add", payload)
         id = response.json()[ApiField.ID]
         return id
