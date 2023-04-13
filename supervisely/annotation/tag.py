@@ -153,7 +153,7 @@ class Tag(KeyObject):
     @property
     def name(self) -> str:
         """
-        Name.
+        Name property.
 
         :return: Name
         :rtype: :class:`str`
@@ -170,7 +170,25 @@ class Tag(KeyObject):
         return self._meta.name
 
     def key(self):
-        """ """
+        """
+        Get TagMeta key value.
+
+        :return: TagMeta key value
+        :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+            tag_weather = sly.Tag(meta_weather, value="Sunny")
+            key = tag_weather.key()
+            print(key)
+            # Output: weather
+        """
+
         return self._meta.key()
 
     def to_json(self) -> Dict:
@@ -427,6 +445,16 @@ class Tag(KeyObject):
 
         :return: List of table header values.
         :rtype: List[str]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            header = sly.Tag.get_header_ptable()
+
+            print(header)
+            # Output: ['Name', 'Value type', 'Value']
         """
 
         return ["Name", "Value type", "Value"]
@@ -437,6 +465,18 @@ class Tag(KeyObject):
 
         :return: List of tag properties.
         :rtype: List[str]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+            tag_weather = sly.Tag(meta_weather, value="Sunny")
+            row = tag_weather.get_row_ptable()
+            print(row)
+            # Output: ['weather', 'oneof_string', 'Sunny']
         """
 
         return [self._meta.name, self._meta.value_type, self.value]

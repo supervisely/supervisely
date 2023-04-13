@@ -577,6 +577,33 @@ def get_meta(
     :type dicom_tags: dict, optional
     :return: Dictionary containing the normalized meta-data for the volume.
     :rtype: dict
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import SimpleITK as sitk
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+
+        reader = sitk.ImageSeriesReader()
+        reader.SetFileNames(path)
+        sitk_volume = reader.Execute()
+        sitk_volume = _sitk_image_orient_ras(sitk_volume)
+        dicom_tags = read_dicom_tags(paths[0], anonymize=anonymize)
+
+        f_min_max = sitk.MinimumMaximumImageFilter()
+        f_min_max.Execute(sitk_volume)
+        meta = get_meta(
+            sitk_volume.GetSize(),
+            f_min_max.GetMinimum(),
+            f_min_max.GetMaximum(),
+            sitk_volume.GetSpacing(),
+            sitk_volume.GetOrigin(),
+            sitk_volume.GetDirection(),
+            dicom_tags,
+        )
     """
 
     # x = 1 - sagittal
