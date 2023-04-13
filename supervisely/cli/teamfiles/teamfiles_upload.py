@@ -40,8 +40,8 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     # force directories to end with slash '/'
     if not local_dir.endswith(os.path.sep):
         local_dir = os.path.join(local_dir, "")
-    if not remote_dir.endswith(os.path.sep):
-        remote_dir = os.path.join(remote_dir, "")
+    if not remote_dir.endswith("/"):
+        remote_dir += "/"
 
     if not os.path.isdir(local_dir):
         console.print(f"\nError: local directory '{local_dir}' not exists\n", style="bold red")
