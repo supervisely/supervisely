@@ -1,6 +1,6 @@
 from typing import Dict
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionSegmentation
+from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
 from supervisely.sly_logger import logger
 import numpy as np
@@ -21,7 +21,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
         info["task type"] = "salient object segmentation"
         return info
 
-    def _create_label(self, dto: PredictionSegmentation):
+    def _create_label(self, dto: PredictionMask):
         geometry = Bitmap(dto.mask)
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if not dto.mask.any():  # skip empty masks
