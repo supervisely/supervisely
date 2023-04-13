@@ -39,7 +39,7 @@ class Tag(KeyObject):
     :param meta: General information about Tag.
     :type meta: TagMeta
     :param value: Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
-    :type value: str or int or float or None
+    :type value: Optional[Union[str, int, float]]
     :param sly_id: Tag ID in Supervisely server.
     :type sly_id: int, optional
     :param labeler_login: Login of user who created Tag.

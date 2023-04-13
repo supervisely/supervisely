@@ -212,7 +212,7 @@ def normalize_volume_meta(meta: dict) -> dict:
     return meta
 
 
-def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple(np.ndarray, dict):
+def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple[np.ndarray, dict]:
     """
     Read DICOM series volumes with given paths.
 
@@ -221,7 +221,7 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple(np.nda
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
     :return: Volume data in NumPy array format and dictionary with metadata
-    :rtype: Tuple(np.ndarray, dict)
+    :rtype: Tuple[np.ndarray, dict]
     :Usage example:
 
      .. code-block:: python
@@ -446,7 +446,7 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple(sitk.Image, dict):
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[sitk.Image, dict]:
     """
     Read DICOM series volumes with given paths.
 
@@ -455,7 +455,7 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple(s
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
-    :rtype: Tuple(SimpleITK.Image, dict)
+    :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
 
      .. code-block:: python
@@ -660,14 +660,14 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str) -> Tuple(sitk.Image, dict):
+def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     """
     Read NRRD volume with given path.
 
     :param path: Paths to DICOM volume files.
     :type path: List[str]
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
-    :rtype: Tuple(SimpleITK.Image, dict)
+    :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
 
      .. code-block:: python
@@ -701,14 +701,14 @@ def read_nrrd_serie_volume(path: str) -> Tuple(sitk.Image, dict):
     return sitk_volume, meta
 
 
-def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple(np.ndarray, dict):
+def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple[np.ndarray, dict]:
     """
     Read NRRD volume with given path.
 
     :param path: Paths to NRRD volume file.
     :type path: List[str]
     :return: Volume data in NumPy array format and dictionary with metadata.
-    :rtype: Tuple(np.ndarray, dict)
+    :rtype: Tuple[np.ndarray, dict]
     :Usage example:
 
      .. code-block:: python

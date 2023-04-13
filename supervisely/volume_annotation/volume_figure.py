@@ -28,8 +28,8 @@ class VolumeFigure(VideoFigure):
 
     :param volume_object: VolumeObject object.
     :type volume_object: VolumeObject
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
+    :param geometry: Geometry object
+    :type geometry: :class:`Geometry<supervisely.geometry>`
     :param plane_name: Name of the volume plane.
     :type plane_name: str
     :param slice_index: Index of slice to which VolumeFigure belongs.
@@ -330,8 +330,8 @@ class VolumeFigure(VideoFigure):
 
         :param volume_object: VolumeObject object.
         :type volume_object: VolumeObject, optional
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry, optional
+        :param geometry: Geometry object.
+        :type geometry: :class:`Geometry<supervisely.geometry>`
         :param plane_name: Name of the volume plane.
         :type plane_name: str, optional
         :param slice_index: Index of slice to which VolumeFigure belongs.

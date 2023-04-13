@@ -14,7 +14,7 @@ class VolumeTag(Tag):
     :param meta: General information about Volume Tag.
     :type meta: TagMeta
     :param value: Volume Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
-    :type value: str or int or float or None, optional
+    :type value: Optional[Union[str, int, float]]
     :param key: uuid.UUID object.
     :type key: uuid.UUID, optional
     :param sly_id: Volume Tag ID in Supervisely.

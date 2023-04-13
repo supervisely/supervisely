@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from re import L
+from typing import List
 import uuid
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
@@ -193,12 +194,12 @@ class VolumeAnnotation:
         return deepcopy(self._volume_meta)
 
     @property
-    def plane_sagittal(self):
+    def plane_sagittal(self) -> Plane:
         """
         Sagital plane of the volume.
 
         :returns: Sagittal plane of the volume.
-        :rtype: Plane
+        :rtype: :class:Plane
         
         :Usage examle:
 
@@ -214,12 +215,12 @@ class VolumeAnnotation:
         return self._plane_sagittal
 
     @property
-    def plane_coronal(self):
+    def plane_coronal(self) -> Plane:
         """
         Coronal plane of the volume.
 
         :returns: Coronal plane of the volume.
-        :rtype: Plane
+        :rtype: :class:Plane
         
         :Usage examle:
 
@@ -235,12 +236,12 @@ class VolumeAnnotation:
         return self._plane_coronal
 
     @property
-    def plane_axial(self):
+    def plane_axial(self) -> Plane:
         """
         Axial plane of the volume.
 
         :returns: Axial plane of the volume.
-        :rtype: Plane
+        :rtype: :class:Plane
         
         :Usage examle:
 
@@ -256,12 +257,12 @@ class VolumeAnnotation:
         return self._plane_axial
 
     @property
-    def objects(self):
+    def objects(self) -> VolumeObjectCollection:
         """
         VolumeAnnotation objects.
 
         :return: VolumeObjectCollection object
-        :rtype: :class:`VolumeObjectCollection`
+        :rtype: :class:`VolumeObjectCollection<supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection>`
         :Usage example:
 
          .. code-block:: python
@@ -290,12 +291,12 @@ class VolumeAnnotation:
         return self._objects
 
     @property
-    def tags(self):
+    def tags(self) -> VolumeTagCollection:
         """
         VolumeTag objects.
 
         :returns: VolumeTagCollection
-        :rtype: :class:`VolumeTagCollection`
+        :rtype: :class:`VolumeTagCollection<supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection>`
         
         :Usage examle:
 
@@ -311,10 +312,13 @@ class VolumeAnnotation:
         return self._tags
 
     @property
-    def spatial_figures(self):
+    def spatial_figures(self) -> List[VolumeFigure]:
         """
         Get a list of spatial figures.
         
+        :returns: List of spatial figures from VolumeAnnotation object.
+        :rtype: List[VolumeFigure]
+
         :Usage examle:
 
          .. code-block:: python
@@ -329,12 +333,12 @@ class VolumeAnnotation:
         return self._spatial_figures
 
     @property
-    def figures(self) -> list:
+    def figures(self) -> List[VolumeFigure]:
         """
         VolumeFigure objects.
 
         :returns: List of VolumeFigure objects from VolumeAnnotation object.
-        :rtype: list
+        :rtype: List[VolumeFigure]
         
         :Usage examle:
 
@@ -352,7 +356,7 @@ class VolumeAnnotation:
             all_figures.extend(plane.figures)
         return all_figures
 
-    def key(self):
+    def key(self) -> str:
         """
         Volume annotation key value.
 
@@ -394,7 +398,7 @@ class VolumeAnnotation:
         self.plane_coronal.validate_figures_bounds()
         self.plane_axial.validate_figures_bounds()
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """
         Check whether volume annotation contains objects or tags, or not.
 
