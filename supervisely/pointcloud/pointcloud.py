@@ -61,6 +61,7 @@ def has_valid_ext(path: str) -> bool:
         sly.pointcloud.has_valid_ext(path)  # True
         sly.pointcloud.has_valid_ext(path) # False
     """
+
     return is_valid_ext(os.path.splitext(path)[1])
 
 
@@ -83,6 +84,7 @@ def validate_ext(ext: str) -> None:
         # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4. 
         # Only the following extensions are supported: ['.pcd'].
     """
+
     if not is_valid_ext(ext):
         raise UnsupportedPointcloudFormat(
             "Unsupported pointcloud extension: {}. Only the following extensions are supported: {}.".format(
@@ -111,6 +113,7 @@ def validate_format(path: str):
         # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4. 
         # Only the following extensions are supported: ['.pcd'].
     """
+
     _, ext = os.path.splitext(path)
     validate_ext(ext)
 
@@ -217,8 +220,9 @@ def read(path: str, coords_dims: Optional[List[int]] = None) -> np.ndarray:
 
         import supervisely as sly
 
-        ptc = sly.pointcloud.read('/home/admin/work/pointclouds/ptc0.pcd')
+        pcd_np = sly.pointcloud.read('/home/admin/work/pointclouds/ptc0.pcd')
     """
+
     try:
         import open3d as o3d
     except ImportError:
@@ -257,6 +261,7 @@ def write(path: str, pointcloud_np: np.ndarray, coords_dims: Optional[List[int]]
 
         ptc = sly.pointcloud.write('/home/admin/work/pointclouds/ptc0.pcd', pointcloud)
     """
+
     try:
         import open3d as o3d
     except ImportError:
