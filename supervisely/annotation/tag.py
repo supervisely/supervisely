@@ -474,7 +474,9 @@ class Tag(KeyObject):
             weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
             meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
             tag_weather = sly.Tag(meta_weather, value="Sunny")
+
             row = tag_weather.get_row_ptable()
+
             print(row)
             # Output: ['weather', 'oneof_string', 'Sunny']
         """
