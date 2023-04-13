@@ -114,7 +114,9 @@ class VolumeTag(Tag):
             from supervisely.volume_annotation.volume_tag import VolumeTag
             meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
             tag_heart = VolumeTag(meta_heart)
+
             tag_heart_json = tag_heart.to_json()
+
             print(tag_heart_json)
             # Output: {
             #     "name": "heart",
@@ -162,6 +164,7 @@ class VolumeTag(Tag):
             from supervisely.volumme_annotation.volume_tag import VolumeTag
             meta_heart = sly.TagMeta('heart', sly.TagValueType.ANY_STRING)
             meta_collection = sly.TagMetaCollection([meta_heart])
+
             tag_heart = VolumeTag.from_json(tag_heart_json, meta_collection)
         """
 
@@ -219,8 +222,10 @@ class VolumeTag(Tag):
             heart_tag = VolumeTag(meta_heart, value='Heart')
 
             meta_heart_2 = sly.TagMeta('heart tag 2', sly.TagValueType.ANY_STRING)
+
             new_tag = car_tag.clone(meta=meta_heart_2, key=car_tag.key())
             new_tag_json = new_tag.to_json()
+
             print(new_tag_json)
             # Output: {
             #     "name": "heart tag 2",
