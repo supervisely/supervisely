@@ -3,10 +3,11 @@
 
 import os
 import json
-from typing import List, Union
+from typing import List, Tuple, Union
 import numpy as np
 
 import pydicom
+import SimpleITK as sitk
 import stringcase
 from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
 import supervisely.volume.nrrd_encoder as nrrd_encoder
@@ -65,7 +66,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Volume file extension.
     :type ext: str
-    :return: bool
+    :return: True if extensions is in the list of supported extensions else False
     :rtype: :class:`bool`
     :Usage example:
 
@@ -211,7 +212,7 @@ def normalize_volume_meta(meta: dict) -> dict:
     return meta
 
 
-def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
+def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple(np.ndarray, dict):
     """
     Read DICOM series volumes with given paths.
 
@@ -219,8 +220,8 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
-    :return: volume data in NumPy array format and dictionary with metadata
-    :rtype: np.ndarray, dict
+    :return: Volume data in NumPy array format and dictionary with metadata
+    :rtype: Tuple(np.ndarray, dict)
     :Usage example:
 
      .. code-block:: python
@@ -445,7 +446,7 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple(sitk.Image, dict):
     """
     Read DICOM series volumes with given paths.
 
@@ -453,6 +454,8 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
+    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :rtype: Tuple(SimpleITK.Image, dict)
     :Usage example:
 
      .. code-block:: python
@@ -485,7 +488,7 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
     return sitk_volume, meta
 
 
-def compose_ijk_2_world_mat(meta):
+def compose_ijk_2_world_mat(meta: dict) -> np.ndarray:
     """
     Transform 4x4 matrix from voxels to world coordinates.
 
@@ -523,12 +526,12 @@ def compose_ijk_2_world_mat(meta):
     return mat
 
 
-def world_2_ijk_mat(ijk_2_world):
+def world_2_ijk_mat(ijk_2_world) -> np.ndarray:
     """
     Transform 4x4 matrix from world to voxels coordinates.
 
     :param ijk_2_world: 4x4 matrix.
-    :type ijk_2_world: np.array
+    :type ijk_2_world: np.ndarray
     :Usage example:
 
      .. code-block:: python
@@ -657,12 +660,14 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str):
+def read_nrrd_serie_volume(path: str) -> Tuple(sitk.Image, dict):
     """
     Read NRRD volume with given path.
 
     :param path: Paths to DICOM volume files.
     :type path: List[str]
+    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :rtype: Tuple(SimpleITK.Image, dict)
     :Usage example:
 
      .. code-block:: python
@@ -696,14 +701,14 @@ def read_nrrd_serie_volume(path: str):
     return sitk_volume, meta
 
 
-def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
+def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple(np.ndarray, dict):
     """
     Read NRRD volume with given path.
 
     :param path: Paths to NRRD volume file.
     :type path: List[str]
-    :return: volume data in NumPy array format and dictionary with metadata
-    :rtype: np.ndarray, dict
+    :return: Volume data in NumPy array format and dictionary with metadata.
+    :rtype: Tuple(np.ndarray, dict)
     :Usage example:
 
      .. code-block:: python
