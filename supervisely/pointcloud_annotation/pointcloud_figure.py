@@ -181,7 +181,7 @@ class PointcloudFigure(VideoFigure):
         """
         Makes a copy of PointcloudFigure with new fields, if fields are given, otherwise it will use fields of the original PointcloudFigure.
 
-        :param parent_object: PointcloudObject object.
+        :param parent_object: :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudObject>` object.
         :type parent_object: PointcloudObject, optional
         :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
         :type geometry: Geometry, optional

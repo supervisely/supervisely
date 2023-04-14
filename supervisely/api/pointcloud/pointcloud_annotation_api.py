@@ -7,7 +7,9 @@ from typing import List, NamedTuple, Dict, Optional
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+from supervisely.pointcloud_annotation.pointcloud_object_collection import (
+    PointcloudObjectCollection,
+)
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 
 
