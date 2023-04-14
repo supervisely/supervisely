@@ -410,7 +410,7 @@ class PointcloudAnnotation(VideoAnnotation):
             api = sly.Api(address, token)
 
             key_id_map = KeyIdMap()
-            pointcloud_id = pointcloud_id
+            pointcloud_id = 19481098
             project_id = 19441
             project_meta_json = api.project.get_meta(project_id)
             project_meta = sly.ProjectMeta.from_json(project_meta_json)

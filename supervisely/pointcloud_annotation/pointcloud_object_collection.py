@@ -8,7 +8,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudObjectCollection(VideoObjectCollection):
     '''
-    Collection that stores PointcloudObject instances.
+    Collection with :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` instances.
+    :class:`PointcloudObjectCollection<PointcloudObjectCollection>` object is immutable.
     '''
     item_type = PointcloudObject
 
