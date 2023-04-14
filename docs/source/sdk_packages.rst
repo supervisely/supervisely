@@ -721,7 +721,7 @@ Pointcloud Episodes
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    pointcloud episodes
+    pointcloud_episodes
 
 Pointcloud Annotation
 ---------------------
@@ -788,6 +788,42 @@ Pointcloud Annotation
     :template: autosummary/custom-class-template.rst
 
     PointcloudEpisodeAnnotation
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeFrame
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeFrameCollection
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeTag
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeTagCollection
 
 Project
 -------
