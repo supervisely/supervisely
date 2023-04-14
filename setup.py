@@ -59,6 +59,7 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
+    "aiocache==0.12.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -123,7 +124,7 @@ setup(
     entry_points={
         "console_scripts": [
             "sly-release=supervisely.release.run:cli_run",
-            "supervisely=supervisely.cli.cli:cli"
+            "supervisely=supervisely.cli.cli:cli",
         ]
     },
     python_requires=">=3.7.1",

@@ -215,8 +215,8 @@ class FileApi(ModuleApiBase):
             # ]
         """
 
-        if not path.endswith(os.path.sep) and recursive is False:
-            path += os.path.sep
+        if not path.endswith("/") and recursive is False:
+            path += "/"
         if self.is_on_agent(path) is True:
             return self.list_on_agent(team_id, path, recursive)
 
@@ -480,8 +480,8 @@ class FileApi(ModuleApiBase):
 
             api.file.download_directory(9, path_to_dir, local_save_path)
         """
-        if not remote_path.endswith(os.path.sep):
-            remote_path += os.path.sep
+        if not remote_path.endswith("/"):
+            remote_path += "/"
 
         if self.is_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
@@ -518,8 +518,8 @@ class FileApi(ModuleApiBase):
         content_dict[ApiField.NAME] = item
 
         dst_dir = os.path.dirname(dst)
-        if not dst_dir.endswith(os.path.sep):
-            dst_dir += os.path.sep
+        if not dst_dir.endswith("/"):
+            dst_dir += "/"
         content_dict[ApiField.PATH] = dst_dir  # os.path.basedir ...
         content_dict["file"] = (
             item,
@@ -683,11 +683,12 @@ class FileApi(ModuleApiBase):
 
     def remove(self, team_id: int, path: str) -> None:
         """
-        Removes file from Team Files.
+        Removes a file from the Team Files. If the specified path is a directory,
+        the entire directory (including all recursively included files) will be removed.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :param path: Path to File in Team Files.
+        :param path: Path in Team Files.
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
@@ -701,7 +702,8 @@ class FileApi(ModuleApiBase):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.file.remove(8, "/999_App_Test/ds1/01587.json")
+            api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
+            api.file.remove(8, "/999_App_Test/ds1/") # remove folder
         """
 
         if self.is_on_agent(path) is True:
@@ -742,7 +744,7 @@ class FileApi(ModuleApiBase):
 
         if file_info is None:
             raise ValueError(
-                f"Not a file. Maybe you entered directory or file not exists? (Path: '{path}')"
+                f"File not found in Team files. Maybe you entered directory? (Path: '{path}')"
             )
 
         self.remove(team_id, path)
@@ -770,12 +772,11 @@ class FileApi(ModuleApiBase):
             api.file.remove_dir(8, "/999_App_Test/ds1/")
         """
 
-        file_info = self.get_info_by_path(team_id, path)
+        if not path.endswith("/"):
+            raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
-        if not file_info is None:
-            raise ValueError(
-                f"Not a folder. Maybe you entered file path or folder not exist? (Path: '{path}')"
-            )
+        if not self.dir_exists(team_id, path):
+            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
 

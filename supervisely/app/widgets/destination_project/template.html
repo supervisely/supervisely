@@ -35,8 +35,17 @@
     </div>
   </sly-field>
 
+  <el-checkbox
+    v-model="state.{{{widget.widget_id}}}.use_project_datasets_structure"
+  >
+    <div style="display: inline-block">Use source project datasets structure for destination project</div>
+  </el-checkbox>
 
-  <sly-field title="Result dataset" description="All selected items will be placed to a single dataset">
+  <sly-field 
+    title="Result dataset" 
+    description="All selected items will be placed to a single dataset"
+    v-if="!state.{{{widget.widget_id}}}.use_project_datasets_structure"
+    >
     <div class="fflex">
       <el-radio class="radio" v-model="state.{{{widget.widget_id}}}.dataset_mode" label="new_dataset" @input="(val) => {
                             if (val === 'new_dataset') {
