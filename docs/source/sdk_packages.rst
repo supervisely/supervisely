@@ -711,18 +711,6 @@ Pointcloud
 
     pointcloud
 
-Pointcloud Episodes
-----------
-
-.. currentmodule:: supervisely.pointcloud_episodes
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-module-template.rst
-
-    pointcloud_episodes
-
 Pointcloud Annotation
 ---------------------
 
@@ -824,6 +812,19 @@ Pointcloud Annotation
     :template: autosummary/custom-class-template.rst
 
     PointcloudEpisodeTagCollection
+
+
+Pointcloud Episodes
+----------
+
+.. currentmodule:: supervisely.pointcloud_episodes
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    pointcloud_episodes
 
 Project
 -------
