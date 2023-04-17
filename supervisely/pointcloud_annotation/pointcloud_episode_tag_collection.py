@@ -202,11 +202,11 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
 
         return super().from_api_response(data, tag_meta_collection, id_to_tagmeta=id_to_tagmeta)
 
-    def get_by_name(self, tag_name: str) -> List[PointcloudEpisodeTag]:
-        return super().get_by_name(tag_name)
+    # def get_by_name(self, tag_name: str) -> List[PointcloudEpisodeTag]:
+    #     return super().get_by_name(tag_name)
 
-    def get_single_by_name(self, tag_name: str) -> PointcloudEpisodeTag:
-        return super().get_single_by_name(tag_name)
+    # def get_single_by_name(self, tag_name: str) -> PointcloudEpisodeTag:
+    #     return super().get_single_by_name(tag_name)
 
     @classmethod
     def from_json(
