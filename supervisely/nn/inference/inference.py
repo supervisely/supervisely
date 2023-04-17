@@ -289,7 +289,7 @@ class Inference:
 
     def _on_model_deployed(self):
         pass
-    
+
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
@@ -423,7 +423,7 @@ class Inference:
 
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
-                logger.warn(
+                logger.debug(
                     f"Field {key} not found in inference settings. Use default value {value}"
                 )
                 settings[key] = value
