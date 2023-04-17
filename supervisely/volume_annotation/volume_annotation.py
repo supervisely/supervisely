@@ -36,11 +36,11 @@ class VolumeAnnotation:
     :param objects: VolumeObjectCollection object.
     :type objects: VolumeObjectCollection, optional
     :param plane_sagittal: Sagittal plane of the volume.
-    :type plane_sagittal: Plane, optional
+    :type plane_sagittal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param plane_coronal: Coronal plane of the volume.
-    :type plane_coronal: Plane, optional
+    :type plane_coronal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param plane_axial: Axial plane of the volume.
-    :type plane_axial: Plane, optional
+    :type plane_axial: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param tags: VolumeTagCollection object.
     :type tags: VolumeTagCollection, optional
     :param spatial_figures: List of spatial figures associated with the volume.
@@ -199,7 +199,7 @@ class VolumeAnnotation:
         Sagital plane of the volume.
 
         :returns: Sagittal plane of the volume.
-        :rtype: :class:Plane
+        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
         
         :Usage examle:
 
@@ -220,7 +220,7 @@ class VolumeAnnotation:
         Coronal plane of the volume.
 
         :returns: Coronal plane of the volume.
-        :rtype: :class:Plane
+        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
         
         :Usage examle:
 
@@ -241,7 +241,7 @@ class VolumeAnnotation:
         Axial plane of the volume.
 
         :returns: Axial plane of the volume.
-        :rtype: :class:Plane
+        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
         
         :Usage examle:
 
@@ -440,11 +440,11 @@ class VolumeAnnotation:
         :param objects: VolumeObjectCollection object.
         :type objects: VolumeObjectCollection, optional
         :param plane_sagittal: Sagittal plane of the volume.
-        :type plane_sagittal: Plane, optional
+        :type plane_sagittal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param plane_coronal: Coronal plane of the volume.
-        :type plane_coronal: Plane, optional
+        :type plane_coronal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param plane_axial: Axial plane of the volume.
-        :type plane_axial: Plane, optional
+        :type plane_axial: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param tags: VolumeTagCollection object.
         :type tags: VolumeTagCollection, optional
         :param spatial_figures: List of spatial figures associated with the volume.

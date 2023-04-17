@@ -181,7 +181,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a slice index of volume figure.
 
-        :return: Slice index of volume figure.
+        :return: class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
         :rtype: int
         :Usage example:
 
