@@ -16,6 +16,22 @@ class TagApi(ModuleApi):
 
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple TagInfo information about Tag.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            info_sequence = api.video.tag.info_sequence()
+        """
+
         return [ApiField.ID,
                 ApiField.PROJECT_ID,
                 ApiField.NAME,
@@ -27,7 +43,25 @@ class TagApi(ModuleApi):
 
     @staticmethod
     def info_tuple_name():
-        """"""
+        """
+        Get string name of NamedTuple for class.
+
+        :return: NamedTuple name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tuple_name = api.video.tag.info_tuple_name()
+            print(tuple_name) # TagInfo
+        """
+
         return 'TagInfo'
 
     def get_list(self, project_id: int, filters=None):
@@ -120,6 +154,18 @@ class TagApi(ModuleApi):
         :type tags_json: KeyIndexedCollection
         :return: List of tags IDs
         :rtype: list
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_id = 19373170
+            pcd_info = api.
         """
 
         tag_name_id_map = self.get_name_to_id_map(project_id)

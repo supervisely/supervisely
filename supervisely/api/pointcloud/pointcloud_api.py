@@ -50,7 +50,7 @@ class PointcloudInfo(NamedTuple):
     #: :class:`int`: Point cloud ID in Supervisely.
     id: int
 
-    #: :class: `int`: Number of frame in the point cloud
+    #: :class:`int`: Number of frame in the point cloud
     frame: int
 
     #: :class:`str`: Point cloud description.
@@ -82,12 +82,13 @@ class PointcloudInfo(NamedTuple):
     #: "/h5un6l2bnaz1vms4-public/pointclouds/Z/d/HD/lfgipl...NXrg5vz.mp4".
     path_original: str
 
+    #: :class:`str`: MIME type of the point cloud.
     cloud_mime: str
 
-    #: :class: `int`: Number of PointcloudFigure objects in the point cloud
+    #: :class:`int`: Number of PointcloudFigure objects in the point cloud
     figures_count: int
 
-    #: :class: `int`: Number of PointcloudObject objects in the point cloud
+    #: :class:`int`: Number of PointcloudObject objects in the point cloud
     objects_count: int
 
     #: :class:`list`: Pointcloud :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` list.
@@ -178,6 +179,18 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :return: NamedTuple name.
         :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tuple_name = api.pointcloud.info_tuple_name()
+            print(tuple_name) # PointCloudInfo
         """
 
         return "PointCloudInfo"
@@ -535,12 +548,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
             dst_pcd_infos = api.pointcloud.get_list(dst_dataset_id)
             print(f"{len(dst_pcd_infos)} pointcloud before upload.")
+            # Output:
+            # 0 pointcloud before upload.
 
             new_pcd_infos = api.pointcloud.upload_hashes(dst_dataset_id, names, hashes, metas)
             print(f"{len(new_pcd_infos)} pointcloud after upload.")
-
             # Output:
-            # 0 pointcloud before upload.
             # 4 pointcloud after upload.
         """
 

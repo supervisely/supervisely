@@ -753,6 +753,28 @@ class ModuleApi(ModuleApiBase):
         :type parent_id: int
         :param name: Name of the entity for which the information is being retrieved
         :type name: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            dataset_id = 55832
+            name = "IMG_0315.jpeg"
+            info = api.image.get_info_by_name(dataset_id, name)
+            print(info)
+            # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
         """
 
         return self._get_info_by_name(
@@ -775,6 +797,31 @@ class ModuleApi(ModuleApiBase):
         :type parent_id: int
         :param filters: List of parameters to sort output entities.
         :type filters: List[Dict[str, str]], optional
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            dataset_id = 55832
+            images = api.image.get_list(dataset_id)
+            print(images)
+            # Output: [
+                ImageInfo(id=19369642, ...) 
+                ImageInfo(id=19369643, ...)
+                ImageInfo(id=19369644, ...)
+            ]
         """
 
         raise NotImplementedError()
@@ -789,6 +836,27 @@ class ModuleApi(ModuleApiBase):
         :type name: str
         :return: Returns True if entity exists, and False if not
         :rtype: bool
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            name = "IMG_0315.jpeg"
+            dataset_id = 55832
+            exists = api.image.exists(dataset_id, name)
+            print(exists) # True
         """
 
         return self.get_info_by_name(parent_id, name) is not None
@@ -804,6 +872,27 @@ class ModuleApi(ModuleApiBase):
         :type name: str
         :return: Returns free name.
         :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            name = "IMG_0315.jpeg"
+            dataset_id = 55832
+            free_name = api.image.get_free_name(dataset_id, name)
+            print(free_name) # IMG_0315_001.jpeg
         """
 
         return self._get_free_name(
@@ -999,6 +1088,25 @@ class RemoveableBulkModuleApi(ModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for control remove progress.
         :type progress_cb: Callable
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            image_ids = [19369645, 19369646, 19369647]
+            api.image.remove_batch(image_ids)
         """
         for ids_batch in batched(ids, batch_size=batch_size):
             self._api.post(
@@ -1014,5 +1122,24 @@ class RemoveableBulkModuleApi(ModuleApi):
         
         :param id: Entity ID in Supervisely.
         :type id: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            image_id = 19369643
+            api.image.remove(image_id)
         """
         self.remove_batch([id])
