@@ -738,7 +738,6 @@ def download_pointcloud_episode_project(
                             raise e
                         dump_json_file(rimage_info, path_json)
                 if download_pcd:
-                    pointcloud_file_path = pointcloud_file_path if download_pcd else None
                     pointcloud_info = (
                         pointcloud_info._asdict() if download_pointclouds_info else None
                     )
