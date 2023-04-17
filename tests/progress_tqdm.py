@@ -14,6 +14,8 @@ if sly.is_development():
 api = sly.Api()
 # os.environ["ENV"] = "production"
 
+print("___________START_________-")
+
 TF_PATH = "/cardio.tar"
 LOC_PATH = "prog_test.tar"
 TEAM_ID = sly.env.team_id()
@@ -101,6 +103,7 @@ p = MyTqdm(
 
 api.file.download(TEAM_ID, TF_PATH, LOC_PATH, progress_cb=p.update)
 
+print(os.getcwd())
 print(os.listdir(os.getcwd()))
 # size = api.file.get_directory_size(439, "/test.tar")
 # progress_tqdm_file = MyTqdm("File downloaded: ", total_cnt=size, is_size=True)
