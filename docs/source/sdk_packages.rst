@@ -967,3 +967,21 @@ Volume Annotation
     :template: autosummary/custom-class-template.rst
 
       VolumeTagCollection
+
+.. currentmodule:: supervisely.volume_annotation.plane
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      Plane
+
+.. currentmodule:: supervisely.volume_annotation.slice
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      Slice
