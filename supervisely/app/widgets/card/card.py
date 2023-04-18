@@ -26,8 +26,8 @@ class Card(Widget):
             self._show_slot = True
         self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}
         self._lock_message = lock_message
-        self._disabled = {"disabled": False, "message": self._lock_message}
         super().__init__(widget_id=widget_id, file_path=__file__)
+        self._disabled = {"disabled": False, "message": self._lock_message}
 
     def get_json_data(self):
         return {

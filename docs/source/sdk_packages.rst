@@ -401,6 +401,75 @@ Volume API
 
     VolumeTagApi
 
+Pointcloud API
+------------
+**Pointcloud API**
+- API for working with pointclouds in Supervisely.
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudApi
+    PointcloudInfo
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudAnnotationAPI
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeAnnotationAPI
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_figure_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudFigureApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_object_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudObjectApi
+
+.. currentmodule:: supervisely.api.pointcloud.pointcloud_tag_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudTagApi
+
 Augmentation
 ------------
 **Augmentation**
@@ -707,6 +776,55 @@ Pointcloud Annotation
     :template: autosummary/custom-class-template.rst
 
     PointcloudEpisodeAnnotation
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeFrame
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeFrameCollection
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeTag
+
+.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    PointcloudEpisodeTagCollection
+
+
+Pointcloud Episodes
+----------
+
+.. currentmodule:: supervisely.pointcloud_episodes
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    pointcloud_episodes
 
 Project
 -------
