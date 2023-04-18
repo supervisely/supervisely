@@ -79,6 +79,18 @@ class Plane(FrameCollection):
         :type name: Union[str, None]
 
         :raises ValueError: If `name` is not one of "sagittal", "coronal", "axial", or None.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.volume_annotation.plane import Plane
+            plane_name_1 = "axial"
+            Plane.validate_name(plane_name_1)
+
+            plane_name_2 = "xy"
+            Plane.validate_name(plane_name_2)
+            # ValueError: Unknown plane xy, valid names are ['sagittal', 'coronal', 'axial', None]
         """
 
         if name not in Plane._valid_names:
@@ -119,6 +131,20 @@ class Plane(FrameCollection):
 
         :return: Name of the plane.
         :rtype: Union[str, None]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            print(plane.name)
+            # Output: axial
         """
 
         return self._name
@@ -130,6 +156,20 @@ class Plane(FrameCollection):
 
         :return: Number of slices in the plane.
         :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            print(plane.slices_count)
+            # Output: 139
         """
 
         return self._slices_count
@@ -141,6 +181,20 @@ class Plane(FrameCollection):
 
         :return: Size of the image in the plane.
         :rtype: Tuple[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            print(plane.img_size)
+            # Output: (512, 512)
         """
 
         return deepcopy(self._img_size)
@@ -152,6 +206,20 @@ class Plane(FrameCollection):
 
         :return: A dictionary representing the normal vector of the plane.
         :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            print(plane.normal)
+            # Output: {'x': 0, 'y': 0, 'z': 1}
         """
 
         return Plane.get_normal(self.name)
@@ -169,6 +237,14 @@ class Plane(FrameCollection):
         :return: A dictionary representing the normal vector of the plane.
         :rtype: dict
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            print(sly.Plane.get_normal(sly.Plane.AXIAL))
+            # Output: {'x': 0, 'y': 0, 'z': 1}
         """
 
         Plane.validate_name(name)
@@ -188,6 +264,14 @@ class Plane(FrameCollection):
         :type normal: dict
         :return: The name of the plane.
         :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            print(sly.Plane.get_name({'x': 0, 'y': 0, 'z': 1}))
+            # Output: axial
         """
 
         if normal == {"x": 1, "y": 0, "z": 0}:
@@ -209,6 +293,21 @@ class Plane(FrameCollection):
         :return: The size of the image for the given plane.
         :rtype: List[int]
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            img_size = sly.Plane.get_img_size(plane.name, meta)
+            print(img_size)
+            # Output: [512, 512]
         """
 
         Plane.validate_name(name)
@@ -239,6 +338,21 @@ class Plane(FrameCollection):
         :return: Number of slices in the given plane.
         :rtype: int
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = sly.Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            slices_count = sly.Plane.get_slices_count(plane.name, meta)
+            print(slices_count)
+            # Output: 139
         """
 
         Plane.validate_name(name)
@@ -282,6 +396,20 @@ class Plane(FrameCollection):
         :rtype: Plane
 
         :raises ValueError: If `plane_name` is not equal to the "name" field in `data`, or if the "normal" field in `data` is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # Create Plane from json we use data from example to_json(see below)
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            new_plane = sly.Plane.from_json(
+                data=plane.to_json(),
+                plane_name=sly.Plane.AXIAL,
+                objects=sly.VolumeObjectCollection([]),
+                volume_meta=meta,
+            )
         """
 
         Plane.validate_name(plane_name)
@@ -321,6 +449,21 @@ class Plane(FrameCollection):
         :type key_id_map: Optional[KeyIdMap]
         :return: A JSON serializable dictionary representation of the `Plane` instance.
         :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.volume_annotation.plane import Plane
+            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
+            vol, meta = sly.volume.read_nrrd_serie_volume(path)
+
+            plane = Plane(
+                sly.Plane.AXIAL,
+                volume_meta=meta,
+            )
+            print(plane.to_json())
+            # Output: { "name": "axial", "normal": { "x": 0, "y": 0, "z": 1 }, "slices": [] }
         """
         json_slices = []
         for slice in self:
@@ -335,7 +478,7 @@ class Plane(FrameCollection):
 
     def validate_figures_bounds(self):
         """
-        Validates the figure bounds for all slices in the `Plane` instance.
+        Validates the figure bounds for all slices in the Plane.
 
         :raises ValueError: If any of the slices in the `Plane` instance have invalid figure bounds.
         """
