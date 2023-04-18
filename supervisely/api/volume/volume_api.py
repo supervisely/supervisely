@@ -957,9 +957,9 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param slice_index: Slice index.
+        :param slice_index: class:`Slice<supervisely.volume_annotation.slice.Slice>` index.
         :type slice_index: int
-        :param plane: Plane of the slice in volume.
+        :param plane: class:`Plane<supervisely.volume_annotation.plane.Plane>`of the slice in volume.
         :type plane: str
         :param window_center: Window center.
         :type window_center: float

@@ -1016,3 +1016,90 @@ Video Annotation
     :template: autosummary/custom-class-template.rst
 
       VideoTagCollection
+
+Volume
+-----
+
+.. currentmodule:: supervisely.volume
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-module-template.rst
+
+    volume
+
+Volume Annotation
+----------------
+
+.. currentmodule:: supervisely.volume_annotation.volume_annotation
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeAnnotation
+
+.. currentmodule:: supervisely.volume_annotation.volume_figure
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeFigure
+
+.. currentmodule:: supervisely.volume_annotation.volume_object
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeObject
+
+.. currentmodule:: supervisely.volume_annotation.volume_object_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      VolumeObjectCollection
+
+.. currentmodule:: supervisely.volume_annotation.volume_tag
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeTag
+
+.. currentmodule:: supervisely.volume_annotation.volume_tag_collection
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      VolumeTagCollection
+
+.. currentmodule:: supervisely.volume_annotation.plane
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      Plane
+
+.. currentmodule:: supervisely.volume_annotation.slice
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+      Slice

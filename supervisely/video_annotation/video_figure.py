@@ -213,6 +213,19 @@ class VideoFigure:
         return self._frame_index
 
     def key(self) -> UUID:
+        """
+        Figure key.
+
+        :return: Figure key.
+        :rtype: UUID
+        :Usage example:
+
+         .. code-block:: python
+
+            key = video_figure_car.key
+            print(key) # 158e6cf4f4ac4c639fc6994aad127c16
+        """
+
         return self._key
 
     def _validate_geometry(self):

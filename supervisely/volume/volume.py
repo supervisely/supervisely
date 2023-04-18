@@ -3,10 +3,11 @@
 
 import os
 import json
-from typing import List, Union
+from typing import List, Tuple, Union
 import numpy as np
 
 import pydicom
+import SimpleITK as sitk
 import stringcase
 from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
 import supervisely.volume.nrrd_encoder as nrrd_encoder
@@ -35,7 +36,7 @@ def get_extension(path: str):
         import supervisely as sly
 
         path = "src/upload/folder/CTACardio.nrrd"
-        ext = sly.volume.get_extension(path=path)
+        ext = sly.volume.get_extension(path=path) # .nrrd
     """
 
     # magic.from_file("path", mime=True)
@@ -65,7 +66,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Volume file extension.
     :type ext: str
-    :return: bool
+    :return: True if extensions is in the list of supported extensions else False
     :rtype: :class:`bool`
     :Usage example:
 
@@ -86,7 +87,7 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Path to volume file.
     :type path: str
-    :return: bool
+    :return: True if Volume file has supported extension else False
     :rtype: :class:`bool`
     :Usage example:
 
@@ -127,14 +128,68 @@ def validate_format(path: str):
         )
 
 
-def rescale_slope_intercept(value, slope, intercept):
-    """Rescale intensity value."""
+def rescale_slope_intercept(value: float, slope: float, intercept: float) -> float:
+    """
+    Rescale intensity value using the given slope and intercept.
+
+    :param value: The intensity value to be rescaled.
+    :type value: float
+    :param slope: The slope for rescaling.
+    :type slope: float
+    :param intercept: The intercept for rescaling.
+    :type intercept: float
+    :return: The rescaled intensity value.
+    :rtype: float
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        meta["intensity"]["min"] = sly.volume.volume.rescale_slope_intercept(
+            meta["intensity"]["min"],
+            meta["rescaleSlope"],
+            meta["rescaleIntercept"],
+        )
+    """
 
     return value * slope + intercept
 
 
-def normalize_volume_meta(meta: dict):
-    """Normalize volume metadata."""
+def normalize_volume_meta(meta: dict) -> dict:
+    """
+    Normalize volume metadata.
+
+    :param meta: Metadata of the volume.
+    :type meta: dict
+    :return: Normalized volume metadata.
+    :rtype: dict
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        normalized_meta = sly.volume.volume.volume.normalize_volume_meta(volume_meta)
+
+        print(normalized_meta)
+        # Output:
+        # {
+        #     'ACS': 'RAS',
+        #     'channelsCount': 1,
+        #     'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+        #     'directions': (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+        #     'intensity': {'max': 3071.0, 'min': -3024.0},
+        #     'origin': (-194.238403081894, -217.5384061336518, -347.7500000000001),
+        #     'rescaleIntercept': 0,
+        #     'rescaleSlope': 1,
+        #     'spacing': (0.7617189884185793, 0.7617189884185793, 2.5),
+        #     'windowCenter': 23.5,
+        #     'windowWidth': 6095.0
+        # }
+    """
 
     meta["intensity"]["min"] = rescale_slope_intercept(
         meta["intensity"]["min"],
@@ -157,7 +212,7 @@ def normalize_volume_meta(meta: dict):
     return meta
 
 
-def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
+def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple[np.ndarray, dict]:
     """
     Read DICOM series volumes with given paths.
 
@@ -165,8 +220,8 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
-    :return: volume data in NumPy array format and dictionary with metadata
-    :rtype: np.ndarray, dict
+    :return: Volume data in NumPy array format and dictionary with metadata
+    :rtype: Tuple[np.ndarray, dict]
     :Usage example:
 
      .. code-block:: python
@@ -219,7 +274,28 @@ def read_dicom_tags(
     allowed_keys: Union[None, List[str]] = _default_dicom_tags,
     anonymize: bool = True,
 ):
-    """read_dicom_tags"""
+    """
+    Read DICOM tags from a DICOM file.
+    
+    :param path: Path to the DICOM file.
+    :type path: str
+    :param allowed_keys: List of allowed DICOM keywords to be extracted. Default is None, which means all keywords are allowed.
+    :type allowed_keys: Union[None, List[str]], optional
+    :param anonymize: Flag to indicate whether to anonymize certain tags or not.
+    :type anonymize: bool, optional
+    :return: Dictionary containing the extracted DICOM tags.
+    :rtype: dict
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "src/upload/Dicom_files/nnn.dcm"
+        dicom_tags = sly.volume.read_dicom_tags(path=path)
+    """
+
     import SimpleITK as sitk
 
     reader = sitk.ImageFileReader()
@@ -250,8 +326,42 @@ def read_dicom_tags(
     return vol_info
 
 
-def encode(volume_np: np.ndarray, volume_meta):
-    """Encodes volume from NumPy format into a NRRD format."""
+def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
+    """
+    Encodes a volume from NumPy format into a NRRD format.
+
+    :param volume_np: NumPy array representing the volume data.
+    :type volume_np: np.ndarray
+    :param volume_meta: Metadata of the volume.
+    :type volume_meta: dict
+
+    :return: Encoded volume data in bytes.
+    :rtype: bytes
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import numpy as np
+        import supervisely as sly
+
+        volume_np = np.random.rand(256, 256, 256)
+        volume_meta = {
+            "ACS": "RAS",
+            "channelsCount": 1,
+            "dimensionsIJK": { "x": 512, "y": 512, "z": 139 },
+            "directions": (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+            "intensity": { "max": 3071.0, "min": -3024.0 },
+            "origin": (-194.238403081894, -217.5384061336518, -347.7500000000001),
+            "rescaleIntercept": 0,
+            "rescaleSlope": 1,
+            "spacing": (0.7617189884185793, 0.7617189884185793, 2.5),
+            "windowCenter": 23.5,
+            "windowWidth": 6095.0
+        }
+
+        encoded_volume = sly.volume.encode(volume_np, volume_meta)
+    """
 
     directions = np.array(volume_meta["directions"]).reshape(3, 3)
     directions *= volume_meta["spacing"]
@@ -336,7 +446,7 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[sitk.Image, dict]:
     """
     Read DICOM series volumes with given paths.
 
@@ -344,6 +454,8 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
+    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
 
      .. code-block:: python
@@ -376,10 +488,37 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
     return sitk_volume, meta
 
 
-def compose_ijk_2_world_mat(spacing, origin, directions):
+def compose_ijk_2_world_mat(meta: dict) -> np.ndarray:
     """
-    Calculate a 4x4 transformation matrix for converting from IJK to world coordinates 
+    Transform 4x4 matrix from voxels to world coordinates.
+
+    :param meta: Volume metadata.
+    :type meta: dict
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        mat = sly.volume.volume.compose_ijk_2_world_mat(volume_meta)
+
+        # Output:
+        # [
+        #     [   0.76171899    0.            0.         -194.23840308]
+        #     [   0.            0.76171899    0.         -217.53840613]
+        #     [   0.            0.            2.5        -347.75      ]
+        #     [   0.            0.            0.            1.        ]
+        # ]
     """
+
+    try:
+        spacing = meta["spacing"]
+        origin = meta["origin"]
+        directions = meta["directions"]
+    except KeyError as e:
+        raise IOError(
+            f"Need the meta '{e}'' field to determine the mapping from voxels to world coordinates."
+        )
 
     mat = np.eye(4)
     mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
@@ -387,10 +526,89 @@ def compose_ijk_2_world_mat(spacing, origin, directions):
     return mat
 
 
-def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}):
+def world_2_ijk_mat(ijk_2_world) -> np.ndarray:
+    """
+    Transform 4x4 matrix from world to voxels coordinates.
+
+    :param ijk_2_world: 4x4 matrix.
+    :type ijk_2_world: np.ndarray
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        mat = sly.volume.volume.world_2_ijk_mat(world_mat)
+
+        # Output:
+        # [
+        #     [  1.3128201    0.           0.         255.00008013]
+        #     [  0.           1.3128201    0.         285.58879251]
+        #     [  0.           0.           0.4        139.1       ]
+        #     [  0.           0.           0.           1.        ]
+        # ]
+    """
+
+    return np.linalg.inv(ijk_2_world)
+
+
+def get_meta(
+    sitk_shape: tuple,
+    min_intensity: float,
+    max_intensity: float,
+    spacing: tuple,
+    origin: tuple,
+    directions: tuple,
+    dicom_tags: dict = {},
+) -> dict:
     """
     Get normalized meta-data for a volume.
+
+    :param sitk_shape: Tuple representing the shape of the volume in (x, y, z) dimensions.
+    :type sitk_shape: tuple
+    :param min_intensity: Minimum intensity value in the volume.
+    :type min_intensity: float
+    :param max_intensity: Maximum intensity value in the volume.
+    :type max_intensity: float
+    :param spacing: Tuple representing the spacing between voxels in (x, y, z) dimensions.
+    :type spacing: tuple
+    :param origin: Tuple representing the origin of the volume in (x, y, z) dimensions.
+    :type origin: tuple
+    :param directions: Tuple representing the direction matrix of the volume.
+    :type directions: tuple
+    :param dicom_tags: Dictionary containing additional DICOM tags for the volume meta-data.
+    :type dicom_tags: dict, optional
+    :return: Dictionary containing the normalized meta-data for the volume.
+    :rtype: dict
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import SimpleITK as sitk
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+
+        reader = sitk.ImageSeriesReader()
+        reader.SetFileNames(path)
+        sitk_volume = reader.Execute()
+        sitk_volume = _sitk_image_orient_ras(sitk_volume)
+        dicom_tags = read_dicom_tags(paths[0], anonymize=anonymize)
+
+        f_min_max = sitk.MinimumMaximumImageFilter()
+        f_min_max.Execute(sitk_volume)
+        meta = get_meta(
+            sitk_volume.GetSize(),
+            f_min_max.GetMinimum(),
+            f_min_max.GetMaximum(),
+            sitk_volume.GetSpacing(),
+            sitk_volume.GetOrigin(),
+            sitk_volume.GetDirection(),
+            dicom_tags,
+        )
     """
+
     # x = 1 - sagittal
     # y = 1 - coronal
     # z = 1 - axial
@@ -442,12 +660,14 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str):
+def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     """
     Read NRRD volume with given path.
 
     :param path: Paths to DICOM volume files.
     :type path: List[str]
+    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
 
      .. code-block:: python
@@ -481,14 +701,14 @@ def read_nrrd_serie_volume(path: str):
     return sitk_volume, meta
 
 
-def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
+def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple[np.ndarray, dict]:
     """
     Read NRRD volume with given path.
 
     :param path: Paths to NRRD volume file.
     :type path: List[str]
-    :return: volume data in NumPy array format and dictionary with metadata
-    :rtype: np.ndarray, dict
+    :return: Volume data in NumPy array format and dictionary with metadata.
+    :rtype: Tuple[np.ndarray, dict]
     :Usage example:
 
      .. code-block:: python
