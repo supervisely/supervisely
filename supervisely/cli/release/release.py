@@ -136,12 +136,12 @@ def upload_archive(
         "release": json.dumps(release),
         "config": json.dumps(config),
         "readme": readme,
+        "modalTemplate": modal_template,
         "archive": (
             "arhcive.tar.gz",
             f,
             "application/gzip",
         ),
-        "modalTemplate": modal_template,
     }
     if slug:
         fields["slug"] = slug
