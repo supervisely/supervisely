@@ -6,12 +6,20 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
 from supervisely.api.entity_annotation.object_api import ObjectApi
+from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudObjectTagApi
 
 
 class PointcloudObjectApi(ObjectApi):
     """
     :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`.
     """
+
+    def __init__(self, api):
+        """
+        :param api: Api class object
+        """
+        super().__init__(api)
+        self.tag = PointcloudObjectTagApi(api)
 
     def append_bulk(
         self,
