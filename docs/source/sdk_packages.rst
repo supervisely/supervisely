@@ -402,7 +402,7 @@ Volume API
     VolumeTagApi
 
 Pointcloud API
-------------
+--------------
 **Pointcloud API**
 - API for working with pointclouds in Supervisely.
 
@@ -815,7 +815,7 @@ Pointcloud Annotation
 
 
 Pointcloud Episodes
-----------
+-------------------
 
 .. currentmodule:: supervisely.pointcloud_episodes
 
@@ -1018,7 +1018,7 @@ Video Annotation
       VideoTagCollection
 
 Volume
------
+------
 
 .. currentmodule:: supervisely.volume
 
@@ -1030,7 +1030,7 @@ Volume
     volume
 
 Volume Annotation
-----------------
+-----------------
 
 .. currentmodule:: supervisely.volume_annotation.volume_annotation
 

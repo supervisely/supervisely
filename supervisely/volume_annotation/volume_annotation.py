@@ -36,11 +36,11 @@ class VolumeAnnotation:
     :param objects: VolumeObjectCollection object.
     :type objects: VolumeObjectCollection, optional
     :param plane_sagittal: Sagittal plane of the volume.
-    :type plane_sagittal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+    :type plane_sagittal: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param plane_coronal: Coronal plane of the volume.
-    :type plane_coronal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+    :type plane_coronal: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param plane_axial: Axial plane of the volume.
-    :type plane_axial: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+    :type plane_axial: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
     :param tags: VolumeTagCollection object.
     :type tags: VolumeTagCollection, optional
     :param spatial_figures: List of spatial figures associated with the volume.
@@ -179,8 +179,8 @@ class VolumeAnnotation:
 
         :returns: Sagittal plane of the volume.
         :rtype: dict
-        
-        :Usage examle:
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -199,9 +199,9 @@ class VolumeAnnotation:
         Sagital plane of the volume.
 
         :returns: Sagittal plane of the volume.
-        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
-        
-        :Usage examle:
+        :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -220,9 +220,9 @@ class VolumeAnnotation:
         Coronal plane of the volume.
 
         :returns: Coronal plane of the volume.
-        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
-        
-        :Usage examle:
+        :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -241,9 +241,9 @@ class VolumeAnnotation:
         Axial plane of the volume.
 
         :returns: Axial plane of the volume.
-        :rtype: class:`Plane<supervisely.volume_annotation.plane.Plane>`
-        
-        :Usage examle:
+        :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -297,8 +297,8 @@ class VolumeAnnotation:
 
         :returns: VolumeTagCollection
         :rtype: :class:`VolumeTagCollection<supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection>`
-        
-        :Usage examle:
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -315,11 +315,11 @@ class VolumeAnnotation:
     def spatial_figures(self) -> List[VolumeFigure]:
         """
         Get a list of spatial figures.
-        
+
         :returns: List of spatial figures from VolumeAnnotation object.
         :rtype: List[VolumeFigure]
 
-        :Usage examle:
+        :Usage example:
 
          .. code-block:: python
 
@@ -339,8 +339,8 @@ class VolumeAnnotation:
 
         :returns: List of VolumeFigure objects from VolumeAnnotation object.
         :rtype: List[VolumeFigure]
-        
-        :Usage examle:
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -362,8 +362,8 @@ class VolumeAnnotation:
 
         :returns: Key value of VolumeAnnotation object.
         :rtype: str
-        
-        :Usage examle:
+
+        :Usage example:
 
          .. code-block:: python
 
@@ -440,11 +440,11 @@ class VolumeAnnotation:
         :param objects: VolumeObjectCollection object.
         :type objects: VolumeObjectCollection, optional
         :param plane_sagittal: Sagittal plane of the volume.
-        :type plane_sagittal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+        :type plane_sagittal: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param plane_coronal: Coronal plane of the volume.
-        :type plane_coronal: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+        :type plane_coronal: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param plane_axial: Axial plane of the volume.
-        :type plane_axial: class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
+        :type plane_axial: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`, optional
         :param tags: VolumeTagCollection object.
         :type tags: VolumeTagCollection, optional
         :param spatial_figures: List of spatial figures associated with the volume.

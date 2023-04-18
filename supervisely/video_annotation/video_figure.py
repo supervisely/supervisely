@@ -325,7 +325,7 @@ class VideoFigure:
         Get metadata for the video figure.
 
         :return: Dictionary with metadata for the video figure.
-        :rtype: `Dict[str, int]`
+        :rtype: :py:class:`Dict[str, int]`
         :Usage example:
 
          .. code-block:: python
@@ -355,7 +355,7 @@ class VideoFigure:
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
-        :type data: dict
+        :type data: :class:`dict`
         :param objects: VideoObjectCollection object.
         :type objects: VideoObjectCollection
         :param frame_index: Index of Frame to which VideoFigure belongs.

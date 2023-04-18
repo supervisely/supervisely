@@ -382,13 +382,13 @@ class VideoAnnotation:
 
         :returns: Key value of annotation object.
         :rtype: str
-        
-        :Usage examle:
+
+        :Usage example:
 
         .. code-block:: python
 
             import supervisely as sly
-            
+
             height, width = 500, 700
             frames_count = 1
             # VideoObjectCollection

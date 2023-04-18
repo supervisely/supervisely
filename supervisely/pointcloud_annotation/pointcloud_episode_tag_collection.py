@@ -217,7 +217,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
     ) -> PointcloudEpisodeTagCollection:
         """
         Convert a list with dicts in json format to :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>`.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`.
+        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`

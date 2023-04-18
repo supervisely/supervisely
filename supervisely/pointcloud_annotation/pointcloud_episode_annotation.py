@@ -593,7 +593,7 @@ class PointcloudEpisodeAnnotation:
         :returns: PointcloudObjectCollection object.
         :rtype: PointcloudObjectCollection
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
@@ -674,7 +674,7 @@ class PointcloudEpisodeAnnotation:
         :returns: List of PointcloudFigure objects from PointcloudEpisodeAnnotation object.
         :rtype: list
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
@@ -694,7 +694,7 @@ class PointcloudEpisodeAnnotation:
 
             for figure in ann.figures:
                 print(figure.to_json())
-            
+
             # Output:
             # {
             #     "geometry": {
@@ -718,7 +718,7 @@ class PointcloudEpisodeAnnotation:
         :returns: PointcloudEpisodeTagCollection object.
         :rtype: PointcloudEpisodeTagCollection
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
@@ -747,8 +747,8 @@ class PointcloudEpisodeAnnotation:
 
         :returns: Key value of point cloud episodes annotation object.
         :rtype: str
-        
-        :Usage examle:
+
+        :Usage example:
 
         .. code-block:: python
 

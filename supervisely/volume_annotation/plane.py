@@ -37,8 +37,8 @@ class Plane(FrameCollection):
     :type img_size: Optional[Union[Tuple[int, int], None]]
     :param slices_count: Number of slices in the plane.
     :type slices_count: Optional[Union[int, None]]
-    :param items: List of class:`Slice<supervisely.volume_annotation.slice.Slice>` objects representing the slices in the plane.
-    :type items: Oprional[List[Slice]]
+    :param items: List of :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` objects representing the slices in the plane.
+    :type items: Oprional[List[:py:class:`Slice<supervisely.volume_annotation.slice.Slice>`]]
     :param volume_meta: Metadata of the volume.
     :type volume_meta: Optional[dict]
     :Usage example:
@@ -392,10 +392,10 @@ class Plane(FrameCollection):
         :type volume_meta: Optional[dict]
         :param key_id_map: Dictionary mapping object keys to object IDs.
         :type key_id_map: Optional[KeyIdMap]
-        :return: A new class:`Plane<Plane>` instance created from the JSON data.
-        :rtype: Plane
+        :return: A new class:`Plane<Plane>` instance created from the JSON.
+        :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
 
-        :raises ValueError: If `plane_name` is not equal to the "name" field in `data`, or if the "normal" field in `data` is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
+        :raises ValueError: If `plane_name` is not equal to the "name" field in "data", or if the "normal" field in "data" is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
         :Usage example:
 
          .. code-block:: python

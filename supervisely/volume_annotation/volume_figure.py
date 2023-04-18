@@ -132,15 +132,13 @@ class VolumeFigure(VideoFigure):
             # Output:
             # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f95f0950b50>
         """
-        
+
         return self._video_object
 
     @property
     def video_object(self):
         """Property "video_object" is only available for videos."""
-        raise NotImplementedError(
-            'Property "video_object" is only available for videos'
-        )
+        raise NotImplementedError('Property "video_object" is only available for videos')
 
     @property
     def parent_object(self) -> VolumeObject:
@@ -181,7 +179,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a slice index of volume figure.
 
-        :return: class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
+        :return: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
         :rtype: int
         :Usage example:
 
@@ -494,9 +492,7 @@ class VolumeFigure(VideoFigure):
                 raise RuntimeError("Figure can not be deserialized: key_id_map is None")
             object_key = key_id_map.get_object_key(object_id)
             if object_key is None:
-                raise RuntimeError(
-                    "Object with id={!r} not found in key_id_map".format(object_id)
-                )
+                raise RuntimeError("Object with id={!r} not found in key_id_map".format(object_id))
 
         volume_object = objects.get(object_key)
         if volume_object is None:

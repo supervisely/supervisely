@@ -111,7 +111,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: PointcloudTagCollection object.
         :rtype: PointcloudTagCollection
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
@@ -142,7 +142,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: PointcloudObjectCollection object.
         :rtype: PointcloudObjectCollection
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
@@ -173,7 +173,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: List of PointcloudFigure objects from PointcloudAnnotation object.
         :rtype: list
 
-        :Usage examle:
+        :Usage example:
 
         .. code-block:: python
 
