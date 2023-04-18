@@ -53,12 +53,23 @@ class Tree(Widget):
         def get_id(self):
             return self._id
 
+        def get_label(self):
+            return self._label
+
         def get_children(self):
             return self._children
 
         def add_children(self, children: Tree.Node):
             self._children = self._children + children
             # self._children.extend(children) - infinite recursion !!!
+
+        @classmethod
+        def disable(cls, node):
+            node._disabled = True
+
+        @classmethod
+        def unable(cls, node):
+            node._disabled = False
 
     def __init__(
         self,
@@ -176,6 +187,20 @@ class Tree(Widget):
         for node in self._all_nodes:
             if node.get_id() == id:
                 return node
+
+    def disable_node(self, id: int):
+        check_node = self.get_node(id)
+        Tree.Node.disable(check_node)
+        self._data_json = self._data_to_json()
+        DataJson()[self.widget_id]["data"] = self._data_json
+        DataJson().send_changes()
+
+    def unable_node(self, id: int):
+        check_node = self.get_node(id)
+        Tree.Node.unable(check_node)
+        self._data_json = self._data_to_json()
+        DataJson()[self.widget_id]["data"] = self._data_json
+        DataJson().send_changes()
 
     def node_click(self, func):
         route_path = self.get_route_path(Tree.Routes.NODE_CLICK)
