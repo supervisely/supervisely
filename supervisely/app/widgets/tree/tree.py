@@ -13,24 +13,6 @@ class Tree(Widget):
         NODE_CLICK = "node_click"
         CHECK_CHANGE = "check_change"
 
-    # class Children:
-    #     def __init__(self, parent: int, label: str = "", disabled: bool = False) -> Tree.Children:
-    #         self._parent_id = parent
-    #         self._id = Tree.id.__next__()
-    #         self._label = label
-    #         self._disabled = disabled
-
-    #     def to_json(self):
-    #         return {
-    #             "parent_id": self._parent_id,
-    #             "id": self._id,
-    #             "label": self._label,
-    #             "disabled": self._disabled,
-    #         }
-
-    #     def from_json(self, data: dict):
-    #         return Tree.Children(data["label"], data["disabled"])
-
     class Node:
         def __init__(
             self, label: str, children: List[Tree.Node] = [], disabled: bool = False
@@ -53,22 +35,34 @@ class Tree(Widget):
                 res["children"] = unpacked_childrens
             return res
 
-        def from_json(self, json: dict):
-            self._label = json["label"]
-            self._children = json["children"]
-            self._disabled = json["disabled"]
-            return Tree.Node(self._label, self._children, self._disabled)
+        @classmethod
+        def from_json(cls, data: dict) -> Tree.Node:
+            label = data["label"]
+            children = data.get("children", [])
+            node_children = []
+            if len(children) != 0:
+                for child in children:
+                    if type(child) is Tree.Node:
+                        continue
+                    node_children.append(Tree.Node.from_json(child))
+            else:
+                node_children = children
+            disabled = data.get("disabled", False)
+            return Tree.Node(label, node_children, disabled)
 
         def get_id(self):
             return self._id
 
+        def get_children(self):
+            return self._children
+
         def add_children(self, children: Tree.Node):
             self._children = self._children + children
-            # self._children.extend(children)
+            # self._children.extend(children) - infinite recursion !!!
 
     def __init__(
         self,
-        data: List[Tree.Node] = [],
+        data: Optional[List[Tree.Node] or List[Dict]] = [],
         node_key: str = "id",
         show_checkbox: bool = False,
         current_node_key: Optional[str or int] = None,
@@ -76,7 +70,12 @@ class Tree(Widget):
         accordion: bool = False,
         widget_id: str = None,
     ):
-        self._data = data
+        self._data = []
+        if len(data) > 0 and type(data[0]) is dict:
+            for curr_data in data:
+                self._data.append(Tree.Node.from_json(curr_data))
+        else:
+            self._data = data
         self._node_key = node_key
         self._show_checkbox = show_checkbox
         self._current_node_key = current_node_key
@@ -86,8 +85,33 @@ class Tree(Widget):
         self._node_click = False
         self._check_change = False
         self._checked_key = None
+        self._data_json = []
+
+        self._all_nodes = []
+
+        self._get_all_nodes()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def _get_all_nodes(self):
+        for node in self._data:
+            self._all_nodes.append(node)
+            self._get_childrens(node)
+
+    def _data_to_json(self):
+        return [node.to_json() for node in self._data]
+
+    def _get_childrens(self, curr_node):
+        while True:
+            curr_children = curr_node.get_children()
+            if len(curr_children) == 0:
+                break
+            else:
+                if curr_children[0] in self._all_nodes:
+                    break
+                for curr_child in curr_children:
+                    self._get_childrens(curr_child)
+            self._all_nodes.extend(curr_children)
 
     def get_json_data(self):
         res = {
@@ -99,7 +123,8 @@ class Tree(Widget):
         }
 
         if self._data is not None:
-            res["data"] = [node.to_json() for node in self._data]
+            self._data_json = self._data_to_json()
+            res["data"] = self._data_json
         return res
 
     def get_json_state(self):
@@ -118,25 +143,37 @@ class Tree(Widget):
     def get_data(self):
         return DataJson()[self.widget_id]["data"]
 
-    def set_data(self, value: List[Dict]):
-        self._data = value
+    def set_data(self, data: Optional[List[Tree.Node] or List[Dict]]):
+        if len(data) > 0 and type(data[0]) is dict:
+            for curr_data in data:
+                self._data.append(Tree.Node.from_json(curr_data))
+        else:
+            self._data = data
+
+        self._data_json = self._data_to_json()
+        self._get_all_nodes()
         DataJson()[self.widget_id]["data"] = self._data_json
         DataJson().send_changes()
 
-    def add_node(self, value):
+    def add_node(self, value: Optional[Tree.Node or Dict]):
         if type(value) is not dict:
-            value = value.to_json()
-        self._data.append(value)
+            new_node = value
+        else:
+            new_node = Tree.Node.from_json(value)
+
+        self._data.append(new_node)
+        self._data_json = self._data_to_json()
+        self._all_nodes.append(new_node)
+        self._get_childrens(new_node)
         DataJson()[self.widget_id]["data"] = self._data_json
         DataJson().send_changes()
 
-    def add_nodes(self, value: List[Dict]):
-        self._data.extend(value)
-        DataJson()[self.widget_id]["data"] = self._data_json
-        DataJson().send_changes()
+    def add_nodes(self, values: Optional[List[Tree.Node] or List[Dict]]):
+        for value in values:
+            self.add_node(value)
 
     def get_node(self, id: int):
-        for node in self._data:
+        for node in self._all_nodes:
             if node.get_id() == id:
                 return node
 
