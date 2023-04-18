@@ -308,6 +308,26 @@ class VideoFigure:
         return data_json
 
     def get_meta(self) -> Dict[str, int]:
+        """
+        Get metadata for the video figure.
+
+        :return: Dictionary with metadata for the video figure.
+        :rtype: `Dict[str, int]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_car = sly.ObjClass('car', sly.Rectangle)
+            video_obj_car = sly.VideoObject(obj_class_car)
+            fr_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+
+            print(video_figure_car.get_meta()) # {'frame': 7}
+        """
+
         return {ApiField.FRAME: self.frame_index}
 
     @classmethod

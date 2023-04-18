@@ -377,6 +377,30 @@ class VideoAnnotation:
         return self._tags
 
     def key(self) -> UUID:
+        """
+        Annotation key value.
+
+        :returns: Key value of annotation object.
+        :rtype: str
+        
+        :Usage examle:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            
+            height, width = 500, 700
+            frames_count = 1
+            # VideoObjectCollection
+            obj_class_car = sly.ObjClass('car', sly.Rectangle)
+            video_obj_car = sly.VideoObject(obj_class_car)
+            objects = sly.VideoObjectCollection([video_obj_car])
+            video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
+
+            print(video_ann.key())
+            # Output: 6e5bd622-4d7b-45ee-8bc5-807d5a5e2134
+        """
+
         return self._key
 
     @property
@@ -659,7 +683,9 @@ class VideoAnnotation:
             workspace = api.workspace.get_info_by_name(team.id, workspace_name)
             project = api.project.get_info_by_name(workspace.id, project_name)
 
-            meta = api.project.get_meta(project.id)
+            meta_json = api.project.get_meta(project.id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
 
             # Load json file
             path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
@@ -743,7 +769,29 @@ class VideoAnnotation:
 
         :returns: True if video annotation is empty, False otherwise.
         :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video_annotation.key_id_map import KeyIdMap
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            project_id = 17208
+            video_id = 19371139
+            key_id_map = KeyIdMap()
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            ann_json = api.video.annotation.download(video_id)
+            ann = sly.VideoAnnotation.from_json(ann_json, meta, key_id_map)
+
+            print(ann.is_empty()) # False
         """
+
         if len(self.objects) == 0 and len(self.tags) == 0:
             return True
         else:

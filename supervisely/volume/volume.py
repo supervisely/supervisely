@@ -21,6 +21,23 @@ class UnsupportedVolumeFormat(Exception):
 
 
 def get_extension(path: str):
+    """
+    Get extension for given path.
+
+    :param path: Path to volume.
+    :type path: str
+    :return: Path extension
+    :rtype: str
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "src/upload/folder/CTACardio.nrrd"
+        ext = sly.volume.get_extension(path=path)
+    """
+
     # magic.from_file("path", mime=True)
     # for nrrd:
     # application/octet-stream
@@ -43,14 +60,67 @@ def get_extension(path: str):
 
 
 def is_valid_ext(ext: str) -> bool:
+    """
+    Checks if given extension is supported.
+
+    :param ext: Volume file extension.
+    :type ext: str
+    :return: bool
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        sly.volume.is_valid_ext(".nrrd")  # True
+        sly.volume.is_valid_ext(".mp4") # False
+    """
+
     return ext.lower() in ALLOWED_VOLUME_EXTENSIONS
 
 
 def has_valid_ext(path: str) -> bool:
+    """
+    Checks if Volume file from given path has supported extension.
+
+    :param path: Path to volume file.
+    :type path: str
+    :return: bool
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        volume_path = "/home/admin/work/volumes/vol_01.nrrd"
+        sly.volume.has_valid_ext(volume_path) # True
+    """
+
     return is_valid_ext(get_extension(path))
 
 
 def validate_format(path: str):
+    """
+    Raise error if Volume file from given path couldn't be read or file extension is not supported.
+
+    :param path: Path to Volume file.
+    :type path: str
+    :raises: :class:`UnsupportedVolumeFormat` if Volume file from given path couldn't be read or file extension is not supported.
+    :return: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        volume_path = "/home/admin/work/volumes/vol_01.mp4"
+        sly.volume.validate_format(volume_path)
+        # File /home/admin/work/volumes/vol_01.mp4 has unsupported volume extension. Supported extensions: [".nrrd", ".dcm"].
+    """
+
     if not has_valid_ext(path):
         raise UnsupportedVolumeFormat(
             f"File {path} has unsupported volume extension. Supported extensions: {ALLOWED_VOLUME_EXTENSIONS}"
@@ -58,10 +128,14 @@ def validate_format(path: str):
 
 
 def rescale_slope_intercept(value, slope, intercept):
+    """Rescale intensity value."""
+
     return value * slope + intercept
 
 
-def normalize_volume_meta(meta):
+def normalize_volume_meta(meta: dict):
+    """Normalize volume metadata."""
+
     meta["intensity"]["min"] = rescale_slope_intercept(
         meta["intensity"]["min"],
         meta["rescaleSlope"],
@@ -84,7 +158,27 @@ def normalize_volume_meta(meta):
 
 
 def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
+    """
+    Read DICOM series volumes with given paths.
+
+    :param paths: Paths to DICOM volume files.
+    :type paths: List[str]
+    :param anonymize: Specify whether to hide PatientID and PatientName fields.
+    :type anonymize: bool
+    :return: volume data in NumPy array format and dictionary with metadata
+    :rtype: np.ndarray, dict
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        volume_path = ["/home/admin/work/volumes/vol_01.nrrd"]
+        volume_np, meta = sly.volume.read_dicom_serie_volume_np(volume_path)
+    """
+
     import SimpleITK as sitk
+
     sitk_volume, meta = read_dicom_serie_volume(paths, anonymize=anonymize)
     # for debug:
     # sitk.WriteImage(sitk_volume, "/work/output/sitk.nrrd", useCompression=False, compressionLevel=9)
@@ -121,9 +215,13 @@ _photometricInterpretationRGB = set(
 
 
 def read_dicom_tags(
-    path, allowed_keys: Union[None, List[str]] = _default_dicom_tags, anonymize=True
+    path: str,
+    allowed_keys: Union[None, List[str]] = _default_dicom_tags,
+    anonymize: bool = True,
 ):
+    """read_dicom_tags"""
     import SimpleITK as sitk
+
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
     reader.LoadPrivateTagsOn()
@@ -147,15 +245,14 @@ def read_dicom_tags(
             "rescaleSlope",
         ]:
             vol_info[keyword] = float(vol_info[keyword].split("\\")[0])
-        elif (
-            keyword == "photometricInterpretation"
-            and v in _photometricInterpretationRGB
-        ):
+        elif keyword == "photometricInterpretation" and v in _photometricInterpretationRGB:
             vol_info["channelsCount"] = 3
     return vol_info
 
 
 def encode(volume_np: np.ndarray, volume_meta):
+    """Encodes volume from NumPy format into a NRRD format."""
+
     directions = np.array(volume_meta["directions"]).reshape(3, 3)
     directions *= volume_meta["spacing"]
 
@@ -178,7 +275,24 @@ def encode(volume_np: np.ndarray, volume_meta):
 
 
 def inspect_dicom_series(root_dir: str):
+    """
+    Search for DICOM series in the directory and its subdirectories.
+
+    :param root_dir: Directory path with volumes.
+    :type root_dir: str
+    :return: Dictionary with DICOM volumes IDs and corresponding fiel names.
+    :rtype: dict
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "src/upload/Dicom_files/"
+        series_infos = sly.volume.inspect_dicom_series(root_dir=path)
+    """
     import SimpleITK as sitk
+
     found_series = {}
     for d in os.walk(root_dir):
         dir = d[0]
@@ -196,6 +310,7 @@ def inspect_dicom_series(root_dir: str):
 
 def _sitk_image_orient_ras(sitk_volume):
     import SimpleITK as sitk
+
     if sitk_volume.GetDimension() == 4 and sitk_volume.GetSize()[3] == 1:
         sitk_volume = sitk_volume[:, :, :, 0]
 
@@ -221,8 +336,26 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths, anonymize=True):
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True):
+    """
+    Read DICOM series volumes with given paths.
+
+    :param paths: Paths to DICOM volume files.
+    :type paths: List[str]
+    :param anonymize: Specify whether to hide PatientID and PatientName fields.
+    :type anonymize: bool
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        paths = ["/home/admin/work/volumes/vol_01.nrrd"]
+        sitk_volume, meta = sly.volume.read_dicom_serie_volume(paths)
+    """
+
     import SimpleITK as sitk
+
     reader = sitk.ImageSeriesReader()
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
@@ -244,16 +377,20 @@ def read_dicom_serie_volume(paths, anonymize=True):
 
 
 def compose_ijk_2_world_mat(spacing, origin, directions):
+    """
+    Calculate a 4x4 transformation matrix for converting from IJK to world coordinates 
+    """
+
     mat = np.eye(4)
     mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
     mat[:3, 3] = origin
     return mat
 
 
-def get_meta(
-    sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
-):
-
+def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}):
+    """
+    Get normalized meta-data for a volume.
+    """
     # x = 1 - sagittal
     # y = 1 - coronal
     # z = 1 - axial
@@ -282,14 +419,47 @@ def get_meta(
     return volume_meta
 
 
-def inspect_nrrd_series(root_dir: str):
+def inspect_nrrd_series(root_dir: str) -> List[str]:
+    """
+    Inspect a directory for NRRD series by recursively listing files with the ".nrrd" extension and returns a list of NRRD file paths found in the directory.
+
+    :param root_dir: Directory to inspect for NRRD series.
+    :type root_dir: str
+    :return: List of NRRD file paths found in the given directory.
+    :rtype: List[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/"
+        nrrd_paths = sly.volume.inspect_nrrd_series(root_dir=path)
+    """
+
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
     logger.info(f"Total {len(nrrd_paths)} nnrd series in directory {root_dir}")
     return nrrd_paths
 
 
 def read_nrrd_serie_volume(path: str):
+    """
+    Read NRRD volume with given path.
+
+    :param path: Paths to DICOM volume files.
+    :type path: List[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+        sitk_volume, meta = sly.volume.read_nrrd_serie_volume(path)
+    """
+
     import SimpleITK as sitk
+
     # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
     reader = sitk.ImageFileReader()
     # reader.SetImageIO("NrrdImageIO")
@@ -312,7 +482,25 @@ def read_nrrd_serie_volume(path: str):
 
 
 def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
+    """
+    Read NRRD volume with given path.
+
+    :param path: Paths to NRRD volume file.
+    :type path: List[str]
+    :return: volume data in NumPy array format and dictionary with metadata
+    :rtype: np.ndarray, dict
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nrrd"
+        np_volume, meta = sly.volume.read_nrrd_serie_volume_np(path)
+    """
+
     import SimpleITK as sitk
+
     sitk_volume, meta = read_nrrd_serie_volume(paths)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))

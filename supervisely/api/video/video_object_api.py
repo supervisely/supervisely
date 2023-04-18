@@ -14,10 +14,13 @@ class VideoObjectApi(ObjectApi):
     """
 
     def append_bulk(
-        self, video_id: int, objects: VideoObjectCollection, key_id_map: Optional[KeyIdMap] = None
+        self,
+        video_id: int,
+        objects: VideoObjectCollection,
+        key_id_map: Optional[KeyIdMap] = None,
     ) -> List[int]:
         """
-        Add Tags to Annotation Objects
+        Add Objects to Annotation Objects.
 
         :param video_id: Video ID in Supervidely.
         :type video_id: int
@@ -34,7 +37,6 @@ class VideoObjectApi(ObjectApi):
 
             import supervisely as sly
 
-            from supervisely.video_annotation.video_tag import VideoTag
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
