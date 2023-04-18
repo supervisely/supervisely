@@ -13,27 +13,27 @@ class Tree(Widget):
         NODE_CLICK = "node_click"
         CHECK_CHANGE = "check_change"
 
-    class Children:
-        def __init__(self, parent: int, label: str = "", disabled: bool = False) -> Tree.Children:
-            self._parent = parent
-            self._id = Tree.id.__next__()
-            self._label = label
-            self._disabled = disabled
+    # class Children:
+    #     def __init__(self, parent: int, label: str = "", disabled: bool = False) -> Tree.Children:
+    #         self._parent_id = parent
+    #         self._id = Tree.id.__next__()
+    #         self._label = label
+    #         self._disabled = disabled
 
-        def to_json(self):
-            return {
-                "parent_id": self._parent_id,
-                "id": self._id,
-                "label": self._label,
-                "disabled": self._disabled,
-            }
+    #     def to_json(self):
+    #         return {
+    #             "parent_id": self._parent_id,
+    #             "id": self._id,
+    #             "label": self._label,
+    #             "disabled": self._disabled,
+    #         }
 
-        def from_json(self, data: dict):
-            return Tree.Children(data["label"], data["disabled"])
+    #     def from_json(self, data: dict):
+    #         return Tree.Children(data["label"], data["disabled"])
 
     class Node:
         def __init__(
-            self, label: str, children: List[Tree.Children] = [], disabled: bool = False
+            self, label: str, children: List[Tree.Node] = [], disabled: bool = False
         ) -> dict:
             self._id = Tree.id.__next__()
             self._label = label
@@ -62,8 +62,9 @@ class Tree(Widget):
         def get_id(self):
             return self._id
 
-        def add_children(self, children: Tree.Children):
-            self._children.append(children)
+        def add_children(self, children: Tree.Node):
+            self._children = self._children + children
+            # self._children.extend(children)
 
     def __init__(
         self,
