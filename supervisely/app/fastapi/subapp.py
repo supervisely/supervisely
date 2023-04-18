@@ -108,7 +108,7 @@ def shutdown(process_id=None):
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
         current_process = psutil.Process(process_id)
-        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+        current_process.send_signal(signal.SIGTERM)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
 
@@ -294,7 +294,7 @@ class Application(metaclass=Singleton):
         shutdown(self._process_id)
 
     def stop(self):
-        run_sync(WebsocketManager().broadcast({"action": "shutdown"}))
+        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
 
 
 def get_name_from_env(default="Supervisely App"):
