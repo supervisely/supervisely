@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+import supervisely as sly
 from supervisely.api.api import Api
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -8,8 +9,8 @@ from supervisely.app.widgets import Widget
 class FileStorageUpload(Widget):
     def __init__(
         self,
-        team_id: int,
         path: str,
+        team_id: int = None,
         change_name_if_conflict: Optional[bool] = False,
         widget_id: str = None,
     ):
@@ -33,7 +34,7 @@ class FileStorageUpload(Widget):
         return path
 
     def get_json_data(self):
-        return {"path": self._path}
+        return {"path": self._path, "teamId": self._team_id}
 
     def get_json_state(self):
         return {"files": self._files}
