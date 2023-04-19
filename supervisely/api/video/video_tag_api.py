@@ -273,3 +273,80 @@ class VideoTagApi(TagApi):
                 "Only tags with ID (tag.sly_id field) can be removed. Such tags have to be downloaded from server or have ID"
             )
         self.remove_from_video(tag.sly_id)
+
+
+class VideoObjectTagApi(TagApi):
+    _entity_id_field = ApiField.OBJECT_ID
+    _method_bulk_add = "annotation-objects.tags.bulk.add"
+
+    def add(
+        self,
+        tag_meta_id: int,
+        object_id: int,
+        value: Optional[Union[str, int]] = None,
+        frame_range: Optional[List[int]] = None,
+    ) -> int:
+        """Add a tag to an annotation object.
+
+        :param tag_meta_id: TagMeta ID in project `tag_metas`
+        :type tag_meta_id: int
+        :param object_id: Object ID in project annotation objects
+        :type object_id: int
+        :param value: possible_values from TagMeta, defaults to None
+        :type value: Optional[Union[str, int]], optional
+        :param frame_range: array of 2 frame numbers in point cloud episodes, defaults to None
+        :type frame_range: Optional[List[int]], optional
+        :return: ID of the tag assigned to the object
+        :rtype: int
+        """
+        request_body = {
+            ApiField.TAG_ID: tag_meta_id,
+            ApiField.OBJECT_ID: object_id,
+        }
+        if value is not None:
+            request_body[ApiField.VALUE] = value
+        if frame_range is not None:
+            request_body[ApiField.FRAME_RANGE] = frame_range
+
+        response = self._api.post("annotation-objects.tags.add", request_body)
+        id = response.json()[ApiField.ID]
+        return id
+
+    def remove(self, tag_id: int) -> None:
+        """Remove tag from video annotation object.
+
+        :param tag_id: tag ID of certain object
+        :type tag_id: int
+        """
+        request_body = {ApiField.ID: tag_id}
+
+        self._api.post("annotation-objects.tags.remove", request_body)
+
+    def update_value(self, tag_id: int, value: Union[str, int]) -> None:
+        """Update tag value for video annotation object.
+        You could use only those values, which are correspond to TagMeta `value_type` and `possible_values`
+
+        :param tag_id: tag ID of certain object
+        :type tag_id: int
+        :param value: possible_values from TagMeta
+        :type value: Union[str, int]
+        """
+        request_body = {
+            ApiField.ID: tag_id,
+            ApiField.VALUE: value,
+        }
+        self._api.post("annotation-objects.tags.update-value", request_body)
+
+    def update_frame_range(self, tag_id: int, frame_range: List[int]) -> None:
+        """Update tag frames for video annotation object.
+
+        :param tag_id: tag ID of certain object
+        :type tag_id: int
+        :param frame_range: range of possible frames
+        :type frame_range: List[int]
+        """
+        request_body = {
+            ApiField.ID: tag_id,
+            ApiField.FRAME_RANGE: frame_range,
+        }
+        self._api.post("annotation-objects.tags.update", request_body)
