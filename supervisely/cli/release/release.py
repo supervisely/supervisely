@@ -85,7 +85,7 @@ def get_appKey(repo: git.Repo, sub_app_path: str):
         appKey += "_" + hashlib.md5(sub_app_path.encode("utf-8")).hexdigest()
     appKey += "_" + hashlib.md5(first_commit.hexsha[:7].encode("utf-8")).hexdigest()
     print("\nDEBUG: appKey =", appKey, "\n")
-    
+
     return appKey
 
 
