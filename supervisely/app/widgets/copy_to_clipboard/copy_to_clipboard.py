@@ -11,12 +11,18 @@ class CopyToClipboard(Widget):
         widget_id: str = None,
     ):
         self._content = content
+        self._content_text = None
+        self._res_data = {}
+
+        self._init_content(content)
+
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def _init_content(self, content):
         self._editor = False
         self._text = False
         self._textarea = False
         self._input = False
-        self._res_data = {}
-
         if type(content) is Editor:
             self._content_text = content.get_text()
             self._editor = True
@@ -30,6 +36,7 @@ class CopyToClipboard(Widget):
                     "highlightActiveLine": content._highlight_active_line,
                 }
             }
+            self._res_state = {"content": self._content_text}
 
         elif type(content) is Text:
             self._content_text = content.text
@@ -41,6 +48,8 @@ class CopyToClipboard(Widget):
                 "icon": content._icon,
                 "icon_color": content._icon_color,
             }
+            self._res_state = {"content": self._content_text}
+
         elif type(content) is TextArea:
             self._content_text = content.get_value()
             self._textarea = True
@@ -51,6 +60,7 @@ class CopyToClipboard(Widget):
                 "autosize": content._autosize,
                 "readonly": content._readonly,
             }
+            self._res_state = {"content": self._content_text}
 
         elif type(content) is Input:
             self._content_text = content.get_value()
@@ -65,24 +75,23 @@ class CopyToClipboard(Widget):
             }
 
             self._input_state = content._value
+            self._res_state = {"content": self._content_text, "value": self._input_state}
         else:
             self._content_text = content
-
-        super().__init__(widget_id=widget_id, file_path=__file__)
+            self._res_state = {"content": self._content_text}
 
     def get_json_data(self) -> Dict:
         return self._res_data
 
     def get_json_state(self) -> Dict:
-        if self._input is True:
-            return {"content": self._content_text, "value": self._input_state}
-        else:
-            return {"content": self._content_text}
+        return self._res_state
 
     def set_content(self, content: Widget):
-        self._content_text = content
-        StateJson()[self.widget_id]["content"] = self._content_text
+        self._init_content(content)
+        StateJson()[self.widget_id] = self._res_state
         StateJson().send_changes()
+        DataJson()[self.widget_id] = self._res_data
+        DataJson().send_changes()
 
     def get_content_text(self):
         return StateJson()[self.widget_id]["content"]
