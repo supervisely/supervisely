@@ -72,15 +72,20 @@ def get_appKey(repo: git.Repo, sub_app_path: str):
     import hashlib
 
     remote_name = repo.active_branch.tracking_branch().remote_name
+    print("\nDEBUG: remote_name =", remote_name, "\n")
     remote = repo.remote(remote_name)
     remote_url = get_remote_url(remote)
+    print("\nDEBUG: remote_url =", remote_url, "\n")
     first_commit = next(repo.iter_commits("HEAD", reverse=True))
+    print("\nDEBUG: first_commit =", first_commit.hexsha, "\n")
     key_string = remote_url + "_" + first_commit.hexsha
+    print("\nDEBUG: key_string =", key_string, "\n")
     appKey = hashlib.md5(key_string.encode("utf-8")).hexdigest()
     if sub_app_path is not None:
         appKey += "_" + hashlib.md5(sub_app_path.encode("utf-8")).hexdigest()
     appKey += "_" + hashlib.md5(first_commit.hexsha[:7].encode("utf-8")).hexdigest()
-
+    print("\nDEBUG: appKey =", appKey, "\n")
+    
     return appKey
 
 
