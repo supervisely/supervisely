@@ -1,88 +1,91 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from typing import Dict, Optional
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from supervisely.app.widgets import Editor, Text, TextArea, Input
 
 
 class CopyToClipboard(Widget):
     def __init__(
         self,
-        content: Optional[str] = "",
-        # content: Widget = None,
-        max_lines: Optional[int] = 200,
-        language_mode: Optional[
-            Literal["json", "html", "plain_text", "yaml", "python"]
-        ] = "ace/mode/json",
-        readonly: Optional[bool] = True,
-        show_line_numbers: Optional[bool] = False,
-        highlight_active_line: Optional[bool] = False,
+        content: Optional[Editor or Text or TextArea or str] = "",
         widget_id: str = None,
     ):
         self._content = content
-        self._max_lines = max_lines
-        self._language_mode = language_mode
-        self._readonly = readonly
-        self._show_line_numbers = show_line_numbers
-        self._highlight_active_line = highlight_active_line
+        self._editor = False
+        self._text = False
+        self._textarea = False
+        self._input = False
+        self._res_data = {}
+
+        if type(content) is Editor:
+            self._content_text = content.get_text()
+            self._editor = True
+            self._res_data = {
+                "options": {
+                    "height": f"{content._height_px}px",
+                    "mode": f"ace/mode/{content._language_mode}",
+                    "readOnly": content._readonly,
+                    "showGutter": content._show_line_numbers,
+                    "maxLines": content._height_lines,
+                    "highlightActiveLine": content._highlight_active_line,
+                }
+            }
+
+        elif type(content) is Text:
+            self._content_text = content.text
+            self._text = True
+            self._res_data = {
+                "status": content._status,
+                "text": content._text,
+                "text_color": content._text_color,
+                "icon": content._icon,
+                "icon_color": content._icon_color,
+            }
+        elif type(content) is TextArea:
+            self._content_text = content.get_value()
+            self._textarea = True
+            self._res_data = {
+                "value": content._value,
+                "placeholder": content._placeholder,
+                "rows": content._rows,
+                "autosize": content._autosize,
+                "readonly": content._readonly,
+            }
+
+        elif type(content) is Input:
+            self._content_text = content.get_value()
+            self._input = True
+            self._res_data = {
+                "minlength": content._minlength,
+                "maxlength": content._maxlength,
+                "placeholder": content._placeholder,
+                "size": content._size,
+                "readonly": content._readonly,
+                "type": content._type,
+            }
+
+            self._input_state = content._value
+        else:
+            self._content_text = content
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        return {}
+        return self._res_data
 
     def get_json_state(self) -> Dict:
-        return {"content": self._content}
+        if self._input is True:
+            return {"content": self._content_text, "value": self._input_state}
+        else:
+            return {"content": self._content_text}
 
-    # def get_json_data(self) -> Dict:
-    #     return {
-    #         "options": {
-    #             "mode": self._language_mode,
-    #             "showGutter": self._show_line_numbers,
-    #             "readOnly": self._readonly,
-    #             "maxLines": self._max_lines,
-    #             "highlightActiveLine": self._highlight_active_line,
-    #         },
-    #     }
+    def set_content(self, content: Widget):
+        self._content_text = content
+        StateJson()[self.widget_id]["content"] = self._content_text
+        StateJson().send_changes()
 
-    # def get_json_state(self) -> Dict:
-    #     return {"content": self._content}
+    def get_content_text(self):
+        return StateJson()[self.widget_id]["content"]
 
-    # def get_content(self) -> str:
-    #     return StateJson()[self.widget_id]["content"]
-
-    # def set_content(
-    #     self,
-    #     content: Optional[str] = "",
-    #     language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]] = None,
-    # ) -> None:
-    #     self._language_mode = language_mode
-    #     StateJson()[self.widget_id]["content"] = content
-    #     StateJson().send_changes()
-    #     if language_mode is not None:
-    #         self._language_mode = f"ace/mode/{language_mode}"
-    #         DataJson()[self.widget_id]["options"]["mode"] = self._language_mode
-    #         DataJson().send_changes()
-
-    # @property
-    # def readonly(self) -> bool:
-    #     return self._readonly
-
-    # @readonly.setter
-    # def readonly(self, value: bool):
-    #     self._readonly = value
-    #     DataJson()[self.widget_id]["options"]["readOnly"] = self._readonly
-    #     DataJson().send_changes()
-
-    # def show_line_numbers(self):
-    #     self._show_line_numbers = True
-    #     DataJson()[self.widget_id]["options"]["showGutter"] = self._show_line_numbers
-    #     DataJson().send_changes()
-
-    # def hide_line_numbers(self):
-    #     self._show_line_numbers = False
-    #     DataJson()[self.widget_id]["options"]["showGutter"] = self._show_line_numbers
-    #     DataJson().send_changes()
+    def get_content(self):
+        return self._content
