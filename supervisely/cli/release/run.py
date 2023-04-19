@@ -342,11 +342,12 @@ def run(
     console.print(
         f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_description}"'
     )
-    if repo.active_branch.name in ["main", "master"]:
-        remote_name = repo.active_branch.tracking_branch().name
-        console.print(
-            f'Git tag "sly-release-{release_version}" will be added and pushed to remote "{remote_name}"'
-        )
+    if not slug:
+        if repo.active_branch.name in ["main", "master"]:
+            remote_name = repo.active_branch.tracking_branch().name
+            console.print(
+                f'Git tag "sly-release-{release_version}" will be added and pushed to remote "{remote_name}"'
+            )
 
     # ask for confiramtion if needed
     if autoconfirm:
@@ -358,22 +359,23 @@ def run(
         return False
 
     # add tag and push
-    tag_created = False
-    if repo.active_branch.name in ["main", "master"]:
-        tag_name = f"sly-release-{release_version}"
-        tag = find_tag_in_repo(tag_name, repo)
-        if tag is None:
-            tag_created = True
-            repo.create_tag(tag_name)
-        try:
-            push_tag(tag_name, repo)
-        except subprocess.CalledProcessError:
-            if tag_created:
-                repo.delete_tag(tag)
-            console.print(
-                f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
-            )
-            return False
+    if not slug:
+        tag_created = False
+        if repo.active_branch.name in ["main", "master"]:
+            tag_name = f"sly-release-{release_version}"
+            tag = find_tag_in_repo(tag_name, repo)
+            if tag is None:
+                tag_created = True
+                repo.create_tag(tag_name)
+            try:
+                push_tag(tag_name, repo)
+            except subprocess.CalledProcessError:
+                if tag_created:
+                    repo.delete_tag(tag)
+                console.print(
+                    f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
+                )
+                return False
 
     # release
     if release_token:
