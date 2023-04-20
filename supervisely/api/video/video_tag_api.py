@@ -294,7 +294,7 @@ class VideoObjectTagApi(TagApi):
         :type object_id: int
         :param value: possible_values from TagMeta, defaults to None
         :type value: Optional[Union[str, int]], optional
-        :param frame_range: array of 2 frame numbers in point cloud episodes, defaults to None
+        :param frame_range: array of strictly 2 frame numbers, defaults to None
         :type frame_range: Optional[List[int]], optional
         :return: ID of the tag assigned to the object
         :rtype: int
@@ -342,7 +342,7 @@ class VideoObjectTagApi(TagApi):
 
         :param tag_id: tag ID of certain object
         :type tag_id: int
-        :param frame_range: range of possible frames
+        :param frame_range: range of possible frames, it must always have strictly 2 values
         :type frame_range: List[int]
         """
         request_body = {
