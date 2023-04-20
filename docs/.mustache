@@ -1,0 +1,29 @@
+
+{{summaryPlaceholder}}
+
+{{#args}}
+:param {{var}}: {{descriptionPlaceholder}}
+:type {{var}}: {{typePlaceholder}}
+{{/args}}
+{{#returns}}
+:return: {{descriptionPlaceholder}}
+:rtype: {{typePlaceholder}}
+{{/returns}}
+{{#exceptions}}
+:raises {{type}}: {{descriptionPlaceholder}}
+{{/exceptions}}
+:Usage example:
+
+ .. code-block:: python
+
+    import supervisely as sly
+
+    # You can connect to API directly
+    address = 'https://app.supervise.ly/'
+    token = 'Your Supervisely API Token'
+    api = sly.Api(address, token)
+
+    # Or you can use API from environment
+    os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+    api = sly.Api.from_env()
