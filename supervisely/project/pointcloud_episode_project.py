@@ -622,8 +622,8 @@ def download_pointcloud_episode_project(
     progress_cb: Optional[Callable] = None,
 ) -> None:
     # download_annotations is deprecated parameter for backward compatibility.
-    if not download_annotations:
-        download_annotations = True
+    # if not download_annotations:
+    #     download_annotations = True
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -686,41 +686,39 @@ def download_pointcloud_episode_project(
                 else:
                     touch(pointcloud_file_path)
 
-                if download_related_images:
-                    related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
-                    try:
-                        related_images = api.pointcloud_episode.get_list_related_images(
-                            pointcloud_id
-                        )
-                    except Exception as e:
-                        logger.info(
-                            "INFO FOR DEBUGGING",
-                            extra={
-                                "project_id": project_id,
-                                "dataset_id": dataset.id,
-                                "pointcloud_id": pointcloud_id,
-                                "pointcloud_name": pointcloud_name,
-                            },
-                        )
-                        raise e
+                related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
+                try:
+                    related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "pointcloud_id": pointcloud_id,
+                            "pointcloud_name": pointcloud_name,
+                        },
+                    )
+                    raise e
 
-                    for rimage_info in related_images:
-                        name = rimage_info[ApiField.NAME]
-                        if not sly_image.has_valid_ext(name):
-                            new_name = get_file_name(name)  # to fix cases like .png.json
-                            if sly_image.has_valid_ext(new_name):
-                                name = new_name
-                                rimage_info[ApiField.NAME] = name
-                            else:
-                                raise RuntimeError(
-                                    "Something wrong with photo context filenames.\
-                                                    Please, contact support"
-                                )
-                        rimage_id = rimage_info[ApiField.ID]
+                for rimage_info in related_images:
+                    name = rimage_info[ApiField.NAME]
+                    if not sly_image.has_valid_ext(name):
+                        new_name = get_file_name(name)  # to fix cases like .png.json
+                        if sly_image.has_valid_ext(new_name):
+                            name = new_name
+                            rimage_info[ApiField.NAME] = name
+                        else:
+                            raise RuntimeError(
+                                "Something wrong with photo context filenames.\
+                                                Please, contact support"
+                            )
+                    rimage_id = rimage_info[ApiField.ID]
 
-                        path_img = os.path.join(related_images_path, name)
-                        path_json = os.path.join(related_images_path, name + ".json")
+                    path_img = os.path.join(related_images_path, name)
+                    path_json = os.path.join(related_images_path, name + ".json")
 
+                    if download_related_images:
                         try:
                             api.pointcloud_episode.download_related_image(rimage_id, path_img)
                         except Exception as e:
@@ -736,32 +734,33 @@ def download_pointcloud_episode_project(
                                 },
                             )
                             raise e
+                    if download_annotations:
                         dump_json_file(rimage_info, path_json)
-                if download_pcd:
-                    pointcloud_info = (
-                        pointcloud_info._asdict() if download_pointclouds_info else None
-                    )
-                    try:
-                        dataset_fs.add_item_file(
-                            pointcloud_name,
-                            pointcloud_file_path,
-                            item_to_ann[pointcloud_name],
-                            _validate_item=False,
-                            item_info=pointcloud_info,
-                        )
-                    except Exception as e:
-                        logger.info(
-                            "INFO FOR DEBUGGING",
-                            extra={
-                                "project_id": project_id,
-                                "dataset_id": dataset.id,
-                                "pointcloud_id": pointcloud_id,
-                                "pointcloud_name": pointcloud_name,
-                                "pointcloud_file_path": pointcloud_file_path,
-                                "item_info": pointcloud_info,
-                            },
-                        )
-                        raise e
+                # if download_pcd:
+                #     pointcloud_info = (
+                #         pointcloud_info._asdict() if download_pointclouds_info else None
+                #     )
+                #     try:
+                #         dataset_fs.add_item_file(
+                #             pointcloud_name,
+                #             pointcloud_file_path,
+                #             item_to_ann[pointcloud_name],
+                #             _validate_item=False,
+                #             item_info=pointcloud_info,
+                #         )
+                #     except Exception as e:
+                #         logger.info(
+                #             "INFO FOR DEBUGGING",
+                #             extra={
+                #                 "project_id": project_id,
+                #                 "dataset_id": dataset.id,
+                #                 "pointcloud_id": pointcloud_id,
+                #                 "pointcloud_name": pointcloud_name,
+                #                 "pointcloud_file_path": pointcloud_file_path,
+                #                 "item_info": pointcloud_info,
+                #             },
+                #         )
+                #         raise e
                 if progress_cb is not None:
                     progress_cb(1)
             if log_progress:
