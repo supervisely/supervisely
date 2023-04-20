@@ -79,8 +79,8 @@ class PointcloudFigure(VideoFigure):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ) -> PointcloudFigure:
-        return super().clone(
-            video_object=take_with_default(parent_object, self.parent_object),
+        return self.__class__(
+            parent_object=take_with_default(parent_object, self.parent_object),
             geometry=take_with_default(geometry, self.geometry),
             frame_index=take_with_default(frame_index, self.frame_index),
             key=take_with_default(key, self._key),

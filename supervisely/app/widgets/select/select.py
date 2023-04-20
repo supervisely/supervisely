@@ -150,7 +150,7 @@ class Select(ConditionalWidget):
         self._changes_handled = True
 
         @server.post(route_path)
-        def _click():
+        async def _click():
             res = self.get_value()
             func(res)
 
@@ -182,6 +182,32 @@ class Select(ConditionalWidget):
         self.update_state()
         DataJson().send_changes()
         StateJson().send_changes()
+
+    def set_value(self, value):
+        StateJson()[self.widget_id]["value"]
+        StateJson().send_changes()
+
+    def disable_item(self, item_index, group_index=None):
+        if group_index is None:
+            DataJson()[self.widget_id]["items"][item_index].update({"disabled": True})
+        else:
+            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update({"disabled": True})
+        DataJson().send_changes()
+
+    def enable_item(self, item_index, group_index=None):
+        if group_index is None:
+            DataJson()[self.widget_id]["items"][item_index].update({"disabled": False})
+        else:
+            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update({"disabled": False})            
+        DataJson().send_changes()
+
+    def disable_group(self, group_index):
+        DataJson()[self.widget_id]["groups"][group_index].update({"disabled": True})
+        DataJson().send_changes()
+
+    def enable_group(self, group_index):
+        DataJson()[self.widget_id]["groups"][group_index].update({"disabled": False})
+        DataJson().send_changes()
 
 
 class SelectString(Select):

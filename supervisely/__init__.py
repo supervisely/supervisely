@@ -50,6 +50,9 @@ from supervisely.task.progress import (
     report_inference_finished,
 )
 
+
+import supervisely.project as project
+from supervisely.project.download import download
 from supervisely.project.project import (
     Project,
     OpenMode,
@@ -87,6 +90,7 @@ from supervisely.export.pascal_voc import save_project_as_pascal_voc_detection
 
 from supervisely.metric.metric_base import MetricsBase
 from supervisely.metric.projects_applier import MetricProjectsApplier
+
 
 from supervisely.metric.iou_metric import IoUMetric
 from supervisely.metric.confusion_matrix_metric import ConfusionMatrixMetric

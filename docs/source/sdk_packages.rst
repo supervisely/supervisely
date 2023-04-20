@@ -289,6 +289,117 @@ API
 
     WorkspaceApi
 
+Video API
+------------
+**Video API**
+- API for working with videos in Supervisely.
+
+.. currentmodule:: supervisely.api.video.video_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoApi
+    VideoInfo
+
+.. currentmodule:: supervisely.api.video.video_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoAnnotationAPI
+
+
+.. currentmodule:: supervisely.api.video.video_figure_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoFigureApi
+
+.. currentmodule:: supervisely.api.video.video_frame_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoFrameAPI
+
+.. currentmodule:: supervisely.api.video.video_object_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoObjectApi
+
+.. currentmodule:: supervisely.api.video.video_tag_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VideoTagApi
+
+Volume API
+------------
+**Volume API**
+- API for working with volumes in Supervisely.
+
+.. currentmodule:: supervisely.api.volume.volume_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeApi
+    VolumeInfo
+
+.. currentmodule:: supervisely.api.volume.volume_annotation_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeAnnotationAPI
+
+.. currentmodule:: supervisely.api.volume.volume_figure_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeFigureApi
+
+.. currentmodule:: supervisely.api.volume.volume_object_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeObjectApi
+
+.. currentmodule:: supervisely.api.volume.volume_tag_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VolumeTagApi
 
 Augmentation
 ------------

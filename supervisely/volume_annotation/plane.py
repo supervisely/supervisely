@@ -94,6 +94,15 @@ class Plane(FrameCollection):
             return {"x": 0, "y": 0, "z": 1}
 
     @staticmethod
+    def get_name(normal: dict):
+        if normal == {"x": 1, "y": 0, "z": 0}:
+            return Plane.SAGITTAL
+        if normal == {"x": 0, "y": 1, "z": 0}:
+            return Plane.CORONAL
+        if normal == {"x": 0, "y": 0, "z": 1}:
+            return Plane.AXIAL
+
+    @staticmethod
     def get_img_size(name, volume_meta):
         Plane.validate_name(name)
         dimentions = volume_meta["dimensionsIJK"]

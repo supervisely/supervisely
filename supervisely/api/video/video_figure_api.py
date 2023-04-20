@@ -14,6 +14,7 @@ class VideoFigureApi(FigureApi):
     """
     :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` for a single video.
     """
+
     def create(self, video_id: int, object_id: int, frame_index: int, geometry_json: dict, geometry_type: str,
                track_id: Optional[int]=None) -> int:
         """
@@ -51,6 +52,7 @@ class VideoFigureApi(FigureApi):
 
             figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
         """
+
         return super().create(video_id,
                               object_id,
                               {ApiField.FRAME: frame_index},
@@ -91,6 +93,7 @@ class VideoFigureApi(FigureApi):
             figures = ann.figures[:5]
             api.video.figure.append_bulk(video_id, figures, key_id_map)
         """
+
         keys = []
         figures_json = []
         for figure in figures:
