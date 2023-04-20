@@ -54,11 +54,5 @@ class CopyToClipboard(Widget):
     def get_json_state(self) -> Dict:
         return self._res_state
 
-    def get_content_text(self):
-        if self._editor_or_input is True or self._only_string is True:
-            return StateJson()[self.widget_id]["content"]
-        else:
-            return DataJson()[self.widget_id]["content"]
-
     def get_content(self):
         return self._content
