@@ -9,14 +9,14 @@ class Badge(Widget):
         self,
         value: Union[int, str, float] = None,
         widget: Optional[Widget] = None,
-        max: int = None,
+        max: Union[int, float] = None,
         is_dot: bool = False,
         hidden: bool = False,
         widget_id: str = None,
     ):
         self._value = value
         self._widget = widget
-        self._max = max if str(value).replace(".", "", 1).isdigit() else None
+        self._max = max if type(max) in [int, float] else None
         self._hidden = hidden
         self._is_dot = is_dot
 
