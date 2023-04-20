@@ -65,14 +65,10 @@ class Icons(Widget):
         DataJson()[self.widget_id]["rounded"] = self._rounded
         DataJson().send_changes()
 
-    def set_standart(self):
+    def set_standard(self):
         self._rounded = False
         DataJson()[self.widget_id]["rounded"] = self._rounded
         DataJson().send_changes()
-
-    def get_rouded(self):
-        self._rounded = DataJson()[self.widget_id]["rounded"]
-        return self._rounded
 
     def set_image_url(self, value: str):
         self._image_url = value
