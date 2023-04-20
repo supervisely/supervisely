@@ -124,6 +124,8 @@ class Widget(Hidable, Disableable, Loading):
         self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
+        self._loading = False
+        self._disabled = False
 
         if (
             widget_id is not None

@@ -7,6 +7,8 @@ import requests
 import json
 from typing import List, Optional, NamedTuple, Dict
 from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
+from dotenv import load_dotenv
+
 
 import supervisely.api.team_api as team_api
 import supervisely.api.workspace_api as workspace_api
@@ -35,6 +37,8 @@ import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.github_api as github_api
 import supervisely.api.volume.volume_api as volume_api
 from supervisely.sly_logger import logger
+import supervisely.io.env as sly_env
+from supervisely._utils import is_development
 
 
 from supervisely.io.network_exceptions import (
@@ -165,7 +169,12 @@ class Api:
         return result
 
     @classmethod
-    def from_env(cls, retry_count: int = 10, ignore_task_id: bool = False) -> Api:
+    def from_env(
+        cls,
+        retry_count: int = 10,
+        ignore_task_id: bool = False,
+        env_file: str = "~/supervisely.env",
+    ) -> Api:
         """
         Initialize API use environment variables.
 
@@ -173,10 +182,12 @@ class Api:
         :type retry_count: int
         :param ignore_task_id:
         :type ignore_task_id: bool
+        :param path: Path to your .env file.
+        :type path: str
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
-        :Usage example:
+        :Usage examples:
 
          .. code-block:: python
 
@@ -184,11 +195,45 @@ class Api:
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            api = sly.Api.from_env()
+
+         .. code-block:: python
+            # alternatively you can store SERVER_ADDRESS and API_TOKEN
+            # in "~/supervisely.env" .env file
+            # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
+
             api = sly.Api.from_env()
         """
+
+        server_address = sly_env.server_address()
+        token = sly_env.api_token()
+
+        if is_development() and None in (server_address, token):
+            env_path = os.path.expanduser(env_file)
+            if os.path.exists(env_path):
+                _, extension = os.path.splitext(env_path)
+                if extension == ".env":
+                    load_dotenv(env_path)
+                    server_address = sly_env.server_address()
+                    token = sly_env.api_token()
+                else:
+                    raise ValueError(f"'{env_path}' is not an '*.env' file")
+            else:
+                raise FileNotFoundError(f"File not found: '{env_path}'")
+
+        if server_address is None:
+            raise ValueError(
+                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
+        if token is None:
+            raise ValueError(
+                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+            )
+
         return cls(
-            os.environ[SERVER_ADDRESS],
-            os.environ[API_TOKEN],
+            server_address,
+            token,
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
         )
@@ -283,7 +328,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
@@ -342,7 +387,7 @@ class Api:
                     url,
                     verbose=True,
                     swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec*(2**retry_idx), 60),
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
                     response=response,
                     retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
                 )

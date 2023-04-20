@@ -120,8 +120,14 @@ def enable_hot_reload_on_debug(app: FastAPI):
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
         import arel
+        
+        # List of directories to exclude from the hot reload.
+        exclude = [".venv", ".git", "tmp"]
 
-        hot_reload = arel.HotReload(paths=[arel.Path(".")])
+        hot_reload = arel.HotReload(
+            paths=[arel.Path(path) for path in os.listdir() if path not in exclude]
+        )
+
         app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
         app.add_event_handler("startup", hot_reload.startup)
         app.add_event_handler("shutdown", hot_reload.shutdown)
@@ -286,6 +292,9 @@ class Application(metaclass=Singleton):
 
     def shutdown(self):
         shutdown(self._process_id)
+
+    def stop(self):
+        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
 
 
 def get_name_from_env(default="Supervisely App"):

@@ -53,6 +53,7 @@ class ProjectInfo(NamedTuple):
     type: str
     reference_image_url: str
     custom_data: dict
+    backup_archive: dict
 
     @property
     def image_preview_url(self):
@@ -138,6 +139,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TYPE,
             ApiField.REFERENCE_IMAGE_URL,
             ApiField.CUSTOM_DATA,
+            ApiField.BACKUP_ARCHIVE,
         ]
 
     @staticmethod
@@ -975,4 +977,70 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.move(id=project_id, workspace_id=workspace_id)
         """
-        self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})
+        self._api.post(
+            "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
+        )
+
+    def archive_batch(self, ids: List[int], archive_urls: List[str]) -> None:
+        """
+        Archive Projects by ID and save backup URL in Project info for every Project.
+
+        :param ids: Project IDs in Supervisely.
+        :type ids: List[int]
+        :param archive_urls: Shared URLs of backup on Dropbox.
+        :type archive_urls: List[str]
+        :return: None
+        :rtype: :class: `NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            ids = [18464, 18461]
+            archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.archive_batch(ids, archive_urls)
+        """
+        if len(ids) != len(archive_urls):
+            raise ValueError(
+                "The list with Project IDs must have the same length as the list with URLs for archives"
+            )
+
+        for id, archive_url in zip(ids, archive_urls):
+            self._api.post(
+                "projects.remove.permanently",
+                {ApiField.PROJECTS: [{ApiField.ID: id, ApiField.ARCHIVE_URL: archive_url}]},
+            )
+
+    def archive(self, id: int, archive_url: str) -> None:
+        """
+        Archive Project by ID and save backup URL in Project info.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param archive_url: Shared URL of backup on Dropbox.
+        :type archive_url: str
+        :return: None
+        :rtype: :class: `NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            id = 18464
+            archive_url = 'https://www.dropbox.com/...'
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.archive(id, archive_url)
+        """
+
+        self.archive_batch([id], [archive_url])

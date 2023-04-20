@@ -85,6 +85,7 @@ def normalize_volume_meta(meta):
 
 def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> np.ndarray:
     import SimpleITK as sitk
+
     sitk_volume, meta = read_dicom_serie_volume(paths, anonymize=anonymize)
     # for debug:
     # sitk.WriteImage(sitk_volume, "/work/output/sitk.nrrd", useCompression=False, compressionLevel=9)
@@ -124,6 +125,7 @@ def read_dicom_tags(
     path, allowed_keys: Union[None, List[str]] = _default_dicom_tags, anonymize=True
 ):
     import SimpleITK as sitk
+
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
     reader.LoadPrivateTagsOn()
@@ -147,10 +149,7 @@ def read_dicom_tags(
             "rescaleSlope",
         ]:
             vol_info[keyword] = float(vol_info[keyword].split("\\")[0])
-        elif (
-            keyword == "photometricInterpretation"
-            and v in _photometricInterpretationRGB
-        ):
+        elif keyword == "photometricInterpretation" and v in _photometricInterpretationRGB:
             vol_info["channelsCount"] = 3
     return vol_info
 
@@ -179,6 +178,7 @@ def encode(volume_np: np.ndarray, volume_meta):
 
 def inspect_dicom_series(root_dir: str):
     import SimpleITK as sitk
+
     found_series = {}
     for d in os.walk(root_dir):
         dir = d[0]
@@ -196,6 +196,7 @@ def inspect_dicom_series(root_dir: str):
 
 def _sitk_image_orient_ras(sitk_volume):
     import SimpleITK as sitk
+
     if sitk_volume.GetDimension() == 4 and sitk_volume.GetSize()[3] == 1:
         sitk_volume = sitk_volume[:, :, :, 0]
 
@@ -223,6 +224,7 @@ def _sitk_image_orient_ras(sitk_volume):
 
 def read_dicom_serie_volume(paths, anonymize=True):
     import SimpleITK as sitk
+
     reader = sitk.ImageSeriesReader()
     reader.SetFileNames(paths)
     sitk_volume = reader.Execute()
@@ -243,17 +245,27 @@ def read_dicom_serie_volume(paths, anonymize=True):
     return sitk_volume, meta
 
 
-def compose_ijk_2_world_mat(spacing, origin, directions):
+def compose_ijk_2_world_mat(meta):
+    try:
+        spacing = meta["spacing"]
+        origin = meta["origin"]
+        directions = meta["directions"]
+    except KeyError as e:
+        raise IOError(
+            f"Need the meta '{e}'' field to determine the mapping from voxels to world coordinates."
+        )
+
     mat = np.eye(4)
     mat[:3, :3] = (np.array(directions).reshape(3, 3) * spacing).T
     mat[:3, 3] = origin
     return mat
 
 
-def get_meta(
-    sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}
-):
+def world_2_ijk_mat(ijk_2_world):
+    return np.linalg.inv(ijk_2_world)
 
+
+def get_meta(sitk_shape, min_intensity, max_intensity, spacing, origin, directions, dicom_tags={}):
     # x = 1 - sagittal
     # y = 1 - coronal
     # z = 1 - axial
@@ -290,6 +302,7 @@ def inspect_nrrd_series(root_dir: str):
 
 def read_nrrd_serie_volume(path: str):
     import SimpleITK as sitk
+
     # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
     reader = sitk.ImageFileReader()
     # reader.SetImageIO("NrrdImageIO")
@@ -313,6 +326,7 @@ def read_nrrd_serie_volume(path: str):
 
 def read_nrrd_serie_volume_np(paths: List[str]) -> np.ndarray:
     import SimpleITK as sitk
+
     sitk_volume, meta = read_nrrd_serie_volume(paths)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
