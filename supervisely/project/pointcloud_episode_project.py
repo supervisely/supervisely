@@ -621,9 +621,6 @@ def download_pointcloud_episode_project(
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Callable] = None,
 ) -> None:
-    # download_annotations is deprecated parameter for backward compatibility.
-    # if not download_annotations:
-    #     download_annotations = True
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -641,9 +638,10 @@ def download_pointcloud_episode_project(
         pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
         # Download annotation to project_path/dataset_path/annotation.json
-        ann_json = api.pointcloud_episode.annotation.download(dataset.id)
-        annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
-        dataset_fs.set_ann(annotation)
+        if download_annotations is True:
+            ann_json = api.pointcloud_episode.annotation.download(dataset.id)
+            annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
+            dataset_fs.set_ann(annotation)
 
         # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
         frame_name_map = api.pointcloud_episode.get_frame_name_map(dataset.id)
@@ -686,39 +684,41 @@ def download_pointcloud_episode_project(
                 else:
                     touch(pointcloud_file_path)
 
-                related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
-                try:
-                    related_images = api.pointcloud_episode.get_list_related_images(pointcloud_id)
-                except Exception as e:
-                    logger.info(
-                        "INFO FOR DEBUGGING",
-                        extra={
-                            "project_id": project_id,
-                            "dataset_id": dataset.id,
-                            "pointcloud_id": pointcloud_id,
-                            "pointcloud_name": pointcloud_name,
-                        },
-                    )
-                    raise e
+                if download_related_images:
+                    related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
+                    try:
+                        related_images = api.pointcloud_episode.get_list_related_images(
+                            pointcloud_id
+                        )
+                    except Exception as e:
+                        logger.info(
+                            "INFO FOR DEBUGGING",
+                            extra={
+                                "project_id": project_id,
+                                "dataset_id": dataset.id,
+                                "pointcloud_id": pointcloud_id,
+                                "pointcloud_name": pointcloud_name,
+                            },
+                        )
+                        raise e
 
-                for rimage_info in related_images:
-                    name = rimage_info[ApiField.NAME]
-                    if not sly_image.has_valid_ext(name):
-                        new_name = get_file_name(name)  # to fix cases like .png.json
-                        if sly_image.has_valid_ext(new_name):
-                            name = new_name
-                            rimage_info[ApiField.NAME] = name
-                        else:
-                            raise RuntimeError(
-                                "Something wrong with photo context filenames.\
-                                                Please, contact support"
-                            )
-                    rimage_id = rimage_info[ApiField.ID]
+                    for rimage_info in related_images:
+                        name = rimage_info[ApiField.NAME]
+                        if not sly_image.has_valid_ext(name):
+                            new_name = get_file_name(name)  # to fix cases like .png.json
+                            if sly_image.has_valid_ext(new_name):
+                                name = new_name
+                                rimage_info[ApiField.NAME] = name
+                            else:
+                                raise RuntimeError(
+                                    "Something wrong with photo context filenames.\
+                                                    Please, contact support"
+                                )
+                        rimage_id = rimage_info[ApiField.ID]
 
-                    path_img = os.path.join(related_images_path, name)
-                    path_json = os.path.join(related_images_path, name + ".json")
+                        path_img = os.path.join(related_images_path, name)
+                        path_json = os.path.join(related_images_path, name + ".json")
 
-                    if download_related_images:
                         try:
                             api.pointcloud_episode.download_related_image(rimage_id, path_img)
                         except Exception as e:
@@ -734,10 +734,8 @@ def download_pointcloud_episode_project(
                                 },
                             )
                             raise e
-                if download_annotations:
-                    if download_related_images is False:
-                        mkdir(related_images_path)
-                    dump_json_file(rimage_info, path_json)
+
+                        dump_json_file(rimage_info, path_json)
 
                 pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
                 try:
