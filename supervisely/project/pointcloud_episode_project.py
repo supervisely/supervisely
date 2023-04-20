@@ -734,10 +734,34 @@ def download_pointcloud_episode_project(
                                 },
                             )
                             raise e
-                    if download_annotations:
-                        if download_related_images is False:
-                            mkdir(related_images_path)
-                        dump_json_file(rimage_info, path_json)
+                if download_annotations:
+                    if download_related_images is False:
+                        mkdir(related_images_path)
+                    dump_json_file(rimage_info, path_json)
+
+                pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
+                try:
+                    dataset_fs.add_item_file(
+                        pointcloud_name,
+                        pointcloud_file_path,
+                        item_to_ann[pointcloud_name],
+                        _validate_item=False,
+                        item_info=pointcloud_info,
+                    )
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "pointcloud_id": pointcloud_id,
+                            "pointcloud_name": pointcloud_name,
+                            "pointcloud_file_path": pointcloud_file_path,
+                            "item_info": pointcloud_info,
+                        },
+                    )
+                    raise e
+
                 if progress_cb is not None:
                     progress_cb(1)
             if log_progress:
