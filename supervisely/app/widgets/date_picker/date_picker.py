@@ -45,18 +45,17 @@ class DatePicker(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        res = {}
-        res["type"] = self._picker_type
-        res["size"] = self._size
-        res["readonly"] = self._readonly
-        res["disabled"] = self._disabled
-        res["editable"] = self._editable
-        res["clearable"] = self._clearable
-        res["placeholder"] = self._placeholder
-        res["format"] = self._format
-        options = {"firstDayOfWeek": self._first_day_of_week}
-        res["options"] = options
-        return res
+        return {
+            "type": self._picker_type,
+            "size": self._size,
+            "readonly": self._readonly,
+            "disabled": self._disabled,
+            "editable": self._editable,
+            "clearable": self._clearable,
+            "placeholder": self._placeholder,
+            "format": self._format,
+            "options": {"firstDayOfWeek": self._first_day_of_week},
+        }
 
     def get_json_state(self):
         return {"value": self._value}
