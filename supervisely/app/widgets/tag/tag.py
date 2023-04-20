@@ -10,10 +10,13 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class Tag(Widget):
+    # class Routes:
+    #     CLOSE = "tag_close_cb"
+
     def __init__(
         self,
         text: str = "",
-        type: Literal["primary", "gray", "success", "warning", "danger"] = None,
+        type: Literal["primary", "gray", "success", "warning", "danger", None] = None,
         hit: bool = False,
         color: str = "",
         widget_id: str = None,
@@ -79,3 +82,26 @@ class Tag(Widget):
     def set_color(self, value: str):
         DataJson()[self.widget_id]["color"] = value
         DataJson().send_changes()
+
+    # def close_tag(self, func):
+    #     # add :closable="true"
+
+    #     route_path = self.get_route_path(Tag.Routes.CLOSE)
+    #     server = self._sly_app.get_server()
+    #     self._click_handled = True
+
+    #     @server.post(route_path)
+    #     def _click():
+    #         # maybe work with headers and store some values there r: Request
+    #         if self.show_loading:
+    #             self.loading = True
+    #         try:
+    #             func()
+    #         except Exception as e:
+    #             if self.show_loading and self.loading:
+    #                 self.loading = False
+    #             raise e
+    #         if self.show_loading:
+    #             self.loading = False
+
+    #     return _click
