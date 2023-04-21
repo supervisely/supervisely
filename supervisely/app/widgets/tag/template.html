@@ -1,7 +1,15 @@
 <el-tag
+
+    {% if widget._tag_close == true %}
+    @close="post('/{{{widget.widget_id}}}/tag_close_cb')"
+    {% endif %}
+
+
   :type="data.{{{widget.widget_id}}}.type"
   :hit="data.{{{widget.widget_id}}}.hit"
   :color="data.{{{widget.widget_id}}}.color"
+  :closable="data.{{{widget.widget_id}}}.closable"
+  :close-transition="data.{{{widget.widget_id}}}.close_transition"
 >
   {{data.{{{widget.widget_id}}}.text}}
 </el-tag>

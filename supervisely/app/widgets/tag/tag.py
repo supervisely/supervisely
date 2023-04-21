@@ -10,8 +10,8 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class Tag(Widget):
-    # class Routes:
-    #     CLOSE = "tag_close_cb"
+    class Routes:
+        CLOSE = "tag_close_cb"
 
     def __init__(
         self,
@@ -19,13 +19,18 @@ class Tag(Widget):
         type: Literal["primary", "gray", "success", "warning", "danger", None] = None,
         hit: bool = False,
         color: str = "",
+        closable: bool = False,
+        close_transition: bool = False,
         widget_id: str = None,
     ):
         self._text = text
         self._validate_type(type)
         self._type = type
         self._color = color
+        self._closable = closable
+        self._close_transition = close_transition
         self._hit = hit
+        self._tag_close = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -45,6 +50,8 @@ class Tag(Widget):
             "type": self._type,
             "hit": self._hit,
             "color": self._color,
+            "closable": self._closable,
+            "close_transition": self._close_transition,
         }
 
     def get_json_state(self):
@@ -83,25 +90,23 @@ class Tag(Widget):
         DataJson()[self.widget_id]["color"] = value
         DataJson().send_changes()
 
-    # def close_tag(self, func):
-    #     # add :closable="true"
+    def close_tag(self, func):
+        route_path = self.get_route_path(Tag.Routes.CLOSE)
+        server = self._sly_app.get_server()
+        self._tag_close = True
 
-    #     route_path = self.get_route_path(Tag.Routes.CLOSE)
-    #     server = self._sly_app.get_server()
-    #     self._click_handled = True
+        @server.post(route_path)
+        def _click():
+            # maybe work with headers and store some values there r: Request
+            if self.show_loading:
+                self.loading = True
+            try:
+                func()
+            except Exception as e:
+                if self.show_loading and self.loading:
+                    self.loading = False
+                raise e
+            if self.show_loading:
+                self.loading = False
 
-    #     @server.post(route_path)
-    #     def _click():
-    #         # maybe work with headers and store some values there r: Request
-    #         if self.show_loading:
-    #             self.loading = True
-    #         try:
-    #             func()
-    #         except Exception as e:
-    #             if self.show_loading and self.loading:
-    #                 self.loading = False
-    #             raise e
-    #         if self.show_loading:
-    #             self.loading = False
-
-    #     return _click
+        return _click
