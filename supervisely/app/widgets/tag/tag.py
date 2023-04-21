@@ -1,5 +1,6 @@
-from supervisely.app import DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from typing import List
 
 try:
     from typing import Literal
@@ -15,12 +16,14 @@ class Tag(Widget):
 
     def __init__(
         self,
+        # tags: list = [],
         text: str = "",
         type: Literal["primary", "gray", "success", "warning", "danger", None] = None,
         hit: bool = False,
         color: str = "",
         closable: bool = False,
         close_transition: bool = False,
+        hide: bool = False,
         widget_id: str = None,
     ):
         self._text = text
@@ -30,7 +33,9 @@ class Tag(Widget):
         self._closable = closable
         self._close_transition = close_transition
         self._hit = hit
+        self._is_hide = hide
         self._tag_close = False
+        self._clicked_tag = None
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -54,8 +59,14 @@ class Tag(Widget):
             "close_transition": self._close_transition,
         }
 
+    # def get_json_state(self):
+    #     return {"clicked_tag": self._clicked_tag}
+
     def get_json_state(self):
         return {}
+
+    # def get_clicked_tag(self):
+    #     return StateJson()[self.widget_id]["clicked_tag"]
 
     def set_text(self, value: str):
         DataJson()[self.widget_id]["text"] = value
@@ -90,23 +101,14 @@ class Tag(Widget):
         DataJson()[self.widget_id]["color"] = value
         DataJson().send_changes()
 
-    def close_tag(self, func):
-        route_path = self.get_route_path(Tag.Routes.CLOSE)
-        server = self._sly_app.get_server()
-        self._tag_close = True
+    # def close_tag(self, func):
+    #     route_path = self.get_route_path(Tag.Routes.CLOSE)
+    #     server = self._sly_app.get_server()
+    #     self._tag_close = True
 
-        @server.post(route_path)
-        def _click():
-            # maybe work with headers and store some values there r: Request
-            if self.show_loading:
-                self.loading = True
-            try:
-                func()
-            except Exception as e:
-                if self.show_loading and self.loading:
-                    self.loading = False
-                raise e
-            if self.show_loading:
-                self.loading = False
+    #     @server.post(route_path)
+    #     def _click():
+    #         res = self.get_clicked_tag()
+    #         func(res)
 
-        return _click
+    #     return _click
