@@ -38,6 +38,12 @@ class CompareImages(Widget):
     def get_json_state(self):
         return {}
 
+    def get_left(self):
+        return self._left
+
+    def get_right(self):
+        return self._right
+
     def set_left(
         self,
         item: Optional[Image or LabeledImage or Text] = Text(
