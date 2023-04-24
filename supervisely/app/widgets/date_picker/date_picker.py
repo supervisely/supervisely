@@ -91,18 +91,18 @@ class DatePicker(Widget):
 
     def set_value(self, value: Union[int, str, datetime, list, tuple]):
 
-        if type(value) in [int, str, datetime]:
-            if self._picker_type in ["datetimerange", "daterange"]:
+        if self._picker_type in ["year", "month", "date", "datetime", "week"]:
+            if type(value) not in [int, str, datetime]:
                 raise ValueError(
-                    f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_range_values()"'
+                    f'Value type "{type(value)}" is not available for type of date picker: "{self._picker_type}".'
                 )
             if isinstance(value, datetime):
                 value = str(value)
         
-        if type(value) in [list, tuple]:
-            if self._picker_type not in ["datetimerange", "daterange"]:
+        if self._picker_type in ["datetimerange", "daterange"]:
+            if type(value) not in [list, tuple]:
                 raise ValueError(
-                    f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_value()"'
+                    f'Value type "{type(value)}" is not available for type of date picker: "{self._picker_type}".'
                 )
             if len(value) != 2:
                 raise ValueError(f"Value length has to be equal 2: {len(value)} != 2")
