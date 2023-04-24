@@ -8,6 +8,8 @@
   :editable="data.{{{widget.widget_id}}}.editable"
   :clearable="data.{{{widget.widget_id}}}.clearable"
   v-model="state.{{{widget.widget_id}}}.value"
-  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% if widget._changes_handled == true %}
+        @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
 >
 </el-date-picker>
