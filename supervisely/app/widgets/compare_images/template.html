@@ -1,9 +1,14 @@
 <div>
   <div style="padding: 50px; width: 43%; display: inline-block">
-    {{{widget._left}}}
+    {% if widget._left %} {{{widget._left}}} {% endif %} {% if widget._left ==
+    None %} Left image is not set, check your input data {% endif %}
   </div>
 
   <div style="padding: 50px; width: 43%; display: inline-block">
-    {{{widget._right}}}
+    {% if widget._right %} {{{widget._right}}} {% endif %} {% if widget._right
+    == None %} Right image is not set, check your input data {% endif %}
   </div>
 </div>
+
+<!-- {{data.{{{widget.widget_id}}}}} -->
+<!-- v-loading="data.{{{widget.widget_id}}}.loading" -->
