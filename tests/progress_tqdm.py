@@ -75,16 +75,12 @@ from tqdm import tqdm
 # )
 # api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
 
-print()
 
-
-# %%
-
-print()
 import shutil
 
-
-# sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
+# n_count = api.project.get_info_by_id(17732).items_count
+# p = get_p_for_test("sly.download", "it", "dev", n_count)
+# # sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
 # shutil.rmtree(LOC_DIRPATH)
 # for method, project_id in zip(
 #     [
@@ -110,9 +106,12 @@ import shutil
 # sly.download_volume_project(api, 18594, LOC_DIRPATH)
 # shutil.rmtree(LOC_DIRPATH)
 
-# n_count = api.project.get_info_by_id(17732).items_count
-# p = get_p_for_test("download", "it", "dev", n_count)
-# sly.download_project(api, 17732, LOC_DIRPATH, progress_cb=p)
+
+# files = []
+# for r, d, fs in os.walk(LOC_DIRPATH):
+#     files.extend(os.path.join(r, file) for file in fs)
+# n_count = len(files) - 1  # minus meta.json
+# p = get_p_for_test("sly.upload_project", "it", "prod", n_count)
 # sly.upload_project(LOC_DIRPATH, api, 691, progress_cb=p)
 
 # p = get_p_for_test("api.annotation.download_batch", "it", "prod", 2)
