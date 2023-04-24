@@ -68,18 +68,18 @@ class DateTimePicker(Widget):
         return value
 
     def set_value(self, value: Union[int, str, datetime, list, tuple]):
-        if type(value) in [int, str, datetime]:
-            if self._w_type in ["datetimerange", "daterange"]:
+        if self._w_type in ["year", "month", "date", "datetime", "week"]:
+            if type(value) not in [int, str, datetime]:
                 raise ValueError(
-                    f'Datetime picker type "{self._w_type}" does not support this value "{value}". You must select a suitable type or pass values corresponding to the type being used.'
+                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["int", "str", "datetime].'
                 )
             if isinstance(value, datetime):
                 value = str(value)
 
-        if type(value) in [list, tuple]:
-            if self._w_type not in ["datetimerange", "daterange"]:
+        if self._w_type in ["datetimerange", "daterange"]:
+            if type(value) not in [list, tuple]:
                 raise ValueError(
-                    f'Datetime picker type "{self._w_type}" does not support these values "{value}". You must select a suitable type or pass value corresponding to the type being used.'
+                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["list", "tuple"].'
                 )
             if len(value) != 2:
                 raise ValueError(f"Value length has to be equal 2: {len(value)} != 2")
