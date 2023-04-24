@@ -24,7 +24,7 @@ class DatePicker(Widget):
         size: Literal["large", "small", "mini"] = None,
         readonly: bool = False,
         disabled: bool = False,
-        editable: bool = True,
+        editable: bool = False,
         clearable: bool = True,
         format: str = "yyyy-MM-dd",
         first_day_of_week: int = 1,
@@ -89,55 +89,25 @@ class DatePicker(Widget):
 
         return _value_changed
 
-    def set_value(self, value: Union[int, str, datetime]):
-        """
-        Set your value to date picker.
-        Date picker type mode is one of "date", "datetime", "year", "month" or "week".
+    def set_value(self, value: Union[int, str, datetime, list, tuple]):
 
-        :type Union[int, str, datetime]
-        - str, int, datetime
-        """
-
-        if self._picker_type in ["datetimerange", "daterange"]:
-            raise ValueError(
-                f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_range_values()"'
-            )
-        if type(value) not in [str, int, datetime]:
-            raise ValueError(
-                f'Value type {type(value)} is not matching for "{self._picker_type}" picker type.'
-            )
-        if isinstance(value, datetime):
-            value = str(value)
+        if type(value) in [int, str, datetime]:
+            if self._picker_type in ["datetimerange", "daterange"]:
+                raise ValueError(
+                    f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_range_values()"'
+                )
+            if isinstance(value, datetime):
+                value = str(value)
+        
+        if type(value) in [list, tuple]:
+            if self._picker_type not in ["datetimerange", "daterange"]:
+                raise ValueError(
+                    f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_value()"'
+                )
+            if len(value) != 2:
+                raise ValueError(f"Value length has to be equal 2: {len(value)} != 2")
+            value = [str(val) if isinstance(val, datetime) else val for val in value]
 
         self._value = value
-        StateJson()[self.widget_id]["value"] = self._value
-        StateJson().send_changes()
-
-    def set_range_values(self, values: Union[list, tuple]):
-        """
-        Set your range values to date picker.
-        Date picker type mode is one of "daterange" or "datetimerange".
-
-        :type:
-            Union[
-                Tuple[str, str], Tuple[int, int], Tuple[datetime, datetime],
-                List[str, str], List[int, int], List[datetime, datetime]
-            ]
-        """
-
-        if self._picker_type not in ["datetimerange", "daterange"]:
-            raise ValueError(
-                f'Date picker type "{self._picker_type}" is not abailable for this method. Try "set_value()"'
-            )
-        if type(values) not in [list, tuple]:
-            raise ValueError(
-                f'Value type {type(values)} is not matching for "{self._picker_type}" picker type.'
-            )
-        if len(values) != 2:
-            raise ValueError(f"Value length has to be equal 2: {len(values)} != 2")
-        if any(isinstance(val, datetime) for val in values):
-            values = [str(val) for val in values]
-
-        self._value = values
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
