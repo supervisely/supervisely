@@ -94,7 +94,7 @@ class DatePicker(Widget):
         if self._picker_type in ["year", "month", "date", "datetime", "week"]:
             if type(value) not in [int, str, datetime]:
                 raise ValueError(
-                    f'Value type "{type(value)}" is not available for type of date picker: "{self._picker_type}".'
+                    f'Date picker type "{self._picker_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["int", "str", "datetime].'
                 )
             if isinstance(value, datetime):
                 value = str(value)
@@ -102,7 +102,7 @@ class DatePicker(Widget):
         if self._picker_type in ["datetimerange", "daterange"]:
             if type(value) not in [list, tuple]:
                 raise ValueError(
-                    f'Value type "{type(value)}" is not available for type of date picker: "{self._picker_type}".'
+                    f'Date picker type "{self._picker_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["list", "tuple"].'
                 )
             if len(value) != 2:
                 raise ValueError(f"Value length has to be equal 2: {len(value)} != 2")
