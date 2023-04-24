@@ -52,3 +52,6 @@ docs/build
 docs/source/rst_templates/api
 docs/source/sdk
 panda.deb
+prog_test.tar
+local.env
+.gitignore

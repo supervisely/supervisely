@@ -32,6 +32,7 @@ from supervisely.io.fs import (
 )
 from supervisely.sly_logger import logger
 import supervisely.io.env as env
+from supervisely.task.progress import WrapTqdm
 
 
 class FileInfo(NamedTuple):
@@ -637,6 +638,8 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
+        if isinstance(progress_cb, WrapTqdm):
+            progress_cb = progress_cb.get_partial()
         if progress_cb is None:
             data = encoder
         else:
@@ -1134,6 +1137,5 @@ class FileApi(ModuleApiBase):
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
         ):
-
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir

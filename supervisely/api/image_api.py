@@ -1628,15 +1628,12 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             ds_lemon_id = 1780
-            ds_kiwi_id = 1233
 
             ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
-            ds_kiwi_img_infos = api.image.get_list(ds_kiwi_id)
 
             fruit_img_ids = []
-            for lemon_img_info, kiwi_img_info in zip(ds_lemon_img_infos, ds_kiwi_img_infos):
+            for lemon_img_info in ds_lemon_img_infos:
                 fruit_img_ids.append(lemon_img_info.id)
-                fruit_img_ids.append(kiwi_img_info.id)
 
             ds_fruit_id = 2574
             ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
