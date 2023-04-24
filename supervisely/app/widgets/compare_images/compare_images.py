@@ -29,18 +29,17 @@ class CompareImages(Widget):
             )
 
     def get_json_data(self):
-        # if self._left is None:
-        #     self._left_data = None
-        # else:
-        #     self._left_data = self._left.get_json_data()
+        if self._left is None:
+            self._left_data = None
+        else:
+            self._left_data = self._left.get_json_data()
 
-        # if self._right is None:
-        #     self._right_data = None
-        # else:
-        #     self._right_data = self._right.get_json_data()
+        if self._right is None:
+            self._right_data = None
+        else:
+            self._right_data = self._right.get_json_data()
 
-        # return {"left": self._left_data, "right": self._right_data}
-        return {}
+        return {"left": self._left_data, "right": self._right_data}
 
     def get_json_state(self):
         {}
@@ -57,8 +56,8 @@ class CompareImages(Widget):
     ):
         self._left = item
         self._check_input_items()
-        # DataJson()[self.widget_id]["left"] = self._left.get_json_data()
-        # DataJson().send_changes()
+        DataJson()[self.widget_id]["left"] = self._left.get_json_data()
+        DataJson().send_changes()
 
     def set_right(
         self,
@@ -66,5 +65,5 @@ class CompareImages(Widget):
     ):
         self._right = item
         self._check_input_items()
-        # DataJson()[self.widget_id]["right"] = self._right.get_json_data()
-        # DataJson().send_changes()
+        DataJson()[self.widget_id]["right"] = self._right.get_json_data()
+        DataJson().send_changes()
