@@ -349,9 +349,7 @@ class Transfer(Widget):
         self._items = self.__checked_items(items)
 
         self.update_data()
-        self.update_state()
         DataJson().send_changes()
-        StateJson().send_changes()
 
     def set_transferred_items(self, transferred_items: List[str]):
         """
@@ -362,9 +360,7 @@ class Transfer(Widget):
         """
 
         self._transferred_items = self.__checked_transferred_items(transferred_items)
-        self.update_data()
         self.update_state()
-        DataJson().send_changes()
         StateJson().send_changes()
         
     def add(self, items: Union[List[Item], List[str]]):
@@ -398,9 +394,7 @@ class Transfer(Widget):
         else:
             self._items.extend(items)
             self.update_data()
-            self.update_state()
             DataJson().send_changes()
-            StateJson().send_changes()
             
     def remove(self, items_keys: List[str]):
         """
