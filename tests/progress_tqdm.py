@@ -17,7 +17,7 @@ LOC_FILEPATH = "prog_test.tar"
 TF_DIRPATH = "/vid/"
 LOC_DIRPATH = "vid/"
 
-TEAM_ID = sly.env.team_id()
+TEAM_ID = 449
 PROJECT_ID = 18142
 
 
@@ -83,13 +83,13 @@ import shutil
 # # sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
 # shutil.rmtree(LOC_DIRPATH)
 # for method, project_id in zip(
-#     [
-#         # sly.download,
-#         # sly.download_pointcloud_episode_project,
-#         sly.download_pointcloud_project,
-#         # sly.download_project,
-#         # sly.download_video_project,
-#     ],
+# [
+#     sly.download,
+#     sly.download_pointcloud_episode_project,
+#     sly.download_pointcloud_project,
+#     sly.download_project,
+#     sly.download_video_project,
+# ],
 #     [
 #         # 17732,
 #         # 18593,
@@ -165,6 +165,20 @@ import shutil
 # api.image.download_bytes(61226, [19489032, 19489521, 19489360], progress_cb=p)
 
 # api.image.download_nps  # progress_cb(1)
+
+# local_save_dir = "vid/"
+# save_paths = []
+# image_ids = [19489032, 19489521, 19489360]
+# img_infos = api.image.get_info_by_id_batch(image_ids)
+
+
+# # os.environ["ENV"] = "production"
+# p = tqdm(desc="Images downloaded: ", total=len(img_infos))
+# # p = tqdm(None, "Images downloaded: ", len(img_infos))
+# for img_info in img_infos:
+#     save_paths.append(os.path.join(local_save_dir, img_info.name))
+
+# api.image.download_paths(61226, image_ids, save_paths, progress_cb=p)
 
 # api.image.download_paths  # progress_cb(1)
 # api.image.download_paths_by_hashes  # progress_cb(1)
@@ -264,7 +278,7 @@ import shutil
 #     aa.DETACH_TAG,
 # ]
 # p = get_p_for_test("api.team.get_activity", "it", "dev", 0)
-# api.project.get_activity(id=18144, progress_cb=p)
+# # api.project.get_activity(id=18144, progress_cb=p)
 # sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p)
 
 
@@ -274,6 +288,7 @@ import shutil
 # api.user.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.user.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
 
+# TODO item_progress discusssion
 # api.video.download_path  # progress_cb(len(chunk))
 # api.video.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.video.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
@@ -281,7 +296,50 @@ import shutil
 # api.video.upload_hashes  # progress_cb(len(images))
 # api.video.upload_paths  # progress_cb(len(remote_hashes)), progress_cb(len(hashes_rcv))
 
-# api.volume.upload_hashes  # progress_cb(len(volumes))
+src_dataset_id = 61229
+info = api.dataset.create(20697, "tst", change_name_if_conflict=True)
+dst_dataset_id = info.id
+
+hashes = []
+names = []
+metas = []
+volume_infos = api.volume.get_list(src_dataset_id)
+
+# Create lists of hashes, volumes names and meta information for each volume
+for volume_info in volume_infos:
+    hashes.append(volume_info.hash)
+    # It is necessary to upload volumes with the same names(extentions) as in src dataset
+    names.append(volume_info.name)
+    metas.append(volume_info.meta)
+
+p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
+new_volumes_info = api.volume.upload_hashes(
+    dataset_id=dst_dataset_id,
+    names=names,
+    hashes=hashes,
+    progress_cb=p,
+    metas=metas,
+)
+
+
+api.volume.upload_hashes  # progress_cb(len(volumes))
+
+# src_dataset_id = 61229
+# volume_infos = api.volume.get_list(src_dataset_id)
+# volume_id = volume_infos[0].id
+# volume_info = api.volume.get_info_by_id(id=volume_id)
+
+# download_dir_name = "vid/"
+# path = os.path.join(download_dir_name, volume_info.name)
+# if os.path.exists(path):
+#     os.remove(path)
+
+# # os.environ["ENV"] = "production"
+# p = tqdm(desc="Volumes upload: ", total=volume_info.sizeb, is_size=True)
+# api.volume.download_path(volume_info.id, path, progress_cb=p)
+
+# if os.path.exists(path):
+#     print(f"Volume (ID {volume_info.id}) successfully downloaded.")
 # api.volume.download_path  # progress_cb(len(chunk))
 # api.volume.get_list_all_pages  ## progress_cb(len(results)), progress_cb(len(temp_items))
 # api.volume.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
@@ -291,3 +349,14 @@ import shutil
 
 # api.workspace.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.workspace.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
+
+
+# /home/grokhi/supervisely/sdk/supervisely/supervisely/io/fs_cache.py
+# write_objects
+
+# /home/grokhi/supervisely/sdk/supervisely/supervisely/io/fs.py
+
+# /home/grokhi/supervisely/sdk/supervisely/supervisely/project/pointcloud_episode_project.py
+# /home/grokhi/supervisely/sdk/supervisely/supervisely/project/pointcloud_project.py
+
+_upload_uniq_videos_single_req
