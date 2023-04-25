@@ -220,6 +220,7 @@ def delete_directory(path):
 
 
 def get_created_at(repo: git.Repo, tag_name):
+    return None
     print("searching for tag: ", tag_name, "\n")
     if tag_name is None:
         return None
