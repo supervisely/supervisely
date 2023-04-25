@@ -23,5 +23,7 @@
     },
     "debug.inlineValues": "off",
     "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": false
+    "python.analysis.autoImportCompletions": false,
+    "autoDocstring.docstringFormat": "sphinx",
+    "autoDocstring.customTemplatePath": "docs/.mustache",
 }

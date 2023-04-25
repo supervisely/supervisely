@@ -6,12 +6,17 @@ from typing import List, Optional
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 from supervisely.api.entity_annotation.object_api import ObjectApi
+from supervisely.api.video.video_tag_api import VideoObjectTagApi
 
 
 class VideoObjectApi(ObjectApi):
     """
     :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
+
+    def __init__(self, api):
+        super().__init__(api)
+        self.tag = VideoObjectTagApi(api)
 
     def append_bulk(
         self,
