@@ -26,7 +26,7 @@ class DatePicker(Widget):
         disabled: bool = False,
         editable: bool = False,
         clearable: bool = True,
-        format: str = "yyyy-MM-dd",
+        format: Literal["yyyy", "MM", "dd", "HH", "mm", "ss"] = "yyyy-MM-dd",
         first_day_of_week: int = 1,
         widget_id: str = None,
     ):
@@ -65,18 +65,6 @@ class DatePicker(Widget):
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
-    def get_value(self):
-        if "value" not in StateJson()[self.widget_id].keys():
-            return None
-        value = StateJson()[self.widget_id]["value"]
-        if self._picker_type in ["datetimerange", "daterange"] and any(
-            [bool(date) is False for date in value]
-        ):
-            return None
-        elif self._picker_type not in ["datetimerange", "daterange"] and value == "":
-            return None
-        return value
-
     def value_changed(self, func):
         route_path = self.get_route_path(DatePicker.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -90,7 +78,6 @@ class DatePicker(Widget):
         return _value_changed
 
     def set_value(self, value: Union[int, str, datetime, list, tuple]):
-
         if self._picker_type in ["year", "month", "date", "datetime", "week"]:
             if type(value) not in [int, str, datetime]:
                 raise ValueError(
@@ -98,7 +85,7 @@ class DatePicker(Widget):
                 )
             if isinstance(value, datetime):
                 value = str(value)
-        
+
         if self._picker_type in ["datetimerange", "daterange"]:
             if type(value) not in [list, tuple]:
                 raise ValueError(
@@ -111,3 +98,15 @@ class DatePicker(Widget):
         self._value = value
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
+
+    def get_value(self):
+        if "value" not in StateJson()[self.widget_id].keys():
+            return None
+        value = StateJson()[self.widget_id]["value"]
+        if self._picker_type in ["datetimerange", "daterange"] and any(
+            [bool(date) is False for date in value]
+        ):
+            return None
+        elif self._picker_type not in ["datetimerange", "daterange"] and value == "":
+            return None
+        return value
