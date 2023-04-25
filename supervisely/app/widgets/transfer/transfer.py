@@ -3,7 +3,7 @@ from collections import namedtuple
 from supervisely.app.widgets import Widget
 from supervisely.app.content import DataJson, StateJson
 
-from typing import List, Dict, Union, Optional, Callable, Any
+from typing import List, Dict, Union, Optional, Callable
 
 class Transfer(Widget):
     """Widget for transfering items between source and target lists.
