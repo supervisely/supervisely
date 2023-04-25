@@ -65,17 +65,17 @@ class DatePicker(Widget):
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
-    def value_changed(self, func):
-        route_path = self.get_route_path(DatePicker.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-
-        @server.post(route_path)
-        def _value_changed():
-            res = self.get_value()
-            func(res)
-
-        return _value_changed
+    def get_value(self):
+        if "value" not in StateJson()[self.widget_id].keys():
+            return None
+        value = StateJson()[self.widget_id]["value"]
+        if self._picker_type in ["datetimerange", "daterange"] and any(
+            [bool(date) is False for date in value]
+        ):
+            return None
+        elif self._picker_type not in ["datetimerange", "daterange"] and value == "":
+            return None
+        return value
 
     def set_value(self, value: Union[int, str, datetime, list, tuple]):
         if self._picker_type in ["year", "month", "date", "datetime", "week"]:
@@ -99,14 +99,14 @@ class DatePicker(Widget):
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
-    def get_value(self):
-        if "value" not in StateJson()[self.widget_id].keys():
-            return None
-        value = StateJson()[self.widget_id]["value"]
-        if self._picker_type in ["datetimerange", "daterange"] and any(
-            [bool(date) is False for date in value]
-        ):
-            return None
-        elif self._picker_type not in ["datetimerange", "daterange"] and value == "":
-            return None
-        return value
+    def value_changed(self, func):
+        route_path = self.get_route_path(DatePicker.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _value_changed():
+            res = self.get_value()
+            func(res)
+
+        return _value_changed
