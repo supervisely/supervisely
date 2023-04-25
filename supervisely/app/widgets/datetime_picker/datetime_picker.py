@@ -24,7 +24,7 @@ class DateTimePicker(Widget):
         w_type: Literal[
             "year", "month", "date", "datetime", "week", "datetimerange", "daterange"
         ] = "datetime",
-        format: str = "yyyy-MM-dd HH:mm:ss",
+        format: Literal["yyyy", "MM", "dd", "HH", "mm", "ss"] = "yyyy-MM-dd HH:mm:ss",
         widget_id: str = None,
     ):
         self._value = value
