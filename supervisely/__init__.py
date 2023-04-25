@@ -232,6 +232,6 @@ import supervisely.output as output
 
 # monkey patching
 import tqdm
-from supervisely.task.progress import WrapTqdm
+from supervisely.task.progress import tqdm_sly
 
-tqdm.tqdm = WrapTqdm
+tqdm.tqdm = tqdm_sly

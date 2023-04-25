@@ -2,11 +2,12 @@
 """api for working with tasks"""
 
 # docs
-from typing import List, NamedTuple, Dict, Optional, Callable
+from typing import List, NamedTuple, Dict, Optional, Callable, Union
 import os
 import time
 from collections import defaultdict, OrderedDict
 import json
+from tqdm import tqdm
 
 from supervisely.api.module_api import (
     ApiField,
@@ -290,7 +291,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def upload_dtl_archive(
-        self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None
+        self, task_id: int, archive_path: str, progress_cb: Optional[Union[Callable, tqdm]] = None
     ):
         """upload_dtl_archive"""
         encoder = MultipartEncoder(
@@ -578,7 +579,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         task_id: int,
         abs_paths: List[str],
         names: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
     ) -> None:
         """upload_files"""
         if len(abs_paths) != len(names):

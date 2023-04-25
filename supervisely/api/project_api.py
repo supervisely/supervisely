@@ -3,25 +3,25 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable, Union
 
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from collections import defaultdict
-
+from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely.annotation.annotation import TagCollection
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
-    UpdateableModule,
     RemoveableModuleApi,
+    UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.annotation.annotation import TagCollection
-from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class ProjectNotFound(Exception):
@@ -676,7 +676,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_activity(
+        self, id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+    ) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -821,14 +823,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
-    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
+    def download_images_tags(
+        self, id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+    ) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
         :param id: Project ID in Supervisely.
         :type id: int
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm, optional
         :return: Defaultdict matching tag names to ImageInfos
         :rtype: :class:`defaultdict`
         :Usage example:

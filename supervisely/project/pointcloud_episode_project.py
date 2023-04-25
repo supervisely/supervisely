@@ -7,6 +7,7 @@ import random
 from supervisely.api.api import Api
 from typing import Tuple, List, Dict, Optional, Callable, NamedTuple, Union
 
+from tqdm import tqdm
 import supervisely.imaging.image as sly_image
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
@@ -128,9 +129,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         ann_path = self.get_ann_path()
         return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
 
-    def get_ann_frame(
-        self, item_name: str, annotation: PointcloudEpisodeAnnotation
-    ) -> Frame:
+    def get_ann_frame(self, item_name: str, annotation: PointcloudEpisodeAnnotation) -> Frame:
         frame_idx = self.get_frame_idx(item_name)
         if frame_idx is None:
             raise ValueError(f"Frame wasn't assigned to pointcloud with name {item_name}.")
@@ -252,7 +251,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
@@ -299,10 +298,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         return_items_count: Optional[bool] = True,
     ):
         return super(PointcloudEpisodeProject, self).get_classes_stats(
-            dataset_names, 
-            return_objects_count, 
-            return_figures_count, 
-            return_items_count
+            dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
     @staticmethod
@@ -487,7 +483,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
     ) -> None:
         """
         Download pointcloud episodes project from Supervisely to the given directory.
@@ -510,9 +506,8 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type batch_size: :class:`int`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -558,7 +553,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud episodes project to Supervisely from the given directory.
@@ -573,9 +568,8 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm`, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -624,7 +618,7 @@ def download_pointcloud_episode_project(
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[Callable, tqdm]] = None,
 ) -> None:
     # download_annotations is deprecated parameter for backward compatibility.
     if not download_annotations:
@@ -779,7 +773,7 @@ def upload_pointcloud_episode_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[Callable, tqdm]] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
     project_locally = PointcloudEpisodeProject.read_single(directory)

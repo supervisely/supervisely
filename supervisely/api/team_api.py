@@ -3,12 +3,12 @@
 
 # docs
 from __future__ import annotations
-from typing import NamedTuple, List, Dict, Optional, Callable
+from typing import NamedTuple, List, Dict, Optional, Callable, Union
 from supervisely.task.progress import Progress
 
 from supervisely.api.module_api import ApiField, ModuleNoParent, UpdateableModule
 from supervisely.sly_logger import logger
-from supervisely.task.progress import WrapTqdm
+from tqdm import tqdm
 
 
 # @TODO - umar will add meta with review status and duration
@@ -351,7 +351,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         filter_project_id: Optional[int] = None,
         filter_job_id: Optional[int] = None,
         filter_actions: Optional[List] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> List[Dict]:
@@ -369,7 +369,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :param filter_actions: List of ActivityAction by which the activity will be filtered.
         :type filter_actions: list, optional
         :param progress_cb: Function to check progress.
-        :type progress_cb: Function, optional
+        :type progress_cb: tqdm, optional
         :param start_date: Start date to get Team activity.
         :type start_date: str, optional
         :param end_date: End date to get Team activity.
@@ -489,14 +489,16 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         pages_count = first_response["pagesCount"]
         results = first_response["entities"]
 
-        if progress_cb is not None:
-            if isinstance(progress_cb, WrapTqdm):
-                progress_cb.update(len(results) - progress_cb.n)
-                progress_cb.total = total
-                progress_cb.refresh()
-
-            else:
-                progress_cb(len(results), total)
+        if (
+            progress_cb is not None
+            and isinstance(progress_cb, tqdm)
+            and progress_cb is not Callable
+        ):
+            progress_cb.update(len(results) - progress_cb.n)
+            progress_cb.total = total
+            progress_cb.refresh()
+        else:
+            progress_cb(len(results), total)
         if pages_count == 1 and len(first_response["entities"]) == total:
             pass
         else:
@@ -504,13 +506,16 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
-                if progress_cb is not None:
-                    if isinstance(progress_cb, WrapTqdm):
-                        progress_cb.update(len(results) - progress_cb.n)
-                        progress_cb.total = total
-                        progress_cb.refresh()
-                    else:
-                        progress_cb(len(results), total)
+                if (
+                    progress_cb is not None
+                    and isinstance(progress_cb, tqdm)
+                    and progress_cb is not Callable
+                ):
+                    progress_cb.update(len(results) - progress_cb.n)
+                    progress_cb.total = total
+                    progress_cb.refresh()
+                else:
+                    progress_cb(len(results), total)
             if len(results) != total:
                 logger.warn(
                     f"Method '{method}': new events were created during pagination, "

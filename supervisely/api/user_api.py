@@ -3,16 +3,17 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable
-from supervisely.task.progress import Progress
+from typing import Callable, Dict, List, NamedTuple, Optional, TYPE_CHECKING, Union
 
 from collections import namedtuple
-from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
-from typing import TYPE_CHECKING
+from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
+from supervisely.task.progress import Progress
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
+
+from tqdm import tqdm
 
 
 class UserInfo(NamedTuple):
@@ -688,7 +689,7 @@ class UserApi(ModuleApiBase):
         return None
 
     def get_member_activity(
-        self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None
+        self, team_id: int, user_id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
     ) -> DataFrame:
         """
         Get User activity data.
@@ -698,7 +699,7 @@ class UserApi(ModuleApiBase):
         :param user_id: User ID in Supervisely.
         :type user_id: int
         :param progress_cb: Function to check progress.
-        :type progress_cb: Function, optional
+        :type progress_cb: tqdm, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
         :Usage example:
@@ -734,9 +735,7 @@ class UserApi(ModuleApiBase):
         df = pd.DataFrame(activity)
         return df
 
-    def add_to_team_by_login(
-        self, user_login: str, team_id: int, role_id: int
-    ) -> Dict[str, int]:
+    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> Dict[str, int]:
         """
         Invite User to Team with given role by login.
 
