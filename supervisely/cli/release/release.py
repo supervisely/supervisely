@@ -220,11 +220,16 @@ def delete_directory(path):
 
 
 def get_created_at(repo: git.Repo, tag_name):
+    print("searching for tag: ", tag_name, "\n")
     if tag_name is None:
         return None
     for tag in repo.tags:
+        print(tag.name)
         if tag.name == tag_name:
+            print("found")
+            print("timestamp: ", tag.tag.tagged_date, "\n")
             return datetime.datetime.utcfromtimestamp(tag.tag.tagged_date).isoformat()
+        print("skip")
     return None
 
 
