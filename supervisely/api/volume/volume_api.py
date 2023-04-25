@@ -502,7 +502,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 hashes.append(volume_info.hash)
                 # It is necessary to upload volumes with the same names(extentions) as in src dataset
                 names.append(volume_info.name)
-                metas.append({volume_info.name: volume_info.frame_height})
+                metas.append(volume_info.meta)
 
             progress = sly.Progress("Volumes upload: ", len(hashes))
             new_volumes_info = api.volume.upload_hashes(
