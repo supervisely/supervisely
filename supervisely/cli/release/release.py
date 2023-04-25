@@ -3,6 +3,7 @@ import os
 import random
 import re
 import string
+import datetime
 import shutil
 import tarfile
 import requests
@@ -218,6 +219,15 @@ def delete_directory(path):
     shutil.rmtree(path)
 
 
+def get_created_at(repo: git.Repo, tag_name):
+    if tag_name is None:
+        return None
+    for tag in repo.tags:
+        if tag.name == tag_name:
+            return datetime.datetime.utcfromtimestamp(tag.tag.tagged_date).isoformat()
+    return None
+
+
 def release(
     server_address,
     api_token,
@@ -231,9 +241,17 @@ def release(
     slug=None,
     user_id=None,
     subapp_path="",
+    created_at=None,
 ):
+    if created_at is None:
+        created_at = get_created_at(repo, release_version)
     archive_dir = archivate_application(repo, config, slug)
-    release = {"name": release_name, "version": release_version}
+    release = {
+        "name": release_name,
+        "version": release_version,
+    }
+    if created_at is not None:
+        release["createdAt"] = created_at
     response = upload_archive(
         archive_dir + "/archive.tar.gz",
         server_address,

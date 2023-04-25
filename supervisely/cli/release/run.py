@@ -22,7 +22,8 @@ from supervisely.cli.release.release import (
     slug_is_valid,
     delete_tag,
     get_instance_version,
-    get_user
+    get_user,
+    get_created_at
 )
 
 
@@ -359,14 +360,15 @@ def run(
         return False
 
     # add tag and push
+    tag_name = None
+    tag_created = False
     if not slug:
-        tag_created = False
         if repo.active_branch.name in ["main", "master"]:
             tag_name = f"sly-release-{release_version}"
             tag = find_tag_in_repo(tag_name, repo)
             if tag is None:
                 tag_created = True
-                repo.create_tag(tag_name)
+                repo.create_tag(tag_name, message=release_description)
             try:
                 push_tag(tag_name, repo)
             except subprocess.CalledProcessError:
@@ -376,6 +378,9 @@ def run(
                     f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
                 )
                 return False
+            
+    # get created_at
+    created_at = get_created_at(repo, tag_name)
 
     # release
     if release_token:
@@ -395,6 +400,7 @@ def run(
         slug,
         user_id,
         sub_app_directory if sub_app_directory != None else "",
+        created_at,
     )
     if response.status_code != 200:
         error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
