@@ -34,8 +34,11 @@ def _check_git(repo: git.Repo):
             "[red][Error][/] You have untracked files. Commit all changes before releasing the app."
         )
         console.print("  Untracked files:")
-        for i, file in enumerate(repo.untracked_files):
-            console.print(f"  {i+1}) " + file)
+        console.print("\n".join(
+            [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][:20]
+        ))
+        if len(repo.untracked_files) > 20:
+            console.print(f"  ... and {len(repo.untracked_files) - 20} more.")
         print()
         result = False
 
@@ -221,6 +224,13 @@ def run(
             f'[red][red][Error][/][/] Cannot decode config json file at "{module_path.joinpath("config.json")}": {str(e)}'
         )
         return False
+    
+    # get readme
+    try:
+        with open(module_path.joinpath("README.md"), "r", encoding="utf_8") as f:
+            readme = f.read()
+    except:
+        readme = ""
 
     # get app name
     app_name = config.get("name", None)
@@ -333,6 +343,7 @@ def run(
         appKey,
         repo,
         config,
+        readme,
         release_description,
         release_version,
         modal_template,

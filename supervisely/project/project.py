@@ -39,6 +39,7 @@ from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
 
+
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
     #: :class:`str`: Full image file path of item
@@ -2511,8 +2512,47 @@ def upload_project(
         if len(img_paths) != 0:
             uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
         elif len(img_paths) == 0 and len(img_infos) != 0:
-            hashes = [img_info.hash for img_info in img_infos]
-            uploaded_img_infos = api.image.upload_hashes(dataset.id, names, hashes, progress_cb)
+            # uploading links and hashes (the code from api.image.upload_ids)
+            img_metas = [{}] * len(names)
+            links, links_names, links_order, links_metas = [], [], [], []
+            hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+            dataset_id = dataset.id
+            for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                if info.link is not None:
+                    links.append(info.link)
+                    links_names.append(name)
+                    links_order.append(idx)
+                    links_metas.append(meta)
+                else:
+                    hashes.append(info.hash)
+                    hashes_names.append(name)
+                    hashes_order.append(idx)
+                    hashes_metas.append(meta)
+
+            result = [None] * len(names)
+            if len(links) > 0:
+                res_infos_links = api.image.upload_links(
+                    dataset_id,
+                    links_names,
+                    links,
+                    progress_cb,
+                    metas=links_metas,
+                )
+                for info, pos in zip(res_infos_links, links_order):
+                    result[pos] = info
+
+            if len(hashes) > 0:
+                res_infos_hashes = api.image.upload_hashes(
+                    dataset_id,
+                    hashes_names,
+                    hashes,
+                    progress_cb,
+                    metas=hashes_metas,
+                )
+                for info, pos in zip(res_infos_hashes, hashes_order):
+                    result[pos] = info
+
+            uploaded_img_infos = result
         else:
             raise ValueError(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
