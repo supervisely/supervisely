@@ -1129,7 +1129,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 path=video_path,
             )
         """
-        # DISCUSS item_progress
         progress_cb = item_progress
         p = None
         if item_progress is not None and type(item_progress) is bool:
@@ -1170,11 +1169,7 @@ class VideoApi(RemoveableBulkModuleApi):
         def _callback(monitor, progress):
             progress(monitor.bytes_read)
 
-        if (
-            progress_cb is not None
-            and isinstance(progress_cb, tqdm)
-            and progress_cb is not Callable
-        ):
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
             _progress_cb = progress_cb.update
             callback = partial(_callback, progress=_progress_cb)
             monitor = MultipartEncoderMonitor(encoder, callback)
