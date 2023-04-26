@@ -78,7 +78,7 @@ class Collapse(Widget):
         else:
             self._active_panels = value
 
-        StateJson()[self.widget_id]["value"] = self._value
+        StateJson()[self.widget_id]["value"] = self._active_panels
         StateJson().send_changes()
 
     def get_active_panel(self) -> Union[str, List[str]]:
@@ -89,12 +89,12 @@ class Collapse(Widget):
 
     def set_items(self, value: List[Collapse.Item]):
         self._items = value
-        DataJson()[self.widget_id]["items"] = self._set_items()
+        DataJson()[self.widget_id]["items"] = self._get_items_json()
         DataJson().send_changes()
 
     def add_items(self, value: List[Collapse.Item]):
         self._items.extend(value)
-        DataJson()[self.widget_id]["items"] = self._set_items()
+        DataJson()[self.widget_id]["items"] = self._get_items_json()
         DataJson().send_changes()
 
     def value_changed(self, func):
@@ -104,8 +104,8 @@ class Collapse(Widget):
 
         @server.post(route_path)
         def _click():
-            res = self.get_active_panel()
-            self._value = res
-            func(res)
+            active = self.get_active_panel()
+            self._active_panels = active
+            func(active)
 
         return _click
