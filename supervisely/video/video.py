@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Processing of videos"""
+"""Functions for processing videos"""
 
 from __future__ import annotations
 from typing import Tuple, List, Dict, Optional

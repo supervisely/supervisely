@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Processing of volumes"""
+"""Functions for processing volumes"""
 
 import os
 import json
