@@ -1,5 +1,5 @@
 # coding: utf-8
-"""augmentations for images and annotations"""
+"""Augmentations for images and annotations"""
 
 from __future__ import annotations
 from typing import TYPE_CHECKING

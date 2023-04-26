@@ -502,7 +502,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 hashes.append(volume_info.hash)
                 # It is necessary to upload volumes with the same names(extentions) as in src dataset
                 names.append(volume_info.name)
-                metas.append({volume_info.name: volume_info.frame_height})
+                metas.append(volume_info.meta)
 
             progress = sly.Progress("Volumes upload: ", len(hashes))
             new_volumes_info = api.volume.upload_hashes(
@@ -953,13 +953,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         window_width: int = None,
     ):
         """
-        Download slice as NumPy from Supervisely by ID
+        Download slice as NumPy from Supervisely by ID.
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param slice_index: Slice index.
+        :param slice_index: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index.
         :type slice_index: int
-        :param plane: Plane of the slice in volume.
+        :param plane: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>` of the slice in volume.
         :type plane: str
         :param window_center: Window center.
         :type window_center: float
