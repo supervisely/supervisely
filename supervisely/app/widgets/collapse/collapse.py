@@ -78,12 +78,12 @@ class Collapse(Widget):
             for title in value:
                 if title not in self._items_title:
                     raise ValueError(
-                        f"Can activate panel `{title}`: item with such title doesn't exist."
+                        f"Can't activate panel `{title}`: item with such title doesn't exist."
                     )
         else:
             if value not in self._items_title:
                 raise ValueError(
-                    f"Can activate panel `{value}`: item with such title doesn't exist."
+                    f"Can't activate panel `{value}`: item with such title doesn't exist."
                 )
 
         if isinstance(value, str) and not self._accordion:
@@ -102,11 +102,14 @@ class Collapse(Widget):
 
     def set_items(self, value: List[Collapse.Item]):
         self._items = value
+        self._items_title = set([val.title for val in value])
         DataJson()[self.widget_id]["items"] = self._get_items_json()
         DataJson().send_changes()
 
     def add_items(self, value: List[Collapse.Item]):
         self._items.extend(value)
+        titles = [val.title for val in value]
+        self._items_title.update(titles)
         DataJson()[self.widget_id]["items"] = self._get_items_json()
         DataJson().send_changes()
 
