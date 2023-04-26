@@ -116,7 +116,7 @@ class RemoteStorageApi(ModuleApiBase):
         return resp.json()
 
     def download_path(
-        self, remote_path: str, save_path: str, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, remote_path: str, save_path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ):
         """
         Downloads item from given remote path to given local path.
@@ -126,7 +126,7 @@ class RemoteStorageApi(ModuleApiBase):
         :param save_path: Local save path.
         :type save_path: str
         :param progress_cb: Progress function to download.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
 
 
         .. code-block:: python

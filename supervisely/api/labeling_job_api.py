@@ -1021,7 +1021,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return response.json()
 
     def get_activity(
-        self, team_id: int, job_id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, team_id: int, job_id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> DataFrame:
         import pandas as pd
 

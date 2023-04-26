@@ -353,7 +353,7 @@ class FileApi(ModuleApiBase):
         remote_path: str,
         local_save_path: str,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -367,7 +367,7 @@ class FileApi(ModuleApiBase):
         :param cache: optional
         :type cache: FileCache, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -420,7 +420,7 @@ class FileApi(ModuleApiBase):
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
         if (
@@ -451,7 +451,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Directory from Team Files.
@@ -463,7 +463,7 @@ class FileApi(ModuleApiBase):
         :param local_save_path: Local save path.
         :type local_save_path: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -532,7 +532,7 @@ class FileApi(ModuleApiBase):
         return resp.json()
 
     def upload(
-        self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> FileInfo:
         """
         Upload File to Team Files.
@@ -544,7 +544,7 @@ class FileApi(ModuleApiBase):
         :param dst: Path to File in Team Files.
         :type dst: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
         :Usage example:
@@ -569,7 +569,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src_paths: List[str],
         dst_paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[FileInfo]:
         """
         Upload Files to Team Files.
@@ -581,7 +581,7 @@ class FileApi(ModuleApiBase):
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
         :Usage example:
@@ -639,11 +639,7 @@ class FileApi(ModuleApiBase):
         #     last_percent = cur_percent
 
         _progress_cb = progress_cb
-        if (
-            progress_cb is not None
-            and isinstance(progress_cb, tqdm)
-            and progress_cb is not Callable
-        ):
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
             _progress_cb = progress_cb.get_partial()
         if _progress_cb is None:
             data = encoder
@@ -792,7 +788,7 @@ class FileApi(ModuleApiBase):
         self,
         team_id: int,
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Removes list of files from Team Files.

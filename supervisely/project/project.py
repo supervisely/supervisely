@@ -1648,7 +1648,7 @@ class Project:
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
         target_classes: Optional[List[str]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
@@ -1668,7 +1668,7 @@ class Project:
                                background class "__bg__" will be added automatically.
         :type target_classes: :class:`list` [ :class:`str` ], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
                                   will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
@@ -1780,7 +1780,7 @@ class Project:
         src_project_dir: str,
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -1794,7 +1794,7 @@ class Project:
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2207,7 +2207,7 @@ class Project:
         log_progress: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         only_image_tags: Optional[bool] = False,
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
@@ -2230,7 +2230,7 @@ class Project:
         :param cache: FileCache object.
         :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
         :type only_image_tags: :class:`bool`, optional
         :param save_image_info: Download images infos or not.
@@ -2282,7 +2282,7 @@ class Project:
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = True,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads project to Supervisely from the given directory.
@@ -2298,7 +2298,7 @@ class Project:
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -2460,7 +2460,7 @@ def upload_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
     if project_name is None:
@@ -2579,7 +2579,7 @@ def download_project(
     log_progress: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     cache: Optional[FileCache] = None,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: bool = True,

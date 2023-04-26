@@ -689,7 +689,7 @@ class UserApi(ModuleApiBase):
         return None
 
     def get_member_activity(
-        self, team_id: int, user_id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, team_id: int, user_id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> DataFrame:
         """
         Get User activity data.
@@ -699,7 +699,7 @@ class UserApi(ModuleApiBase):
         :param user_id: User ID in Supervisely.
         :type user_id: int
         :param progress_cb: Function to check progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
         :Usage example:

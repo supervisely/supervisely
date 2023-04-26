@@ -464,7 +464,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         hashes: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: List[dict] = None,
     ):
         """
@@ -477,7 +477,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param hashes: Volumes hashes.
         :type hashes: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
         :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
@@ -577,7 +577,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         name: str,
         np_data,
         meta: dict,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: int = 30,
     ):
         """
@@ -592,7 +592,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param meta: Volume metadata.
         :type meta: dict, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:
@@ -756,7 +756,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         return self.get_info_by_name(dataset_id, name)
 
     def _upload_slices_bulk(
-        self, volume_id: int, items, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, volume_id: int, items, progress_cb: Optional[Union[tqdm, Callable]] = None
     ):
         """
         Private method for volume slices bulk uploading.
@@ -766,7 +766,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param items: Volume slices to upload
         :type items: list
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of responses
         :rtype: list
         """
@@ -846,7 +846,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         return response
 
     def download_path(
-        self, id: int, path: str, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, id: int, path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ):
         """
         Download volume with given ID to local directory.
@@ -856,7 +856,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param path: Local path to save volume.
         :type path: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:
@@ -906,7 +906,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: str,
         paths: str,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         log_progress: bool = True,
     ):
         """
@@ -921,7 +921,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param log_progress: Determine if logs are displaying.
         :type log_progress: bool, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:

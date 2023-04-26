@@ -443,7 +443,7 @@ class ImageApi(RemoveableBulkModuleApi):
     def get_info_by_id_batch(
         self,
         ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
     ) -> List[ImageInfo]:
         """
@@ -584,7 +584,7 @@ class ImageApi(RemoveableBulkModuleApi):
         self.download_path(id=id, path=path)
 
     def _download_batch(
-        self, dataset_id: int, ids: List[int], progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, dataset_id: int, ids: List[int], progress_cb: Optional[Union[tqdm, Callable]] = None
     ):
         """
         Get image id and it content from given dataset and list of images ids.
@@ -610,7 +610,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         ids: List[int],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Images with given ids and saves them for the given paths.
@@ -667,7 +667,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 w.write(resp_part.content)
 
     def download_bytes(
-        self, dataset_id: int, ids: List[int], progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, dataset_id: int, ids: List[int], progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> List[bytes]:
         """
         Download Images with given IDs from Dataset in Binary format.
@@ -707,7 +707,7 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         keep_alpha: Optional[bool] = False,
     ) -> List[np.ndarray]:
         """
@@ -744,7 +744,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ]
 
     def check_existing_hashes(
-        self, hashes: List[str], progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, hashes: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> List[str]:
         """
         Checks existing hashes for Images.
@@ -963,7 +963,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
@@ -1041,7 +1041,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         imgs: List[np.ndarray],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
@@ -1146,7 +1146,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         links: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
@@ -1259,7 +1259,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         hashes: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
@@ -1382,7 +1382,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: bool = True,
@@ -1604,7 +1604,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         change_name_if_conflict: Optional[bool] = False,
         with_annotations: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1695,7 +1695,7 @@ class ImageApi(RemoveableBulkModuleApi):
         src_image_infos: List[ImageInfo],
         dst_dataset_id: int,
         with_annotations: Optional[bool] = True,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
         skip_validation: Optional[bool] = False,
@@ -1795,7 +1795,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         change_name_if_conflict: Optional[bool] = False,
         with_annotations: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """
         Moves Images with given IDs to Dataset.
@@ -1850,7 +1850,7 @@ class ImageApi(RemoveableBulkModuleApi):
         src_image_infos: List[ImageInfo],
         dst_dataset_id: int,
         with_annotations: Optional[bool] = True,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         dst_names: List[ImageInfo] = None,
         batch_size: Optional[int] = 500,
         skip_validation: Optional[bool] = False,
@@ -2055,7 +2055,7 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         hashes: List[str],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Images with given hashes in Supervisely server and saves them for the given paths.
@@ -2293,7 +2293,7 @@ class ImageApi(RemoveableBulkModuleApi):
         image_ids: List[int],
         tag_id: int,
         value: Optional[Union[str, int]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 100,
         tag_meta: Optional[TagMeta] = None,
     ) -> None:
@@ -2348,7 +2348,7 @@ class ImageApi(RemoveableBulkModuleApi):
     def remove_batch(
         self,
         ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 50,
     ):
         """

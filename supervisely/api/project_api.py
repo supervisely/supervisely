@@ -677,7 +677,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return new_dst_meta_json
 
     def get_activity(
-        self, id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> DataFrame:
         """
         Get Project activity by ID.
@@ -824,7 +824,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(
-        self, id: int, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
@@ -832,7 +832,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Defaultdict matching tag names to ImageInfos
         :rtype: :class:`defaultdict`
         :Usage example:

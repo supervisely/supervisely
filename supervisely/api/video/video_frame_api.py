@@ -39,7 +39,7 @@ class VideoFrameAPI(ModuleApi):
         self,
         video_id: int,
         frame_indexes: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """
         Private method. Batch download frames with given video ID and frame indexes.
@@ -98,7 +98,7 @@ class VideoFrameAPI(ModuleApi):
         self,
         video_id: int,
         frame_indexes: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         keep_alpha: Optional[bool] = False,
     ) -> List[np.ndarray]:
         """
@@ -109,7 +109,7 @@ class VideoFrameAPI(ModuleApi):
         :param frame_indexes: Indexes of frames to download.
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in RGB numpy matrix format
         :rtype: List[np.ndarray]
         :Usage example:
@@ -180,7 +180,7 @@ class VideoFrameAPI(ModuleApi):
         video_id: int,
         frame_indexes: List[int],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Downloads frames to given paths for frames with given indexes from given Video ID.
@@ -192,7 +192,7 @@ class VideoFrameAPI(ModuleApi):
         :param paths: Local save paths for frames.
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -227,7 +227,7 @@ class VideoFrameAPI(ModuleApi):
         self,
         video_id: int,
         frame_indexes: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[bytes]:
         """
         Download frames with given indexes from Dataset in Binary format.
@@ -237,7 +237,7 @@ class VideoFrameAPI(ModuleApi):
         :param frame_indexes: List of video frames indexes in Supervisely.
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in binary format
         :rtype: :class:`List[bytes]`
         :Usage example:

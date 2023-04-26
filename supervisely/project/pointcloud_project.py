@@ -726,7 +726,7 @@ class PointcloudProject(VideoProject):
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.
@@ -795,7 +795,7 @@ class PointcloudProject(VideoProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud project to Supervisely from the given directory.
@@ -859,7 +859,7 @@ def download_pointcloud_project(
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     key_id_map = KeyIdMap()
 
@@ -1018,7 +1018,7 @@ def upload_pointcloud_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:

@@ -16,7 +16,7 @@ def download(
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     # TODO configure arguments for nested functions
 

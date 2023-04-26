@@ -152,7 +152,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         ann_paths: List[str],
         project_meta: ProjectMeta,
         interpolation_dirs=None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """
         Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
@@ -166,7 +166,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param interpolation_dirs:
         :type interpolation_dirs:
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 

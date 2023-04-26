@@ -153,7 +153,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         names: List[str],
         hashes: List[str],
         metas: Optional[List[Dict]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[PointcloudInfo]:
         return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
@@ -200,7 +200,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return self.upload_related_images([path])[0]
 
     def upload_related_images(
-        self, paths: List[str], progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, paths: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> List[str]:
         def path_to_bytes_stream(path):
             return open(path, "rb")
@@ -227,7 +227,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[Dict] = None,
     ) -> List[PointcloudInfo]:
         def path_to_bytes_stream(path):

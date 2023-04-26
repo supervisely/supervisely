@@ -86,7 +86,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
@@ -97,7 +97,7 @@ class AnnotationApi(ModuleApi):
         :param filters: List of parameters to sort output Annotations.
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -162,7 +162,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
@@ -174,7 +174,7 @@ class AnnotationApi(ModuleApi):
         :param filters: List of parameters to sort output Annotations.
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -343,7 +343,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
@@ -399,7 +399,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[Dict]:
         """
@@ -477,7 +477,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         ann_paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -488,7 +488,7 @@ class AnnotationApi(ModuleApi):
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -554,7 +554,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         ann_jsons: List[Dict],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -565,7 +565,7 @@ class AnnotationApi(ModuleApi):
         :param ann_jsons: Annotation in JSON format.
         :type ann_jsons: List[dict]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -625,7 +625,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         anns: List[Annotation],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -636,7 +636,7 @@ class AnnotationApi(ModuleApi):
         :param anns: List of Annotation objects.
         :type anns: List[Annotation]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -734,7 +734,7 @@ class AnnotationApi(ModuleApi):
         self,
         src_image_ids: List[int],
         dst_image_ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
@@ -746,7 +746,7 @@ class AnnotationApi(ModuleApi):
         :param dst_image_ids: Unique IDs of images in API.
         :type dst_image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
         :return: None
         :rtype: :class:`NoneType`

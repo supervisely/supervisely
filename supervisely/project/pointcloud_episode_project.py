@@ -483,7 +483,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download pointcloud episodes project from Supervisely to the given directory.
@@ -553,7 +553,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud episodes project to Supervisely from the given directory.
@@ -618,7 +618,7 @@ def download_pointcloud_episode_project(
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     # download_annotations is deprecated parameter for backward compatibility.
     if not download_annotations:
@@ -773,7 +773,7 @@ def upload_pointcloud_episode_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
     project_locally = PointcloudEpisodeProject.read_single(directory)

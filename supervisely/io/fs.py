@@ -743,7 +743,7 @@ def download(
 
 
 def copy_dir_recursively(
-    src_dir: str, dst_dir: str, progress_cb: Optional[Union[Callable, tqdm]] = None
+    src_dir: str, dst_dir: str, progress_cb: Optional[Union[tqdm, Callable]] = None
 ) -> List[str]:
     files = list_files_recursively(src_dir)
     for src_file_path in files:

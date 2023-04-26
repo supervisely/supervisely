@@ -600,7 +600,7 @@ class VideoApi(RemoveableBulkModuleApi):
         names: List[str],
         hashes: List[str],
         metas: Optional[List[Dict]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given hashes to Dataset.
@@ -614,7 +614,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param metas: Videos metadata.
         :type metas: List[dict], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -705,7 +705,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return response
 
     def download_path(
-        self, id: int, path: str, progress_cb: Optional[Union[Callable, tqdm]] = None
+        self, id: int, path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> None:
         """
         Downloads Video from Dataset to local path by ID.
@@ -715,7 +715,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param path: Local save path for Video.
         :type path: str
         :param progress_cb: Function to check progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -989,7 +989,7 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         paths: List[str],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         infos=None,
         item_progress=None,
@@ -1004,7 +1004,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param paths: List of local Videos paths.
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Videos metadata.
         :type metas: List[dict], optional
         :param infos:
@@ -1641,7 +1641,7 @@ class VideoApi(RemoveableBulkModuleApi):
     def remove_batch(
         self,
         ids: List[int],
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 50,
     ):
         """
@@ -1650,7 +1650,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param ids: List of Videos IDs in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for tracking progress of removing.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :Usage example:

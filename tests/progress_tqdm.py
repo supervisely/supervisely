@@ -70,17 +70,18 @@ from tqdm import tqdm
 # p = tqdm(
 #     desc="api.file.download tqdm dev",
 #     total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
-#     unit="B",
-#     unit_scale=True,
+#     # unit="B",
+#     # unit_scale=True,
+#     is_size=True,
 # )
 # api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
 
 
 import shutil
 
-# n_count = api.project.get_info_by_id(17732).items_count
+# n_count = api.project.get_info_by_id(18142).items_count
 # p = get_p_for_test("sly.download", "it", "dev", n_count)
-# # sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
+# sly.download(api, 18142, LOC_DIRPATH, progress_cb=p)
 # shutil.rmtree(LOC_DIRPATH)
 # for method, project_id in zip(
 # [
@@ -296,33 +297,33 @@ import shutil
 # api.video.upload_hashes  # progress_cb(len(images))
 # api.video.upload_paths  # progress_cb(len(remote_hashes)), progress_cb(len(hashes_rcv))
 
-src_dataset_id = 61229
-info = api.dataset.create(20697, "tst", change_name_if_conflict=True)
-dst_dataset_id = info.id
+# src_dataset_id = 61229
+# info = api.dataset.create(20697, "tst", change_name_if_conflict=True)
+# dst_dataset_id = info.id
 
-hashes = []
-names = []
-metas = []
-volume_infos = api.volume.get_list(src_dataset_id)
+# hashes = []
+# names = []
+# metas = []
+# volume_infos = api.volume.get_list(src_dataset_id)
 
-# Create lists of hashes, volumes names and meta information for each volume
-for volume_info in volume_infos:
-    hashes.append(volume_info.hash)
-    # It is necessary to upload volumes with the same names(extentions) as in src dataset
-    names.append(volume_info.name)
-    metas.append(volume_info.meta)
+# # Create lists of hashes, volumes names and meta information for each volume
+# for volume_info in volume_infos:
+#     hashes.append(volume_info.hash)
+#     # It is necessary to upload volumes with the same names(extentions) as in src dataset
+#     names.append(volume_info.name)
+#     metas.append(volume_info.meta)
 
-p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
-new_volumes_info = api.volume.upload_hashes(
-    dataset_id=dst_dataset_id,
-    names=names,
-    hashes=hashes,
-    progress_cb=p,
-    metas=metas,
-)
+# p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
+# new_volumes_info = api.volume.upload_hashes(
+#     dataset_id=dst_dataset_id,
+#     names=names,
+#     hashes=hashes,
+#     progress_cb=p,
+#     metas=metas,
+# )
 
 
-api.volume.upload_hashes  # progress_cb(len(volumes))
+# api.volume.upload_hashes  # progress_cb(len(volumes))
 
 # src_dataset_id = 61229
 # volume_infos = api.volume.get_list(src_dataset_id)

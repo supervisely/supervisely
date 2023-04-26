@@ -878,7 +878,7 @@ class VideoProject(Project):
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
         target_classes: Optional[List[str]] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
@@ -894,7 +894,7 @@ class VideoProject(Project):
         src_project_dir: str,
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Not available for VideoProject class.
@@ -1035,7 +1035,7 @@ class VideoProject(Project):
         download_videos: bool = True,
         save_video_info: bool = False,
         log_progress: bool = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download video project from Supervisely to the given directory.
@@ -1109,6 +1109,7 @@ class VideoProject(Project):
         :param workspace_id: Workspace ID in Supervisely to upload video project.
         :type workspace_id: int
         :param project_name: Name of video project.
+
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
         :type log_progress: bool, optional
@@ -1156,7 +1157,7 @@ def download_video_project(
     download_videos: bool = True,
     save_video_info: bool = False,
     log_progress: bool = False,
-    progress_cb: Optional[Union[Callable, tqdm]] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     LOG_BATCH_SIZE = 1
 

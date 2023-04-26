@@ -132,7 +132,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_ids: List[int],
         ann_paths: List[str],
         project_meta: ProjectMeta,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
@@ -144,7 +144,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 

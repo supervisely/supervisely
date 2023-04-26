@@ -351,7 +351,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         filter_project_id: Optional[int] = None,
         filter_job_id: Optional[int] = None,
         filter_actions: Optional[List] = None,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> List[Dict]:
@@ -369,7 +369,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :param filter_actions: List of ActivityAction by which the activity will be filtered.
         :type filter_actions: list, optional
         :param progress_cb: Function to check progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param start_date: Start date to get Team activity.
         :type start_date: str, optional
         :param end_date: End date to get Team activity.
@@ -489,11 +489,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         pages_count = first_response["pagesCount"]
         results = first_response["entities"]
 
-        if (
-            progress_cb is not None
-            and isinstance(progress_cb, tqdm)
-            and progress_cb is not Callable
-        ):
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
             progress_cb.update(len(results) - progress_cb.n)
             progress_cb.total = total
             progress_cb.refresh()
