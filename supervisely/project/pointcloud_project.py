@@ -750,7 +750,7 @@ class PointcloudProject(VideoProject):
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm`, optional
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -811,7 +811,7 @@ class PointcloudProject(VideoProject):
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm`, optional
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
