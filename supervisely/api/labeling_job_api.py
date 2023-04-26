@@ -252,6 +252,10 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             res = self.InfoType(*field_values)
             return LabelingJobInfo(**res._asdict())
 
+    def _remove_api_method_name(self):
+        """Api remove method name."""
+        return "jobs.archive"
+
     def create(self,
                name: str,
                dataset_id: int,
