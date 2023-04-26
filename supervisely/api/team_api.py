@@ -502,11 +502,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
-                if (
-                    progress_cb is not None
-                    and isinstance(progress_cb, tqdm)
-                    and progress_cb is not Callable
-                ):
+                if progress_cb is not None and isinstance(progress_cb, tqdm):
                     progress_cb.update(len(results) - progress_cb.n)
                     progress_cb.total = total
                     progress_cb.refresh()

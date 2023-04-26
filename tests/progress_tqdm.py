@@ -295,7 +295,19 @@ import shutil
 # api.video.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
 # api.video.remove_batch  # progress_cb(len(ids_batch))
 # api.video.upload_hashes  # progress_cb(len(images))
-# api.video.upload_paths  # progress_cb(len(remote_hashes)), progress_cb(len(hashes_rcv))
+# dataset_id = 60565
+# video_names = [
+#     "7777.mp4",
+# ]
+# video_paths = [
+#     "7777.mp4",
+# ]
+
+# p = tqdm(total=1)
+# video_infos = api.video.upload_paths(
+#     dataset_id=dataset_id, names=video_names, paths=video_paths, progress_cb=p
+# )
+# api.video.upload_paths()  # progress_cb(len(remote_hashes)), progress_cb(len(hashes_rcv))
 
 # src_dataset_id = 61229
 # info = api.dataset.create(20697, "tst", change_name_if_conflict=True)
