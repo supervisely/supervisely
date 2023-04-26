@@ -1,5 +1,5 @@
 # coding: utf-8
-"""processing of pointclouds"""
+"""Processing of pointclouds"""
 
 import os
 import numpy as np
