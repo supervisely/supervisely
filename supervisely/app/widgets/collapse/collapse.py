@@ -64,12 +64,9 @@ class Collapse(Widget):
     def set_active_panel(self, value: Union[str, List[str]]):
         """Set active panel.
 
-        Args:
-            value (Union[str, List[str]]): str if accordion mode,
-                else List[str]
-
-        Raises:
-            TypeError: value of type List[str] can't be setted, if accordion is True.
+        :param value: str if accordion mode, else List[str]
+        :type value: Union[str, List[str]]
+        :raises TypeError: value of type List[str] can't be setted, if accordion is True.
         """
         if isinstance(value, list) and self._accordion:
             raise TypeError(
