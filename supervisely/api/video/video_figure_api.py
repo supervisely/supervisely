@@ -15,8 +15,15 @@ class VideoFigureApi(FigureApi):
     :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` for a single video.
     """
 
-    def create(self, video_id: int, object_id: int, frame_index: int, geometry_json: dict, geometry_type: str,
-               track_id: Optional[int]=None) -> int:
+    def create(
+        self,
+        video_id: int,
+        object_id: int,
+        frame_index: int,
+        geometry_json: dict,
+        geometry_type: str,
+        track_id: Optional[int] = None,
+    ) -> int:
         """
         Create new VideoFigure for given frame in given video ID.
 
@@ -53,12 +60,14 @@ class VideoFigureApi(FigureApi):
             figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
         """
 
-        return super().create(video_id,
-                              object_id,
-                              {ApiField.FRAME: frame_index},
-                              geometry_json,
-                              geometry_type,
-                              track_id)
+        return super().create(
+            video_id,
+            object_id,
+            {ApiField.FRAME: frame_index},
+            geometry_json,
+            geometry_type,
+            track_id,
+        )
 
     def append_bulk(self, video_id: int, figures: List[VideoFigure], key_id_map: KeyIdMap) -> None:
         """
@@ -101,4 +110,3 @@ class VideoFigureApi(FigureApi):
             figures_json.append(figure.to_json(key_id_map, save_meta=True))
 
         self._append_bulk(video_id, figures_json, keys, key_id_map)
-

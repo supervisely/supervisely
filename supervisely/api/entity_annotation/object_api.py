@@ -43,7 +43,25 @@ class ObjectApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def info_tuple_name():
-        """"""
+        """
+        Get string name of NamedTuple for class.
+
+        :return: NamedTuple name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tuple_name = api.video.object.info_tuple_name()
+            print(tuple_name) # ObjectInfo
+        """
+
         return 'ObjectInfo'
 
     def get_info_by_id(self, id: int) -> NamedTuple:

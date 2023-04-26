@@ -104,6 +104,24 @@ class VideoObject(KeyObject):
         return self._obj_class
 
     def key(self) -> uuid.UUID:
+        """
+        Object key.
+
+        :return: Object key
+        :rtype: uuid.UUID
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_car = sly.ObjClass('car', sly.Rectangle)
+            video_obj_car = sly.VideoObject(obj_class_car)
+            key = video_obj_car.key()
+            print(key)
+            # Output: 158e6cf4f4ac4c639fc6994aad127c16
+        """
+
         return self._key
 
     @property
@@ -146,6 +164,22 @@ class VideoObject(KeyObject):
 
     @property
     def class_id(self) -> int:
+        """
+        Object class ID.
+
+        :return: Object class ID.
+        :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_car = sly.ObjClass('car', sly.Rectangle)
+            video_obj_car = sly.VideoObject(obj_class_car)
+            class_id = video_obj_car.class_id
+        """
+
         return self._class_id
 
     def add_tag(self, tag: VideoTag) -> VideoObject:
