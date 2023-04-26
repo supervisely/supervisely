@@ -83,3 +83,4 @@ from supervisely.app.widgets.team_files_selector.team_files_selector import Team
 from supervisely.app.widgets.icons.icons import Icons
 from supervisely.app.widgets.badge.badge import Badge
 from supervisely.app.widgets.date_picker.date_picker import DatePicker
+from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePicker

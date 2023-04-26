@@ -1398,11 +1398,11 @@ class VideoApi(RemoveableBulkModuleApi):
         Upload custom data info in VideoInfo object.
 
         :param video_id: Videos ID in Supervisely.
-        :type video_id: in
+        :type video_id: int
         :param metas: Metadata dict with custom values.
             Note: Do not recommend changing metas as it affects displaying
             data in label tools. In case changing the metadata is necessary,
-            make sure to include an `streams` field with its value in the request body.
+            make sure to include an "streams" field with its value in the request body.
         :type metas: dict
         :return: Return updating result
         :rtype: dict
