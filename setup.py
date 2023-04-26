@@ -54,6 +54,12 @@ INSTALL_REQUIRES = [
     "numerize",
     "ffmpeg-python==0.2.0",
     "python-multipart==0.0.5",
+    "GitPython",
+    "giturlparse",
+    "rich",
+    "click",
+    "imutils==0.5.4",
+    "aiocache==0.12.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -102,6 +108,25 @@ def get_install_requirements(main_requires, alternative_requires):
 setup(
     name="supervisely",
     version=version,
+    description="Supervisely Python SDK.",
+    long_description=read("README.md"),
+    long_description_content_type="text/markdown",
+    author="Supervisely",
+    author_email="support@supervise.ly",
+    url="https://github.com/supervisely/supervisely",
+    packages=find_packages(
+        include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
+    ),
+    package_data={
+        "": ["*.html", "*.css", "*.js"],
+        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
+    },
+    entry_points={
+        "console_scripts": [
+            "sly-release=supervisely.release.run:cli_run",
+            "supervisely=supervisely.cli.cli:cli",
+        ]
+    },
     python_requires=">=3.7.1",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -115,17 +140,6 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    packages=find_packages(
-        include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
-    ),
-    description="Supervisely Python SDK.",
-    long_description=read("README.md"),
-    long_description_content_type="text/markdown",
-    url="https://github.com/supervisely/supervisely",
-    package_data={
-        "": ["*.html", "*.css", "*.js"],
-        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
-    },
     install_requires=get_install_requirements(INSTALL_REQUIRES, ALT_INSTALL_REQUIRES),
     extras_require={
         "extras": [

@@ -21,6 +21,7 @@ class GridGallery(Widget):
         sync_views: bool = False,
         fill_rectangle: bool = True,
         border_width: int = 3,
+        show_preview: bool = False,
         widget_id: str = None,
     ):
 
@@ -45,6 +46,7 @@ class GridGallery(Widget):
         self._enable_zoom: bool = enable_zoom
         self._sync_views: bool = sync_views
         self._resize_on_zoom: bool = resize_on_zoom
+        self._show_preview: bool = show_preview
         #############################
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -87,6 +89,7 @@ class GridGallery(Widget):
                 "borderWidth": self._border_width,
                 "selectable": False,
                 "viewHeight": None,
+                "showPreview": self._show_preview,
             },
             "selectedImage": None,
             "activeFigure": None,
