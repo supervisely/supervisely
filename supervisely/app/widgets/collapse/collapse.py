@@ -47,6 +47,7 @@ class Collapse(Widget):
         else:
             self._active_panels = [labels[0]]
 
+        self._items_title = set(labels)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_items_json(self) -> List[Dict[str, Any]]:
@@ -62,16 +63,28 @@ class Collapse(Widget):
         return {"value": self._active_panels}
 
     def set_active_panel(self, value: Union[str, List[str]]):
-        """Set active panel.
+        """ "Set active panel or panels.
 
-        :param value: str if accordion mode, else List[str]
+        :param value: panel titles;
         :type value: Union[str, List[str]]
         :raises TypeError: value of type List[str] can't be setted, if accordion is True.
+        :raises ValueError: panel with such title doesn't exist.
         """
-        if isinstance(value, list) and self._accordion:
-            raise TypeError(
-                "Only one panel could be active in accordion mode. Use `str`, not `list`."
-            )
+        if isinstance(value, list):
+            if self._accordion:
+                raise TypeError(
+                    "Only one panel could be active in accordion mode. Use `str`, not `list`."
+                )
+            for title in value:
+                if title not in self._items_title:
+                    raise ValueError(
+                        f"Can activate panel `{title}`: item with such title doesn't exist."
+                    )
+        else:
+            if value not in self._items_title:
+                raise ValueError(
+                    f"Can activate panel `{value}`: item with such title doesn't exist."
+                )
 
         if isinstance(value, str) and not self._accordion:
             self._active_panels = [value]
