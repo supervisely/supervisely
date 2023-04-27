@@ -4,8 +4,8 @@ from typing import Dict
 
 
 class Markdown(Widget):
-    def __init__(self, md: str = "", height: int = 300, widget_id: str = None):
-        self._md = md
+    def __init__(self, content: str = "", height: int = 300, widget_id: str = None):
+        self._md = content
         self._height = f"{height}px"
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -20,9 +20,6 @@ class Markdown(Widget):
         self._md = value
         DataJson()[self.widget_id]["md"] = value
         DataJson().send_changes()
-
-    def get_value(self):
-        return DataJson()[self.widget_id]["md"]
 
     def get_height(self):
         return DataJson()[self.widget_id]["options"]["height"]
