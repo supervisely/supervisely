@@ -466,6 +466,7 @@ class tqdm_sly(tqdm, Progress):
         )
 
     def _upload_monitor(self, monitor):
+        # TODO: need optimize copy-pastes
         if is_development():
             if self.n >= self.total:
                 self.refresh()
