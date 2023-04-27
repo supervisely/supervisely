@@ -19,8 +19,21 @@ class ColorPicker(Widget):
     ):
         self._show_alpha = show_alpha
         self._color_format = color_format
-        self._color = "#20a0ff"
         self._changes_handled = False
+
+        if self._color_format not in ["hsl", "hsv", "hex", "rgb"]:
+            raise TypeError(
+                f"Incorrect color format: {self._color_format}, only hsl, hsv, hex, rgb are possible"
+            )
+
+        if self._color_format == "hex":
+            self._color = "#20a0ff"
+        elif self._color_format == "hsl":
+            self._color = "hsl(205, 100%, 56%)"
+        elif self._color_format == "hsv":
+            self._color = "hsv(205, 87%, 100%)"
+        else:
+            self._color = "rgb(32, 160, 255)"
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -49,7 +62,7 @@ class ColorPicker(Widget):
         DataJson()[self.widget_id]["show_alpha"] = self._show_alpha
         DataJson().send_changes()
 
-    def unable_show_alpha(self):
+    def enable_show_alpha(self):
         self._show_alpha = True
         DataJson()[self.widget_id]["show_alpha"] = self._show_alpha
         DataJson().send_changes()
