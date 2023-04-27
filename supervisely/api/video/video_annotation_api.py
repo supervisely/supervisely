@@ -1,15 +1,17 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional, Callable
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
 import json
-from supervisely.api.module_api import ApiField
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from typing import Callable, Dict, List, Optional, Union
+
+from tqdm import tqdm
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
+from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import Progress
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
@@ -130,7 +132,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_ids: List[int],
         ann_paths: List[str],
         project_meta: ProjectMeta,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
@@ -142,7 +144,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 

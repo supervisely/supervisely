@@ -70,18 +70,13 @@ class _slyProgressBarIO:
                     self.progress["percent"] = 100
                 else:
                     self.progress["percent"] = int(self._n / self.total * 100)
-                self.progress["info"] = extract_by_regexp(
-                    r"(\d+(?:\.\d+\w+)?)*/.*\]", new_text
-                )
+                self.progress["info"] = extract_by_regexp(r"(\d+(?:\.\d+\w+)?)*/.*\]", new_text)
             else:
                 self.progress["percent"] = int(self._n)
-                self.progress["info"] = extract_by_regexp(
-                    r"(\d+(?:\.\d+\w+)?)*.*\]", new_text
-                )
+                self.progress["info"] = extract_by_regexp(r"(\d+(?:\.\d+\w+)?)*.*\]", new_text)
 
     def flush(self, synchronize_changes=True):
         if self.prev_state != self.progress:
-
             if self.progress["percent"] != "" and self.progress["info"] != "":
                 self.print_progress_to_supervisely_tasks_section()
 
@@ -106,7 +101,6 @@ class _slyProgressBarIO:
 
 class CustomTqdm(tqdm):
     def __init__(self, widget_id, message, *args, **kwargs):
-
         extracted_total = copy.copy(
             tqdm(iterable=kwargs["iterable"], total=kwargs["total"], disable=True).total
         )
@@ -127,7 +121,6 @@ class CustomTqdm(tqdm):
             self.fp.__del__()
 
     def __del__(self):
-
         super(CustomTqdm, self).__del__()
         if self.fp is not None:
             self.fp.__del__()
@@ -135,9 +128,7 @@ class CustomTqdm(tqdm):
 
 class SlyTqdm(Widget):
     # @TODO: track all active sessions for one object and close them if new object inited
-    def __init__(
-        self, message: str = None, show_percents: bool = False, widget_id: str = None
-    ):
+    def __init__(self, message: str = None, show_percents: bool = False, widget_id: str = None):
         """
         Wrapper for classic tqdm progress bar.
 
@@ -194,7 +185,6 @@ class SlyTqdm(Widget):
         gui=False,
         **kwargs,
     ):
-
         return CustomTqdm(
             widget_id=self.widget_id,
             iterable=iterable,
@@ -243,8 +233,6 @@ class Progress(SlyTqdm):
         widget_id: str = None,
     ):
         self.hide_on_finish = hide_on_finish
-        super().__init__(
-            message=message, show_percents=show_percents, widget_id=widget_id
-        )
+        super().__init__(message=message, show_percents=show_percents, widget_id=widget_id)
 
     pass

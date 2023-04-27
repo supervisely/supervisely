@@ -2,15 +2,18 @@
 
 # docs
 from __future__ import annotations
-from typing import Optional, Callable, List
-import numpy as np
-import re
-from requests_toolbelt import MultipartDecoder
-from supervisely._utils import batched
 
+import re
+from typing import Callable, List, Optional, Union
+
+import numpy as np
+from requests_toolbelt import MultipartDecoder
+from tqdm import tqdm
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
-from supervisely.io.fs import ensure_base_path
 from supervisely.imaging import image as sly_image
+from supervisely.io.fs import ensure_base_path
 
 
 class VideoFrameAPI(ModuleApi):
@@ -27,10 +30,17 @@ class VideoFrameAPI(ModuleApi):
         :return: Response class object containing frame data with given index from given video id
         """
 
-        response = self._api.post('videos.download-frame', {ApiField.VIDEO_ID: video_id, ApiField.FRAME: frame_index})
+        response = self._api.post(
+            "videos.download-frame", {ApiField.VIDEO_ID: video_id, ApiField.FRAME: frame_index}
+        )
         return response
 
-    def _download_batch(self, video_id: int, frame_indexes: List[int], progress_cb: Optional[Callable] = None):
+    def _download_batch(
+        self,
+        video_id: int,
+        frame_indexes: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ):
         """
         Private method. Batch download frames with given video ID and frame indexes.
 
@@ -84,8 +94,13 @@ class VideoFrameAPI(ModuleApi):
         frame = sly_image.read_bytes(response.content)
         return frame
 
-    def download_nps(self, video_id: int, frame_indexes: List[int], progress_cb: Optional[Callable] = None,
-                     keep_alpha: Optional[bool] = False) -> List[np.ndarray]:
+    def download_nps(
+        self,
+        video_id: int,
+        frame_indexes: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        keep_alpha: Optional[bool] = False,
+    ) -> List[np.ndarray]:
         """
         Download frames with given indexes from given video ID in numpy format(RGB).
 
@@ -94,7 +109,7 @@ class VideoFrameAPI(ModuleApi):
         :param frame_indexes: Indexes of frames to download.
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in RGB numpy matrix format
         :rtype: List[np.ndarray]
         :Usage example:
@@ -114,8 +129,10 @@ class VideoFrameAPI(ModuleApi):
 
         downloaded_frames = []
         for frame_bytes, frame_idx in zip(
-                self.download_bytes(video_id=video_id, frame_indexes=frame_indexes, progress_cb=progress_cb),
-                frame_indexes
+            self.download_bytes(
+                video_id=video_id, frame_indexes=frame_indexes, progress_cb=progress_cb
+            ),
+            frame_indexes,
         ):
             try:
                 frame = sly_image.read_bytes(frame_bytes, keep_alpha)
@@ -154,12 +171,17 @@ class VideoFrameAPI(ModuleApi):
 
         response = self._download(video_id, frame_index)
         ensure_base_path(path)
-        with open(path, 'wb') as fd:
+        with open(path, "wb") as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
 
-    def download_paths(self, video_id: int, frame_indexes: List[int], paths: List[str],
-                       progress_cb: Optional[Callable] = None) -> None:
+    def download_paths(
+        self,
+        video_id: int,
+        frame_indexes: List[int],
+        paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
         """
         Downloads frames to given paths for frames with given indexes from given Video ID.
 
@@ -170,7 +192,7 @@ class VideoFrameAPI(ModuleApi):
         :param paths: Local save paths for frames.
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -202,7 +224,10 @@ class VideoFrameAPI(ModuleApi):
                 w.write(resp_part.content)
 
     def download_bytes(
-            self, video_id: int, frame_indexes: List[int], progress_cb: Optional[Callable] = None
+        self,
+        video_id: int,
+        frame_indexes: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[bytes]:
         """
         Download frames with given indexes from Dataset in Binary format.
@@ -212,7 +237,7 @@ class VideoFrameAPI(ModuleApi):
         :param frame_indexes: List of video frames indexes in Supervisely.
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in binary format
         :rtype: :class:`List[bytes]`
         :Usage example:

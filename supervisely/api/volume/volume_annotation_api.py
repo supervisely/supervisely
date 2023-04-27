@@ -1,7 +1,12 @@
 # coding: utf-8
 
 import json
-from typing import List
+from typing import List, Optional, Union, Callable
+
+from tqdm import tqdm
+
+
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
@@ -145,9 +150,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         self,
         volume_ids: List[int],
         ann_paths: List[str],
-        project_meta,
+        project_meta: ProjectMeta,
         interpolation_dirs=None,
-        progress_cb=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """
         Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
@@ -158,8 +163,10 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann_paths: List[str]
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
         :type project_meta: ProjectMeta
+        :param interpolation_dirs:
+        :type interpolation_dirs:
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 

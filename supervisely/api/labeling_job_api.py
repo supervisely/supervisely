@@ -3,17 +3,23 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable
 
-from typing import TYPE_CHECKING
+import time
+from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-import time
 from supervisely.collection.str_enum import StrEnum
-from supervisely.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
-    WaitingTimeExceeded
+from supervisely.api.module_api import (
+    ApiField,
+    ModuleApi,
+    RemoveableModuleApi,
+    ModuleWithStatus,
+    WaitingTimeExceeded,
+)
 
 
 class LabelingJobInfo(NamedTuple):
@@ -83,7 +89,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
     class Status(StrEnum):
         """Labeling Job status."""
 
-        PENDING = 'pending'
+        PENDING = "pending"
         """"""
         IN_PROGRESS = "in_progress"
         """"""
@@ -91,7 +97,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         """"""
         COMPLETED = "completed"
         """"""
-        STOPPED = 'stopped'
+        STOPPED = "stopped"
         """"""
 
     @staticmethod
@@ -140,69 +146,66 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                              exclude_images_with_tags=[],
                              entities=None)
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.README,
-                ApiField.DESCRIPTION,
-
-                ApiField.TEAM_ID,
-                ApiField.WORKSPACE_ID,
-                ApiField.WORKSPACE_NAME,
-                ApiField.PROJECT_ID,
-                ApiField.PROJECT_NAME,
-                ApiField.DATASET_ID,
-                ApiField.DATASET_NAME,
-
-                ApiField.CREATED_BY_ID,
-                ApiField.CREATED_BY_LOGIN,
-                ApiField.ASSIGNED_TO_ID,
-                ApiField.ASSIGNED_TO_LOGIN,
-                ApiField.REVIEWER_ID,
-                ApiField.REVIEWER_LOGIN,
-
-                ApiField.CREATED_AT,
-                ApiField.STARTED_AT,
-                ApiField.FINISHED_AT,
-                ApiField.STATUS,
-                ApiField.DISABLED,
-                ApiField.IMAGES_COUNT,
-                ApiField.FINISHED_IMAGES_COUNT,
-                ApiField.REJECTED_IMAGES_COUNT,
-                ApiField.ACCEPTED_IMAGES_COUNT,
-                ApiField.PROGRESS_IMAGES_COUNT,
-
-                ApiField.CLASSES_TO_LABEL,
-                ApiField.TAGS_TO_LABEL,
-                ApiField.IMAGES_RANGE,
-                ApiField.OBJECTS_LIMIT_PER_IMAGE,
-                ApiField.TAGS_LIMIT_PER_IMAGE,
-
-                ApiField.FILTER_IMAGES_BY_TAGS,
-                ApiField.INCLUDE_IMAGES_WITH_TAGS,
-                ApiField.EXCLUDE_IMAGES_WITH_TAGS,
-
-                ApiField.ENTITIES,
-                ]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.README,
+            ApiField.DESCRIPTION,
+            ApiField.TEAM_ID,
+            ApiField.WORKSPACE_ID,
+            ApiField.WORKSPACE_NAME,
+            ApiField.PROJECT_ID,
+            ApiField.PROJECT_NAME,
+            ApiField.DATASET_ID,
+            ApiField.DATASET_NAME,
+            ApiField.CREATED_BY_ID,
+            ApiField.CREATED_BY_LOGIN,
+            ApiField.ASSIGNED_TO_ID,
+            ApiField.ASSIGNED_TO_LOGIN,
+            ApiField.REVIEWER_ID,
+            ApiField.REVIEWER_LOGIN,
+            ApiField.CREATED_AT,
+            ApiField.STARTED_AT,
+            ApiField.FINISHED_AT,
+            ApiField.STATUS,
+            ApiField.DISABLED,
+            ApiField.IMAGES_COUNT,
+            ApiField.FINISHED_IMAGES_COUNT,
+            ApiField.REJECTED_IMAGES_COUNT,
+            ApiField.ACCEPTED_IMAGES_COUNT,
+            ApiField.PROGRESS_IMAGES_COUNT,
+            ApiField.CLASSES_TO_LABEL,
+            ApiField.TAGS_TO_LABEL,
+            ApiField.IMAGES_RANGE,
+            ApiField.OBJECTS_LIMIT_PER_IMAGE,
+            ApiField.TAGS_LIMIT_PER_IMAGE,
+            ApiField.FILTER_IMAGES_BY_TAGS,
+            ApiField.INCLUDE_IMAGES_WITH_TAGS,
+            ApiField.EXCLUDE_IMAGES_WITH_TAGS,
+            ApiField.ENTITIES,
+        ]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **LabelingJobInfo**.
         """
-        return 'LabelingJobInfo'
+        return "LabelingJobInfo"
 
     def __init__(self, api):
         ModuleApi.__init__(self, api)
 
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
-        """
-        """
+        """ """
         if info is None:
             return None
         else:
             field_values = []
             for field_name in self.info_sequence():
-                if field_name in [ApiField.INCLUDE_IMAGES_WITH_TAGS, ApiField.EXCLUDE_IMAGES_WITH_TAGS]:
+                if field_name in [
+                    ApiField.INCLUDE_IMAGES_WITH_TAGS,
+                    ApiField.EXCLUDE_IMAGES_WITH_TAGS,
+                ]:
                     continue
                 value = None
                 if type(field_name) is str:
@@ -220,7 +223,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                         else:
                             value = value[sub_name]
                 else:
-                    raise RuntimeError('Can not parse field {!r}'.format(field_name))
+                    raise RuntimeError("Can not parse field {!r}".format(field_name))
 
                 if field_name == ApiField.FILTER_IMAGES_BY_TAGS:
                     field_values.append(value)
@@ -229,44 +232,48 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
                     for fv in value:
                         key = ApiField.NAME
                         if key not in fv:
-                            key = 'title'
-                        if fv['positive'] is True:
+                            key = "title"
+                        if fv["positive"] is True:
                             include_images_with_tags.append(fv[key])
                         else:
                             exclude_images_with_tags.append(fv[key])
                     field_values.append(include_images_with_tags)
                     field_values.append(exclude_images_with_tags)
                     continue
-                elif field_name == ApiField.CLASSES_TO_LABEL or field_name == ApiField.TAGS_TO_LABEL:
+                elif (
+                    field_name == ApiField.CLASSES_TO_LABEL or field_name == ApiField.TAGS_TO_LABEL
+                ):
                     value = []
                     for fv in value:
                         key = ApiField.NAME
                         if ApiField.NAME not in fv:
-                            key = 'title'
+                            key = "title"
                         value.append(fv[key])
                 elif field_name == ApiField.IMAGES_RANGE:
-                    value = (value['start'], value['end'])
+                    value = (value["start"], value["end"])
 
                 field_values.append(value)
 
             res = self.InfoType(*field_values)
             return LabelingJobInfo(**res._asdict())
 
-    def create(self,
-               name: str,
-               dataset_id: int,
-               user_ids: List[int],
-               readme: Optional[str] = None,
-               description: Optional[str] = None,
-               classes_to_label: Optional[List[str]] = None,
-               objects_limit_per_image: Optional[int] = None,
-               tags_to_label: Optional[List[str]] = None,
-               tags_limit_per_image: Optional[int] = None,
-               include_images_with_tags: Optional[List[str]] = None,
-               exclude_images_with_tags: Optional[List[str]] = None,
-               images_range: Optional[List[int, int]] = None,
-               reviewer_id: Optional[int] = None,
-               images_ids: Optional[List[int]] = []) -> List[LabelingJobInfo]:
+    def create(
+        self,
+        name: str,
+        dataset_id: int,
+        user_ids: List[int],
+        readme: Optional[str] = None,
+        description: Optional[str] = None,
+        classes_to_label: Optional[List[str]] = None,
+        objects_limit_per_image: Optional[int] = None,
+        tags_to_label: Optional[List[str]] = None,
+        tags_limit_per_image: Optional[int] = None,
+        include_images_with_tags: Optional[List[str]] = None,
+        exclude_images_with_tags: Optional[List[str]] = None,
+        images_range: Optional[List[int, int]] = None,
+        reviewer_id: Optional[int] = None,
+        images_ids: Optional[List[int]] = [],
+    ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
 
@@ -440,11 +447,11 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         filter_images_by_tags = []
         if include_images_with_tags is not None:
             for tag_name in include_images_with_tags:
-                filter_images_by_tags.append({'name': tag_name, 'positive': True})
+                filter_images_by_tags.append({"name": tag_name, "positive": True})
 
         if exclude_images_with_tags is not None:
             for tag_name in exclude_images_with_tags:
-                filter_images_by_tags.append({'name': tag_name, 'positive': False})
+                filter_images_by_tags.append({"name": tag_name, "positive": False})
 
         if objects_limit_per_image is None:
             objects_limit_per_image = 0
@@ -454,18 +461,18 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
         data = {
             ApiField.NAME: name,
-                ApiField.DATASET_ID: dataset_id,
-                ApiField.USER_IDS: user_ids,
-                # ApiField.DESCRIPTION: description,
-                ApiField.META: {
-                    'classes': classes_to_label,
-                    'projectTags': tags_to_label,
-                    'imageTags': filter_images_by_tags,
-                    'imageFiguresLimit': objects_limit_per_image,
-                    'imageTagsLimit': tags_limit_per_image,
-                    'entityIds': images_ids
-                    }
-                }
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.USER_IDS: user_ids,
+            # ApiField.DESCRIPTION: description,
+            ApiField.META: {
+                "classes": classes_to_label,
+                "projectTags": tags_to_label,
+                "imageTags": filter_images_by_tags,
+                "imageFiguresLimit": objects_limit_per_image,
+                "imageTagsLimit": tags_limit_per_image,
+                "entityIds": images_ids,
+            },
+        }
 
         if readme is not None:
             data[ApiField.README] = str(readme)
@@ -475,14 +482,14 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
         if images_range is not None:
             if len(images_range) != 2:
-                raise RuntimeError('images_range has to contain 2 elements (start, end)')
-            images_range = {'start': images_range[0], 'end': images_range[1]}
-            data[ApiField.META]['range'] = images_range
+                raise RuntimeError("images_range has to contain 2 elements (start, end)")
+            images_range = {"start": images_range[0], "end": images_range[1]}
+            data[ApiField.META]["range"] = images_range
 
         if reviewer_id is not None:
             data[ApiField.REVIEWER_ID] = reviewer_id
 
-        response = self._api.post('jobs.add', data)
+        response = self._api.post("jobs.add", data)
         # created_jobs_json = response.json()
 
         created_jobs = []
@@ -490,9 +497,15 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             created_jobs.append(self.get_info_by_id(job[ApiField.ID]))
         return created_jobs
 
-    def get_list(self, team_id: int, created_by_id: Optional[int] = None, assigned_to_id: Optional[int] = None,
-                 project_id: Optional[int] = None, dataset_id: Optional[int] = None,
-                 show_disabled: Optional[bool] = False) -> List[LabelingJobInfo]:
+    def get_list(
+        self,
+        team_id: int,
+        created_by_id: Optional[int] = None,
+        assigned_to_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        show_disabled: Optional[bool] = False,
+    ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
 
@@ -609,16 +622,21 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         """
         filters = []
         if created_by_id is not None:
-            filters.append({"field": ApiField.CREATED_BY_ID[0][0], "operator": "=", "value": created_by_id})
+            filters.append(
+                {"field": ApiField.CREATED_BY_ID[0][0], "operator": "=", "value": created_by_id}
+            )
         if assigned_to_id is not None:
-            filters.append({"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id})
+            filters.append(
+                {"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id}
+            )
         if project_id is not None:
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
-        return self.get_list_all_pages('jobs.list', {ApiField.TEAM_ID: team_id,
-                                                     "showDisabled": show_disabled,
-                                                     ApiField.FILTER: filters})
+        return self.get_list_all_pages(
+            "jobs.list",
+            {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
+        )
 
     def stop(self, id: int) -> None:
         """
@@ -640,7 +658,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
             api.labeling_job.stop(9)
         """
-        self._api.post('jobs.stop', {ApiField.ID: id})
+        self._api.post("jobs.stop", {ApiField.ID: id})
 
     def get_info_by_id(self, id: int) -> LabelingJobInfo:
         """
@@ -720,7 +738,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             #     ]
             # ]
         """
-        return self._get_info_by_id(id, 'jobs.info')
+        return self._get_info_by_id(id, "jobs.info")
 
     def archive(self, id: int) -> None:
         """
@@ -742,7 +760,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
             api.labeling_job.archive(23)
         """
-        self._api.post('jobs.archive', {ApiField.ID: id})
+        self._api.post("jobs.archive", {ApiField.ID: id})
 
     def get_status(self, id: int) -> LabelingJobApi.Status:
         """
@@ -769,13 +787,17 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         return self.Status(status_str)
 
     def raise_for_status(self, status):
-        """
-        """
+        """ """
         # there is no ERROR status for labeling job
         pass
 
-    def wait(self, id: int, target_status: str, wait_attempts: Optional[int] = None,
-             wait_attempt_timeout_sec: Optional[int] = None) -> None:
+    def wait(
+        self,
+        id: int,
+        target_status: str,
+        wait_attempts: Optional[int] = None,
+        wait_attempt_timeout_sec: Optional[int] = None,
+    ) -> None:
         """
         Wait for a Labeling Job to change to the expected target status.
 
@@ -811,7 +833,7 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             if status is target_status:
                 return
             time.sleep(effective_wait_timeout)
-        raise WaitingTimeExceeded('Waiting time exceeded')
+        raise WaitingTimeExceeded("Waiting time exceeded")
 
     def get_stats(self, id: int) -> Dict:
         """
@@ -995,10 +1017,12 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             #     }
             # }
         """
-        response = self._api.post('jobs.stats', {ApiField.ID: id})
+        response = self._api.post("jobs.stats", {ApiField.ID: id})
         return response.json()
 
-    def get_activity(self, team_id: int, job_id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_activity(
+        self, team_id: int, job_id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> DataFrame:
         import pandas as pd
 
         """
@@ -1008,6 +1032,8 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
         :type team_id: int
         :param job_id: Labeling Job ID in Supervisely.
         :type job_id: int
+        :param progress_cb: Function for tracking progress
+        :type progress_cb: tqdm, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
         :Usage example:
@@ -1036,7 +1062,9 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             # 9       4  update_figure  ...   NaN                   {}
             # [10 rows x 18 columns]
         """
-        activity = self._api.team.get_activity(team_id, filter_job_id=job_id, progress_cb=progress_cb)
+        activity = self._api.team.get_activity(
+            team_id, filter_job_id=job_id, progress_cb=progress_cb
+        )
         df = pd.DataFrame(activity)
         return df
 
@@ -1063,4 +1091,4 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
 
             api.labeling_job.set_status(id=9, status="completed")
         """
-        self._api.post('jobs.set-status', {ApiField.ID: id, ApiField.STATUS: status})
+        self._api.post("jobs.set-status", {ApiField.ID: id, ApiField.STATUS: status})

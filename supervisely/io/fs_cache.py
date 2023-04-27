@@ -29,9 +29,9 @@ class FSCache:
             sly_fs.remove_dir(dst_path)
         shutil.copytree(src_path, dst_path)
 
-    @ classmethod
+    @classmethod
     def _get_obj_suffix(cls, st_path):
-        _, suffix = osp.splitext(st_path.rstrip('/'))
+        _, suffix = osp.splitext(st_path.rstrip("/"))
         return suffix
 
     def _storage_obj_exists(self, st_path, suffix):
@@ -70,14 +70,14 @@ class FSCache:
         obj_pathes_suffixes = [(p, self._get_suffix(p)) for p in obj_paths]
         return obj_pathes_suffixes
 
-    def get_storage_path(self, data_hash, suffix=''):
+    def get_storage_path(self, data_hash, suffix=""):
         if suffix:
             suffix = ".{}".format(suffix).replace("..", ".")
-        st_hash = hashlib.sha256(data_hash.encode('utf-8')).hexdigest()
+        st_hash = hashlib.sha256(data_hash.encode("utf-8")).hexdigest()
         st_path = osp.join(self._storage_root, st_hash[0:2], st_hash[2:5], st_hash + suffix)
         return st_path
 
-    def check_storage_object(self, data_hash, suffix=''):
+    def check_storage_object(self, data_hash, suffix=""):
         st_path = self.get_storage_path(data_hash, suffix)
         if self._storage_obj_exists(st_path, suffix):
             return st_path
@@ -113,18 +113,18 @@ class FSCache:
                 progress_ctr.iter_done_report()
         return written_paths
 
-    def remove_object(self, st_path, suffix=''):
+    def remove_object(self, st_path, suffix=""):
         removable = self._storage_obj_exists(st_path, suffix)
         if removable:
             self._rm_obj_impl(st_path)
         return removable
 
 
-#class ImageStorage(FSStorage):
+# class ImageStorage(FSStorage):
 class FileCache(FSCache):
     def _storage_obj_exists(self, st_path, suffix):
         if not suffix:
-            raise ValueError('Storage {}. File ext is empty.'.format(self._name))
+            raise ValueError("Storage {}. File ext is empty.".format(self._name))
         return osp.isfile(st_path)
 
     def _get_suffix(self, path):
@@ -145,11 +145,11 @@ class FileCache(FSCache):
 class NNCache(FSCache):
     def _storage_obj_exists(self, st_path, suffix):
         if suffix:
-            raise ValueError('Storage {}. Unexpected suffix for NN dir.'.format(self._name))
+            raise ValueError("Storage {}. Unexpected suffix for NN dir.".format(self._name))
         return osp.isdir(st_path)
 
     def _get_suffix(self, path):
-        return ''
+        return ""
 
     def _write_obj_impl(self, src_path, st_path):
         self._copy_dir_recursively(src_path, st_path)
@@ -166,7 +166,7 @@ class EmptyCache(FSCache):
         return False
 
     def _get_suffix(self, path):
-        return ''
+        return ""
 
     def _write_obj_impl(self, src_path, st_path):
         raise NotImplementedError()

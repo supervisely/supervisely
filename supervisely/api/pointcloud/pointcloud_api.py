@@ -2,8 +2,9 @@
 
 # docs
 from requests import Response
-from typing import List, NamedTuple, Dict, Optional, Callable
+from typing import List, NamedTuple, Dict, Optional, Callable, Union
 from supervisely.task.progress import Progress
+from tqdm import tqdm
 
 from collections import defaultdict
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
