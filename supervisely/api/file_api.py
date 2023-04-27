@@ -266,7 +266,7 @@ class FileApi(ModuleApiBase):
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
-        List dirs and files in the `path` dir.
+        List dirs and files in the directiry with given path.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int

@@ -665,7 +665,7 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: An instance of `FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
+    :param cache: An instance of FileCache class that provides caching functionality for the downloaded content. If None, caching is disabled.
     :type cache: FileCache, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional

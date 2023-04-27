@@ -213,6 +213,19 @@ class VideoFigure:
         return self._frame_index
 
     def key(self) -> UUID:
+        """
+        Figure key.
+
+        :return: Figure key.
+        :rtype: UUID
+        :Usage example:
+
+         .. code-block:: python
+
+            key = video_figure_car.key
+            print(key) # 158e6cf4f4ac4c639fc6994aad127c16
+        """
+
         return self._key
 
     def _validate_geometry(self):
@@ -308,6 +321,26 @@ class VideoFigure:
         return data_json
 
     def get_meta(self) -> Dict[str, int]:
+        """
+        Get metadata for the video figure.
+
+        :return: Dictionary with metadata for the video figure.
+        :rtype: :py:class:`Dict[str, int]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_car = sly.ObjClass('car', sly.Rectangle)
+            video_obj_car = sly.VideoObject(obj_class_car)
+            fr_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+
+            print(video_figure_car.get_meta()) # {'frame': 7}
+        """
+
         return {ApiField.FRAME: self.frame_index}
 
     @classmethod
@@ -322,7 +355,7 @@ class VideoFigure:
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
-        :type data: dict
+        :type data: :class:`dict`
         :param objects: VideoObjectCollection object.
         :type objects: VideoObjectCollection
         :param frame_index: Index of Frame to which VideoFigure belongs.

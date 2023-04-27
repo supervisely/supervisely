@@ -970,6 +970,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -994,7 +995,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param archive_urls: Shared URLs of backup on Dropbox.
         :type archive_urls: List[str]
         :return: None
-        :rtype: :class: `NoneType`
+        :rtype: :class:`NoneType`
         :Usage example:
 
         .. code-block:: python
@@ -1030,7 +1031,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param archive_url: Shared URL of backup on Dropbox.
         :type archive_url: str
         :return: None
-        :rtype: :class: `NoneType`
+        :rtype: :class:`NoneType`
         :Usage example:
 
         .. code-block:: python

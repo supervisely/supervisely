@@ -36,7 +36,7 @@ class VolumeFigureApi(FigureApi):
         :type volume_id: int
         :param object_id: ID of the object to which the VolumeFigure belongs.
         :type object_id: int
-        :param plane_name: Plane of the slice in volume.
+        :param plane_name: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>` of the slice in volume.
         :type plane_name: str
         :param slice_index: Number of the slice to add VolumeFigure.
         :type slice_index: int
@@ -81,13 +81,13 @@ class VolumeFigureApi(FigureApi):
             volume_id,
             object_id,
             {
-                constants.SLICE_INDEX: slice_index, 
+                constants.SLICE_INDEX: slice_index,
                 constants.NORMAL: Plane.get_normal(plane_name),
                 # for backward compatibility
                 ApiField.META: {
                     constants.SLICE_INDEX: slice_index,
                     constants.NORMAL: Plane.get_normal(plane_name),
-                }
+                },
             },
             geometry_json,
             geometry_type,

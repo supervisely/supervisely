@@ -153,6 +153,53 @@ class FrameCollection(KeyIndexedCollection):
     item_type = Frame
 
     def get(self, key: str, default: Optional[Any]=None) -> Frame:
+        """
+        Get item from collection with given key(name) and set a default if item does not exist.
+
+        :param key: Name of Frame in collection.
+        :type key: str
+        :param default: The value that is returned if there is no key in the collection.
+        :type default:  Optional[Any]
+        :return: :class:`Frame<supervisely.video_annotation.frame.Frame>`, :class:`Slice<supervisely.volume_annotation.slice.Slice>` or :class:`PointcloudEpisodeFrame<supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame>` object
+        :rtype: :class:`KeyObject<KeyObject>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            frame_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            class_car = sly.ObjClass('car', sly.Rectangle)
+            object_car = sly.VideoObject(class_car)
+            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+
+            frame = sly.Frame(frame_index, figures=[figure_car])
+            frame_collection = sly.FrameCollection([frame])
+
+            item = frame_collection.get(frame_index)
+            pprint(item.to_json())
+            # Output: {
+            #     "figures": [
+            #         {
+            #         "geometry": {
+            #             "points": {
+            #             "exterior": [
+            #                 [0, 0],
+            #                 [100, 100]
+            #             ],
+            #             "interior": []
+            #             }
+            #         },
+            #         "geometryType": "rectangle",
+            #         "key": "713968a7d5384709bc5d4e63cd4535f2",
+            #         "objectKey": "3342e68eff3b44dcb75712499265be55"
+            #         }
+            #     ],
+            #     "index": 7
+            # }
+        """
         return super().get(key, default)
 
     def to_json(self, key_id_map: KeyIdMap=None) -> List[Dict]:

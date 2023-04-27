@@ -187,7 +187,7 @@ class Api:
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
-        :Usage examples:
+        :Usage example:
 
          .. code-block:: python
 
@@ -198,7 +198,6 @@ class Api:
 
             api = sly.Api.from_env()
 
-         .. code-block:: python
             # alternatively you can store SERVER_ADDRESS and API_TOKEN
             # in "~/supervisely.env" .env file
             # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
