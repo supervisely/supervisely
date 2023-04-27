@@ -1,8 +1,10 @@
 # coding: utf-8
 
 from collections import namedtuple
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Callable, Tuple, Union
 import os
+
+from tqdm import tqdm
 
 from supervisely.io.fs import file_exists, touch
 from supervisely.io.json import dump_json_file, load_json_file
@@ -50,9 +52,7 @@ class VolumeDataset(VideoDataset):
         return os.path.join(self.directory, self.interpolation_dir, item_name)
 
     def get_interpolation_path(self, item_name, figure):
-        return os.path.join(
-            self.get_interpolation_dir(item_name), figure.key().hex + ".stl"
-        )
+        return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
 
     def get_classes_stats(
         self,
@@ -82,7 +82,7 @@ class VolumeDataset(VideoDataset):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
@@ -226,12 +226,13 @@ class VolumeProject(VideoProject):
 
 def download_volume_project(
     api: Api,
-    project_id,
-    dest_dir,
-    dataset_ids=None,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
     download_volumes=True,
-    log_progress=False,
-):
+    log_progress: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -306,15 +307,15 @@ def download_volume_project(
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
+            if progress_cb is not None:
+                progress_cb(len(batch))
     project_fs.set_key_id_map(key_id_map)
 
 
 # TODO: add methods to convert to 3d masks
 
 
-def upload_volume_project(
-    dir, api: Api, workspace_id, project_name=None, log_progress=True
-):
+def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
     project_fs = VolumeProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name

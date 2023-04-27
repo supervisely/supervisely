@@ -26,6 +26,8 @@ api.file
 """
 # %%
 
+sly.download
+
 
 def get_p_for_test(
     action="api.file.download",
@@ -74,7 +76,7 @@ from tqdm import tqdm
 #     # unit_scale=True,
 #     is_size=True,
 # )
-# api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
+api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
 
 
 import shutil
@@ -85,11 +87,11 @@ import shutil
 # shutil.rmtree(LOC_DIRPATH)
 # for method, project_id in zip(
 # [
-#     sly.download,
-#     sly.download_pointcloud_episode_project,
-#     sly.download_pointcloud_project,
-#     sly.download_project,
-#     sly.download_video_project,
+# sly.download,
+# sly.download_pointcloud_episode_project,
+# sly.download_pointcloud_project,
+# sly.download_project,
+# sly.download_video_project,
 # ],
 #     [
 #         # 17732,
@@ -104,8 +106,18 @@ import shutil
 #     method(api, project_id, LOC_DIRPATH, progress_cb=p)
 #     shutil.rmtree(LOC_DIRPATH)
 
-# sly.download_volume_project(api, 18594, LOC_DIRPATH)
-# shutil.rmtree(LOC_DIRPATH)
+n_count = api.project.get_info_by_id(18594).items_count
+# p = get_p_for_test("download", "it", "dev", n_count)
+
+p = tqdm(
+    desc="sly.download_volume_project tqdm dev",
+    total=n_count,
+)
+
+sly.download(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
+
+# sly.download_volume_project(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
+shutil.rmtree(LOC_DIRPATH)
 
 
 # files = []

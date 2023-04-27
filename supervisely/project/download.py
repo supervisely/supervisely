@@ -17,8 +17,130 @@ def download(
     dataset_ids: Optional[List[int]] = None,
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    **kwargs,
 ) -> None:
-    # TODO configure arguments for nested functions
+    """
+    Downloads project of any type to the local directory. See methods `sly.download_project`,
+    `sly.download_video_project`, `sly.download_volume_project`, `sly.download_pointcloud_project`,
+    `sly.download_pointcloud_episode_project` to examine full list of possible arguments.
+
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param project_id: Project ID, which will be downloaded.
+    :type project_id: :class:`int`
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: :class:`str`
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: :class:`str`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: :class:`tqdm` or callable, optional
+
+    :return: None.
+    :rtype: :class: `NoneType`
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        import supervisely as sly
+        from tqdm import tqdm
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download image project
+        project_id_image = 17732
+
+        p = tqdm(
+            desc="Downloading image project",
+            total=api.project.get_info_by_id(project_id_image).items_count,
+        )
+        sly.download(
+            api,
+            project_id_image,
+            dest_dir,
+            progress_cb = p,
+            save_image_info=True,
+            save_images=True,
+        )
+
+        # Download video project
+        project_id_video = 60498
+
+        p = tqdm(
+            desc="Downloading video project",
+            total=api.project.get_info_by_id(project_id_video).items_count,
+        )
+        sly.download(
+            api,
+            project_id_video,
+            dest_dir,
+            progress_cb = p,
+            save_video_info=True,
+        )
+
+        # Download volume project
+        project_id_volume = 18594
+
+        p = tqdm(
+            desc="Downloading volume project",
+            total=api.project.get_info_by_id(project_id_volume).items_count,
+        )
+        sly.download(
+            api,
+            project_id_volume,
+            dest_dir,
+            progress_cb = p,
+            download_volumes=True,
+        )
+
+        # Download pointcloud project
+        project_id_ptcl = 18592
+
+        p = tqdm(
+            desc="Downloading pointcloud project",
+            total=api.project.get_info_by_id(project_id_ptcl).items_count,
+        )
+        sly.download(
+            api,
+            project_id_ptcl,
+            dest_dir,
+            progress_cb = p,
+            download_pointclouds_info=True,
+        )
+
+        # Download some datasets from pointcloud episodes project
+        project_id_ptcl_ep = 18593
+        dataset_ids = [43546, 45765, 45656,]
+
+        p = tqdm(
+            desc="Download some datasets from pointcloud episodes project",
+            total=len(dataset_ids),
+        )
+        sly.download(
+            api,
+            project_id_ptcl_ep,
+            dest_dir,
+            dataset_ids
+            progress_cb=p,
+            download_pcd=True,
+            download_related_images=True,
+            download_annotations=True,
+            download_pointclouds_info=True,
+        )
+    """
 
     project_info = api.project.get_info_by_id(project_id)
 
@@ -30,6 +152,7 @@ def download(
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            **kwargs,
         )
     elif project_info.type == ProjectType.VIDEOS.value:
         download_video_project(
@@ -39,6 +162,7 @@ def download(
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            **kwargs,
         )
     elif project_info.type == ProjectType.VOLUMES.value:
         download_volume_project(
@@ -47,7 +171,9 @@ def download(
             dest_dir=dest_dir,
             dataset_ids=dataset_ids,
             log_progress=log_progress,
-        )  # TODO
+            progress_cb=progress_cb,
+            **kwargs,
+        )
 
     elif project_info.type == ProjectType.POINT_CLOUDS.value:
         download_pointcloud_project(
@@ -57,6 +183,7 @@ def download(
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            **kwargs,
         )
     elif project_info.type == ProjectType.POINT_CLOUD_EPISODES.value:
         download_pointcloud_episode_project(
@@ -66,6 +193,7 @@ def download(
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            **kwargs,
         )
     else:
         raise ValueError(f"Unknown type of project ({project_info.type})")
