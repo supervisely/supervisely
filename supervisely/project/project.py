@@ -2584,6 +2584,64 @@ def download_project(
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
 ) -> None:
+    """
+    Download image project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param cache: Cache of downloading files.
+    :type cache: FileCache, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
+    :type only_image_tags: bool, optional
+    :param save_image_info: Save image info of a downloading project.
+    :type save_image_info, bool, optional
+    :param save_images: Save images of a downloading project.
+    :type save_images, bool, optional
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        from tqdm import tqdm
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download image project
+        project_id = 17732
+
+        p = tqdm(
+            desc="Downloading image project",
+            total=api.project.get_info_by_id(project_id).items_count,
+        )
+        sly.download(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     if cache is None:
         _download_project(
             api,

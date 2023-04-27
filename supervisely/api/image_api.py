@@ -452,7 +452,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: Images IDs in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -622,7 +622,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param paths: Local save paths for Images.
         :type paths: :class:`List[str]`
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -677,7 +677,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: List of Image IDs in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in binary format
         :rtype: :class:`List[bytes]`
         :Usage example:
@@ -718,7 +718,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: List of Images IDs in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param keep_alpha: If True keeps alpha mask for Image, otherwise don't.
         :type keep_alpha: bool, optional
         :return: List of Images in RGB numpy matrix format
@@ -752,7 +752,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param hashes: List of hashes.
         :type hashes: List[str]
         :param progress_cb: Function for tracking progress of checking.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
         :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
@@ -976,7 +976,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param paths: List of local Images pathes.
         :type paths: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :raises: :class:`ValueError` if len(names) != len(paths)
@@ -1054,7 +1054,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param imgs: Images in RGB numpy matrix format
         :type imgs: List[np.ndarray]
         :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1162,7 +1162,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param links: Links to Images.
         :type links: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1274,7 +1274,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param hashes: Images hashes.
         :type hashes: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1399,7 +1399,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: Images IDs.
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1618,7 +1618,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of copying.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1637,12 +1637,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
             ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
 
-            fruit_img_ids = []
-            for lemon_img_info in ds_lemon_img_infos:
-                fruit_img_ids.append(lemon_img_info.id)
+            lemons_img_ids = [lemon_img_info.id for lemon_img_info in ds_lemon_img_infos]
 
             ds_fruit_id = 2574
-            ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
+            ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, lemons_img_ids, with_annotations=True)
         """
         if type(ids) is not list:
             raise TypeError(
@@ -1713,7 +1711,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of copying.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param dst_names: ImageInfo list with existing items in destination dataset.
         :type dst_names: List [ :class:`ImageInfo` ], optional
         :param batch_size: Number of elements to copy for each request.
@@ -1809,7 +1807,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of moving.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1868,7 +1866,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of moving.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param dst_names: ImageInfo list with existing items in destination dataset.
         :type dst_names: List [ :class:`ImageInfo` ], optional
         :param batch_size: Number of elements to copy for each request.
@@ -2065,7 +2063,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param paths: List of paths to save images.
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`ValueError` if len(hashes) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -2307,7 +2305,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param value: Tag value.
         :type value: int or str or None, optional
         :param progress_cb: Function for tracking progress of adding tag.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :param batch_size: Batch size
         :type batch_size: int, optional
         :param tag_meta: Tag Meta. Needed for value validation, omit to skip validation
@@ -2357,7 +2355,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: List of Images IDs in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for tracking progress of removing.
-        :type progress_cb: tqdm, optional
+        :type progress_cb: tqdm or callable, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :Usage example:

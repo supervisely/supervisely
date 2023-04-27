@@ -25,25 +25,26 @@ def download(
     `sly.download_pointcloud_episode_project` to examine full list of possible arguments.
 
     :param api: Supervisely API address and token.
-    :type api: :class:`Api<supervisely.api.api.Api>`
+    :type api: Api
     :param project_id: Project ID, which will be downloaded.
-    :type project_id: :class:`int`
+    :type project_id: int
     :param dest_dir: Destination path to local directory.
-    :type dest_dir: :class:`str`
+    :type dest_dir: str
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
-    :type dataset_ids: :class:`str`, optional
-    :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`, optional
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
     :param progress_cb: Function for tracking download progress.
-    :type progress_cb: :class:`tqdm` or callable, optional
+    :type progress_cb: tqdm or callable, optional
 
     :return: None.
-    :rtype: :class: `NoneType`
+    :rtype: NoneType
     :Usage example:
 
     .. code-block:: python
 
         import supervisely as sly
+        from tqdm import tqdm
 
         # You can connect to API directly
         address = 'https://app.supervise.ly/'
@@ -54,9 +55,6 @@ def download(
         os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
-
-        import supervisely as sly
-        from tqdm import tqdm
 
         dest_dir = 'your/local/dest/dir'
 
@@ -71,7 +69,7 @@ def download(
             api,
             project_id_image,
             dest_dir,
-            progress_cb = p,
+            progress_cb=p,
             save_image_info=True,
             save_images=True,
         )
@@ -87,7 +85,7 @@ def download(
             api,
             project_id_video,
             dest_dir,
-            progress_cb = p,
+            progress_cb=p,
             save_video_info=True,
         )
 
@@ -102,7 +100,7 @@ def download(
             api,
             project_id_volume,
             dest_dir,
-            progress_cb = p,
+            progress_cb=p,
             download_volumes=True,
         )
 
@@ -117,7 +115,7 @@ def download(
             api,
             project_id_ptcl,
             dest_dir,
-            progress_cb = p,
+            progress_cb=p,
             download_pointclouds_info=True,
         )
 
@@ -133,7 +131,7 @@ def download(
             api,
             project_id_ptcl_ep,
             dest_dir,
-            dataset_ids
+            dataset_ids,
             progress_cb=p,
             download_pcd=True,
             download_related_images=True,

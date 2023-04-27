@@ -489,12 +489,16 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         pages_count = first_response["pagesCount"]
         results = first_response["entities"]
 
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
+        def set_tqdm(progress_cb, results, total):
             progress_cb.update(len(results) - progress_cb.n)
             progress_cb.total = total
             progress_cb.refresh()
-        else:
-            progress_cb(len(results), total)
+
+        if progress_cb is not None:
+            if isinstance(progress_cb, tqdm):
+                set_tqdm(progress_cb, results, total)
+            else:
+                progress_cb(len(results), total)
         if pages_count == 1 and len(first_response["entities"]) == total:
             pass
         else:
@@ -502,12 +506,11 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
                 results.extend(temp_items)
-                if progress_cb is not None and isinstance(progress_cb, tqdm):
-                    progress_cb.update(len(results) - progress_cb.n)
-                    progress_cb.total = total
-                    progress_cb.refresh()
-                else:
-                    progress_cb(len(results), total)
+                if progress_cb is not None:
+                    if isinstance(progress_cb, tqdm):
+                        set_tqdm(progress_cb, results, total)
+                    else:
+                        progress_cb(len(results), total)
             if len(results) != total:
                 logger.warn(
                     f"Method '{method}': new events were created during pagination, "

@@ -1164,18 +1164,15 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         encoder = MultipartEncoder(fields=content_dict)
 
-        _progress_cb = progress_cb
-
-        def _callback(monitor, progress):
-            progress(monitor.bytes_read)
-
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            _progress_cb = progress_cb.update
-            callback = partial(_callback, progress=_progress_cb)
-            monitor = MultipartEncoderMonitor(encoder, callback)
-            resp = self._api.post("videos.bulk.upload", monitor)
         if progress_cb is not None:
-            callback = partial(_callback, progress=_progress_cb)
+
+            def _callback(monitor, progress):
+                progress(monitor.bytes_read)
+
+            if isinstance(progress_cb, tqdm):
+                callback = partial(_callback, progress=progress_cb.update)
+            else:
+                callback = partial(_callback, progress=progress_cb)
             monitor = MultipartEncoderMonitor(encoder, callback)
             resp = self._api.post("videos.bulk.upload", monitor)
         else:

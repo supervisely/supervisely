@@ -76,7 +76,7 @@ from tqdm import tqdm
 #     # unit_scale=True,
 #     is_size=True,
 # )
-api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
+# api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
 
 
 import shutil
@@ -106,18 +106,18 @@ import shutil
 #     method(api, project_id, LOC_DIRPATH, progress_cb=p)
 #     shutil.rmtree(LOC_DIRPATH)
 
-n_count = api.project.get_info_by_id(18594).items_count
-# p = get_p_for_test("download", "it", "dev", n_count)
+# n_count = api.project.get_info_by_id(18594).items_count
+# # p = get_p_for_test("download", "it", "dev", n_count)
 
-p = tqdm(
-    desc="sly.download_volume_project tqdm dev",
-    total=n_count,
-)
+# p = tqdm(
+#     desc="sly.download_volume_project tqdm dev",
+#     total=n_count,
+# )
 
-sly.download(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
+# sly.download(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
 
-# sly.download_volume_project(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
-shutil.rmtree(LOC_DIRPATH)
+# # sly.download_volume_project(api, 18594, LOC_DIRPATH, progress_cb=p, download_volumes=False)
+# shutil.rmtree(LOC_DIRPATH)
 
 
 # files = []
@@ -163,13 +163,13 @@ shutil.rmtree(LOC_DIRPATH)
 #     progress_cb=p,
 # )
 
-# p = get_p_for_test("api.file.upload", "B", "dev", sly.fs.get_directory_size(LOC_DIRPATH))
-# api.file.upload_directory(
-#     TEAM_ID,
-#     LOC_DIRPATH,
-#     TF_DIRPATH,
-#     progress_size_cb=p,
-# )
+p = get_p_for_test("api.file.upload", "B", "dev", sly.fs.get_directory_size(LOC_DIRPATH))
+api.file.upload_directory(
+    TEAM_ID,
+    LOC_DIRPATH,
+    TF_DIRPATH,
+    progress_size_cb=p,
+)
 
 # api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.github.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
@@ -290,9 +290,10 @@ shutil.rmtree(LOC_DIRPATH)
 #     aa.UPDATE_TAG_VALUE,
 #     aa.DETACH_TAG,
 # ]
-# p = get_p_for_test("api.team.get_activity", "it", "dev", 0)
+# # p = get_p_for_test("api.team.get_activity", "it", "dev", 0)
+# p = sly.Progress(message="api.team.get_activity", total_cnt=0)
 # # api.project.get_activity(id=18144, progress_cb=p)
-# sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p)
+# sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p.set)
 
 
 # api.team.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
@@ -316,8 +317,9 @@ shutil.rmtree(LOC_DIRPATH)
 # ]
 
 # p = tqdm(total=1)
+# # p = sly.Progress(total_cnt=1, message="Upl")
 # video_infos = api.video.upload_paths(
-#     dataset_id=dataset_id, names=video_names, paths=video_paths, progress_cb=p
+#     dataset_id=dataset_id, names=video_names, paths=video_paths, progress_cb=p  # .iters_done_report
 # )
 # api.video.upload_paths()  # progress_cb(len(remote_hashes)), progress_cb(len(hashes_rcv))
 
