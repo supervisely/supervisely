@@ -1,11 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List, Optional, Dict
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from typing import List
 
 
 class Rate(Widget):
@@ -37,7 +32,6 @@ class Rate(Widget):
         self._changes_handled = False
         self._value = None
         super().__init__(widget_id=widget_id, file_path=__file__)
-        # self.set(text, status)
 
     def get_json_data(self):
         return {
@@ -52,14 +46,10 @@ class Rate(Widget):
             "disabled_void_color": self._disabled_void_color,
         }
 
-
     def get_json_state(self):
         return {"value": self._value}
-    
-    def get_value(self):
-        return StateJson()[self.widget_id]["value"]
 
-    def get_current_value(self):
+    def get_value(self):
         return StateJson()[self.widget_id]["value"]
 
     def set_current_value(self, value: int):
@@ -83,12 +73,12 @@ class Rate(Widget):
         DataJson()[self.widget_id]["colors"] = self._colors
         DataJson().send_changes()
 
-    def set_disabled(self):
+    def disable(self):
         self._disabled = True
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
 
-    def set_unabled(self):
+    def enable(self):
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
@@ -96,7 +86,7 @@ class Rate(Widget):
     def get_disabled(self):
         return DataJson()[self.widget_id]["disabled"]
 
-    def unable_allow_half(self):
+    def enable_allow_half(self):
         self._allow_half = True
         DataJson()[self.widget_id]["allow_half"] = self._allow_half
         DataJson().send_changes()
