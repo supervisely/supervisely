@@ -1,6 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import Union, List
+from typing import List
 
 
 class ImageSlider(Widget):
@@ -13,7 +13,6 @@ class ImageSlider(Widget):
         preview_url: str = None,
         widget_id: str = None,
     ):
-
         self._data = data
         self._height = f"{height}px"
         self._selectable = selectable
@@ -43,10 +42,8 @@ class ImageSlider(Widget):
 
     def get_json_data(self):
         return {
-            "example1": {
-                "data": self._data_images,
-                "options": {"selectable": self._selectable, "height": self._height},
-            }
+            "data": self._data_images,
+            "options": {"selectable": self._selectable, "height": self._height},
         }
 
     def get_json_state(self):
@@ -89,20 +86,20 @@ class ImageSlider(Widget):
 
     def set_height(self, value: int):
         self._height = f"{value}px"
-        DataJson()[self.widget_id]["example1"]["options"]["height"] = self._height
+        DataJson()[self.widget_id]["options"]["height"] = self._height
         DataJson().send_changes()
 
     def get_height(self):
-        self._height = DataJson()[self.widget_id]["example1"]["options"]["height"]
+        self._height = DataJson()[self.widget_id]["options"]["height"]
         return int(self._height[:-2])
 
     def set_selectable(self, value: bool):
         self._selectable = value
-        DataJson()[self.widget_id]["example1"]["options"]["selectable"] = self._selectable
+        DataJson()[self.widget_id]["options"]["selectable"] = self._selectable
         DataJson().send_changes()
 
     def get_selectable(self):
-        return DataJson()[self.widget_id]["example1"]["options"]["selectable"]
+        return DataJson()[self.widget_id]["options"]["selectable"]
 
     def get_data_length(self):
         return len(self._data)
