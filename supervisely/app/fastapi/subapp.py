@@ -293,6 +293,9 @@ class Application(metaclass=Singleton):
     def shutdown(self):
         shutdown(self._process_id)
 
+    def stop(self):
+        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
+
 
 def get_name_from_env(default="Supervisely App"):
     return os.environ.get("APP_NAME", default)

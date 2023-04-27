@@ -620,9 +620,6 @@ def download_pointcloud_episode_project(
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
-    # download_annotations is deprecated parameter for backward compatibility.
-    if not download_annotations:
-        download_annotations = True
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -640,9 +637,10 @@ def download_pointcloud_episode_project(
         pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
         # Download annotation to project_path/dataset_path/annotation.json
-        ann_json = api.pointcloud_episode.annotation.download(dataset.id)
-        annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
-        dataset_fs.set_ann(annotation)
+        if download_annotations is True:
+            ann_json = api.pointcloud_episode.annotation.download(dataset.id)
+            annotation = dataset_fs.annotation_class.from_json(ann_json, meta, key_id_map)
+            dataset_fs.set_ann(annotation)
 
         # frames --> pointcloud mapping to project_path/dataset_path/frame_pointcloud_map.json
         frame_name_map = api.pointcloud_episode.get_frame_name_map(dataset.id)
@@ -735,8 +733,9 @@ def download_pointcloud_episode_project(
                                 },
                             )
                             raise e
+
                         dump_json_file(rimage_info, path_json)
-                pointcloud_file_path = pointcloud_file_path if download_pcd else None
+
                 pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
                 try:
                     dataset_fs.add_item_file(
@@ -759,6 +758,7 @@ def download_pointcloud_episode_project(
                         },
                     )
                     raise e
+
                 if progress_cb is not None:
                     progress_cb(1)
             if log_progress:
