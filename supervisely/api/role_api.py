@@ -26,24 +26,25 @@ class RoleApi(ModuleApiBase):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         roles = api.role.get_list() # api usage example
     """
 
     class DefaultRole(IntEnum):
-        """
-        """
+        """class DefaultRole"""
 
         ADMIN = 1
         """"""
@@ -68,17 +69,14 @@ class RoleApi(ModuleApiBase):
                      created_at='2019-12-10T14:31:41.878Z',
                      updated_at='2019-12-10T14:31:41.878Z')
         """
-        return [ApiField.ID,
-                ApiField.ROLE,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [ApiField.ID, ApiField.ROLE, ApiField.CREATED_AT, ApiField.UPDATED_AT]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **RoleInfo**.
         """
-        return 'RoleInfo'
+        return "RoleInfo"
 
     def get_list(self, filters: Optional[List[Dict[str, str]]] = None) -> List[RoleInfo]:
         """
@@ -100,10 +98,9 @@ class RoleApi(ModuleApiBase):
 
             roles = api.role.get_list()
         """
-        return self.get_list_all_pages('roles.list', {ApiField.FILTER: filters or []})
+        return self.get_list_all_pages("roles.list", {ApiField.FILTER: filters or []})
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        """
-        """
+        """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return RoleInfo(**res._asdict())

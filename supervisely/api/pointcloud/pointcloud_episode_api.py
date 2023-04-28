@@ -12,7 +12,7 @@ from supervisely.api.pointcloud.pointcloud_episode_annotation_api import (
 
 class PointcloudEpisodeApi(PointcloudApi):
     """
-    
+
     API for working with :class:`PointcloudEpisodes<supervisely.pointcloud_episodes.pointcloud_episodes>`.
     :class:`PointcloudEpisodeApi<PointcloudEpisodeApi>` object is immutable.
     Inherits from :class:`PointcloudApi<supervisely.api.pointcloud.PointcloudApi>`.
@@ -23,17 +23,19 @@ class PointcloudEpisodeApi(PointcloudApi):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pcd_epsodes_id = 19373295
         pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example

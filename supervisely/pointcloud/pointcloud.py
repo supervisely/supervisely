@@ -82,7 +82,7 @@ def validate_ext(ext: str) -> None:
 
         sly.pointcloud.validate_ext(".mp4")
 
-        # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4. 
+        # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4.
         # Only the following extensions are supported: ['.pcd'].
     """
 
@@ -111,7 +111,7 @@ def validate_format(path: str):
         path = "/Downloads/videos/111.mp4"
         sly.pointcloud.validate_format(path)
 
-        # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4. 
+        # UnsupportedPointcloudFormat: Unsupported pointcloud extension: .mp4.
         # Only the following extensions are supported: ['.pcd'].
     """
 
@@ -133,24 +133,26 @@ def get_labeling_tool_url(dataset_id: int, pointcloud_id: int):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
         url = sly.pointcloud.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
 
         print(url)
-        # Output: 
+        # Output:
         # https://dev.supervise.ly/app/point-clouds/?datasetId=55875&pointCloudId=19373403
     """
 
@@ -174,17 +176,19 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
@@ -194,8 +198,8 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
         link = sly.pointcloud.get_labeling_tool_link(url, name)
 
         print(link)
-        # Output: 
-        # <a 
+        # Output:
+        # <a
         #     href="https://dev.supervise.ly/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
         #     rel="noopener noreferrer"
         #     target="_blank"
@@ -227,7 +231,9 @@ def read(path: str, coords_dims: Optional[List[int]] = None) -> np.ndarray:
     try:
         import open3d as o3d
     except ImportError:
-        raise ImportError("No module named open3d. Please make sure that module is installed from pip and try again.")
+        raise ImportError(
+            "No module named open3d. Please make sure that module is installed from pip and try again."
+        )
     validate_format(path)
     if coords_dims is None:
         coords_dims = [0, 1, 2]
@@ -266,7 +272,9 @@ def write(path: str, pointcloud_np: np.ndarray, coords_dims: Optional[List[int]]
     try:
         import open3d as o3d
     except ImportError:
-        raise ImportError("No module named open3d. Please make sure that module is installed from pip and try again.")
+        raise ImportError(
+            "No module named open3d. Please make sure that module is installed from pip and try again."
+        )
     ensure_base_path(path)
     validate_format(path)
     if coords_dims is None:

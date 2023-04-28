@@ -9,14 +9,14 @@ from supervisely.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
 
 class AgentNotFound(Exception):
-    """
-    """
+    """class AgentNotFound"""
+
     pass
 
 
 class AgentNotRunning(Exception):
-    """
-    """
+    """class AgentNotRunning"""
+
     pass
 
 
@@ -30,17 +30,19 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         team_id = 8
         agents = api.agent.get_list(team_id)
@@ -49,9 +51,9 @@ class AgentApi(ModuleApi, ModuleWithStatus):
     class Status(Enum):
         """Agent status."""
 
-        WAITING = 'waiting'
+        WAITING = "waiting"
         """"""
-        RUNNING = 'running'
+        RUNNING = "running"
         """"""
 
     @staticmethod
@@ -65,28 +67,32 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             AgentInfo("some info")
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.TOKEN,
-                ApiField.STATUS,
-                ApiField.USER_ID,
-                ApiField.TEAM_ID,
-                ApiField.CAPABILITIES,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.TOKEN,
+            ApiField.STATUS,
+            ApiField.USER_ID,
+            ApiField.TEAM_ID,
+            ApiField.CAPABILITIES,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **AgentInfo**.
         """
-        return 'AgentInfo'
+        return "AgentInfo"
 
     def __init__(self, api):
         ModuleApi.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
-    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         List of all agents in the given Team.
 
@@ -111,7 +117,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         """
-        return self.get_list_all_pages('agents.list', {'teamId': team_id, "filter": filters or []})
+        return self.get_list_all_pages("agents.list", {"teamId": team_id, "filter": filters or []})
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
@@ -133,7 +139,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             agent = api.agent.get_info_by_id(7)
         """
-        return self._get_info_by_id(id, 'agent.info')
+        return self._get_info_by_id(id, "agent.info")
 
     def get_status(self, id: int) -> AgentApi.Status:
         """
@@ -159,6 +165,5 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         return self.Status(status_str)
 
     def raise_for_status(self, status):
-        """
-        """
+        """raise_for_status"""
         pass

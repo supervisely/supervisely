@@ -6,8 +6,7 @@ from typing import Optional
 from functools import partial
 from tqdm import tqdm
 from supervisely.sly_logger import logger, EventType
-from supervisely._utils import sizeof_fmt
-from supervisely._utils import is_development
+from supervisely._utils import sizeof_fmt, is_development, is_production
 
 
 # float progress of training, since zero
@@ -482,9 +481,8 @@ class tqdm_sly(tqdm, Progress):
             else:
                 self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
 
-        if not is_development():
-            if self.need_report():
-                self.report_progress()
+        if is_production() and self.need_report():
+            self.report_progress()
 
         if monitor.bytes_read == monitor.len and not self._iteration_locked:
             self._iteration_value += monitor.len

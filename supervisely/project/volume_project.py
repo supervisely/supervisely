@@ -257,28 +257,29 @@ def download_volume_project(
 
      .. code-block:: python
 
-        import supervisely as sly
+        import os
+        from dotenv import load_dotenv
+
         from tqdm import tqdm
+        import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
         # Download volume project
         project_id = 18532
+        project_info = api.project.get_info_by_id(project_id)
+        num_volumes = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading volume project",
-            total=api.project.get_info_by_id(project_id).items_count,
-        )
+        p = tqdm(desc="Downloading volume project", total=num_volumes)
         sly.download_volume_project(
             api,
             project_id,
