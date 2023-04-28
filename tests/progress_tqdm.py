@@ -163,7 +163,7 @@ import shutil
 #     progress_cb=p,
 # )
 
-p = get_p_for_test("api.file.upload", "B", "dev", sly.fs.get_directory_size(LOC_DIRPATH))
+p = get_p_for_test("api.file.upload", "B", "prod", sly.fs.get_directory_size(LOC_DIRPATH))
 api.file.upload_directory(
     TEAM_ID,
     LOC_DIRPATH,
@@ -171,7 +171,7 @@ api.file.upload_directory(
     progress_size_cb=p,
 )
 
-# api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
+api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.github.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
 
 # p = get_p_for_test("api.image.download_bytes", "B", "dev", 3)
