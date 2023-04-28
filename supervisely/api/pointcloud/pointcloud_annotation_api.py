@@ -35,7 +35,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pointcloud_id = 19618685
         ann_info = api.pointcloud.annotation.download(src_pointcloud_id)

@@ -158,7 +158,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         team_info = api.team.get_info_by_id(team_id) # api usage example
     """

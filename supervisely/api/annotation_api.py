@@ -48,7 +48,7 @@ class AnnotationApi(ModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         dataset_id = 254737
         ann_infos = api.annotation.get_list(dataset_id)

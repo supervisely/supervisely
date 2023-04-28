@@ -36,7 +36,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         video_id = 186648102
         ann_info = api.video.annotation.download(video_id)
