@@ -1,4 +1,6 @@
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional, Union, Callable
+from tqdm import tqdm
+
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
 from supervisely.api.volume.volume_object_api import VolumeObjectApi
@@ -462,7 +464,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         hashes: List[str],
-        progress_cb=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: List[dict] = None,
     ):
         """
@@ -475,7 +477,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param hashes: Volumes hashes.
         :type hashes: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
         :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
@@ -485,6 +487,7 @@ class VolumeApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            from tqdm import tqdm
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -497,20 +500,21 @@ class VolumeApi(RemoveableBulkModuleApi):
             names = []
             metas = []
             volume_infos = api.volume.get_list(src_dataset_id)
+
             # Create lists of hashes, volumes names and meta information for each volume
             for volume_info in volume_infos:
                 hashes.append(volume_info.hash)
                 # It is necessary to upload volumes with the same names(extentions) as in src dataset
                 names.append(volume_info.name)
-                metas.append({volume_info.name: volume_info.frame_height})
+                metas.append(volume_info.meta)
 
-            progress = sly.Progress("Volumes upload: ", len(hashes))
+            p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
             new_volumes_info = api.volume.upload_hashes(
                 dataset_id=dst_dataset_id,
                 names=names,
                 hashes=hashes,
-                progress_cb=progress.iters_done_report,
-                metas=metas
+                progress_cb=p,
+                metas=metas,
             )
 
             # Output:
@@ -573,7 +577,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         name: str,
         np_data,
         meta: dict,
-        progress_cb=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: int = 30,
     ):
         """
@@ -588,7 +592,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param meta: Volume metadata.
         :type meta: dict, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:
@@ -640,7 +644,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         # z = 1 - axial
         planes = [Plane.SAGITTAL, Plane.CORONAL, Plane.AXIAL]
 
-        for (plane, dimension) in zip(planes, np_data.shape):
+        for plane, dimension in zip(planes, np_data.shape):
             for batch in batched(list(range(dimension))):
                 slices = []
                 slices_bytes = []
@@ -751,7 +755,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
 
-    def _upload_slices_bulk(self, volume_id: int, items, progress_cb=None):
+    def _upload_slices_bulk(
+        self, volume_id: int, items, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ):
         """
         Private method for volume slices bulk uploading.
 
@@ -760,7 +766,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param items: Volume slices to upload
         :type items: list
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: List of responses
         :rtype: list
         """
@@ -839,7 +845,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         response = self._api.post("volumes.download", {ApiField.ID: id}, stream=is_stream)
         return response
 
-    def download_path(self, id: int, path: str, progress_cb=None):
+    def download_path(
+        self, id: int, path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ):
         """
         Download volume with given ID to local directory.
 
@@ -848,7 +856,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param path: Local path to save volume.
         :type path: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:
@@ -856,12 +864,14 @@ class VolumeApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            from tqdm import tqdm
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-
+            src_dataset_id = 61229
+            volume_infos = api.volume.get_list(src_dataset_id)
             volume_id = volume_infos[0].id
             volume_info = api.volume.get_info_by_id(id=volume_id)
 
@@ -870,7 +880,8 @@ class VolumeApi(RemoveableBulkModuleApi):
             if os.path.exists(path):
                 os.remove(path)
 
-            api.volume.download_path(volume_info.id, path)
+            p = tqdm(desc="Volumes upload: ", total=volume_info.sizeb, is_size=True)
+            api.volume.download_path(volume_info.id, path, progress_cb=p)
 
             if os.path.exists(path):
                 print(f"Volume (ID {volume_info.id}) successfully downloaded.")
@@ -895,7 +906,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: str,
         paths: str,
-        progress_cb=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         log_progress: bool = True,
     ):
         """
@@ -910,7 +921,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param log_progress: Determine if logs are displaying.
         :type log_progress: bool, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
         :Usage example:
@@ -953,13 +964,13 @@ class VolumeApi(RemoveableBulkModuleApi):
         window_width: int = None,
     ):
         """
-        Download slice as NumPy from Supervisely by ID
+        Download slice as NumPy from Supervisely by ID.
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param slice_index: Slice index.
+        :param slice_index: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index.
         :type slice_index: int
-        :param plane: Plane of the slice in volume.
+        :param plane: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>` of the slice in volume.
         :type plane: str
         :param window_center: Window center.
         :type window_center: float

@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import math
 from typing import Optional
+from functools import partial
+from tqdm import tqdm
 from supervisely.sly_logger import logger, EventType
 from supervisely._utils import sizeof_fmt
+from supervisely._utils import is_development
 
 
 # float progress of training, since zero
@@ -360,3 +363,142 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
             "optional": optional_data,
         },
     )
+
+
+class tqdm_sly(tqdm, Progress):
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        # for self._upload_monitor
+        self._iteration_value = 0
+        self._iteration_number = 0
+        self._iteration_locked = False
+        self._total_monitor_size = 0
+
+        relevant_args = {
+            "total": "total_cnt",
+            "desc": "message",
+            "unit": "is_size",
+            "unit_scale": "is_size",
+        }
+
+        for _tqdm, _progress in relevant_args.items():
+            if kwargs.get(_tqdm) is not None and kwargs.get(_progress) is not None:
+                raise ValueError(
+                    f"Ambiguity error: Please specify only one of arguments: '{_tqdm}' or '{_progress}'."
+                )
+
+        if is_development():
+            if len(args) < 2:
+                if kwargs.get("message") is not None:
+                    kwargs.setdefault("desc", kwargs["message"])
+                    kwargs.pop("message")
+                else:
+                    kwargs.setdefault("desc", "Processing")
+            if len(args) < 3:
+                if kwargs.get("total_cnt") is not None:
+                    kwargs.setdefault("total", kwargs["total_cnt"])
+                    kwargs.pop("total_cnt")
+            if len(args) < 12:
+                if kwargs.pop("is_size", None) == True:
+                    kwargs["unit"] = "B"
+                    kwargs["unit_scale"] = True
+
+            tqdm.__init__(
+                self,
+                *args,
+                **kwargs,
+            )
+        else:
+            if len(args) < 2:
+                if kwargs.get("desc") is not None:
+                    kwargs.setdefault("message", kwargs["desc"])
+                    kwargs.pop("desc")
+                else:
+                    kwargs.setdefault("message", "Processing")
+            else:
+                kwargs.setdefault("message", args[1])
+            if len(args) < 3:
+                if kwargs.get("total") is not None:
+                    kwargs.setdefault("total_cnt", kwargs["total"])
+                    kwargs.pop("total")
+            else:
+                kwargs.setdefault("total_cnt", args[2])
+            if len(args) < 12:
+                if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
+                    kwargs["is_size"] = True
+            else:
+                if args[11] == "B" and args[12] == True:
+                    kwargs["is_size"] = True
+
+            Progress.__init__(
+                self,
+                **kwargs,
+            )
+            self.disable = True
+            self.n = 0
+
+    def update(self, count):
+        if is_development():
+            tqdm.update(
+                self,
+                count,
+            )
+            if self.n == self.total:
+                self.close()
+        else:
+            Progress.iters_done_report(
+                self,
+                count,
+            )
+            self.n += count
+
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        return self.update(
+            *args,
+            **kwargs,
+        )
+
+    def _upload_monitor(self, monitor):
+        # TODO: need optimize copy-pastes
+        if is_development():
+            if self.n >= self.total:
+                self.refresh()
+                self.close()
+            if monitor.bytes_read == 8192:
+                self._total_monitor_size += monitor.len
+            if self._total_monitor_size > self.total:
+                self.total = self._total_monitor_size
+            if not self._iteration_locked:
+                super().update(self._iteration_value + monitor.bytes_read - self.n)
+            if monitor.bytes_read == monitor.len and not self._iteration_locked:
+                self._iteration_value += monitor.len
+                self._iteration_number += 1
+                self._iteration_locked = True
+                self.refresh()
+            if monitor.bytes_read < monitor.len:
+                self._iteration_locked = False
+        else:
+            if monitor.bytes_read == 8192:
+                self._total_monitor_size += monitor.len
+            if self._total_monitor_size > self.total:
+                self.total = self._total_monitor_size
+            if not self._iteration_locked:
+                self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
+            if self.need_report():
+                self.report_progress()
+            if monitor.bytes_read == monitor.len and not self._iteration_locked:
+                self._iteration_value += monitor.len
+                self._iteration_number += 1
+                self._iteration_locked = True
+            if monitor.bytes_read < monitor.len:
+                self._iteration_locked = False
+
+    def get_partial(self):
+        return partial(self._upload_monitor)

@@ -9,6 +9,7 @@ import os
 import random
 import numpy as np
 import shutil
+from tqdm import tqdm
 
 from supervisely.io.fs import (
     file_exists,
@@ -725,7 +726,7 @@ class PointcloudProject(VideoProject):
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.
@@ -748,9 +749,8 @@ class PointcloudProject(VideoProject):
         :type batch_size: :class:`int`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -795,7 +795,7 @@ class PointcloudProject(VideoProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud project to Supervisely from the given directory.
@@ -810,9 +810,8 @@ class PointcloudProject(VideoProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -860,9 +859,8 @@ def download_pointcloud_project(
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
-
     key_id_map = KeyIdMap()
 
     project_fs = PointcloudProject(dest_dir, OpenMode.CREATE)
@@ -1020,7 +1018,7 @@ def upload_pointcloud_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:
@@ -1043,7 +1041,6 @@ def upload_pointcloud_project(
             )
 
         for item_name in dataset_fs:
-
             item_path, related_images_dir, ann_path = dataset_fs.get_item_paths(item_name)
             related_items = dataset_fs.get_related_images(item_name)
 

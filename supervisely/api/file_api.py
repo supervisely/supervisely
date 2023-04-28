@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional, Callable
+from typing import NamedTuple, List, Dict, Optional, Callable, Union
 
 import os
 import shutil
@@ -32,6 +32,7 @@ from supervisely.io.fs import (
 )
 from supervisely.sly_logger import logger
 import supervisely.io.env as env
+from tqdm import tqdm
 
 
 class FileInfo(NamedTuple):
@@ -265,7 +266,7 @@ class FileApi(ModuleApiBase):
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
-        List dirs and files in the `path` dir.
+        List dirs and files in the directiry with given path.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -352,7 +353,7 @@ class FileApi(ModuleApiBase):
         remote_path: str,
         local_save_path: str,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -366,7 +367,7 @@ class FileApi(ModuleApiBase):
         :param cache: optional
         :type cache: FileCache, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -419,7 +420,7 @@ class FileApi(ModuleApiBase):
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
         if (
@@ -450,7 +451,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Directory from Team Files.
@@ -462,7 +463,7 @@ class FileApi(ModuleApiBase):
         :param local_save_path: Local save path.
         :type local_save_path: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -531,7 +532,7 @@ class FileApi(ModuleApiBase):
         return resp.json()
 
     def upload(
-        self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None
+        self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> FileInfo:
         """
         Upload File to Team Files.
@@ -543,7 +544,7 @@ class FileApi(ModuleApiBase):
         :param dst: Path to File in Team Files.
         :type dst: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
         :Usage example:
@@ -568,7 +569,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src_paths: List[str],
         dst_paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[FileInfo]:
         """
         Upload Files to Team Files.
@@ -580,7 +581,7 @@ class FileApi(ModuleApiBase):
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
         :Usage example:
@@ -637,10 +638,13 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        if progress_cb is None:
+        _progress_cb = progress_cb
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
+            _progress_cb = progress_cb.get_partial()
+        if _progress_cb is None:
             data = encoder
         else:
-            data = MultipartEncoderMonitor(encoder, progress_cb)
+            data = MultipartEncoderMonitor(encoder, _progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
         return results
@@ -784,7 +788,7 @@ class FileApi(ModuleApiBase):
         self,
         team_id: int,
         paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Removes list of files from Team Files.
@@ -1134,6 +1138,5 @@ class FileApi(ModuleApiBase):
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
         ):
-
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir

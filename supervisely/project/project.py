@@ -8,6 +8,7 @@ from enum import Enum
 from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
 import random
 import numpy as np
+from tqdm import tqdm
 
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -1647,7 +1648,7 @@ class Project:
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
         target_classes: Optional[List[str]] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
@@ -1666,9 +1667,8 @@ class Project:
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
                                background class "__bg__" will be added automatically.
         :type target_classes: :class:`list` [ :class:`str` ], optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
                                   will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
@@ -1780,7 +1780,7 @@ class Project:
         src_project_dir: str,
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -1793,9 +1793,8 @@ class Project:
         :type dst_project_dir: :class:`str`, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2208,7 +2207,7 @@ class Project:
         log_progress: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         only_image_tags: Optional[bool] = False,
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
@@ -2230,9 +2229,8 @@ class Project:
         :type batch_size: :class:`int`, optional
         :param cache: FileCache object.
         :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
         :type only_image_tags: :class:`bool`, optional
         :param save_image_info: Download images infos or not.
@@ -2284,7 +2282,7 @@ class Project:
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = True,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads project to Supervisely from the given directory.
@@ -2299,9 +2297,8 @@ class Project:
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -2463,7 +2460,7 @@ def upload_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
     if project_name is None:
@@ -2582,11 +2579,69 @@ def download_project(
     log_progress: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     cache: Optional[FileCache] = None,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
 ) -> None:
+    """
+    Download image project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param cache: Cache of downloading files.
+    :type cache: FileCache, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
+    :type only_image_tags: bool, optional
+    :param save_image_info: Save image info of a downloading project.
+    :type save_image_info, bool, optional
+    :param save_images: Save images of a downloading project.
+    :type save_images, bool, optional
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        from tqdm import tqdm
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download image project
+        project_id = 17732
+
+        p = tqdm(
+            desc="Downloading image project",
+            total=api.project.get_info_by_id(project_id).items_count,
+        )
+        sly.download(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     if cache is None:
         _download_project(
             api,
