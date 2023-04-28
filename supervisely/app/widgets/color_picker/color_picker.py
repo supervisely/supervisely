@@ -1,5 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from typing import Optional, List
 
 try:
     from typing import Literal
@@ -49,8 +50,24 @@ class ColorPicker(Widget):
     def get_value(self):
         return StateJson()[self.widget_id]["color"]
 
-    def set_value(self, value: str):
+    def set_value(self, value: Optional[str or List[int, int, int]]):
         self._color = value
+        if type(self._color) == list and len(self._color) == 3 and self._color_format == "rgb":
+            if (
+                type(self._color[0]) == int
+                and type(self._color[1]) == int
+                and type(self._color[2]) == int
+            ):
+                self._color = f"rgb({self._color[0]}, {self._color[1]}, {self._color[2]})"
+        if (
+            (self._color_format == "hex" and self._color[0] != "#")
+            or (self._color_format == "hsl" and self._color[0:3] != "hsl")
+            or (self._color_format == "hsv" and self._color[0:3] != "hsv")
+            or (self._color_format == "rgb" and self._color[0:3] != "rgb")
+        ):
+            raise ValueError(
+                f"Incorrect input value format: {self._color}, {self._color_format} format should be, check your input data"
+            )
         StateJson()[self.widget_id]["color"] = self._color
         StateJson().send_changes()
 
