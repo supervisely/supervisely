@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 import time
 from supervisely.collection.str_enum import StrEnum
-from supervisely.api.module_api import ApiField, ModuleApi, RemoveableModuleApi, ModuleWithStatus, \
+from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi, ModuleWithStatus, \
     WaitingTimeExceeded
 
 
@@ -55,7 +55,7 @@ class LabelingJobInfo(NamedTuple):
     entities: list
 
 
-class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
+class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     """
     API for working with Labeling Jobs. :class:`LabelingJobApi<LabelingJobApi>` object is immutable.
 
@@ -252,9 +252,15 @@ class LabelingJobApi(RemoveableModuleApi, ModuleWithStatus):
             res = self.InfoType(*field_values)
             return LabelingJobInfo(**res._asdict())
 
-    def _remove_api_method_name(self):
+    def _remove_batch_api_method_name(self):
         """Api remove method name."""
-        return "jobs.archive"
+
+        return "jobs.bulk.remove"
+    
+    def _remove_batch_field_name(self):
+        """Returns onstant string that represents API field name."""
+
+        return ApiField.IDS
 
     def create(self,
                name: str,
