@@ -861,6 +861,65 @@ def download_pointcloud_project(
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download pointcloud project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_items: Include pointcloud items in the download.
+    :type download_items: bool, optional
+    :param download_related_images: Include related context images of a pointcloud project in the download.
+    :type download_related_images: bool, optional
+    :param download_pointclouds_info: Include pointclouds info in the download.
+    :type download_pointclouds_info: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        from tqdm import tqdm
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download pointcloud project
+        project_id = 19542
+
+        p = tqdm(
+            desc="Downloading pointcloud project",
+            total=api.project.get_info_by_id(project_id).items_count,
+        )
+        sly.download_pointcloud_project(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     key_id_map = KeyIdMap()
 
     project_fs = PointcloudProject(dest_dir, OpenMode.CREATE)

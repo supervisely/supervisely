@@ -1153,12 +1153,67 @@ def download_video_project(
     api: Api,
     project_id: int,
     dest_dir: str,
-    dataset_ids: List[int] = None,
-    download_videos: bool = True,
-    save_video_info: bool = False,
-    log_progress: bool = False,
+    dataset_ids: Optional[List[int]] = None,
+    download_videos: Optional[bool] = True,
+    save_video_info: Optional[bool] = False,
+    log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download video project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_videos: Include videos in the download.
+    :type download_videos: bool, optional
+    :param save_video_info: Include video info in the download.
+    :type save_video_info: bool, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        from tqdm import tqdm
+
+        # You can connect to API directly
+        address = 'https://app.supervise.ly/'
+        token = 'Your Supervisely API Token'
+        api = sly.Api(address, token)
+
+        # Or you can use API from environment
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download video project
+        project_id = 17758
+
+        p = tqdm(
+            desc="Downloading video project",
+            total=api.project.get_info_by_id(project_id).items_count,
+        )
+        sly.download(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()

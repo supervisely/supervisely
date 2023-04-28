@@ -2605,10 +2605,13 @@ def download_project(
     :type progress_cb: tqdm or callable, optional
     :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
     :type only_image_tags: bool, optional
-    :param save_image_info: Save image info of a downloading project.
+    :param save_image_info: Include image info in the download.
     :type save_image_info, bool, optional
-    :param save_images: Save images of a downloading project.
+    :param save_images: Include images in the download.
     :type save_images, bool, optional
+
+    :return: None.
+    :rtype: NoneType
     :Usage example:
 
      .. code-block:: python
