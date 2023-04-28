@@ -17,24 +17,26 @@ def get_labeling_tool_url(dataset_id, pointcloud_id):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
         url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
 
         print(url)
-        # Output: 
+        # Output:
         # https://dev.supervise.ly/app/point-clouds-tracking/?datasetId=55875&pointCloudId=19373403
     """
 
@@ -58,17 +60,19 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
@@ -78,8 +82,8 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
         link = sly.pointcloud.get_labeling_tool_link(url, name)
 
         print(link)
-        # Output: 
-        # <a 
+        # Output:
+        # <a
         #     href="https://dev.supervise.ly/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
         #     rel="noopener noreferrer"
         #     target="_blank"

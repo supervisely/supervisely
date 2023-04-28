@@ -2605,36 +2605,40 @@ def download_project(
     :type progress_cb: tqdm or callable, optional
     :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
     :type only_image_tags: bool, optional
-    :param save_image_info: Save image info of a downloading project.
+    :param save_image_info: Include image info in the download.
     :type save_image_info, bool, optional
-    :param save_images: Save images of a downloading project.
+    :param save_images: Include images in the download.
     :type save_images, bool, optional
+
+    :return: None.
+    :rtype: NoneType
     :Usage example:
 
      .. code-block:: python
 
-        import supervisely as sly
+        import os
+        from dotenv import load_dotenv
+
         from tqdm import tqdm
+        import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
         # Download image project
         project_id = 17732
+        project_info = api.project.get_info_by_id(project_id)
+        num_images = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading image project",
-            total=api.project.get_info_by_id(project_id).items_count,
-        )
+        p = tqdm(desc="Downloading image project", total=num_images)
         sly.download(
             api,
             project_id,

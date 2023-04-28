@@ -620,6 +620,69 @@ def download_pointcloud_episode_project(
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download pointcloud episode project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_pcd: Include pointcloud episode items in the download.
+    :type download_pcd: bool, optional
+    :param download_related_images: Include related context images in the download.
+    :type download_related_images: bool, optional
+    :param download_annotations: Include annotations in the download.
+    :type download_annotations: bool, optional
+    :param download_pointclouds_info: Include pointclouds info in the download.
+    :type download_pointclouds_info: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download pointcloud episodes project
+        project_id = 19636
+        project_info = api.project.get_info_by_id(project_id)
+        num_pointclouds_ep = project_info.items_count
+
+        p = tqdm(desc="Downloading pointcloud project", total=num_pointclouds_ep)
+        sly.download_pointcloud_project(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
+
     key_id_map = KeyIdMap()
     project_fs = PointcloudEpisodeProject(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))

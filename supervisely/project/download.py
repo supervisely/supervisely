@@ -43,28 +43,29 @@ def download(
 
     .. code-block:: python
 
-        import supervisely as sly
+        import os
+        from dotenv import load_dotenv
+
         from tqdm import tqdm
+        import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
         # Download image project
         project_id_image = 17732
+        project_info = api.project.get_info_by_id(project_id_image)
+        num_images = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading image project",
-            total=api.project.get_info_by_id(project_id_image).items_count,
-        )
+        p = tqdm(desc="Downloading image project", total=num_images)
         sly.download(
             api,
             project_id_image,
@@ -76,11 +77,10 @@ def download(
 
         # Download video project
         project_id_video = 60498
+        project_info = api.project.get_info_by_id(project_id_video)
+        num_videos = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading video project",
-            total=api.project.get_info_by_id(project_id_video).items_count,
-        )
+        p = tqdm(desc="Downloading video project", total=num_videos)
         sly.download(
             api,
             project_id_video,
@@ -91,11 +91,10 @@ def download(
 
         # Download volume project
         project_id_volume = 18594
+        project_info = api.project.get_info_by_id(project_id_volume)
+        num_volumes = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading volume project",
-            total=api.project.get_info_by_id(project_id_volume).items_count,
-        )
+        p = tqdm(desc="Downloading volume project",total=num_volumes)
         sly.download(
             api,
             project_id_volume,
@@ -106,11 +105,10 @@ def download(
 
         # Download pointcloud project
         project_id_ptcl = 18592
+        project_info = api.project.get_info_by_id(project_id_ptcl)
+        num_ptcl = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading pointcloud project",
-            total=api.project.get_info_by_id(project_id_ptcl).items_count,
-        )
+        p = tqdm(desc="Downloading pointcloud project", total=num_ptcl)
         sly.download(
             api,
             project_id_ptcl,
@@ -121,7 +119,7 @@ def download(
 
         # Download some datasets from pointcloud episodes project
         project_id_ptcl_ep = 18593
-        dataset_ids = [43546, 45765, 45656,]
+        dataset_ids = [43546, 45765, 45656]
 
         p = tqdm(
             desc="Download some datasets from pointcloud episodes project",

@@ -229,10 +229,65 @@ def download_volume_project(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    download_volumes=True,
+    download_volumes: Optional[bool] = True,
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download volume project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_volumes: Include volumes in the download.
+    :type download_volumes: bool, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download volume project
+        project_id = 18532
+        project_info = api.project.get_info_by_id(project_id)
+        num_volumes = project_info.items_count
+
+        p = tqdm(desc="Downloading volume project", total=num_volumes)
+        sly.download_volume_project(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
+
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
