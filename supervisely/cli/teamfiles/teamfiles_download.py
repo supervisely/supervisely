@@ -8,7 +8,11 @@ from rich.console import Console
 
 
 def download_directory_run(
-    team_id: int, remote_dir: str, local_dir: str, filter: str = None
+    team_id: int,
+    remote_dir: str,
+    local_dir: str,
+    filter: str = None,
+    ignore_if_not_exists: bool = False,
 ) -> bool:
     api = sly.Api.from_env()
     console = Console()
@@ -26,10 +30,13 @@ def download_directory_run(
     if not remote_dir.endswith("/"):
         remote_dir += "/"
 
-    files = api.file.list2(team_id, remote_dir, recursive=True)
-    if len(files) == 0:
-        console.print(f"\nError:  Team files folder '{remote_dir}' not exists\n", style="bold red")
-        return False
+    if not ignore_if_not_exists:
+        files = api.file.list2(team_id, remote_dir, recursive=True)
+        if len(files) == 0:
+            console.print(
+                f"\nError:  Team files folder '{remote_dir}' not exists\n", style="bold red"
+            )
+            return False
 
     console.print(
         f"\nDownloading directory '{remote_dir}' from Team files ...\n",
