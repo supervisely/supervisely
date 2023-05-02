@@ -32,17 +32,20 @@ def download_directory_run(
         return False
 
     console.print(
-        f"\nDownloading directory '{remote_dir}' from Team files ...\n",
+        f"\Downloading directory '{remote_dir}' from Team files ...\n",
         style="bold",
     )
 
     total_size = api.file.get_directory_size(team_id, remote_dir)
-
+    p = tqdm(desc="Downloading from Team files...", total=total_size, unit="B", unit_scale=True)
+    # with tqdm(
+    #     desc="Downloading...", total=total_size, unit="B", unit_scale=True, leave=True
+    # ) as p:
+    #     api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
     try:
-        with tqdm(
-            desc="Downloading...", total=total_size, unit="B", unit_scale=True, leave=True
-        ) as p:
-            api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
+        api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
+        p.leave = True
+        p.close()
 
         console.print(
             f"\nTeam files directory was sucessfully downloaded to the local path: '{local_dir}'.\n",
