@@ -1,12 +1,91 @@
 # coding: utf-8
 
 # docs
-from typing import Optional
+from typing import Optional, List, Tuple
 from supervisely.geometry.geometry import Geometry
+from supervisely._utils import unwrap_if_numpy
+from supervisely.io.json import JsonSerializable
 import numpy as np
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
+
+
+class PointLocation3D(JsonSerializable):
+    """
+    PointLocation in (row, col, tab) position. :class:`PointLocation<PointLocation>` object is immutable.
+
+    :param row: Position of PointLocation object on height.
+    :type row: int or float
+    :param col: Position of PointLocation object on width.
+    :type col: int or float
+    :param tab: Position of PointLocation object on depth.
+    :type tab: int or float
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        row = 100
+        col = 200
+        tab = 2
+        loc = sly.PointLocation(row, col, tab)
+    """
+
+    def __init__(self, row: int, col: int, tab: int):
+        self._row = round(unwrap_if_numpy(row))
+        self._col = round(unwrap_if_numpy(col))
+        self._tab = round(unwrap_if_numpy(tab))
+
+    @property
+    def row(self) -> int:
+        """
+        Position of PointLocation3D on height.
+
+        :return: Height of PointLocation3D
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.row)
+            # Output: 100
+        """
+        return self._row
+
+    @property
+    def col(self) -> int:
+        """
+        Position of PointLocation3D on width.
+
+        :return: Width of PointLocation3D
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.col)
+            # Output: 200
+        """
+        return self._col
+
+    @property
+    def tab(self) -> int:
+        """
+        Position of PointLocation3D on depth.
+
+        :return: Depth of PointLocation3D
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.tab)
+            # Output: 2
+        """
+        return self._col
 
 
 class Bitmap3d(Geometry):
@@ -56,6 +135,9 @@ class Bitmap3d(Geometry):
     def __init__(
         self,
         data: np.ndarray,
+        space: Optional[str] = None,
+        space_origin: Optional[PointLocation3D] = None,
+        space_directions: Optional[List[Tuple[float, float, float]]] = None,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
@@ -91,6 +173,9 @@ class Bitmap3d(Geometry):
                 data = np.array(data / 255, dtype=bool)
 
         self.data = data
+        self.space = space
+        self.space_origin = space_origin
+        self.space_directions = space_directions
 
     @staticmethod
     def geometry_name():
