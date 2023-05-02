@@ -1,5 +1,6 @@
 # coding: utf-8
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.bitmap_3d import Bitmap3d
 from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
@@ -16,6 +17,7 @@ from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 _INPUT_GEOMETRIES = [
     Bitmap,
+    Bitmap3d,
     Cuboid,
     Point,
     Polygon,
