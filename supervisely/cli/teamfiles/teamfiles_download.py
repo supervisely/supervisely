@@ -39,7 +39,9 @@ def download_directory_run(
     total_size = api.file.get_directory_size(team_id, remote_dir)
 
     try:
-        with tqdm(desc="Downloading...", total=total_size, unit="B", unit_scale=True) as p:
+        with tqdm(
+            desc="Downloading...", total=total_size, unit="B", unit_scale=True, leave=True
+        ) as p:
             api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
 
         console.print(
