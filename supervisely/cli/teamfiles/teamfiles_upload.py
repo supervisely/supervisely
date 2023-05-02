@@ -89,7 +89,9 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             # api.file.upload_directory may be slow depending on the number of folders
             print("Please wait ...")
 
-            progress = MyTqdm(total=total_size, unit="B", unit_scale=True)
+            progress = MyTqdm(
+                desc="Uploading to Team files...", total=total_size, unit="B", unit_scale=True
+            )
             progress_size_cb = partial(upload_monitor_console, progress=progress)
 
             time.sleep(1)  # for better UX

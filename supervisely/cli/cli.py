@@ -4,7 +4,12 @@ import click
 
 from supervisely.cli.project import download_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
-from supervisely.cli.teamfiles import remove_file_run, remove_directory_run, upload_directory_run
+from supervisely.cli.teamfiles import (
+    remove_file_run,
+    remove_directory_run,
+    upload_directory_run,
+    download_directory_run,
+)
 
 
 @click.group()
@@ -117,7 +122,7 @@ def get_name(id: int) -> None:
 
 @cli.group()
 def teamfiles():
-    """Commands: remove-file, remove-dir, upload"""
+    """Commands: download, remove-file, remove-dir, upload"""
     pass
 
 
@@ -172,6 +177,49 @@ def remove_dir(id: int, path: str) -> None:
             sys.exit(1)
     except KeyboardInterrupt:
         print("Removing directory aborted")
+        sys.exit(1)
+
+
+@teamfiles.command(
+    help="Download source files from Team files directory with destination to local path"
+)
+@click.option(
+    "-id",
+    "--id",
+    required=True,
+    type=int,
+    help="Supervisely team ID",
+)
+@click.option(
+    "-s",
+    "--src",
+    required=True,
+    type=str,
+    help="Path to Team files source directory from which files are downloaded",
+)
+@click.option(
+    "-d",
+    "--dst",
+    required=True,
+    type=str,
+    help="Path to local destination directory to which files are downloaded",
+)
+@click.option(
+    "-f",
+    "--filter",
+    required=False,
+    type=str,
+    help="[Optional]",
+)
+def download(id: int, src: str, dst: str, filter: str) -> None:
+    try:
+        success = download_directory_run(id, src, dst, filter)
+        if success:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("Download aborted")
         sys.exit(1)
 
 
