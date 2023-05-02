@@ -30,13 +30,16 @@ def download_directory_run(
     if not remote_dir.endswith("/"):
         remote_dir += "/"
 
-    if not ignore_if_not_exists:
-        files = api.file.list2(team_id, remote_dir, recursive=True)
-        if len(files) == 0:
+    files = api.file.list2(team_id, remote_dir, recursive=True)
+    if len(files) == 0:
+        if ignore_if_not_exists:
             console.print(
-                f"\nError:  Team files folder '{remote_dir}' not exists\n", style="bold red"
+                f"\nWarning: Team files folder '{remote_dir}' not exists. Skipping command...\n",
+                style="bold yellow",
             )
-            return False
+            return True
+        console.print(f"\nError: Team files folder '{remote_dir}' not exists\n", style="bold red")
+        return False
 
     console.print(
         f"\nDownloading directory '{remote_dir}' from Team files ...\n",
