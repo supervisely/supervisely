@@ -297,9 +297,8 @@ class Bitmap3d(Geometry):
         """
         res = {
             self._impl_json_class_name(): {
-                ORIGIN: [2, 2, 2],
-                # ORIGIN: [self.space_origin.col, self.space_origin.row, self.space_origin.tab],
-                DATA: self.data_2_base64(self.data),
+                ORIGIN: [self.space_origin[0], self.space_origin[1], self.space_origin[2]],
+                DATA: self.data_2_string(self.data),
             },
             GEOMETRY_SHAPE: self.geometry_name(),
             GEOMETRY_TYPE: self.geometry_name(),
@@ -352,8 +351,7 @@ class Bitmap3d(Geometry):
             )
 
         col, row, tab = json_data[json_root_key][ORIGIN]
-        # data = cls.base64_2_data(json_data[json_root_key][DATA])
-        data = json_data[json_root_key][DATA]
+        data = cls.string_2_data(json_data[json_root_key][DATA])
 
         labeler_login = json_data.get(LABELER_LOGIN, None)
         updated_at = json_data.get(UPDATED_AT, None)
@@ -376,34 +374,15 @@ class Bitmap3d(Geometry):
         return BITMAP_3D
 
     @staticmethod
-    def data_2_base64(mask: np.ndarray) -> str:
-        mask_8bit = mask.astype(np.uint8) * 255
-        mask_8bit = np.transpose(mask_8bit, (1, 2, 0))  # Convert to (H, W, D) order
-        img_pil = Image.fromarray(mask_8bit, mode="RGB")
-        bytes_io = io.BytesIO()
-        img_pil.save(bytes_io, format="PNG", transparency=(0, 0, 0))
-        bytes_enc = bytes_io.getvalue()
-        return base64.b64encode(zlib.compress(bytes_enc)).decode("utf-8")
+    def data_2_string(data):
+        shape_str = ",".join(str(dim) for dim in data.shape)
+        data_str = data.tostring().decode("utf-8")
+        combined_str = f"{shape_str}|{data_str}"
+        return combined_str
 
-    def base64_2_data_3d(s: str) -> np.ndarray:
-        z = zlib.decompress(base64.b64decode(s))
-        n = np.frombuffer(z, np.uint8)
-
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)
-
-        if len(imdecoded.shape) == 3 and imdecoded.shape[2] >= 4:
-            alpha_channel = imdecoded[:, :, 3]
-            rgb_channels = cv2.split(imdecoded[:, :, :3])
-            bitmap_2d = np.concatenate(rgb_channels, axis=1)
-            bitmap_3d = np.expand_dims(bitmap_2d, axis=2) * (alpha_channel != 0)
-            for i in range(1, imdecoded.shape[2] - 1):
-                channels = cv2.split(imdecoded[:, :, i : i + 4])
-                bitmap_2d = np.concatenate(channels[:3], axis=1)
-                bitmap_3d_slice = np.expand_dims(bitmap_2d, axis=2) * (channels[3] != 0)
-                bitmap_3d = np.concatenate([bitmap_3d, bitmap_3d_slice], axis=2)
-            bitmap_2d = np.concatenate(imdecoded[:, :, -3:], axis=1)
-            bitmap_3d_slice = np.expand_dims(bitmap_2d, axis=2) * (imdecoded[:, :, -1] != 0)
-            bitmap_3d = np.concatenate([bitmap_3d, bitmap_3d_slice], axis=2)
-            return bitmap_3d.astype(bool)
-        else:
-            raise RuntimeError("Wrong internal mask format.")
+    def string_2_data(combined_str):
+        shape_str, data_str = combined_str.split("|")
+        shape = tuple(int(dim) for dim in shape_str.split(","))
+        data_bytes = data_str.encode("utf-8")
+        data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
+        return data
