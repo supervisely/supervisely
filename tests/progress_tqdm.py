@@ -14,8 +14,8 @@ api = sly.Api()
 # TF_PATH = "/my_project.tar"
 TF_FILEPATH = "/cardio.tar"
 LOC_FILEPATH = "prog_test.tar"
-TF_DIRPATH = "/vid/"
-LOC_DIRPATH = "vid/"
+TF_DIRPATH = "/19399_cardio/"
+LOC_DIRPATH = "_local/"
 
 TEAM_ID = 449
 PROJECT_ID = 18142
@@ -151,8 +151,30 @@ import shutil
 # api.dataset.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.dataset.get_list_all_pages_generator # progress_cb(len(results)), progress_cb(len(results))
 
-# p = get_p_for_test("download", "B", "dev", api.file.get_directory_size(TEAM_ID, TF_DIRPATH))
-# api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
+from supervisely.cli.teamfiles.teamfiles_download import download_directory_run
+
+# shutil.rmtree("/tmp/test-dir")
+
+download_directory_run(449, "/my-training/", "/tmp/test-dir", filter=".tfevents.", ignore_if_not_exists=True)
+
+
+shutil.rmtree(LOC_DIRPATH)
+
+with tqdm(
+    desc="download1",
+    total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
+    is_size=True,
+) as p:
+    api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p.update)
+
+# shutil.rmtree(LOC_DIRPATH)
+
+# with tqdm(
+#     desc="download2",
+#     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
+#     is_size=True,
+# ) as p:
+#     api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p.update)
 
 
 # p = get_p_for_test("api.file.upload", "B", "prod", sly.fs.get_file_size(LOC_FILEPATH))
