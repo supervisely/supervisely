@@ -50,16 +50,27 @@ def download_directory_run(
     if filter is not None:
         files = api.file.listdir(team_id, remote_dir, recursive=True)
         filtered = [f for f in files if bool(re.search(filter, sly.fs.get_file_name_with_ext(f)))]
-    
+
     try:
         if filter is not None:
-            with tqdm(desc="Downloading...", total=len(filtered)) as p:    
-                for path in filtered:
-                    api.file.download(team_id, path, os.path.join(local_dir, os.path.dirname(path).strip("/"), os.path.basename(path)))
+            with tqdm(desc="Downloading from Team files...", total=len(filtered)) as p:
+                for remote_path in filtered:
+                    local_save_path = os.path.join(
+                        local_dir,
+                        os.path.dirname(remote_path).strip("/"),
+                        os.path.basename(remote_path),
+                    )
+                    api.file.download(
+                        team_id,
+                        remote_path,
+                        local_save_path,
+                    )
                     p.update(1)
         else:
             total_size = api.file.get_directory_size(team_id, remote_dir)
-            p = tqdm(desc="Downloading...", total=total_size, unit="B", unit_scale=True)
+            p = tqdm(
+                desc="Downloading from Team files...", total=total_size, unit="B", unit_scale=True
+            )
             api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
 
         console.print(
