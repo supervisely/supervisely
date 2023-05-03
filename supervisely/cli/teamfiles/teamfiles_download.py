@@ -26,12 +26,12 @@ def download_directory_run(
         return False
 
     # force directories to end with slash '/'
-    if not local_dir.endswith(os.path.sep):
-        local_dir = os.path.join(local_dir, "")
+    if not local_dir.endswith("/"):
+        local_dir += "/"
     if not remote_dir.endswith("/"):
         remote_dir += "/"
 
-    files = api.file.list2(team_id, remote_dir, recursive=True)
+    files = api.file.listdir(team_id, remote_dir, recursive=True)
     if len(files) == 0:
         if ignore_if_not_exists:
             console.print(
@@ -42,14 +42,14 @@ def download_directory_run(
         console.print(f"\nError: Team files folder '{remote_dir}' not exists\n", style="bold red")
         return False
 
+    if filter is not None:
+        filtered = [f for f in files if bool(re.search(filter, sly.fs.get_file_name_with_ext(f)))]
+
     console.print(
         f"\nDownloading directory '{remote_dir}' from Team files ...\n",
         style="bold",
     )
 
-    if filter is not None:
-        files = api.file.listdir(team_id, remote_dir, recursive=True)
-        filtered = [f for f in files if bool(re.search(filter, sly.fs.get_file_name_with_ext(f)))]
 
     try:
         if filter is not None:
