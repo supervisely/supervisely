@@ -3,6 +3,7 @@
 from collections import namedtuple
 from typing import Optional, List, Callable, Tuple, Union
 import os
+import nrrd
 
 from tqdm import tqdm
 
@@ -345,6 +346,20 @@ def download_volume_project(
                     touch(volume_file_path)
 
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+
+                for sf in ann.spatial_figures:
+                    if sf.geometry.geometry_name() == "bitmap_3d":
+                        figure_id = key_id_map.get_figure_id(sf.key())
+                        figure_path = (
+                            "{}_bitmap3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
+                        )
+                        api.volume.figure.download_stl_meshes([figure_id], [figure_path])
+                        bitmap3d_data, bitmap3d_header = nrrd.read(figure_path)
+                        sf.geometry.data = bitmap3d_data
+                        sf.geometry.space = bitmap3d_header["space"]
+                        sf.geometry.space_origin = bitmap3d_header["space origin"]
+                        sf.geometry.space_directions = bitmap3d_header["space directions"]
+
                 dataset_fs.add_item_file(
                     volume_name,
                     volume_file_path,
