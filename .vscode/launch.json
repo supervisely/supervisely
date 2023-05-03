@@ -5,7 +5,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "tests/progress_tqdm.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "env": {

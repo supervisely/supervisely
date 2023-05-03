@@ -151,6 +151,13 @@ import shutil
 # api.dataset.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.dataset.get_list_all_pages_generator # progress_cb(len(results)), progress_cb(len(results))
 
+from supervisely.cli.teamfiles.teamfiles_download import download_directory_run
+
+# shutil.rmtree("/tmp/test-dir")
+
+download_directory_run(449, "/my-training/", "/tmp/test-dir", filter=".tfevents.", ignore_if_not_exists=True)
+
+
 shutil.rmtree(LOC_DIRPATH)
 
 with tqdm(
