@@ -21,12 +21,9 @@ from supervisely.geometry.constants import (
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
 import numpy as np
-import io
 import base64
-import zlib
-import cv2
+import gzip
 
-from PIL import Image
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -378,10 +375,14 @@ class Bitmap3d(Geometry):
         shape_str = ",".join(str(dim) for dim in data.shape)
         data_str = data.tostring().decode("utf-8")
         combined_str = f"{shape_str}|{data_str}"
-        return combined_str
+        compressed_string = gzip.compress(combined_str.encode("utf-8"))
+        encoded_string = base64.b64encode(compressed_string).decode("utf-8")
+        return encoded_string
 
-    def string_2_data(combined_str):
-        shape_str, data_str = combined_str.split("|")
+    def string_2_data(encoded_string):
+        compressed_bytes = base64.b64decode(encoded_string)
+        decompressed_string = gzip.decompress(compressed_bytes).decode("utf-8")
+        shape_str, data_str = decompressed_string.split("|")
         shape = tuple(int(dim) for dim in shape_str.split(","))
         data_bytes = data_str.encode("utf-8")
         data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
