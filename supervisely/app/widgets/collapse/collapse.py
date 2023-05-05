@@ -63,7 +63,7 @@ class Collapse(Widget):
         return {"value": self._active_panels}
 
     def set_active_panel(self, value: Union[str, List[str]]):
-        """ "Set active panel or panels.
+        """ Set active panel or panels.
 
         :param value: panel titles;
         :type value: Union[str, List[str]]
@@ -100,18 +100,18 @@ class Collapse(Widget):
     def get_items(self):
         return DataJson()[self.widget_id]["items"]
 
-    def set_items(self, value: List[Collapse.Item]):
-        self._items = value
-        self._items_title = set([val.title for val in value])
-        DataJson()[self.widget_id]["items"] = self._get_items_json()
-        DataJson().send_changes()
+    # def set_items(self, value: List[Collapse.Item]):
+    #     self._items = value
+    #     self._items_title = set([val.title for val in value])
+    #     DataJson()[self.widget_id]["items"] = self._get_items_json()
+    #     DataJson().send_changes()
 
-    def add_items(self, value: List[Collapse.Item]):
-        self._items.extend(value)
-        titles = [val.title for val in value]
-        self._items_title.update(titles)
-        DataJson()[self.widget_id]["items"] = self._get_items_json()
-        DataJson().send_changes()
+    # def add_items(self, value: List[Collapse.Item]):
+    #     self._items.extend(value)
+    #     titles = [val.title for val in value]
+    #     self._items_title.update(titles)
+    #     DataJson()[self.widget_id]["items"] = self._get_items_json()
+    #     DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Collapse.Routes.VALUE_CHANGED)
