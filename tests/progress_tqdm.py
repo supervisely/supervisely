@@ -14,44 +14,24 @@ api = sly.Api()
 # TF_PATH = "/my_project.tar"
 TF_FILEPATH = "/cardio.tar"
 LOC_FILEPATH = "/tmp/prog_test.tar"
-TF_DIRPATH = "/cardio/"
+TF_DIRPATH = "/19399_cardio/"
 LOC_DIRPATH = "/tmp/_local/"
 
 TEAM_ID = 449
 PROJECT_ID = 18142
 
+obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True)[0]
+
+
+obj.sizeb
+
+api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
 
 """
-api.file
+Output:
+[Dict_or_FileInfo(info_json) for info_json in response.json()] == response.json()
+True
 """
-# %%
-
-sly.download
-
-
-def get_p_for_test(
-    action="api.file.download",
-    unit="it",
-    regime="dev",
-    total=None,
-):
-    if regime == "prod":
-        os.environ["ENV"] = "production"
-
-    if unit == "it":
-        p = tqdm(
-            desc=f"{action} WrapTqdm dev",
-            total=total,
-        )
-    else:
-        p = tqdm(
-            desc=f"{action} WrapTqdm dev",
-            total=total,
-            unit="B",
-            unit_scale=True,
-        )
-    return p
-
 
 batch_size = 10
 data = range(100)

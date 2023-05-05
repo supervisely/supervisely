@@ -153,7 +153,7 @@ class FileApi(ModuleApiBase):
 
         return results
 
-    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict_or_FileInfo]:
         """
         List of files in the Team Files.
 
@@ -163,21 +163,41 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all files recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[dict]`
+        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :rtype: class List[Dict_or_FileInfo]
         :Usage example:
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 8
             file_path = "/999_App_Test/"
             files = api.file.list(team_id, file_path)
+
+            file = files[0]
+            # Get information about file in Dict way..
+            print(file["id"]) # Output: 7660
+            # ..or with attributes:
+            print(file.id) # Output: 7660
+
+            # Note, that some attributes may differ from
+            # accessible keys. See class FileInfo for details.
+            # For example:
+            print(file["sizeb"]) # Output: KeyError
+            print(file.sizeb) # Output: 13344
 
             print(files)
             # Output: [
@@ -221,16 +241,20 @@ class FileApi(ModuleApiBase):
         if not path.endswith("/") and recursive is False:
             path += "/"
         if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path, recursive)
+            results = self.list_on_agent(team_id, path, recursive)
+            return [Dict_or_FileInfo(info_json) for info_json in results]
 
         response = self._api.post(
             "file-storage.list",
             {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
-        return response.json()
+
+        return [Dict_or_FileInfo(info_json) for info_json in response.json()]
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
+        Disclaimer: Method is deprecated. Use api.file.list instead
+
         List of files in the Team Files.
 
         :param team_id: Team ID in Supervisely.
@@ -245,11 +269,19 @@ class FileApi(ModuleApiBase):
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 9
             file_path = "/My_App_Test/"
@@ -263,7 +295,7 @@ class FileApi(ModuleApiBase):
             # ]
         """
         items = self.list(team_id=team_id, path=path, recursive=recursive)
-        results = [self._convert_json_info(info_json) for info_json in items]
+        results = [self._convert_json_info(info.__dict__) for info in items]
         return results
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
@@ -1142,3 +1174,20 @@ class FileApi(ModuleApiBase):
         ):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
+
+
+class Dict_or_FileInfo(dict, FileApi):
+    def __new__(cls, info_json: Dict):
+        dct = super().__new__(cls, info_json)
+        dct.update(info_json)
+        return dct
+
+    def __init__(self, info_json: Dict):
+        self.__dict__.update(info_json)
+        self._FileInfo = FileApi._convert_json_info(self, info_json)
+
+    def __getitem__(self, key: str):
+        return self.__dict__[key]
+
+    def __getattr__(self, attr: str):
+        return getattr(self._FileInfo, attr)
