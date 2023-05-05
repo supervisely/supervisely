@@ -7,7 +7,7 @@ import nrrd
 
 from tqdm import tqdm
 
-from supervisely.io.fs import file_exists, touch
+from supervisely.io.fs import file_exists, touch, remove_dir
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
@@ -359,6 +359,8 @@ def download_volume_project(
                         sf.geometry.space = bitmap3d_header["space"]
                         sf.geometry.space_origin = bitmap3d_header["space origin"]
                         sf.geometry.space_directions = bitmap3d_header["space directions"]
+                        path_without_filename = '/'.join(figure_path.split('/')[:-1])
+                        remove_dir(path_without_filename)
 
                 dataset_fs.add_item_file(
                     volume_name,
