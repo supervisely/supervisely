@@ -253,7 +253,7 @@ class FileApi(ModuleApiBase):
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
-        Disclaimer: Method is deprecated. Use api.file.list instead
+        Disclaimer: Method is not recommended. Use api.file.list instead
 
         List of files in the Team Files.
 
