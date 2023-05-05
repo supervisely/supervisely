@@ -1190,4 +1190,7 @@ class Dict_or_FileInfo(dict, FileApi):
         return self.__dict__[key]
 
     def __getattr__(self, attr: str):
-        return getattr(self._FileInfo, attr)
+        try:
+            return getattr(self._FileInfo, attr)
+        except AttributeError:
+            return getattr(self.__dict__, attr)

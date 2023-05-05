@@ -255,7 +255,7 @@ import shutil
 
 # api.labeling_job.get_list_all_pages  # progress_cb(len(results)) progress_cb(len(temp_items))
 # api.labeling_job.get_list_all_pages_generator  # progress_cb(len(results)) progress_cb(len(results))
-# api.labeling_job.get_activity  # api.team.get_activity #TODODONE
+api.labeling_job.get_activity  # api.team.get_activity #TODODONE
 
 # api.model.download_to_dir  # progress_cb(read_mb)
 # api.model.download_to_tar  # progress_cb(read_mb)
