@@ -22,8 +22,8 @@ PROJECT_ID = 18142
 
 obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True)[0]
 
-
-obj.sizeb
+# obj.fullStorageUrl
+# obj.aaaaaaaaaaaaa
 
 api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
 

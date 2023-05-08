@@ -11,6 +11,7 @@ import tarfile
 from pathlib import Path
 import urllib
 import re
+import traceback
 
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ModuleApiBase, ApiField
@@ -1190,7 +1191,4 @@ class Dict_or_FileInfo(dict, FileApi):
         return self.__dict__[key]
 
     def __getattr__(self, attr: str):
-        try:
-            return getattr(self._FileInfo, attr)
-        except AttributeError:
-            return getattr(self.__dict__, attr)
+        return getattr(self._FileInfo, attr)
