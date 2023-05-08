@@ -60,6 +60,7 @@ INSTALL_REQUIRES = [
     "click",
     "imutils==0.5.4",
     "aiocache==0.12.0",
+    "urllib3==1.26.15",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -89,7 +90,8 @@ def check_alternative_installation(install_require, alternative_install_requires
 def get_install_requirements(main_requires, alternative_requires):
     """Iterates over all install requires
     If an install require has an alternative option, check if this option is installed
-    If that is the case, replace the install require by the alternative to not install dual package"""
+    If that is the case, replace the install require by the alternative to not install dual package
+    """
     install_requires = []
     for main_require in main_requires:
         if main_require in alternative_requires:
