@@ -139,7 +139,7 @@ class Transfer(Widget):
                  right_checked: Optional[List[str]] = None):    
         
         self._changes_handled = False
-        self._items = None
+        self._items = []
         self._transferred_items = []
         
         if items:
@@ -237,9 +237,9 @@ class Transfer(Widget):
         """
 
         res = {
-            "items": None,
+            "items": [],
         }
-        if self._items is not None:
+        if self._items:
             res["items"] = [item.to_json() for item in self._items]
 
         return res
