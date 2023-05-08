@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 
 class Prediction:
@@ -31,3 +31,11 @@ class PredictionKeypoints(Prediction):
         super(PredictionKeypoints, self).__init__(class_name=class_name)
         self.labels = labels
         self.coordinates = coordinates
+
+
+class PredictionPoint(Prediction):
+    def __init__(self, class_name: str, point: Union[List[int], np.ndarray]):
+        super().__init__(class_name=class_name)
+        assert len(point) == 2, "it's not a point"
+        self.col = int(point[0])
+        self.row = int(point[1])
