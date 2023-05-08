@@ -29,7 +29,7 @@ class TrackerInterface:
         self._load_frames()
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int):
-        for frame, geometry in zip(self.frames_indexes, geometries):
+        for frame, geometry in zip(self.frames_indexes[1:], geometries):
             self.api.video.figure.create(
                 self.video_id,
                 object_id,
@@ -38,8 +38,8 @@ class TrackerInterface:
                 geometry.geometry_name(),
                 self.track_id,
             )
-            stop = self._notify()
             self.global_pos += 1
+            stop = self._notify()
 
             if stop:
                 self.logger.info("Task stoped by user.")
@@ -72,7 +72,7 @@ class TrackerInterface:
             pos = self.stop
         else:
             pos = self.global_pos
-        
+
         self.logger.debug(f"Notification status: {pos}/{self.stop}")
 
         nextstop = self.api.video.notify_progress(
