@@ -345,8 +345,11 @@ class Transfer(Widget):
 
             # As you can see, the list of items was replaced with the new one.
         """
-
-        self._items = self.__checked_items(items)
+        
+        if items:
+            self._items = self.__checked_items(items)
+        else:
+            self._items = []
 
         self.update_data()
         DataJson().send_changes()
