@@ -19,6 +19,11 @@ class Tracking(Inference):
             model_dir, custom_inference_settings, sliding_window_mode=None, use_gui=False
         )
 
+        try:
+            self.load_on_device(model_dir, "cuda")
+        except RuntimeError:
+            self.load_on_device(model_dir, "cpu")
+
     def get_info(self):
         info = super().get_info()
         info["task type"] = "tracking"
@@ -64,13 +69,13 @@ class Tracking(Inference):
         """
         Track point on given frames.
 
-        :param rgb_images: RGB frames, `M` frames
+        :param rgb_images: RGB frames, `m` frames
         :type rgb_images: List[np.array]
         :param settings: model parameters
         :type settings: Dict[str, Any]
-        :param start_objects: tracking points on the initial frame; N points
-        :type start_objects: List[PredictionPoint]
-        :return: _description_
+        :param start_objects: point to track on the initial frame
+        :type start_objects: PredictionPoint
+        :return: predicted points for frame range (0, m]; `m-1` prediction in total
         :rtype: List[PredictionPoint]
         """
         raise NotImplementedError
