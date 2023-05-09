@@ -1,13 +1,10 @@
 # coding: utf-8
 
 # docs
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple, Dict
 from supervisely.geometry.geometry import Geometry
-from supervisely.geometry import validation
 from supervisely.geometry.constants import (
-    EXTERIOR,
-    POINTS,
-    ORIGIN,
+    SPACE_ORIGIN,
     DATA,
     GEOMETRY_SHAPE,
     GEOMETRY_TYPE,
@@ -29,15 +26,15 @@ if not hasattr(np, "bool"):
     np.bool = np.bool_
 
 
-class PointLocation3D(JsonSerializable):
+class PointLocation3d(JsonSerializable):
     """
-    PointLocation3D in (row, col, tab) position. :class:`PointLocation3D<PointLocation3D>` object is immutable.
+    PointLocation3d in (row, col, tab) position. :class:`PointLocation3d<PointLocation3d>` object is immutable.
 
-    :param row: Position of PointLocation3D object on height.
+    :param row: Position of PointLocation3d object on height.
     :type row: int or float
-    :param col: Position of PointLocation3D object on width.
+    :param col: Position of PointLocation3d object on width.
     :type col: int or float
-    :param tab: Position of PointLocation3D object on depth.
+    :param tab: Position of PointLocation3d object on depth.
     :type tab: int or float
 
     :Usage example:
@@ -49,10 +46,10 @@ class PointLocation3D(JsonSerializable):
         row = 100
         col = 200
         tab = 2
-        loc = sly.PointLocation3D(row, col, tab)
+        loc = sly.PointLocation3d(row, col, tab)
     """
 
-    def __init__(self, row: int, col: int, tab: int):
+    def __init__(self, row: Union[int, float], col: Union[int, float], tab: Union[int, float]):
         self._row = round(unwrap_if_numpy(row))
         self._col = round(unwrap_if_numpy(col))
         self._tab = round(unwrap_if_numpy(tab))
@@ -60,9 +57,9 @@ class PointLocation3D(JsonSerializable):
     @property
     def row(self) -> int:
         """
-        Position of PointLocation3D on height.
+        Position of PointLocation3d on height.
 
-        :return: Height of PointLocation3D
+        :return: Height of PointLocation3d
         :rtype: :class:`int`
         :Usage example:
 
@@ -76,9 +73,9 @@ class PointLocation3D(JsonSerializable):
     @property
     def col(self) -> int:
         """
-        Position of PointLocation3D on width.
+        Position of PointLocation3d on width.
 
-        :return: Width of PointLocation3D
+        :return: Width of PointLocation3d
         :rtype: :class:`int`
         :Usage example:
 
@@ -92,9 +89,9 @@ class PointLocation3D(JsonSerializable):
     @property
     def tab(self) -> int:
         """
-        Position of PointLocation3D on depth.
+        Position of PointLocation3d on depth.
 
-        :return: Depth of PointLocation3D
+        :return: Depth of PointLocation3d
         :rtype: :class:`int`
         :Usage example:
 
@@ -103,14 +100,15 @@ class PointLocation3D(JsonSerializable):
             print(loc.tab)
             # Output: 2
         """
-        return self._col
+        return self._tab
 
     def to_json(self) -> Dict:
         """
-        Convert the PointLocation3D to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the PointLocation3d to a json dict.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python
@@ -118,28 +116,28 @@ class PointLocation3D(JsonSerializable):
             loc_json = loc.to_json()
             print(loc_json)
             # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [
-            #                200,
-            #                100
-            #            ]
-            #        ]
-            #    }
-            # }
+            #           "space_origin": [
+            #                            200,
+            #                            200,
+            #                            100
+            #                           ]
+            #         }
+
         """
-        packed_obj = {POINTS: {EXTERIOR: [[self.col, self.row, self.tab]]}}
+
+        packed_obj = {SPACE_ORIGIN: [self.col, self.row, self.tab]}
         return packed_obj
 
     @classmethod
-    def from_json(cls, data: Dict):
+    def from_json(cls, packed_obj):
         """
-        Convert a json dict to PointLocation3D. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to PointLocation3d.
 
-        :param data: PointLocation3D in json format as a dict.
+        :param data: PointLocation3d in json format as a dict.
         :type data: dict
-        :return: PointLocation3D object
-        :rtype: :class:`PointLocation3D<PointLocation3D>`
+        :return: PointLocation3d object
+        :rtype: :class:`PointLocation3d<PointLocation3d>`
+
         :Usage example:
 
          .. code-block:: python
@@ -147,25 +145,20 @@ class PointLocation3D(JsonSerializable):
             import supervisely as sly
 
             loc_json = {
-                "points": {
-                    "exterior": [
-                        [
-                            200,
-                            100
-                        ]
-                    ],
-                    "interior": []
-                }
-            }
-            loc = sly.PointLocation3D.from_json(loc_json)
+                "space_origin": [
+                                200,
+                                200,
+                                100,
+                                ]
+                        }
+
+            loc = sly.PointLocation3d.from_json(loc_json)
         """
-        validation.validate_geometry_points_fields(data)
-        exterior = data[POINTS][EXTERIOR]
-        if len(exterior) != 1:
-            raise ValueError(
-                '"exterior" field must contain exactly one point to create "PointLocation3D" object.'
-            )
-        return cls(row=exterior[0][1], col=exterior[0][0], tab=exterior[0][2])
+        return cls(
+            row=packed_obj["space_origin"][0],
+            col=packed_obj["space_origin"][1],
+            tab=packed_obj["space_origin"][2],
+        )
 
 
 class Bitmap3d(Geometry):
@@ -216,7 +209,7 @@ class Bitmap3d(Geometry):
         self,
         data: np.ndarray,
         space: Optional[str] = None,
-        space_origin: Optional[PointLocation3D] = None,
+        space_origin: Optional[PointLocation3d] = None,
         space_directions: Optional[List[Tuple[float, float, float]]] = None,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
@@ -264,7 +257,7 @@ class Bitmap3d(Geometry):
 
     def to_json(self) -> Dict:
         """
-        Convert the Bitmap3D to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Bitmap 3D to a json dict.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -274,28 +267,38 @@ class Bitmap3d(Geometry):
 
             import supervisely as sly
 
-            mask = np.array([[0, 0, 0, 0, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 1, 0, 1, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 0, 0, 0, 0]], dtype=np.bool_)
+            mask = np.array([[[1 1 0]
+                              [1 1 0]
+                              [0 0 0]]
+                             [[1 1 0]
+                              [1 1 0]
+                              [0 0 0]]
+                             [[0 0 0]
+                              [0 0 0]
+                              [0 0 0]]], dtype=np.bool_)
 
-            figure = sly.Bitmap(mask)
+            location = sly.PointLocation3d(1, 1, 1)
+
+            figure = sly.Bitmap3d(mask, space_origin=location)
             figure_json = figure.to_json()
             print(json.dumps(figure_json, indent=4))
             # Output: {
-            #    "bitmap": {
-            #        "origin": [1, 1],
-            #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
+            #    "bitmap_3d": {
+            #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
+            #        "space_origin": [1, 1, 1],
             #    },
-            #    "shape": "bitmap",
-            #    "geometryType": "bitmap"
+            #    "shape": "bitmap_3d",
+            #    "geometryType": "bitmap_3d"
             # }
         """
         res = {
             self._impl_json_class_name(): {
-                ORIGIN: [self.space_origin[0], self.space_origin[1], self.space_origin[2]],
-                DATA: self.data_2_string(self.data),
+                SPACE_ORIGIN: [
+                    self.space_origin.col,
+                    self.space_origin.row,
+                    self.space_origin.tab,
+                ],
+                DATA: self.data_2_base64(self.data),
             },
             GEOMETRY_SHAPE: self.geometry_name(),
             GEOMETRY_TYPE: self.geometry_name(),
@@ -306,7 +309,7 @@ class Bitmap3d(Geometry):
     @classmethod
     def from_json(cls, json_data: Dict):
         """
-        Convert a json dict to Bitmap3D. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Bitmap 3D.
 
         :param data: Bitmap in json format as a dict.
         :type data: dict
@@ -319,9 +322,9 @@ class Bitmap3d(Geometry):
             import supervisely as sly
 
             figure_json = {
-                "bitmap": {
-                    "origin": [1, 1],
-                    "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
+                "bitmap_3d": {
+                    "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
+                    "space_origin": [1, 1, 1],
                 },
                 "shape": "bitmap_3d",
                 "geometryType": "bitmap_3d"
@@ -340,15 +343,15 @@ class Bitmap3d(Geometry):
                 )
             )
 
-        if ORIGIN not in json_data[json_root_key] or DATA not in json_data[json_root_key]:
+        if SPACE_ORIGIN not in json_data[json_root_key] or DATA not in json_data[json_root_key]:
             raise ValueError(
                 "{} field must contain {} and {} fields to create MultichannelBitmap object.".format(
-                    json_root_key, ORIGIN, DATA
+                    json_root_key, SPACE_ORIGIN, DATA
                 )
             )
 
-        col, row, tab = json_data[json_root_key][ORIGIN]
-        data = cls.string_2_data(json_data[json_root_key][DATA])
+        col, row, tab = json_data[json_root_key][SPACE_ORIGIN]
+        data = cls.base64_2_data(json_data[json_root_key][DATA])
 
         labeler_login = json_data.get(LABELER_LOGIN, None)
         updated_at = json_data.get(UPDATED_AT, None)
@@ -357,7 +360,7 @@ class Bitmap3d(Geometry):
         class_id = json_data.get(CLASS_ID, None)
         return cls(
             data=data,
-            space_origin=PointLocation3D(row=row, col=col, tab=tab),
+            space_origin=PointLocation3d(row=row, col=col, tab=tab),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
@@ -371,7 +374,39 @@ class Bitmap3d(Geometry):
         return BITMAP_3D
 
     @staticmethod
-    def data_2_string(data):
+    def data_2_base64(data: np.ndarray) -> str:
+        """
+        Convert numpy array to base64 encoded string.
+
+        :param mask: Bool numpy array.
+        :type mask: np.ndarray
+        :return: Base64 encoded string
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get annotation from API
+            meta_json = api.project.get_meta(PROJECT_ID)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(VOLUME_ID)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Get Bitmap 3D from annotation
+            for label in ann.labels:
+                if type(label.geometry) == sly.Bitmap3d:
+                    figure = label.geometry
+
+            encoded_string = sly.Bitmap3d.data_2_base64(figure.data)
+            print(encoded_string)
+            # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+        """
         shape_str = ",".join(str(dim) for dim in data.shape)
         data_str = data.tostring().decode("utf-8")
         combined_str = f"{shape_str}|{data_str}"
@@ -379,7 +414,27 @@ class Bitmap3d(Geometry):
         encoded_string = base64.b64encode(compressed_string).decode("utf-8")
         return encoded_string
 
-    def string_2_data(encoded_string):
+    def base64_2_data(encoded_string: str) -> np.ndarray:
+        """
+        Convert base64 encoded string to numpy array.
+
+        :param s: Input base64 encoded string.
+        :type s: str
+        :return: Bool numpy array
+        :rtype: :class:`np.ndarray`
+        :Usage example:
+
+         .. code-block:: python
+
+              import supervisely as sly
+
+              encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+              figure_data = sly.Bitmap3d.base64_2_data(encoded_string)
+              print(figure_data)
+              #  [[ True  True  True]
+              #   [ True False  True]
+              #   [ True  True  True]]
+        """
         compressed_bytes = base64.b64decode(encoded_string)
         decompressed_string = gzip.decompress(compressed_bytes).decode("utf-8")
         shape_str, data_str = decompressed_string.split("|")
