@@ -24,6 +24,7 @@ from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely.geometry.bitmap_3d import PointLocation3D
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -357,9 +358,13 @@ def download_volume_project(
                         bitmap3d_data, bitmap3d_header = nrrd.read(figure_path)
                         sf.geometry.data = bitmap3d_data
                         sf.geometry.space = bitmap3d_header["space"]
-                        sf.geometry.space_origin = bitmap3d_header["space origin"]
+                        sf.geometry.space_origin = PointLocation3D(
+                            col=bitmap3d_header["space origin"][0],
+                            row=bitmap3d_header["space origin"][1],
+                            tab=bitmap3d_header["space origin"][2],
+                        )
                         sf.geometry.space_directions = bitmap3d_header["space directions"]
-                        path_without_filename = '/'.join(figure_path.split('/')[:-1])
+                        path_without_filename = "/".join(figure_path.split("/")[:-1])
                         remove_dir(path_without_filename)
 
                 dataset_fs.add_item_file(
