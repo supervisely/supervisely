@@ -140,11 +140,11 @@ def upload_archive(
     f = open(archive_path, "rb")
     fields = {
         "appKey": appKey,
+        "subAppPath": subapp_path,
         "release": json.dumps(release),
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
-        "subAppPath": subapp_path,
         "archive": (
             "arhcive.tar.gz",
             f,
