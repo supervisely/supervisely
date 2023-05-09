@@ -37,7 +37,6 @@ class PointLocation3d(JsonSerializable):
     :type col: int or float
     :param tab: Position of PointLocation3d object on depth.
     :type tab: int or float
-
     :Usage example:
 
      .. code-block:: python
@@ -62,7 +61,6 @@ class PointLocation3d(JsonSerializable):
 
         :return: Height of PointLocation3d
         :rtype: :class:`int`
-
         :Usage example:
 
          .. code-block:: python
@@ -96,7 +94,6 @@ class PointLocation3d(JsonSerializable):
 
         :return: Depth of PointLocation3d
         :rtype: :class:`int`
-
         :Usage example:
 
          .. code-block:: python
@@ -112,7 +109,6 @@ class PointLocation3d(JsonSerializable):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-
         :Usage example:
 
          .. code-block:: python
@@ -141,7 +137,6 @@ class PointLocation3d(JsonSerializable):
         :type data: dict
         :return: PointLocation3d object
         :rtype: :class:`PointLocation3d<PointLocation3d>`
-
         :Usage example:
 
          .. code-block:: python
@@ -182,7 +177,6 @@ class Bitmap3d(Geometry):
     :param created_at: Date and Time when Bitmap 3D was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
-
     :Usage example:
 
      .. code-block:: python
@@ -266,7 +260,6 @@ class Bitmap3d(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-
         :Usage example:
 
          .. code-block:: python
@@ -321,7 +314,6 @@ class Bitmap3d(Geometry):
         :type data: dict
         :return: Bitmap3D object
         :rtype: :class:`Bitmap3d<Bitmap3d>`
-
         :Usage example:
 
          .. code-block:: python
@@ -389,7 +381,6 @@ class Bitmap3d(Geometry):
         :type mask: np.ndarray
         :return: Base64 encoded string
         :rtype: :class:`str`
-
         :Usage example:
 
          .. code-block:: python
@@ -433,7 +424,6 @@ class Bitmap3d(Geometry):
         :type s: str
         :return: Bool numpy array
         :rtype: :class:`np.ndarray`
-
         :Usage example:
 
          .. code-block:: python
