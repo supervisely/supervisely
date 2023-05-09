@@ -23,7 +23,8 @@ from supervisely.cli.release.release import (
     delete_tag,
     get_instance_version,
     get_user,
-    get_created_at
+    get_created_at,
+    get_remote_url
 )
 
 
@@ -303,7 +304,10 @@ def run(
         return False
 
     # get appKey
-    appKey = get_appKey(repo, sub_app_directory)
+    remote_name = repo.active_branch.tracking_branch().remote_name
+    remote = repo.remote(remote_name)
+    repo_url = get_remote_url(remote)
+    appKey = get_appKey(repo, sub_app_directory, repo_url)
 
     # check if app exist or not
     module_exists_label = "[yellow bold]updated[/]"
