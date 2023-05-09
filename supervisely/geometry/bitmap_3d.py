@@ -1,6 +1,7 @@
 # coding: utf-8
 
 # docs
+from __future__ import annotations
 from typing import Optional, Union, List, Tuple, Dict
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
@@ -61,6 +62,7 @@ class PointLocation3d(JsonSerializable):
 
         :return: Height of PointLocation3d
         :rtype: :class:`int`
+
         :Usage example:
 
          .. code-block:: python
@@ -77,6 +79,7 @@ class PointLocation3d(JsonSerializable):
 
         :return: Width of PointLocation3d
         :rtype: :class:`int`
+
         :Usage example:
 
          .. code-block:: python
@@ -93,6 +96,7 @@ class PointLocation3d(JsonSerializable):
 
         :return: Depth of PointLocation3d
         :rtype: :class:`int`
+
         :Usage example:
 
          .. code-block:: python
@@ -129,7 +133,7 @@ class PointLocation3d(JsonSerializable):
         return packed_obj
 
     @classmethod
-    def from_json(cls, packed_obj):
+    def from_json(cls, packed_obj) -> PointLocation3d:
         """
         Convert a json dict to PointLocation3d.
 
@@ -178,6 +182,7 @@ class Bitmap3d(Geometry):
     :param created_at: Date and Time when Bitmap 3D was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
+
     :Usage example:
 
      .. code-block:: python
@@ -261,6 +266,7 @@ class Bitmap3d(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python
@@ -307,14 +313,15 @@ class Bitmap3d(Geometry):
         return res
 
     @classmethod
-    def from_json(cls, json_data: Dict):
+    def from_json(cls, json_data: Dict) -> Bitmap3d:
         """
         Convert a json dict to Bitmap 3D.
 
         :param data: Bitmap in json format as a dict.
         :type data: dict
         :return: Bitmap3D object
-        :rtype: :class:`Bitmap3D<Bitmap3D>`
+        :rtype: :class:`Bitmap3d<Bitmap3d>`
+
         :Usage example:
 
          .. code-block:: python
@@ -382,30 +389,33 @@ class Bitmap3d(Geometry):
         :type mask: np.ndarray
         :return: Base64 encoded string
         :rtype: :class:`str`
+
         :Usage example:
 
          .. code-block:: python
 
             import supervisely as sly
+            import os
+            import nrrd
 
             address = 'https://app.supervise.ly/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
-            # Get annotation from API
             meta_json = api.project.get_meta(PROJECT_ID)
             meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(VOLUME_ID)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Get Bitmap 3D from annotation
-            for label in ann.labels:
-                if type(label.geometry) == sly.Bitmap3d:
-                    figure = label.geometry
+            ann_json = api.volume.annotation.download_bulk(DATASET_ID, [VOLUME_ID])
 
-            encoded_string = sly.Bitmap3d.data_2_base64(figure.data)
+            figure_id = ann_json[0]["spatialFigures"][0]["id"]
+            path_for_mesh = f"meshes/{figure_id}.nrrd"
+            api.volume.figure.download_stl_meshes([figure_id], [path_for_mesh])
+
+            bitmap3d_data, _ = nrrd.read(path_for_mesh)
+            encoded_string = sly.Bitmap3d.data_2_base64(bitmap3d_data)
+
             print(encoded_string)
-            # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+            # 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
         """
         shape_str = ",".join(str(dim) for dim in data.shape)
         data_str = data.tostring().decode("utf-8")
@@ -414,6 +424,7 @@ class Bitmap3d(Geometry):
         encoded_string = base64.b64encode(compressed_string).decode("utf-8")
         return encoded_string
 
+    @staticmethod
     def base64_2_data(encoded_string: str) -> np.ndarray:
         """
         Convert base64 encoded string to numpy array.
@@ -422,18 +433,25 @@ class Bitmap3d(Geometry):
         :type s: str
         :return: Bool numpy array
         :rtype: :class:`np.ndarray`
+
         :Usage example:
 
          .. code-block:: python
 
               import supervisely as sly
 
-              encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+              encoded_string = 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
               figure_data = sly.Bitmap3d.base64_2_data(encoded_string)
               print(figure_data)
-              #  [[ True  True  True]
-              #   [ True False  True]
-              #   [ True  True  True]]
+              # [[[1 1 0]
+              #   [1 1 0]
+              #   [0 0 0]]
+              #  [[1 1 0]
+              #   [1 1 0]
+              #   [0 0 0]]
+              #  [[0 0 0]
+              #   [0 0 0]
+              #   [0 0 0]]]
         """
         compressed_bytes = base64.b64decode(encoded_string)
         decompressed_string = gzip.decompress(compressed_bytes).decode("utf-8")
