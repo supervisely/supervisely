@@ -12,7 +12,15 @@ from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
 
 # @TODO: check agent import
 # @TODO: remove source checkbox working for UI and non UI imports
-# @TODO:
+# @TODO: overview page with all import scenarios and basic information
+# @TODO: scenarios for import from different sources:
+# @TODO: 1. import without template
+# @TODO: 2. import with template from file .txt (links)
+# @TODO: 3. import with template from file archive
+# @TODO: 4. import with template from folder
+# @TODO: 5. import with template from agent folder
+# @TODO: 6. import with template from external link
+# @TODO: 7. import with template GUI
 
 
 class Import:
