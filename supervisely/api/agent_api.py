@@ -139,7 +139,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             agent = api.agent.get_info_by_id(7)
         """
-        return self._get_info_by_id(id, "agent.info")
+        return self._get_info_by_id(id, "agents.info")
 
     def get_status(self, id: int) -> AgentApi.Status:
         """
