@@ -34,8 +34,7 @@ class PredictionKeypoints(Prediction):
 
 
 class PredictionPoint(Prediction):
-    def __init__(self, class_name: str, point: Union[List[int], np.ndarray]):
+    def __init__(self, class_name: str, col: int, row: int):
         super().__init__(class_name=class_name)
-        assert len(point) == 2, "it's not a point"
-        self.col = int(point[0])
-        self.row = int(point[1])
+        self.col = col
+        self.row = row
