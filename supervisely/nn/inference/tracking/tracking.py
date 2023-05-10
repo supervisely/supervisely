@@ -1,12 +1,15 @@
 import numpy as np
-from fastapi import Request
+import functools
+from fastapi import Request, BackgroundTasks
 from typing import Any, Dict, List, Literal, Optional, Union
 from typing_extensions import Literal
 
 import supervisely as sly
+from supervisely.geometry.geometry import Geometry
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
+import supervisely.nn.inference.tracking.functional as F
 
 
 class Tracking(Inference):
@@ -16,7 +19,10 @@ class Tracking(Inference):
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
         super().__init__(
-            model_dir, custom_inference_settings, sliding_window_mode=None, use_gui=False
+            model_dir,
+            custom_inference_settings,
+            sliding_window_mode=None,
+            use_gui=False,
         )
 
         try:
@@ -39,6 +45,37 @@ class Tracking(Inference):
         server = self._app.get_server()
 
         @server.post("/track")
+        def start_track(request: Request, task: BackgroundTasks):
+            task.add_task(track, request)
+            return {"message": "Track task started."}
+
+        def send_error_data(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                value = None
+                try:
+                    value = func(*args, **kwargs)
+                except Exception as e:
+                    request: Request = args[0]
+                    context = request.state.context
+                    api: sly.Api = request.state.api
+                    track_id = context["trackId"]
+
+                    api.post(
+                        "videos.notify-annotation-tool",
+                        data={
+                            "type": "videos:tracking-error",
+                            "data": {
+                                "trackId": track_id,
+                                "error": {"message": repr(e)},
+                            },
+                        },
+                    )
+                return value
+
+            return wrapper
+
+        @send_error_data
         def track(request: Request):
             context = request.state.context
             api: sly.Api = request.state.api
@@ -50,13 +87,42 @@ class Tracking(Inference):
 
             api.logger.info("Start tracking.")
 
-            for geom, obj_id in zip(video_interface.geometries, video_interface.object_ids):
-                points: List[Prediction] = self.predict(
-                    video_interface.frames,
-                    self.custom_inference_settings_dict,
-                    geom,
-                )
-                geometries = self._convert_to_sly_geometries(points)
+            for geom, obj_id in zip(
+                video_interface.geometries, video_interface.object_ids
+            ):
+                if isinstance(geom, sly.Point):
+                    pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
+                    predicted: List[Prediction] = self.predict(
+                        video_interface.frames,
+                        self.custom_inference_settings_dict,
+                        pp_geom,
+                    )
+                    geometries = F.dto_points_to_sly_points(predicted)
+                elif isinstance(geom, sly.Polygon):
+                    if len(geom.interior) > 0:
+                        raise ValueError(f" Can't track polygons with iterior.")
+
+                    polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
+                    exterior_per_time = [
+                        [] for _ in range(video_interface.frames_count)
+                    ]
+
+                    for pp_geom in polygon_points:
+                        points: List[Prediction] = self.predict(
+                            video_interface.frames,
+                            self.custom_inference_settings_dict,
+                            pp_geom,
+                        )
+                        points_loc = F.dto_points_to_point_location(points)
+                        for fi, point_loc in enumerate(points_loc):
+                            exterior_per_time[fi].append(point_loc)
+
+                    geometries = F.exteriors_to_sly_polygons(exterior_per_time)
+                else:
+                    raise TypeError(
+                        f"Tracking does not work with {geom.geometry_name()}."
+                    )
+
                 video_interface.add_object_geometries(geometries, obj_id)
                 api.logger.info(f"Object #{obj_id} tracked.")
 
@@ -83,6 +149,8 @@ class Tracking(Inference):
     def _get_obj_class_shape(self):
         return sly.Point
 
-    def _convert_to_sly_geometries(self, points: List[PredictionPoint]):
-        obj_class = self._get_obj_class_shape()
-        return [obj_class(row=p.row, col=p.col) for p in points]
+    def _predict_point_geometries(self) -> List[Geometry]:
+        pass
+
+    def _predict_polygon_geometries(self) -> List[Geometry]:
+        pass
