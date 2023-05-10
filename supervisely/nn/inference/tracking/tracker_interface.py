@@ -19,10 +19,11 @@ class TrackerInterface:
         self.direction = context["direction"]
         self.stop = len(self.object_ids) * self.frames_count
         self.global_pos = 0
+        self.global_stop_indicatior = False
 
         self.geometries: List[Geometry] = []
         self.frames_indexes: List[int] = []
-        self.frames: Optional[np.ndarray] = None
+        self._frames: Optional[np.ndarray] = None
 
         self._add_geometries()
         self._add_frames_indexes()
@@ -38,10 +39,9 @@ class TrackerInterface:
                 geometry.geometry_name(),
                 self.track_id,
             )
-            self.global_pos += 1
-            stop = self._notify()
+            self._notify()
 
-            if stop:
+            if self.global_stop_indicatior:
                 self.logger.info("Task stoped by user.")
                 self._notify(True)
                 break
@@ -52,11 +52,21 @@ class TrackerInterface:
             geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
             self.geometries.append(geometry)
 
+            if isinstance(geometry, sly.Point):
+                self.stop += 1
+            elif isinstance(geometry, sly.Polygon):
+                self.stop += len(geometry.exterior) + len(geometry.interior)
+
+            # TODO: other geometries
+
     def _add_frames_indexes(self):
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
+        while (
+            0 <= cur_index < total_frames
+            and len(self.frames_indexes) < self.frames_count + 1
+        ):
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
@@ -65,9 +75,10 @@ class TrackerInterface:
         for frame_index in self.frames_indexes:
             img_rgb = self.api.video.frame.download_np(self.video_id, frame_index)
             rgbs.append(img_rgb)
-        self.frames = rgbs
+        self._frames = rgbs
 
     def _notify(self, stop: bool = False):
+        self.global_pos += 1
         if stop:
             pos = self.stop
         else:
@@ -75,7 +86,7 @@ class TrackerInterface:
 
         self.logger.debug(f"Notification status: {pos}/{self.stop}")
 
-        nextstop = self.api.video.notify_progress(
+        self.global_stop_indicatior = self.api.video.notify_progress(
             self.track_id,
             self.video_id,
             min(self.frames_indexes),
@@ -84,6 +95,14 @@ class TrackerInterface:
             self.stop,
         )
 
-        self.logger.debug(f"Notification status: stop={nextstop}")
+        self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
 
-        return nextstop
+    @property
+    def frames(self) -> np.ndarray:
+        return self._frames
+
+    @property
+    def frames_with_notification(self) -> np.ndarray:
+        """Use this in prediction."""
+        self._notify()
+        return self._frames
