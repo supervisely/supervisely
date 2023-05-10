@@ -84,40 +84,17 @@ class Tracking(Inference):
                 context=context,
                 api=api,
             )
-
             api.logger.info("Start tracking.")
 
             for geom, obj_id in zip(
                 video_interface.geometries, video_interface.object_ids
             ):
                 if isinstance(geom, sly.Point):
-                    pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
-                    predicted: List[Prediction] = self.predict(
-                        video_interface.frames,
-                        self.custom_inference_settings_dict,
-                        pp_geom,
-                    )
-                    geometries = F.dto_points_to_sly_points(predicted)
+                    geometries = self._predict_point_geometries(geom, video_interface)
                 elif isinstance(geom, sly.Polygon):
                     if len(geom.interior) > 0:
                         raise ValueError(f" Can't track polygons with iterior.")
-
-                    polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
-                    exterior_per_time = [
-                        [] for _ in range(video_interface.frames_count)
-                    ]
-
-                    for pp_geom in polygon_points:
-                        points: List[Prediction] = self.predict(
-                            video_interface.frames,
-                            self.custom_inference_settings_dict,
-                            pp_geom,
-                        )
-                        points_loc = F.dto_points_to_point_location(points)
-                        for fi, point_loc in enumerate(points_loc):
-                            exterior_per_time[fi].append(point_loc)
-
-                    geometries = F.exteriors_to_sly_polygons(exterior_per_time)
+                    geometries = self._predict_polygon_geometries(geom, video_interface)
                 else:
                     raise TypeError(
                         f"Tracking does not work with {geom.geometry_name()}."
@@ -149,8 +126,35 @@ class Tracking(Inference):
     def _get_obj_class_shape(self):
         return sly.Point
 
-    def _predict_point_geometries(self) -> List[Geometry]:
-        pass
+    def _predict_point_geometries(
+        self,
+        geom: sly.Point,
+        interface: TrackerInterface,
+    ) -> List[Geometry]:
+        pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
+        predicted: List[Prediction] = self.predict(
+            interface.frames_with_notification,
+            self.custom_inference_settings_dict,
+            pp_geom,
+        )
+        return F.dto_points_to_sly_points(predicted)
 
-    def _predict_polygon_geometries(self) -> List[Geometry]:
-        pass
+    def _predict_polygon_geometries(
+        self,
+        geom: sly.Polygon,
+        interface: TrackerInterface,
+    ) -> List[Geometry]:
+        polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
+        exterior_per_time = [[] for _ in range(interface.frames_count)]
+
+        for pp_geom in polygon_points:
+            points: List[Prediction] = self.predict(
+                interface.frames_with_notification,
+                self.custom_inference_settings_dict,
+                pp_geom,
+            )
+            points_loc = F.dto_points_to_point_location(points)
+            for fi, point_loc in enumerate(points_loc):
+                exterior_per_time[fi].append(point_loc)
+
+        return F.exteriors_to_sly_polygons(exterior_per_time)
