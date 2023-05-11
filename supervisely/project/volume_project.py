@@ -371,7 +371,7 @@ def download_volume_project(
 
 
 def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
-    project_fs = VolumeProject.read_single(dir)
+    project_fs = VolumeProject(dir, OpenMode.READ)
     if project_name is None:
         project_name = project_fs.name
 
