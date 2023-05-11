@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 
 class Prediction:
@@ -31,3 +31,10 @@ class PredictionKeypoints(Prediction):
         super(PredictionKeypoints, self).__init__(class_name=class_name)
         self.labels = labels
         self.coordinates = coordinates
+
+
+class PredictionPoint(Prediction):
+    def __init__(self, class_name: str, col: int, row: int):
+        super().__init__(class_name=class_name)
+        self.col = col
+        self.row = row
