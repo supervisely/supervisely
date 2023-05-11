@@ -21,4 +21,4 @@ from supervisely.nn.inference.promptable_segmentation.promptable_segmentation im
     PromptableSegmentation,
 )
 from supervisely.nn.inference.session import Session, SessionJSON
-from supervisely.nn.inference.tracking.tracking import Tracking
+from supervisely.nn.inference.tracking.tracking import PointTracking

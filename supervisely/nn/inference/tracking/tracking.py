@@ -12,7 +12,7 @@ from supervisely.nn.inference import Inference
 import supervisely.nn.inference.tracking.functional as F
 
 
-class Tracking(Inference):
+class PointTracking(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -86,9 +86,7 @@ class Tracking(Inference):
             )
             api.logger.info("Start tracking.")
 
-            for geom, obj_id in zip(
-                video_interface.geometries, video_interface.object_ids
-            ):
+            for geom, obj_id in zip(video_interface.geometries, video_interface.object_ids):
                 if isinstance(geom, sly.Point):
                     geometries = self._predict_point_geometries(geom, video_interface)
                 elif isinstance(geom, sly.Polygon):
@@ -96,9 +94,7 @@ class Tracking(Inference):
                         raise ValueError(f" Can't track polygons with iterior.")
                     geometries = self._predict_polygon_geometries(geom, video_interface)
                 else:
-                    raise TypeError(
-                        f"Tracking does not work with {geom.geometry_name()}."
-                    )
+                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
                 video_interface.add_object_geometries(geometries, obj_id)
                 api.logger.info(f"Object #{obj_id} tracked.")
