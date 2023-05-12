@@ -86,15 +86,21 @@ class PointTracking(Inference):
             )
             api.logger.info("Start tracking.")
 
-            for geom, obj_id in zip(video_interface.geometries, video_interface.object_ids):
+            for geom, obj_id in zip(
+                video_interface.geometries, video_interface.object_ids
+            ):
                 if isinstance(geom, sly.Point):
                     geometries = self._predict_point_geometries(geom, video_interface)
                 elif isinstance(geom, sly.Polygon):
                     if len(geom.interior) > 0:
                         raise ValueError(f" Can't track polygons with iterior.")
                     geometries = self._predict_polygon_geometries(geom, video_interface)
+                elif isinstance(geom, sly.GraphNodes):
+                    geometries = self._predict_graph_geometries(geom, video_interface)
                 else:
-                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+                    raise TypeError(
+                        f"Tracking does not work with {geom.geometry_name()}."
+                    )
 
                 video_interface.add_object_geometries(geometries, obj_id)
                 api.logger.info(f"Object #{obj_id} tracked.")
@@ -126,7 +132,7 @@ class PointTracking(Inference):
         self,
         geom: sly.Point,
         interface: TrackerInterface,
-    ) -> List[Geometry]:
+    ) -> List[sly.Point]:
         pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
         predicted: List[Prediction] = self.predict(
             interface.frames_with_notification,
@@ -139,7 +145,7 @@ class PointTracking(Inference):
         self,
         geom: sly.Polygon,
         interface: TrackerInterface,
-    ) -> List[Geometry]:
+    ) -> List[sly.Polygon]:
         polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
         exterior_per_time = [[] for _ in range(interface.frames_count)]
 
@@ -154,3 +160,24 @@ class PointTracking(Inference):
                 exterior_per_time[fi].append(point_loc)
 
         return F.exteriors_to_sly_polygons(exterior_per_time)
+
+    def _predict_graph_geometries(
+        self,
+        geom: sly.GraphNodes,
+        interface: TrackerInterface,
+    ) -> sly.GraphNodes:
+        nodes_per_time = [[] for _ in range(interface.frames_count)]
+        points_with_id = F.graph_to_dto_points(geom)
+
+        for point, pid in zip(*points_with_id):
+            preds: List[PredictionPoint] = self.predict(
+                interface.frames_with_notification,
+                self.custom_inference_settings_dict,
+                point,
+            )
+            nodes = F.dto_points_to_sly_nodes(preds, pid)
+
+            for time, node in enumerate(nodes):
+                nodes_per_time[time].append(node)
+
+        return F.nodes_to_sly_graph(nodes_per_time)

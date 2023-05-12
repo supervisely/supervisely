@@ -52,10 +52,14 @@ class TrackerInterface:
             geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
             self.geometries.append(geometry)
 
+            self.api.logger.debug(f"Added {figure.geometry_type} #{figure_id}")
+
             if isinstance(geometry, sly.Point):
                 self.stop += 1
             elif isinstance(geometry, sly.Polygon):
                 self.stop += len(geometry.exterior) + len(geometry.interior)
+            elif isinstance(geometry, sly.GraphNodes):
+                self.stop += len(geometry.nodes.items())
 
             # TODO: other geometries
 
@@ -63,10 +67,7 @@ class TrackerInterface:
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while (
-            0 <= cur_index < total_frames
-            and len(self.frames_indexes) < self.frames_count + 1
-        ):
+        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
