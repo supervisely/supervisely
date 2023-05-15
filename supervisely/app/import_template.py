@@ -4,26 +4,40 @@ import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
-from os import getenv
-from distutils.util import strtobool
 from supervisely.sly_logger import logger
 from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
+from supervisely.app.widgets import Card, Button, Container, Widget
+from supervisely.app.fastapi.subapp import Application
 
+import supervisely as sly
+from supervisely.app.widgets import (
+    Card,
+    FileStorageUpload,
+    SelectDataset,
+    TeamFilesSelector,
+    Container,
+    Tabs,
+    Button,
+    Input,
+    Empty,
+)
 
+# @TODO: set project type in constructor?
+# @TODO: if run from team files hide input card
+# @TODO: build with GUI
 # @TODO: check agent import
 # @TODO: remove source checkbox working for UI and non UI imports
-# @TODO: overview page with all import scenarios and basic information
 # @TODO: scenarios for import from different sources:
-# @TODO: 1. import without template
+# @TODO: 1. import from scractch (without template)
 # @TODO: 2. import with template from file .txt (links)
 # @TODO: 3. import with template from file archive
 # @TODO: 4. import with template from folder
-# @TODO: 5. import with template from agent folder
 # @TODO: 6. import with template from external link
+# @TODO: 5. import with template from agent folder
 # @TODO: 7. import with template GUI
 
 
-class Import:
+class Import(Application):
     class Context:
         def __init__(
             self,
@@ -115,6 +129,49 @@ class Import:
         def is_on_agent(self) -> bool:
             return self._is_on_agent
 
+    def __init__(self):
+        self._layout = None
+        if sly.is_production():
+            self.file_selector = TeamFilesSelector(
+                team_id=sly.env.team_id(), multiple_selection=False, max_height=300
+            )
+            self.drag_n_drop = FileStorageUpload(
+                team_id=sly.env.team_id(), path="/folder/import-template/"
+            )
+            self.external_link = Input(value="https://")
+
+            self.file_tabs = Tabs(
+                labels=["File Selector", "Drag & Drop", "Link"],
+                contents=[self.file_selector, self.drag_n_drop, self.external_link],
+            )
+            self.input_container = Container(widgets=[self.file_tabs])
+            self.input_card = Card(
+                title="Input files",
+                description="Drag & drop or Select input files",
+                content=self.input_container,
+            )
+
+            self.dataset_selector = SelectDataset()
+            self.start_button = Button("Start Import")
+            self.output_container = Container(widgets=[self.dataset_selector, self.start_button])
+            self.output_card = Card(
+                title="Output project",
+                description="Select output project or dataset",
+                content=self.output_container,
+            )
+
+            self.settings_card = self.generate_settings_card()
+            self._layout = Container(
+                widgets=[self.input_card, self.settings_card, self.output_card]
+            )
+
+        # super().__init__(layout=self.start_button)
+        super().__init__(layout=self._layout)
+
+    def generate_settings_card(self) -> Widget:
+        # implement your own method for import settings
+        return Empty()
+
     def process(self, context: Context) -> Optional[Union[int, None]]:
         # implement your own method for import
         raise NotImplementedError()
@@ -138,7 +195,7 @@ class Import:
             raise KeyError(
                 "Both FILE and FOLDER envs are defined, but only one is allowed for the import"
             )
-        if self.is_path_required():
+        if self.is_path_required() is True:
             if file is None and folder is None:
                 raise KeyError(
                     "One of the environment variables has to be defined for the import app: FILE or FOLDER"
@@ -151,9 +208,12 @@ class Import:
             is_directory = False
 
         remote_path = path
-        is_on_agent = api.file.is_on_agent(path)
 
-        if not self.is_path_required() and path is None:
+        is_on_agent = False
+        if path is not None:
+            is_on_agent = api.file.is_on_agent(path)
+
+        if self.is_path_required() is False and path is None:
             is_directory = False
 
         project_id = env.project_id(raise_not_found=False)
@@ -200,13 +260,22 @@ class Import:
             is_path_required=self.is_path_required(),
         )
 
-        project_id = self.process(context=context)
-        if type(project_id) is int and is_production():
-            info = api.project.get_info_by_id(project_id)
-            api.task.set_output_project(task_id=task_id, project_id=info.id, project_name=info.name)
-            remove_source = bool(strtobool(getenv("modal.state.removeSource", None)))
-            if remove_source and not is_on_agent:
-                api.file.remove(team_id=context.team_id, path=remote_path)
-                remove_dir(context.path)
-                logger.info(msg=f"Source directory: '{remote_path}' was successfully removed.")
-            logger.info(f"Result project: id={info.id}, name={info.name}")
+        if is_production() is True:
+
+            @self.start_button.click
+            def start_import():
+                project_id = self.process(context=context)
+                if type(project_id) is int:
+                    info = api.project.get_info_by_id(project_id)
+                    api.task.set_output_project(
+                        task_id=task_id, project_id=info.id, project_name=info.name
+                    )
+                    # remove_source_files = env.remove_source_files()
+                    # if remove_source_files is True and is_on_agent is False:
+                    if is_on_agent is False:
+                        api.file.remove(team_id=context.team_id, path=remote_path)
+                        remove_dir(context.path)
+                        logger.info(
+                            msg=f"Source directory: '{remote_path}' was successfully removed."
+                        )
+                    logger.info(f"Result project: id={info.id}, name={info.name}")
