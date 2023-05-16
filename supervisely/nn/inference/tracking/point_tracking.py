@@ -1,13 +1,11 @@
 import numpy as np
 import functools
 from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Literal, Optional, Union
-from typing_extensions import Literal
+from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
 import supervisely as sly
 from supervisely.annotation.label import Label
-from supervisely.geometry.geometry import Geometry
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
