@@ -1,11 +1,11 @@
 import numpy as np
 import functools
 from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Literal, Optional, Union
-from typing_extensions import Literal
+from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 
 import supervisely as sly
-from supervisely.geometry.geometry import Geometry
+from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
@@ -86,9 +86,7 @@ class PointTracking(Inference):
             )
             api.logger.info("Start tracking.")
 
-            for geom, obj_id in zip(
-                video_interface.geometries, video_interface.object_ids
-            ):
+            for geom, obj_id in zip(video_interface.geometries, video_interface.object_ids):
                 if isinstance(geom, sly.Point):
                     geometries = self._predict_point_geometries(geom, video_interface)
                 elif isinstance(geom, sly.Polygon):
@@ -98,9 +96,7 @@ class PointTracking(Inference):
                 elif isinstance(geom, sly.GraphNodes):
                     geometries = self._predict_graph_geometries(geom, video_interface)
                 else:
-                    raise TypeError(
-                        f"Tracking does not work with {geom.geometry_name()}."
-                    )
+                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
                 video_interface.add_object_geometries(geometries, obj_id)
                 api.logger.info(f"Object #{obj_id} tracked.")
@@ -124,6 +120,30 @@ class PointTracking(Inference):
         :rtype: List[PredictionPoint]
         """
         raise NotImplementedError
+
+    def visualize(
+        self,
+        predictions: List[PredictionPoint],
+        images: List[np.ndarray],
+        vis_path: str,
+        thickness: int = 2,
+    ):
+        vis_path = Path(vis_path)
+
+        for i, (pred, image) in enumerate(zip(predictions, images)):
+            out_path = vis_path / f"img_{i}.jpg"
+            ann = self._predictions_to_annotation(image, [pred])
+            ann.draw_pretty(
+                bitmap=image,
+                color=(255, 0, 0),
+                thickness=thickness,
+                output_path=str(out_path),
+                fill_rectangles=False,
+            )
+
+    def _create_label(self, dto: PredictionPoint) -> sly.Point:
+        geometry = sly.Point(row=dto.row, col=dto.col)
+        return Label(geometry, sly.ObjClass("", sly.Point))
 
     def _get_obj_class_shape(self):
         return sly.Point
@@ -181,3 +201,22 @@ class PointTracking(Inference):
                 nodes_per_time[time].append(node)
 
         return F.nodes_to_sly_graph(nodes_per_time)
+
+    def _predictions_to_annotation(
+        self, image: np.ndarray, predictions: List[Prediction]
+    ) -> sly.Annotation:
+        labels = []
+        for prediction in predictions:
+            label = self._create_label(prediction)
+            if label is None:
+                # for example empty mask
+                continue
+            if isinstance(label, list):
+                labels.extend(label)
+                continue
+            labels.append(label)
+
+        # create annotation with correct image resolution
+        ann = sly.Annotation(img_size=image.shape[:2])
+        ann = ann.add_labels(labels)
+        return ann
