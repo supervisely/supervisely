@@ -2,7 +2,7 @@
 
 # fields names
 BITMAP = "bitmap"
-BITMAP_3D = "bitmap_3d"
+MASK_3D = "mask_3d"
 COLS = "cols"
 DATA = "data"
 EXTERIOR = "exterior"

@@ -9,7 +9,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.volume_annotation.plane import Plane
-from supervisely.geometry.bitmap_3d import Bitmap3d
+from supervisely.geometry.mask_3d import Mask3D
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
@@ -145,20 +145,20 @@ class VolumeFigureApi(FigureApi):
         if len(figures) == 0:
             return
         keys = []
-        keys_bitmap3d = []
+        keys_mask3d = []
         figures_json = []
-        figures_bitmap3d_json = []
+        figures_mask3d_json = []
         for figure in figures:
-            if figure.geometry.geometry_name() == Bitmap3d.geometry_name():
-                keys_bitmap3d.append(figure.key())
-                figures_bitmap3d_json.append(figure.to_json(key_id_map, save_meta=True))
+            if figure.geometry.geometry_name() == Mask3D.geometry_name():
+                keys_mask3d.append(figure.key())
+                figures_mask3d_json.append(figure.to_json(key_id_map, save_meta=True))
             else:
                 keys.append(figure.key())
                 figures_json.append(figure.to_json(key_id_map, save_meta=True))
         # Figure is missing required field \"meta.normal\"","index":0}}
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
-        if len(figures_bitmap3d_json) != 0:
-            self._append_bulk_bitmap3d(volume_id, figures_bitmap3d_json, keys_bitmap3d, key_id_map)
+        if len(figures_mask3d_json) != 0:
+            self._append_bulk_mask3d(volume_id, figures_mask3d_json, keys_mask3d, key_id_map)
 
     def _download_geometries_batch(self, ids: List[int]):
         """
@@ -410,7 +410,7 @@ class VolumeFigureApi(FigureApi):
                 figure2bytes[figure_id] = meth_bytes
         self._upload_meshes_batch(figure2bytes)
 
-    def _append_bulk_bitmap3d(
+    def _append_bulk_mask3d(
         self,
         entity_id,
         figures_json,
@@ -428,9 +428,9 @@ class VolumeFigureApi(FigureApi):
             fake_figures.append(
                 {
                     "objectId": figure["objectId"],
-                    "geometryType": "bitmap_3d",
+                    "geometryType": "mask_3d",
                     "priority": 2,
-                    "tool": "bitmap_3d",
+                    "tool": "mask_3d",
                     "entityId": entity_id,
                 }
             )

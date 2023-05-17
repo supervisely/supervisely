@@ -14,7 +14,7 @@ from supervisely.geometry.constants import (
     CREATED_AT,
     ID,
     CLASS_ID,
-    BITMAP_3D,
+    MASK_3D,
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
@@ -27,15 +27,15 @@ if not hasattr(np, "bool"):
     np.bool = np.bool_
 
 
-class PointLocation3d(JsonSerializable):
+class PointLocation3D(JsonSerializable):
     """
-    PointLocation3d in (row, col, tab) position. :class:`PointLocation3d<PointLocation3d>` object is immutable.
+    PointLocation3D in (row, col, tab) position. :class:`PointLocation3D<PointLocation3D>` object is immutable.
 
-    :param row: Position of PointLocation3d object on height.
+    :param row: Position of PointLocation3D object on height.
     :type row: int or float
-    :param col: Position of PointLocation3d object on width.
+    :param col: Position of PointLocation3D object on width.
     :type col: int or float
-    :param tab: Position of PointLocation3d object on depth.
+    :param tab: Position of PointLocation3D object on depth.
     :type tab: int or float
     :Usage example:
 
@@ -46,7 +46,7 @@ class PointLocation3d(JsonSerializable):
         row = 100
         col = 200
         tab = 2
-        loc = sly.PointLocation3d(row, col, tab)
+        loc = sly.PointLocation3D(row, col, tab)
     """
 
     def __init__(self, row: Union[int, float], col: Union[int, float], tab: Union[int, float]):
@@ -57,9 +57,9 @@ class PointLocation3d(JsonSerializable):
     @property
     def row(self) -> int:
         """
-        Position of PointLocation3d on height.
+        Position of PointLocation3D on height.
 
-        :return: Height of PointLocation3d
+        :return: Height of PointLocation3D
         :rtype: :class:`int`
         :Usage example:
 
@@ -73,9 +73,9 @@ class PointLocation3d(JsonSerializable):
     @property
     def col(self) -> int:
         """
-        Position of PointLocation3d on width.
+        Position of PointLocation3D on width.
 
-        :return: Width of PointLocation3d
+        :return: Width of PointLocation3D
         :rtype: :class:`int`
 
         :Usage example:
@@ -90,9 +90,9 @@ class PointLocation3d(JsonSerializable):
     @property
     def tab(self) -> int:
         """
-        Position of PointLocation3d on depth.
+        Position of PointLocation3D on depth.
 
-        :return: Depth of PointLocation3d
+        :return: Depth of PointLocation3D
         :rtype: :class:`int`
         :Usage example:
 
@@ -105,7 +105,7 @@ class PointLocation3d(JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the PointLocation3d to a json dict.
+        Convert the PointLocation3D to a json dict.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -129,14 +129,14 @@ class PointLocation3d(JsonSerializable):
         return packed_obj
 
     @classmethod
-    def from_json(cls, packed_obj) -> PointLocation3d:
+    def from_json(cls, packed_obj) -> PointLocation3D:
         """
-        Convert a json dict to PointLocation3d.
+        Convert a json dict to PointLocation3D.
 
-        :param data: PointLocation3d in json format as a dict.
+        :param data: PointLocation3D in json format as a dict.
         :type data: dict
-        :return: PointLocation3d object
-        :rtype: :class:`PointLocation3d<PointLocation3d>`
+        :return: PointLocation3D object
+        :rtype: :class:`PointLocation3D<PointLocation3D>`
         :Usage example:
 
          .. code-block:: python
@@ -151,7 +151,7 @@ class PointLocation3d(JsonSerializable):
                                 ]
                         }
 
-            loc = sly.PointLocation3d.from_json(loc_json)
+            loc = sly.PointLocation3D.from_json(loc_json)
         """
         return cls(
             row=packed_obj["space_origin"][0],
@@ -160,21 +160,21 @@ class PointLocation3d(JsonSerializable):
         )
 
 
-class Bitmap3d(Geometry):
+class Mask3D(Geometry):
     """
-    Bitmap 3D geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap3d<Bitmap3d>` object is immutable.
+    Mask 3D geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Mask3D<Mask3D>` object is immutable.
 
-    :param data: Bitmap 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
+    :param data: Mask 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
     :type data: np.ndarray
-    :param sly_id: Bitmap 3D ID in Supervisely server.
+    :param sly_id: Mask 3D ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap 3D belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Mask 3D belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Bitmap 3D.
+    :param labeler_login: Login of the user who created Mask 3D.
     :type labeler_login: str, optional
-    :param updated_at: Date and Time when Bitmap 3D was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :param updated_at: Date and Time when Mask 3D was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
-    :param created_at: Date and Time when Bitmap 3D was created. Date Format is the same as in "updated_at" parameter.
+    :param created_at: Date and Time when Mask 3D was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
     :Usage example:
@@ -183,11 +183,11 @@ class Bitmap3d(Geometry):
 
         import supervisely as sly
 
-        # Create simple Bitmap 3D
-        bitmap3d = np.zeros((3, 3, 3), dtype=np.bool_)
-        bitmap3d[0:2, 0:2, 0:2] = True
+        # Create simple Mask 3D
+        mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
+        mask3d[0:2, 0:2, 0:2] = True
 
-        shape = sly.Bitmap3d(bitmap3d)
+        shape = sly.Mask3D(mask3d)
 
         print(shape.data)
         # Output:
@@ -208,7 +208,7 @@ class Bitmap3d(Geometry):
         self,
         data: np.ndarray,
         space: Optional[str] = None,
-        space_origin: Optional[PointLocation3d] = None,
+        space_origin: Optional[PointLocation3D] = None,
         space_directions: Optional[List[Tuple[float, float, float]]] = None,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
@@ -225,18 +225,18 @@ class Bitmap3d(Geometry):
         )
 
         if not isinstance(data, np.ndarray):
-            raise TypeError('Bitmap 3D "data" argument must be numpy array object!')
+            raise TypeError('Mask 3D "data" argument must be numpy array object!')
 
         data_dims = len(data.shape)
         if data_dims != 3:
             raise ValueError(
-                f'Bitmap 3D "data" argument must be a 3-dimensional numpy array. Instead got {data_dims} dimensions'
+                f'Mask 3D "data" argument must be a 3-dimensional numpy array. Instead got {data_dims} dimensions'
             )
 
         if data.dtype != np.bool:
             if list(np.unique(data)) not in [[0, 1], [0, 255]]:
                 raise ValueError(
-                    f"Bitmap 3D mask data values must be one of: [0 1], [0 255], [False True]. Instead got {np.unique(data)}."
+                    f"Mask 3D mask data values must be one of: [0 1], [0 255], [False True]. Instead got {np.unique(data)}."
                 )
 
             if list(np.unique(data)) == [0, 1]:
@@ -252,11 +252,11 @@ class Bitmap3d(Geometry):
     @staticmethod
     def geometry_name():
         """geometry_name"""
-        return "bitmap_3d"
+        return "mask_3d"
 
     def to_json(self) -> Dict:
         """
-        Convert the Bitmap 3D to a json dict.
+        Convert the Mask 3D to a json dict.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -276,18 +276,18 @@ class Bitmap3d(Geometry):
                               [0 0 0]
                               [0 0 0]]], dtype=np.bool_)
 
-            location = sly.PointLocation3d(1, 1, 1)
+            location = sly.PointLocation3D(1, 1, 1)
 
-            figure = sly.Bitmap3d(mask, space_origin=location)
+            figure = sly.Mask3D(mask, space_origin=location)
             figure_json = figure.to_json()
             print(json.dumps(figure_json, indent=4))
             # Output: {
-            #    "bitmap_3d": {
+            #    "mask_3d": {
             #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
             #        "space_origin": [1, 1, 1],
             #    },
-            #    "shape": "bitmap_3d",
-            #    "geometryType": "bitmap_3d"
+            #    "shape": "mask_3d",
+            #    "geometryType": "mask_3d"
             # }
         """
         res = {
@@ -306,14 +306,14 @@ class Bitmap3d(Geometry):
         return res
 
     @classmethod
-    def from_json(cls, json_data: Dict) -> Bitmap3d:
+    def from_json(cls, json_data: Dict) -> Mask3D:
         """
-        Convert a json dict to Bitmap 3D.
+        Convert a json dict to Mask 3D.
 
-        :param data: Bitmap in json format as a dict.
+        :param data: Mask in json format as a dict.
         :type data: dict
-        :return: Bitmap3D object
-        :rtype: :class:`Bitmap3d<Bitmap3d>`
+        :return: Mask3D object
+        :rtype: :class:`Mask3D<Mask3D>`
         :Usage example:
 
          .. code-block:: python
@@ -321,15 +321,15 @@ class Bitmap3d(Geometry):
             import supervisely as sly
 
             figure_json = {
-                "bitmap_3d": {
+                "mask_3d": {
                     "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
                     "space_origin": [1, 1, 1],
                 },
-                "shape": "bitmap_3d",
-                "geometryType": "bitmap_3d"
+                "shape": "mask_3d",
+                "geometryType": "mask_3d"
             }
 
-            figure = sly.Bitmap.from_json(figure_json)
+            figure = sly.Mask3D.from_json(figure_json)
         """
         if json_data == {}:
             return cls(data=np.zeros((3, 3, 3), dtype=np.bool_))
@@ -337,14 +337,12 @@ class Bitmap3d(Geometry):
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
             raise ValueError(
-                "Data must contain {} field to create MultichannelBitmap object.".format(
-                    json_root_key
-                )
+                "Data must contain {} field to create Mask3D object.".format(json_root_key)
             )
 
         if SPACE_ORIGIN not in json_data[json_root_key] or DATA not in json_data[json_root_key]:
             raise ValueError(
-                "{} field must contain {} and {} fields to create MultichannelBitmap object.".format(
+                "{} field must contain {} and {} fields to create Mask3D object.".format(
                     json_root_key, SPACE_ORIGIN, DATA
                 )
             )
@@ -359,7 +357,7 @@ class Bitmap3d(Geometry):
         class_id = json_data.get(CLASS_ID, None)
         return cls(
             data=data,
-            space_origin=PointLocation3d(row=row, col=col, tab=tab),
+            space_origin=PointLocation3D(row=row, col=col, tab=tab),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
@@ -370,7 +368,7 @@ class Bitmap3d(Geometry):
     @classmethod
     def _impl_json_class_name(cls):
         """_impl_json_class_name"""
-        return BITMAP_3D
+        return MASK_3D
 
     @staticmethod
     def data_2_base64(data: np.ndarray) -> str:
@@ -402,8 +400,8 @@ class Bitmap3d(Geometry):
             path_for_mesh = f"meshes/{figure_id}.nrrd"
             api.volume.figure.download_stl_meshes([figure_id], [path_for_mesh])
 
-            bitmap3d_data, _ = nrrd.read(path_for_mesh)
-            encoded_string = sly.Bitmap3d.data_2_base64(bitmap3d_data)
+            mask3d_data, _ = nrrd.read(path_for_mesh)
+            encoded_string = sly.Mask3D.data_2_base64(mask3d_data)
 
             print(encoded_string)
             # 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
@@ -431,7 +429,7 @@ class Bitmap3d(Geometry):
               import supervisely as sly
 
               encoded_string = 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
-              figure_data = sly.Bitmap3d.base64_2_data(encoded_string)
+              figure_data = sly.Mask3D.base64_2_data(encoded_string)
               print(figure_data)
               # [[[1 1 0]
               #   [1 1 0]
