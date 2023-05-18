@@ -6,7 +6,7 @@ from supervisely.app import get_data_dir
 from os.path import join, basename
 from supervisely.sly_logger import logger
 from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
-from supervisely.app.widgets import Card, Button, Container, Widget
+from supervisely.app.widgets import Card, Button, Container, Widget, Text, ProjectThumbnail
 from supervisely.app.fastapi.subapp import Application
 
 import supervisely as sly
@@ -24,6 +24,7 @@ from supervisely.app.widgets import (
 
 # @TODO: set project type in constructor?
 # @TODO: if run from team files hide input card
+# @TODO: if run from project/dataset hide output card
 # @TODO: build with GUI
 # @TODO: check agent import
 # @TODO: remove source checkbox working for UI and non UI imports
@@ -132,34 +133,92 @@ class Import(Application):
     def __init__(self):
         self._layout = None
         if sly.is_production():
-            self.file_selector = TeamFilesSelector(
-                team_id=sly.env.team_id(), multiple_selection=False, max_height=300
-            )
-            self.drag_n_drop = FileStorageUpload(
-                team_id=sly.env.team_id(), path="/folder/import-template/"
-            )
-            self.external_link = Input(value="https://")
+            api = Api.from_env()
 
-            self.file_tabs = Tabs(
-                labels=["File Selector", "Drag & Drop", "Link"],
-                contents=[self.file_selector, self.drag_n_drop, self.external_link],
-            )
-            self.input_container = Container(widgets=[self.file_tabs])
+            ##############
+            # INPUT CARD #
+            ##############
+            if (
+                sly.env.folder(raise_not_found=False) is not None
+                or sly.env.file(raise_not_found=False) is not None
+            ):
+                if sly.env.folder(raise_not_found=False) is not None:
+                    path = sly.env.folder()
+                if sly.env.file(raise_not_found=False) is not None:
+                    path = sly.env.file()
+
+                info = api.file.get_info_by_path(team_id=sly.env.team_id(), remote_path=path)
+
+                if info is None:
+                    self.input_text = Text(
+                        text=f"Input Team Files path: {path} is not found", status="error"
+                    )
+                    self.file_selector = TeamFilesSelector(
+                        team_id=sly.env.team_id(), multiple_selection=False, max_height=300
+                    )
+                    self.drag_n_drop = FileStorageUpload(
+                        team_id=sly.env.team_id(), path="/folder/import-template/"
+                    )
+                    self.external_link = Input(value="https://")
+                    self.file_tabs = Tabs(
+                        labels=["File Selector", "Drag & Drop", "Link"],
+                        contents=[self.file_selector, self.drag_n_drop, self.external_link],
+                    )
+                    self.input_container = Container(widgets=[self.input_text, self.file_tabs])
+                else:
+                    text = f"Input Team Files path: {path}"
+                    self.input_text = Text(text=text, status="success")
+                    self.input_container = Container(widgets=[self.input_text])
+            else:
+                self.file_selector = TeamFilesSelector(
+                    team_id=sly.env.team_id(), multiple_selection=False, max_height=300
+                )
+                self.drag_n_drop = FileStorageUpload(
+                    team_id=sly.env.team_id(), path="/folder/import-template/"
+                )
+                self.external_link = Input(value="https://")
+
+                self.file_tabs = Tabs(
+                    labels=["File Selector", "Drag & Drop", "Link"],
+                    contents=[self.file_selector, self.drag_n_drop, self.external_link],
+                )
+                self.input_container = Container(widgets=[self.file_tabs])
+
             self.input_card = Card(
                 title="Input files",
                 description="Drag & drop or Select input files",
                 content=self.input_container,
             )
 
-            self.dataset_selector = SelectDataset()
+            ###############
+            # OUTPUT CARD #
+            ###############
             self.start_button = Button("Start Import")
-            self.output_container = Container(widgets=[self.dataset_selector, self.start_button])
+            if sly.env.project_id(raise_not_found=False) is None:
+                self.dataset_selector = SelectDataset()
+                self.output_container = Container(
+                    widgets=[self.dataset_selector, self.start_button]
+                )
+            else:
+                self.selected_project_text = Text(
+                    text=f"Project is selected: id-{sly.env.project_id()}", status="success"
+                )
+
+                # self.project_thumbnail = ProjectThumbnail(
+                #     info=api.project.get_info_by_id(sly.env.project_id())
+                # )
+                self.output_container = Container(
+                    widgets=[self.selected_project_text, self.start_button]
+                )
             self.output_card = Card(
                 title="Output project",
                 description="Select output project or dataset",
                 content=self.output_container,
             )
 
+            #################
+            # SETTINGS CARD #
+            #################
             self.settings_card = self.generate_settings_card()
             self._layout = Container(
                 widgets=[self.input_card, self.settings_card, self.output_card]
