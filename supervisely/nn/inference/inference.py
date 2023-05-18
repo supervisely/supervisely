@@ -535,8 +535,6 @@ class Inference:
                     f"async_inference_request_uuid {async_inference_request_uuid} was given, "
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = 1
 
         data_to_return = {}
         ann = self._inference_image_path(
