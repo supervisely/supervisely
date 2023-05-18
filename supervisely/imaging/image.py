@@ -386,6 +386,7 @@ def draw_text(
     corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
+    color=(0, 0, 0, 255),
 ) -> tuple:
     """
     Draws given text on bitmap image.
@@ -422,6 +423,8 @@ def draw_text(
 
                    After
     """
+    if not (isinstance(color, (list, tuple)) and len(color) in [3, 4]):
+        raise TypeError("Color must be list or tuple of three or four elements")
 
     if font is None:
         font = get_font()
@@ -451,7 +454,7 @@ def draw_text(
             ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
             fill=(255, 255, 255, 128),
         )
-    drawer.text((rect_left + 1, rect_top), text, fill=(0, 0, 0, 255), font=font)
+    drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
 
     source_img = PILImage.alpha_composite(source_img, canvas)
     source_img = source_img.convert("RGB")
