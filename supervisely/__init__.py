@@ -234,6 +234,6 @@ import supervisely.output as output
 import tqdm
 from supervisely.task.progress import tqdm_sly
 
-global _original_tqdm
+# global _original_tqdms
 _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
