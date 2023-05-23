@@ -492,8 +492,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         results = first_response["entities"]
 
         def set_tqdm(progress_cb, results, total):
-            progress_cb.update(len(results) - progress_cb.n)
             progress_cb.total = total
+            progress_cb.update(len(results) - progress_cb.n)
             progress_cb.refresh()
 
         if progress_cb is not None:

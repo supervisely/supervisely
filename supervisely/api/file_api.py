@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from typing import NamedTuple, List, Dict, Optional, Callable, Union
+from typing_extensions import Literal
 
 import os
 import shutil
@@ -128,7 +129,13 @@ class FileApi(ModuleApiBase):
         """
         return "FileInfo"
 
-    def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list_on_agent(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
+    ) -> List[Union[Dict, FileInfo]]:
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
 
@@ -151,9 +158,22 @@ class FileApi(ModuleApiBase):
                 elif item["type"] == "directory" and recursive is True:
                     dirs_queue.append(os.path.join(cur_dir, item["name"]))
 
-        return results
+        if return_type == "dict":
+            return results
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in results]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
-    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
+    ) -> List[Union[Dict, FileInfo]]:
         """
         List of files in the Team Files.
 
@@ -163,21 +183,36 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all files recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[dict]`
+        :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
+        :type return_type: str
+        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :rtype: class List[Union[Dict, FileInfo]]
         :Usage example:
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 8
             file_path = "/999_App_Test/"
+
+            # Get information about file in dict way..
             files = api.file.list(team_id, file_path)
+            file = files[0]
+            print(file['id'])
+            # Output: 7660
 
             print(files)
             # Output: [
@@ -216,21 +251,43 @@ class FileApi(ModuleApiBase):
             #         "name":"01587.json"
             #     }
             # ]
+
+            # ..or as FileInfo with attributes:
+            files = api.file.list(team_id, file_path, return_type='fileinfo')
+            file = files[0]
+            print(file.id)
+            # Output: 7660
+
+            print(files)
+            # Output: [
+            # FileInfo(team_id=8, id=7660, user_id=7, name='00135.json', hash='z7Wv1a7WI...
+            # FileInfo(team_id=8, id=7661, user_id=7, name='01587.json', hash='La9+XtF2+...
+            # ]
         """
 
         if not path.endswith("/") and recursive is False:
             path += "/"
         if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path, recursive)
+            return self.list_on_agent(team_id, path, recursive, return_type)
 
         response = self._api.post(
             "file-storage.list",
             {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
-        return response.json()
+
+        if return_type == "dict":
+            return response.json()
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in response.json()]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
+        Disclaimer: Method is not recommended. Use api.file.list instead
+
         List of files in the Team Files.
 
         :param team_id: Team ID in Supervisely.
@@ -239,17 +296,25 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[FileInfo]`
+        :return: List of all Files with information. See class info_sequence
+        :rtype: class List[FileInfo]
         :Usage example:
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 9
             file_path = "/My_App_Test/"
@@ -262,9 +327,7 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        items = self.list(team_id=team_id, path=path, recursive=recursive)
-        results = [self._convert_json_info(info_json) for info_json in items]
-        return results
+        return self.list(team_id=team_id, path=path, recursive=recursive, return_type="fileinfo")
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """

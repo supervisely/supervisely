@@ -13,45 +13,25 @@ api = sly.Api()
 
 # TF_PATH = "/my_project.tar"
 TF_FILEPATH = "/cardio.tar"
-LOC_FILEPATH = "prog_test.tar"
+LOC_FILEPATH = "/tmp/prog_test.tar"
 TF_DIRPATH = "/19399_cardio/"
-LOC_DIRPATH = "_local/"
+LOC_DIRPATH = "/tmp/_local/"
 
 TEAM_ID = 449
 PROJECT_ID = 18142
 
+obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True, return_type="fileinfo")[0]
+
+# obj.fullStorageUrl
+# obj.aaaaaaaaaaaaa
+
+obj2 = api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
 
 """
-api.file
+Output:
+[Dict_or_FileInfo(info_json) for info_json in response.json()] == response.json()
+True
 """
-# %%
-
-sly.download
-
-
-def get_p_for_test(
-    action="api.file.download",
-    unit="it",
-    regime="dev",
-    total=None,
-):
-    if regime == "prod":
-        os.environ["ENV"] = "production"
-
-    if unit == "it":
-        p = tqdm(
-            desc=f"{action} WrapTqdm dev",
-            total=total,
-        )
-    else:
-        p = tqdm(
-            desc=f"{action} WrapTqdm dev",
-            total=total,
-            unit="B",
-            unit_scale=True,
-        )
-    return p
-
 
 batch_size = 10
 data = range(100)
@@ -68,6 +48,7 @@ from tqdm import tqdm
 #             sleep(0.1)
 #         pbar.update(batch_size)
 
+import shutil
 
 # p = tqdm(
 #     desc="api.file.download tqdm dev",
@@ -77,13 +58,12 @@ from tqdm import tqdm
 #     is_size=True,
 # )
 # api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
+# os.remove(LOC_FILEPATH)
 
 
-import shutil
-
-# n_count = api.project.get_info_by_id(18142).items_count
+# n_count = api.project.get_info_by_id(17732).items_count
 # p = get_p_for_test("sly.download", "it", "dev", n_count)
-# sly.download(api, 18142, LOC_DIRPATH, progress_cb=p)
+# sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
 # shutil.rmtree(LOC_DIRPATH)
 # for method, project_id in zip(
 # [
@@ -124,7 +104,10 @@ import shutil
 # for r, d, fs in os.walk(LOC_DIRPATH):
 #     files.extend(os.path.join(r, file) for file in fs)
 # n_count = len(files) - 1  # minus meta.json
-# p = get_p_for_test("sly.upload_project", "it", "prod", n_count)
+# p = tqdm(
+#     desc="sly.upload_project",
+#     total=n_count,
+# )
 # sly.upload_project(LOC_DIRPATH, api, 691, progress_cb=p)
 
 # p = get_p_for_test("api.annotation.download_batch", "it", "prod", 2)
@@ -151,33 +134,59 @@ import shutil
 # api.dataset.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.dataset.get_list_all_pages_generator # progress_cb(len(results)), progress_cb(len(results))
 
-from supervisely.cli.teamfiles.teamfiles_download import download_directory_run
+# from supervisely.cli.teamfiles.teamfiles_download import download_directory_run
 
 # shutil.rmtree("/tmp/test-dir")
 
-download_directory_run(449, "/my-training/", "/tmp/test-dir", filter=".tfevents.", ignore_if_not_exists=True)
-
-
-shutil.rmtree(LOC_DIRPATH)
-
-with tqdm(
-    desc="download1",
-    total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
-    is_size=True,
-) as p:
-    api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p.update)
+# download_directory_run(449, "/my-training/", "/tmp/test-dir", filter=".tfevents.", ignore_if_not_exists=True)
 
 # shutil.rmtree(LOC_DIRPATH)
-
-# with tqdm(
-#     desc="download2",
+# p = tqdm(
+#     desc=f"download_directory1",
 #     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
-#     is_size=True,
-# ) as p:
-#     api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p.update)
+#     unit="B",
+#     unit_scale=True,
+# )
+# api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
+# shutil.rmtree(LOC_DIRPATH)
 
+# p = tqdm(
+#     desc=f"download_directory2",
+#     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
+#     unit="B",
+#     unit_scale=True,
+# )
+# api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
 
-# p = get_p_for_test("api.file.upload", "B", "prod", sly.fs.get_file_size(LOC_FILEPATH))
+# # shutil.rmtree(LOC_DIRPATH)/
+
+# p = tqdm(
+#     desc=f"upload_directory",
+#     total=sly.fs.get_directory_size(LOC_DIRPATH),
+#     unit="B",
+#     unit_scale=True,
+# )
+# api.file.upload_directory(
+#     TEAM_ID,
+#     LOC_DIRPATH,
+#     TF_DIRPATH,
+#     progress_size_cb=p,
+# )
+
+# p = tqdm(
+#     desc=f"download",
+#     total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
+#     unit="B",
+#     unit_scale=True,
+# )
+# api.file.download(TEAM_ID, TF_FILEPATH, LOC_FILEPATH, progress_cb=p)
+
+# p = tqdm(
+#     desc=f"upload",
+#     total=sly.fs.get_file_size(LOC_FILEPATH),
+#     unit="B",
+#     unit_scale=True,
+# )
 # api.file.upload(
 #     TEAM_ID,
 #     LOC_FILEPATH,
@@ -185,15 +194,7 @@ with tqdm(
 #     progress_cb=p,
 # )
 
-p = get_p_for_test("api.file.upload", "B", "prod", sly.fs.get_directory_size(LOC_DIRPATH))
-api.file.upload_directory(
-    TEAM_ID,
-    LOC_DIRPATH,
-    TF_DIRPATH,
-    progress_size_cb=p,
-)
-
-api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
+# api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
 # api.github.get_list_all_pages_generator  # progress_cb(len(results)), progress_cb(len(results))
 
 # p = get_p_for_test("api.image.download_bytes", "B", "dev", 3)
@@ -254,7 +255,7 @@ api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp
 
 # api.labeling_job.get_list_all_pages  # progress_cb(len(results)) progress_cb(len(temp_items))
 # api.labeling_job.get_list_all_pages_generator  # progress_cb(len(results)) progress_cb(len(results))
-# api.labeling_job.get_activity  # api.team.get_activity #TODODONE
+api.labeling_job.get_activity  # api.team.get_activity #TODODONE
 
 # api.model.download_to_dir  # progress_cb(read_mb)
 # api.model.download_to_tar  # progress_cb(read_mb)
@@ -311,11 +312,13 @@ api.github.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp
 #     aa.ATTACH_TAG,
 #     aa.UPDATE_TAG_VALUE,
 #     aa.DETACH_TAG,
+#     aa.ADD_MEMBER,
 # ]
-# # p = get_p_for_test("api.team.get_activity", "it", "dev", 0)
-# p = sly.Progress(message="api.team.get_activity", total_cnt=0)
-# # api.project.get_activity(id=18144, progress_cb=p)
-# sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p.set)
+# os.environ["ENV"] = "production"
+# p = tqdm(desc=f"get_activity", total=0, is_size=True)
+
+# # p = sly.Progress(message="api.team.get_activity", total_cnt=0)
+# sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p)
 
 
 # api.team.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))

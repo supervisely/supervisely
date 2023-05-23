@@ -410,6 +410,8 @@ class tqdm_sly(tqdm, Progress):
                 *args,
                 **kwargs,
             )
+            self.offset = 0
+
         else:
             if len(args) < 2:
                 if kwargs.get("desc") is not None:
@@ -443,8 +445,10 @@ class tqdm_sly(tqdm, Progress):
         if is_development():
             tqdm.update(
                 self,
-                count,
+                min(count, self.total - self.offset),
             )
+            self.offset += count
+
             if self.n == self.total:
                 self.close()
         else:
