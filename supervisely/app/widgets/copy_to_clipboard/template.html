@@ -1,0 +1,28 @@
+<sly-copy-to-clipboard
+  {%
+  if
+  widget._editor_or_input
+  %}
+  :data="state.{{{widget._content.widget_id}}}[state.{{{widget.widget_id}}}.curr_widget_text]"
+  {%
+  endif
+  %}
+  {%
+  if
+  widget._text
+  %}
+  :data="data.{{{widget._content.widget_id}}}[data.{{{widget.widget_id}}}.curr_widget_text]"
+  {%
+  endif
+  %}
+  {%
+  if
+  widget._only_string
+  %}
+  :data="state.{{{widget.widget_id}}}.content"
+  {%
+  endif
+  %}
+>
+  <div>{{{widget._content}}}</div>
+</sly-copy-to-clipboard>
