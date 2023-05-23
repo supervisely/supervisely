@@ -25,7 +25,7 @@ obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True, return_type="fileinfo")
 # obj.fullStorageUrl
 # obj.aaaaaaaaaaaaa
 
-api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
+obj2 = api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
 
 """
 Output:

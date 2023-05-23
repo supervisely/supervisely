@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from typing import NamedTuple, List, Dict, Optional, Callable, Union
+from typing_extensions import Literal
 
 import os
 import shutil
@@ -128,7 +129,13 @@ class FileApi(ModuleApiBase):
         """
         return "FileInfo"
 
-    def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list_on_agent(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
+    ) -> List[Union[Dict, FileInfo]]:
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
 
@@ -151,10 +158,21 @@ class FileApi(ModuleApiBase):
                 elif item["type"] == "directory" and recursive is True:
                     dirs_queue.append(os.path.join(cur_dir, item["name"]))
 
-        return results
+        if return_type == "dict":
+            return results
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in results]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
     def list(
-        self, team_id: int, path: str, recursive: bool = True, return_type: str = "dict"
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
     ) -> List[Union[Dict, FileInfo]]:
         """
         List of files in the Team Files.
@@ -250,15 +268,7 @@ class FileApi(ModuleApiBase):
         if not path.endswith("/") and recursive is False:
             path += "/"
         if self.is_on_agent(path) is True:
-            results = self.list_on_agent(team_id, path, recursive)
-            if return_type == "dict":
-                return [info_json for info_json in results]
-            elif return_type == "fileinfo":
-                return [self._convert_json_info(info_json) for info_json in results]
-            else:
-                raise ValueError(
-                    "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
-                )
+            return self.list_on_agent(team_id, path, recursive, return_type)
 
         response = self._api.post(
             "file-storage.list",
