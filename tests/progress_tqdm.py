@@ -20,7 +20,7 @@ LOC_DIRPATH = "/tmp/_local/"
 TEAM_ID = 449
 PROJECT_ID = 18142
 
-obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True)[0]
+obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True, return_type="fileinfo")[0]
 
 # obj.fullStorageUrl
 # obj.aaaaaaaaaaaaa

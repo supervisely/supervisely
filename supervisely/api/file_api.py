@@ -154,7 +154,9 @@ class FileApi(ModuleApiBase):
 
         return results
 
-    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict_or_FileInfo]:
+    def list(
+        self, team_id: int, path: str, recursive: bool = True, return_type: str = "dict"
+    ) -> List[Union[Dict, FileInfo]]:
         """
         List of files in the Team Files.
 
@@ -164,8 +166,10 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all files recursively.
         :type recursive: bool
+        :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
+        :type return_type: str
         :return: List of all Files with information. See classes info_sequence and FileInfo
-        :rtype: class List[Dict_or_FileInfo]
+        :rtype: class List[Union[Dict, FileInfo]]
         :Usage example:
 
          .. code-block:: python
@@ -178,7 +182,7 @@ class FileApi(ModuleApiBase):
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
@@ -186,20 +190,9 @@ class FileApi(ModuleApiBase):
 
             team_id = 8
             file_path = "/999_App_Test/"
+
+            # Get information about file in dict way..
             files = api.file.list(team_id, file_path)
-
-            file = files[0]
-            # Get information about file in Dict way..
-            print(file["id"]) # Output: 7660
-            # ..or with attributes:
-            print(file.id) # Output: 7660
-
-            # Note, that some attributes may differ from
-            # accessible keys. See class FileInfo for details.
-            # For example:
-            print(file["sizeb"]) # Output: KeyError
-            print(file.sizeb) # Output: 13344
-
             print(files)
             # Output: [
             #     {
@@ -237,20 +230,43 @@ class FileApi(ModuleApiBase):
             #         "name":"01587.json"
             #     }
             # ]
+
+            # ..or as FileInfo with attributes:
+            files = api.file.list(team_id, file_path, return_type='fileinfo')
+            print(files)
+            # Output: [
+            # FileInfo(team_id=9, id=18421, user_id=8, name='5071_3734_mot_video_002.tar.gz', hash='+0nrNoDjBxxJA...
+            # FileInfo(team_id=9, id=18456, user_id=8, name='5164_4218_mot_video_bitmap.tar.gz', hash='fwtVI+iptY...
+            # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
+            # ]
         """
 
         if not path.endswith("/") and recursive is False:
             path += "/"
         if self.is_on_agent(path) is True:
             results = self.list_on_agent(team_id, path, recursive)
-            return [Dict_or_FileInfo(info_json) for info_json in results]
+            if return_type == "dict":
+                return [info_json for info_json in results]
+            elif return_type == "fileinfo":
+                return [self._convert_json_info(info_json) for info_json in results]
+            else:
+                raise ValueError(
+                    "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+                )
 
         response = self._api.post(
             "file-storage.list",
             {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
 
-        return [Dict_or_FileInfo(info_json) for info_json in response.json()]
+        if return_type == "dict":
+            return [info_json for info_json in response.json()]
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in response.json()]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
@@ -264,8 +280,8 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[FileInfo]`
+        :return: List of all Files with information. See class info_sequence
+        :rtype: class List[FileInfo]
         :Usage example:
 
          .. code-block:: python
@@ -295,9 +311,7 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        items = self.list(team_id=team_id, path=path, recursive=recursive)
-        results = [self._convert_json_info(info.__dict__) for info in items]
-        return results
+        return self.list(team_id=team_id, path=path, recursive=recursive, return_type="fileinfo")
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
@@ -1175,20 +1189,3 @@ class FileApi(ModuleApiBase):
         ):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
-
-
-class Dict_or_FileInfo(dict, FileApi):
-    def __new__(cls, info_json: Dict):
-        dct = super().__new__(cls, info_json)
-        dct.update(info_json)
-        return dct
-
-    def __init__(self, info_json: Dict):
-        self.__dict__.update(info_json)
-        self._FileInfo = FileApi._convert_json_info(self, info_json)
-
-    def __getitem__(self, key: str):
-        return self.__dict__[key]
-
-    def __getattr__(self, attr: str):
-        return getattr(self._FileInfo, attr)
