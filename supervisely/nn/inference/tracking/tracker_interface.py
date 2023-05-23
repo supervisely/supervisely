@@ -3,12 +3,13 @@ from typing import Optional, List
 
 import supervisely as sly
 from supervisely.geometry.geometry import Geometry
+from logging import Logger
 
 
 class TrackerInterface:
     def __init__(self, context, api):
         self.api: sly.Api = api
-        self.logger = api.logger
+        self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
         self.frames_count = context["frames"]
 
@@ -17,6 +18,8 @@ class TrackerInterface:
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
+
+        # all geometries
         self.stop = len(self.object_ids) * self.frames_count
         self.global_pos = 0
         self.global_stop_indicatior = False
@@ -25,7 +28,9 @@ class TrackerInterface:
         self.frames_indexes: List[int] = []
         self._frames: Optional[np.ndarray] = None
 
+        # inscrease self.stop by num of points
         self._add_geometries()
+        # inscrease self.stop by num of frames will be loaded
         self._add_frames_indexes()
         self._load_frames()
 
@@ -47,6 +52,7 @@ class TrackerInterface:
                 break
 
     def _add_geometries(self):
+        self.logger.info("Adding geometries.")
         for figure_id in self.figure_ids:
             figure = self.api.video.figure.get_info_by_id(figure_id)
             geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
@@ -54,6 +60,7 @@ class TrackerInterface:
 
             self.api.logger.debug(f"Added {figure.geometry_type} #{figure_id}")
 
+            # per point track notification
             if isinstance(geometry, sly.Point):
                 self.stop += 1
             elif isinstance(geometry, sly.Polygon):
@@ -61,7 +68,8 @@ class TrackerInterface:
             elif isinstance(geometry, sly.GraphNodes):
                 self.stop += len(geometry.nodes.items())
 
-            # TODO: other geometries
+        self.logger.info("Geometries added.")
+        # TODO: other geometries
 
     def _add_frames_indexes(self):
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
@@ -71,12 +79,18 @@ class TrackerInterface:
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
+        self.stop += len(self.frames_indexes)
+
     def _load_frames(self):
         rgbs = []
+        self.logger.info(f"Loading {len(self.frames_indexes)} frames.")
+
         for frame_index in self.frames_indexes:
             img_rgb = self.api.video.frame.download_np(self.video_id, frame_index)
             rgbs.append(img_rgb)
+            self._notify()
         self._frames = rgbs
+        self.logger.info("Frames loaded.")
 
     def _notify(self, stop: bool = False):
         self.global_pos += 1
