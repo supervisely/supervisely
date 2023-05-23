@@ -192,6 +192,10 @@ class FileApi(ModuleApiBase):
 
             # Get information about file in dict way..
             files = api.file.list(team_id, file_path)
+            file = files[0]
+            print(file['id'])
+            # Output: 7660
+
             print(files)
             # Output: [
             #     {
@@ -232,6 +236,10 @@ class FileApi(ModuleApiBase):
 
             # ..or as FileInfo with attributes:
             files = api.file.list(team_id, file_path, return_type='fileinfo')
+            file = files[0]
+            print(file.id)
+            # Output: 7660
+
             print(files)
             # Output: [
             # FileInfo(team_id=9, id=18421, user_id=8, name='5071_3734_mot_video_002.tar.gz', hash='+0nrNoDjBxxJA...
