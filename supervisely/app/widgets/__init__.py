@@ -77,6 +77,7 @@ from supervisely.app.widgets.augmentations.augmentations import Augmentations, A
 from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
 from supervisely.app.widgets.slider.slider import Slider
+from supervisely.app.widgets.copy_to_clipboard.copy_to_clipboard import CopyToClipboard
 from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
 from supervisely.app.widgets.image_region_selector.image_region_selector import ImageRegionSelector
 from supervisely.app.widgets.team_files_selector.team_files_selector import TeamFilesSelector
