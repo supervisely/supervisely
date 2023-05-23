@@ -11,7 +11,6 @@ import tarfile
 from pathlib import Path
 import urllib
 import re
-import traceback
 
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ModuleApiBase, ApiField
