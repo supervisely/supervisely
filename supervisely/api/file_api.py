@@ -294,7 +294,7 @@ class FileApi(ModuleApiBase):
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
