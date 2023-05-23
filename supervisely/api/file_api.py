@@ -266,7 +266,7 @@ class FileApi(ModuleApiBase):
         )
 
         if return_type == "dict":
-            return [info_json for info_json in response.json()]
+            return response.json()
         elif return_type == "fileinfo":
             return [self._convert_json_info(info_json) for info_json in response.json()]
         else:
