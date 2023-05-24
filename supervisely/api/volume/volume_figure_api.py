@@ -9,6 +9,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.volume_annotation.plane import Plane
+from supervisely.geometry.mask_3d import Mask3D
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
@@ -144,12 +145,20 @@ class VolumeFigureApi(FigureApi):
         if len(figures) == 0:
             return
         keys = []
+        keys_mask3d = []
         figures_json = []
+        figures_mask3d_json = []
         for figure in figures:
-            keys.append(figure.key())
-            figures_json.append(figure.to_json(key_id_map, save_meta=True))
+            if figure.geometry.name() == Mask3D.name():
+                keys_mask3d.append(figure.key())
+                figures_mask3d_json.append(figure.to_json(key_id_map, save_meta=True))
+            else:
+                keys.append(figure.key())
+                figures_json.append(figure.to_json(key_id_map, save_meta=True))
         # Figure is missing required field \"meta.normal\"","index":0}}
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
+        if len(figures_mask3d_json) != 0:
+            self._append_bulk_mask3d(volume_id, figures_mask3d_json, keys_mask3d, key_id_map)
 
     def _download_geometries_batch(self, ids: List[int]):
         """
@@ -400,3 +409,37 @@ class VolumeFigureApi(FigureApi):
                 meth_bytes = self.interpolate(volume_id, sp, key_id_map)
                 figure2bytes[figure_id] = meth_bytes
         self._upload_meshes_batch(figure2bytes)
+
+    def _append_bulk_mask3d(
+        self,
+        entity_id,
+        figures_json,
+        figures_keys,
+        key_id_map: KeyIdMap,
+        field_name=ApiField.ENTITY_ID,
+    ):
+        """"""
+        figures_count = len(figures_json)
+        if figures_count == 0:
+            return
+
+        fake_figures = []
+        for figure in figures_json:
+            fake_figures.append(
+                {
+                    "objectId": figure["objectId"],
+                    "geometryType": Mask3D.name(),
+                    "tool": Mask3D.name(),
+                    "entityId": entity_id,
+                }
+            )
+        for batch_keys, batch_jsons in zip(
+            batched(figures_keys, batch_size=100), batched(fake_figures, batch_size=100)
+        ):
+            resp = self._api.post(
+                "figures.bulk.add",
+                {field_name: entity_id, ApiField.FIGURES: batch_jsons},
+            )
+            for key, resp_obj in zip(batch_keys, resp.json()):
+                figure_id = resp_obj[ApiField.ID]
+                key_id_map.add_figure(key, figure_id)
