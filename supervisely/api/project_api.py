@@ -3,25 +3,25 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable, Union
 
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from collections import defaultdict
-
+from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely.annotation.annotation import TagCollection
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
-    UpdateableModule,
     RemoveableModuleApi,
+    UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.annotation.annotation import TagCollection
-from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class ProjectNotFound(Exception):
@@ -53,6 +53,7 @@ class ProjectInfo(NamedTuple):
     type: str
     reference_image_url: str
     custom_data: dict
+    backup_archive: dict
 
     @property
     def image_preview_url(self):
@@ -83,17 +84,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
@@ -138,6 +141,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TYPE,
             ApiField.REFERENCE_IMAGE_URL,
             ApiField.CUSTOM_DATA,
+            ApiField.BACKUP_ARCHIVE,
         ]
 
     @staticmethod
@@ -674,7 +678,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_activity(
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -819,14 +825,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
-    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
+    def download_images_tags(
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
         :param id: Project ID in Supervisely.
         :type id: int
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Defaultdict matching tag names to ImageInfos
         :rtype: :class:`defaultdict`
         :Usage example:
@@ -964,6 +972,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -975,4 +984,70 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.move(id=project_id, workspace_id=workspace_id)
         """
-        self._api.post("projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id})
+        self._api.post(
+            "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
+        )
+
+    def archive_batch(self, ids: List[int], archive_urls: List[str]) -> None:
+        """
+        Archive Projects by ID and save backup URL in Project info for every Project.
+
+        :param ids: Project IDs in Supervisely.
+        :type ids: List[int]
+        :param archive_urls: Shared URLs of backup on Dropbox.
+        :type archive_urls: List[str]
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            ids = [18464, 18461]
+            archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.archive_batch(ids, archive_urls)
+        """
+        if len(ids) != len(archive_urls):
+            raise ValueError(
+                "The list with Project IDs must have the same length as the list with URLs for archives"
+            )
+
+        for id, archive_url in zip(ids, archive_urls):
+            self._api.post(
+                "projects.remove.permanently",
+                {ApiField.PROJECTS: [{ApiField.ID: id, ApiField.ARCHIVE_URL: archive_url}]},
+            )
+
+    def archive(self, id: int, archive_url: str) -> None:
+        """
+        Archive Project by ID and save backup URL in Project info.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param archive_url: Shared URL of backup on Dropbox.
+        :type archive_url: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            id = 18464
+            archive_url = 'https://www.dropbox.com/...'
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.project.archive(id, archive_url)
+        """
+
+        self.archive_batch([id], [archive_url])

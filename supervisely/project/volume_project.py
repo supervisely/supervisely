@@ -1,8 +1,10 @@
 # coding: utf-8
 
 from collections import namedtuple
-from typing import Optional, List
+from typing import Optional, List, Callable, Tuple, Union
 import os
+
+from tqdm import tqdm
 
 from supervisely.io.fs import file_exists, touch
 from supervisely.io.json import dump_json_file, load_json_file
@@ -50,9 +52,7 @@ class VolumeDataset(VideoDataset):
         return os.path.join(self.directory, self.interpolation_dir, item_name)
 
     def get_interpolation_path(self, item_name, figure):
-        return os.path.join(
-            self.get_interpolation_dir(item_name), figure.key().hex + ".stl"
-        )
+        return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
 
     def get_classes_stats(
         self,
@@ -82,7 +82,7 @@ class VolumeDataset(VideoDataset):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
@@ -107,21 +107,187 @@ class VolumeProject(VideoProject):
         return_items_count: Optional[bool] = True,
     ):
         return super(VolumeProject, self).get_classes_stats(
-            dataset_names, 
-            return_objects_count, 
-            return_figures_count, 
-            return_items_count
+            dataset_names, return_objects_count, return_figures_count, return_items_count
+        )
+
+    @staticmethod
+    def download(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: Optional[List[int]] = None,
+        download_volumes: Optional[bool] = True,
+        log_progress: Optional[bool] = False,
+    ) -> None:
+        """
+        Download volume project from Supervisely to the given directory.
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Supervisely downloadable project ID.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Dataset IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param download_volumes: Download volume data files or not.
+        :type download_volumes: :class:`bool`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination Volume Project folder
+                save_directory = "/home/admin/work/supervisely/source/vlm_project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project
+                sly.VolumeProject.download(api, project_id, save_directory)
+                project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
+        """
+        download_volume_project(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            download_volumes=download_volumes,
+            log_progress=log_progress,
+        )
+
+    @staticmethod
+    def upload(
+        directory: str,
+        api: Api,
+        workspace_id: int,
+        project_name: Optional[str] = None,
+        log_progress: Optional[bool] = False,
+    ) -> Tuple[int, str]:
+        """
+        Uploads volume project to Supervisely from the given directory.
+
+        :param directory: Path to project directory.
+        :type directory: :class:`str`
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param workspace_id: Workspace ID, where project will be uploaded.
+        :type workspace_id: :class:`int`
+        :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
+        :type project_name: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`, optional
+        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :rtype: :class:`int`, :class:`str`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Volume Project
+            project_directory = "/home/admin/work/supervisely/source/vlm_project"
+
+            # Obtain server address and your api_token from environment variables
+            # Edit those values if you run this notebook on your own PC
+            address = os.environ['SERVER_ADDRESS']
+            token = os.environ['API_TOKEN']
+
+            # Initialize API object
+            api = sly.Api(address, token)
+
+            # Upload Volume Project
+            project_id, project_name = sly.VolumeProject.upload(
+                project_directory,
+                api,
+                workspace_id=45,
+                project_name="My Volume Project"
+            )
+        """
+        return upload_volume_project(
+            dir=directory,
+            api=api,
+            workspace_id=workspace_id,
+            project_name=project_name,
+            log_progress=log_progress,
         )
 
 
 def download_volume_project(
     api: Api,
-    project_id,
-    dest_dir,
-    dataset_ids=None,
-    download_volumes=True,
-    log_progress=False,
-):
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    download_volumes: Optional[bool] = True,
+    log_progress: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
+    """
+    Download volume project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_volumes: Include volumes in the download.
+    :type download_volumes: bool, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download volume project
+        project_id = 18532
+        project_info = api.project.get_info_by_id(project_id)
+        num_volumes = project_info.items_count
+
+        p = tqdm(desc="Downloading volume project", total=num_volumes)
+        sly.download_volume_project(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
+
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -170,9 +336,11 @@ def download_volume_project(
                             total_cnt=volume_info.sizeb,
                             is_size=True,
                         )
-                    api.volume.download_path(
-                        volume_id, volume_file_path, item_progress.iters_done_report
-                    )
+                        api.volume.download_path(
+                            volume_id, volume_file_path, item_progress.iters_done_report
+                        )
+                    else:
+                        api.volume.download_path(volume_id, volume_file_path)
                 else:
                     touch(volume_file_path)
 
@@ -192,17 +360,17 @@ def download_volume_project(
                     figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                     mesh_paths.append(figure_path)
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
-
-            ds_progress.iters_done_report(len(batch))
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
+            if progress_cb is not None:
+                progress_cb(len(batch))
     project_fs.set_key_id_map(key_id_map)
 
 
 # TODO: add methods to convert to 3d masks
 
 
-def upload_volume_project(
-    dir, api: Api, workspace_id, project_name=None, log_progress=True
-):
+def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
     project_fs = VolumeProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -233,7 +401,7 @@ def upload_volume_project(
             progress_cb = ds_progress.iters_done_report
 
         item_infos = api.volume.upload_nrrd_series_paths(
-            dataset.id, names, item_paths, progress_cb
+            dataset.id, names, item_paths, progress_cb, log_progress
         )
         item_ids = [item_info.id for item_info in item_infos]
         ds_progress = None

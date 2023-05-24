@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Union
 
 import os
 import re
@@ -13,6 +13,8 @@ import subprocess
 import requests
 from requests.structures import CaseInsensitiveDict
 from collections.abc import Mapping
+
+from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_string_hash
 from supervisely.io.fs_cache import FileCache
@@ -663,7 +665,7 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: An instance of `FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
+    :param cache: An instance of FileCache class that provides caching functionality for the downloaded content. If None, caching is disabled.
     :type cache: FileCache, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
@@ -741,7 +743,7 @@ def download(
 
 
 def copy_dir_recursively(
-    src_dir: str, dst_dir: str, progress_cb: Optional[Callable] = None
+    src_dir: str, dst_dir: str, progress_cb: Optional[Union[tqdm, Callable]] = None
 ) -> List[str]:
     files = list_files_recursively(src_dir)
     for src_file_path in files:

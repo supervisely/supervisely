@@ -222,10 +222,59 @@ class TagCollection(MultiKeyIndexedCollection):
 
     @classmethod
     def from_api_response(
-        cls, 
-        data: List[Dict], 
-        tag_meta_collection: TagMetaCollection, 
-        id_to_tagmeta:Optional[Dict[int, TagMeta]]=None) -> TagCollection:
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
+        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None,
+    ) -> TagCollection:
+        """
+        Create a TagCollection object from API response data.
+
+        :param data: API response data.
+        :type data: List[Dict]
+        :param tag_meta_collection: TagMetaCollection object
+        :type tag_meta_collection: TagMetaCollection
+        :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
+        :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
+        :return: TagCollection object.
+        :rtype: TagCollection
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 17200
+            image_id = 19369643
+            project_meta_json = api.project.get_meta(project_id)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+            image_info = api.image.get_info_by_id(image_id)
+
+            tag_collection = sly.TagCollection.from_api_response(
+                image_info.tags, project_meta.tag_metas
+            )
+            print(tag_collection)
+
+            # Output:
+            # Tags:
+            # +-------+--------------+-------+
+            # |  Name |  Value type  | Value |
+            # +-------+--------------+-------+
+            # | Lemon | oneof_string |  big  |
+            # |  Kiwi |     none     |  None |
+            # +-------+--------------+-------+
+        """
+
         if id_to_tagmeta is None:
             id_to_tagmeta = tag_meta_collection.get_id_mapping()
         tags = []

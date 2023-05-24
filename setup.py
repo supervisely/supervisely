@@ -25,7 +25,7 @@ INSTALL_REQUIRES = [
     "protobuf>=3.14.0, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=0.9.1, <1.0.0",
+    "requests-toolbelt>=0.9.1",  # , <1.0.0
     "Shapely>=1.7.1, <2.0.0",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
@@ -58,6 +58,9 @@ INSTALL_REQUIRES = [
     "giturlparse",
     "rich",
     "click",
+    "imutils==0.5.4",
+    "aiocache==0.12.0",
+    "urllib3==1.26.15",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -87,7 +90,8 @@ def check_alternative_installation(install_require, alternative_install_requires
 def get_install_requirements(main_requires, alternative_requires):
     """Iterates over all install requires
     If an install require has an alternative option, check if this option is installed
-    If that is the case, replace the install require by the alternative to not install dual package"""
+    If that is the case, replace the install require by the alternative to not install dual package
+    """
     install_requires = []
     for main_require in main_requires:
         if main_require in alternative_requires:
@@ -122,7 +126,7 @@ setup(
     entry_points={
         "console_scripts": [
             "sly-release=supervisely.release.run:cli_run",
-            "supervisely=supervisely.cli.cli:cli"
+            "supervisely=supervisely.cli.cli:cli",
         ]
     },
     python_requires=">=3.7.1",
