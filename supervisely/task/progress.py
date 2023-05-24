@@ -389,56 +389,67 @@ class tqdm_sly(tqdm, Progress):
                     f"Ambiguity error: Please specify only one of arguments: '{_tqdm}' or '{_progress}'."
                 )
 
-        if is_development():
-            if len(args) < 2:
-                if kwargs.get("message") is not None:
-                    kwargs.setdefault("desc", kwargs["message"])
-                    kwargs.pop("message")
-                else:
-                    kwargs.setdefault("desc", "Processing")
-            if len(args) < 3:
-                if kwargs.get("total_cnt") is not None:
-                    kwargs.setdefault("total", kwargs["total_cnt"])
-                    kwargs.pop("total_cnt")
-            if len(args) < 12:
-                if kwargs.pop("is_size", None) == True:
-                    kwargs["unit"] = "B"
-                    kwargs["unit_scale"] = True
+        kwargs_tqdm = kwargs.copy()
 
+        # pop and convert every possible (and relevant) kwarg from Progress
+        if len(args) < 2:  # i.e. 'desc' not set as a positional argument
+            if kwargs_tqdm.get("message") is not None:
+                kwargs_tqdm.setdefault("desc", kwargs_tqdm["message"])
+                kwargs_tqdm.pop("message")
+            else:
+                kwargs_tqdm.setdefault("desc", "Processing")
+        if len(args) < 3:  # i.e. 'total' not set as a positional argument
+            if kwargs_tqdm.get("total_cnt") is not None:
+                kwargs_tqdm.setdefault("total", kwargs_tqdm["total_cnt"])
+                kwargs_tqdm.pop("total_cnt")
+        if len(args) < 12:  # i.e. 'unit' not set as a positional argument
+            if kwargs_tqdm.pop("is_size", None) == True:
+                kwargs_tqdm["unit"] = "B"
+                kwargs_tqdm["unit_scale"] = True
+
+        if is_development():
             tqdm.__init__(
                 self,
                 *args,
-                **kwargs,
+                **kwargs_tqdm,
             )
-            self.offset = 0
-
+            self.offset = 0  # to prevent overfilling of tqdm in console
         else:
-            if len(args) < 2:
+            # disable tqdm on prod but keep attributes
+            kwargs_tqdm.setdefault("disable", True)
+            tqdm.__init__(
+                self,
+                *args,
+                **kwargs_tqdm,
+            )
+            # pop and convert every possible (and relevant) kwarg from tqdm
+            # mention that tqdm is a prior parent class
+            if len(args) < 2:  # i.e. 'desc' not set as a positional argument
                 if kwargs.get("desc") is not None:
                     kwargs.setdefault("message", kwargs["desc"])
                     kwargs.pop("desc")
                 else:
                     kwargs.setdefault("message", "Processing")
             else:
-                kwargs.setdefault("message", args[1])
-            if len(args) < 3:
+                kwargs.setdefault("message", args[1])  # args[1]==desc
+            if len(args) < 3:  # i.e. 'total' not set as a positional argument
                 if kwargs.get("total") is not None:
                     kwargs.setdefault("total_cnt", kwargs["total"])
                     kwargs.pop("total")
             else:
-                kwargs.setdefault("total_cnt", args[2])
-            if len(args) < 12:
+                kwargs.setdefault("total_cnt", args[2])  # args[2]==total
+            if len(args) < 12:  # i.e. 'unit' not set as a positional argument
                 if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
                     kwargs["is_size"] = True
             else:
-                if args[11] == "B" and args[12] == True:
+                if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
             Progress.__init__(
                 self,
                 **kwargs,
             )
-            self.disable = True
+            # self.disable = True/
             self.n = 0
 
     def update(self, count):

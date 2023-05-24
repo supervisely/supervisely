@@ -20,19 +20,6 @@ LOC_DIRPATH = "/tmp/_local/"
 TEAM_ID = 449
 PROJECT_ID = 18142
 
-obj = api.file.list(TEAM_ID, TF_DIRPATH, recursive=True, return_type="fileinfo")[0]
-
-# obj.fullStorageUrl
-# obj.aaaaaaaaaaaaa
-
-obj2 = api.file.list2(TEAM_ID, TF_DIRPATH, recursive=True)
-
-"""
-Output:
-[Dict_or_FileInfo(info_json) for info_json in response.json()] == response.json()
-True
-"""
-
 batch_size = 10
 data = range(100)
 
@@ -50,6 +37,7 @@ from tqdm import tqdm
 
 import shutil
 
+# os.environ["ENV"] = "production"
 # p = tqdm(
 #     desc="api.file.download tqdm dev",
 #     total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
@@ -61,10 +49,16 @@ import shutil
 # os.remove(LOC_FILEPATH)
 
 
+# os.environ["ENV"] = "production"
 # n_count = api.project.get_info_by_id(17732).items_count
-# p = get_p_for_test("sly.download", "it", "dev", n_count)
+# p = tqdm(
+#     desc="api.file.download tqdm dev",
+#     total=n_count,
+#     is_size=False,
+# )
 # sly.download(api, 17732, LOC_DIRPATH, progress_cb=p)
 # shutil.rmtree(LOC_DIRPATH)
+# sly.download
 # for method, project_id in zip(
 # [
 # sly.download,
@@ -136,11 +130,9 @@ import shutil
 
 # from supervisely.cli.teamfiles.teamfiles_download import download_directory_run
 
-# shutil.rmtree("/tmp/test-dir")
-
-# download_directory_run(449, "/my-training/", "/tmp/test-dir", filter=".tfevents.", ignore_if_not_exists=True)
 
 # shutil.rmtree(LOC_DIRPATH)
+# os.environ["ENV"] = "production"
 # p = tqdm(
 #     desc=f"download_directory1",
 #     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
@@ -314,11 +306,11 @@ api.labeling_job.get_activity  # api.team.get_activity #TODODONE
 #     aa.DETACH_TAG,
 #     aa.ADD_MEMBER,
 # ]
-# os.environ["ENV"] = "production"
-# p = tqdm(desc=f"get_activity", total=0, is_size=True)
+# # os.environ["ENV"] = "production"
+# p = tqdm(desc=f"get_activity", total=0, is_size=False)
 
 # # p = sly.Progress(message="api.team.get_activity", total_cnt=0)
-# sfijgf = api.team.get_activity(449, filter_actions=labeling_actions, progress_cb=p)
+# sfijgf = api.team.get_activity(449, progress_cb=p)
 
 
 # api.team.get_list_all_pages  # progress_cb(len(results)), progress_cb(len(temp_items))
