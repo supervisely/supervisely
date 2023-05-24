@@ -34,11 +34,11 @@ class PointVolume(JsonSerializable):
     PointVolume (x, y, z) determines position of Mask3D. It locates the first sample.
     :class:`PointVolume<PointVolume>` object is immutable.
 
-    :param x: Position of PointVolume object on X axis.
+    :param x: Position of PointVolume object on X-axis.
     :type x: int or float
-    :param y: Position of PointVolume object on Y axis.
+    :param y: Position of PointVolume object on Y-axis.
     :type y: int or float
-    :param z: Position of PointVolume object on Z axis.
+    :param z: Position of PointVolume object on Z-axis.
     :type z: int or float
     :Usage example:
 
@@ -60,9 +60,9 @@ class PointVolume(JsonSerializable):
     @property
     def x(self) -> int:
         """
-        Position of PointVolume on height.
+        Position of PointVolume on X-axis.
 
-        :return: Height of PointVolume
+        :return: X of PointVolume
         :rtype: :class:`int`
         :Usage example:
 
@@ -76,9 +76,9 @@ class PointVolume(JsonSerializable):
     @property
     def y(self) -> int:
         """
-        Position of PointVolume on width.
+        Position of PointVolume on Y-axis.
 
-        :return: Width of PointVolume
+        :return: Y of PointVolume
         :rtype: :class:`int`
 
         :Usage example:
@@ -93,9 +93,9 @@ class PointVolume(JsonSerializable):
     @property
     def z(self) -> int:
         """
-        Position of PointVolume on depth.
+        Position of PointVolume on Z-axis.
 
-        :return: Depth of PointVolume
+        :return: Z of PointVolume
         :rtype: :class:`int`
         :Usage example:
 
