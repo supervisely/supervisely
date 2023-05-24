@@ -24,7 +24,8 @@ from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
-from supervisely.geometry.mask_3d import PointLocation3D
+from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.geometry.mask_3d import Mask3D
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -349,23 +350,8 @@ def download_volume_project(
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 for sf in ann.spatial_figures:
-                    if sf.geometry.geometry_name() == "mask_3d":
-                        figure_id = key_id_map.get_figure_id(sf.key())
-                        figure_path = (
-                            "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
-                        )
-                        api.volume.figure.download_stl_meshes([figure_id], [figure_path])
-                        mask3d_data, mask3d_header = nrrd.read(figure_path)
-                        sf.geometry.data = mask3d_data
-                        sf.geometry.space = mask3d_header["space"]
-                        sf.geometry.space_origin = PointLocation3D(
-                            col=mask3d_header["space origin"][0],
-                            row=mask3d_header["space origin"][1],
-                            tab=mask3d_header["space origin"][2],
-                        )
-                        sf.geometry.space_directions = mask3d_header["space directions"]
-                        path_without_filename = "/".join(figure_path.split("/")[:-1])
-                        remove_dir(path_without_filename)
+                    if sf.geometry.geometry_name() == Mask3D.name():
+                        load_figure_data(api, volume_file_path, sf, key_id_map)
 
                 dataset_fs.add_item_file(
                     volume_name,
@@ -387,6 +373,25 @@ def download_volume_project(
             if progress_cb is not None:
                 progress_cb(len(batch))
     project_fs.set_key_id_map(key_id_map)
+
+
+def load_figure_data(api: Api, volume_file_path: str, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
+    """
+    Load data into figure geometry.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param volume_file_path: Path to Volume file location
+    :type volume_file_path: str
+    :param spatial_figure: Spatial figure
+    :type spatial_figure: VolumeFigure object
+    :param key_id_map: Mapped keys and IDs
+    :type key_id_map: KeyIdMap object
+    """
+    figure_id = key_id_map.get_figure_id(spatial_figure.key())
+    figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
+    api.volume.figure.download_stl_meshes([figure_id], [figure_path])
+    Mask3D.from_file(spatial_figure, figure_path)
 
 
 # TODO: add methods to convert to 3d masks
