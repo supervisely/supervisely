@@ -1,25 +1,33 @@
 from typing import Optional, Union
-from supervisely._utils import is_production
+from supervisely._utils import is_production, is_development
 import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from os.path import join, basename
 from supervisely.sly_logger import logger
 from supervisely.io.fs import dir_exists, file_exists, remove_dir, silent_remove
-from supervisely.app.widgets import Card, Button, Container, Widget, Text, ProjectThumbnail
 from supervisely.app.fastapi.subapp import Application
 
 import supervisely as sly
 from supervisely.app.widgets import (
     Card,
     FileStorageUpload,
+    SelectProject,
     SelectDataset,
+    SelectWorkspace,
     TeamFilesSelector,
     Container,
     Tabs,
     Button,
     Input,
     Empty,
+    Text,
+    ProjectThumbnail,
+    DatasetThumbnail,
+    FileThumbnail,
+    FolderThumbnail,
+    SlyTqdm,
+    Widget,
 )
 
 # @TODO: set project type in constructor?
@@ -78,10 +86,10 @@ class Import(Application):
                 )
 
             self._path = path
-            if self._is_path_required is True and self._path is None:
-                raise ValueError(f"Remote path is not specified: {self._path}")
-            if self._is_path_required is True and type(self._path) is not str:
-                raise ValueError(f"Remote path must be 'str': {self._path}")
+            # if self._is_path_required is True and self._path is None:
+            #     raise ValueError(f"Remote path is not specified: {self._path}")
+            # if self._is_path_required is True and type(self._path) is not str:
+            #     raise ValueError(f"Remote path must be 'str': {self._path}")
 
             self._is_directory = is_directory
             if self._is_path_required is True and type(self._is_directory) is not bool:
@@ -135,96 +143,226 @@ class Import(Application):
         if sly.is_production():
             api = Api.from_env()
 
-            ##############
-            # INPUT CARD #
-            ##############
+            ####################
+            # PROJECT SELECTOR #
+            ####################
+
+            self.input_mode = None
+
+            # Launch from Dataset
             if (
-                sly.env.folder(raise_not_found=False) is not None
-                or sly.env.file(raise_not_found=False) is not None
+                sly.env.project_id(raise_not_found=False) is not None
+                and sly.env.dataset_id(raise_not_found=False) is not None
             ):
-                if sly.env.folder(raise_not_found=False) is not None:
-                    path = sly.env.folder()
-                if sly.env.file(raise_not_found=False) is not None:
-                    path = sly.env.file()
+                project_info = api.project.get_info_by_id(sly.env.project_id())
+                dataset_info = api.dataset.get_info_by_id(sly.env.dataset_id())
+                self.input_thumbnail = DatasetThumbnail(
+                    project_info=project_info, dataset_info=dataset_info
+                )
+                self.project_selector_container = Container(widgets=[self.input_thumbnail])
 
-                info = api.file.get_info_by_path(team_id=sly.env.team_id(), remote_path=path)
+                self.input_mode = "dataset"
 
-                if info is None:
-                    self.input_text = Text(
-                        text=f"Input Team Files path: {path} is not found", status="error"
-                    )
-                    self.file_selector = TeamFilesSelector(
-                        team_id=sly.env.team_id(), multiple_selection=False, max_height=300
-                    )
-                    self.drag_n_drop = FileStorageUpload(
-                        team_id=sly.env.team_id(), path="/folder/import-template/"
-                    )
-                    self.external_link = Input(value="https://")
-                    self.file_tabs = Tabs(
-                        labels=["File Selector", "Drag & Drop", "Link"],
-                        contents=[self.file_selector, self.drag_n_drop, self.external_link],
-                    )
-                    self.input_container = Container(widgets=[self.input_text, self.file_tabs])
-                else:
-                    text = f"Input Team Files path: {path}"
-                    self.input_text = Text(text=text, status="success")
-                    self.input_container = Container(widgets=[self.input_text])
+            # Launch from Project
+            elif sly.env.project_id(raise_not_found=False) is not None:
+                project_info = api.project.get_info_by_id(sly.env.project_id())
+                self.input_thumbnail = ProjectThumbnail(info=project_info)
+                self.project_selector_container = Container(widgets=[self.input_thumbnail])
+                self.input_mode = "project"
+
+            # Launch from Ecosystem
             else:
-                self.file_selector = TeamFilesSelector(
+                self.output_workspace_selector = SelectWorkspace()
+                self.output_new_project_name = Input(value="My project")
+                self.output_new_project = Container(
+                    widgets=[
+                        self.output_workspace_selector,
+                        Text("Project name"),
+                        self.output_new_project_name,
+                    ]
+                )
+                self.output_project_selector = SelectProject()
+                self.output_dataset_selector = SelectDataset()
+                self.output_project_tabs = Tabs(
+                    labels=["New Project", "Existing Project", "Existing Dataset"],
+                    contents=[
+                        self.output_new_project,
+                        self.output_project_selector,
+                        self.output_dataset_selector,
+                    ],
+                )
+                self.project_selector_container = Container(widgets=[self.output_project_tabs])
+                self.input_mode = "ecosystem"
+
+            ####################
+            #  FILES SELECTOR  #
+            ####################
+
+            # Launch from File
+            if sly.env.file(raise_not_found=False) is not None:
+                file_info = api.file.get_info_by_path(
+                    team_id=sly.env.team_id(), remote_path=sly.env.file()
+                )
+                self.input_thumbnail = FileThumbnail(info=file_info)
+                self.files_selector_container = Container(widgets=[self.input_thumbnail])
+                if self.input_mode is None or self.input_mode == "ecosystem":
+                    self.input_mode = "file"
+
+            # Launch from Folder
+            elif sly.env.folder(raise_not_found=False) is not None:
+                file_info = api.file.get_info_by_path(
+                    team_id=sly.env.team_id(), remote_path=sly.env.folder()
+                )
+                self.input_thumbnail = FolderThumbnail(info=file_info)
+                self.files_selector_container = Container(widgets=[self.input_thumbnail])
+                if self.input_mode is None or self.input_mode == "ecosystem":
+                    self.input_mode = "folder"
+
+            # Launch from Ecosystem
+            else:
+                self.input_file_selector = TeamFilesSelector(
                     team_id=sly.env.team_id(), multiple_selection=False, max_height=300
                 )
-                self.drag_n_drop = FileStorageUpload(
-                    team_id=sly.env.team_id(), path="/folder/import-template/"
-                )
-                self.external_link = Input(value="https://")
 
-                self.file_tabs = Tabs(
+                app_name = sly.env.app_name(raise_not_found=False)
+                if app_name is None:
+                    app_name = "import-template"
+                else:
+                    app_name = app_name.lower().replace(" ", "-")
+                self.storage_upload_path = f"/import/{app_name}/"
+                self.input_drag_n_drop = FileStorageUpload(
+                    team_id=sly.env.team_id(), path=self.storage_upload_path
+                )
+                self.input_external_link = Input(value="https://")
+                self.input_data_tabs = Tabs(
                     labels=["File Selector", "Drag & Drop", "Link"],
-                    contents=[self.file_selector, self.drag_n_drop, self.external_link],
+                    contents=[
+                        self.input_file_selector,
+                        self.input_drag_n_drop,
+                        self.input_external_link,
+                    ],
                 )
-                self.input_container = Container(widgets=[self.file_tabs])
+                self.files_selector_container = Container(widgets=[self.input_data_tabs])
+                if self.input_mode is None:
+                    self.input_mode = "ecosystem"
 
-            self.input_card = Card(
-                title="Input files",
-                description="Drag & drop or Select input files",
-                content=self.input_container,
-            )
+            ############
+            # SETTINGS #
+            #############
 
-            ###############
-            # OUTPUT CARD #
-            ###############
-            self.start_button = Button("Start Import")
-            if sly.env.project_id(raise_not_found=False) is None:
-                self.dataset_selector = SelectDataset()
-                self.output_container = Container(
-                    widgets=[self.dataset_selector, self.start_button]
+            self.settings_card = self.generate_settings_card()
+
+            ##########
+            # LAYOUT #
+            ##########
+
+            if self.input_mode == "project":
+                self.input_project_card = Card(
+                    title="Input Project",
+                    description="Application was launched from the context menu of the project",
+                    content=self.project_selector_container,
+                )
+                self.input_files_card = Card(
+                    title="Select Files",
+                    description=(
+                        "Select data to import from 3 options below. "
+                        "You can select files from Team Files, "
+                        "use Drag & Drop "
+                        "or provide external link for downloading"
+                    ),
+                    content=self.files_selector_container,
+                )
+                self._layout = Container(
+                    widgets=[
+                        self.input_project_card,
+                        self.input_files_card,
+                    ]
+                )
+
+            elif self.input_mode == "dataset":
+                self.input_project_card = Card(
+                    title="Input Dataset",
+                    description="Application was launched from the context menu of the dataset",
+                    content=self.project_selector_container,
+                )
+                self.input_files_card = Card(
+                    title="Select Files",
+                    description=(
+                        "Select data to import from 3 options below. "
+                        "You can select files from Team Files, "
+                        "use Drag & Drop "
+                        "or provide external link for downloading"
+                    ),
+                    content=self.files_selector_container,
+                )
+                self._layout = Container(
+                    widgets=[
+                        self.input_project_card,
+                        self.input_files_card,
+                    ]
+                )
+
+            elif self.input_mode == "file":
+                self.input_project_card = Card(
+                    title="Select Project",
+                    description="Select where do you want to import your data from 3 options below",
+                    content=self.project_selector_container,
+                )
+                self.input_files_card = Card(
+                    title="Input File",
+                    description="Application was launched from the context menu of the file",
+                    content=self.files_selector_container,
+                )
+                self._layout = Container(
+                    widgets=[
+                        self.input_files_card,
+                        self.input_project_card,
+                    ]
+                )
+
+            elif self.input_mode == "folder":
+                self.input_project_card = Card(
+                    title="Select Project",
+                    description="Select where do you want to import your data from 3 options below",
+                    content=self.project_selector_container,
+                )
+                self.input_files_card = Card(
+                    title="Input File",
+                    description="Application was launched from the context menu of the file",
+                    content=self.files_selector_container,
+                )
+                self._layout = Container(
+                    widgets=[
+                        self.input_files_card,
+                        self.input_project_card,
+                    ]
                 )
             else:
-                self.selected_project_text = Text(
-                    text=f"Project is selected: id-{sly.env.project_id()}", status="success"
+                self.input_project_card = Card(
+                    title="Select Project",
+                    description="Select where do you want to import your data from 3 options below",
+                    content=self.project_selector_container,
+                )
+                self.input_files_card = Card(
+                    title="Select Files",
+                    description=(
+                        "Select data to import from 3 options below. "
+                        "You can select files from Team Files, "
+                        "use Drag & Drop "
+                        "or provide external link for downloading"
+                    ),
+                    content=self.files_selector_container,
+                )
+                self._layout = Container(
+                    widgets=[
+                        self.input_project_card,
+                        self.input_files_card,
+                    ]
                 )
 
-                # self.project_thumbnail = ProjectThumbnail(
-                #     info=api.project.get_info_by_id(sly.env.project_id())
-                # )
-                self.output_container = Container(
-                    widgets=[self.selected_project_text, self.start_button]
-                )
-            self.output_card = Card(
-                title="Output project",
-                description="Select output project or dataset",
-                content=self.output_container,
-            )
-
-            #################
-            # SETTINGS CARD #
-            #################
-            self.settings_card = self.generate_settings_card()
-            self._layout = Container(
-                widgets=[self.input_card, self.settings_card, self.output_card]
-            )
-
-        # super().__init__(layout=self.start_button)
+        self._start_button = Button("Start Import")
+        self.import_progress = SlyTqdm()
+        self._layout._widgets.extend([self.settings_card, self._start_button, self.import_progress])
         super().__init__(layout=self._layout)
 
     def generate_settings_card(self) -> Widget:
@@ -255,10 +393,11 @@ class Import(Application):
                 "Both FILE and FOLDER envs are defined, but only one is allowed for the import"
             )
         if self.is_path_required() is True:
-            if file is None and folder is None:
-                raise KeyError(
-                    "One of the environment variables has to be defined for the import app: FILE or FOLDER"
-                )
+            if is_development() is True:
+                if file is None and folder is None:
+                    raise KeyError(
+                        "One of the environment variables has to be defined for the import app: FILE or FOLDER"
+                    )
 
         is_directory = True
         path = folder
@@ -288,7 +427,7 @@ class Import(Application):
             # lets validate that dataset exists
             dataset = api.dataset.get_info_by_id(id=dataset_id)
             if dataset is None:
-                raise ValueError(f"Project with ID: '{dataset_id}' is not found or either archived")
+                raise ValueError(f"Dataset with ID: '{dataset_id}' is not found or either archived")
             logger.info(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
         if is_production():
@@ -308,7 +447,106 @@ class Import(Application):
                     )
                 path = local_save_path
 
-        context = Import.Context(
+        if is_development():
+            context = Import.Context(
+                team_id=team_id,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+                path=path,
+                is_directory=is_directory,
+                is_on_agent=is_on_agent,
+                is_path_required=self.is_path_required(),
+            )
+            project_id = self.process(context=context)
+            info = api.project.get_info_by_id(project_id)
+            logger.info(f"Result project: id={info.id}, name={info.name}")
+
+        if is_production() is True:
+
+            @self._start_button.click
+            def start_import():
+                self.import_progress.show()
+                context = self.__get_context(api=api)
+                project_id = self.process(context=context)
+                if type(project_id) is int:
+                    info = api.project.get_info_by_id(project_id)
+                    api.task.set_output_project(
+                        task_id=task_id, project_id=info.id, project_name=info.name
+                    )
+                    logger.info(f"Result project: id={info.id}, name={info.name}")
+                self._start_button.disabled = True
+
+    def __get_context(self, api: Api) -> Context:
+        team_id = sly.env.team_id()
+        workspace_id = sly.env.workspace_id()
+        project_id = None
+        dataset_id = None
+        path = None
+        is_directory = True
+        is_on_agent = False
+
+        if self.input_mode == "project":
+            project_id = sly.env.project_id()
+        elif self.input_mode == "dataset":
+            project_id = sly.env.project_id()
+            dataset_id = sly.env.dataset_id()
+        elif self.input_mode == "file":
+            is_directory = False
+            path = sly.env.file()
+        elif self.input_mode == "folder":
+            is_directory = True
+            path = sly.env.folder()
+        else:
+            project_mode = self.output_project_tabs.get_active_tab()
+            if project_mode == "New Project":
+                team_id = self.output_workspace_selector._team_selector.get_selected_id()
+                workspace_id = self.output_workspace_selector.get_selected_id()
+                project_name = self.output_new_project_name.get_value()
+            elif project_mode == "Existing Project":
+                team_id = self.output_project_selector._ws_selector._team_selector.get_selected_id()
+                workspace_id = self.output_project_selector._ws_selector.get_selected_id()
+                project_id = self.output_project_selector.get_selected_id()
+                dataset_id = None
+            elif project_mode == "Existing Dataset":
+                team_id = (
+                    self.output_dataset_selector._project_selector._ws_selector._team_selector.get_selected_id()
+                )
+                workspace_id = (
+                    self.output_dataset_selector._project_selector._ws_selector.get_selected_id()
+                )
+                project_id = self.output_dataset_selector._project_selector.get_selected_id()
+                dataset_id = self.output_dataset_selector.get_selected_id()
+
+            data_mode = self.input_data_tabs.get_active_tab()
+            data_dir = get_data_dir()
+            if data_mode == "File Selector":
+                paths = self.input_file_selector.get_selected_paths()
+
+                data_path = self.input_file_selector.get_selected_paths()[0]
+                data_type = self.input_file_selector.get_selected_items()[0]["type"]
+
+                path = join(data_dir, basename(data_path.rstrip("/")))
+                if data_type == "file":
+                    api.file.download(team_id=team_id, remote_path=data_path, local_save_path=path)
+                    is_directory = False
+                else:
+                    api.file.download_directory(
+                        team_id=team_id, remote_path=data_path, local_save_path=path
+                    )
+                    is_directory = True
+            elif data_mode == "Drag & Drop":
+                paths = self.input_drag_n_drop.get_uploaded_paths()
+                for path in paths:
+                    local_save_path = join(data_dir, path.replace(self.storage_upload_path, ""))
+                    api.file.download(
+                        team_id=team_id, remote_path=path, local_save_path=local_save_path
+                    )
+                path = data_dir
+            elif data_mode == "Link":
+                path = self.input_external_link.get_value()
+
+        return Import.Context(
             team_id=team_id,
             workspace_id=workspace_id,
             project_id=project_id,
@@ -318,23 +556,3 @@ class Import(Application):
             is_on_agent=is_on_agent,
             is_path_required=self.is_path_required(),
         )
-
-        if is_production() is True:
-
-            @self.start_button.click
-            def start_import():
-                project_id = self.process(context=context)
-                if type(project_id) is int:
-                    info = api.project.get_info_by_id(project_id)
-                    api.task.set_output_project(
-                        task_id=task_id, project_id=info.id, project_name=info.name
-                    )
-                    # remove_source_files = env.remove_source_files()
-                    # if remove_source_files is True and is_on_agent is False:
-                    if is_on_agent is False:
-                        api.file.remove(team_id=context.team_id, path=remote_path)
-                        remove_dir(context.path)
-                        logger.info(
-                            msg=f"Source directory: '{remote_path}' was successfully removed."
-                        )
-                    logger.info(f"Result project: id={info.id}, name={info.name}")

@@ -61,6 +61,10 @@ class TeamFilesSelector(Widget):
     def get_json_state(self) -> Dict:
         return {"selected": self._selected}
 
+    def get_selected_items(self) -> List[dict]:
+        selected = StateJson()[self.widget_id]["selected"]
+        return [item for item in selected]
+
     def get_selected_paths(self) -> List[str]:
         selected = StateJson()[self.widget_id]["selected"]
         return [item["path"] for item in selected]
