@@ -14,7 +14,7 @@ class ImageSlider(Widget):
         widget_id: str = None,
     ):
         self._data = data
-        self._height = f"{height}px"
+        self._height = height
         self._selectable = selectable
         self._preview_url = preview_url
         self._idx = preview_idx
@@ -43,7 +43,10 @@ class ImageSlider(Widget):
     def get_json_data(self):
         return {
             "data": self._data_images,
-            "options": {"selectable": self._selectable, "height": self._height},
+            "options": {
+                "selectable": self._selectable,
+                "height": f"{self._height}px",
+            },
         }
 
     def get_json_state(self):
@@ -54,6 +57,10 @@ class ImageSlider(Widget):
                 "idx": self._idx,
             }
         }
+
+    def get_preview_url(self):
+        self._preview_url = StateJson()[self.widget_id]["selected"]["preview"]
+        return self._preview_url
 
     def set_preview_url(self, value: str):
         self._preview_url = value
@@ -66,8 +73,9 @@ class ImageSlider(Widget):
         StateJson()[self.widget_id]["selected"]["moreExamples"] = self._preview_url
         StateJson().send_changes()
 
-    def get_preview_url(self):
-        return StateJson()[self.widget_id]["selected"]["preview"]
+    def get_preview_idx(self):
+        self._idx = StateJson()[self.widget_id]["selected"]["idx"]
+        return self._idx
 
     def set_preview_idx(self, value: int):
         self._idx = value
@@ -81,25 +89,32 @@ class ImageSlider(Widget):
         StateJson()[self.widget_id]["selected"]["moreExamples"] = self._data[self._idx]
         StateJson().send_changes()
 
-    def get_preview_idx(self):
-        return StateJson()[self.widget_id]["selected"]["idx"]
+    def get_height(self):
+        raw_height = DataJson()[self.widget_id]["options"]["height"]
+        self._height = int(raw_height[:-2])
+        return self._height
 
     def set_height(self, value: int):
-        self._height = f"{value}px"
-        DataJson()[self.widget_id]["options"]["height"] = self._height
+        if not isinstance(value, int):
+            raise TypeError('Argument value type has to be "int" type')
+        self._height = value
+        DataJson()[self.widget_id]["options"]["height"] = f"{self._height}px"
         DataJson().send_changes()
 
-    def get_height(self):
-        self._height = DataJson()[self.widget_id]["options"]["height"]
-        return int(self._height[:-2])
+    @property
+    def is_selectable(self):
+        self._selectable = DataJson()[self.widget_id]["options"]["selectable"]
+        return self._selectable
 
-    def set_selectable(self, value: bool):
-        self._selectable = value
+    def enable_selection(self):
+        self._selectable = True
         DataJson()[self.widget_id]["options"]["selectable"] = self._selectable
         DataJson().send_changes()
 
-    def get_selectable(self):
-        return DataJson()[self.widget_id]["options"]["selectable"]
+    def disable_selection(self):
+        self._selectable = False
+        DataJson()[self.widget_id]["options"]["selectable"] = self._selectable
+        DataJson().send_changes()
 
     def get_data_length(self):
         return len(self._data)
