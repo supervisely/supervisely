@@ -255,11 +255,6 @@ class Mask3D(Geometry):
         return "mask_3d"
 
     @staticmethod
-    def name():
-        """Return geometry name"""
-        return "mask_3d"
-
-    @staticmethod
     def from_file(figure, file_path: str):
         """
         Load figure geometry from file.

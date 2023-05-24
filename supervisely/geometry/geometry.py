@@ -62,14 +62,14 @@ class Geometry(JsonSerializable):
         """
         raise NotImplementedError()
 
-    @staticmethod
-    def name():
+    @classmethod
+    def name(cls):
         """
         Same as geometry_name(), but shorter. In order to make the code more concise.
 
         :return: string with name of geometry
         """
-        raise NotImplementedError()
+        return cls.geometry_name()
 
     def crop(self, rect):
         """

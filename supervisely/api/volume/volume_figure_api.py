@@ -149,7 +149,7 @@ class VolumeFigureApi(FigureApi):
         figures_json = []
         figures_mask3d_json = []
         for figure in figures:
-            if figure.geometry.geometry_name() == Mask3D.name():
+            if figure.geometry.name() == Mask3D.name():
                 keys_mask3d.append(figure.key())
                 figures_mask3d_json.append(figure.to_json(key_id_map, save_meta=True))
             else:

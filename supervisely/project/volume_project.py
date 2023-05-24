@@ -350,7 +350,7 @@ def download_volume_project(
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 for sf in ann.spatial_figures:
-                    if sf.geometry.geometry_name() == Mask3D.name():
+                    if sf.geometry.name() == Mask3D.name():
                         load_figure_data(api, volume_file_path, sf, key_id_map)
 
                 dataset_fs.add_item_file(
