@@ -149,7 +149,7 @@ class VolumeFigureApi(FigureApi):
         figures_json = []
         figures_mask3d_json = []
         for figure in figures:
-            if figure.geometry.geometry_name() == Mask3D.geometry_name():
+            if figure.geometry.geometry_name() == Mask3D.name():
                 keys_mask3d.append(figure.key())
                 figures_mask3d_json.append(figure.to_json(key_id_map, save_meta=True))
             else:
@@ -428,9 +428,8 @@ class VolumeFigureApi(FigureApi):
             fake_figures.append(
                 {
                     "objectId": figure["objectId"],
-                    "geometryType": "mask_3d",
-                    "priority": 2,
-                    "tool": "mask_3d",
+                    "geometryType": Mask3D.name(),
+                    "tool": Mask3D.name(),
                     "entityId": entity_id,
                 }
             )
