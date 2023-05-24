@@ -262,11 +262,11 @@ class Mask3D(Geometry):
     @staticmethod
     def from_file(figure, file_path: str):
         """
-        Load figure geometry from file
+        Load figure geometry from file.
 
-        :param figure: figure annotation
-        :type figure: _type_
-        :param file_path: path to nrrd file with data
+        :param figure: Spatial figure
+        :type figure: VolumeFigure
+        :param file_path: Path to nrrd file with data
         :type file_path: str
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
