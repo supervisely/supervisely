@@ -18,94 +18,97 @@ from supervisely.geometry.constants import (
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
+from supervisely.io.fs import remove_dir
 import numpy as np
 import base64
 import gzip
+import nrrd
 
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
 
 
-class PointLocation3D(JsonSerializable):
+class PointVolume(JsonSerializable):
     """
-    PointLocation3D in (row, col, tab) position. :class:`PointLocation3D<PointLocation3D>` object is immutable.
+    PointVolume (x, y, z) determines position of Mask3D. It locates the first sample.
+    :class:`PointVolume<PointVolume>` object is immutable.
 
-    :param row: Position of PointLocation3D object on height.
-    :type row: int or float
-    :param col: Position of PointLocation3D object on width.
-    :type col: int or float
-    :param tab: Position of PointLocation3D object on depth.
-    :type tab: int or float
+    :param x: Position of PointVolume object on X axis.
+    :type x: int or float
+    :param y: Position of PointVolume object on Y axis.
+    :type y: int or float
+    :param z: Position of PointVolume object on Z axis.
+    :type z: int or float
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
 
-        row = 100
-        col = 200
-        tab = 2
-        loc = sly.PointLocation3D(row, col, tab)
+        x = 100
+        y = 200
+        z = 2
+        loc = sly.PointVolume(x, y, z)
     """
 
-    def __init__(self, row: Union[int, float], col: Union[int, float], tab: Union[int, float]):
-        self._row = round(unwrap_if_numpy(row))
-        self._col = round(unwrap_if_numpy(col))
-        self._tab = round(unwrap_if_numpy(tab))
+    def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
+        self._x = round(unwrap_if_numpy(x))
+        self._y = round(unwrap_if_numpy(y))
+        self._z = round(unwrap_if_numpy(z))
 
     @property
-    def row(self) -> int:
+    def x(self) -> int:
         """
-        Position of PointLocation3D on height.
+        Position of PointVolume on height.
 
-        :return: Height of PointLocation3D
+        :return: Height of PointVolume
         :rtype: :class:`int`
         :Usage example:
 
          .. code-block:: python
 
-            print(loc.row)
+            print(loc.x)
             # Output: 100
         """
-        return self._row
+        return self._x
 
     @property
-    def col(self) -> int:
+    def y(self) -> int:
         """
-        Position of PointLocation3D on width.
+        Position of PointVolume on width.
 
-        :return: Width of PointLocation3D
+        :return: Width of PointVolume
         :rtype: :class:`int`
 
         :Usage example:
 
          .. code-block:: python
 
-            print(loc.col)
+            print(loc.y)
             # Output: 200
         """
-        return self._col
+        return self._y
 
     @property
-    def tab(self) -> int:
+    def z(self) -> int:
         """
-        Position of PointLocation3D on depth.
+        Position of PointVolume on depth.
 
-        :return: Depth of PointLocation3D
+        :return: Depth of PointVolume
         :rtype: :class:`int`
         :Usage example:
 
          .. code-block:: python
 
-            print(loc.tab)
+            print(loc.z)
             # Output: 2
         """
-        return self._tab
+        return self._z
 
     def to_json(self) -> Dict:
         """
-        Convert the PointLocation3D to a json dict.
+        Convert the PointVolume to a json dict.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -125,18 +128,18 @@ class PointLocation3D(JsonSerializable):
 
         """
 
-        packed_obj = {SPACE_ORIGIN: [self.col, self.row, self.tab]}
+        packed_obj = {SPACE_ORIGIN: [self.x, self.y, self.z]}
         return packed_obj
 
     @classmethod
-    def from_json(cls, packed_obj) -> PointLocation3D:
+    def from_json(cls, packed_obj) -> PointVolume:
         """
-        Convert a json dict to PointLocation3D.
+        Convert a json dict to PointVolume.
 
-        :param data: PointLocation3D in json format as a dict.
+        :param data: PointVolume in json format as a dict.
         :type data: dict
-        :return: PointLocation3D object
-        :rtype: :class:`PointLocation3D<PointLocation3D>`
+        :return: PointVolume object
+        :rtype: :class:`PointVolume<PointVolume>`
         :Usage example:
 
          .. code-block:: python
@@ -151,12 +154,12 @@ class PointLocation3D(JsonSerializable):
                                 ]
                         }
 
-            loc = sly.PointLocation3D.from_json(loc_json)
+            loc = sly.PointVolume.from_json(loc_json)
         """
         return cls(
-            row=packed_obj["space_origin"][0],
-            col=packed_obj["space_origin"][1],
-            tab=packed_obj["space_origin"][2],
+            x=packed_obj["space_origin"][0],
+            y=packed_obj["space_origin"][1],
+            z=packed_obj["space_origin"][2],
         )
 
 
@@ -207,9 +210,6 @@ class Mask3D(Geometry):
     def __init__(
         self,
         data: np.ndarray,
-        space: Optional[str] = None,
-        space_origin: Optional[PointLocation3D] = None,
-        space_directions: Optional[List[Tuple[float, float, float]]] = None,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
@@ -245,14 +245,41 @@ class Mask3D(Geometry):
                 data = np.array(data / 255, dtype=bool)
 
         self.data = data
-        self.space = space
-        self.space_origin = space_origin
-        self.space_directions = space_directions
+        self._space_origin = None
+        self._space = None
+        self._space_directions = None
 
     @staticmethod
     def geometry_name():
-        """geometry_name"""
+        """Return geometry name"""
         return "mask_3d"
+
+    @staticmethod
+    def name():
+        """Return geometry name"""
+        return "mask_3d"
+
+    @staticmethod
+    def from_file(figure, file_path: str):
+        """
+        Load figure geometry from file
+
+        :param figure: figure annotation
+        :type figure: _type_
+        :param file_path: path to nrrd file with data
+        :type file_path: str
+        """
+        mask3d_data, mask3d_header = nrrd.read(file_path)
+        figure.geometry.data = mask3d_data
+        figure.geometry._space_origin = PointVolume(
+            x=mask3d_header["space origin"][0],
+            y=mask3d_header["space origin"][1],
+            z=mask3d_header["space origin"][2],
+        )
+        figure.geometry._space = mask3d_header["space"]
+        figure.geometry._space_directions = mask3d_header["space directions"]
+        path_without_filename = "/".join(file_path.split("/")[:-1])
+        remove_dir(path_without_filename)
 
     def to_json(self) -> Dict:
         """
@@ -276,15 +303,12 @@ class Mask3D(Geometry):
                               [0 0 0]
                               [0 0 0]]], dtype=np.bool_)
 
-            location = sly.PointLocation3D(1, 1, 1)
-
-            figure = sly.Mask3D(mask, space_origin=location)
+            figure = sly.Mask3D(mask)
             figure_json = figure.to_json()
             print(json.dumps(figure_json, indent=4))
             # Output: {
             #    "mask_3d": {
             #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
-            #        "space_origin": [1, 1, 1],
             #    },
             #    "shape": "mask_3d",
             #    "geometryType": "mask_3d"
@@ -292,16 +316,19 @@ class Mask3D(Geometry):
         """
         res = {
             self._impl_json_class_name(): {
-                SPACE_ORIGIN: [
-                    self.space_origin.col,
-                    self.space_origin.row,
-                    self.space_origin.tab,
-                ],
                 DATA: self.data_2_base64(self.data),
             },
-            GEOMETRY_SHAPE: self.geometry_name(),
-            GEOMETRY_TYPE: self.geometry_name(),
+            GEOMETRY_SHAPE: self.name(),
+            GEOMETRY_TYPE: self.name(),
         }
+
+        if self._space_origin:
+            res[f"{self._impl_json_class_name()}"][f"{SPACE_ORIGIN}"] = [
+                self._space_origin.x,
+                self._space_origin.y,
+                self._space_origin.z,
+            ]
+
         self._add_creation_info(res)
         return res
 
@@ -323,7 +350,6 @@ class Mask3D(Geometry):
             figure_json = {
                 "mask_3d": {
                     "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
-                    "space_origin": [1, 1, 1],
                 },
                 "shape": "mask_3d",
                 "geometryType": "mask_3d"
@@ -340,14 +366,13 @@ class Mask3D(Geometry):
                 "Data must contain {} field to create Mask3D object.".format(json_root_key)
             )
 
-        if SPACE_ORIGIN not in json_data[json_root_key] or DATA not in json_data[json_root_key]:
+        if DATA not in json_data[json_root_key]:
             raise ValueError(
                 "{} field must contain {} and {} fields to create Mask3D object.".format(
-                    json_root_key, SPACE_ORIGIN, DATA
+                    json_root_key, DATA
                 )
             )
 
-        col, row, tab = json_data[json_root_key][SPACE_ORIGIN]
         data = cls.base64_2_data(json_data[json_root_key][DATA])
 
         labeler_login = json_data.get(LABELER_LOGIN, None)
@@ -355,15 +380,20 @@ class Mask3D(Geometry):
         created_at = json_data.get(CREATED_AT, None)
         sly_id = json_data.get(ID, None)
         class_id = json_data.get(CLASS_ID, None)
-        return cls(
+        instance = cls(
             data=data,
-            space_origin=PointLocation3D(row=row, col=col, tab=tab),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
         )
+        if SPACE_ORIGIN in json_data[json_root_key]:
+            x, y, z = json_data[json_root_key][SPACE_ORIGIN]
+            instance._space_origin = PointVolume(x=x, y=y, z=z)
+            return instance
+        else:
+            return instance
 
     @classmethod
     def _impl_json_class_name(cls):
