@@ -413,6 +413,12 @@ class tqdm_sly(tqdm, Progress):
             self.offset = 0
 
         else:
+            tqdm.__init__(
+                self,
+                *args,
+                **kwargs,
+            )
+
             if len(args) < 2:
                 if kwargs.get("desc") is not None:
                     kwargs.setdefault("message", kwargs["desc"])
