@@ -63,7 +63,7 @@ class Rate(Widget):
     @property
     def is_disabled(self):
         self._disabled = DataJson()[self.widget_id]["disabled"]
-        return self._disabled is True
+        return self._disabled
 
     def get_value(self):
         self._value = StateJson()[self.widget_id]["value"]
