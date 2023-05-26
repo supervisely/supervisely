@@ -7,7 +7,7 @@ import supervisely.io.env as env
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import get_name_from_env
-from supervisely.io.fs import get_file_name_with_ext, silent_remove
+from supervisely.io.fs import get_file_name_with_ext, silent_remove, archive_directory, remove_dir
 import supervisely.io.env as sly_env
 from supervisely import rand_str
 from supervisely.task.progress import Progress
@@ -72,15 +72,22 @@ def set_directory(teamfiles_dir: str):
 
 def set_download(local_path: str):
     """
-    Sets a link to a file in workspace tasks interface according to the file type.
+    Receives a path to the local file or directory. If the path is a directory, it will be archived before uploading.
+    After sets a link to a uploaded file in workspace tasks interface according to the file type.
     If the file is an archive, the set_output_archive method is called and "Download archive" text is displayed.
     If the file is not an archive, the set_output_file_download method is called and "Download file" text is displayed.
 
-    :param local_path: path to the local file, which will be uploaded to the teamfiles directory
+    :param local_path: path to the local file or directory, which will be uploaded to the teamfiles
     :type local_path: str
     :return: None
     :rtype: None
     """
+    if os.path.isdir(local_path):
+        archive_path = f"{local_path}.tar"
+        archive_directory(local_path, archive_path)
+        remove_dir(local_path)
+        local_path = archive_path
+
     if is_production():
         api = Api()
         task_id = sly_env.task_id()
@@ -142,11 +149,8 @@ def set_download(local_path: str):
         )
 
         if _is_archive(local_path):
-            print(f"File '{local_path}' is an archive.")
-
             api.task.set_output_archive(task_id, file_info.id, file_info.name)
         else:
-            print(f"File '{local_path}' is not an archive.")
             api.task.set_output_file_download(task_id, file_info.id, file_info.name)
 
         logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")

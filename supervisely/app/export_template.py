@@ -1,9 +1,7 @@
-from os.path import isdir
 from typing import Optional
 
 import supervisely.io.env as env
 from supervisely.api.api import Api
-from supervisely.io.fs import archive_directory, remove_dir
 from supervisely.output import set_download
 from supervisely.sly_logger import logger
 
@@ -75,11 +73,5 @@ class Export:
 
         if type(local_path) is not str:
             raise ValueError("Path must be a 'string'")
-
-        if isdir(local_path):
-            archive_path = f"{local_path}.tar"
-            archive_directory(local_path, archive_path)
-            remove_dir(local_path)
-            local_path = archive_path
 
         set_download(local_path)
