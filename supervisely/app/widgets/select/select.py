@@ -184,7 +184,7 @@ class Select(ConditionalWidget):
         StateJson().send_changes()
 
     def set_value(self, value):
-        StateJson()[self.widget_id]["value"]
+        StateJson()[self.widget_id]["value"] = value
         StateJson().send_changes()
 
     def disable_item(self, item_index, group_index=None):
