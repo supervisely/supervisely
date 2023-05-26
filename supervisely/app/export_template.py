@@ -53,7 +53,7 @@ class Export:
     def run(self):
         api = Api.from_env()
         task_id = None
-        if True: # if is_production():
+        if is_production():
             task_id = env.task_id()
 
         team_id = env.team_id()
@@ -91,7 +91,7 @@ class Export:
             remove_dir(local_path)
             local_path = archive_path
 
-        if True: # if is_production():
+        if is_production():
             upload_progress = []
 
             def _print_progress(monitor, upload_progress):
