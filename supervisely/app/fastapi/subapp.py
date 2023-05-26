@@ -120,7 +120,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
         import arel
-        
+
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 

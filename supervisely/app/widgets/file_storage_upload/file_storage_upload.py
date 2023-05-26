@@ -51,6 +51,8 @@ class FileStorageUpload(Widget):
 
     def get_uploaded_paths(self) -> Union[List[str], None]:
         response = StateJson()[self.widget_id]["files"]
+        if len(response) == 0 or response is None:
+            return []
         uploaded_files = response["uploadedFiles"]
         if len(uploaded_files) == 0:
             return None
