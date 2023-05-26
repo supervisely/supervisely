@@ -144,10 +144,10 @@ def set_download(local_path: str):
         if _is_archive(local_path):
             print(f"File '{local_path}' is an archive.")
 
-            api.task.set_output_archive(task_id, file_info.id, remote_path)
+            api.task.set_output_archive(task_id, file_info.id, file_info.name)
         else:
             print(f"File '{local_path}' is not an archive.")
-            api.task.set_output_file_download(task_id, file_info.id, remote_path)
+            api.task.set_output_file_download(task_id, file_info.id, file_info.name)
 
         logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
         silent_remove(local_path)
