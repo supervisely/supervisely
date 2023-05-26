@@ -588,7 +588,8 @@ class AppApi(TaskApi):
             module_id=module_id,
             redirect_requests=redirect_requests,
         )
-        result = [result]
+        if type(result) is not list:
+            result = [result]
         if len(result) != 1:
             raise ValueError(f"{len(result)} tasks started instead of one")
         return SessionInfo.from_json(result[0])
