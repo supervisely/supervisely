@@ -109,6 +109,11 @@ class PointTracking(Inference):
                             geom,
                             video_interface,
                         )
+                    elif isinstance(geom, sly.Polyline):
+                        geometries = self._predict_polyline_geometries(
+                            geom,
+                            video_interface,
+                        )
                     else:
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
@@ -218,6 +223,27 @@ class PointTracking(Inference):
                 nodes_per_time[time].append(node)
 
         return F.nodes_to_sly_graph(nodes_per_time)
+
+    def _predict_polyline_geometries(
+        self,
+        geom: sly.Polyline,
+        interface: TrackerInterface,
+    ) -> List[sly.Polyline]:
+        polyline_points = F.numpy_to_dto_point(geom.exterior_np, "polyline")
+        lines_per_time = [[] for _ in range(interface.frames_count)]
+
+        for point in polyline_points:
+            preds: List[PredictionPoint] = self.predict(
+                interface.frames_with_notification,
+                self.custom_inference_settings_dict,
+                point,
+            )
+            sly_points_loc = F.dto_points_to_point_location(preds)
+            
+            for time, point_loc in enumerate(sly_points_loc):
+                lines_per_time[time].append(point_loc)
+        
+        return F.exterior_to_sly_polyline(lines_per_time)
 
     def _predictions_to_annotation(
         self, image: np.ndarray, predictions: List[Prediction]

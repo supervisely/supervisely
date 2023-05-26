@@ -27,6 +27,10 @@ def exteriors_to_sly_polygons(exteriors: List[List[sly.PointLocation]]) -> List[
     return [sly.Polygon(exterior=exterior) for exterior in exteriors]
 
 
+def exterior_to_sly_polyline(exteriors: List[List[sly.PointLocation]]) -> List[sly.Polyline]:
+    return [sly.Polyline(exterior=exterior) for exterior in exteriors]
+
+
 def nodes_to_sly_graph(nodes: List[List[sly.Node]]) -> List[sly.GraphNodes]:
     return [sly.GraphNodes(tn) for tn in nodes]
 

@@ -100,6 +100,8 @@ class TrackerInterface:
                 points += len(geometry.exterior) + len(geometry.interior)
             elif isinstance(geometry, sly.GraphNodes):
                 points += len(geometry.nodes.items())
+            elif isinstance(geometry, sly.Polyline):
+                points += len(geometry.exterior)
 
         if not self.load_all_frames:
             self.stop += points * self.frames_count
