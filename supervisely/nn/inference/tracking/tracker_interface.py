@@ -42,12 +42,12 @@ class TrackerInterface:
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
-            self.add_object_geometry_on_frame(geometry, object_id, frame)
-
             if self.global_stop_indicatior:
                 self.logger.info("Task stoped by user.")
                 self._notify(True)
                 break
+
+            self.add_object_geometry_on_frame(geometry, object_id, frame)
 
         self.geometries[start_fig] = geometries[-1]
 
