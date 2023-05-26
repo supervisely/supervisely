@@ -83,23 +83,40 @@ class PointTracking(Inference):
             video_interface = TrackerInterface(
                 context=context,
                 api=api,
+                load_all_frames=False,
             )
             api.logger.info("Start tracking.")
 
-            for geom, obj_id in zip(video_interface.geometries, video_interface.object_ids):
-                if isinstance(geom, sly.Point):
-                    geometries = self._predict_point_geometries(geom, video_interface)
-                elif isinstance(geom, sly.Polygon):
-                    if len(geom.interior) > 0:
-                        raise ValueError(f" Can't track polygons with iterior.")
-                    geometries = self._predict_polygon_geometries(geom, video_interface)
-                elif isinstance(geom, sly.GraphNodes):
-                    geometries = self._predict_graph_geometries(geom, video_interface)
-                else:
-                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+            for _ in video_interface.frames_loader_generator():
+                for (fig_id, geom), obj_id in zip(
+                    video_interface.geometries.items(),
+                    video_interface.object_ids,
+                ):
+                    if isinstance(geom, sly.Point):
+                        geometries = self._predict_point_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    elif isinstance(geom, sly.Polygon):
+                        if len(geom.interior) > 0:
+                            raise ValueError("Can't track polygons with iterior.")
+                        geometries = self._predict_polygon_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    elif isinstance(geom, sly.GraphNodes):
+                        geometries = self._predict_graph_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    else:
+                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                video_interface.add_object_geometries(geometries, obj_id)
-                api.logger.info(f"Object #{obj_id} tracked.")
+                    video_interface.add_object_geometries(geometries, obj_id, fig_id)
+                    api.logger.info(f"Object #{obj_id} tracked.")
+
+                    if video_interface.global_stop_indicatior:
+                        return
 
     def predict(
         self,
