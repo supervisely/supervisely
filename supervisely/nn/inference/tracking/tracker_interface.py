@@ -40,11 +40,13 @@ class TrackerInterface:
         if self.load_all_frames:
             self._load_frames()
 
-    def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
+    def add_object_geometries(
+        self, geometries: List[Geometry], object_id: int, start_fig: int
+    ):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
             if self.global_stop_indicatior:
                 self.logger.info("Task stoped by user.")
-                self._notify(True)
+                self._notify(True, task="stop tracking")
                 break
 
             self.add_object_geometry_on_frame(geometry, object_id, frame)
@@ -71,7 +73,9 @@ class TrackerInterface:
             if self.global_stop_indicatior:
                 return
 
-    def add_object_geometry_on_frame(self, geometry: Geometry, object_id: int, frame_ind: int):
+    def add_object_geometry_on_frame(
+        self, geometry: Geometry, object_id: int, frame_ind: int
+    ):
         self.api.video.figure.create(
             self.video_id,
             object_id,
@@ -81,7 +85,7 @@ class TrackerInterface:
             self.track_id,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
-        self._notify(fstart=frame_ind, fend=frame_ind + 1)
+        self._notify(fstart=frame_ind, fend=frame_ind + 1, task="add geometry on frame")
 
     def _add_geometries(self):
         self.logger.info("Adding geometries.")
@@ -115,7 +119,10 @@ class TrackerInterface:
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
+        while (
+            0 <= cur_index < total_frames
+            and len(self.frames_indexes) < self.frames_count + 1
+        ):
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
@@ -132,7 +139,7 @@ class TrackerInterface:
         for frame_index in self.frames_indexes:
             img_rgb = self._load_frame(frame_index)
             rgbs.append(img_rgb)
-            self._notify()
+            self._notify(task="load frame")
         self._frames = rgbs
         self.logger.info("Frames loaded.")
 
@@ -141,6 +148,7 @@ class TrackerInterface:
         stop: bool = False,
         fstart: Optional[int] = None,
         fend: Optional[int] = None,
+        task: str = "not defined",
     ):
         self.global_pos += 1
         if stop:
@@ -151,6 +159,7 @@ class TrackerInterface:
         fstart = min(self.frames_indexes) if fstart is None else fstart
         fend = max(self.frames_indexes) if fend is None else fend
 
+        self.logger.debug(f"Task: {task}")
         self.logger.debug(f"Notification status: {pos}/{self.stop}")
 
         self.global_stop_indicatior = self.api.video.notify_progress(
@@ -171,5 +180,5 @@ class TrackerInterface:
     @property
     def frames_with_notification(self) -> np.ndarray:
         """Use this in prediction."""
-        self._notify()
+        self._notify(task="get frames")
         return self._frames
