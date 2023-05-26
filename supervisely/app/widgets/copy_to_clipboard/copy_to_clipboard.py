@@ -1,13 +1,13 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from supervisely.app.widgets import Editor, Text, TextArea, Input
 
 
 class CopyToClipboard(Widget):
     def __init__(
         self,
-        content: Optional[Editor or Text or TextArea or Input or str] = "",
+        content: Union[Editor, Text, TextArea, Input, str] = "",
         widget_id: str = None,
     ):
         self._content = content
@@ -43,10 +43,14 @@ class CopyToClipboard(Widget):
                 "value": self._content_text,
                 "curr_widget_text": "value",
             }
-        else:
+        elif type(content) is str:
             self._only_string = True
             self._content_text = content
             self._res_state = {"content": self._content_text}
+        else:
+            raise TypeError(
+                f"Supported types: str, Editor, Text, TextArea, Input. Your type: {type(content).__name__}"
+            )
 
     def get_json_data(self) -> Dict:
         return self._res_data
@@ -56,3 +60,7 @@ class CopyToClipboard(Widget):
 
     def get_content(self):
         return self._content
+
+    @property
+    def text(self):
+        return self._content_text
