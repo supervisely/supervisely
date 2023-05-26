@@ -93,13 +93,18 @@ class TrackerInterface:
             self.api.logger.debug(f"Added {figure.geometry_type} #{figure_id}")
 
             # per point track notification
-            if self.load_all_frames is not None:
-                if isinstance(geometry, sly.Point):
-                    self.stop += 1
-                elif isinstance(geometry, sly.Polygon):
-                    self.stop += len(geometry.exterior) + len(geometry.interior)
-                elif isinstance(geometry, sly.GraphNodes):
-                    self.stop += len(geometry.nodes.items())
+            points = 0
+            if isinstance(geometry, sly.Point):
+                points += 1
+            elif isinstance(geometry, sly.Polygon):
+                points += len(geometry.exterior) + len(geometry.interior)
+            elif isinstance(geometry, sly.GraphNodes):
+                points += len(geometry.nodes.items())
+
+        if not self.load_all_frames:
+            self.stop += points * self.frames_count
+        else:
+            self.stop += points
 
         self.logger.info("Geometries added.")
         # TODO: other geometries
@@ -112,7 +117,8 @@ class TrackerInterface:
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
-        self.stop += len(self.frames_indexes)
+        if self.load_all_frames:
+            self.stop += len(self.frames_indexes)
 
     def _load_frame(self, frame_index):
         return self.api.video.frame.download_np(self.video_id, frame_index)
