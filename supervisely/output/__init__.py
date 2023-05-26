@@ -1,11 +1,18 @@
 import json
 import os
+import mimetypes
+from os.path import basename, join
 
+import supervisely.io.env as env
 from supervisely._utils import is_production
 from supervisely.api.api import Api
+from supervisely.app.fastapi import get_name_from_env
+from supervisely.io.fs import get_file_name_with_ext, silent_remove
 import supervisely.io.env as sly_env
 from supervisely import rand_str
-from supervisely.io.fs import silent_remove
+from supervisely.task.progress import Progress
+from supervisely.sly_logger import logger
+from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 
 def set_project(id: int):
@@ -22,7 +29,6 @@ def set_directory(teamfiles_dir: str):
     Sets a link to a teamfiles directory in workspace tasks interface
     """
     if is_production():
-
         api = Api()
         task_id = sly_env.task_id()
 
@@ -62,3 +68,89 @@ def set_directory(teamfiles_dir: str):
 
     else:
         print(f"Output directory: '{teamfiles_dir}'")
+
+
+def set_download(local_path: str):
+    """
+    Sets a link to a file in workspace tasks interface according to the file type.
+    If the file is an archive, the set_output_archive method is called and "Download archive" text is displayed.
+    If the file is not an archive, the set_output_file_download method is called and "Download file" text is displayed.
+
+    :param local_path: path to the local file, which will be uploaded to the teamfiles directory
+    :type local_path: str
+    :return: None
+    :rtype: None
+    """
+    if is_production():
+        api = Api()
+        task_id = sly_env.task_id()
+        upload_progress = []
+
+        team_id = env.team_id()
+
+        def _print_progress(monitor, upload_progress):
+            if len(upload_progress) == 0:
+                upload_progress.append(
+                    Progress(
+                        message=f"Uploading '{basename(local_path)}'",
+                        total_cnt=monitor.len,
+                        ext_logger=logger,
+                        is_size=True,
+                    )
+                )
+            upload_progress[0].set_current_value(monitor.bytes_read)
+
+        def _is_archive(local_path: str) -> bool:
+            """
+            Checks if the file is an archive by its mimetype using list of the most common archive mimetypes.
+
+            :param local_path: path to the local file
+            :type local_path: str
+            :return: True if the file is an archive, False otherwise
+            :rtype: bool
+            """
+            archive_mimetypes = [
+                "application/zip",
+                "application/x-tar",
+                "application/x-gzip",
+                "application/x-bzip2",
+                "application/x-7z-compressed",
+                "application/x-rar-compressed",
+                "application/x-xz",
+                "application/x-lzip",
+                "application/x-lzma",
+                "application/x-lzop",
+                "application/x-bzip",
+                "application/x-bzip2",
+                "application/x-compress",
+                "application/x-compressed",
+            ]
+
+            return mimetypes.guess_type(local_path)[0] in archive_mimetypes
+
+        remote_path = join(
+            RECOMMENDED_EXPORT_PATH,
+            get_name_from_env(),
+            str(task_id),
+            f"{get_file_name_with_ext(local_path)}",
+        )
+        file_info = api.file.upload(
+            team_id=team_id,
+            src=local_path,
+            dst=remote_path,
+            progress_cb=lambda m: _print_progress(m, upload_progress),
+        )
+
+        if _is_archive(local_path):
+            print(f"File '{local_path}' is an archive.")
+
+            api.task.set_output_archive(task_id, file_info.id, remote_path)
+        else:
+            print(f"File '{local_path}' is not an archive.")
+            api.task.set_output_file_download(task_id, file_info.id, remote_path)
+
+        logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
+        silent_remove(local_path)
+
+    else:
+        print(f"Output file: '{local_path}'")

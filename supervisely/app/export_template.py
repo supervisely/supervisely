@@ -1,16 +1,11 @@
-from os.path import basename, isdir, join
+from os.path import isdir
 from typing import Optional
-import mimetypes
 
 import supervisely.io.env as env
-from supervisely import Progress
-from supervisely._utils import is_production
 from supervisely.api.api import Api
-from supervisely.app.fastapi import get_name_from_env
-from supervisely.io.fs import archive_directory, get_file_name_with_ext, remove_dir, silent_remove
+from supervisely.io.fs import archive_directory, remove_dir
+from supervisely.output import set_download
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
-from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 
 class Export:
@@ -52,10 +47,6 @@ class Export:
 
     def run(self):
         api = Api.from_env()
-        task_id = None
-        if is_production():
-            task_id = env.task_id()
-
         team_id = env.team_id()
         workspace_id = env.workspace_id()
         project_id = env.project_id(raise_not_found=False)
@@ -91,63 +82,4 @@ class Export:
             remove_dir(local_path)
             local_path = archive_path
 
-        if is_production():
-            upload_progress = []
-
-            def _print_progress(monitor, upload_progress):
-                if len(upload_progress) == 0:
-                    upload_progress.append(
-                        Progress(
-                            message=f"Uploading '{basename(local_path)}'",
-                            total_cnt=monitor.len,
-                            ext_logger=logger,
-                            is_size=True,
-                        )
-                    )
-                upload_progress[0].set_current_value(monitor.bytes_read)
-
-            remote_path = join(
-                RECOMMENDED_EXPORT_PATH,
-                get_name_from_env(),
-                str(task_id),
-                f"{get_file_name_with_ext(local_path)}",
-            )
-            file_info = api.file.upload(
-                team_id=team_id,
-                src=local_path,
-                dst=remote_path,
-                progress_cb=lambda m: _print_progress(m, upload_progress),
-            )
-            file_is_archive = is_archive(local_path)
-            if file_is_archive:
-                api.task.set_output_archive(
-                    task_id=task_id, file_id=file_info.id, file_name=file_info.name
-                )
-            else:
-                api.task.set_output_file_download(
-                    task_id=task_id, file_id=file_info.id, file_name=file_info.name)
-
-                
-            logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
-            silent_remove(local_path)
-
-def is_archive(path):
-    archive_mimetypes = [
-        'application/zip',
-        'application/x-tar',
-        'application/x-gzip',
-        'application/x-bzip2',
-        'application/x-7z-compressed',
-        'application/x-rar-compressed',
-        'application/x-xz',
-        'application/x-lzip',
-        'application/x-lzma',
-        'application/x-lzop',
-        'application/x-bzip',
-        'application/x-bzip2',
-        'application/x-compress',
-        'application/x-compressed',
-    ]
-    
-    return mimetypes.guess_type(path)[0] in archive_mimetypes
-    
+        set_download(local_path)
