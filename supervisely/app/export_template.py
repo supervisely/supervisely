@@ -1,5 +1,6 @@
 from os.path import basename, isdir, join
 from typing import Optional
+import mimetypes
 
 import supervisely.io.env as env
 from supervisely import Progress
@@ -52,7 +53,7 @@ class Export:
     def run(self):
         api = Api.from_env()
         task_id = None
-        if is_production():
+        if True: # if is_production():
             task_id = env.task_id()
 
         team_id = env.team_id()
@@ -90,7 +91,7 @@ class Export:
             remove_dir(local_path)
             local_path = archive_path
 
-        if is_production():
+        if True: # if is_production():
             upload_progress = []
 
             def _print_progress(monitor, upload_progress):
@@ -117,8 +118,36 @@ class Export:
                 dst=remote_path,
                 progress_cb=lambda m: _print_progress(m, upload_progress),
             )
-            api.task.set_output_archive(
-                task_id=task_id, file_id=file_info.id, file_name=file_info.name
-            )
+            file_is_archive = is_archive(local_path)
+            if file_is_archive:
+                api.task.set_output_archive(
+                    task_id=task_id, file_id=file_info.id, file_name=file_info.name
+                )
+            else:
+                api.task.set_output_file_download(
+                    task_id=task_id, file_id=file_info.id, file_name=file_info.name)
+
+                
             logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
             silent_remove(local_path)
+
+def is_archive(path):
+    archive_mimetypes = [
+        'application/zip',
+        'application/x-tar',
+        'application/x-gzip',
+        'application/x-bzip2',
+        'application/x-7z-compressed',
+        'application/x-rar-compressed',
+        'application/x-xz',
+        'application/x-lzip',
+        'application/x-lzma',
+        'application/x-lzop',
+        'application/x-bzip',
+        'application/x-bzip2',
+        'application/x-compress',
+        'application/x-compressed',
+    ]
+    
+    return mimetypes.guess_type(path)[0] in archive_mimetypes
+    
