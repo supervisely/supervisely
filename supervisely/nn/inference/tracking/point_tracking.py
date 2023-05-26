@@ -83,7 +83,7 @@ class PointTracking(Inference):
             video_interface = TrackerInterface(
                 context=context,
                 api=api,
-                load_all_frames=False,
+                load_all_frames=True,
             )
             api.logger.info("Start tracking.")
 
