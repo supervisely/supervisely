@@ -68,3 +68,6 @@ class Card(Widget):
         self._disabled["disabled"] = False
         StateJson()[self.widget_id]["disabled"] = self._disabled
         StateJson().send_changes()
+
+    def is_locked(self):
+        return self._disabled["disabled"]
