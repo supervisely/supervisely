@@ -89,6 +89,7 @@ class TrackerInterface:
 
     def _add_geometries(self):
         self.logger.info("Adding geometries.")
+        points = 0
         for figure_id in self.figure_ids:
             figure = self.api.video.figure.get_info_by_id(figure_id)
             geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
@@ -97,7 +98,6 @@ class TrackerInterface:
             self.api.logger.debug(f"Added {figure.geometry_type} #{figure_id}")
 
             # per point track notification
-            points = 0
             if isinstance(geometry, sly.Point):
                 points += 1
             elif isinstance(geometry, sly.Polygon):
