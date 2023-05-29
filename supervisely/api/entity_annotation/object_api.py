@@ -10,6 +10,7 @@ class ObjectApi(RemoveableBulkModuleApi):
     """
     Object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -29,22 +30,41 @@ class ObjectApi(RemoveableBulkModuleApi):
                        meta={},
                        created_by_id=16154)
         """
-        return [ApiField.ID,
-                ApiField.DESCRIPTION,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT,
-                ApiField.DATASET_ID,
-                ApiField.CLASS_ID,
-                ApiField.ENTITY_ID,
-                ApiField.TAGS,
-                ApiField.META,
-                ApiField.CREATED_BY_ID,
-                ]
+        return [
+            ApiField.ID,
+            ApiField.DESCRIPTION,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.DATASET_ID,
+            ApiField.CLASS_ID,
+            ApiField.ENTITY_ID,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.CREATED_BY_ID,
+        ]
 
     @staticmethod
     def info_tuple_name():
-        """"""
-        return 'ObjectInfo'
+        """
+        Get string name of NamedTuple for class.
+
+        :return: NamedTuple name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tuple_name = api.video.object.info_tuple_name()
+            print(tuple_name) # ObjectInfo
+        """
+
+        return "ObjectInfo"
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
@@ -55,9 +75,11 @@ class ObjectApi(RemoveableBulkModuleApi):
         :return: Information about Object. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
         """
-        return self._get_info_by_id(id, 'objects.info')
+        return self._get_info_by_id(id, "annotation-objects.info")
 
-    def get_list(self, dataset_id: int, filters: Optional[List[Dict[str, str]]]=None) -> List[NamedTuple]:
+    def get_list(
+        self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         Get list of information about all video Objects for a given dataset ID.
 
@@ -176,10 +198,21 @@ class ObjectApi(RemoveableBulkModuleApi):
             #     ]
             # ]
         """
-        return self.get_list_all_pages('annotation-objects.list',  {ApiField.DATASET_ID: dataset_id,
-                                                                    ApiField.FILTER: filters or []})
+        return self.get_list_all_pages(
+            "annotation-objects.list",
+            {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []},
+        )
 
-    def _append_bulk(self, tag_api, entity_id, project_id, dataset_id, objects, key_id_map: KeyIdMap = None, is_pointcloud=False):
+    def _append_bulk(
+        self,
+        tag_api,
+        entity_id,
+        project_id,
+        dataset_id,
+        objects,
+        key_id_map: KeyIdMap = None,
+        is_pointcloud=False,
+    ):
         """"""
         if len(objects) == 0:
             return []
@@ -191,12 +224,14 @@ class ObjectApi(RemoveableBulkModuleApi):
             new_obj = {ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name]}
 
             if not is_pointcloud:
-            #if entity_id is not None:
+                # if entity_id is not None:
                 new_obj[ApiField.ENTITY_ID] = entity_id
             items.append(new_obj)
 
-        response = self._api.post('annotation-objects.bulk.add', {ApiField.DATASET_ID: dataset_id,
-                                                                  ApiField.ANNOTATION_OBJECTS: items})
+        response = self._api.post(
+            "annotation-objects.bulk.add",
+            {ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATION_OBJECTS: items},
+        )
         ids = [obj[ApiField.ID] for obj in response.json()]
         KeyIdMap.add_objects_to(key_id_map, [obj.key() for obj in objects], ids)
 

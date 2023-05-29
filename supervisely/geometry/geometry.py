@@ -21,6 +21,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 if not hasattr(np, "bool"):
     np.bool = np.bool_
 
+
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
     """ """
@@ -60,6 +61,15 @@ class Geometry(JsonSerializable):
         :return: string with name of geometry
         """
         raise NotImplementedError()
+
+    @classmethod
+    def name(cls):
+        """
+        Same as geometry_name(), but shorter. In order to make the code more concise.
+
+        :return: string with name of geometry
+        """
+        return cls.geometry_name()
 
     def crop(self, rect):
         """

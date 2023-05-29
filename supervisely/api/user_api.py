@@ -3,16 +3,17 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable
-from supervisely.task.progress import Progress
+from typing import Callable, Dict, List, NamedTuple, Optional, TYPE_CHECKING, Union
 
 from collections import namedtuple
-from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
 
-from typing import TYPE_CHECKING
+from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
+from supervisely.task.progress import Progress
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
+
+from tqdm import tqdm
 
 
 class UserInfo(NamedTuple):
@@ -41,17 +42,19 @@ class UserApi(ModuleApiBase):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         users = api.user.get_list() # api usage example
     """
@@ -688,7 +691,7 @@ class UserApi(ModuleApiBase):
         return None
 
     def get_member_activity(
-        self, team_id: int, user_id: int, progress_cb: Optional[Callable] = None
+        self, team_id: int, user_id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> DataFrame:
         """
         Get User activity data.
@@ -698,7 +701,7 @@ class UserApi(ModuleApiBase):
         :param user_id: User ID in Supervisely.
         :type user_id: int
         :param progress_cb: Function to check progress.
-        :type progress_cb: Function, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
         :Usage example:
@@ -734,9 +737,7 @@ class UserApi(ModuleApiBase):
         df = pd.DataFrame(activity)
         return df
 
-    def add_to_team_by_login(
-        self, user_login: str, team_id: int, role_id: int
-    ) -> Dict[str, int]:
+    def add_to_team_by_login(self, user_login: str, team_id: int, role_id: int) -> Dict[str, int]:
         """
         Invite User to Team with given role by login.
 
