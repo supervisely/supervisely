@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List, Union, Dict, Any, Optional
+from typing import List, Set, Union, Dict, Any, Optional
 
 
 class Collapse(Widget):
@@ -27,23 +27,27 @@ class Collapse(Widget):
 
     def __init__(
         self,
-        items: List[Collapse.Item],
+        items: Optional[List[Collapse.Item]] = None,
         accordion: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        if items is None:
+            items = [Collapse.Item("default", "Empty default item", "")]
+
         labels = [item.name for item in items]
         if len(set(labels)) != len(labels):
-            raise ValueError("All of collapse names should be unique.")
+            raise ValueError("All items must have a unique name.")
 
         self._items: List[Collapse.Item] = items
 
         self._accordion = accordion
+
         if self._accordion:
             self._active_panels = labels[0]
         else:
             self._active_panels = [labels[0]]
 
-        self._items_title = set(labels)
+        self._items_names = set(labels)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_items_json(self) -> List[Dict[str, Any]]:
@@ -61,7 +65,7 @@ class Collapse(Widget):
     def set_active_panel(self, value: Union[str, List[str]]):
         """Set active panel or panels.
 
-        :param value: panel name(s);
+        :param value: panel name(s)
         :type value: Union[str, List[str]]
         :raises TypeError: value of type List[str] can't be setted, if accordion is True.
         :raises ValueError: panel with such title doesn't exist.
@@ -71,15 +75,15 @@ class Collapse(Widget):
                 raise TypeError(
                     "Only one panel could be active in accordion mode. Use `str`, not `list`."
                 )
-            for title in value:
-                if title not in self._items_title:
+            for name in value:
+                if name not in self._items_names:
                     raise ValueError(
-                        f"Can't activate panel `{title}`: item with such title doesn't exist."
+                        f"Can't activate panel `{name}`: item with such name doesn't exist."
                     )
         else:
-            if value not in self._items_title:
+            if value not in self._items_names:
                 raise ValueError(
-                    f"Can't activate panel `{value}`: item with such title doesn't exist."
+                    f"Can't activate panel `{value}`: item with such name doesn't exist."
                 )
 
         if isinstance(value, str) and not self._accordion:
@@ -96,18 +100,28 @@ class Collapse(Widget):
     def get_items(self):
         return DataJson()[self.widget_id]["items"]
 
-    # def set_items(self, value: List[Collapse.Item]):
-    #     self._items = value
-    #     self._items_title = set([val.title for val in value])
-    #     DataJson()[self.widget_id]["items"] = self._get_items_json()
-    #     DataJson().send_changes()
+    def set_items(self, value: List[Collapse.Item]):
+        names = [val.name for val in value]
 
-    # def add_items(self, value: List[Collapse.Item]):
-    #     self._items.extend(value)
-    #     titles = [val.title for val in value]
-    #     self._items_title.update(titles)
-    #     DataJson()[self.widget_id]["items"] = self._get_items_json()
-    #     DataJson().send_changes()
+        self._items_names = self._make_set_from_unique(names)
+        self._items = value
+        self.set_active_panel(names[0])
+
+        DataJson()[self.widget_id]["items"] = self._get_items_json()
+        DataJson().send_changes()
+
+    def add_items(self, value: List[Collapse.Item]):
+        names = [val.name for val in value]
+        set_of_names = self._make_set_from_unique(names)
+
+        for name in names:
+            if name in self._items_names:
+                raise ValueError(f"Item with name {name} already exists.")
+
+        self._items.extend(value)
+        self._items_names.update(set_of_names)
+        DataJson()[self.widget_id]["items"] = self._get_items_json()
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Collapse.Routes.VALUE_CHANGED)
@@ -121,3 +135,13 @@ class Collapse(Widget):
             func(active)
 
         return _click
+
+    @property
+    def items_names(self):
+        return self._items_names
+
+    def _make_set_from_unique(self, names: List[str]) -> Set[str]:
+        set_of_names = set(names)
+        if len(names) != len(set_of_names):
+            raise ValueError("All items must have a unique name.")
+        return set_of_names
