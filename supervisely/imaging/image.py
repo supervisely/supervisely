@@ -403,7 +403,7 @@ def draw_text(
     :type font: ImageFont.FreeTypeFont, optional
     :param fill_background: Define fill text background or not.
     :type fill_background: bool, optional
-    :param color: Color to use for the text.
+    :param color: Text color.
     :type color: tuple, optional
     :return: Height and width of text
     :rtype: :class:`Tuple[int, int]`
