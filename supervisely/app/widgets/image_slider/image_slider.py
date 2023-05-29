@@ -89,18 +89,6 @@ class ImageSlider(Widget):
         StateJson()[self.widget_id]["selected"]["moreExamples"] = self._data[self._idx]
         StateJson().send_changes()
 
-    def get_height(self):
-        raw_height = DataJson()[self.widget_id]["options"]["height"]
-        self._height = int(raw_height[:-2])
-        return self._height
-
-    def set_height(self, value: int):
-        if not isinstance(value, int):
-            raise TypeError('Argument value type has to be "int" type')
-        self._height = value
-        DataJson()[self.widget_id]["options"]["height"] = f"{self._height}px"
-        DataJson().send_changes()
-
     @property
     def is_selectable(self):
         self._selectable = DataJson()[self.widget_id]["options"]["selectable"]
