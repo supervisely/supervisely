@@ -9,8 +9,8 @@ class Collapse(Widget):
         VALUE_CHANGED = "value_changed"
 
     class Item(object):
-        def __init__(self, content: Union[Widget, str], title: str = "") -> None:
-            self.name = title  # unique identification of the panel
+        def __init__(self, name: str, title: str, content: Union[Widget, str]) -> None:
+            self.name = name  # unique identification of the panel
             self.title = title
             self.content = content
 
@@ -27,19 +27,15 @@ class Collapse(Widget):
 
     def __init__(
         self,
-        labels: List[str],
-        contents: List[Union[str, Widget]],
+        items: List[Collapse.Item],
         accordion: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
-        if len(labels) != len(contents):
-            raise ValueError("labels length must be equal to contents length in Collapse widget.")
+        labels = [item.name for item in items]
         if len(set(labels)) != len(labels):
-            raise ValueError("All of collapse labels should be unique.")
+            raise ValueError("All of collapse names should be unique.")
 
-        self._items: List[Collapse.Item] = []
-        for title, content in zip(labels, contents):
-            self._items.append(Collapse.Item(title=title, content=content))
+        self._items: List[Collapse.Item] = items
 
         self._accordion = accordion
         if self._accordion:
@@ -63,9 +59,9 @@ class Collapse(Widget):
         return {"value": self._active_panels}
 
     def set_active_panel(self, value: Union[str, List[str]]):
-        """ Set active panel or panels.
+        """Set active panel or panels.
 
-        :param value: panel titles;
+        :param value: panel name(s);
         :type value: Union[str, List[str]]
         :raises TypeError: value of type List[str] can't be setted, if accordion is True.
         :raises ValueError: panel with such title doesn't exist.
