@@ -13,9 +13,7 @@ class Editor(Widget):
         self,
         initial_text: Optional[str] = "",
         height_px: Optional[int] = 100,
-        height_lines: Optional[
-            int
-        ] = None,  # overwrites height_px if specified. If >= 1000, all lines will be displayed.
+        height_lines: Optional[int] = None,  # overwrites height_px if specified. If >= 1000, all lines will be displayed.
         language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]] = "json",
         readonly: Optional[bool] = False,
         show_line_numbers: Optional[bool] = True,
