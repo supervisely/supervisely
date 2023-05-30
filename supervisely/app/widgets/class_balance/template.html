@@ -1,7 +1,7 @@
 <div>
   <sly-class-balance
-    :content="data.{{{widget.widget_id}}}.example1.content"
-    :options="data.{{{widget.widget_id}}}.example1.options"
+    :content="data.{{{widget.widget_id}}}.content"
+    :options="data.{{{widget.widget_id}}}.options"
     v-model="state.{{{widget.widget_id}}}.selectedRows"
     {%
     if
@@ -16,9 +16,8 @@
   >
     <template v-slot:collapse-row="{ row }">
       <sly-image-slider
-        :data="data.{{{widget.widget_id}}}.example1.imageSliderData[row.name]"
+        :data="data.{{{widget.widget_id}}}.imageSliderData[row.name]"
       />
     </template>
   </sly-class-balance>
 </div>
-<!-- :clicked-item.sync="state.{{{widget.widget_id}}}.clickedItem" -->
