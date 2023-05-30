@@ -4,27 +4,30 @@
 from __future__ import annotations
 from collections import namedtuple
 import os
-from typing import List, Optional, Tuple, Union, NamedTuple, Callable, Dict
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
+
+from tqdm import tqdm
 from supervisely.api.api import Api
-
-
-from supervisely.io.fs import file_exists, touch
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
-from supervisely._utils import batched
-from supervisely.video_annotation.key_id_map import KeyIdMap
-
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.video import video as sly_video
-
-from supervisely.project.project import Dataset, Project, OpenMode
-from supervisely.project.project import read_single_project as read_project_wrapper
+from supervisely.io.fs import file_exists, touch
+from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.project.project import (
+    Dataset,
+    OpenMode,
+    Project,
+    read_single_project as read_project_wrapper,
+)
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.video_annotation.video_annotation import VideoAnnotation
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
+from supervisely._utils import batched
+from supervisely.video import video as sly_video
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+
 
 class VideoItemPaths(NamedTuple):
     #: :class:`str`: Full video file path of item
@@ -32,6 +35,7 @@ class VideoItemPaths(NamedTuple):
 
     #: :class:`str`: Full annotation file path of item
     ann_path: str
+
 
 class VideoDataset(Dataset):
     """
@@ -58,7 +62,7 @@ class VideoDataset(Dataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "video_info"
-    
+
     #: :class:`str`: Segmentation masks directory name
     seg_dir_name = None
 
@@ -150,7 +154,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'img_dir' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Property 'img_dir' is not supported for {type(self).__name__} object."
+        )
 
     @property
     def ann_dir(self) -> str:
@@ -178,8 +184,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'img_info_dir' is not supported for {type(self).__name__} object.")
-
+        raise NotImplementedError(
+            f"Property 'img_info_dir' is not supported for {type(self).__name__} object."
+        )
 
     @property
     def item_info_dir(self):
@@ -207,8 +214,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'seg_dir' is not supported for {type(self).__name__} object.")
-
+        raise NotImplementedError(
+            f"Property 'seg_dir' is not supported for {type(self).__name__} object."
+        )
 
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
@@ -289,7 +297,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_ann(
         self, item_name, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
@@ -370,7 +380,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_item_info_path(self, item_name: str) -> str:
         """
@@ -402,7 +414,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_item_info(self, item_name: str) -> VideoInfo:
         """
@@ -441,9 +455,7 @@ class VideoDataset(Dataset):
         """
         item_info_path = self.get_item_info_path(item_name)
         item_info_dict = load_json_file(item_info_path)
-        item_info_named_tuple = namedtuple(
-            self.item_info_class.__name__, item_info_dict
-        )
+        item_info_named_tuple = namedtuple(self.item_info_class.__name__, item_info_dict)
         return item_info_named_tuple(**item_info_dict)
 
     def get_seg_path(self, item_name: str) -> str:
@@ -451,7 +463,9 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def add_item_file(
         self,
@@ -460,10 +474,10 @@ class VideoDataset(Dataset):
         ann: Optional[Union[VideoAnnotation, str]] = None,
         _validate_item: Optional[bool] = True,
         _use_hardlink: Optional[bool] = False,
-        item_info: Optional[Union[VideoInfo, Dict, str]] = None
+        item_info: Optional[Union[VideoInfo, Dict, str]] = None,
     ) -> None:
         """
-        Adds given item file to dataset items directory, and adds given annotation to dataset 
+        Adds given item file to dataset items directory, and adds given annotation to dataset
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
@@ -508,14 +522,18 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'add_item_np()' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'add_item_np()' is not supported for {type(self).__name__} object."
+        )
 
     def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None, img_info=None):
         """
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object."
+        )
 
     def get_classes_stats(
         self,
@@ -545,7 +563,7 @@ class VideoDataset(Dataset):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
@@ -569,14 +587,18 @@ class VideoDataset(Dataset):
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object."
+        )
 
     def _add_img_np(self, item_name, img):
         """
         Not available for VideoDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method '_add_img_np()' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method '_add_img_np()' is not supported for {type(self).__name__} object."
+        )
 
     def _validate_added_item_or_die(self, item_path):
         """
@@ -590,7 +612,9 @@ class VideoDataset(Dataset):
             os.remove(item_path)
             raise e
 
-    def set_ann(self, item_name: str, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None) -> None:
+    def set_ann(
+        self, item_name: str, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None
+    ) -> None:
         """
         Replaces given annotation for given item name to dataset annotations directory in json format.
 
@@ -640,7 +664,7 @@ class VideoDataset(Dataset):
             video_path, ann_path = dataset.get_item_paths("video_0748.mp4")
             print("video_path:", video_path)
             print("ann_path:", ann_path)
-            # Output: 
+            # Output:
             # video_path: /home/admin/work/supervisely/projects/videos_example/ds0/video/video_0748.mp4
             # ann_path: /home/admin/work/supervisely/projects/videos_example/ds0/ann/video_0748.mp4.json
         """
@@ -664,7 +688,7 @@ class VideoDataset(Dataset):
          .. code-block:: python
 
             from supervisely import VideoDataset
-            
+
             project_id = 10093
             dataset_id = 45330
             ds_items_link = VideoDataset.get_url(project_id, dataset_id)
@@ -719,7 +743,7 @@ class VideoProject(Project):
          .. code-block:: python
 
             from supervisely import VideoProject
-            
+
             project_id = 10093
             datasets_link = VideoProject.get_url(project_id)
 
@@ -736,10 +760,7 @@ class VideoProject(Project):
         return_items_count: Optional[bool] = True,
     ):
         return super(VideoProject, self).get_classes_stats(
-            dataset_names, 
-            return_objects_count, 
-            return_figures_count, 
-            return_items_count
+            dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
     def _read(self):
@@ -832,11 +853,11 @@ class VideoProject(Project):
                         ann_path,
                         _validate_item=_validate_item,
                         _use_hardlink=_use_hardlink,
-                        item_info=item_info_path
+                        item_info=item_info_path,
                     )
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "source_project_name": self.name,
                             "dst_directory": dst_directory,
@@ -844,8 +865,8 @@ class VideoProject(Project):
                             "item_name": item_name,
                             "item_path": item_path,
                             "ann_path": ann_path,
-                            "item_info": item_info_path
-                        }
+                            "item_info": item_info_path,
+                        },
                     )
                     raise e
         new_project.set_key_id_map(self.key_id_map)
@@ -857,27 +878,31 @@ class VideoProject(Project):
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
         target_classes: Optional[List[str]] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'to_segmentation_task()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'to_segmentation_task()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def to_detection_task(
         src_project_dir: str,
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'to_detection_task()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'to_detection_task()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def remove_classes_except(
@@ -889,7 +914,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'remove_classes_except()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'remove_classes_except()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def remove_classes(
@@ -901,7 +928,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'remove_classes()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'remove_classes()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def _remove_items(
@@ -915,8 +944,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method '_remove_items()' is not supported for VideoProject class now.")
-
+        raise NotImplementedError(
+            f"Static method '_remove_items()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
@@ -924,7 +954,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'remove_items_without_objects()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'remove_items_without_objects()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
@@ -932,7 +964,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'remove_items_without_tags()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'remove_items_without_tags()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def remove_items_without_both_objects_and_tags(
@@ -942,17 +976,19 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'remove_items_without_both_objects_and_tags()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'remove_items_without_both_objects_and_tags()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
-    def get_train_val_splits_by_count(
-        project_dir: str, train_count: int, val_count: int
-    ) -> None:
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'get_train_val_splits_by_count()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_count()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def get_train_val_splits_by_tag(
@@ -965,7 +1001,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now.")
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
+        )
 
     @staticmethod
     def get_train_val_splits_by_dataset(
@@ -975,8 +1013,9 @@ class VideoProject(Project):
         Not available for VideoProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now.")
-
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
+        )
 
     @classmethod
     def read_single(cls, dir):
@@ -996,7 +1035,7 @@ class VideoProject(Project):
         download_videos: bool = True,
         save_video_info: bool = False,
         log_progress: bool = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download video project from Supervisely to the given directory.
@@ -1015,9 +1054,8 @@ class VideoProject(Project):
         :type save_video_info: :class:`bool`, optional
         :param log_progress: Log download progress or not.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -1025,7 +1063,7 @@ class VideoProject(Project):
         .. code-block:: python
 
             import supervisely as sly
-            
+
             # Local destination Project folder
             save_directory = "/home/admin/work/supervisely/source/video_project"
 
@@ -1071,6 +1109,7 @@ class VideoProject(Project):
         :param workspace_id: Workspace ID in Supervisely to upload video project.
         :type workspace_id: int
         :param project_name: Name of video project.
+
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
         :type log_progress: bool, optional
@@ -1095,9 +1134,9 @@ class VideoProject(Project):
 
                 # Upload Video Project
                 project_id, project_name = sly.VideoProject.upload(
-                    project_directory, 
-                    api, 
-                    workspace_id=45, 
+                    project_directory,
+                    api,
+                    workspace_id=45,
                     project_name="My Video Project"
                 )
         """
@@ -1109,16 +1148,73 @@ class VideoProject(Project):
             log_progress=log_progress,
         )
 
+
 def download_video_project(
     api: Api,
     project_id: int,
     dest_dir: str,
-    dataset_ids: List[int] = None,
-    download_videos: bool = True,
-    save_video_info: bool = False,
-    log_progress: bool = False,
-    progress_cb: Optional[Callable] = None,
+    dataset_ids: Optional[List[int]] = None,
+    download_videos: Optional[bool] = True,
+    save_video_info: Optional[bool] = False,
+    log_progress: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download video project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_videos: Include videos in the download.
+    :type download_videos: bool, optional
+    :param save_video_info: Include video info in the download.
+    :type save_video_info: bool, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download video project
+        project_id = 17758
+        project_info = api.project.get_info_by_id(project_id)
+        num_videos = project_info.items_count
+
+        p = tqdm(desc="Downloading video project", total=num_videos)
+        sly.download(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
@@ -1151,15 +1247,17 @@ def download_video_project(
                 ann_jsons = api.video.annotation.download_bulk(dataset.id, video_ids)
             except Exception as e:
                 logger.info(
-                    "INFO FOR DEBUGGING", 
+                    "INFO FOR DEBUGGING",
                     extra={
                         "project_id": project_id,
                         "dataset_id": dataset.id,
-                        "video_ids": video_ids
-                    }
+                        "video_ids": video_ids,
+                    },
                 )
                 raise e
-            for video_id, video_name, ann_json, video_info in zip(video_ids, video_names, ann_jsons, batch):
+            for video_id, video_name, ann_json, video_info in zip(
+                video_ids, video_names, ann_jsons, batch
+            ):
                 if video_name != ann_json[ApiField.VIDEO_NAME]:
                     raise RuntimeError("Error in api.video.annotation.download_batch: broken order")
 
@@ -1169,13 +1267,13 @@ def download_video_project(
                         api.video.download_path(video_id, video_file_path)
                     except Exception as e:
                         logger.info(
-                            "INFO FOR DEBUGGING", 
+                            "INFO FOR DEBUGGING",
                             extra={
                                 "project_id": project_id,
                                 "dataset_id": dataset.id,
                                 "video_id": video_id,
-                                "video_file_path": video_file_path
-                            }
+                                "video_file_path": video_file_path,
+                            },
                         )
                         raise e
                 else:
@@ -1185,14 +1283,14 @@ def download_video_project(
                     video_ann = VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "project_id": project_id,
                             "dataset_id": dataset.id,
-                            "video_id": video_id, 
-                            "video_name": video_name, 
-                            "ann_json": ann_json
-                        }
+                            "video_id": video_id,
+                            "video_name": video_name,
+                            "ann_json": ann_json,
+                        },
                     )
                     raise e
                 try:
@@ -1202,22 +1300,22 @@ def download_video_project(
                         ann=video_ann,
                         _validate_item=False,
                         _use_hardlink=True,
-                        item_info=item_info
+                        item_info=item_info,
                     )
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "project_id": project_id,
                             "dataset_id": dataset.id,
-                            "video_id": video_id, 
-                            "video_name": video_name, 
+                            "video_id": video_id,
+                            "video_name": video_name,
                             "video_file_path": video_file_path,
-                            "item_info": item_info
-                        }
+                            "item_info": item_info,
+                        },
                     )
                     raise e
-                
+
                 if progress_cb is not None:
                     progress_cb(1)
 
@@ -1265,13 +1363,13 @@ def upload_video_project(
             item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
         except Exception as e:
             logger.info(
-                "INFO FOR DEBUGGING", 
+                "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "names": names, 
-                    "item_paths": item_paths
-                }
+                    "names": names,
+                    "item_paths": item_paths,
+                },
             )
             raise e
         item_ids = [item_info.id for item_info in item_infos]
@@ -1285,13 +1383,13 @@ def upload_video_project(
             api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
         except Exception as e:
             logger.info(
-                "INFO FOR DEBUGGING", 
+                "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "item_ids":item_ids, 
-                    "ann_paths": ann_paths
-                }
+                    "item_ids": item_ids,
+                    "ann_paths": ann_paths,
+                },
             )
             raise e
 

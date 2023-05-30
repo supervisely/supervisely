@@ -449,6 +449,12 @@ class ApiField:
     """"""
     PATHS = "paths"
     """"""
+    PROJECTS = "projects"
+    """"""
+    ARCHIVE_URL = "archiveUrl"
+    """"""
+    BACKUP_ARCHIVE = "backupArchive"
+    """"""
 
 
 def _get_single_item(items):
@@ -472,20 +478,19 @@ class ModuleApiBase(_JsonConvertibleModule):
     """ModuleApiBase"""
 
     MAX_WAIT_ATTEMPTS = 999
-    """ 
-    """
+    """ Maximum number of attempts that will be made to wait for a certain condition to be met."""
     WAIT_ATTEMPT_TIMEOUT_SEC = 1
-    """ 
-    """
+    """Number of seconds for intervals between attempts."""
 
     @staticmethod
     def info_sequence():
-        """info_sequence"""
+        """Get list of all class field names."""
+
         raise NotImplementedError()
 
     @staticmethod
     def info_tuple_name():
-        """info_tuple_name"""
+        """Get string name of NamedTuple."""
         raise NotImplementedError()
 
     def __init_subclass__(cls, **kwargs):
@@ -522,7 +527,23 @@ class ModuleApiBase(_JsonConvertibleModule):
         limit: int = None,
         return_first_response: bool = False,
     ):
-        """get_list_all_pages"""
+        """
+        Get list of all or limited quantity entities from the Supervisely server.
+
+        :param method: Request method name
+        :type method: str
+        :param data: Dictionary with request body info
+        :type data: dict
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :param convert_json_info_cb: Function for convert json info
+        :type convert_json_info_cb: Callable, optional
+        :param limit: Number of entity to retrieve
+        :type limit: int, optional
+        :param return_first_response: Specify if return first response
+        :type return_first_response: bool, optional
+        """
+
         if convert_json_info_cb is None:
             convert_func = self._convert_json_info
         else:
@@ -577,7 +598,23 @@ class ModuleApiBase(_JsonConvertibleModule):
         limit: int = None,
         return_first_response: bool = False,
     ):
-        """get_list_all_pages generator"""
+        """
+        This generator function retrieves a list of all or a limited quantity of entities from the Supervisely server, yielding batches of entities as they are retrieved
+
+        :param method: Request method name
+        :type method: str
+        :param data: Dictionary with request body info
+        :type data: dict
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :param convert_json_info_cb: Function for convert json info
+        :type convert_json_info_cb: Callable, optional
+        :param limit: Number of entity to retrieve
+        :type limit: int, optional
+        :param return_first_response: Specify if return first response
+        :type return_first_response: bool, optional
+        """
+
         if convert_json_info_cb is None:
             convert_func = self._convert_json_info
         else:
@@ -628,7 +665,13 @@ class ModuleApiBase(_JsonConvertibleModule):
         return get_info_by_filters_fn(filters)
 
     def get_info_by_id(self, id):
-        """get_info_by_id"""
+        """
+        Get information about an entity by its ID from the Supervisely server.
+
+        :param id: ID of the entity.
+        :type id: int
+        """
+
         raise NotImplementedError()
 
     @staticmethod
@@ -692,18 +735,48 @@ class ModuleApi(ModuleApiBase):
     """Base class for entities that have a parent object in the system."""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
+
 
     def __init__(self, api):
         super().__init__(api)
         self._api = api
 
     def get_info_by_name(self, parent_id, name):
-        """get_info_by_name"""
+        """
+        Get information about an entity by its name from the Supervisely server.
+
+        :param parent_id: ID of the parent entity.
+        :type parent_id: int
+        :param name: Name of the entity for which the information is being retrieved
+        :type name: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            dataset_id = 55832
+            name = "IMG_0315.jpeg"
+            info = api.image.get_info_by_name(dataset_id, name)
+            print(info)
+            # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
+        """
+
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
                 parent_id, module_name
@@ -717,15 +790,111 @@ class ModuleApi(ModuleApiBase):
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
-        """get_list"""
+        """
+        Get list of entities in parent entity with given parent ID.
+
+        :param parent_id: parent ID in Supervisely.
+        :type parent_id: int
+        :param filters: List of parameters to sort output entities.
+        :type filters: List[Dict[str, str]], optional
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            dataset_id = 55832
+            images = api.image.get_list(dataset_id)
+            print(images)
+            # Output: [
+                ImageInfo(id=19369642, ...) 
+                ImageInfo(id=19369643, ...)
+                ImageInfo(id=19369644, ...)
+            ]
+        """
+
         raise NotImplementedError()
 
     def exists(self, parent_id, name):
-        """exists"""
+        """
+        Checks if an entity with the given parent_id and name exists
+
+        :param parent_id: ID of the parent entity.
+        :type parent_id: int
+        :param name: Name of the entity.
+        :type name: str
+        :return: Returns True if entity exists, and False if not
+        :rtype: bool
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            name = "IMG_0315.jpeg"
+            dataset_id = 55832
+            exists = api.image.exists(dataset_id, name)
+            print(exists) # True
+        """
+
         return self.get_info_by_name(parent_id, name) is not None
 
     def get_free_name(self, parent_id, name):
-        """get_free_name"""
+        """
+        Generates a free name for an entity with the given parent_id and name.
+        Adds an increasing suffix to original name until a unique name is found.
+
+        :param parent_id: ID of the parent entity.
+        :type parent_id: int
+        :param name: Name of the entity.
+        :type name: str
+        :return: Returns free name.
+        :rtype: str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            name = "IMG_0315.jpeg"
+            dataset_id = 55832
+            free_name = api.image.get_free_name(dataset_id, name)
+            print(free_name) # IMG_0315_001.jpeg
+        """
+
         return self._get_free_name(
             exist_check_fn=lambda module_name: self.exists(parent_id, module_name),
             name=name,
@@ -772,11 +941,10 @@ class CloneableModuleApi(ModuleApi):
     """CloneableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _clone_api_method_name(self):
         """_clone_api_method_name"""
@@ -862,22 +1030,33 @@ class RemoveableModuleApi(ModuleApi):
     """RemoveableModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _remove_api_method_name(self):
         """_remove_api_method_name"""
         raise NotImplementedError()
 
     def remove(self, id):
-        """remove"""
+        """
+        Remove an entity with the specified ID from the Supervisely server.
+        
+        :param id: Entity ID in Supervisely
+        :type id: int
+        """
         self._api.post(self._remove_api_method_name(), {ApiField.ID: id})
 
     def remove_batch(self, ids, progress_cb=None):
-        """remove_batch"""
+        """
+        Remove entities with given IDs from the Supervisely server.
+
+        :param ids: IDs of entities in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for control remove progress.
+        :type progress_cb: Callable
+        """
         for id in ids:
             self.remove(id)
             if progress_cb is not None:
@@ -888,11 +1067,10 @@ class RemoveableBulkModuleApi(ModuleApi):
     """RemoveableBulkModuleApi"""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
-    """
-    """
+    """Maximum number of attempts that will be made to wait for a certain condition to be met."""
+
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
-    """
-    """
+    """Number of seconds for intervals between attempts."""
 
     def _remove_batch_api_method_name(self):
         """_remove_batch_api_method_name"""
@@ -903,7 +1081,33 @@ class RemoveableBulkModuleApi(ModuleApi):
         raise NotImplementedError()
 
     def remove_batch(self, ids, progress_cb=None, batch_size=50):
-        """remove_batch"""
+        """
+        Remove entities in batches from the Supervisely server.
+        
+        :param ids: IDs of entities in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for control remove progress.
+        :type progress_cb: Callable
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            image_ids = [19369645, 19369646, 19369647]
+            api.image.remove_batch(image_ids)
+        """
         for ids_batch in batched(ids, batch_size=batch_size):
             self._api.post(
                 self._remove_batch_api_method_name(),
@@ -913,5 +1117,29 @@ class RemoveableBulkModuleApi(ModuleApi):
                 progress_cb(len(ids_batch))
 
     def remove(self, id):
-        """remove"""
+        """
+        Remove an entity with the specified ID from the Supervisely server.
+        
+        :param id: Entity ID in Supervisely.
+        :type id: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            image_id = 19369643
+            api.image.remove(image_id)
+        """
         self.remove_batch([id])

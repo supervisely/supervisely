@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Functions for processing videos"""
 
 from __future__ import annotations
 from typing import Tuple, List, Dict, Optional
@@ -357,13 +358,14 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
 
     stream_infos = []
     for stream in video_meta["streams"]:
+        duration = stream.get("duration", video_meta["format"]["duration"])
         if stream["codec_type"] == "video":
             has_video = True
             stream_info = {
                 "index": stream["index"],
                 "width": stream["width"],
                 "height": stream["height"],
-                "duration": float(stream["duration"]),
+                "duration": float(duration),
                 "rotation": 0,
                 "codecName": stream["codec_name"],
                 "codecType": stream["codec_type"],
@@ -388,7 +390,7 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
             stream_info = {
                 "index": stream["index"],
                 "channels": stream["channels"],
-                "duration": float(stream["duration"]),
+                "duration": float(duration),
                 "codecName": stream["codec_name"],
                 "codecType": stream["codec_type"],
                 "startTime": int(float(stream["start_time"])),

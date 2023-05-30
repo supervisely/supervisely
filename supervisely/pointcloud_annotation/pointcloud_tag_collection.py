@@ -229,6 +229,7 @@ class PointcloudTagCollection(TagCollection):
             #     }
             # ]
         """
+
         return [tag.to_json(key_id_map) for tag in self]
 
     @classmethod
@@ -240,7 +241,7 @@ class PointcloudTagCollection(TagCollection):
     ) -> PointcloudTagCollection:
         """
         Convert a list with dicts in json format to :class:`PointcloudTagCollection<PointcloudTagCollection>`.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`.
+        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`
@@ -279,6 +280,7 @@ class PointcloudTagCollection(TagCollection):
 
             tags = sly.PointcloudTagCollection.from_json(data, tag_metas)
         """
+
         tags = [
             cls.item_type.from_json(tag_json, tag_meta_collection, key_id_map) for tag_json in data
         ]

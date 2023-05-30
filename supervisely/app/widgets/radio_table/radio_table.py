@@ -19,8 +19,11 @@ class RadioTable(Widget):
 
         self._columns = columns
         self._rows = rows
-        if isinstance(subtitles, dict):
-            subtitles = [subtitles[col] for col in columns]
+        if len(subtitles) > 0:
+            if isinstance(subtitles, dict):
+                subtitles = [subtitles[col] for col in columns]
+        else:
+            subtitles = [None] * len(columns)
         self._subtitles = subtitles
         self._column_formatters = column_formatters
 
