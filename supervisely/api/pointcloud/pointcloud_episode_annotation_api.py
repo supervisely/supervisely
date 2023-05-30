@@ -161,7 +161,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
 
                 figures.append(fig)
                 pointcloud_ids.append(frame_to_pointcloud_ids[i])
-
+        print("------------------------------ here ----------------------------")
         self._api.pointcloud_episode.object.append_bulk(pointcloud_ids[0], ann.objects, key_id_map)
         self._api.pointcloud_episode.figure.append_to_dataset(
             dataset_id, figures, pointcloud_ids, key_id_map
