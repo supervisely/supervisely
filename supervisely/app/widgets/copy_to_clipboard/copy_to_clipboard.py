@@ -52,9 +52,9 @@ class CopyToClipboard(Widget):
             "curr_widget_text": self._curr_widget_text
         }
 
-    def get_content(self) -> Union[Editor, Text, TextArea, Input, str]:
+    def get_content(self) -> Union[Editor, Input, Text, TextArea , str]:
         return self._content
 
     @property
     def text(self) -> str:
-        return DataJson()[self.widget_id]["content"]
+        return StateJson()[self.widget_id]["content"] if isinstance(self._content, (Editor, Input, TextArea)) else DataJson()[self.widget_id]["content"]
