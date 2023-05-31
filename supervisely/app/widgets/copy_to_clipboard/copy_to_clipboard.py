@@ -11,54 +11,50 @@ class CopyToClipboard(Widget):
         widget_id: Optional[str] = None,
     ):
         self._content = content
-        self._content_text = None
-
-        self._init_content(content)
-
-        super().__init__(widget_id=widget_id, file_path=__file__)
-
-    def _init_content(self, content):
-        self._json_data = {}
-        self._json_state = {}
 
         if isinstance(content, Editor):
             self._editor_or_input = True
             self._content_text = content.get_text()
-            self._json_state = {"content": self._content_text, "curr_widget_text": "text"}
-        elif isinstance(content, Text):
-            self._text = True
-            self._content_text = content.text
-            self._json_data = {"content": self._content_text, "curr_widget_text": "text"}
-        elif isinstance(content, TextArea):
-            self._text = True
-            self._content_text = content.get_value()
-            self._json_data = {"content": self._content_text, "curr_widget_text": "value"}
+            self._curr_widget_text = "text"
         elif isinstance(content, Input):
             self._editor_or_input = True
             self._content_text = content.get_value()
-            self._json_state = {
-                "content": self._content_text,
-                "value": self._content_text,
-                "curr_widget_text": "value",
-            }
+            self._curr_widget_text = "value"
+        elif isinstance(content, Text):
+            self._text_or_textarea = True
+            self._content_text = content.text
+            self._curr_widget_text = "text"
+        elif isinstance(content, TextArea):
+            self._text_or_textarea = True
+            self._content_text = content.get_value()
+            self._curr_widget_text = "value"
         elif isinstance(content, str):
             self._only_string = True
             self._content_text = content
-            self._json_state = {"content": self._content_text}
+            self._curr_widget_text = None
         else:
             raise TypeError(
                 f"Supported types: str, Editor, Text, TextArea, Input. Your type: {type(content).__name__}"
             )
 
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
+
     def get_json_data(self) -> Dict:
-        return self._json_data
+        return {
+            "content": self._content_text,
+            "curr_widget_text": self._curr_widget_text
+        }
 
     def get_json_state(self) -> Dict:
-        return self._json_state
+        return {
+            "content": self._content_text,
+            "curr_widget_text": self._curr_widget_text
+        }
 
     def get_content(self) -> Union[Editor, Text, TextArea, Input, str]:
         return self._content
 
     @property
     def text(self) -> str:
-        return self._content_text
+        return DataJson()[self.widget_id]["content"]
