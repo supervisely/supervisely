@@ -16,6 +16,7 @@ from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.widgets.line_chart.line_chart import LineChart
 from supervisely.app.widgets.scatter_chart.scatter_chart import ScatterChart
 from supervisely.app.widgets.heatmap_chart.heatmap_chart import HeatmapChart
+from supervisely.app.widgets.treemap_chart.treemap_chart import TreemapChart
 from supervisely.app.widgets.table.table import Table
 from supervisely.app.widgets.labeled_image.labeled_image import LabeledImage
 from supervisely.app.widgets.text.text import Text
