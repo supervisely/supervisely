@@ -4,8 +4,8 @@ from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.content import DataJson
 
 
-class DistributedChart(Apexchart):
-    """Widget for displaying distributed data for series in a comparison by distribution of each of them.
+class TreemapChart(Apexchart):
+    """Widget for displaying data for series in a comparison by distribution of each of them.
     Supports multiple series, which can be added in one chart. Widget also handles click events on datapoints.
 
     :param title: title of the chart, which will be displayed above the chart
@@ -27,7 +27,7 @@ class DistributedChart(Apexchart):
     :Usage example:
 
      .. code-block:: python
-        from supervisely.app.widgets import DistributedChart
+        from supervisely.app.widgets import TreemapChart
 
         # Preparing list of custom colors for series (it's optional)
         colors = [
@@ -38,8 +38,11 @@ class DistributedChart(Apexchart):
             "#775DD0",
             ]
 
+        # Creating tooltip for chart (it's optional)
+        tooltip = "There are {y} objects"
+
         # Initialize empty chart without any series.
-        dc = DistributedChart(title="Distributed Chart", colors=colors)
+        tc = TreemapChart(title="Treemap Chart", colors=colors)
 
 
         # Preparing series data for widget
@@ -74,7 +77,7 @@ class DistributedChart(Apexchart):
 
         if not colors:
             self._distributed = False
-            self._colors = ["#008FFB"]
+            self._colors = []
         else:
             self._distributed = True
             self._colors = colors
@@ -100,7 +103,7 @@ class DistributedChart(Apexchart):
             sly_options["tooltip"] = self._tooltip
             self._options["tooltip"] = {"y": {}}
 
-        super(DistributedChart, self).__init__(
+        super(TreemapChart, self).__init__(
             series=self._series,
             options=self._options,
             type="treemap",
@@ -204,7 +207,7 @@ class DistributedChart(Apexchart):
         series_index, data_index and data. If click was outside of the cells, None will be returned.
 
         :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
-        :rtype: Union[DistributedChart.ClickedDataPoint, None]
+        :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()
         series_index = value["seriesIndex"]
@@ -220,6 +223,6 @@ class DistributedChart(Apexchart):
             "value": raw_data["y"],
         }
 
-        res = DistributedChart.ClickedDataPoint(series_index, data_index, data)
+        res = TreemapChart.ClickedDataPoint(series_index, data_index, data)
 
         return res
