@@ -1,5 +1,5 @@
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Widget, Text, Empty
 from typing import Optional, List
 
 try:
@@ -15,12 +15,15 @@ class ColorPicker(Widget):
     def __init__(
         self,
         show_alpha: bool = False,
-        color_format: Literal["hsl", "hsv", "hex", "rgb"] = "hex",
+        color_format: Literal["hex", "hsl", "hsv",  "rgb"] = "hex",
         widget_id: str = None,
+        show_info: bool = False,
     ):
         self._show_alpha = show_alpha
         self._color_format = color_format
         self._changes_handled = False
+        self._color_info = Empty()
+        self._show_info = show_info
 
         if self._color_format not in ["hsl", "hsv", "hex", "rgb"]:
             raise TypeError(
@@ -38,10 +41,16 @@ class ColorPicker(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+        if self._show_info is True:
+            self._color_info = Text(
+                self._get_color_info(), "info"
+            )
+
     def get_json_data(self):
         return {
             "show_alpha": self._show_alpha,
             "color_format": self._color_format,
+            "show_info": self._show_info,
         }
 
     def get_json_state(self):
@@ -104,3 +113,9 @@ class ColorPicker(Widget):
             func(res)
 
         return _click
+    
+    def _get_color_info(self):
+        @self.value_changed
+        def show_color(res):
+            color_info = f"Current color: {res}"
+            self._color_info.set(text=color_info, status="info")

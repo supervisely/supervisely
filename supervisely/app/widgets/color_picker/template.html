@@ -7,6 +7,13 @@
     :show-alpha="data.{{{widget.widget_id}}}.show_alpha"
     :color-format="data.{{{widget.widget_id}}}.color_format"
   ></el-color-picker>
+
+  <div 
+    v-if="data.{{{widget.widget_id}}}.show_info === true"
+    style="margin-top: 10px;"
+  >
+    {{{widget._color_info}}}
+  </div>
 </div>
 
 
