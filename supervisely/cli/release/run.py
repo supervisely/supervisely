@@ -184,7 +184,11 @@ def run(
         return False
 
     # get api token
-    api_token = os.getenv("API_TOKEN", None)
+    api_token = os.getenv("RELEASE_TOKEN", None)
+    if api_token is None:
+        api_token = os.getenv("API_TOKEN", None)
+    else:
+        console.print("RELEASE_TOKEN env var found. Using it instead of API_TOKEN")
     if api_token is None:
         console.print(
             '[red][Error][/] Cannot find [green]API_TOKEN[/]. Add it to your "~/supervisely.env" file or to environment variables'
