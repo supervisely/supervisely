@@ -13,6 +13,8 @@ class DistributedChart(Apexchart):
     :param colors: list of colors for series, if not specified, default color will be used,
         if there are more series than colors, colors will be repeated. colors should be in hex format (e.g. #008FFB)
     :type colors: List[str]
+    :param tooltip: tooltip for chart, which will be displayed on hover over datapoint
+    :type tooltip: str
 
     :Methods:
     add_series(): add new series to the chart, if len(names) != len(values), ValueError will be raised
@@ -63,10 +65,12 @@ class DistributedChart(Apexchart):
         self,
         title: str,
         colors: List[str] = None,
+        tooltip: str = None,
     ):
         self._title = title
         self._series = []
         self._widget_height = 350
+        self._tooltip = tooltip
 
         if not colors:
             self._distributed = False
@@ -91,11 +95,17 @@ class DistributedChart(Apexchart):
             "title": {"text": self._title, "align": "left"},
         }
 
+        sly_options = {}
+        if self._tooltip is not None:
+            sly_options["tooltip"] = self._tooltip
+            self._options["tooltip"] = {"y": {}}
+
         super(DistributedChart, self).__init__(
             series=self._series,
             options=self._options,
             type="treemap",
             height=self._widget_height,
+            sly_options=sly_options,
         )
 
     def _manage_series(self, names: List[str], values: List[Union[int, float]], set: bool = False):
