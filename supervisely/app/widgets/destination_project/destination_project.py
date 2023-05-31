@@ -10,8 +10,6 @@ from supervisely.project.project_type import ProjectType
 
 
 class DestinationProject(Widget):
-    class Routes:
-        VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
@@ -35,9 +33,11 @@ class DestinationProject(Widget):
 
         self._project_name = ""
         self._dataset_name = ""
-
+        
+        self._use_project_datasets_structure = False
+        
         self._workspace_id = workspace_id
-        self._project_type = project_type
+        self._project_type = str(project_type)
         self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -55,6 +55,7 @@ class DestinationProject(Widget):
             "dataset_mode": self._dataset_mode,
             "dataset_id": self._dataset_id,
             "dataset_name": self._dataset_name,
+            "use_project_datasets_structure": self._use_project_datasets_structure,
         }
 
     def get_selected_project_id(self):
@@ -63,8 +64,8 @@ class DestinationProject(Widget):
     def get_selected_dataset_id(self):
         project_id = StateJson()[self.widget_id]["project_id"]
         dataset_mode = StateJson()[self.widget_id]["dataset_mode"]
-        if project_id is not None and dataset_mode == "existing_dataset":
-            ds_name = StateJson()[self.widget_id]["dataset_id"]
+        ds_name = StateJson()[self.widget_id]["dataset_id"]
+        if project_id is not None and dataset_mode == "existing_dataset" and ds_name is not None:
             ds = self._api.dataset.get_info_by_name(parent_id=project_id, name=ds_name)
             return ds.id
         return None
@@ -75,16 +76,5 @@ class DestinationProject(Widget):
     def get_dataset_name(self):
         return StateJson()[self.widget_id]["dataset_name"]
 
-    def value_changed(self, func):
-        route_path = self.get_route_path(DestinationProject.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-
-        @server.post(route_path)
-        def _click():
-            value = self.get_selected_dataset_id()
-            if value == "":
-                value = None
-            func(value)
-
-        return _click
+    def use_project_datasets_structure(self):
+        return StateJson()[self.widget_id]["use_project_datasets_structure"]

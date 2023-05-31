@@ -9,6 +9,9 @@ from supervisely.app.widgets import Widget
 
 
 class SelectAppSession(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         team_id: int,
@@ -29,6 +32,18 @@ class SelectAppSession(Widget):
             raise ValueError("Parameter tags must be a list of strings, but got empty list")
 
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(SelectAppSession.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            res = self.get_selected_id()
+            func(res)
+
+        return _click
 
     def get_json_data(self):
         data = {}

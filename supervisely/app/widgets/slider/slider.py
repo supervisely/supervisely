@@ -4,6 +4,9 @@ from typing import Union, List
 
 
 class Slider(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
             self,
             value: Union[int, List[int]] = 0,
@@ -30,6 +33,7 @@ class Slider(Widget):
         self._range = False if show_input else range
         self._vertical = vertical
         self._height = f"{height}px" if vertical else None
+        self._changes_handled = False
 
         self._validate_min_max(min, max)
         self._validate_default_value(value)
@@ -154,3 +158,16 @@ class Slider(Widget):
     def hide_tooltip(self):
         DataJson()[self.widget_id]["showTooltip"] = False
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(Slider.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _click():
+            res = self.get_value()
+            self._value = res
+            func(res)
+
+        return _click

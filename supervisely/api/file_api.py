@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional, Callable
+from typing import NamedTuple, List, Dict, Optional, Callable, Union
+from typing_extensions import Literal
 
 import os
 import shutil
@@ -32,6 +33,7 @@ from supervisely.io.fs import (
 )
 from supervisely.sly_logger import logger
 import supervisely.io.env as env
+from tqdm import tqdm
 
 
 class FileInfo(NamedTuple):
@@ -62,17 +64,19 @@ class FileApi(ModuleApiBase):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         team_id = 8
         file_path = "/999_App_Test/"
@@ -125,7 +129,13 @@ class FileApi(ModuleApiBase):
         """
         return "FileInfo"
 
-    def list_on_agent(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list_on_agent(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
+    ) -> List[Union[Dict, FileInfo]]:
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
 
@@ -148,9 +158,22 @@ class FileApi(ModuleApiBase):
                 elif item["type"] == "directory" and recursive is True:
                     dirs_queue.append(os.path.join(cur_dir, item["name"]))
 
-        return results
+        if return_type == "dict":
+            return results
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in results]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
-    def list(self, team_id: int, path: str, recursive: bool = True) -> List[Dict]:
+    def list(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "dict",
+    ) -> List[Union[Dict, FileInfo]]:
         """
         List of files in the Team Files.
 
@@ -160,21 +183,36 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all files recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[dict]`
+        :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
+        :type return_type: str
+        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :rtype: class List[Union[Dict, FileInfo]]
         :Usage example:
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 8
             file_path = "/999_App_Test/"
+
+            # Get information about file in dict way..
             files = api.file.list(team_id, file_path)
+            file = files[0]
+            print(file['id'])
+            # Output: 7660
 
             print(files)
             # Output: [
@@ -213,20 +251,43 @@ class FileApi(ModuleApiBase):
             #         "name":"01587.json"
             #     }
             # ]
+
+            # ..or as FileInfo with attributes:
+            files = api.file.list(team_id, file_path, return_type='fileinfo')
+            file = files[0]
+            print(file.id)
+            # Output: 7660
+
+            print(files)
+            # Output: [
+            # FileInfo(team_id=8, id=7660, user_id=7, name='00135.json', hash='z7Wv1a7WI...
+            # FileInfo(team_id=8, id=7661, user_id=7, name='01587.json', hash='La9+XtF2+...
+            # ]
         """
 
-        if not path.endswith(os.path.sep) and recursive is False:
-            path += os.path.sep
+        if not path.endswith("/") and recursive is False:
+            path += "/"
         if self.is_on_agent(path) is True:
-            return self.list_on_agent(team_id, path, recursive)
+            return self.list_on_agent(team_id, path, recursive, return_type)
 
         response = self._api.post(
-            "file-storage.list", {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive}
+            "file-storage.list",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
         )
-        return response.json()
+
+        if return_type == "dict":
+            return response.json()
+        elif return_type == "fileinfo":
+            return [self._convert_json_info(info_json) for info_json in response.json()]
+        else:
+            raise ValueError(
+                "The specified value for the 'return_type' parameter should be either 'dict' or 'fileinfo'."
+            )
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
+        Disclaimer: Method is not recommended. Use api.file.list instead
+
         List of files in the Team Files.
 
         :param team_id: Team ID in Supervisely.
@@ -235,17 +296,25 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
-        :return: List of all Files with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[FileInfo]`
+        :return: List of all Files with information. See class info_sequence
+        :rtype: class List[FileInfo]
         :Usage example:
 
          .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             team_id = 9
             file_path = "/My_App_Test/"
@@ -258,13 +327,11 @@ class FileApi(ModuleApiBase):
             # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
             # ]
         """
-        items = self.list(team_id=team_id, path=path, recursive=recursive)
-        results = [self._convert_json_info(info_json) for info_json in items]
-        return results
+        return self.list(team_id=team_id, path=path, recursive=recursive, return_type="fileinfo")
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
         """
-        List dirs and files in the `path` dir.
+        List dirs and files in the directiry with given path.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -351,7 +418,7 @@ class FileApi(ModuleApiBase):
         remote_path: str,
         local_save_path: str,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -365,7 +432,7 @@ class FileApi(ModuleApiBase):
         :param cache: optional
         :type cache: FileCache, optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -418,7 +485,7 @@ class FileApi(ModuleApiBase):
         self,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
         if (
@@ -449,7 +516,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Directory from Team Files.
@@ -461,7 +528,7 @@ class FileApi(ModuleApiBase):
         :param local_save_path: Local save path.
         :type local_save_path: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -479,8 +546,8 @@ class FileApi(ModuleApiBase):
 
             api.file.download_directory(9, path_to_dir, local_save_path)
         """
-        if not remote_path.endswith(os.path.sep):
-            remote_path += os.path.sep
+        if not remote_path.endswith("/"):
+            remote_path += "/"
 
         if self.is_on_agent(remote_path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
@@ -517,8 +584,8 @@ class FileApi(ModuleApiBase):
         content_dict[ApiField.NAME] = item
 
         dst_dir = os.path.dirname(dst)
-        if not dst_dir.endswith(os.path.sep):
-            dst_dir += os.path.sep
+        if not dst_dir.endswith("/"):
+            dst_dir += "/"
         content_dict[ApiField.PATH] = dst_dir  # os.path.basedir ...
         content_dict["file"] = (
             item,
@@ -530,7 +597,7 @@ class FileApi(ModuleApiBase):
         return resp.json()
 
     def upload(
-        self, team_id: int, src: str, dst: str, progress_cb: Optional[Callable] = None
+        self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> FileInfo:
         """
         Upload File to Team Files.
@@ -542,7 +609,7 @@ class FileApi(ModuleApiBase):
         :param dst: Path to File in Team Files.
         :type dst: str
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
         :Usage example:
@@ -567,7 +634,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src_paths: List[str],
         dst_paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[FileInfo]:
         """
         Upload Files to Team Files.
@@ -579,7 +646,7 @@ class FileApi(ModuleApiBase):
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
         :Usage example:
@@ -636,10 +703,13 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        if progress_cb is None:
+        _progress_cb = progress_cb
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
+            _progress_cb = progress_cb.get_partial()
+        if _progress_cb is None:
             data = encoder
         else:
-            data = MultipartEncoderMonitor(encoder, progress_cb)
+            data = MultipartEncoderMonitor(encoder, _progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
         return results
@@ -682,6 +752,42 @@ class FileApi(ModuleApiBase):
 
     def remove(self, team_id: int, path: str) -> None:
         """
+        Removes a file from the Team Files. If the specified path is a directory,
+        the entire directory (including all recursively included files) will be removed.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path in Team Files.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
+            api.file.remove(8, "/999_App_Test/ds1/") # remove folder
+        """
+
+        if self.is_on_agent(path) is True:
+            # self.remove_from_agent(team_id, path)
+            logger.warn(
+                f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
+            )
+            return
+
+        resp = self._api.post(
+            "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
+        )
+
+    def remove_file(self, team_id: int, path: str) -> None:
+        """
         Removes file from Team Files.
 
         :param team_id: Team ID in Supervisely.
@@ -700,25 +806,54 @@ class FileApi(ModuleApiBase):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.file.remove(8, "/999_App_Test/ds1/01587.json")
+            api.file.remove_file(8, "/999_App_Test/ds1/01587.json")
         """
 
-        if self.is_on_agent(path) is True:
-            # self.remove_from_agent(team_id, path)
-            logger.warn(
-                f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
-            )
-            return
+        file_info = self.get_info_by_path(team_id, path)
 
-        resp = self._api.post(
-            "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
-        )
+        if file_info is None:
+            raise ValueError(
+                f"File not found in Team files. Maybe you entered directory? (Path: '{path}')"
+            )
+
+        self.remove(team_id, path)
+
+    def remove_dir(self, team_id: int, path: str) -> None:
+        """
+        Removes folder from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to folder in Team Files.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.file.remove_dir(8, "/999_App_Test/ds1/")
+        """
+
+        if not path.endswith("/"):
+            raise ValueError("Please add a slash in the end to recognize path as a directory.")
+
+        if not self.dir_exists(team_id, path):
+            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
+
+        self.remove(team_id, path)
 
     def remove_batch(
         self,
         team_id: int,
         paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Removes list of files from Team Files.
@@ -1061,11 +1196,12 @@ class FileApi(ModuleApiBase):
             res_remote_dir = remote_dir
 
         local_files = list_files_recursively(local_dir)
-        remote_files = [file.replace(local_dir, res_remote_dir) for file in local_files]
+        remote_files = [
+            file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/")) for file in local_files
+        ]
 
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
         ):
-
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir

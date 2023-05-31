@@ -29,7 +29,7 @@ class InstanceSegmentation(Inference):
             )
         if isinstance(dto, PredictionMask):
             if not dto.mask.any():  # skip empty masks
-                logger.debug(f"Mask of class {dto.class_name} is empty and will be sklipped")
+                logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
                 return None
             geometry = Bitmap(dto.mask)
         elif isinstance(dto, PredictionBBox):
