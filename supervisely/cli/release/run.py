@@ -247,14 +247,15 @@ def run(
     # get modal template
     modal_template = ""
     if "modal_template" in config:
-        modal_template_path = module_root.joinpath(config["modal_template"])
-        if not modal_template_path.exists() or not modal_template_path.is_file():
-            console.print(
-                f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
-            )
-            return False
-        with open(modal_template_path, "r") as f:
-            modal_template = f.read()
+        if config["modal_template"] != "":
+            modal_template_path = module_root.joinpath(config["modal_template"])
+            if not modal_template_path.exists() or not modal_template_path.is_file():
+                console.print(
+                    f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
+                )
+                return False
+            with open(modal_template_path, "r") as f:
+                modal_template = f.read()
 
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
