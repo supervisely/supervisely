@@ -100,7 +100,7 @@ class ClassBalance(Widget):
 
     def get_max_height(self):
         self._max_height = DataJson()[self.widget_id]["options"]["maxHeight"]
-        return int(self._height[:-2])
+        return int(self._max_height[:-2])
 
     def add_segments(self, segments: List[Dict] = [], send_changes=True):
         for curr_segment in segments:
