@@ -50,6 +50,9 @@ from supervisely.task.progress import (
     report_inference_finished,
 )
 
+
+import supervisely.project as project
+from supervisely.project.download import download
 from supervisely.project.project import (
     Project,
     OpenMode,
@@ -76,6 +79,7 @@ from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
@@ -87,6 +91,7 @@ from supervisely.export.pascal_voc import save_project_as_pascal_voc_detection
 
 from supervisely.metric.metric_base import MetricsBase
 from supervisely.metric.projects_applier import MetricProjectsApplier
+
 
 from supervisely.metric.iou_metric import IoUMetric
 from supervisely.metric.confusion_matrix_metric import ConfusionMatrixMetric
@@ -224,3 +229,11 @@ from supervisely.project.volume_project import (
 from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files
+import supervisely.output as output
+
+# monkey patching
+import tqdm
+from supervisely.task.progress import tqdm_sly
+
+_original_tqdm = tqdm.tqdm
+tqdm.tqdm = tqdm_sly

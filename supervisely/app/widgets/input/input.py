@@ -22,7 +22,7 @@ class Input(Widget):
         type: Literal["text", "password"] = "text",
         widget_id: str = None,
     ):
-        self._value = value
+        self._value = value  # initial value
         self._minlength = minlength
         self._maxlength = maxlength
         self._placeholder = placeholder
@@ -73,7 +73,7 @@ class Input(Widget):
         @server.post(route_path)
         def _click():
             res = self.get_value()
-            self._value = res
+            # self._value = res  # commented cause we do not need to update initial value
             func(res)
 
         return _click

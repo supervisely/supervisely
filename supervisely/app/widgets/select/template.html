@@ -16,6 +16,7 @@
       :key="item.value"
       :label="item.label"
       :value="item.value"
+      :disabled="item.disabled"
     >
       <span v-if="item.right_text !== null" style="float: left">{{ item.label }}</span>
       <span v-if="item.right_text !== null" style="float: right; color: #8492a6; font-size: 13px">{{ item.right_text }}</span>
@@ -26,12 +27,14 @@
       v-for="group in data.{{{widget.widget_id}}}.groups"
       :key="group.label"
       :label="group.label"
+      :disabled="group.disabled"
     >
       <el-option
         v-for="item in group.options"
         :key="item.value"
         :label="item.label"
         :value="item.value"
+        :disabled="item.disabled"
       >
         <span v-if="item.right_text" style="float: left">{{ item.label }}</span>
         <span v-if="item.right_text" style="float: right; color: #8492a6; font-size: 13px">{{ item.right_text }}</span>

@@ -11,6 +11,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
+from tqdm import tqdm
 
 
 class AnnotationInfo(NamedTuple):
@@ -35,17 +36,19 @@ class AnnotationApi(ModuleApi):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         dataset_id = 254737
         ann_infos = api.annotation.get_list(dataset_id)
@@ -85,7 +88,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
@@ -96,7 +99,7 @@ class AnnotationApi(ModuleApi):
         :param filters: List of parameters to sort output Annotations.
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -161,7 +164,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
@@ -173,7 +176,7 @@ class AnnotationApi(ModuleApi):
         :param filters: List of parameters to sort output Annotations.
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -342,7 +345,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
@@ -354,7 +357,7 @@ class AnnotationApi(ModuleApi):
         :param image_ids: List of integers.
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress
+        :type progress_cb: tqdm
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -370,8 +373,9 @@ class AnnotationApi(ModuleApi):
 
             dataset_id = 254737
             image_ids = [121236918, 121236919]
-            progress = sly.Progress("Annotations downloaded: ", len(image_ids))
-            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=progress.iters_done_report)
+            p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
+
+            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=p)
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
@@ -397,7 +401,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
     ) -> List[Dict]:
         """
@@ -408,7 +412,7 @@ class AnnotationApi(ModuleApi):
         :param image_ids: List of integers.
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress
+        :type progress_cb: tqdm
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
@@ -424,8 +428,9 @@ class AnnotationApi(ModuleApi):
 
             dataset_id = 254737
             image_ids = [121236918, 121236919]
-            progress = sly.Progress("Annotations downloaded: ", len(image_ids))
-            anns_jsons = api.annotation.download_json_batch(dataset_id, image_ids, progress_cb=progress.iters_done_report)
+            p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
+
+            anns_jsons = api.annotation.download_json_batch(dataset_id, image_ids, progress_cb=p)
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
@@ -474,7 +479,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         ann_paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -485,7 +490,7 @@ class AnnotationApi(ModuleApi):
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -551,7 +556,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         ann_jsons: List[Dict],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -562,7 +567,7 @@ class AnnotationApi(ModuleApi):
         :param ann_jsons: Annotation in JSON format.
         :type ann_jsons: List[dict]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -622,7 +627,7 @@ class AnnotationApi(ModuleApi):
         self,
         img_ids: List[int],
         anns: List[Annotation],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
@@ -633,7 +638,7 @@ class AnnotationApi(ModuleApi):
         :param anns: List of Annotation objects.
         :type anns: List[Annotation]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -731,7 +736,7 @@ class AnnotationApi(ModuleApi):
         self,
         src_image_ids: List[int],
         dst_image_ids: List[int],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
@@ -743,7 +748,7 @@ class AnnotationApi(ModuleApi):
         :param dst_image_ids: Unique IDs of images in API.
         :type dst_image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
         :return: None
         :rtype: :class:`NoneType`
@@ -753,6 +758,7 @@ class AnnotationApi(ModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            from tqdm import tqdm
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -760,8 +766,9 @@ class AnnotationApi(ModuleApi):
 
             src_ids = [121236918, 121236919]
             dst_ids = [547837053, 547837054]
-            progress = sly.Progress("Annotations copy: ", len(src_ids))
-            copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=progress.iters_done_report)
+            p = tqdm(desc="Annotations copy: ", total=len(src_ids))
+
+            copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=p)
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:24:31.286Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}

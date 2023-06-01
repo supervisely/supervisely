@@ -29,6 +29,8 @@ class EntityAnnotationAPI(ModuleApi):
 
     def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> Dict:
         """
+        Download a list of content (annotations with given ids from dataset with given id).
+
         :param dataset_id: int
         :param entity_ids: list of integers
         :return: list of content(annotations with given ids from dataset with given id), received after execution post request
