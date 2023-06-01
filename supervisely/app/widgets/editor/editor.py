@@ -58,6 +58,9 @@ class Editor(Widget):
 
     def get_text(self) -> str:
         return StateJson()[self.widget_id]["text"]
+    
+    def get_value(self) -> str:
+        return StateJson()[self.widget_id]["text"]
 
     def set_text(
         self,

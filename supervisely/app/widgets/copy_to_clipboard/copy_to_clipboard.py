@@ -12,44 +12,36 @@ class CopyToClipboard(Widget):
     ):
         self._content = content
 
-        if isinstance(content, Editor):
-            self._editor_or_input = True
-            self._content_text = content.get_text()
-            self._curr_widget_text = "text"
-        elif isinstance(content, Input):
-            self._editor_or_input = True
-            self._content_text = content.get_value()
-            self._curr_widget_text = "value"
-        elif isinstance(content, Text):
-            self._text_or_textarea = True
-            self._content_text = content.text
-            self._curr_widget_text = "text"
-        elif isinstance(content, TextArea):
-            self._text_or_textarea = True
-            self._content_text = content.get_value()
-            self._curr_widget_text = "value"
-        elif isinstance(content, str):
-            self._only_string = True
-            self._content_text = content
-            self._curr_widget_text = None
-        else:
+        if not isinstance(content, (str, Editor, Text, TextArea, Input)): 
             raise TypeError(
                 f"Supported types: str, Editor, Text, TextArea, Input. Your type: {type(content).__name__}"
             )
+        if isinstance(content, str):
+            self._content_widget_type = 'str'
+            self._curr_prop_name = None
+            self._content_value = content
+        else:
+            if isinstance(content, (Editor, Input)):
+                self._content_widget_type = 'input'
+                self._curr_prop_name = "value" if isinstance(content, Input) else "text"
+            elif isinstance(content, (Text, TextArea)):
+                self._content_widget_type = 'text'
+                self._curr_prop_name = "value" if isinstance(content, TextArea) else "text"
+            self._content_value = content.get_value()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
 
     def get_json_data(self) -> Dict:
         return {
-            "content": self._content_text,
-            "curr_widget_text": self._curr_widget_text
+            "content": self._content_value,
+            "curr_property": self._curr_prop_name
         }
 
     def get_json_state(self) -> Dict:
         return {
-            "content": self._content_text,
-            "curr_widget_text": self._curr_widget_text
+            "content": self._content_value,
+            "curr_property": self._curr_prop_name
         }
 
     def get_content(self) -> Union[Editor, Input, Text, TextArea , str]:
