@@ -67,6 +67,9 @@ class Text(Widget):
     @property
     def text(self):
         return self._text
+    
+    def get_value(self):
+        return self._text
 
     @text.setter
     def text(self, value):
