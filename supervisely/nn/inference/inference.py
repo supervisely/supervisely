@@ -698,22 +698,22 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'inference_image_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
             return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            logger.debug(f"'inference_image_url' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            logger.debug(f"'inference_batch_ids' request in json format:{request.json()}")
+            logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            logger.debug(f"'inference_video_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
             return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
@@ -755,7 +755,7 @@ class Inference:
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
-            logger.debug(f"'inference_image_id_async' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id_async' request in json format:{request.state.state}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -781,7 +781,7 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
-            logger.debug(f"'inference_video_id_async' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
