@@ -61,11 +61,11 @@ class ColorPicker(Widget):
 
     def set_value(self, value: Optional[str or List[int, int, int]]):
         self._color = value
-        if type(self._color) == list and len(self._color) == 3 and self._color_format == "rgb":
-            if (
-                type(self._color[0]) == int
-                and type(self._color[1]) == int
-                and type(self._color[2]) == int
+        if isinstance(self._color, list) and len(self._color) == 3 and self._color_format == "rgb":
+            if ( 
+                isinstance(self._color[0], int) 
+                and isinstance(self._color[1], int) 
+                and isinstance(self._color[2], int) 
             ):
                 self._color = f"rgb({self._color[0]}, {self._color[1]}, {self._color[2]})"
         if (
@@ -101,7 +101,7 @@ class ColorPicker(Widget):
         DataJson()[self.widget_id]["color_format"] = self._color_format
         DataJson().send_changes()
 
-    def value_changed(self, func):
+    def _value_changed(self, func):
         route_path = self.get_route_path(ColorPicker.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
@@ -115,7 +115,7 @@ class ColorPicker(Widget):
         return _click
     
     def _get_color_info(self):
-        @self.value_changed
+        @self._value_changed
         def show_color(res):
             color_info = f"Current color: {res}"
             self._color_info.set(text=color_info, status="info")
