@@ -12,7 +12,7 @@ class Docstring(Widget):
     ):
         self._is_html = is_html
 
-        if self._is_html is True:
+        if self._is_html is True or content == "":
             self._content = content
         else:
             self._content = self._convert_docstring_to_html(content)
@@ -41,24 +41,89 @@ class Docstring(Widget):
         DataJson()[self.widget_id]["content"] = self._content
         DataJson().send_changes()
 
-    def _convert_docstring_to_html(self, docstring: str) -> str:
-        import docutils.core
-        from docutils.parsers.rst import roles
+    def _convert_docstring_to_html(self, docstring):
+        import os
+        from bs4 import BeautifulSoup
+        from supervisely.io.fs import remove_dir
 
-        parts = docstring.split('\n"""')
-        if len(parts) > 1:
-            docstring = parts[1].strip('"\n')
+        # Sphinx conf.py
+        conf = """import os
+import sys
 
-        roles.register_canonical_role("class", roles.generic_custom_role)
+sys.path.insert(0, os.path.abspath("my_file"))
 
-        html_body = docutils.core.publish_parts(
-            docstring,
-            writer_name="html",
-            settings_overrides={
-                "initial_header_level": 2,
-                "input_encoding": "unicode",
-                "exit_status_level": 2,
-                "pep_references": None,
-            },
-        )
-        return html_body["body"]
+project = "Python"
+copyright = ""
+author = ""
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+templates_path = ["_templates"]
+
+html_show_sourcelink = False
+
+html_theme = "sphinx_rtd_theme"
+html_theme_options = {
+'analytics_anonymize_ip': True,
+'logo_only': True,
+'display_version': False,
+'prev_next_buttons_location': 'None',
+'style_external_links': False,
+'vcs_pageview_mode': '',
+'style_nav_header_background': 'white',
+'collapse_navigation': True,
+'sticky_navigation': False,
+'navigation_depth': 0,
+'includehidden': False,
+'titles_only': True
+}
+
+"""
+        py_code = '''
+class InsertDocString:"""
+{}
+"""
+'''
+        text = py_code.format(docstring)
+
+        with open("conf.py", "w") as config:
+            config.write(conf)
+
+        # Text variable
+        os.mkdir("my_file")
+        with open("my_file/my_script.py", "w") as my_script:
+            my_script.write(text)
+
+        # rst
+        rst_conf = """modules
+=======
+
+.. toctree::
+:maxdepth: 4
+
+modules
+"""
+        with open("index.rst", "w") as rst:
+            rst.write(rst_conf)
+
+        # File structure and cleaning
+        os.system("sphinx-apidoc -o .  my_file")
+        os.system("sphinx-build -b html . _build")
+
+        with open("_build/my_script.html") as f:
+            html_content = f.read()
+            soup = BeautifulSoup(html_content, "html.parser")
+            result = soup.find("dd")
+
+            if result is None:
+                raise Exception("Not found")
+
+            result.find("p").decompose()
+
+        os.remove("index.rst")
+        os.remove("modules.rst")
+        os.remove("my_script.rst")
+        os.remove("conf.py")
+        remove_dir("my_file")
+        remove_dir("_build")
+
+        return str(result)
