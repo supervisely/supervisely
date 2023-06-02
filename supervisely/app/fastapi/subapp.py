@@ -120,7 +120,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
         import arel
-        
+
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -158,6 +158,7 @@ def _init(
     headless=False,
     process_id=None,
     static_dir=None,
+    hot_reload=False,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -171,7 +172,8 @@ def _init(
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
         Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
-        enable_hot_reload_on_debug(app)
+        if hot_reload:
+            enable_hot_reload_on_debug(app)
 
     StateJson()["slyAppShowDialog"] = False
     DataJson()["slyAppDialogTitle"] = ""
@@ -241,7 +243,13 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, layout: "Widget" = None, templates_dir: str = None, static_dir: str = None):
+    def __init__(
+        self,
+        layout: "Widget" = None,
+        templates_dir: str = None,
+        static_dir: str = None,
+        hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
+    ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -282,6 +290,7 @@ class Application(metaclass=Singleton):
             headless=headless,
             process_id=self._process_id,
             static_dir=static_dir,
+            hot_reload=hot_reload,
         )
 
     def get_server(self):
