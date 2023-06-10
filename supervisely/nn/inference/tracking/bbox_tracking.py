@@ -82,47 +82,64 @@ class BBoxTracking(Inference):
             )
             api.logger.info("Start tracking.")
 
-            for _ in video_interface.frames_loader_generator():
-                for (fig_id, geom), obj_id in zip(
-                    video_interface.geometries.items(),
-                    video_interface.object_ids,
-                ):
-                    if isinstance(geom, sly.Rectangle):
-                        imgs = video_interface.frames_with_notification
-                        target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
-                        geometry = self.predict(
-                            rgb_image=imgs[-1],
-                            init_rgb_image=imgs[0],
-                            target_bbox=target,
-                            settings=self.custom_inference_settings_dict,
-                        )
-                    else:
+            for (fig_id, geom), obj_id in zip(
+                video_interface.geometries.items(),
+                video_interface.object_ids,
+            ):
+                init = False
+                for _ in video_interface.frames_loader_generator():
+                    if not isinstance(geom, sly.Rectangle):
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
+                    if not init:
+                        imgs = video_interface.frames_with_notification
+                        target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
+                        self.initialize(imgs[0], target)
+                        init = True
+
+                    geometry = self.predict(
+                        rgb_image=imgs[-1],
+                        prev_rgb_image=imgs[0],
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
+
                     video_interface.add_object_geometries([geometry], obj_id, fig_id)
-                    api.logger.info(f"Object #{obj_id} tracked.")
 
                     if video_interface.global_stop_indicatior:
                         return
 
+                api.logger.info(f"Figure #{fig_id} tracked.")
+
+    def initialize(self, init_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> None:
+        """
+        Initializing the tracker with a new object.
+
+        :param init_rgb_image: frame with object
+        :type init_rgb_image: np.ndarray
+        :param target_bbox: initial bbox
+        :type target_bbox: PredictionBBox
+        """
+        raise NotImplementedError
+
     def predict(
         self,
         rgb_image: np.ndarray,
-        init_rgb_image: np.ndarray,
-        target_bbox: PredictionBBox,
         settings: Dict[str, Any],
+        prev_rgb_image: np.ndarray,
+        target_bbox: PredictionBBox,
     ) -> PredictionBBox:
         """
         SOT prediction
 
-        :param rgb_image: image for searching
+        :param rgb_image: search frame
         :type rgb_image: np.ndarray
-        :param init_rgb_image: first frame with object
-        :type init_rgb_image: np.ndarray
-        :param target_bbox: initial annotation
-        :type target_bbox: PredictionBBox
         :param settings: model parameters
         :type settings: Dict[str, Any]
+        :param init_rgb_image: previous frame with object
+        :type init_rgb_image: np.ndarray
+        :param target_bbox: bbox added on previous step
+        :type target_bbox: PredictionBBox
         :return: predicted annotation
         :rtype: PredictionBBox
         """
