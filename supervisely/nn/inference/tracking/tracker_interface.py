@@ -21,7 +21,8 @@ class TrackerInterface:
         self.direction = context["direction"]
 
         # all geometries
-        self.stop = len(self.object_ids) * self.frames_count
+        # self.stop = len(self.object_ids) * self.frames_count
+        self.stop = len(self.figure_ids) * self.frames_count
         self.global_pos = 0
         self.global_stop_indicatior = False
 
@@ -71,10 +72,8 @@ class TrackerInterface:
             ind = next_ind
 
             if self.global_stop_indicatior:
-                self._clear_cache()
+                self.clear_cache()
                 return
-
-        self._clear_cache()
 
     def add_object_geometry_on_frame(self, geometry: Geometry, object_id: int, frame_ind: int):
         self.api.video.figure.create(
@@ -87,6 +86,9 @@ class TrackerInterface:
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
         self._notify(fstart=frame_ind, fend=frame_ind + 1, task="add geometry on frame")
+
+    def clear_cache(self):
+        self._cache.clear()
 
     def _add_geometries(self):
         self.logger.info("Adding geometries.")
@@ -174,9 +176,6 @@ class TrackerInterface:
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
-
-    def _clear_cache(self):
-        self._cache.clear()
 
     @property
     def frames(self) -> np.ndarray:
