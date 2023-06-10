@@ -17,7 +17,6 @@ class BBoxTracking(Inference):
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
-        first_load_frames: bool = False,
     ):
         super().__init__(
             model_dir,
@@ -25,7 +24,6 @@ class BBoxTracking(Inference):
             sliding_window_mode=None,
             use_gui=False,
         )
-        self._load_all_frames = first_load_frames
 
         try:
             self.load_on_device(model_dir, "cuda")
@@ -90,14 +88,18 @@ class BBoxTracking(Inference):
                     video_interface.object_ids,
                 ):
                     if isinstance(geom, sly.Rectangle):
-                        geometries = self._predict_point_geometries(
-                            geom,
-                            video_interface,
+                        imgs = video_interface.frames_with_notification
+                        target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
+                        geometry = self.predict(
+                            rgb_image=imgs[-1],
+                            init_rgb_image=imgs[0],
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
                         )
                     else:
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                    video_interface.add_object_geometries(geometries, obj_id, fig_id)
+                    video_interface.add_object_geometries([geometry], obj_id, fig_id)
                     api.logger.info(f"Object #{obj_id} tracked.")
 
                     if video_interface.global_stop_indicatior:
@@ -105,21 +107,24 @@ class BBoxTracking(Inference):
 
     def predict(
         self,
-        rgb_images: List[np.ndarray],
+        rgb_image: np.ndarray,
+        init_rgb_image: np.ndarray,
+        target_bbox: PredictionBBox,
         settings: Dict[str, Any],
-        start_object: PredictionBBox,
-    ) -> List[PredictionBBox]:
+    ) -> PredictionBBox:
         """
-        Track point on given frames.
+        SOT prediction
 
-        :param rgb_images: RGB frames, `m` frames
-        :type rgb_images: List[np.array]
+        :param rgb_image: image for searching
+        :type rgb_image: np.ndarray
+        :param init_rgb_image: first frame with object
+        :type init_rgb_image: np.ndarray
+        :param target_bbox: initial annotation
+        :type target_bbox: PredictionBBox
         :param settings: model parameters
         :type settings: Dict[str, Any]
-        :param start_objects: point to track on the initial frame
-        :type start_objects: PredictionBBox
-        :return: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[PredictionBBox]
+        :return: predicted annotation
+        :rtype: PredictionBBox
         """
         raise NotImplementedError
 
