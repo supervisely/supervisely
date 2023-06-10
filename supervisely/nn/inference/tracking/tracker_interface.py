@@ -46,7 +46,6 @@ class TrackerInterface:
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
             if self.global_stop_indicatior:
-                self.logger.info("Task stoped by user.")
                 self._notify(True, task="stop tracking")
                 break
 
@@ -155,6 +154,7 @@ class TrackerInterface:
         task: str = "not defined",
     ):
         self.global_pos += 1
+
         if stop:
             pos = self.stop
         else:
@@ -176,6 +176,9 @@ class TrackerInterface:
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
+
+        if self.global_stop_indicatior and self.global_pos < self.stop:
+            self.logger.info("Task stoped by user.")
 
     @property
     def frames(self) -> np.ndarray:
