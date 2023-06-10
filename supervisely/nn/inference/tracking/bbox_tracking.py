@@ -91,9 +91,10 @@ class BBoxTracking(Inference):
                     if not isinstance(geom, sly.Rectangle):
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
+                    imgs = video_interface.frames
+                    target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
+
                     if not init:
-                        imgs = video_interface.frames_with_notification
-                        target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
                         self.initialize(imgs[0], target)
                         init = True
 
