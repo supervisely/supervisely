@@ -82,17 +82,22 @@ class BBoxTracking(Inference):
             )
             api.logger.info("Start tracking.")
 
-            for (fig_id, geom), obj_id in zip(
-                video_interface.geometries.items(),
+            for fig_id, obj_id in zip(
+                video_interface.geometries.keys(),
                 video_interface.object_ids,
             ):
                 init = False
                 for _ in video_interface.frames_loader_generator():
+                    geom = video_interface.geometries[fig_id]
                     if not isinstance(geom, sly.Rectangle):
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
                     imgs = video_interface.frames
-                    target = PredictionBBox("", [geom.top, geom.left, geom.bottom, geom.right])
+                    target = PredictionBBox(
+                        "",
+                        [geom.top, geom.left, geom.bottom, geom.right],
+                        None,
+                    )
 
                     if not init:
                         self.initialize(imgs[0], target)
@@ -104,8 +109,8 @@ class BBoxTracking(Inference):
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
-
-                    video_interface.add_object_geometries([geometry], obj_id, fig_id)
+                    sly_geometry = self._to_sly_geometry(geometry)
+                    video_interface.add_object_geometries([sly_geometry], obj_id, fig_id)
 
                     if video_interface.global_stop_indicatior:
                         return
@@ -166,9 +171,13 @@ class BBoxTracking(Inference):
                 fill_rectangles=False,
             )
 
-    def _create_label(self, dto: PredictionBBox) -> sly.Rectangle:
+    def _to_sly_geometry(self, dto: PredictionBBox) -> sly.Rectangle:
         top, left, bottom, right = dto.bbox_tlbr
         geometry = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
+        return geometry
+
+    def _create_label(self, dto: PredictionBBox) -> sly.Rectangle:
+        geometry = self._to_sly_geometry(dto)
         return Label(geometry, sly.ObjClass("", sly.Rectangle))
 
     def _get_obj_class_shape(self):
