@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Generator, Optional, List, Tuple, OrderedDict
+from typing import Generator, Optional, List, Tuple, OrderedDict, Dict
 from collections import OrderedDict
 
 import supervisely as sly
@@ -37,12 +37,12 @@ class TrackerInterface:
         # increase self.stop by num of points
         self._add_geometries()
 
+        self._cache: Dict[int, np.ndarray] = {}
+
         if self.load_all_frames:
             self._load_frames()
 
-    def add_object_geometries(
-        self, geometries: List[Geometry], object_id: int, start_fig: int
-    ):
+    def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
             if self.global_stop_indicatior:
                 self.logger.info("Task stoped by user.")
@@ -71,11 +71,12 @@ class TrackerInterface:
             ind = next_ind
 
             if self.global_stop_indicatior:
+                self._clear_cache()
                 return
 
-    def add_object_geometry_on_frame(
-        self, geometry: Geometry, object_id: int, frame_ind: int
-    ):
+        self._clear_cache()
+
+    def add_object_geometry_on_frame(self, geometry: Geometry, object_id: int, frame_ind: int):
         self.api.video.figure.create(
             self.video_id,
             object_id,
@@ -119,10 +120,7 @@ class TrackerInterface:
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while (
-            0 <= cur_index < total_frames
-            and len(self.frames_indexes) < self.frames_count + 1
-        ):
+        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
@@ -130,7 +128,11 @@ class TrackerInterface:
             self.stop += len(self.frames_indexes)
 
     def _load_frame(self, frame_index):
-        return self.api.video.frame.download_np(self.video_id, frame_index)
+        if frame_index in self._cache:
+            return self._cache[frame_index]
+        frame = self.api.video.frame.download_np(self.video_id, frame_index)
+        self._cache[frame_index] = frame
+        return frame
 
     def _load_frames(self):
         rgbs = []
@@ -172,6 +174,9 @@ class TrackerInterface:
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
+
+    def _clear_cache(self):
+        self._cache.clear()
 
     @property
     def frames(self) -> np.ndarray:
