@@ -94,7 +94,7 @@ class BBoxTracking(Inference):
 
                     imgs = video_interface.frames
                     target = PredictionBBox(
-                        "",
+                        "",  # TODO: can this be useful?
                         [geom.top, geom.left, geom.bottom, geom.right],
                         None,
                     )
