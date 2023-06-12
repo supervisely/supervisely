@@ -89,12 +89,6 @@ class Import(Application):
                 raise ValueError(f"Project name must be 'str': {self._project_name}")
 
             self._progress = progress
-            if is_production():
-                if type(self._progress) is not type(SlyTqdm):
-                    raise ValueError(f"Progress must have type 'SlyTqdm': {type(self._progress)}")
-            elif is_development():
-                if type(self._progress) is not type(tqdm):
-                    raise ValueError(f"Progress must have type 'tqdm': {type(self._progress)}")
 
             self._is_directory = is_directory
             if type(self._is_directory) is not bool:
@@ -252,7 +246,9 @@ class Import(Application):
                 self.input_mode = "project"
             # Launch from Ecosystem
             else:
-                self.output_workspace_selector = SelectWorkspace()
+                self.output_workspace_selector = SelectWorkspace(
+                    default_id=env.workspace_id(), team_id=env.team_id()
+                )
                 self.output_new_project_name = Input(value="My project")
                 self.output_new_project = Container(
                     widgets=[
@@ -336,7 +332,11 @@ class Import(Application):
                     app_name = "import-template"
                 else:
                     app_name = app_name.lower().replace(" ", "-")
-                self.storage_upload_path = f"/import/{app_name}/{env.task_id}/"
+
+                if env.task_id(raise_not_found=False) is None:
+                    self.storage_upload_path = f"/import/{app_name}/debug/"
+                else:
+                    self.storage_upload_path = f"/import/{app_name}/{env.task_id()}/"
                 self.input_drag_n_drop = FileStorageUpload(
                     team_id=env.team_id(), path=self.storage_upload_path
                 )
@@ -362,7 +362,7 @@ class Import(Application):
             )
             self.settings_card_widgets = Container(widgets=[self.remove_source_files_checkbox])
 
-            custom_settings_container = self.generate_custom_settings()
+            custom_settings_container = self.add_custom_settings()
             if custom_settings_container is not None:
                 custom_field = Field(content=custom_settings_container, title="Custom Settings")
                 self.settings_card_widgets._widgets.append(custom_field)
@@ -591,22 +591,25 @@ class Import(Application):
             project_name = api.project.get_info_by_id(project_id).name
             dst_status = "existing"
 
+        if self.remove_source_files_checkbox.is_checked():
+            remove_source_message = "Temporary data will be removed after a successful import in order to save disk space."
+        else:
+            remove_source_message = (
+                "Data won't be deleted and will remain accessible after a successful import."
+            )
+
         if project_id is not None and dataset_id is not None:
             dataset_name = api.dataset.get_info_by_id(dataset_id).name
             output_text = (
-                f"Data from selected path: <b>{path}</b> will be imported to "
-                f"<b>{dst_status}</b> dataset: <b>{dataset_name}</b> "
-                f"in project: <b>{project_name}</b> "
-                f"in workspace: <b>{workspace_name}</b> "
-                f"in team: <b>{team_name}</b>"
+                f"<b>You can access data in Team Files by following path:</b> {path}<br>"
+                f"<b>Data will be imported to {dst_status} dataset:</b> {dataset_name} (team: {team_name}, workspace: {workspace_name}, project: {project_name})<br>"
+                f"<b>{remove_source_message}</b>"
             )
-
         else:
             output_text = (
-                f"Data from selected path: <b>{path}</b> will be imported to "
-                f"<b>{dst_status}</b> project: <b>{project_name}</b> "
-                f"in workspace: <b>{workspace_name}</b> "
-                f"in team: <b>{team_name}</b>"
+                f"<b>You can access data in Team Files by following path:</b> {path}<br>"
+                f"<b> Data will be imported to {dst_status} project:</b> {project_name} (team: {team_name}, workspace: {workspace_name})<br>"
+                f"<b>{remove_source_message}</b>"
             )
 
         return output_text
@@ -649,7 +652,6 @@ class Import(Application):
         return team_id, workspace_id, project_id, dataset_id, project_name
 
     def __get_remote_path(self):
-        data_dir = get_data_dir()
         if self.input_mode == "file":
             path = env.file()
         elif self.input_mode == "folder":
@@ -764,6 +766,7 @@ class Import(Application):
                     raise ValueError(
                         f"Project with ID: '{project_id}' is not found or either archived"
                     )
+                project_id = project.id
                 logger.info(f"Importing to existing Project: id={project.id}, name={project.name}")
 
             if dataset_id is not None:
@@ -772,6 +775,14 @@ class Import(Application):
                     raise ValueError(
                         f"Dataset with ID: '{dataset_id}' is not found or either archived"
                     )
+                if project is not None and dataset not in api.dataset.get_list(
+                    project_id=project.id
+                ):
+                    raise ValueError(
+                        f"Dataset {dataset.name}(ID {dataset.id}) "
+                        f"does not belong to project {project.name} (ID {project.id})."
+                    )
+                dataset_id = dataset.id
                 logger.info(f"Importing to existing Dataset: id={dataset.id}, name={dataset.name}")
 
             return Import.Context(
@@ -786,7 +797,7 @@ class Import(Application):
                 is_on_agent=is_on_agent,
             )
 
-    def generate_custom_settings(self) -> List[Widget]:
+    def add_custom_settings(self) -> List[Widget]:
         # implement your own method for import settings
         return None
 
@@ -796,7 +807,6 @@ class Import(Application):
 
     def run(self):
         api = Api.from_env()
-        task_id = None
 
         if is_development():
             context = self.__get_context(api)
@@ -805,8 +815,6 @@ class Import(Application):
             logger.info(f"Result project: id={info.id}, name={info.name}")
 
         if is_production() is True:
-            task_id = env.task_id()
-
             if self.input_data_tabs is not None:
 
                 @self.input_data_tabs.value_changed
@@ -837,8 +845,6 @@ class Import(Application):
 
                 if self._step_one_btn.text == "Next":
                     self._step_one_text.hide()
-                    self._step_one_btn.text = "Restart"
-                    self._step_one_btn.icon = "zmdi zmdi-rotate-left"
 
                     if self.input_mode in ["dataset", "project"]:
                         self.input_project_card.unlock()
@@ -858,13 +864,14 @@ class Import(Application):
                         self.input_project_card.lock()
                         self._layout.set_active_step(2)
 
+                    self._step_one_btn.text = "Restart"
+                    self._step_one_btn.icon = "zmdi zmdi-rotate-left"
+
                     self.settings_card.unlock()
                     self._step_two_btn.enable()
 
                 elif self._step_one_btn.text == "Restart":
                     self._step_one_text.hide()
-                    self._step_one_btn.text = "Next"
-                    self._step_one_btn.icon = "zmdi zmdi-check"
 
                     if self.input_mode in ["dataset", "project"]:
                         self.input_project_card.unlock()
@@ -894,6 +901,8 @@ class Import(Application):
                     self._step_three_btn.text = "Next"
                     self._step_three_btn.icon = "zmdi zmdi-check"
 
+                    self._step_one_btn.text = "Next"
+                    self._step_one_btn.icon = "zmdi zmdi-check"
                     self._step_two_btn.disable()
                     self._step_three_btn.disable()
                     self.settings_card.lock(message="Select data to import to unlock this card")
@@ -904,8 +913,6 @@ class Import(Application):
             @self._step_two_btn.click
             def finish_step_two():
                 if self._step_two_btn.text == "Next":
-                    self._step_two_btn.text = "Restart"
-                    self._step_two_btn.icon = "zmdi zmdi-rotate-left"
                     if self.input_mode in ["dataset", "project"]:
                         self.input_files_card.lock()
                         self.settings_card.lock(
@@ -935,11 +942,12 @@ class Import(Application):
                             message="Press the button to restart from this step"
                         )
                         self._layout.set_active_step(3)
+
+                    self._step_two_btn.text = "Restart"
+                    self._step_two_btn.icon = "zmdi zmdi-rotate-left"
                     self._step_three_btn.enable()
 
                 elif self._step_two_btn.text == "Restart":
-                    self._step_two_btn.text = "Next"
-                    self._step_two_btn.icon = "zmdi zmdi-check"
                     if self.input_mode in ["dataset", "project"]:
                         self.input_files_card.lock()
                         self.settings_card.unlock()
@@ -965,6 +973,8 @@ class Import(Application):
 
                     self._output_text.hide()
                     self._start_button.disable()
+                    self._step_two_btn.text = "Next"
+                    self._step_two_btn.icon = "zmdi zmdi-check"
 
             @self._step_three_btn.click
             def finish_step_three():
@@ -1021,9 +1031,6 @@ class Import(Application):
 
                 if self._step_three_btn.text == "Next":
                     self._step_three_text.hide()
-                    self._step_three_btn.text = "Restart"
-                    self._step_three_btn.icon = "zmdi zmdi-rotate-left"
-                    self.output_card.unlock()
                     if self.input_mode in ["dataset", "project"]:
                         self.input_files_card.unlock()
                     elif self.input_mode in ["file", "folder"]:
@@ -1047,10 +1054,12 @@ class Import(Application):
                     self._start_button.enable()
                     self._layout.set_active_step(4)
 
+                    self._step_three_btn.text = "Restart"
+                    self._step_three_btn.icon = "zmdi zmdi-rotate-left"
+                    self.output_card.unlock()
+
                 elif self._step_three_btn.text == "Restart":
                     self._step_three_text.hide()
-                    self._step_three_btn.text = "Next"
-                    self._step_three_btn.icon = "zmdi zmdi-check"
                     if self.input_mode in ["dataset", "project"]:
                         self.input_files_card.unlock()
                         self.output_card.lock(
@@ -1073,6 +1082,8 @@ class Import(Application):
 
                     self._output_text.hide()
                     self._start_button.disable()
+                    self._step_three_btn.text = "Next"
+                    self._step_three_btn.icon = "zmdi zmdi-check"
 
             @self._start_button.click
             def start_import():
@@ -1080,19 +1091,32 @@ class Import(Application):
                     self._step_one_btn.disable()
                     self._step_two_btn.disable()
                     self._step_three_btn.disable()
+                    self._output_text.hide()
                     context = self.__get_context(api)
                     self._import_progress.show()
+
                     project_id = self.process(context)
                     if type(project_id) is int:
                         info = api.project.get_info_by_id(project_id)
                         if self.remove_source_files_checkbox.is_checked():
-                            dd_paths = self.input_drag_n_drop.get_uploaded_paths()
-                            tf_paths = self.input_file_selector.get_selected_paths()
-                            paths = dd_paths + tf_paths
-                            for path in paths:
-                                api.file.remove(team_id=env.team_id(), path=path)
+                            try:
+                                dd_paths = self.input_drag_n_drop.get_uploaded_paths()
+                                tf_paths = self.input_file_selector.get_selected_paths()
+                                paths = dd_paths + tf_paths
+                                for path in paths:
+                                    api.file.remove(team_id=env.team_id(), path=path)
+                                self._output_text.set(
+                                    text="Source files have been successfully removed",
+                                    status="success",
+                                )
+                                self._output_text.show()
+                            except Exception as e:
+                                self._output_text.set(
+                                    text=f"Couldn't remove source files<br>Error: {e}",
+                                    status="error",
+                                )
+                                self._output_text.show()
 
-                        api.task.set_output_project(task_id, info.id, info.name)
                         logger.info(f"Result project: id={info.id}, name={info.name}")
                         self.output_project_thumbnail.set(info)
                         self.output_project_thumbnail.show()
