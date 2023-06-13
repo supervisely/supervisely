@@ -147,7 +147,9 @@ def _check_instance_version(instance_version):
     last_supported = [int(x) for x in MIN_SUPPORTED_INSTANCE_VERSION.split(".")]
     version_numbers = [int(x) for x in instance_version.split(".")]
     for number, supported in zip(version_numbers, last_supported):
-        if number < supported:
+        if number > supported:
+            return True
+        elif number < supported:
             return False
     return True
 
