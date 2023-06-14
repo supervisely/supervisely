@@ -350,6 +350,7 @@ def run(
         release_version,
         modal_template,
         slug,
+        sub_app_directory if sub_app_directory != None else "",
     )
     if response.status_code != 200:
         error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
