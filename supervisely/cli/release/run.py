@@ -215,7 +215,6 @@ def run(
     release_token = os.getenv("APP_RELEASE_TOKEN", None)
     if release_token is not None:
         user_data = get_user_data(server_address, api_token)
-        print("user_data", user_data)
         if user_data is None:
             return False
         user_id = user_data["id"]
