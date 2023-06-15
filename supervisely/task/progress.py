@@ -445,6 +445,39 @@ class tqdm_sly(tqdm, Progress):
                 if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
+            tqdm_params = [
+                "iterable",
+                "desc",
+                "total",
+                "leave",
+                "file",
+                "ncols",
+                "mininterval",
+                "maxinterval",
+                "miniters",
+                "ascii",
+                "disable",
+                "unit",
+                "unit_scale",
+                "dynamic_ncols",
+                "smoothing",
+                "bar_format",
+                "initial",
+                "position",
+                "postfix",
+                "unit_divisor",
+                "write_bytes",
+                "lock_args",
+                "nrows",
+                "colour",
+                "delay",
+                "gui",
+            ]
+
+            for keyword in tqdm_params:
+                if keyword in kwargs:
+                    kwargs.pop(keyword)
+
             Progress.__init__(
                 self,
                 **kwargs,
