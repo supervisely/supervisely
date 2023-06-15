@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
+import inspect
 import math
 from typing import Optional
 from functools import partial
@@ -427,6 +428,7 @@ class tqdm_sly(tqdm, Progress):
             if len(args) < 2:  # i.e. 'desc' not set as a positional argument
                 if kwargs.get("desc") is not None:
                     kwargs.setdefault("message", kwargs["desc"])
+                    kwargs.pop("desc")
                 else:
                     kwargs.setdefault("message", "Processing")
             else:
@@ -434,6 +436,7 @@ class tqdm_sly(tqdm, Progress):
             if len(args) < 3:  # i.e. 'total' not set as a positional argument
                 if kwargs.get("total") is not None:
                     kwargs.setdefault("total_cnt", kwargs["total"])
+                    kwargs.pop("total")
             else:
                 kwargs.setdefault("total_cnt", args[2])  # args[2]==total
             if len(args) < 12:  # i.e. 'unit' not set as a positional argument
@@ -443,36 +446,8 @@ class tqdm_sly(tqdm, Progress):
                 if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
-            tqdm_params = [
-                "iterable",
-                "desc",
-                "total",
-                "leave",
-                "file",
-                "ncols",
-                "mininterval",
-                "maxinterval",
-                "miniters",
-                "ascii",
-                "disable",
-                "unit",
-                "unit_scale",
-                "dynamic_ncols",
-                "smoothing",
-                "bar_format",
-                "initial",
-                "position",
-                "postfix",
-                "unit_divisor",
-                "write_bytes",
-                "lock_args",
-                "nrows",
-                "colour",
-                "delay",
-                "gui",
-            ]
-
-            for keyword in tqdm_params:
+            tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
+            for keyword in tqdm_init_params:
                 if keyword in kwargs:
                     kwargs.pop(keyword)
 
