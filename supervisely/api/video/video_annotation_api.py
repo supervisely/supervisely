@@ -161,8 +161,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api = sly.Api.from_env()
 
             video_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.video.annotation.upload_paths(video_ids, ann_pathes, meta)
+            ann_paths = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            api.video.annotation.upload_paths(video_ids, ann_paths, meta)
         """
         # video_ids from the same dataset
 

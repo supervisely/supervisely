@@ -4,7 +4,7 @@ import io
 import os.path
 from pkg_resources import parse_version
 import base64
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 import cv2
 from PIL import ImageDraw, ImageFile, ImageFont, Image as PILImage
 import numpy as np
@@ -386,6 +386,7 @@ def draw_text(
     corner_snap: Optional[CornerAnchorMode] = CornerAnchorMode.TOP_LEFT,
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
+    color: Optional[Union[Tuple[int, int, int, int], Tuple[int, int, int]]] = (0, 0, 0, 255),
 ) -> tuple:
     """
     Draws given text on bitmap image.
@@ -402,6 +403,10 @@ def draw_text(
     :type font: ImageFont.FreeTypeFont, optional
     :param fill_background: Define fill text background or not.
     :type fill_background: bool, optional
+    :param color: Text color as a tuple of three or four integers (red, green, blue, alpha)
+                  ranging from 0 to 255.
+                  If alpha is not provided, it defaults to 255 (fully opaque).
+    :type color: Union[Tuple[int, int, int, int], Tuple[int, int, int]], optional
     :return: Height and width of text
     :rtype: :class:`Tuple[int, int]`
     :Usage example:
@@ -410,7 +415,7 @@ def draw_text(
 
         import supervisely as sly
 
-        sly.image.draw_text(image, 'your text', (100, 50))
+        sly.image.draw_text(image, 'your text', (100, 50), color=(0, 0, 0, 255))
 
     .. list-table::
 
@@ -422,6 +427,8 @@ def draw_text(
 
                    After
     """
+    if not (isinstance(color, (list, tuple)) and len(color) in [3, 4]):
+        raise TypeError("Color must be list or tuple of three or four elements")
 
     if font is None:
         font = get_font()
@@ -451,7 +458,7 @@ def draw_text(
             ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
             fill=(255, 255, 255, 128),
         )
-    drawer.text((rect_left + 1, rect_top), text, fill=(0, 0, 0, 255), font=font)
+    drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
 
     source_img = PILImage.alpha_composite(source_img, canvas)
     source_img = source_img.convert("RGB")

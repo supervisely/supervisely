@@ -129,6 +129,7 @@ def upload_archive(
     readme,
     modal_template,
     slug,
+    subapp_path,
 ):
     f = open(archive_path, "rb")
     fields = {
@@ -137,6 +138,7 @@ def upload_archive(
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
+        "subAppPath": subapp_path,
         "archive": (
             "arhcive.tar.gz",
             f,
@@ -198,6 +200,7 @@ def release(
     release_version,
     modal_template="",
     slug=None,
+    subapp_path="",
 ):
     archive_dir = archivate_application(repo, config, slug)
     release = {"name": release_name, "version": release_version}
@@ -211,6 +214,7 @@ def release(
         readme,
         modal_template,
         slug,
+        subapp_path,
     )
     delete_directory(archive_dir)
     return response

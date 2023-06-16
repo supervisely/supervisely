@@ -8,7 +8,7 @@ import io
 import json
 import re
 import urllib.parse
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Union
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
@@ -212,7 +212,7 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         force_metadata_for_links: Optional[bool] = False,
         batch_size: Optional[int] = None,
-    ):
+    ) -> Iterator[List[ImageInfo]]:
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
