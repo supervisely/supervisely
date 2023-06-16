@@ -81,7 +81,7 @@ def create(process_id=None, headless=False) -> FastAPI:
                     TASK_ID: os.environ.get(TASK_ID),
                     SERVER_ADDRESS: server_address,
                     API_TOKEN: os.environ.get(API_TOKEN),
-                    SKIP_DATA_EXPORT: True,
+                    "SKIP_DATA_EXPORT": True,
                 }
             )
             return response
