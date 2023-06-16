@@ -149,7 +149,9 @@ class Import(Application):
     def __init__(
         self,
         allowed_project_types: List[ProjectType] = None,
-        allowed_destination_options: List[str] = None,
+        allowed_destination_options: List[
+            Literal["New Project", "Existing Project", "Existing Dataset"]
+        ] = None,
         allowed_data_type: Literal["folder", "file"] = None,
     ):
         if allowed_project_types is None:
@@ -361,11 +363,15 @@ class Import(Application):
                 "Remove source files after import", checked=True
             )
             self.settings_card_widgets = Container(widgets=[self.remove_source_files_checkbox])
-
             custom_settings_container = self.add_custom_settings()
             if custom_settings_container is not None:
-                custom_field = Field(content=custom_settings_container, title="Custom Settings")
-                self.settings_card_widgets._widgets.append(custom_field)
+                if not isinstance(custom_settings_container, Widget):
+                    raise ValueError("Custom settings must return a Widget")
+                if type(custom_settings_container) is not Container:
+                    custom_settings_container = Container(widgets=[custom_settings_container])
+                if isinstance(custom_settings_container, Widget):
+                    custom_field = Field(content=custom_settings_container, title="Custom Settings")
+                    self.settings_card_widgets._widgets.append(custom_field)
 
             self.settings_card = Card(
                 title="Import Settings",
