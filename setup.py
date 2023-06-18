@@ -109,6 +109,7 @@ def get_install_requirements(main_requires, alternative_requires):
 # already have PyTorch installed.
 setup(
     name="supervisely",
+    maintainer="Max Kolomeychenko",
     version=version,
     description="Supervisely Python SDK.",
     long_description=read("README.md"),
