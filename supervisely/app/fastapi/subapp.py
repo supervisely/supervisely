@@ -28,7 +28,7 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import is_production, is_development
+from supervisely._utils import is_production, is_development, is_docker
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
@@ -70,8 +70,9 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         @app.post("/session-info")
         async def send_session_info(request: Request):
-            server_address = "/"
-            if is_development():
+            if is_production() and is_docker():
+                server_address = "/"
+            elif is_development() or (is_production() and not is_docker()):
                 server_address = sly_env.server_address()
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
