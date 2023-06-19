@@ -535,7 +535,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if "id" not in task:
             task["id"] = task.get("taskId")
         return task
-
+    
     def stop(self, id: int):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})

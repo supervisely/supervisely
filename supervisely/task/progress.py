@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
+import inspect
 import math
 from typing import Optional
 from functools import partial
@@ -444,6 +445,11 @@ class tqdm_sly(tqdm, Progress):
             else:
                 if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
+
+            tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
+            for keyword in tqdm_init_params:
+                if keyword in kwargs:
+                    kwargs.pop(keyword)
 
             Progress.__init__(
                 self,

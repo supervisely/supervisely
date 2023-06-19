@@ -33,7 +33,7 @@ class FileStorageUpload(Widget):
         return path
 
     def get_json_data(self):
-        return {"path": self._path}
+        return {"team_id": self._team_id, "path": self._path}
 
     def get_json_state(self):
         return {"files": self._files}
@@ -49,8 +49,13 @@ class FileStorageUpload(Widget):
     def set_path(self, path: str):
         self._set_path(path)
 
+    def get_team_id(self):
+        return self._team_id
+
     def get_uploaded_paths(self) -> Union[List[str], None]:
         response = StateJson()[self.widget_id]["files"]
+        if len(response) == 0 or response is None:
+            return []
         uploaded_files = response["uploadedFiles"]
         if len(uploaded_files) == 0:
             return None

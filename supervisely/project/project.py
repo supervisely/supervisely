@@ -1741,19 +1741,17 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                seg_ann = ann.to_nonoverlapping_masks(
-                    dst_mapping
-                )  # rendered instances and filter classes
-
                 if segmentation_type == "semantic":
-                    seg_ann = seg_ann.add_bg_object(_bg_obj_class)
+                    seg_ann = ann.add_bg_object(_bg_obj_class)
 
                     dst_mapping[_bg_obj_class] = _bg_obj_class
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 
                     seg_ann = seg_ann.to_segmentation_task()
                 elif segmentation_type == "instance":
-                    pass
+                    seg_ann = ann.to_nonoverlapping_masks(
+                        dst_mapping
+                    )  # rendered instances and filter classes
                 elif segmentation_type == "panoptic":
                     raise NotImplementedError
 
