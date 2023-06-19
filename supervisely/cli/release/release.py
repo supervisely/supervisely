@@ -96,6 +96,8 @@ def get_instance_version(token, server):
         raise PermissionError()
     if r.status_code == 404:
         raise NotImplementedError()
+    if r.status_code != 200:
+        raise ConnectionError()
     return r.json()
 
 
@@ -116,6 +118,8 @@ def get_app_from_instance(appKey: str, token, server):
         raise PermissionError()
     if r.status_code == 404:
         return None
+    if r.status_code != 200:
+        raise ConnectionError()
     return r.json()
 
 
@@ -129,6 +133,7 @@ def upload_archive(
     readme,
     modal_template,
     slug,
+    user_id,
     subapp_path,
 ):
     f = open(archive_path, "rb")
@@ -143,10 +148,12 @@ def upload_archive(
             "arhcive.tar.gz",
             f,
             "application/gzip",
-        ),
+        )
     }
     if slug:
         fields["slug"] = slug
+    if user_id:
+        fields["userId"] = str(user_id)
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
     with tqdm(
@@ -185,6 +192,23 @@ def archivate_application(repo: git.Repo, config, slug):
     return archive_folder
 
 
+def get_user(server_address, api_token):
+    headers = {
+        "x-api-key": api_token,
+        "Content-Type": "application/json",
+    }
+    r = requests.post(
+        f'{server_address.rstrip("/")}/public/api/v3/users.me', headers=headers
+    )
+    if r.status_code == 403:
+        raise PermissionError()
+    if r.status_code == 404 or r.status_code == 400:
+        return None
+    if r.status_code != 200:
+        raise ConnectionError()
+    return r.json()
+
+
 def delete_directory(path):
     shutil.rmtree(path)
 
@@ -200,6 +224,7 @@ def release(
     release_version,
     modal_template="",
     slug=None,
+    user_id=None,
     subapp_path="",
 ):
     archive_dir = archivate_application(repo, config, slug)
@@ -214,6 +239,7 @@ def release(
         readme,
         modal_template,
         slug,
+        user_id,
         subapp_path,
     )
     delete_directory(archive_dir)

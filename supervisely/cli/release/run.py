@@ -22,6 +22,7 @@ from supervisely.cli.release.release import (
     slug_is_valid,
     delete_tag,
     get_instance_version,
+    get_user
 )
 
 
@@ -110,7 +111,7 @@ def _ask_release_version(repo: git.Repo):
         current_release_version = None
         suggested_release_version = "0.0.1"
     while True:
-        input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]{suggested_release_version}[/]):\n'
+        input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]v{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]v{suggested_release_version}[/]):\n'
         release_version = console.input(input_msg)
         if release_version == "":
             release_version = "v" + suggested_release_version
@@ -154,6 +155,24 @@ def _check_instance_version(instance_version):
     return True
 
 
+def get_user_data(server_address, api_token):
+    console = Console()
+    try:
+        user_data = get_user(server_address, api_token)
+    except PermissionError:
+        console.print(
+            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
+        )
+        return None
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        return None
+    if user_data is None:
+        console.print("[red][Error][/] User not found. Check that all credentials are set correctly")
+        return None
+    return user_data
+
+
 def run(
     app_directory, sub_app_directory, slug, autoconfirm, release_version, release_description
 ):
@@ -193,6 +212,16 @@ def run(
         )
         return False
 
+    # get relese_token and user_id if needed
+    user_id = None
+    release_token = os.getenv("APP_RELEASE_TOKEN", None)
+    if release_token is not None:
+        user_data = get_user_data(server_address, api_token)
+        if user_data is None:
+            return False
+        user_id = user_data["id"]
+        user_login = user_data["login"]
+    
     # check instance version
     try:
         instance_version = get_instance_version(api_token, server_address)
@@ -210,6 +239,9 @@ def run(
         console.print(
             "[red][Error][/] Permission denied. Check that all credentials are set correctly"
         )
+        return False
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
         return False
 
     # get config
@@ -245,19 +277,23 @@ def run(
     # get modal template
     modal_template = ""
     if "modal_template" in config:
-        modal_template_path = module_root.joinpath(config["modal_template"])
-        if not modal_template_path.exists() or not modal_template_path.is_file():
-            console.print(
-                f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
-            )
-            return False
-        with open(modal_template_path, "r") as f:
-            modal_template = f.read()
+        if config["modal_template"] != "":
+            modal_template_path = module_root.joinpath(config["modal_template"])
+            if not modal_template_path.exists() or not modal_template_path.is_file():
+                console.print(
+                    f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
+                )
+                return False
+            with open(modal_template_path, "r") as f:
+                modal_template = f.read()
 
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
     console.print(f"Server address:\t\t[green]{server_address}[/]")
-    console.print(f"Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+    console.print(f"User Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+    if release_token:
+        console.print(f"Release token:\t\t[green]{release_token[:4]}*******{release_token[-4:]}[/]")
+        console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
     console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
 
     # check that everything is commited and pushed
@@ -278,6 +314,9 @@ def run(
         console.print(
             "[red][Error][/] Permission denied. Check that all credentials are set correctly"
         )
+        return False
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
         return False
 
     # get and check release version
@@ -337,6 +376,8 @@ def run(
             return False
 
     # release
+    if release_token:
+        api_token = release_token
     console.print("Uploading archive...")
     success = True
     response = release(
@@ -350,6 +391,7 @@ def run(
         release_version,
         modal_template,
         slug,
+        user_id,
         sub_app_directory if sub_app_directory != None else "",
     )
     if response.status_code != 200:
