@@ -70,6 +70,7 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         @app.post("/session-info")
         async def send_session_info(request: Request):
+            # TODO: handle case development inside docker
             if is_production() and is_docker():
                 server_address = "/"
             elif is_development() or (is_production() and not is_docker()):
