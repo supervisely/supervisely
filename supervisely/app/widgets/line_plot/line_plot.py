@@ -1,12 +1,15 @@
 from supervisely.app.widgets import Widget
 from supervisely.app.content import StateJson, DataJson
+from typing import List, Tuple, Union
+
+NumT = Union[int, float]
 
 
 class LinePlot(Widget):
     def __init__(
         self,
         title: str,
-        series: list = [],
+        series: List[Tuple[NumT, NumT]] = [],
         smoothing_weight: float = 0,
         group_key: str = None,
         show_legend: bool = True,
@@ -63,7 +66,7 @@ class LinePlot(Widget):
             f"Lists x and y have different lenght, {len(x)} != {len(y)}"
         )
 
-        data = [{"x": px, "y": py} for px, py in zip(x, y)]
+        data = [(px, py) for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)
 
@@ -82,7 +85,7 @@ class LinePlot(Widget):
             self.add_series(name, x, y, send_changes=False)
         DataJson().send_changes()
 
-    def add_to_series(self, name_or_id: str or int, data: dict):
+    def add_to_series(self, name_or_id: str or int, data: List[Tuple[NumT, NumT]]):
         if isinstance(name_or_id, int):
             series_id = name_or_id
         else:
