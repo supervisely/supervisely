@@ -404,8 +404,7 @@ def run(
         slug,
         user_id,
         sub_app_directory if sub_app_directory != None else "",
-        created_at,
-        sub_app_directory,
+        created_at
     )
     if response.status_code != 200:
         error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
