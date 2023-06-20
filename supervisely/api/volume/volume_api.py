@@ -20,10 +20,9 @@ from supervisely import volume
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely._utils import batched
 from supervisely import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.imaging.image import read_bytes
 from supervisely.volume_annotation.plane import Plane
-import supervisely as sly
 
 try:
     from typing import Literal
@@ -626,12 +625,12 @@ class VolumeApi(RemoveableBulkModuleApi):
             raise ValueError("Name has to be with .nrrd extension, for example: my_volume.nrrd")
         from timeit import default_timer as timer
 
-        logger.info("Start volume compression before upload...")
+        logger.debug(f"Start volume {name} compression before upload...")
         start = timer()
         volume_bytes = volume.encode(np_data, meta)
         logger.debug(f"Volume has been compressed in {timer() - start} seconds")
 
-        logger.debug(f"Start uploading bytes of 3d volume ...")
+        logger.debug(f"Start uploading bytes of {name} volume ...")
         start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
@@ -829,7 +828,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
         progress_cb = None
         if log_progress is True:
-            progress_cb = sly.tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape))
+            progress_cb = tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape))
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
 
