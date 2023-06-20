@@ -135,7 +135,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_id = 19581134
             api.volume.annotation.append(volume_id, volume_ann)
         """
-        figures = ann.figures + ann.spatial_figures
+        if ann.spatial_figures:
+            figures = ann.figures + ann.spatial_figures
+        else:
+            figures = ann.figures
+
         info = self._api.volume.get_info_by_id(volume_id)
         self._append(
             self._api.volume.tag,
