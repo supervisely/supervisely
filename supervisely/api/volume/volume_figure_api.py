@@ -331,7 +331,7 @@ class VolumeFigureApi(FigureApi):
     # def _upload_geometries_batch(ids, )
     def _upload_meshes_batch(self, figure2bytes):
         """
-        Private method. Upload figures geometry by given  to storage.
+        Private method. Upload figures geometry by given ID to storage.
 
         :param figure2bytes: Dictionary with figures IDs and geometries.
         :type figure2bytes: dict
@@ -418,7 +418,8 @@ class VolumeFigureApi(FigureApi):
         key_id_map: KeyIdMap,
         field_name=ApiField.ENTITY_ID,
     ):
-        """"""
+        """The same method as _append_bulk but for spatial figures
+        You need to upload the geometry right after figures will be created"""
         figures_count = len(figures_json)
         if figures_count == 0:
             return
@@ -443,3 +444,22 @@ class VolumeFigureApi(FigureApi):
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
+
+    def upload_sf_geometry(self, spatial_figures, geometries, key_id_map: KeyIdMap):
+        """
+        Upload spatial figures geometry by given ID to storage.
+
+        :param spatial_figures: Dictionary with figures.
+        :type spatial_figures: dict
+        :rtype: :class:`NoneType`
+        :Usage example:
+        """
+
+        for sf, geometry_bytes in zip(spatial_figures, geometries):
+            figure_id = key_id_map.get_figure_id(sf.key())
+            content_dict = {
+                ApiField.FIGURE_ID: str(figure_id),
+                ApiField.GEOMETRY: (str(figure_id), geometry_bytes, "application/sla"),
+            }
+            encoder = MultipartEncoder(fields=content_dict)
+            self._api.post("figures.bulk.upload.geometry", encoder)
