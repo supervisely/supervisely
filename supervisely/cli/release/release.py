@@ -3,6 +3,7 @@ import os
 import random
 import re
 import string
+import datetime
 import shutil
 import tarfile
 import requests
@@ -68,14 +69,14 @@ def delete_tag(tag_name, repo: git.Repo):
         raise
 
 
-def get_appKey(repo: git.Repo, sub_app_path: str):
+def get_appKey(repo, sub_app_path, repo_url):
     import hashlib
 
-    remote_name = repo.active_branch.tracking_branch().remote_name
-    remote = repo.remote(remote_name)
-    remote_url = get_remote_url(remote)
+    p = parse(repo_url)
+    repo_url = p.url2https.replace("https://", "").replace(".git", "").lower()
+
     first_commit = next(repo.iter_commits("HEAD", reverse=True))
-    key_string = remote_url + "_" + first_commit.hexsha
+    key_string = repo_url + "_" + first_commit.hexsha
     appKey = hashlib.md5(key_string.encode("utf-8")).hexdigest()
     if sub_app_path is not None:
         appKey += "_" + hashlib.md5(sub_app_path.encode("utf-8")).hexdigest()
@@ -139,11 +140,11 @@ def upload_archive(
     f = open(archive_path, "rb")
     fields = {
         "appKey": appKey,
+        "subAppPath": subapp_path,
         "release": json.dumps(release),
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
-        "subAppPath": subapp_path,
         "archive": (
             "arhcive.tar.gz",
             f,
@@ -213,6 +214,19 @@ def delete_directory(path):
     shutil.rmtree(path)
 
 
+def get_created_at(repo: git.Repo, tag_name):
+    if tag_name is None:
+        return None
+    for tag in repo.tags:
+        if tag.name == tag_name:
+            if tag.tag is None:
+                timestamp = tag.commit.committed_date
+            else:
+                timestamp = tag.tag.tagged_date
+            return datetime.datetime.utcfromtimestamp(timestamp).isoformat()
+    return None
+
+
 def release(
     server_address,
     api_token,
@@ -226,9 +240,17 @@ def release(
     slug=None,
     user_id=None,
     subapp_path="",
+    created_at=None,
 ):
+    if created_at is None:
+        created_at = get_created_at(repo, release_version)
     archive_dir = archivate_application(repo, config, slug)
-    release = {"name": release_name, "version": release_version}
+    release = {
+        "name": release_name,
+        "version": release_version,
+    }
+    if created_at is not None:
+        release["createdAt"] = created_at
     response = upload_archive(
         archive_dir + "/archive.tar.gz",
         server_address,
