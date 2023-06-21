@@ -828,7 +828,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
         progress_cb = None
         if log_progress is True:
-            progress_cb = tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape))
+            progress_cb = tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape)).update
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
         return self.get_info_by_name(dataset_id, name)
 
