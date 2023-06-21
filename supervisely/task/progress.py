@@ -440,11 +440,22 @@ class tqdm_sly(tqdm, Progress):
             else:
                 kwargs.setdefault("total_cnt", args[2])  # args[2]==total
             if len(args) < 12:  # i.e. 'unit' not set as a positional argument
-                if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
+                if kwargs.get("unit") in [
+                    "",
+                    "B",
+                    "k",
+                    "M",
+                    "G",
+                    "T",
+                    "P",
+                    "E",
+                    "Z",
+                ] and kwargs.pop("unit_scale", None):
                     kwargs["is_size"] = True
+                    kwargs.pop("unit")
             else:
                 if (
-                    args[11] in ["k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
+                    args[11] in ["", "B", "k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
                 ):  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
