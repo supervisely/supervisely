@@ -443,7 +443,9 @@ class tqdm_sly(tqdm, Progress):
                 if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
                     kwargs["is_size"] = True
             else:
-                if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
+                if (
+                    args[11] in ["k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
+                ):  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
             tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
