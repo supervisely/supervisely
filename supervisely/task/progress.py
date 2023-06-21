@@ -444,9 +444,7 @@ class tqdm_sly(tqdm, Progress):
                     kwargs["is_size"] = True
             else:
                 logger.info(f"{args}")
-                if (
-                    args[11] in ["k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
-                ):  # i.e. unit=="B" and unit_scale==True
+                if args[11] == "M" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
 
             tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
