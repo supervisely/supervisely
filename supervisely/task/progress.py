@@ -443,7 +443,6 @@ class tqdm_sly(tqdm, Progress):
                 if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
                     kwargs["is_size"] = True
             else:
-                logger.info(f"{args}")
                 if (
                     args[11] in ["k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
                 ):  # i.e. unit=="B" and unit_scale==True
