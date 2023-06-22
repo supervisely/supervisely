@@ -1,5 +1,6 @@
 from supervisely.app.widgets import Widget
 from supervisely.app.content import StateJson, DataJson
+from typing import Union, List, Dict
 
 
 class LinePlot(Widget):
@@ -82,12 +83,18 @@ class LinePlot(Widget):
             self.add_series(name, x, y, send_changes=False)
         DataJson().send_changes()
 
-    def add_to_series(self, name_or_id: str or int, data: dict):
+    def add_to_series(self, name_or_id: str or int, data: Union[List[Dict], Dict]):
         if isinstance(name_or_id, int):
             series_id = name_or_id
         else:
             series_id, _ = self.get_series_by_name(name_or_id)
-        self._series[series_id]["data"].append(data)
+
+        if isinstance(data, List):
+            # list of datapoints
+            self._series[series_id]["data"] += data
+        else:
+            # single datapoint
+            self._series[series_id]["data"].append(data)
         DataJson()[self.widget_id]["series"] = self._series
         DataJson().send_changes()
 
