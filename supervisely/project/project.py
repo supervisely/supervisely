@@ -1182,6 +1182,11 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
+    def items(self):
+        for item_name in self._item_to_ann.keys():
+            img_path, ann_path = self.get_item_paths(item_name)
+            yield item_name, img_path, ann_path
+
     def delete_item(self, item_name: str) -> bool:
         """
         Delete image, image info and annotation from :class:`Dataset<Dataset>`.
