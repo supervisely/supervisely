@@ -5,7 +5,7 @@ import shutil
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
 import random
 import numpy as np
 from tqdm import tqdm
@@ -1181,6 +1181,32 @@ class Dataset(KeyObject):
 
     def __iter__(self):
         return next(self)
+
+    def items(self) -> Generator[Tuple[str]]:
+        """
+        This method is used to iterate over dataset items, receiving item name, path to image and path to annotation
+        json file. It is useful when you need to iterate over dataset items and get paths to images and annotations.
+
+        :return: Generator object, that yields tuple of item name, path to image and path to annotation json file.
+        :rtype: Generator[Tuple[str]]
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            input = "path/to/local/directory"
+            # Creating Supervisely project from local directory.
+            project = sly.Project(input, sly.OpenMode.READ)
+
+            for dataset in project.datasets:
+                for item_name, image_path, ann_path in dataset.items():
+                    print(f"Item '{item_name}': image='{image_path}', ann='{ann_path}'")
+        """
+        for item_name in self._item_to_ann.keys():
+            img_path, ann_path = self.get_item_paths(item_name)
+            yield item_name, img_path, ann_path
 
     def delete_item(self, item_name: str) -> bool:
         """
