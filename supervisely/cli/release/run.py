@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 
-MIN_SUPPORTED_INSTANCE_VERSION = "6.7.21"
+MIN_SUPPORTED_INSTANCE_VERSION = "6.8.3"
 
 from supervisely.cli.release.release import (
     find_tag_in_repo,
