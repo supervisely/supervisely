@@ -90,14 +90,18 @@ class LinePlot(Widget):
             series_id = name_or_id
         else:
             series_id, _ = self.get_series_by_name(name_or_id)
-        self._series[series_id]["data"].append(data)
+        self._series[series_id]["data"].extend(data)
         DataJson()[self.widget_id]["series"] = self._series
         DataJson().send_changes()
 
     def get_series_by_name(self, name):
         series_list = DataJson()[self.widget_id]["series"]
         series_id, series_data = next(
-            ((i, series) for i, series in enumerate(series_list) if series["name"] == name),
+            (
+                (i, series)
+                for i, series in enumerate(series_list)
+                if series["name"] == name
+            ),
             (None, None),
         )
         # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
