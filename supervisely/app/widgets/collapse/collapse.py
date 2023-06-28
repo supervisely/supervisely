@@ -41,11 +41,7 @@ class Collapse(Widget):
         self._items: List[Collapse.Item] = items
 
         self._accordion = accordion
-
-        if self._accordion:
-            self._active_panels = labels[0]
-        else:
-            self._active_panels = [labels[0]]
+        self._active_panels = []
 
         self._items_names = set(labels)
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -86,7 +82,7 @@ class Collapse(Widget):
                     f"Can't activate panel `{value}`: item with such name doesn't exist."
                 )
 
-        if isinstance(value, str) and not self._accordion:
+        if isinstance(value, str):
             self._active_panels = [value]
         else:
             self._active_panels = value
@@ -105,7 +101,7 @@ class Collapse(Widget):
 
         self._items_names = self._make_set_from_unique(names)
         self._items = value
-        self.set_active_panel(names[0])
+        self._active_panels = []
 
         DataJson()[self.widget_id]["items"] = self._get_items_json()
         DataJson().send_changes()
