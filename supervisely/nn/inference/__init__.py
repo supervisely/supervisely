@@ -14,4 +14,12 @@ from supervisely.nn.inference.salient_object_segmentation.salient_object_segment
 from supervisely.nn.inference.prompt_based_object_detection.propmt_based_object_detection import (
     PromptBasedObjectDetection,
 )
+from supervisely.nn.inference.interactive_segmentation.interactive_segmentation import (
+    InteractiveSegmentation,
+)
+from supervisely.nn.inference.promptable_segmentation.promptable_segmentation import (
+    PromptableSegmentation,
+)
 from supervisely.nn.inference.session import Session, SessionJSON
+from supervisely.nn.inference.tracking.point_tracking import PointTracking
+from supervisely.nn.inference.tracking.bbox_tracking import BBoxTracking

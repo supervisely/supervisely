@@ -28,7 +28,7 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import is_production, is_development
+from supervisely._utils import is_production, is_development, is_docker
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
@@ -70,8 +70,10 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         @app.post("/session-info")
         async def send_session_info(request: Request):
-            server_address = "/"
-            if is_development():
+            # TODO: handle case development inside docker
+            if is_production() and is_docker():
+                server_address = "/"
+            elif is_development() or (is_production() and not is_docker()):
                 server_address = sly_env.server_address()
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
@@ -120,7 +122,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
         import arel
-        
+
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -158,6 +160,7 @@ def _init(
     headless=False,
     process_id=None,
     static_dir=None,
+    hot_reload=False,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -171,7 +174,8 @@ def _init(
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
         Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
-        enable_hot_reload_on_debug(app)
+        if hot_reload:
+            enable_hot_reload_on_debug(app)
 
     StateJson()["slyAppShowDialog"] = False
     DataJson()["slyAppDialogTitle"] = ""
@@ -241,7 +245,13 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    def __init__(self, layout: "Widget" = None, templates_dir: str = None, static_dir: str = None):
+    def __init__(
+        self,
+        layout: "Widget" = None,
+        templates_dir: str = None,
+        static_dir: str = None,
+        hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
+    ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -282,6 +292,7 @@ class Application(metaclass=Singleton):
             headless=headless,
             process_id=self._process_id,
             static_dir=static_dir,
+            hot_reload=hot_reload,
         )
 
     def get_server(self):
@@ -292,6 +303,9 @@ class Application(metaclass=Singleton):
 
     def shutdown(self):
         shutdown(self._process_id)
+
+    def stop(self):
+        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
 
 
 def get_name_from_env(default="Supervisely App"):

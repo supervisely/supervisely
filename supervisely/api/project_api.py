@@ -3,25 +3,25 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional, Callable, Union
 
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from collections import defaultdict
-
+from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely.annotation.annotation import TagCollection
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
-    UpdateableModule,
     RemoveableModuleApi,
+    UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.annotation.annotation import TagCollection
-from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class ProjectNotFound(Exception):
@@ -84,17 +84,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
@@ -123,6 +125,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         type='images',
                         reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
                         custom_data={}
+                        backup_archive={}
         """
         return [
             ApiField.ID,
@@ -192,7 +195,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+            #             custom_data={},
+            #             backup_archive={}),
             # ProjectInfo(id=999,
             #             name='Cat_breeds',
             #             description='',
@@ -205,7 +210,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-17T17:44:28.158Z',
             #             updated_at='2021-03-01T10:51:57.545Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             custom_data={},
+            #             backup_archive={})
             # ]
 
             # Filtered Project list
@@ -223,7 +230,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-17T17:44:28.158Z',
             #                     updated_at='2021-03-01T10:51:57.545Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
             # ]
 
         """
@@ -276,7 +285,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
+
 
         """
         info = self._get_info_by_id(id, "projects.info")
@@ -327,7 +339,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
         """
         info = super().get_info_by_name(parent_id, name)
         self._check_project_info(
@@ -500,7 +514,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2021-03-11T09:28:42.585Z',
             #                     updated_at='2021-03-11T09:28:42.585Z',
             #                     type='images',
-            #                     reference_image_url=None)
+            #                     reference_image_url=None),
+            #                     custom_data={},
+            #                     backup_archive={})
+
         """
         effective_name = self._get_effective_new_name(
             parent_id=workspace_id,
@@ -676,7 +693,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return new_dst_meta_json
 
-    def get_activity(self, id: int, progress_cb: Optional[Callable] = None) -> DataFrame:
+    def get_activity(
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> DataFrame:
         """
         Get Project activity by ID.
 
@@ -821,14 +840,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
-    def download_images_tags(self, id: int, progress_cb: Optional[Callable] = None) -> defaultdict:
+    def download_images_tags(
+        self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> defaultdict:
         """
         Get matching tag names to ImageInfos.
 
         :param id: Project ID in Supervisely.
         :type id: int
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Defaultdict matching tag names to ImageInfos
         :rtype: :class:`defaultdict`
         :Usage example:
@@ -966,6 +987,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :Usage example:
 
          .. code-block:: python
+
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
@@ -990,7 +1012,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param archive_urls: Shared URLs of backup on Dropbox.
         :type archive_urls: List[str]
         :return: None
-        :rtype: :class: `NoneType`
+        :rtype: :class:`NoneType`
         :Usage example:
 
         .. code-block:: python
@@ -1026,7 +1048,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param archive_url: Shared URL of backup on Dropbox.
         :type archive_url: str
         :return: None
-        :rtype: :class: `NoneType`
+        :rtype: :class:`NoneType`
         :Usage example:
 
         .. code-block:: python

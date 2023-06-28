@@ -16,6 +16,7 @@ from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.widgets.line_chart.line_chart import LineChart
 from supervisely.app.widgets.scatter_chart.scatter_chart import ScatterChart
 from supervisely.app.widgets.heatmap_chart.heatmap_chart import HeatmapChart
+from supervisely.app.widgets.treemap_chart.treemap_chart import TreemapChart
 from supervisely.app.widgets.table.table import Table
 from supervisely.app.widgets.labeled_image.labeled_image import LabeledImage
 from supervisely.app.widgets.text.text import Text
@@ -77,6 +78,13 @@ from supervisely.app.widgets.augmentations.augmentations import Augmentations, A
 from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
 from supervisely.app.widgets.slider.slider import Slider
+from supervisely.app.widgets.copy_to_clipboard.copy_to_clipboard import CopyToClipboard
 from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
 from supervisely.app.widgets.image_region_selector.image_region_selector import ImageRegionSelector
 from supervisely.app.widgets.collapse.collapse import Collapse
+from supervisely.app.widgets.team_files_selector.team_files_selector import TeamFilesSelector
+from supervisely.app.widgets.icons.icons import Icons
+from supervisely.app.widgets.badge.badge import Badge
+from supervisely.app.widgets.date_picker.date_picker import DatePicker
+from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePicker
+from supervisely.app.widgets.transfer.transfer import Transfer
