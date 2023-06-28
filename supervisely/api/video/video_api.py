@@ -1062,7 +1062,16 @@ class VideoApi(RemoveableBulkModuleApi):
         if update_headers:
             self.upsert_infos(hashes, infos)
             self._api.pop_header("x-skip-processing")
-        metas = self._api.import_storage.get_meta_by_hashes(hashes)
+
+        unique_hashes = list(set(hashes))
+        unique_metas = self._api.import_storage.get_meta_by_hashes(unique_hashes)
+
+        hash_meta_dict = {}
+        for hash_value, meta in zip(unique_hashes, unique_metas):
+            hash_meta_dict[hash_value] = meta
+
+        metas = [hash_meta_dict[hash_value] for hash_value in hashes]
+
         metas2 = [meta["meta"] for meta in metas]
 
         for name, hash, meta in zip(names, hashes, metas2):
