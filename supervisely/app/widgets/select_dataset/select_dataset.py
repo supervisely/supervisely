@@ -117,6 +117,8 @@ class SelectDataset(Widget):
                 project_id = self._project_id
             else:
                 project_id = self._project_selector.get_selected_id()
+            if project_id is None:
+                return [None]
             datasets = self._api.dataset.get_list(project_id)
             ids = [ds.id for ds in datasets]
             return ids
