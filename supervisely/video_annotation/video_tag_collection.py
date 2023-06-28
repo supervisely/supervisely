@@ -254,9 +254,72 @@ class VideoTagCollection(TagCollection):
         tag_meta_collection: TagMetaCollection,
         id_to_tagmeta: Optional[Dict[int, TagMeta]] = None,
     ) -> VideoTagCollection:
+        """
+        Create a VideoTagCollection object from API response data.
+
+        :param data: API response data.
+        :type data: List[Dict]
+        :param tag_meta_collection: _description_
+        :type tag_meta_collection: TagMetaCollection
+        :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
+        :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
+        :return: VideoTagCollection object.
+        :rtype: VideoTagCollection
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            videos = api.video.get_list(dataset_id)
+            for info in videos:
+                tag_collection = sly.VideoTagCollection.from_api_response(
+                    info.tags, project_meta.tag_metas
+                )
+        """
         return super().from_api_response(data, tag_meta_collection, id_to_tagmeta)
 
     def get_by_name(self, tag_name: str, default: Optional[Any] = None) -> List[VideoTag]:
+        """
+        Get a list of VideoTag objects by name from the VideoTagCollection.
+
+        :param tag_name: Name of the tags to get.
+        :type tag_name: str
+        :return:  List of VideoTag objects with the specified name.
+        :rtype: List[VideoTag]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            videos = api.video.get_list(dataset_id)
+            for info in videos:
+                tag_collection = sly.VideoTagCollection.from_api_response(
+                    info.tags, project_meta.tag_metas
+                )
+                single_tag = tag_collection.get_by_name("tag_name")
+        """
         # super().get_by_name(tag_name, default)
         res = []
         for tag in self:
@@ -265,6 +328,36 @@ class VideoTagCollection(TagCollection):
         return res
 
     def get_single_by_name(self, tag_name: str, default: Optional[Any] = None) -> VideoTag:
+        """
+        Get a single Tag object by name from the VideoTagCollection.
+
+        :param tag_name: Name of the tag to get.
+        :type tag_name: str
+        :return: VideoTag object with the specified name.
+        :rtype: VideoTag
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            videos = api.video.get_list(dataset_id)
+            for info in videos:
+                tag_collection = sly.VideoTagCollection.from_api_response(
+                    info.tags, project_meta.tag_metas
+                )
+                single_tag = tag_collection.get_single_by_name("tag_name")
+        """
         # super().get_by_name(tag_name, default)
         res = []
         for tag in self:

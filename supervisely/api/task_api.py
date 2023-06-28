@@ -2,11 +2,12 @@
 """api for working with tasks"""
 
 # docs
-from typing import List, NamedTuple, Dict, Optional, Callable
+from typing import List, NamedTuple, Dict, Optional, Callable, Union
 import os
 import time
 from collections import defaultdict, OrderedDict
 import json
+from tqdm import tqdm
 
 from supervisely.api.module_api import (
     ApiField,
@@ -36,17 +37,19 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         task_id = 121230
         task_info = api.task.get_info_by_id(task_id)
@@ -290,7 +293,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def upload_dtl_archive(
-        self, task_id: int, archive_path: str, progress_cb: Optional[Callable] = None
+        self, task_id: int, archive_path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ):
         """upload_dtl_archive"""
         encoder = MultipartEncoder(
@@ -532,7 +535,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if "id" not in task:
             task["id"] = task.get("taskId")
         return task
-
+    
     def stop(self, id: int):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
@@ -578,7 +581,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         task_id: int,
         abs_paths: List[str],
         names: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """upload_files"""
         if len(abs_paths) != len(names):

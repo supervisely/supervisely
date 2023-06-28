@@ -16,6 +16,22 @@ class TagApi(ModuleApi):
 
     @staticmethod
     def info_sequence():
+        """
+        NamedTuple TagInfo information about Tag.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            info_sequence = api.video.tag.info_sequence()
+        """
+
         return [ApiField.ID,
                 ApiField.PROJECT_ID,
                 ApiField.NAME,
@@ -27,15 +43,51 @@ class TagApi(ModuleApi):
 
     @staticmethod
     def info_tuple_name():
-        """"""
+        """
+        Get string name of NamedTuple for class.
+
+        :return: NamedTuple name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tuple_name = api.video.tag.info_tuple_name()
+            print(tuple_name) # TagInfo
+        """
+
         return 'TagInfo'
 
-    def get_list(self, project_id, filters=None):
-        """"""
+    def get_list(self, project_id: int, filters=None):
+        """
+        Get list of tags for a given project ID.
+
+        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :type project_id: int
+        :param filters: List of parameters to sort output tags. See: https://dev.supervise.ly/api-docs/#tag/Advanced/paths/~1tags.list/get
+        :type filters: List[Dict[str, str]], optional
+        :return: List of the tags from the project with given id.
+        :rtype: list
+        """
+
         return self.get_list_all_pages('tags.list', {ApiField.PROJECT_ID: project_id, "filter": filters or []})
 
-    def get_name_to_id_map(self, project_id):
-        """"""
+    def get_name_to_id_map(self, project_id: int):
+        """
+        Get dictionary with mapping tag name to tag ID for a given project ID.
+
+        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :type project_id: int
+        :return: Dictionary with mapping tag name to tag id for a given project ID.
+        :rtype: dict
+        """
+
         tags_info = self.get_list(project_id)
         return {tag_info.name: tag_info.id for tag_info in tags_info}
 
@@ -54,8 +106,22 @@ class TagApi(ModuleApi):
             tags_keys.append(tag.key())
         return tags_json, tags_keys
 
-    def append_to_entity(self, entity_id, project_id, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
-        """"""
+    def append_to_entity(self, entity_id: int, project_id: int, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
+        """
+        Add tags to entity in project with given ID.
+
+        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :type entity_id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags: Collection of tags
+        :type tags: KeyIndexedCollection
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: List of tags IDs
+        :rtype: list
+        """
+
         if len(tags) == 0:
             return []
         tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
@@ -76,8 +142,32 @@ class TagApi(ModuleApi):
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def append_to_objects(self, entity_id, project_id, objects: KeyIndexedCollection, key_id_map: KeyIdMap):
-        """"""
+    def append_to_objects(self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap):
+        """
+        Add Tags to Annotation Objects.
+
+        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :type entity_id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_json: Collection of tags
+        :type tags_json: KeyIndexedCollection
+        :return: List of tags IDs
+        :rtype: list
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_id = 19373170
+            pcd_info = api.
+        """
+
         tag_name_id_map = self.get_name_to_id_map(project_id)
 
         tags_to_add = []
@@ -99,8 +189,18 @@ class TagApi(ModuleApi):
         ids = self.append_to_objects_json(entity_id, tags_to_add)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
 
-    def append_to_objects_json(self, entity_id, tags_json):
-        """"""
+    def append_to_objects_json(self, entity_id: int, tags_json: dict) -> list:
+        """
+        Add Tags to Annotation Objects.
+
+        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :type entity_id: int
+        :param tags_json: Collection of tags in JSON format
+        :type tags_json: dict
+        :return: List of tags IDs
+        :rtype: list
+        """
+
         if len(tags_json) == 0:
             return []
         response = self._api.post('annotation-objects.tags.bulk.add',

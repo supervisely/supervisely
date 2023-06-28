@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 
-MIN_SUPPORTED_INSTANCE_VERSION = "6.7.21"
+MIN_SUPPORTED_INSTANCE_VERSION = "6.8.3"
 
 from supervisely.cli.release.release import (
     find_tag_in_repo,
@@ -22,6 +22,8 @@ from supervisely.cli.release.release import (
     slug_is_valid,
     delete_tag,
     get_instance_version,
+    get_user,
+    get_created_at,
 )
 
 
@@ -34,8 +36,11 @@ def _check_git(repo: git.Repo):
             "[red][Error][/] You have untracked files. Commit all changes before releasing the app."
         )
         console.print("  Untracked files:")
-        for i, file in enumerate(repo.untracked_files):
-            console.print(f"  {i+1}) " + file)
+        console.print("\n".join(
+            [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][:20]
+        ))
+        if len(repo.untracked_files) > 20:
+            console.print(f"  ... and {len(repo.untracked_files) - 20} more.")
         print()
         result = False
 
@@ -107,7 +112,7 @@ def _ask_release_version(repo: git.Repo):
         current_release_version = None
         suggested_release_version = "0.0.1"
     while True:
-        input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]{suggested_release_version}[/]):\n'
+        input_msg = f'Enter release version in format vX.X.X ({f"Last release: [blue]v{current_release_version}[/]. " if current_release_version else ""}Press "Enter" for [blue]v{suggested_release_version}[/]):\n'
         release_version = console.input(input_msg)
         if release_version == "":
             release_version = "v" + suggested_release_version
@@ -144,9 +149,29 @@ def _check_instance_version(instance_version):
     last_supported = [int(x) for x in MIN_SUPPORTED_INSTANCE_VERSION.split(".")]
     version_numbers = [int(x) for x in instance_version.split(".")]
     for number, supported in zip(version_numbers, last_supported):
-        if number < supported:
+        if number > supported:
+            return True
+        elif number < supported:
             return False
     return True
+
+
+def get_user_data(server_address, api_token):
+    console = Console()
+    try:
+        user_data = get_user(server_address, api_token)
+    except PermissionError:
+        console.print(
+            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
+        )
+        return None
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        return None
+    if user_data is None:
+        console.print("[red][Error][/] User not found. Check that all credentials are set correctly")
+        return None
+    return user_data
 
 
 def run(
@@ -188,6 +213,16 @@ def run(
         )
         return False
 
+    # get relese_token and user_id if needed
+    user_id = None
+    release_token = os.getenv("APP_RELEASE_TOKEN", None)
+    if release_token is not None:
+        user_data = get_user_data(server_address, api_token)
+        if user_data is None:
+            return False
+        user_id = user_data["id"]
+        user_login = user_data["login"]
+    
     # check instance version
     try:
         instance_version = get_instance_version(api_token, server_address)
@@ -206,6 +241,9 @@ def run(
             "[red][Error][/] Permission denied. Check that all credentials are set correctly"
         )
         return False
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        return False
 
     # get config
     try:
@@ -221,6 +259,13 @@ def run(
             f'[red][red][Error][/][/] Cannot decode config json file at "{module_path.joinpath("config.json")}": {str(e)}'
         )
         return False
+    
+    # get readme
+    try:
+        with open(module_path.joinpath("README.md"), "r", encoding="utf_8") as f:
+            readme = f.read()
+    except:
+        readme = ""
 
     # get app name
     app_name = config.get("name", None)
@@ -233,19 +278,23 @@ def run(
     # get modal template
     modal_template = ""
     if "modal_template" in config:
-        modal_template_path = module_root.joinpath(config["modal_template"])
-        if not modal_template_path.exists() or not modal_template_path.is_file():
-            console.print(
-                f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
-            )
-            return False
-        with open(modal_template_path, "r") as f:
-            modal_template = f.read()
+        if config["modal_template"] != "":
+            modal_template_path = module_root.joinpath(config["modal_template"])
+            if not modal_template_path.exists() or not modal_template_path.is_file():
+                console.print(
+                    f'[red][Error][/] Cannot find Modal Template at "{modal_template_path}". Please check your [green]config.json[/] file'
+                )
+                return False
+            with open(modal_template_path, "r") as f:
+                modal_template = f.read()
 
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
     console.print(f"Server address:\t\t[green]{server_address}[/]")
-    console.print(f"Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+    console.print(f"User Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
+    if release_token:
+        console.print(f"Release token:\t\t[green]{release_token[:4]}*******{release_token[-4:]}[/]")
+        console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
     console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
 
     # check that everything is commited and pushed
@@ -254,7 +303,10 @@ def run(
         return False
 
     # get appKey
-    appKey = get_appKey(repo, sub_app_directory)
+    remote_name = repo.active_branch.tracking_branch().remote_name
+    remote = repo.remote(remote_name)
+    repo_url = remote.url
+    appKey = get_appKey(repo, sub_app_directory, repo_url)
 
     # check if app exist or not
     module_exists_label = "[yellow bold]updated[/]"
@@ -266,6 +318,9 @@ def run(
         console.print(
             "[red][Error][/] Permission denied. Check that all credentials are set correctly"
         )
+        return False
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
         return False
 
     # get and check release version
@@ -291,11 +346,12 @@ def run(
     console.print(
         f'\nApplication "{app_name}" will be {module_exists_label} at "{server_address}" Supervisely instance with release [blue]{release_version}[/] "{release_description}"'
     )
-    if repo.active_branch.name in ["main", "master"]:
-        remote_name = repo.active_branch.tracking_branch().name
-        console.print(
-            f'Git tag "sly-release-{release_version}" will be added and pushed to remote "{remote_name}"'
-        )
+    if not slug:
+        if repo.active_branch.name in ["main", "master"]:
+            remote_name = repo.active_branch.tracking_branch().name
+            console.print(
+                f'Git tag "sly-release-{release_version}" will be added and pushed to remote "{remote_name}"'
+            )
 
     # ask for confiramtion if needed
     if autoconfirm:
@@ -307,24 +363,31 @@ def run(
         return False
 
     # add tag and push
+    tag_name = None
     tag_created = False
-    if repo.active_branch.name in ["main", "master"]:
-        tag_name = f"sly-release-{release_version}"
-        tag = find_tag_in_repo(tag_name, repo)
-        if tag is None:
-            tag_created = True
-            repo.create_tag(tag_name)
-        try:
-            push_tag(tag_name, repo)
-        except subprocess.CalledProcessError:
-            if tag_created:
-                repo.delete_tag(tag)
-            console.print(
-                f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
-            )
-            return False
+    if not slug:
+        if repo.active_branch.name in ["main", "master"]:
+            tag_name = f"sly-release-{release_version}"
+            tag = find_tag_in_repo(tag_name, repo)
+            if tag is None:
+                tag_created = True
+                repo.create_tag(tag_name, message=release_description)
+            try:
+                push_tag(tag_name, repo)
+            except subprocess.CalledProcessError:
+                if tag_created:
+                    repo.delete_tag(tag)
+                console.print(
+                    f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
+                )
+                return False
+            
+    # get created_at
+    created_at = get_created_at(repo, tag_name)
 
     # release
+    if release_token:
+        api_token = release_token
     console.print("Uploading archive...")
     success = True
     response = release(
@@ -333,10 +396,14 @@ def run(
         appKey,
         repo,
         config,
+        readme,
         release_description,
         release_version,
         modal_template,
         slug,
+        user_id,
+        sub_app_directory if sub_app_directory != None else "",
+        created_at
     )
     if response.status_code != 200:
         error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"

@@ -1,4 +1,8 @@
 # coding: utf-8
+from typing import Optional, Callable, Union
+
+from tqdm import tqdm
+
 from supervisely.api.module_api import ModuleApiBase, ApiField
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
@@ -111,7 +115,9 @@ class RemoteStorageApi(ModuleApiBase):
         )
         return resp.json()
 
-    def download_path(self, remote_path: str, save_path: str, progress_cb=None):
+    def download_path(
+        self, remote_path: str, save_path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ):
         """
         Downloads item from given remote path to given local path.
 
@@ -119,7 +125,9 @@ class RemoteStorageApi(ModuleApiBase):
         :type remote_path: str
         :param save_path: Local save path.
         :type save_path: str
-        :Usage example:
+        :param progress_cb: Progress function to download.
+        :type progress_cb: tqdm or callable, optional
+
 
         .. code-block:: python
 

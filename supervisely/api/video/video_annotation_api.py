@@ -1,20 +1,22 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional, Callable
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
 import json
-from supervisely.api.module_api import ApiField
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from typing import Callable, Dict, List, Optional, Union
+
+from tqdm import tqdm
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
+from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import Progress
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
     """
-    VideoAnnotation for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
+    :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -22,22 +24,25 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         video_id = 186648102
         ann_info = api.video.annotation.download(video_id)
     """
-    _method_download_bulk = 'videos.annotations.bulk.info'
+
+    _method_download_bulk = "videos.annotations.bulk.info"
     _entity_ids_str = ApiField.VIDEO_IDS
 
     def download(self, video_id: int) -> Dict:
@@ -77,10 +82,13 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             #     "frames": []
             # }
         """
+
         video_info = self._api.video.get_info_by_id(video_id)
         return self._download(video_info.dataset_id, video_id)
 
-    def append(self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None) -> None:
+    def append(
+        self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None
+    ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
 
@@ -106,13 +114,28 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             video_id = 198704259
             api.video.annotation.append(video_id, video_ann)
         """
-        info = self._api.video.get_info_by_id(video_id)
-        self._append(self._api.video.tag, self._api.video.object, self._api.video.figure,
-                     info.project_id, info.dataset_id, video_id,
-                     ann.tags, ann.objects, ann.figures, key_id_map)
 
-    def upload_paths(self, video_ids: List[int], ann_paths: List[str], project_meta: ProjectMeta,
-                     progress_cb: Optional[Callable] = None) -> None:
+        info = self._api.video.get_info_by_id(video_id)
+        self._append(
+            self._api.video.tag,
+            self._api.video.object,
+            self._api.video.figure,
+            info.project_id,
+            info.dataset_id,
+            video_id,
+            ann.tags,
+            ann.objects,
+            ann.figures,
+            key_id_map,
+        )
+
+    def upload_paths(
+        self,
+        video_ids: List[int],
+        ann_paths: List[str],
+        project_meta: ProjectMeta,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
         """
         Loads an VideoAnnotations from a given paths to a given videos IDs in the API. Videos IDs must be from one dataset.
 
@@ -123,7 +146,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Progress, optional
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -138,8 +161,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api = sly.Api.from_env()
 
             video_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.video.annotation.upload_paths(video_ids, ann_pathes, meta)
+            ann_paths = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            api.video.annotation.upload_paths(video_ids, ann_paths, meta)
         """
         # video_ids from the same dataset
 

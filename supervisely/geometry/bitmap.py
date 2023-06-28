@@ -23,7 +23,9 @@ from supervisely.geometry.constants import BITMAP
 from supervisely.imaging.image import read
 
 
-if not hasattr(np, 'bool'): np.bool = np.bool_
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
+
 
 class SkeletonizeMethod(Enum):
     """
@@ -132,7 +134,6 @@ class Bitmap(BitmapBase):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
-
         if data.dtype != np.bool:
             unique, counts = np.unique(data, return_counts=True)
             if len(unique) != 2:
@@ -168,9 +169,7 @@ class Bitmap(BitmapBase):
                 "Creating a bitmap with an empty mask (no pixels set to True) is not supported."
             )
         data_tight_bbox = _find_mask_tight_bbox(self._data)
-        self._origin = self._origin.translate(
-            drow=data_tight_bbox.top, dcol=data_tight_bbox.left
-        )
+        self._origin = self._origin.translate(drow=data_tight_bbox.top, dcol=data_tight_bbox.left)
         self._data = data_tight_bbox.get_cropped_numpy_slice(self._data)
 
     @classmethod
@@ -203,9 +202,7 @@ class Bitmap(BitmapBase):
         self.draw(full_img_mask, 1)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
-        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(
-            np.bool
-        )
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
         return Bitmap(data=new_mask)
 
     def crop(self, rect: Rectangle) -> List[Bitmap]:
@@ -452,12 +449,9 @@ class Bitmap(BitmapBase):
                     child_idx = hier[0][child_idx][0]
                 if len(external) > 2:
                     new_poly = Polygon(
-                        exterior=row_col_list_to_points(
-                            external, flip_row_col_order=True
-                        ),
+                        exterior=row_col_list_to_points(external, flip_row_col_order=True),
                         interior=[
-                            row_col_list_to_points(x, flip_row_col_order=True)
-                            for x in internals
+                            row_col_list_to_points(x, flip_row_col_order=True) for x in internals
                         ],
                     )
                     res.append(new_poly)
@@ -532,7 +526,7 @@ class Bitmap(BitmapBase):
     @classmethod
     def from_path(cls, path: str) -> Bitmap:
         """
-        Read bitmap from image by pathю
+        Read bitmap from image by path.
 
         :param path: Path to image
         :type path: str

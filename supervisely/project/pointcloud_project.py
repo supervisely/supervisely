@@ -9,6 +9,7 @@ import os
 import random
 import numpy as np
 import shutil
+from tqdm import tqdm
 
 from supervisely.io.fs import (
     file_exists,
@@ -33,15 +34,20 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 
-from supervisely.project.project import OpenMode, Dataset, read_single_project as read_project_wrapper
+from supervisely.project.project import (
+    OpenMode,
+    Dataset,
+    read_single_project as read_project_wrapper,
+)
 
 
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-import supervisely.pointcloud as sly_pointcloud
+import supervisely.pointcloud.pointcloud as sly_pointcloud
 from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.io.json import dump_json_file
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
+
 
 class PointcloudItemPaths(NamedTuple):
     #: :class:`str`: Full pointcloud file path of item
@@ -52,6 +58,7 @@ class PointcloudItemPaths(NamedTuple):
 
     #: :class:`str`: Full annotation file path of item
     ann_path: str
+
 
 class PointcloudItemInfo(NamedTuple):
     #: :class:`str`: Item's dataset name
@@ -69,6 +76,7 @@ class PointcloudItemInfo(NamedTuple):
     #: :class:`str`: Full annotation file path of item
     ann_path: str
 
+
 class PointcloudDataset(VideoDataset):
     #: :class:`str`: Items data directory name
     item_dir_name = "pointcloud"
@@ -78,7 +86,7 @@ class PointcloudDataset(VideoDataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "pointcloud_info"
-    
+
     #: :class:`str`: Related images directory name
     related_images_dir_name = "related_images"
 
@@ -94,7 +102,9 @@ class PointcloudDataset(VideoDataset):
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'img_dir' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Property 'img_dir' is not supported for {type(self).__name__} object."
+        )
 
     @property
     def img_info_dir(self):
@@ -102,7 +112,9 @@ class PointcloudDataset(VideoDataset):
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'img_info_dir' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Property 'img_info_dir' is not supported for {type(self).__name__} object."
+        )
 
     @property
     def seg_dir(self):
@@ -110,35 +122,45 @@ class PointcloudDataset(VideoDataset):
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Property 'seg_dir' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Property 'seg_dir' is not supported for {type(self).__name__} object."
+        )
 
     def get_img_path(self, item_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_img_info_path(self, img_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_image_info(self, item_name: str) -> None:
         """
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     def get_seg_path(self, item_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object."
+        )
 
     @property
     def pointcloud_dir(self) -> str:
@@ -262,10 +284,10 @@ class PointcloudDataset(VideoDataset):
         ann: Optional[Union[PointcloudAnnotation, str]] = None,
         _validate_item: Optional[bool] = True,
         _use_hardlink: Optional[bool] = False,
-        item_info: Optional[Union[PointcloudInfo, Dict, str]] = None
+        item_info: Optional[Union[PointcloudInfo, Dict, str]] = None,
     ) -> None:
         """
-        Adds given item file to dataset items directory, and adds given annotation to dataset 
+        Adds given item file to dataset items directory, and adds given annotation to dataset
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
@@ -349,15 +371,18 @@ class PointcloudDataset(VideoDataset):
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object.")
+        raise NotImplementedError(
+            f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object."
+        )
 
     def _add_item_raw_bytes(self, item_name, item_raw_bytes):
         """
         Not available for PointcloudDataset class object.
         :raises: :class:`NotImplementedError` in all cases.
         """
-        raise NotImplementedError(f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object.")
-
+        raise NotImplementedError(
+            f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object."
+        )
 
     def _add_pointcloud_np(self, item_name, pointcloud):
         if pointcloud is None:
@@ -397,7 +422,7 @@ class PointcloudDataset(VideoDataset):
             for obj_class in project_meta.obj_classes:
                 if obj_class.name in item_class.keys():
                     class_items[obj_class.name] += 1
-        
+
         result = {}
         if return_items_count:
             result["items_count"] = class_items
@@ -500,6 +525,7 @@ class PointcloudProject(VideoProject):
         project_path = "/home/admin/work/supervisely/projects/ptc_project"
         project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
     """
+
     dataset_class = PointcloudDataset
 
     class DatasetDict(KeyIndexedCollection):
@@ -517,10 +543,7 @@ class PointcloudProject(VideoProject):
         return_items_count: Optional[bool] = True,
     ):
         return super(PointcloudProject, self).get_classes_stats(
-            dataset_names, 
-            return_objects_count, 
-            return_figures_count, 
-            return_items_count
+            dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
     @staticmethod
@@ -703,7 +726,7 @@ class PointcloudProject(VideoProject):
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.
@@ -726,9 +749,8 @@ class PointcloudProject(VideoProject):
         :type batch_size: :class:`int`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -773,7 +795,7 @@ class PointcloudProject(VideoProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud project to Supervisely from the given directory.
@@ -788,9 +810,8 @@ class PointcloudProject(VideoProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function 
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm` or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -812,9 +833,9 @@ class PointcloudProject(VideoProject):
 
             # Upload Pointcloud Project
             project_id, project_name = sly.PointcloudProject.upload(
-                project_directory, 
-                api, 
-                workspace_id=45, 
+                project_directory,
+                api,
+                workspace_id=45,
                 project_name="My Pointcloud Project"
             )
         """
@@ -827,6 +848,7 @@ class PointcloudProject(VideoProject):
             progress_cb=progress_cb,
         )
 
+
 def download_pointcloud_project(
     api: Api,
     project_id: int,
@@ -837,9 +859,71 @@ def download_pointcloud_project(
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
+    """
+    Download pointcloud project to the local directory.
 
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_items: Include pointcloud items in the download.
+    :type download_items: bool, optional
+    :param download_related_images: Include related context images of a pointcloud project in the download.
+    :type download_related_images: bool, optional
+    :param download_pointclouds_info: Include pointclouds info in the download.
+    :type download_pointclouds_info: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download pointcloud project
+        project_id = 19542
+        project_info = api.project.get_info_by_id(project_id)
+        num_pointclouds = project_info.items_count
+
+        p = tqdm(
+            desc="Downloading pointcloud project",
+            total=num_pointclouds,
+        )
+        sly.download_pointcloud_project(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     key_id_map = KeyIdMap()
 
     project_fs = PointcloudProject(dest_dir, OpenMode.CREATE)
@@ -880,14 +964,14 @@ def download_pointcloud_project(
                         api.pointcloud.download_path(pointcloud_id, pointcloud_file_path)
                     except Exception as e:
                         logger.info(
-                            "INFO FOR DEBUGGING", 
+                            "INFO FOR DEBUGGING",
                             extra={
                                 "project_id": project_id,
                                 "dataset_id": dataset.id,
                                 "pointcloud_id": pointcloud_id,
-                                "pointcloud_name": pointcloud_name, 
+                                "pointcloud_name": pointcloud_name,
                                 "pointcloud_file_path": pointcloud_file_path,
-                            }
+                            },
                         )
                         raise e
                 else:
@@ -899,13 +983,13 @@ def download_pointcloud_project(
                         related_images = api.pointcloud.get_list_related_images(pointcloud_id)
                     except Exception as e:
                         logger.info(
-                            "INFO FOR DEBUGGING", 
+                            "INFO FOR DEBUGGING",
                             extra={
                                 "project_id": project_id,
                                 "dataset_id": dataset.id,
                                 "pointcloud_id": pointcloud_id,
                                 "pointcloud_name": pointcloud_name,
-                            }
+                            },
                         )
                         raise e
                     for rimage_info in related_images:
@@ -931,15 +1015,15 @@ def download_pointcloud_project(
                             api.pointcloud.download_related_image(rimage_id, path_img)
                         except Exception as e:
                             logger.info(
-                                "INFO FOR DEBUGGING", 
+                                "INFO FOR DEBUGGING",
                                 extra={
                                     "project_id": project_id,
                                     "dataset_id": dataset.id,
                                     "pointcloud_id": pointcloud_id,
-                                    "pointcloud_name": pointcloud_name, 
+                                    "pointcloud_name": pointcloud_name,
                                     "rimage_id": rimage_id,
-                                    "path_img": path_img
-                                }
+                                    "path_img": path_img,
+                                },
                             )
                             raise e
                         dump_json_file(rimage_info, path_json)
@@ -947,17 +1031,19 @@ def download_pointcloud_project(
                 pointcloud_file_path = pointcloud_file_path if download_items else None
                 pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
                 try:
-                    pointcloud_ann = PointcloudAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+                    pointcloud_ann = PointcloudAnnotation.from_json(
+                        ann_json, project_fs.meta, key_id_map
+                    )
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "project_id": project_id,
                             "dataset_id": dataset.id,
                             "pointcloud_id": pointcloud_id,
-                            "pointcloud_name": pointcloud_name, 
+                            "pointcloud_name": pointcloud_name,
                             "ann_json": ann_json,
-                        }
+                        },
                     )
                     raise e
                 try:
@@ -970,15 +1056,15 @@ def download_pointcloud_project(
                     )
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "project_id": project_id,
                             "dataset_id": dataset.id,
                             "pointcloud_id": pointcloud_id,
-                            "pointcloud_name": pointcloud_name, 
+                            "pointcloud_name": pointcloud_name,
                             "pointcloud_file_path": pointcloud_file_path,
-                            "item_info": pointcloud_info
-                        }
+                            "item_info": pointcloud_info,
+                        },
                     )
                     raise e
                 if progress_cb is not None:
@@ -995,7 +1081,7 @@ def upload_pointcloud_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = False,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
     if project_name is None:
@@ -1018,7 +1104,6 @@ def upload_pointcloud_project(
             )
 
         for item_name in dataset_fs:
-
             item_path, related_images_dir, ann_path = dataset_fs.get_item_paths(item_name)
             related_items = dataset_fs.get_related_images(item_name)
 
@@ -1034,14 +1119,14 @@ def upload_pointcloud_project(
                 pointcloud = api.pointcloud.upload_path(dataset.id, item_name, item_path, item_meta)
             except Exception as e:
                 logger.info(
-                    "INFO FOR DEBUGGING", 
+                    "INFO FOR DEBUGGING",
                     extra={
                         "project_id": project.id,
                         "dataset_id": dataset.id,
                         "item_name": item_name,
-                        "item_path": item_path, 
+                        "item_path": item_path,
                         "item_meta": item_meta,
-                    }
+                    },
                 )
                 raise e
 
@@ -1051,14 +1136,14 @@ def upload_pointcloud_project(
                 ann = PointcloudAnnotation.from_json(ann_json, project_fs.meta)
             except Exception as e:
                 logger.info(
-                    "INFO FOR DEBUGGING", 
+                    "INFO FOR DEBUGGING",
                     extra={
                         "project_id": project.id,
                         "dataset_id": dataset.id,
                         "pointcloud_id": pointcloud.id,
-                        "pointcloud_name": pointcloud.name, 
+                        "pointcloud_name": pointcloud.name,
                         "ann_json": ann_json,
-                    }
+                    },
                 )
                 raise e
 
@@ -1067,14 +1152,14 @@ def upload_pointcloud_project(
                 api.pointcloud.annotation.append(pointcloud.id, ann, key_id_map)
             except Exception as e:
                 logger.info(
-                    "INFO FOR DEBUGGING", 
+                    "INFO FOR DEBUGGING",
                     extra={
                         "project_id": project.id,
                         "dataset_id": dataset.id,
                         "pointcloud_id": pointcloud.id,
-                        "pointcloud_name": pointcloud.name, 
+                        "pointcloud_name": pointcloud.name,
                         "ann": ann.to_json(),
-                    }
+                    },
                 )
                 raise e
 
@@ -1087,14 +1172,14 @@ def upload_pointcloud_project(
                         img = api.pointcloud.upload_related_image(img_path)
                     except Exception as e:
                         logger.info(
-                            "INFO FOR DEBUGGING", 
+                            "INFO FOR DEBUGGING",
                             extra={
                                 "project_id": project.id,
                                 "dataset_id": dataset.id,
                                 "pointcloud_id": pointcloud.id,
-                                "pointcloud_name": pointcloud.name, 
+                                "pointcloud_name": pointcloud.name,
                                 "img_path": img_path,
-                            }
+                            },
                         )
                         raise e
                     if "deviceId" not in meta_json[ApiField.META].keys():
@@ -1109,20 +1194,20 @@ def upload_pointcloud_project(
                             ApiField.META: meta_json[ApiField.META],
                         }
                     )
-                    
+
                 try:
                     api.pointcloud.add_related_images(rimg_infos, camera_names)
                 except Exception as e:
                     logger.info(
-                        "INFO FOR DEBUGGING", 
+                        "INFO FOR DEBUGGING",
                         extra={
                             "project_id": project.id,
                             "dataset_id": dataset.id,
                             "pointcloud_id": pointcloud.id,
-                            "pointcloud_name": pointcloud.name, 
+                            "pointcloud_name": pointcloud.name,
                             "rimg_infos": rimg_infos,
                             "camera_names": camera_names,
-                        }
+                        },
                     )
                     raise e
             if log_progress:
