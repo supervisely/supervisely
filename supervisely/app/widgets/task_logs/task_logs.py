@@ -1,8 +1,8 @@
-from typing import Dict
+from typing import Dict, Union
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely import is_development
-
+from supervisely.app.widgets import Button, Container, Input, Widget
 
 
 class TaskLogs(Widget):
@@ -18,6 +18,36 @@ class TaskLogs(Widget):
         self._multiple = multiple
         self._filterable = filterable
 
+        self._task_id_input = Input(
+            value=self._task_id, readonly=True, placeholder="Enter new task id", size="mini"
+        )
+        self._task_logs_stop = Button("Change task id", size="mini", plain=True)
+        self._task_id_change_btn = Button("OK", size="mini", plain=True)
+        self._task_id_change_btn.hide()
+        self._task_id_change_controls = Container(
+            widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
+            direction="horizontal",
+        )
+
+        @self._task_logs_stop.click
+        def stop_logs_ws():
+            self._task_logs_stop.loading = True
+            self._set_task_id(None)
+            self._task_logs_stop.loading = False
+            self._task_logs_stop.hide()
+            self._task_id_change_btn.show()
+            self._task_id_input.readonly = False
+
+        @self._task_id_change_btn.click
+        def change_task_id():
+            self._task_id_change_btn.loading = True
+            new_task_id = self._task_id_input.value
+            self._set_task_id(new_task_id)
+            self._task_id_change_btn.loading = False
+            self._task_id_change_btn.hide()
+            self._task_logs_stop.show()
+            self._task_id_input.readonly = True
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
@@ -31,3 +61,7 @@ class TaskLogs(Widget):
 
     def get_task_id(self) -> int:
         return DataJson()[self.widget_id]["taskId"]
+
+    def _set_task_id(self, task_id: Union[int, None]):
+        DataJson()[self.widget_id]["taskId"] = task_id
+        DataJson().send_changes()
