@@ -1,11 +1,8 @@
 from typing import Dict
-from supervisely.app import StateJson, DataJson
+from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+from supervisely import is_development
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 
 
 class TaskLogs(Widget):
@@ -17,6 +14,7 @@ class TaskLogs(Widget):
         widget_id: str = None,
     ):
         self._task_id = task_id
+        self._is_development = is_development()
         self._multiple = multiple
         self._filterable = filterable
 
@@ -25,6 +23,7 @@ class TaskLogs(Widget):
     def get_json_data(self) -> Dict:
         return {
             "taskId": self._task_id,
+            "isDevelopment": self._is_development,
             "options": {"multiple": self._multiple, "filterable": self._filterable},
         }
 
