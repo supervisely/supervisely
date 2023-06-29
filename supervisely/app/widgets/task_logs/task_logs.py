@@ -18,12 +18,13 @@ class TaskLogs(Widget):
         self._multiple = multiple
         self._filterable = filterable
 
-        input_default_value = self._task_id if self._task_id is not None else 0
-        self._task_id_input = InputNumber(size="small", controls=False)
         self._task_logs_stop = Button("Set task id", button_size="mini", plain=True)
+
+        self._task_id_input = InputNumber(value=task_id, size="small", controls=False)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_input.hide()
         self._task_id_change_btn.hide()
+
         self._task_id_change_controls = Flexbox(
             widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
         )
@@ -40,7 +41,7 @@ class TaskLogs(Widget):
         @self._task_id_change_btn.click
         def change_task_id():
             self._task_id_change_btn.loading = True
-            new_task_id = int(self._task_id_input.value)
+            new_task_id = int(self._task_id_input.get_value())
             self._set_task_id(new_task_id)
             self._task_id_change_btn.loading = False
             self._task_id_change_btn.hide()
