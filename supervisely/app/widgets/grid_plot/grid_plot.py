@@ -1,4 +1,3 @@
-import time
 from typing import List, Dict
 from supervisely.app.widgets import Widget, Container, generate_id, LinePlot
 from supervisely.sly_logger import logger
