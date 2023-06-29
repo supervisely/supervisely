@@ -117,28 +117,22 @@ def shutdown(process_id=None):
 
 def enable_hot_reload_on_debug(app: FastAPI):
     templates = Jinja2Templates()
-    gettrace = getattr(sys, "gettrace", None)
-    if gettrace is None:
-        print("Can not detect debug mode, no sys.gettrace")
-    elif gettrace():
-        import arel
+    import arel
 
-        # List of directories to exclude from the hot reload.
-        exclude = [".venv", ".git", "tmp"]
+    # List of directories to exclude from the hot reload.
+    exclude = [".venv", ".git", "tmp"]
+    paths = paths = [path for path in os.listdir() if path not in exclude]
 
-        hot_reload = arel.HotReload(
-            paths=[arel.Path(path) for path in os.listdir() if path not in exclude]
-        )
+    hot_reload = arel.HotReload(paths=[arel.Path(path) for path in paths])
+    logger.debug(f"Enabling hot reload... Included directories: {paths}")
 
-        app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
-        app.add_event_handler("startup", hot_reload.startup)
-        app.add_event_handler("shutdown", hot_reload.shutdown)
-        templates.env.globals["DEBUG"] = "1"
-        templates.env.globals["hot_reload"] = hot_reload
-        logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
-    else:
-        logger.debug("In runtime mode ...")
-
+    app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
+    app.add_event_handler("startup", hot_reload.startup)
+    app.add_event_handler("shutdown", hot_reload.shutdown)
+    templates.env.globals["DEBUG"] = "1"
+    templates.env.globals["hot_reload"] = hot_reload
+    
+    logger.debug("Hot reload is enabled by parameter in app initialization.")
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
@@ -306,6 +300,21 @@ class Application(metaclass=Singleton):
 
     def stop(self):
         run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
+        
+    def reload_page(self):
+        """Reloads current page in browser. Works only if hot reload is enabled in app constructor.
+        app = sly.Application(..., hot_reload=True)
+
+        :raises RuntimeError: if hot reload is not enabled
+        """
+        import arel
+        
+        templates = Jinja2Templates()
+        try:
+            hot_reload: arel.HotReload = templates.env.globals["hot_reload"]
+            run_sync(hot_reload.notify.notify())
+        except KeyError:
+            raise RuntimeError("Hot reload is not enabled. Please, set 'hot_reload' argument to True.")
 
 
 def get_name_from_env(default="Supervisely App"):
