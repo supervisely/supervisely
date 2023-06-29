@@ -48,9 +48,7 @@ class GridPlot(Widget):
             num_empty = len(self._widgets) % self._columns
             for i in range(num_empty):
                 self._widgets[generate_id()] = Empty()
-            for batch in batched(
-                list(self._widgets.values()), batch_size=self._columns
-            ):
+            for batch in batched(list(self._widgets.values()), batch_size=self._columns):
                 rows.append(
                     Container(
                         direction="horizontal",
@@ -76,23 +74,44 @@ class GridPlot(Widget):
         return None
 
     def add_scalar(self, identifier: str, y, x):
+        """
+        Add scalar to series on plot. If no series with name,
+         defined in `identifier` exists,
+         one will be created automatically.
+
+        :param identifier: slash-separated plot and series name
+        :type identifier: str
+        :param y: y value
+        :type y: float | int
+        :param x: x value
+        :type x: float | int
+        """
         plot_title, series_name = identifier.split("/")
         _, series = self._widgets[plot_title].get_series_by_name(series_name)
 
         if series is not None:
-            self._widgets[plot_title].add_to_series(
-                name_or_id=series_name, data=[(x, y)]
-            )
+            self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[(x, y)])
         else:
             self._widgets[plot_title].add_series(name=series_name, x=[x], y=[y])
 
     def add_scalars(self, plot_title: str, new_values: dict, x):
+        """
+        Add scalars to several series on one plot at point `x`
+
+        :param plot_title: name of existing plot
+        :type plot_title: str
+        :param new_values: dictionary in the `{series_name: y_value, ...}` format
+        :type new_values: dict
+        :param x: value of `x`
+        :type x: float | int
+        """
         for series_name in new_values.keys():
             _, series = self._widgets[plot_title].get_series_by_name(series_name)
             if series is not None:
                 self._widgets[plot_title].add_to_series(
                     name_or_id=series_name,
-                    data=[{"x": x, "y": new_values[series_name]}],
+                    # data=[{"x": x, "y": new_values[series_name]}],
+                    data=[(x, new_values[series_name])],
                 )
             else:
                 self._widgets[plot_title].add_series(
