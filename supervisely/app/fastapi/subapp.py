@@ -291,21 +291,20 @@ class Application(metaclass=Singleton):
         )
 
         self.hot_reload = None
-        if not headless:
-            if hot_reload:
-                templates = Jinja2Templates()
-                self.hot_reload = arel.HotReload([])
-                self._fastapi.add_websocket_route(
-                    "/hot-reload", route=self.hot_reload, name="hot-reload"
-                )
-                self._fastapi.add_event_handler("startup", self.hot_reload.startup)
-                self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
+        if not headless and hot_reload:
+            templates = Jinja2Templates()
+            self.hot_reload = arel.HotReload([])
+            self._fastapi.add_websocket_route(
+                "/hot-reload", route=self.hot_reload, name="hot-reload"
+            )
+            self._fastapi.add_event_handler("startup", self.hot_reload.startup)
+            self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
 
-                # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
-                templates.env.globals["HOTRELOAD"] = "1"
-                templates.env.globals["hot_reload"] = self.hot_reload
+            # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
+            templates.env.globals["HOTRELOAD"] = "1"
+            templates.env.globals["hot_reload"] = self.hot_reload
 
-                logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+            logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
     def get_server(self):
         return self._fastapi
