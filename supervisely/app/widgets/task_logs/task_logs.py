@@ -66,3 +66,9 @@ class TaskLogs(Widget):
         self._task_id = task_id
         DataJson()[self.widget_id]["taskId"] = self._task_id
         DataJson().send_changes()
+
+    def set_task_id(self, task_id: int):
+        self._set_task_id(None)
+        if type(task_id) != int:
+            raise TypeError(f"task_id must be int, but {type(task_id)} was given")
+        self._set_task_id(task_id)
