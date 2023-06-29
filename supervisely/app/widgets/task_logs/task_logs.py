@@ -2,7 +2,7 @@ from typing import Dict, Union
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely import is_development
-from supervisely.app.widgets import Button, Container, InputNumber, Widget
+from supervisely.app.widgets import Button, Flexbox, InputNumber, Widget
 
 
 class TaskLogs(Widget):
@@ -22,9 +22,8 @@ class TaskLogs(Widget):
         self._task_logs_stop = Button("Change task id", button_size="mini", plain=True)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_change_btn.hide()
-        self._task_id_change_controls = Container(
+        self._task_id_change_controls = Flexbox(
             widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
-            direction="horizontal",
         )
 
         @self._task_logs_stop.click
