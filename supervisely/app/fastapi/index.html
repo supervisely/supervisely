@@ -22,8 +22,8 @@
         margin: 10px 0;
         position: relative;
       }
-      
-       @keyframes app-loading-rotation {
+
+      @keyframes app-loading-rotation {
         0% {
           transform: rotate(0deg);
         }
@@ -33,7 +33,7 @@
       }
 
       #app-global-loading-icon::after {
-        content: '';
+        content: "";
         box-sizing: border-box;
         position: absolute;
         left: 0;
@@ -58,7 +58,7 @@
   <body style="background-color: #f4f7fe">
     <center>
       <div id="app-global-loading-icon">
-        <img src="https://app.supervise.ly/loading.gif">
+        <img src="https://app.supervise.ly/loading.gif" />
       </div>
     </center>
     <script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
@@ -70,15 +70,11 @@
       window.parent.postMessage('{ "showHeader": false }', "*");
     </script>
 
-    {% for scripts in __widget_scripts__.values() %}
-        {% if scripts is string %}
-            <script src="{{{ scripts }}}"></script>
-        {% else %}
-            {% for scripts in scripts %}
-                <script src="{{{ scripts }}}"></script>
-            {% endfor %}
-        {% endif %}
-    {% endfor %}
+    {% for scripts in __widget_scripts__.values() %} {% if scripts is string %}
+    <script src="{{{ scripts }}}"></script>
+    {% else %} {% for scripts in scripts %}
+    <script src="{{{ scripts }}}"></script>
+    {% endfor %} {% endif %} {% endfor %}
 
     <div id="sly-app">
       <sly-app>
@@ -99,7 +95,7 @@
       </sly-app>
     </div>
     <!-- Hot reload script -->
-    {% if DEBUG %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}} {%
-    endif %}
+    {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}
+    {% endif %}
   </body>
 </html>
