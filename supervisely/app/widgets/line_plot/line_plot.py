@@ -9,7 +9,7 @@ class LinePlot(Widget):
     def __init__(
         self,
         title: str,
-        series: List[Tuple[NumT, NumT]] = [],
+        series: List[dict] = [],
         smoothing_weight: float = 0,
         group_key: str = None,
         show_legend: bool = True,
@@ -19,6 +19,30 @@ class LinePlot(Widget):
         widget_id=None,
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
     ):
+        """
+        Create line plot.
+
+        :param title: plot title
+        :type title: str
+        :param series: List of dicts in format [{'name': series_name, 'data': [(x1, y1), ...]}]
+        :type series: List[dict]
+        :param smoothing_weight: smoothing coeficient; float number from [0, 1]
+        :type smoothing_weight: float
+        :param group_key: _description_
+        :type group_key: str
+        :param show_legend: _description_
+        :type show_legend: bool
+        :param decimals_in_float: number of decimal places for y-axis
+        :type decimals_in_float: int
+        :param xaxis_decimals_in_float: number of decimal places for x-axis
+        :type xaxis_decimals_in_float: int
+        :param yaxis_interval: _description_
+        :type yaxis_interval: list
+        :param widget_id: _description_
+        :type widget_id: _type_
+        :param yaxis_autorescale: _description_
+        :type yaxis_autorescale: bool
+        """
         self._title = title
         self._series = series
         self._smoothing_weight = smoothing_weight
@@ -86,6 +110,14 @@ class LinePlot(Widget):
         DataJson().send_changes()
 
     def add_to_series(self, name_or_id: str or int, data: List[Tuple[NumT, NumT]]):
+        """
+        Add new points to series
+
+        :param name_or_id: series name
+        :type name_or_id: strorint
+        :param data: list of points to add
+        :type data: List[Tuple[NumT, NumT]]
+        """
         if isinstance(name_or_id, int):
             series_id = name_or_id
         else:
@@ -97,11 +129,7 @@ class LinePlot(Widget):
     def get_series_by_name(self, name):
         series_list = DataJson()[self.widget_id]["series"]
         series_id, series_data = next(
-            (
-                (i, series)
-                for i, series in enumerate(series_list)
-                if series["name"] == name
-            ),
+            ((i, series) for i, series in enumerate(series_list) if series["name"] == name),
             (None, None),
         )
         # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
