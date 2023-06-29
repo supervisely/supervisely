@@ -2,7 +2,7 @@ from typing import Dict, Union
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely import is_development
-from supervisely.app.widgets import Button, Container, Input, Widget
+from supervisely.app.widgets import Button, Container, InputNumber, Widget
 
 
 class TaskLogs(Widget):
@@ -18,15 +18,12 @@ class TaskLogs(Widget):
         self._multiple = multiple
         self._filterable = filterable
 
-        self._task_id_input = Input(
-            value=self._task_id, readonly=True, placeholder="Enter new task id", size="mini"
-        )
+        self._task_id_input = InputNumber(value=self._task_id, size="small", controls=False)
         self._task_logs_stop = Button("Change task id", button_size="mini", plain=True)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_change_btn.hide()
         self._task_id_change_controls = Container(
-            widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
-            direction="horizontal",
+            widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn]
         )
 
         @self._task_logs_stop.click
@@ -36,17 +33,15 @@ class TaskLogs(Widget):
             self._task_logs_stop.loading = False
             self._task_logs_stop.hide()
             self._task_id_change_btn.show()
-            self._task_id_input.readonly = False
 
         @self._task_id_change_btn.click
         def change_task_id():
             self._task_id_change_btn.loading = True
-            new_task_id = self._task_id_input.value
+            new_task_id = int(self._task_id_input.value)
             self._set_task_id(new_task_id)
             self._task_id_change_btn.loading = False
             self._task_id_change_btn.hide()
             self._task_logs_stop.show()
-            self._task_id_input.readonly = True
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
