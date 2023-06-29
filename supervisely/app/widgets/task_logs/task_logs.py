@@ -23,7 +23,8 @@ class TaskLogs(Widget):
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_change_btn.hide()
         self._task_id_change_controls = Container(
-            widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn]
+            widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
+            direction="horizontal",
         )
 
         @self._task_logs_stop.click
