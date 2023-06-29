@@ -24,7 +24,9 @@ class LinePlot(Widget):
 
         :param title: plot title
         :type title: str
-        :param series: List of dicts in format [{'name': series_name, 'data': [(x1, y1), ...]}]
+        :param series: List of dicts in format
+            `[{'name': series_name, 'data': [(x1, y1), ...]}]` or
+            `[{'name': series_name, 'data': [{'x': x1, 'y': y1}, ...]}]`
         :type series: List[dict]
         :param smoothing_weight: smoothing coeficient; float number from [0, 1]
         :type smoothing_weight: float
@@ -90,6 +92,7 @@ class LinePlot(Widget):
             f"Lists x and y have different lenght, {len(x)} != {len(y)}"
         )
 
+        # data = [{"x": px, "y": py} for px, py in zip(x, y)]
         data = [(px, py) for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)
@@ -134,3 +137,12 @@ class LinePlot(Widget):
         )
         # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
         return series_id, series_data
+
+    def clean_up(self):
+        self._series = []
+        self._ymin = 0
+        self._ymax = 10
+        DataJson()[self.widget_id]["series"] = self._series
+        DataJson()[self.widget_id]["ymin"] = self._ymin
+        DataJson()[self.widget_id]["ymax"] = self._ymax
+        DataJson().send_changes()
