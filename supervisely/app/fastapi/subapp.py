@@ -17,6 +17,7 @@ from fastapi import (
 # from supervisely.app.fastapi.request import Request
 
 import jinja2
+import arel
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -121,8 +122,6 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
-        import arel
-
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -133,7 +132,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
         app.add_event_handler("startup", hot_reload.startup)
         app.add_event_handler("shutdown", hot_reload.shutdown)
-        templates.env.globals["DEBUG"] = "1"
+        templates.env.globals["HOTRELOAD"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
         logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
     else:
@@ -295,6 +294,21 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
         )
 
+        if not headless:
+            templates = Jinja2Templates()
+            self.hot_reload = arel.HotReload([])
+            self._fastapi.add_websocket_route(
+                "/hot-reload", route=self.hot_reload, name="hot-reload"
+            )
+            self._fastapi.add_event_handler("startup", self.hot_reload.startup)
+            self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
+
+            # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
+            templates.env.globals["HOTRELOAD"] = "1"
+            templates.env.globals["hot_reload"] = self.hot_reload
+
+            logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+
     def get_server(self):
         return self._fastapi
 
@@ -306,6 +320,9 @@ class Application(metaclass=Singleton):
 
     def stop(self):
         run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
+
+    def reload_page(self):
+        run_sync(self.hot_reload.notify.notify())
 
 
 def get_name_from_env(default="Supervisely App"):
