@@ -138,10 +138,6 @@ def enable_hot_reload_on_debug(app: FastAPI):
     else:
         logger.debug("In runtime mode ...")
 
-    logger.debug("Hot reload is enabled by parameter in app initialization.")
-
-    logger.debug("Hot reload is enabled by parameter in app initialization.")
-
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
