@@ -8,7 +8,7 @@ from supervisely.app.widgets import Button, Flexbox, InputNumber, Widget
 class TaskLogs(Widget):
     def __init__(
         self,
-        task_id: int,
+        task_id: int = None,
         multiple: bool = False,
         filterable: bool = True,
         widget_id: str = None,
@@ -19,7 +19,7 @@ class TaskLogs(Widget):
         self._filterable = filterable
 
         self._task_id_input = InputNumber(value=self._task_id, size="small", controls=False)
-        self._task_logs_stop = Button("Change task id", button_size="mini", plain=True)
+        self._task_logs_stop = Button("Set task id", button_size="mini", plain=True)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_input.hide()
         self._task_id_change_btn.hide()
