@@ -21,8 +21,8 @@ class TaskLogs(Widget):
         self._task_id_input = Input(
             value=self._task_id, readonly=True, placeholder="Enter new task id", size="mini"
         )
-        self._task_logs_stop = Button("Change task id", size="mini", plain=True)
-        self._task_id_change_btn = Button("OK", size="mini", plain=True)
+        self._task_logs_stop = Button("Change task id", button_size="mini", plain=True)
+        self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_change_btn.hide()
         self._task_id_change_controls = Container(
             widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
