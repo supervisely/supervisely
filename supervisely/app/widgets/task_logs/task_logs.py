@@ -19,7 +19,7 @@ class TaskLogs(Widget):
         self._filterable = filterable
 
         input_default_value = self._task_id if self._task_id is not None else 0
-        self._task_id_input = InputNumber(value=input_default_value, size="small", controls=False)
+        self._task_id_input = InputNumber(size="small", controls=False)
         self._task_logs_stop = Button("Set task id", button_size="mini", plain=True)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
         self._task_id_input.hide()
