@@ -21,6 +21,7 @@ class TaskLogs(Widget):
         self._task_id_input = InputNumber(value=self._task_id, size="small", controls=False)
         self._task_logs_stop = Button("Change task id", button_size="mini", plain=True)
         self._task_id_change_btn = Button("OK", button_size="mini", plain=True)
+        self._task_id_input.hide()
         self._task_id_change_btn.hide()
         self._task_id_change_controls = Flexbox(
             widgets=[self._task_id_input, self._task_logs_stop, self._task_id_change_btn],
@@ -32,6 +33,7 @@ class TaskLogs(Widget):
             self._set_task_id(None)
             self._task_logs_stop.loading = False
             self._task_logs_stop.hide()
+            self._task_id_input.show()
             self._task_id_change_btn.show()
 
         @self._task_id_change_btn.click
@@ -41,6 +43,7 @@ class TaskLogs(Widget):
             self._set_task_id(new_task_id)
             self._task_id_change_btn.loading = False
             self._task_id_change_btn.hide()
+            self._task_id_input.hide()
             self._task_logs_stop.show()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
