@@ -61,5 +61,6 @@ class TaskLogs(Widget):
         return DataJson()[self.widget_id]["taskId"]
 
     def _set_task_id(self, task_id: Union[int, None]):
-        DataJson()[self.widget_id]["taskId"] = task_id
+        self._task_id = task_id
+        DataJson()[self.widget_id]["taskId"] = self._task_id
         DataJson().send_changes()
