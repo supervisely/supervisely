@@ -159,6 +159,7 @@ def _init(
     headless=False,
     process_id=None,
     static_dir=None,
+    hot_reload=False,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -172,6 +173,8 @@ def _init(
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
         Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
+        if hot_reload:
+            enable_hot_reload_on_debug(app)
 
     StateJson()["slyAppShowDialog"] = False
     DataJson()["slyAppDialogTitle"] = ""
@@ -246,7 +249,7 @@ class Application(metaclass=Singleton):
         layout: "Widget" = None,
         templates_dir: str = None,
         static_dir: str = None,
-        hot_reload: bool = False,
+        hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
@@ -288,10 +291,10 @@ class Application(metaclass=Singleton):
             headless=headless,
             process_id=self._process_id,
             static_dir=static_dir,
+            hot_reload=hot_reload,
         )
 
-        self.hot_reload = None
-        if not headless and hot_reload:
+        if not headless:
             templates = Jinja2Templates()
             self.hot_reload = arel.HotReload([])
             self._fastapi.add_websocket_route(
@@ -319,17 +322,7 @@ class Application(metaclass=Singleton):
         run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
 
     def reload_page(self):
-        """Reloads current page in browser. Works only if hot reload is enabled in app constructor.
-        app = sly.Application(..., hot_reload=True)
-
-        :raises RuntimeError: if hot reload is not enabled
-        """
-        if self.hot_reload:
-            run_sync(self.hot_reload.notify.notify())
-        else:
-            raise RuntimeError(
-                "Hot reload is not enabled. Please, set 'hot_reload' argument to True."
-            )
+        run_sync(self.hot_reload.notify.notify())
 
 
 def get_name_from_env(default="Supervisely App"):
