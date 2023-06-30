@@ -1,7 +1,7 @@
 # coding: utf-8
 import re
 import os
-from typing import List
+from typing import List, Dict
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely.io.fs import ensure_base_path, file_exists
 from supervisely._utils import batched
@@ -331,7 +331,7 @@ class VolumeFigureApi(FigureApi):
     # def _upload_geometries_batch(ids, )
     def _upload_meshes_batch(self, figure2bytes):
         """
-        Private method. Upload figures geometry by given  to storage.
+        Private method. Upload figures geometry by given ID to storage.
 
         :param figure2bytes: Dictionary with figures IDs and geometries.
         :type figure2bytes: dict
@@ -412,13 +412,28 @@ class VolumeFigureApi(FigureApi):
 
     def _append_bulk_mask3d(
         self,
-        entity_id,
-        figures_json,
-        figures_keys,
+        entity_id: int,
+        figures_json: List,
+        figures_keys: List,
         key_id_map: KeyIdMap,
         field_name=ApiField.ENTITY_ID,
     ):
-        """"""
+        """The same method as _append_bulk but for spatial figures. Uploads figures to given Volume by ID.
+        You need to upload the geometry right after figures will be created
+
+        :param entity_id: Volume ID.
+        :type entity_id: int
+        :param figures_json: List of figure dicts.
+        :type figures_json: list
+        :param figures_keys: List of figure keys as UUID.
+        :type figures_keys: list
+        :param key_id_map: KeyIdMap object (dict with bidict values)
+        :type key_id_map: KeyIdMap
+        :param field_name: field name for request body
+        :type field_name: str
+        :rtype: :class:`NoneType`
+        :Usage example:
+        """
         figures_count = len(figures_json)
         if figures_count == 0:
             return
@@ -443,3 +458,26 @@ class VolumeFigureApi(FigureApi):
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
+
+    def upload_sf_geometry(self, spatial_figures: Dict, geometries: List, key_id_map: KeyIdMap):
+        """
+        Upload spatial figures geometry as bytes to storage by given ID.
+
+        :param spatial_figures: Dictionary with figure IDs.
+        :type spatial_figures: dict
+        :param geometries: Dictionary with geometries, which represented as content of NRRD files in byte format.
+        :type geometries: list
+        :param key_id_map: KeyIdMap object (dict with bidict values)
+        :type key_id_map: KeyIdMap
+        :rtype: :class:`NoneType`
+        :Usage example:
+        """
+
+        for sf, geometry_bytes in zip(spatial_figures, geometries):
+            figure_id = key_id_map.get_figure_id(sf.key())
+            content_dict = {
+                ApiField.FIGURE_ID: str(figure_id),
+                ApiField.GEOMETRY: (str(figure_id), geometry_bytes, "application/sla"),
+            }
+            encoder = MultipartEncoder(fields=content_dict)
+            self._api.post("figures.bulk.upload.geometry", encoder)

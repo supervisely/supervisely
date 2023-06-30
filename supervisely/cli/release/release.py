@@ -3,6 +3,7 @@ import os
 import random
 import re
 import string
+import datetime
 import shutil
 import tarfile
 import requests
@@ -68,14 +69,14 @@ def delete_tag(tag_name, repo: git.Repo):
         raise
 
 
-def get_appKey(repo: git.Repo, sub_app_path: str):
+def get_appKey(repo, sub_app_path, repo_url):
     import hashlib
 
-    remote_name = repo.active_branch.tracking_branch().remote_name
-    remote = repo.remote(remote_name)
-    remote_url = get_remote_url(remote)
+    p = parse(repo_url)
+    repo_url = p.url2https.replace("https://", "").replace(".git", "").lower()
+
     first_commit = next(repo.iter_commits("HEAD", reverse=True))
-    key_string = remote_url + "_" + first_commit.hexsha
+    key_string = repo_url + "_" + first_commit.hexsha
     appKey = hashlib.md5(key_string.encode("utf-8")).hexdigest()
     if sub_app_path is not None:
         appKey += "_" + hashlib.md5(sub_app_path.encode("utf-8")).hexdigest()
@@ -96,6 +97,8 @@ def get_instance_version(token, server):
         raise PermissionError()
     if r.status_code == 404:
         raise NotImplementedError()
+    if r.status_code != 200:
+        raise ConnectionError()
     return r.json()
 
 
@@ -116,6 +119,8 @@ def get_app_from_instance(appKey: str, token, server):
         raise PermissionError()
     if r.status_code == 404:
         return None
+    if r.status_code != 200:
+        raise ConnectionError()
     return r.json()
 
 
@@ -129,24 +134,27 @@ def upload_archive(
     readme,
     modal_template,
     slug,
+    user_id,
     subapp_path,
 ):
     f = open(archive_path, "rb")
     fields = {
         "appKey": appKey,
+        "subAppPath": subapp_path,
         "release": json.dumps(release),
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
-        "subAppPath": subapp_path,
         "archive": (
             "arhcive.tar.gz",
             f,
             "application/gzip",
-        ),
+        )
     }
     if slug:
         fields["slug"] = slug
+    if user_id:
+        fields["userId"] = str(user_id)
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
     with tqdm(
@@ -185,8 +193,38 @@ def archivate_application(repo: git.Repo, config, slug):
     return archive_folder
 
 
+def get_user(server_address, api_token):
+    headers = {
+        "x-api-key": api_token,
+        "Content-Type": "application/json",
+    }
+    r = requests.post(
+        f'{server_address.rstrip("/")}/public/api/v3/users.me', headers=headers
+    )
+    if r.status_code == 403:
+        raise PermissionError()
+    if r.status_code == 404 or r.status_code == 400:
+        return None
+    if r.status_code != 200:
+        raise ConnectionError()
+    return r.json()
+
+
 def delete_directory(path):
     shutil.rmtree(path)
+
+
+def get_created_at(repo: git.Repo, tag_name):
+    if tag_name is None:
+        return None
+    for tag in repo.tags:
+        if tag.name == tag_name:
+            if tag.tag is None:
+                timestamp = tag.commit.committed_date
+            else:
+                timestamp = tag.tag.tagged_date
+            return datetime.datetime.utcfromtimestamp(timestamp).isoformat()
+    return None
 
 
 def release(
@@ -200,10 +238,19 @@ def release(
     release_version,
     modal_template="",
     slug=None,
+    user_id=None,
     subapp_path="",
+    created_at=None,
 ):
+    if created_at is None:
+        created_at = get_created_at(repo, release_version)
     archive_dir = archivate_application(repo, config, slug)
-    release = {"name": release_name, "version": release_version}
+    release = {
+        "name": release_name,
+        "version": release_version,
+    }
+    if created_at is not None:
+        release["createdAt"] = created_at
     response = upload_archive(
         archive_dir + "/archive.tar.gz",
         server_address,
@@ -214,6 +261,7 @@ def release(
         readme,
         modal_template,
         slug,
+        user_id,
         subapp_path,
     )
     delete_directory(archive_dir)

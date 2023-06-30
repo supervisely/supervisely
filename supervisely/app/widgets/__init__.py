@@ -81,9 +81,11 @@ from supervisely.app.widgets.slider.slider import Slider
 from supervisely.app.widgets.copy_to_clipboard.copy_to_clipboard import CopyToClipboard
 from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
 from supervisely.app.widgets.image_region_selector.image_region_selector import ImageRegionSelector
+from supervisely.app.widgets.collapse.collapse import Collapse
 from supervisely.app.widgets.team_files_selector.team_files_selector import TeamFilesSelector
 from supervisely.app.widgets.icons.icons import Icons
 from supervisely.app.widgets.badge.badge import Badge
 from supervisely.app.widgets.date_picker.date_picker import DatePicker
 from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePicker
 from supervisely.app.widgets.transfer.transfer import Transfer
+from supervisely.app.widgets.task_logs.task_logs import TaskLogs
