@@ -12,7 +12,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 js_bundle_version = "2.1.50"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
-js_frontend_version = "0.0.42"
+js_frontend_version = "0.0.43"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
