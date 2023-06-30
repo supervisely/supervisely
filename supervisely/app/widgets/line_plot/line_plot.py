@@ -46,7 +46,7 @@ class LinePlot(Widget):
         :type yaxis_autorescale: bool
         """
         self._title = title
-        self._series = series
+        self._series = self._check_series(series)
         self._smoothing_weight = smoothing_weight
         self._group_key = group_key
         self._show_legend = show_legend
@@ -112,20 +112,32 @@ class LinePlot(Widget):
             self.add_series(name, x, y, send_changes=False)
         DataJson().send_changes()
 
-    def add_to_series(self, name_or_id: str or int, data: List[Tuple[NumT, NumT]]):
+    def add_to_series(
+        self,
+        name_or_id: Union[str, int],
+        data: Union[List[Union[tuple, dict]], Union[tuple, dict]],
+    ):
         """
         Add new points to series
 
         :param name_or_id: series name
-        :type name_or_id: strorint
-        :param data: list of points to add
-        :type data: List[Tuple[NumT, NumT]]
+        :type name_or_id: str | int
+        :param data: point or list of points to add; use one of the following formats
+            `[(x1, y1), ...]`, `[{'x': x1, 'y': y1}, ...]`, `(x1,y1)` or `{'x': x1, 'y': y1}`
+        :type data: Union[List[Union[tuple, dict]], Union[tuple, dict]]
         """
         if isinstance(name_or_id, int):
             series_id = name_or_id
         else:
             series_id, _ = self.get_series_by_name(name_or_id)
-        self._series[series_id]["data"].extend(data)
+
+        if isinstance(data, List):
+            data_list = self._list_of_point_dicts_to_list_of_tuples(data)
+        else:
+            # single datapoint
+            data_list = self._list_of_point_dicts_to_list_of_tuples([data])
+
+        self._series[series_id]["data"].extend(data_list)
         DataJson()[self.widget_id]["series"] = self._series
         DataJson().send_changes()
 
@@ -146,3 +158,20 @@ class LinePlot(Widget):
         DataJson()[self.widget_id]["ymin"] = self._ymin
         DataJson()[self.widget_id]["ymax"] = self._ymax
         DataJson().send_changes()
+
+    def _point_dict_to_tuple(self, point_dct: dict) -> Tuple[NumT, NumT]:
+        return (point_dct["x"], point_dct["y"])
+
+    def _list_of_point_dicts_to_list_of_tuples(
+        self, point_dcts: List[Union[dict, tuple]]
+    ) -> List[Tuple[NumT, NumT]]:
+        if len(point_dcts) == 0:
+            return []
+        if isinstance(point_dcts[0], tuple):
+            return point_dcts
+        return [self._point_dict_to_tuple(dct) for dct in point_dcts]
+
+    def _check_series(self, series: List[dict]) -> List[dict]:
+        for serie in series:
+            serie["data"] = self._list_of_point_dicts_to_list_of_tuples(serie["data"])
+        return series
