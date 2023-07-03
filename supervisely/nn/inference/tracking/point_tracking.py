@@ -34,7 +34,7 @@ class PointTracking(Inference):
 
         sly.logger.info(f"✅Model has been successfully deployed on {device} device")
         progress = sly.Progress("Application is started", 1)
-        progress.iters_done_report(count=1)
+        progress.iter_done_report()
 
     def get_info(self):
         info = super().get_info()
