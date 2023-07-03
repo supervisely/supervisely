@@ -71,7 +71,7 @@ class ReloadableArea(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
 
-        html_content = f"<div class='container'>{self._content.to_html()}</div>"
+        html_content = f"<div>{self._content.to_html()}</div>"
         run_sync(
             WebsocketManager().broadcast(
                 {
