@@ -27,10 +27,12 @@ class BBoxTracking(Inference):
 
         try:
             self.load_on_device(model_dir, "cuda")
+            device = "CUDA"
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
+            device = "CPU"
 
-        sly.logger.info("✅Model has been successfully deployed")
+        sly.logger.info(f"✅Model has been successfully deployed on {device} device")
 
     def get_info(self):
         info = super().get_info()
