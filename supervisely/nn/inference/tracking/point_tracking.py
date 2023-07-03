@@ -29,6 +29,8 @@ class PointTracking(Inference):
             self.load_on_device(model_dir, "cuda")
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
+        
+        sly.logger.info("✅Model has been successfully deployed")
 
     def get_info(self):
         info = super().get_info()
