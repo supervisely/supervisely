@@ -50,54 +50,6 @@ except ImportError:
     from typing_extensions import Literal
 
 
-def _notify_after_complete_decorator(
-    msg: str,
-    *,
-    arg_pos: Optional[int] = None,
-    arg_key: Optional[str] = None,
-):
-    """
-    Decorator to log message after wrapped function complete.
-
-    :param msg: info message
-    :type msg: str
-    :param arg_pos: position of argument in `args` to insert in message
-    :type arg_pos: Optional[int]
-    :param arg_key: key of argument in `kwargs` to insert in message.
-        If an argument can be both positional and keyword, 
-        it is preferable to declare both 'arg_pos' and 'arg_key'
-    :type arg_key: Optional[str]
-    :Usage example:
-
-     .. code-block:: python
-
-        @_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
-        def wrapped_function(arg1, kwarg1)
-            return
-
-        wrapped_function("pos_arg", kwarg1="key_arg")
-        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-
-            if arg_key is not None and arg_key in kwargs:
-                arg = kwargs[arg_pos]
-                logger.info(msg, str(arg))
-            elif arg_pos is not None and arg_pos < len(args):
-                arg = args[arg_pos]
-                logger.info(msg, str(arg))
-            else:
-                logger.info(msg)
-            return result
-
-        return wrapper
-
-    return decorator
-
-
 class Inference:
     def __init__(
         self,
@@ -130,6 +82,9 @@ class Inference:
 
         self._use_gui = use_gui
         self._gui = None
+
+        self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
+
         if use_gui:
             self.initialize_gui()
 
@@ -329,7 +284,7 @@ class Inference:
         return models_list
 
     @_notify_after_complete_decorator(
-        "✅Model has been successfully deployed on %s device",
+        "✅ Model has been successfully deployed on %s device",
         arg_pos=1,
         arg_key="device",
     )
@@ -948,5 +903,57 @@ def _convert_sly_progress_to_dict(sly_progress: Progress):
     }
 
 
+def _create_notify_after_complete_decorator(
+    msg: str,
+    *,
+    arg_pos: Optional[int] = None,
+    arg_key: Optional[str] = None,
+):
+    """
+    Decorator to log message after wrapped function complete.
 
+    :param msg: info message
+    :type msg: str
+    :param arg_pos: position of argument in `args` to insert in message
+    :type arg_pos: Optional[int]
+    :param arg_key: key of argument in `kwargs` to insert in message.
+        If an argument can be both positional and keyword, 
+        it is preferable to declare both 'arg_pos' and 'arg_key'
+    :type arg_key: Optional[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        @_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+        def wrapped_function(arg1, kwarg1)
+            return
+
+        wrapped_function("pos_arg", kwarg1="key_arg")
+        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+
+            if arg_key is not None and arg_key in kwargs:
+                arg = kwargs[arg_pos]
+                logger.info(msg, str(arg))
+            elif arg_pos is not None and arg_pos < len(args):
+                arg = args[arg_pos]
+                logger.info(msg, str(arg))
+            else:
+                logger.info(msg)
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)
 # "✅Model has been successfully deployed on %s device",
