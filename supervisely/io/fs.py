@@ -608,11 +608,6 @@ def tree(dir_path: str) -> str:
     return stdout.decode("utf-8")
 
 
-import supervisely as sly
-
-sly.logger
-
-
 def log_tree(
     dir_path: str,
     logger,
