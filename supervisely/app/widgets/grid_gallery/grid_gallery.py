@@ -199,7 +199,10 @@ class GridGallery(Widget):
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
 
-    def sync_images(self, image_ids: List[List[str]]):
+    def sync_images(self, image_ids: List[str]):
         state = self.get_json_state()
-        state["options"]["syncViewsBindings"] = image_ids
+        if state["options"].get("syncViewsBindings"):
+            state["options"]["syncViewsBindings"].append(image_ids)
+        else:
+            state["options"]["syncViewsBindings"] = [image_ids]
         self.update_state(state=state)
