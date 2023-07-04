@@ -616,7 +616,7 @@ sly.logger
 def log_tree(
     dir_path: str,
     logger,
-    level: Literal["info", "debug", "warning", "error"] = "debug",
+    level: Literal["info", "debug", "warning", "error"] = "info",
 ) -> None:
     """
     Get tree for target directory and displays it in the log.
@@ -625,7 +625,7 @@ def log_tree(
     :type dir_path: str
     :param logger: Logger to display data.
     :type logger: logger
-    :type level: Logger level. Available levels: info, debug, warning, error. Default: debug.
+    :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
     :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
     :rtype: :class:`NoneType`
