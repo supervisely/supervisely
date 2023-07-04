@@ -283,11 +283,6 @@ class Inference:
 
         return models_list
 
-    @_notify_after_complete_decorator(
-        "✅ Model has been successfully deployed on %s device",
-        arg_pos=1,
-        arg_key="device",
-    )
     def load_on_device(
         self,
         model_dir: str,
@@ -917,20 +912,21 @@ def _create_notify_after_complete_decorator(
     :param arg_pos: position of argument in `args` to insert in message
     :type arg_pos: Optional[int]
     :param arg_key: key of argument in `kwargs` to insert in message.
-        If an argument can be both positional and keyword, 
+        If an argument can be both positional and keyword,
         it is preferable to declare both 'arg_pos' and 'arg_key'
     :type arg_key: Optional[str]
     :Usage example:
 
      .. code-block:: python
 
-        @_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
         def wrapped_function(arg1, kwarg1)
             return
 
         wrapped_function("pos_arg", kwarg1="key_arg")
         # Info    2023.07.04 11:37:59     Print arg1: pos_arg
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
