@@ -84,6 +84,7 @@ class GridGallery(Widget):
                 "opacity": self._opacity,
                 "enableZoom": self._enable_zoom,
                 "syncViews": self._sync_views,
+                "syncViewsBindings": [],
                 "resizeOnZoom": self._resize_on_zoom,
                 "fillRectangle": self._fill_rectangle,
                 "borderWidth": self._border_width,
@@ -201,8 +202,5 @@ class GridGallery(Widget):
 
     def sync_images(self, image_ids: List[str]):
         state = self.get_json_state()
-        if state["options"].get("syncViewsBindings"):
-            state["options"]["syncViewsBindings"].append(image_ids)
-        else:
-            state["options"]["syncViewsBindings"] = [image_ids]
+        state["options"]["syncViewsBindings"].append(image_ids)
         self.update_state(state=state)
