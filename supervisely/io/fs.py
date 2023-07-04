@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable, Union
+from typing import Dict, List, Optional, Callable, Union, Literal
 
 import os
 import re
@@ -608,7 +608,11 @@ def tree(dir_path: str) -> str:
     return stdout.decode("utf-8")
 
 
-def log_tree(dir_path: str, logger) -> None:
+def log_tree(
+    dir_path: str,
+    logger,
+    level: Literal["info", "debug", "warning", "error"] = "info",
+) -> None:
     """
     Get tree for target directory and displays it in the log.
 
@@ -616,6 +620,8 @@ def log_tree(dir_path: str, logger) -> None:
     :type dir_path: str
     :param logger: Logger to display data.
     :type logger: logger
+    :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
+    :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -627,7 +633,19 @@ def log_tree(dir_path: str, logger) -> None:
         log_tree('/home/admin/work/projects/examples', logger)
     """
     out = tree(dir_path)
-    logger.info("DIRECTORY_TREE", extra={"tree": out})
+
+    log_levels = {
+        "info": logger.info,
+        "debug": logger.debug,
+        "warning": logger.warning,
+        "error": logger.error,
+    }
+    if level not in log_levels:
+        raise ValueError(
+            f"Unknown logger level: {level}. Available levels: info, debug, warning, error"
+        )
+    log_func = log_levels[level]
+    log_func("DIRECTORY_TREE", extra={"tree": out})
 
 
 def touch(path: str) -> None:
