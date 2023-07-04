@@ -6,6 +6,7 @@ import supervisely
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from typing import List
+from supervisely.app.content import StateJson
 
 
 class GridGallery(Widget):
@@ -47,6 +48,7 @@ class GridGallery(Widget):
         self._sync_views: bool = sync_views
         self._resize_on_zoom: bool = resize_on_zoom
         self._show_preview: bool = show_preview
+        self._views_bindings: list = []
         #############################
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -84,7 +86,7 @@ class GridGallery(Widget):
                 "opacity": self._opacity,
                 "enableZoom": self._enable_zoom,
                 "syncViews": self._sync_views,
-                "syncViewsBindings": [],
+                "syncViewsBindings": self._views_bindings,
                 "resizeOnZoom": self._resize_on_zoom,
                 "fillRectangle": self._fill_rectangle,
                 "borderWidth": self._border_width,
@@ -201,6 +203,6 @@ class GridGallery(Widget):
         DataJson().send_changes()
 
     def sync_images(self, image_ids: List[str]):
-        state = self.get_json_state()
-        state["options"]["syncViewsBindings"].append(image_ids)
-        self.update_state(state=state)
+        self._views_bindings.append(image_ids)
+        StateJson()[self.widget_id]["options"]["syncViewsBindings"] = self._views_bindings
+        StateJson().send_changes()
