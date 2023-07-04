@@ -239,10 +239,10 @@ class PointTracking(Inference):
                 point,
             )
             sly_points_loc = F.dto_points_to_point_location(preds)
-            
+
             for time, point_loc in enumerate(sly_points_loc):
                 lines_per_time[time].append(point_loc)
-        
+
         return F.exterior_to_sly_polyline(lines_per_time)
 
     def _predictions_to_annotation(
