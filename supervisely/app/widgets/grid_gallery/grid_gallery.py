@@ -5,6 +5,7 @@ import time
 import supervisely
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+from typing import List
 
 
 class GridGallery(Widget):
@@ -24,7 +25,6 @@ class GridGallery(Widget):
         show_preview: bool = False,
         widget_id: str = None,
     ):
-
         self._data = []
         self._layout = []
         self._annotations = {}
@@ -115,12 +115,14 @@ class GridGallery(Widget):
         column_index: int = None,
         zoom_to: int = None,
         zoom_factor: float = 1.2,
-        title_url = None,
+        title_url=None,
     ):
-
         column_index = self.get_column_index(incoming_value=column_index)
         cell_uuid = str(
-            uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{image_url}_{title}_{column_index}_{time.time()}").hex
+            uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL,
+                name=f"{image_url}_{title}_{column_index}_{time.time()}",
+            ).hex
         )
 
         self._data.append(
@@ -130,7 +132,9 @@ class GridGallery(Widget):
                 if annotation is None
                 else annotation.clone(),
                 "column_index": column_index,
-                "title": title if title_url is None else title + ' <i class="zmdi zmdi-open-in-new"></i>',
+                "title": title
+                if title_url is None
+                else title + ' <i class="zmdi zmdi-open-in-new"></i>',
                 "cell_uuid": cell_uuid,
                 "zoom_to": zoom_to,
                 "zoom_factor": zoom_factor,
@@ -139,6 +143,7 @@ class GridGallery(Widget):
         )
 
         self._update()
+        return cell_uuid
 
     def clean_up(self):
         self._data = []
@@ -166,7 +171,7 @@ class GridGallery(Widget):
                 "title": cell_data["title"],
                 "title_url": cell_data["title_url"],
             }
-            if not cell_data["zoom_to"] is None: 
+            if not cell_data["zoom_to"] is None:
                 zoom_params = {
                     "figureId": cell_data["zoom_to"],
                     "factor": cell_data["zoom_factor"],
@@ -193,3 +198,8 @@ class GridGallery(Widget):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
+
+    def sync_images(self, image_ids: List[List[str]]):
+        state = self.get_json_state()
+        state["options"]["syncViewsBindings"] = image_ids
+        self.update_state(state=state)
