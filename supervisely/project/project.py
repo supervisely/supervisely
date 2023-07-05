@@ -544,6 +544,7 @@ class Dataset(KeyObject):
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
+        ann_path = ann_path.strip("/")
         return os.path.join(self.ann_dir, ann_path)
 
     def get_img_info_path(self, img_name: str) -> str:
@@ -970,7 +971,9 @@ class Dataset(KeyObject):
             return
 
         self._check_add_item_name(item_name)
+        item_name = item_name.strip("/")
         dst_img_path = os.path.join(self.item_dir, item_name)
+        os.makedirs(os.path.dirname(dst_img_path), exist_ok=True)
         with open(dst_img_path, "wb") as fout:
             fout.write(item_raw_bytes)
         self._validate_added_item_or_die(dst_img_path)
@@ -1143,6 +1146,7 @@ class Dataset(KeyObject):
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
+        os.makedirs(os.path.dirname(dst_ann_path), exist_ok=True)
         dump_json_file(ann, dst_ann_path, indent=4)
 
     def get_item_paths(self, item_name: str) -> ItemPaths:
