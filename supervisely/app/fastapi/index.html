@@ -98,6 +98,19 @@
         </template>
       </sly-app>
     </div>
+
+    <!-- Offline session styles fix -->
+    <script>
+      let resizeCounter = 0;
+      let resizeInterval = setInterval(() => {
+        resizeCounter += 1;
+        window.dispatchEvent(new Event('resize'));
+      
+        if (resizeCounter > 3) {
+          clearInterval(resizeInterval);
+        }
+      }, 2000);
+    </script>
     <!-- Hot reload script -->
     {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}
     {% endif %}
