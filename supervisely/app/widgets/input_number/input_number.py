@@ -1,9 +1,5 @@
 from typing import Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
@@ -53,6 +49,7 @@ class InputNumber(Widget):
 
     @property
     def value(self):
+        self._value = StateJson()[self.widget_id]["value"]
         return self._value
 
     @value.setter
@@ -62,10 +59,12 @@ class InputNumber(Widget):
         StateJson().send_changes()
 
     def get_value(self):
-        return StateJson()[self.widget_id]["value"]
+        self._value = StateJson()[self.widget_id]["value"]
+        return self._value
 
     @property
     def min(self):
+        self._min = DataJson()[self.widget_id]["min"]
         return self._min
 
     @min.setter
@@ -76,6 +75,7 @@ class InputNumber(Widget):
 
     @property
     def max(self):
+        self._max = DataJson()[self.widget_id]["max"]
         return self._max
 
     @max.setter
