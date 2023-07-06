@@ -64,7 +64,6 @@ class InputNumber(Widget):
 
     @property
     def min(self):
-        self._min = DataJson()[self.widget_id]["min"]
         return self._min
 
     @min.setter
@@ -75,7 +74,6 @@ class InputNumber(Widget):
 
     @property
     def max(self):
-        self._max = DataJson()[self.widget_id]["max"]
         return self._max
 
     @max.setter
