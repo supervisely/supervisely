@@ -38,6 +38,7 @@ INSTALL_REQUIRES = [
     "trimesh>=3.11.2, <4.0.0",
     "scikit-video>=1.1.11, <2.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
+    "pydantic>=1.7.4, <2.0.0",
     "fastapi>=0.79.0, <1.0.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",

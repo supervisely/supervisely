@@ -1,6 +1,5 @@
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import NoneIsAllowedError
 from supervisely.app.singleton import Singleton
 
 
