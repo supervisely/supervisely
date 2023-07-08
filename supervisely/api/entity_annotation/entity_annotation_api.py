@@ -67,7 +67,7 @@ class EntityAnnotationAPI(ModuleApi):
             figure_api.append_bulk(entity_id, figures, key_id_map)
         else:
             with progress(message="Uploading annotation", total=len(figures)) as pbar:
-                for fig_batch in batched(figures, batch_size=500):
+                for fig_batch in batched(figures, batch_size=1000):
                     figure_api.append_bulk(entity_id, fig_batch, key_id_map)
                     pbar.update(len(fig_batch))
 
