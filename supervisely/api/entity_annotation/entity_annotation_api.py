@@ -3,6 +3,7 @@
 # docs
 from typing import List, Dict
 
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -35,11 +36,26 @@ class EntityAnnotationAPI(ModuleApi):
         :param entity_ids: list of integers
         :return: list of content(annotations with given ids from dataset with given id), received after execution post request
         """
-        response = self._api.post(self._method_download_bulk, {ApiField.DATASET_ID: dataset_id,
-                                                               self._entity_ids_str: entity_ids})
+        response = self._api.post(
+            self._method_download_bulk,
+            {ApiField.DATASET_ID: dataset_id, self._entity_ids_str: entity_ids},
+        )
         return response.json()
 
-    def _append(self, tag_api, object_api, figure_api, project_id, dataset_id, entity_id, tags, objects, figures, key_id_map: KeyIdMap = None):
+    def _append(
+        self,
+        tag_api,
+        object_api,
+        figure_api,
+        project_id,
+        dataset_id,
+        entity_id,
+        tags,
+        objects,
+        figures,
+        key_id_map: KeyIdMap = None,
+        progress=None,
+    ):
         """"""
         if key_id_map is None:
             # create for internal purposes (to link figures and tags to objects)
@@ -47,7 +63,13 @@ class EntityAnnotationAPI(ModuleApi):
 
         tag_api.append_to_entity(entity_id, project_id, tags, key_id_map=key_id_map)
         object_api.append_bulk(entity_id, objects, key_id_map)
-        figure_api.append_bulk(entity_id, figures, key_id_map)
+        if progress is None:
+            figure_api.append_bulk(entity_id, figures, key_id_map)
+        else:
+            with progress(message="Uploading annotation", total=len(figures)) as pbar:
+                for fig_batch in batched(figures, batch_size=500):
+                    figure_api.append_bulk(entity_id, fig_batch, key_id_map)
+                    pbar.update(len(fig_batch))
 
     def append(self, entity_id, ann, key_id_map: KeyIdMap = None):
         """"""

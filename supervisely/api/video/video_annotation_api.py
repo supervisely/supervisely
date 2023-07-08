@@ -87,7 +87,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         return self._download(video_info.dataset_id, video_id)
 
     def append(
-        self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None
+        self,
+        video_id: int,
+        ann: VideoAnnotation,
+        key_id_map: Optional[KeyIdMap] = None,
+        progress=None,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
@@ -98,6 +102,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type ann: VideoAnnotation
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
+        :param progress: Progress.
+        :type progress: SlyTqdm, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -127,6 +133,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             ann.objects,
             ann.figures,
             key_id_map,
+            progress,
         )
 
     def upload_paths(
