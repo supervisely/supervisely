@@ -222,6 +222,11 @@ class SlyTqdm(Widget):
 
     def get_json_state(self):
         return None
+    
+    def set_message(self, message):
+        self.message = message
+        DataJson()[self.widget_id]["message"] = message
+        DataJson().send_changes()
 
 
 class Progress(SlyTqdm):
