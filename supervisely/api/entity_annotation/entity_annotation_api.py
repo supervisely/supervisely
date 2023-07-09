@@ -63,7 +63,7 @@ class EntityAnnotationAPI(ModuleApi):
 
         tag_api.append_to_entity(entity_id, project_id, tags, key_id_map=key_id_map)
         object_api.append_bulk(entity_id, objects, key_id_map)
-        for fig_batch in batched(figures, batch_size=10):
+        for fig_batch in batched(figures, batch_size=1000):
             figure_api.append_bulk(entity_id, fig_batch, key_id_map)
             if progress_cb is not None:
                 if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
