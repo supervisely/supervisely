@@ -1,8 +1,8 @@
 # coding: utf-8
 
 # docs
-from typing import List, Dict
-
+from tqdm import tqdm
+from typing import List, Dict, Union, Optional, Callable
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -54,7 +54,7 @@ class EntityAnnotationAPI(ModuleApi):
         objects,
         figures,
         key_id_map: KeyIdMap = None,
-        progress=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """"""
         if key_id_map is None:
@@ -63,13 +63,13 @@ class EntityAnnotationAPI(ModuleApi):
 
         tag_api.append_to_entity(entity_id, project_id, tags, key_id_map=key_id_map)
         object_api.append_bulk(entity_id, objects, key_id_map)
-        if progress is None:
-            figure_api.append_bulk(entity_id, figures, key_id_map)
-        else:
-            with progress(message="Uploading annotation", total=len(figures)) as pbar:
-                for fig_batch in batched(figures, batch_size=1000):
-                    figure_api.append_bulk(entity_id, fig_batch, key_id_map)
-                    pbar.update(len(fig_batch))
+        for fig_batch in batched(figures, batch_size=10):
+            figure_api.append_bulk(entity_id, fig_batch, key_id_map)
+            if progress_cb is not None:
+                if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
+                    progress_cb.update(len(fig_batch))
+                else:
+                    progress_cb(len(fig_batch))
 
     def append(self, entity_id, ann, key_id_map: KeyIdMap = None):
         """"""

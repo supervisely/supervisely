@@ -91,7 +91,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_id: int,
         ann: VideoAnnotation,
         key_id_map: Optional[KeyIdMap] = None,
-        progress=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
@@ -103,7 +103,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :param progress: Progress.
-        :type progress: SlyTqdm, optional
+        :type progress: Optional[Union[tqdm, Callable]]
         :return: None
         :rtype: :class:`NoneType`
 
@@ -133,7 +133,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             ann.objects,
             ann.figures,
             key_id_map,
-            progress,
+            progress_cb,
         )
 
     def upload_paths(
