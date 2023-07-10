@@ -44,6 +44,8 @@ if TYPE_CHECKING:
 def create(process_id=None, headless=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
+    JinjaWidgets().auto_widget_id = False
+
     app = FastAPI()
     WebsocketManager().set_app(app)
 
@@ -99,7 +101,9 @@ def create(process_id=None, headless=False) -> FastAPI:
 
         import supervisely
 
-        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
+        app.mount(
+            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
+        )
 
     return app
 
@@ -172,7 +176,9 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
+        Jinja2Templates(
+            directory=[str(Path(__file__).parent.absolute()), templates_dir]
+        )
         if hot_reload:
             enable_hot_reload_on_debug(app)
 
@@ -207,8 +213,13 @@ def _init(
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")
-            if request.state.server_address is not None and request.state.api_token is not None:
-                request.state.api = Api(request.state.server_address, request.state.api_token)
+            if (
+                request.state.server_address is not None
+                and request.state.api_token is not None
+            ):
+                request.state.api = Api(
+                    request.state.server_address, request.state.api_token
+                )
             else:
                 request.state.api = None
 
@@ -220,7 +231,9 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            return Jinja2Templates().TemplateResponse(
+                "index.html", {"request": request}
+            )
 
         @app.on_event("shutdown")
         def shutdown():
@@ -230,7 +243,9 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
+            app.mount(
+                "/static", CustomStaticFiles(directory=static_dir), name="static_files"
+            )
 
     return app
 
@@ -273,14 +288,17 @@ class Application(metaclass=Singleton):
 
             main_layout = Identity(layout, widget_id="__app_main_layout__")
             logger.info(
-                "Application is running in no-html mode", extra={"templates_dir": templates_dir}
+                "Application is running in no-html mode",
+                extra={"templates_dir": templates_dir},
             )
         else:
             JinjaWidgets().auto_widget_id = False
             JinjaWidgets().context["__no_html_mode__"] = False
 
         if is_production():
-            logger.info("Application is running on Supervisely Platform in production mode")
+            logger.info(
+                "Application is running on Supervisely Platform in production mode"
+            )
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()
