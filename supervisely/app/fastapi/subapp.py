@@ -44,6 +44,11 @@ if TYPE_CHECKING:
 def create(process_id=None, headless=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
+    JinjaWidgets().auto_widget_id = False
+    logger.info(
+        "The app is running in compatibility mode, auto_widget_id is set to False."
+    )
+
     app = FastAPI()
     WebsocketManager().set_app(app)
 
