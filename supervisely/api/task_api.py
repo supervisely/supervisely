@@ -535,7 +535,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if "id" not in task:
             task["id"] = task.get("taskId")
         return task
-    
+
     def stop(self, id: int):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
@@ -828,10 +828,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         context: Optional[Dict] = {},
         skip_response: bool = False,
         timeout: Optional[int] = 60,
+        outside_request: bool = True,
     ):
         """send_request"""
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
+        context["outside_request"] = outside_request
         resp = self._api.post(
             "tasks.request.direct",
             {
