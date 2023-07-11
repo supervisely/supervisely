@@ -1,4 +1,20 @@
-<div>
+<div
+{%
+if
+widget.hide_on_finish
+%}
+v-if="(data.{{{widget.widget_id}}}.message || data.{{{widget.widget_id}}}.info) &&
+      data.{{{widget.widget_id}}}.status !== 'success'
+      "
+{%
+else
+%}
+v-if="data.{{{widget.widget_id}}}.message || 
+      data.{{{widget.widget_id}}}.info"
+{%
+endif
+%}
+>
   <link rel="stylesheet" href="./sly/css/app/widgets/sly_tqdm/style.css" />
   <el-collapse-transition>
     <div
