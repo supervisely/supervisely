@@ -155,4 +155,4 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         if is_production():
             task_id = sly_env.task_id()
             api = Api()
-            api.task.send_app_changes(task_id, data=[patch])
+            api.task.send_app_changes(task_id, data=patch.to_string())
