@@ -500,25 +500,55 @@ def get_directory_size(dir_path: str) -> int:
     return total_size
 
 
-def archive_directory(dir_: str, tar_path: str) -> None:
+def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None, List[str]]:
     """
-    Create tar archive from directory.
+    Create tar archive from directory and optionally split it into parts of specified size.
 
     :param dir_: Target directory path.
     :type dir_: str
     :param tar_path: Path for output tar archive.
     :type tar_path: str
-    :returns: None
-    :rtype: :class:`NoneType`
+    :param split: Split archive into parts of specified size (in bytes).
+    :type split: Union[None, int]
+    :returns: None or list of archive parts if split is not None
+    :rtype: Union[None, List[str]]
     :Usage example:
 
      .. code-block:: python
 
         from supervisely.io.fs import archive_directory
+        # If split is not needed.
         archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+
+        # If split is specified.
+        archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
+        print(archive_parts_paths) # ['/home/admin/work/examples/archive.part001.tar', '/home/admin/work/examples/archive.part002.tar']
     """
     with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
+
+    if split is None or os.path.getsize(tar_path) <= split:
+        return
+
+    tar_name = os.path.basename(tar_path)
+    tar_dir = os.path.abspath(os.path.dirname(tar_path))
+    parts_paths = []
+    part_number = 1
+
+    with open(tar_path, "rb") as input_file:
+        while True:
+            part_name = f"{tar_name}.{str(part_number).zfill(3)}"
+            output_path = os.path.join(tar_dir, part_name)
+            data = input_file.read(split)
+            if not data:
+                break
+            with open(output_path, "wb") as output_file:
+                output_file.write(data)
+                parts_paths.append(output_path)
+                part_number += 1
+
+    os.remove(tar_path)
+    return parts_paths
 
 
 def get_file_hash(path: str) -> str:
