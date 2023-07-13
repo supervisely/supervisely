@@ -882,3 +882,16 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 }
 
         self._api.post("tasks.meta.update", data)
+
+    def send_app_changes(self, task_id: int, data: List[Dict] = None, state: Dict = None):
+        resp = self._api.post(
+            "tasks.app-v2.data.set",
+            {
+                ApiField.TASK_ID: task_id,
+                ApiField.PAYLOAD: {
+                    ApiField.DATA: [],  # array of json patch
+                    ApiField.STATE: {},  # full state object
+                },
+            },
+        )
+        return resp.json()
