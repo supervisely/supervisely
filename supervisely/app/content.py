@@ -133,9 +133,6 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             global_state._last = copy.deepcopy(d)
             cls._send_to_platform(d)
 
-    def send_changes(self):
-        run_sync(self.synchronize_changes())
-
     @classmethod
     def _send_to_platform(cls, d: dict):
         if is_production():
