@@ -15,7 +15,7 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         main_func(*args, **kwargs)
     except Exception as e:
         logger.critical(
-            "Unexpected exception in main.",
+            repr(e),
             exc_info=True,
             extra={
                 "main_name": main_name,
