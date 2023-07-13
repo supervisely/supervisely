@@ -2603,7 +2603,7 @@ class Annotation:
             dest_class = aux_mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
-            if dest_class == lbl.obj_class:
+            if dest_class.geometry_type == lbl.obj_class.geometry_type:
                 new_labels.append(lbl)
             else:
                 bbox = lbl.geometry.to_bbox()
