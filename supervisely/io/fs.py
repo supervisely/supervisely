@@ -539,11 +539,10 @@ def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
             output_path = os.path.join(tar_dir, part_name)
+            data = input_file.read(split)
+            if not data:
+                break
             with open(output_path, "wb") as output_file:
-                data = input_file.read(split)
-                if not data:
-                    os.remove(output_path)
-                    break
                 output_file.write(data)
                 parts_paths.append(output_path)
                 part_number += 1
