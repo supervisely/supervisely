@@ -64,8 +64,12 @@
     <script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
+      src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@skip-data-export/SlyApp.js"
     ></script>
+    <!-- <script
+      type="module"
+      src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
+    ></script> -->
     <script>
       window.parent.postMessage('{ "showHeader": false }', "*");
     </script>
