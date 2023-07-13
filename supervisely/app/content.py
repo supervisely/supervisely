@@ -11,6 +11,9 @@ from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi import run_sync
+from supervisely._utils import is_production
+from supervisely.io import env as sly_env
+from supervisely.api.api import Api
 
 
 class Field(str, enum.Enum):
@@ -128,8 +131,31 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             global_state.clear()
             global_state.update(copy.deepcopy(d))
             global_state._last = copy.deepcopy(d)
+            cls._send_to_platform(d)
+
+    def send_changes(self):
+        run_sync(self.synchronize_changes())
+
+    @classmethod
+    def _send_to_platform(cls, d: dict):
+        if is_production():
+            task_id = sly_env.task_id()
+            api = Api()
+            api.task.send_app_changes(task_id, state=d)
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
+
+    async def _apply_patch(self, patch):
+        async with self._lock:
+            patch.apply(self._last, in_place=True)
+            self._last = copy.deepcopy(self._last)
+            self._send_to_platform(patch)
+
+    def _send_to_platform(cls, patch):
+        if is_production():
+            task_id = sly_env.task_id()
+            api = Api()
+            api.task.send_app_changes(task_id, data=[patch])
