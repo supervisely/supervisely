@@ -15,12 +15,8 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        _, _, exc_tb = sys.exc_info()
-        filename = os.path.basename(exc_tb.tb_frame.f_code.co_filename)
-        line_num = exc_tb.tb_lineno
-        func_name = exc_tb.tb_frame.f_code.co_name
-
-        error_msg = f"Unexpected exception in {filename} in {func_name} function in {line_num} line. Error: {repr(e)}"
+        exc_traceback = traceback.format_exc()
+        error_msg = f"{repr(e)} \n {exc_traceback}"
         logger.critical(
             error_msg,
             exc_info=True,
