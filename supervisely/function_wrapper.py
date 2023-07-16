@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os
+import sys
 import traceback
 import logging
 from supervisely.sly_logger import logger, EventType
@@ -14,8 +15,14 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
+        _, _, exc_tb = sys.exc_info()
+        filename = os.path.basename(exc_tb.tb_frame.f_code.co_filename)
+        line_num = exc_tb.tb_lineno
+        func_name = exc_tb.tb_frame.f_code.co_name
+
+        error_msg = f"Unexpected exception in {filename} in {func_name} function in {line_num} line. Error: {repr(e)}"
         logger.critical(
-            repr(e),
+            error_msg,
             exc_info=True,
             extra={
                 "main_name": main_name,
