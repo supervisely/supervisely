@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import sys
 import traceback
 import logging
 from supervisely.sly_logger import logger, EventType
@@ -15,10 +14,8 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        exc_traceback = traceback.format_exc()
-        error_msg = f"{repr(e)} \n {exc_traceback}"
         logger.critical(
-            error_msg,
+            repr(e),
             exc_info=True,
             extra={
                 "main_name": main_name,
