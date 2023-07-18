@@ -2403,9 +2403,9 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
 
     subdirs_with_meta_json = []
 
-    for idx in range(len(subdirs)):
-        if file_exists(os.path.join(dir, subdirs[idx], "meta.json")):
-            subdirs_with_meta_json.append(subdirs[idx])
+    for subdir in subdirs:
+        if file_exists(os.path.join(dir, subdir, "meta.json")):
+            subdirs_with_meta_json.append(subdir)
 
     if len(subdirs_with_meta_json) == 0:
         raise FileNotFoundError(
