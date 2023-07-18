@@ -952,6 +952,3 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_pos=1,
     arg_key="device",
 )
-
-
-load_on_device
