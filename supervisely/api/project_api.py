@@ -1066,3 +1066,92 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
 
         self.archive_batch([id], [archive_url])
+
+    def get_archivation_list(
+        self,
+        to_day: Optional[int] = None,
+        from_day: Optional[int] = None,
+        skip_exported: Optional[bool] = None,
+        sort: Optional[
+            str[
+                "id",
+                "title",
+                "size",
+                "createdAt",
+                "updatedAt",
+            ]
+        ] = None,
+        sort_order: Optional[str["asc", "desc"]] = None,
+    ) -> List[ProjectInfo]:
+        """
+        List of all projects in all available workspaces that can be archived.
+
+        :param to_day: Sets the number of days from today. If the project has not been updated during this period, it will be added to the list.
+        :type to_day: int, optional
+        :param from_day: Sets the number of days from today. If the project has not been updated before this period, it will be added to the list.
+        :type from_day: int, optional
+        :param skip_exported: Determines whether to skip already archived projects.
+        :type skip_exported: bool, optional.
+        :param sort: Specifies by which parameter to sort the project list.
+        :type sort: str, optional.
+        :param sort_order: Determines which value to list from.
+        :type sort_order: str, optional.
+        :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ProjectInfo]`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_list = api.project.get_archivation_list()
+            print(project_list)
+            # Output: [
+            # ProjectInfo(id=861,
+            #             name='Project_COCO'
+            #             size='22172241',
+            #             workspace_id=58,
+            #             created_at='2020-11-09T18:21:32.356Z',
+            #             updated_at='2020-11-09T18:21:32.356Z',
+            #             type='images',),
+            # ProjectInfo(id=777,
+            #             name='Trucks',
+            #             size='76154769',
+            #             workspace_id=58,
+            #             created_at='2021-07-077T17:44:28.158Z',
+            #             updated_at='2023-07-15T12:33:45.747Z',
+            #             type='images',)
+            # ]
+
+            # Project list for desired date range
+            project_list = api.project.get_archivation_list(to_day=2)
+            print(project_list)
+            # Output: ProjectInfo(id=777,
+            #                     name='Trucks',
+            #                     size='76154769',
+            #                     workspace_id=58,
+            #                     created_at='2021-07-077T17:44:28.158Z',
+            #                     updated_at='2023-07-15T12:33:45.747Z',
+            #                     type='images',)
+            # ]
+
+        """
+        request_body = {}
+        if from_day is not None:
+            request_body[ApiField.FROM] = from_day
+        if to_day is not None:
+            request_body[ApiField.TO] = to_day
+        if skip_exported is not None:
+            request_body[ApiField.SKIP_EXPORTED] = skip_exported
+        if sort is not None:
+            request_body[ApiField.SORT] = sort
+        if sort_order is not None:
+            request_body[ApiField.SORT_ORDER] = sort_order
+
+        response = self._api.post("projects.list.all", request_body)
+
+        return [self._convert_json_info(item) for item in response.json()]
