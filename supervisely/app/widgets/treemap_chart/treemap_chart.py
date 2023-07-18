@@ -77,7 +77,7 @@ class TreemapChart(Apexchart):
 
         if not colors:
             self._distributed = False
-            self._colors = []
+            self._colors = ["#008FFB"]
         else:
             self._distributed = True
             self._colors = colors
@@ -96,6 +96,7 @@ class TreemapChart(Apexchart):
                 }
             },
             "title": {"text": self._title, "align": "left"},
+            "colors": self._colors,
         }
 
         sly_options = {}
