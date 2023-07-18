@@ -1071,7 +1071,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self,
         to_day: Optional[int] = None,
         from_day: Optional[int] = None,
-        skip_exported: Optional[bool] = True,
+        skip_exported: Optional[bool] = None,
     ) -> List[ProjectInfo]:
         """
         List of all projects in all available workspaces that can be archived.
