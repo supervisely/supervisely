@@ -939,7 +939,7 @@ def _create_notify_after_complete_decorator(
                 arg = args[arg_pos]
                 logger.info(msg, str(arg))
             else:
-                logger.info(msg, "")
+                logger.info(msg, "some")
             return result
 
         return wrapper
