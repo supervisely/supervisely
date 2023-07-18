@@ -28,6 +28,7 @@ from supervisely.io.fs import (
     dir_exists,
     dir_empty,
     silent_remove,
+    file_exists,
 )
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
@@ -2366,21 +2367,24 @@ class Project:
 
 def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
-    Read project from given directory.
+    Read project from given directory or tries to find project directory in subdirectories.
 
-    :param dir: Path to project parent directory, which must contain only project folder.
+    :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
     :param project_class: Project object
     :type project_class: :class:`Project<Project>`
     :return: Project class object
     :rtype: :class:`Project<Project>`
-    :raises: :class:`Exception` if given directory contains more than one subdirectory.
+    :raises: RuntimeError if the given directory doesn't contain valid project folder and doesn't contain any subdirectories.
+    :raises: FileNotFoundError if the given directory doesn't contain valid project folder and doesn't contain any
+        subdirectories with meta.json file.
+    :raises: RuntimeError if the given directory contains more than one subdirectory with meta.json file.
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
-        proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
+        proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
     try:
@@ -2389,19 +2393,33 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
     except Exception:
         pass
 
-    projects_in_dir = get_subdirs(dir)
-    if len(projects_in_dir) != 1:
-        raise RuntimeError("Found {} dirs instead of 1".format(len(projects_in_dir)))
+    subdirs = get_subdirs(dir)
 
-    project_dir = os.path.join(dir, projects_in_dir[0])
-    try:
-        project_fs = project_class(project_dir, OpenMode.READ)
-    except Exception as e:
-        projects_in_dir = get_subdirs(project_dir)
-        if len(projects_in_dir) != 1:
-            raise e
-        project_dir = os.path.join(project_dir, projects_in_dir[0])
-        project_fs = project_class(project_dir, OpenMode.READ)
+    if len(subdirs) == 0:
+        raise RuntimeError(
+            f"The given directory '{dir}' doesn't contain valid project folder and doesn't contain any subdirectories. "
+            "Make sure that the given directory contains valid project folder or subdirectory with meta.json file."
+        )
+
+    subdirs_with_meta_json = []
+
+    for subdir in subdirs:
+        if file_exists(os.path.join(dir, subdir, "meta.json")):
+            subdirs_with_meta_json.append(subdir)
+
+    if len(subdirs_with_meta_json) == 0:
+        raise FileNotFoundError(
+            f"Can't find meta.json file in any subdirectories: {subdirs} of the given directory '{dir}'."
+            "Make sure that at least one subdirectory contains meta.json file."
+        )
+    elif len(subdirs_with_meta_json) > 1:
+        raise RuntimeError(
+            f"The given directory '{dir}' must contain only one subdirectory with meta.json file, "
+            f"while following subdirectories contain meta.json: {subdirs_with_meta_json}."
+        )
+
+    project_dir = os.path.join(dir, subdirs_with_meta_json[0])
+    project_fs = project_class(project_dir, OpenMode.READ)
 
     return project_fs
 
