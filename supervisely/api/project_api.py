@@ -1072,6 +1072,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         to_day: Optional[int] = None,
         from_day: Optional[int] = None,
         skip_exported: Optional[bool] = None,
+        sort: Optional[
+            str[
+                "id",
+                "title",
+                "size",
+                "createdAt",
+                "updatedAt",
+            ]
+        ] = None,
+        sort_order: Optional[str["asc", "desc"]] = None,
     ) -> List[ProjectInfo]:
         """
         List of all projects in all available workspaces that can be archived.
@@ -1082,6 +1092,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type from_day: int, optional
         :param skip_exported: Determines whether to skip already archived projects.
         :type skip_exported: bool, optional.
+        :param sort: Specifies by which parameter to sort the project list.
+        :type sort: str, optional.
+        :param sort_order: Determines which value to list from.
+        :type sort_order: str, optional.
         :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ProjectInfo]`
         :Usage example:
@@ -1133,6 +1147,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.TO] = to_day
         if skip_exported is not None:
             request_body[ApiField.SKIP_EXPORTED] = skip_exported
+        if sort is not None:
+            request_body[ApiField.SORT] = sort
+        if sort_order is not None:
+            request_body[ApiField.SORT_ORDER] = sort_order
 
         response = self._api.post("projects.list.all", request_body)
 
