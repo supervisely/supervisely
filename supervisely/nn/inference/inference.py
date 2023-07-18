@@ -933,13 +933,13 @@ def _create_notify_after_complete_decorator(
             result = func(*args, **kwargs)
 
             if arg_key is not None and arg_key in kwargs:
-                arg = kwargs[arg_pos]
+                arg = kwargs[arg_key]
                 logger.info(msg, str(arg))
             elif arg_pos is not None and arg_pos < len(args):
                 arg = args[arg_pos]
                 logger.info(msg, str(arg))
             else:
-                logger.info(msg)
+                logger.info(msg, "")
             return result
 
         return wrapper
@@ -952,3 +952,6 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_pos=1,
     arg_key="device",
 )
+
+
+load_on_device
