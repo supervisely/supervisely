@@ -500,7 +500,9 @@ def get_directory_size(dir_path: str) -> int:
     return total_size
 
 
-def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None, List[str]]:
+def archive_directory(
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+) -> Union[None, List[str]]:
     """
     Create tar archive from directory and optionally split it into parts of specified size.
 
@@ -508,8 +510,9 @@ def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None
     :type dir_: str
     :param tar_path: Path for output tar archive.
     :type tar_path: str
-    :param split: Split archive into parts of specified size (in bytes).
-    :type split: Union[None, int]
+    :param split: Split archive into parts of specified size (in bytes) or size with
+        suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
+    :type split: Union[int, str]
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
     :Usage example:
@@ -522,12 +525,17 @@ def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None
 
         # If split is specified.
         archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
-        print(archive_parts_paths) # ['/home/admin/work/examples/archive.part001.tar', '/home/admin/work/examples/archive.part002.tar']
+        print(archive_parts_paths) # ['/home/admin/work/examples/archive.tar.001', '/home/admin/work/examples/archive.tar.002']
     """
     with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
 
-    if split is None or os.path.getsize(tar_path) <= split:
+    if split is None:
+        return
+
+    split = string_to_byte_size(split)
+
+    if os.path.getsize(tar_path) <= split:
         return
 
     tar_name = os.path.basename(tar_path)
@@ -549,6 +557,42 @@ def archive_directory(dir_: str, tar_path: str, split: int = None) -> Union[None
 
     os.remove(tar_path)
     return parts_paths
+
+
+def string_to_byte_size(string: Union[str, int]) -> int:
+    """Returns integer representation of byte size from string representation.
+        If input is integer, returns the same integer for convenience.
+
+        :param string: string representation of byte size (e.g. 1.5Kb, 2Mb, 3.7Gb, 4.2Tb) or integer
+        :type string: Union[str, int]
+        :return: integer representation of byte size (or the same integer if input is integer)
+        :rtype: int
+
+        :raises ValueError: if input string is invalid
+
+    :Usage example:
+
+    .. code-block:: python
+        string_size = "1.5M"
+        size = string_to_byte_size(string_size)
+        print(size)  # 1572864
+
+    """
+
+    MULTIPLIER = 1024
+    units = {"KB": 1, "MB": 2, "GB": 3, "TB": 4}
+
+    if isinstance(string, int):
+        return string
+
+    try:
+        value, unit = string[:-2], string[-2:].upper()
+        multiplier = MULTIPLIER ** units[unit]
+        return int(float(value) * multiplier)
+    except (KeyError, ValueError, IndexError):
+        raise ValueError(
+            "Invalid input string. The string must be in the format of '1.5Kb', '2Mb', '3.7Gb', '4.2Tb' or integer."
+        )
 
 
 def get_file_hash(path: str) -> str:
