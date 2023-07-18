@@ -455,7 +455,7 @@ class ApiField:
     """"""
     BACKUP_ARCHIVE = "backupArchive"
     """"""
-    WITH_EXPORTED = "withExported"
+    SKIP_EXPORTED = "skipExported"
     """"""
     FROM = "from"
     """"""

@@ -1071,17 +1071,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self,
         to_day: Optional[int] = None,
         from_day: Optional[int] = None,
-        with_exported: Optional[bool] = None,
+        skip_exported: Optional[bool] = True,
     ) -> List[ProjectInfo]:
         """
-        List of all projects in all available workspaces that can be archived. If you want to select projects in the desired range of days from today, use dates from_day to to_day.
+        List of all projects in all available workspaces that can be archived.
 
-        :param to_day: Sets the date of the day from today, older than which all projects that have never been updated will be archived.
+        :param to_day: Sets the number of days from today. If the project has not been updated during this period, it will be added to the list.
         :type to_day: int, optional
-        :param from_day: Sets the date from which projects that have never been updated until today will be archived.
+        :param from_day: Sets the number of days from today. If the project has not been updated before this period, it will be added to the list.
         :type from_day: int, optional
-        :param with_exported: Determines whether to add already archived projects to the list.
-        :type with_exported: bool, optional
+        :param skip_exported: Determines whether to skip already archived projects.
+        :type skip_exported: bool, optional.
         :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ProjectInfo]`
         :Usage example:
@@ -1090,7 +1090,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1098,31 +1098,31 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_list)
             # Output: [
             # ProjectInfo(id=861,
+            #             name='Project_COCO'
             #             size='22172241',
             #             workspace_id=58,
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
-            #             name='Project_COCO',
-            #             team_id=22,),
+            #             type='images',),
             # ProjectInfo(id=777,
+            #             name='Trucks',
             #             size='76154769',
             #             workspace_id=58,
             #             created_at='2021-07-077T17:44:28.158Z',
             #             updated_at='2023-07-15T12:33:45.747Z',
-            #             name='Trucks',
-            #             team_id=22,)
+            #             type='images',)
             # ]
 
             # Project list for desired date range
-            project_list = api.project.get_list(to_day=2, from_day=6)
+            project_list = api.project.get_list(from_day=2)
             print(project_list)
             # Output: ProjectInfo(id=777,
+            #                     name='Trucks',
             #                     size='76154769',
             #                     workspace_id=58,
             #                     created_at='2021-07-077T17:44:28.158Z',
             #                     updated_at='2023-07-15T12:33:45.747Z',
-            #                     name='Trucks',
-            #                     team_id=22,)
+            #                     type='images',)
             # ]
 
         """
@@ -1131,8 +1131,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.FROM] = from_day
         if to_day is not None:
             request_body[ApiField.TO] = to_day
-        if with_exported is not None:
-            request_body[ApiField.WITH_EXPORTED] = with_exported
+        if skip_exported is not None:
+            request_body[ApiField.SKIP_EXPORTED] = skip_exported
 
         response = self._api.post("projects.list.all", request_body)
 
