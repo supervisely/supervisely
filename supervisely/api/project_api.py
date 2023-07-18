@@ -1128,7 +1128,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
             # Project list for desired date range
-            project_list = api.project.get_list(from_day=2)
+            project_list = api.project.get_archivation_list(to_day=2)
             print(project_list)
             # Output: ProjectInfo(id=777,
             #                     name='Trucks',
