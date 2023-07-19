@@ -41,6 +41,7 @@
 
 **Supervisely Ecosystem on GitHub**: [https://github.com/supervisely-ecosystem](https://github.com/supervisely-ecosystem)
 
+**Complete video course on YouTube**: [What is Supervisely?](https://supervisely.com/what-is-supervisely/#0)
 ---
 
 ## Table of contents
