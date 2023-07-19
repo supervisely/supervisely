@@ -55,7 +55,7 @@ class GridPlot(Widget):
                         gap=self._gap,
                         fractions=[1] * len(batch),
                         widget_id=generate_id(),
-                        overflow="scroll",
+                        overflow="wrap",
                     )
                 )
             self._content = Container(
