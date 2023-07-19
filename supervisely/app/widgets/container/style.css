@@ -4,7 +4,7 @@
 
 .container.scroll {
     overflow-x: auto;
-    overflow-y: unset;
+    overflow-y: inherit;
 }
 
 .container.wrap {
