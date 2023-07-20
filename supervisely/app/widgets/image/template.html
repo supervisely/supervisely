@@ -1,6 +1,10 @@
 <div>
   <img
-    style="width: 100%; height: auto"
+    v-if="data.{{{widget.widget_id}}}.url != ''"
+    :style="{
+        width: data.{{{widget.widget_id}}}.width,
+        height: data.{{{widget.widget_id}}}.height
+    }"
     :src="data.{{{widget.widget_id}}}.url"
   />
 </div>
