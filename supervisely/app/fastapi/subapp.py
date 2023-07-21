@@ -45,9 +45,7 @@ def create(process_id=None, headless=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     JinjaWidgets().auto_widget_id = False
-    logger.info(
-        "The app is running in compatibility mode, auto_widget_id is set to False."
-    )
+    logger.info("The app is running in compatibility mode, auto_widget_id is set to False.")
 
     app = FastAPI()
     WebsocketManager().set_app(app)
@@ -67,8 +65,9 @@ def create(process_id=None, headless=False) -> FastAPI:
         @app.post("/state")
         async def send_state(request: Request):
             state = StateJson()
-            response = JSONResponse(content=dict(state))
+            logger.debug("Full app state", extra={"state": state})
 
+            response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
             if (gettrace is not None and gettrace()) or is_development():
                 response.headers["x-debug-mode"] = "1"
