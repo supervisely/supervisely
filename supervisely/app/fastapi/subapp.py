@@ -312,6 +312,11 @@ class Application(metaclass=Singleton):
             templates.env.globals["hot_reload"] = self.hot_reload
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+            
+            if is_production():
+                # to save offline session
+                client = TestClient(self._fastapi)
+                resp = run_sync(client.get("/"))
 
     def get_server(self):
         return self._fastapi
