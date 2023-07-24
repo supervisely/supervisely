@@ -287,3 +287,10 @@ class ClassesTable(Widget):
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
+
+    def select_all(self) -> None:
+        self._global_checkbox = True
+        self._checkboxes = [True] * len(self._table_data)
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson().send_changes()
