@@ -3,6 +3,9 @@ import copy
 import os
 import enum
 import json
+import threading
+import queue
+import traceback
 import jsonpatch
 import asyncio
 from fastapi import Request
@@ -37,10 +40,14 @@ def get_data_dir():
             logger.debug(f"Load dir from evn {key}={value}")
             break
     if dir is None:
-        raise ValueError(f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}")
+        raise ValueError(
+            f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}"
+        )
 
     if dir_exists(dir) is False:
-        logger.info(f"App data directory {dir} doesn't exist. Will be made automatically.")
+        logger.info(
+            f"App data directory {dir} doesn't exist. Will be made automatically."
+        )
         mkdir(dir)
     return dir
 
@@ -57,7 +64,9 @@ def get_synced_data_dir():
             break
 
     if dir_exists(dir) is False:
-        logger.info(f"Synced app data directory {dir} doesn't exist. Will be made automatically.")
+        logger.info(
+            f"Synced app data directory {dir} doesn't exist. Will be made automatically."
+        )
         mkdir(dir)
     return dir
 
@@ -134,11 +143,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             cls._send_to_platform(d)
 
     @classmethod
-    def _send_to_platform(cls, d: dict):
-        if is_production():
-            task_id = sly_env.task_id()
-            api = Api()
-            api.task.send_app_changes(task_id, state=d)
+    def _send_to_platform(cls, d):
+        SendToPlatform().send(state=copy.deepcopy(d))
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
@@ -151,8 +157,66 @@ class DataJson(_PatchableJson, metaclass=Singleton):
             self._last = copy.deepcopy(self._last)
             self._send_to_platform(patch)
 
-    def _send_to_platform(cls, patch):
-        if is_production():
+    def _send_to_platform(self, patch):
+        SendToPlatform().send(data_patch=copy.deepcopy(patch))
+
+
+class SendToPlatform(metaclass=Singleton):
+    def __init__(self):
+        self._data_patch_queue = queue.Queue()
+        self._last_sent_data = {}
+        self._state_queue = queue.Queue()
+        self._loop_thread = threading.Thread(
+            target=self._send_to_platform_loop, name="SendToPlatform._loop"
+        )
+        self._loop_thread.start()
+
+    def send(self, data_patch=None, state=None):
+        if data_patch is not None:
+            self._data_patch_queue.put(data_patch)
+        if state is not None:
+            self._state_queue.put(state)
+
+    def _send_to_platform(self, data_patch: jsonpatch.JsonPatch, state: dict):
+        if is_production() and (state or data_patch):
             task_id = sly_env.task_id()
             api = Api()
-            api.task.send_app_changes(task_id, data=patch.to_string())
+            api.task.send_app_changes(task_id, data=data_patch.to_string(), state=state)
+
+    def _send_to_platform_loop(self):
+        failed_patch = None
+        while True:
+            last_state = None
+            state_count = 0
+            patches = []
+            while not self._data_patch_queue.empty():
+                patches.append(self._data_patch_queue.get())
+            while not self._state_queue.empty():
+                last_state = self._state_queue.get()
+                state_count += 1
+
+            if patches or last_state is not None:
+                logger.info(f"patches count: {len(patches)}")
+                try:
+                    merged_patch = None
+                    data = copy.deepcopy(self._last_sent_data)
+                    for patch in [failed_patch, *patches]:
+                        if patch is None:
+                            continue
+                        patch.apply(data, in_place=True)
+                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                    self._send_to_platform(data_patch=merged_patch, state=last_state)
+                    self._last_sent_data = copy.deepcopy(data)
+                    failed_patch = None
+                except Exception as exc:
+                    failed_patch = merged_patch
+                    logger.error(
+                        traceback.format_exc(),
+                        exc_info=True,
+                        extra={"exc_str": str(exc)},
+                    )
+                finally:
+                    for _ in range(len(patches)):
+                        self._data_patch_queue.task_done()
+                    for _ in range(state_count):
+                        self._state_queue.task_done()
