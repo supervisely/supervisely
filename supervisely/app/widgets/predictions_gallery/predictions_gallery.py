@@ -8,26 +8,25 @@ from supervisely.app.widgets import Button, GridGallery, Slider, Widget
 class PredictionsGallery(Widget):
     def __init__(
         self,
-        columns_number=2,
         slider_title: Optional[str] = "epochs",
-        single_image_mode: Optional[bool] = True,
         enable_zoom: Optional[bool] = False,
-        opacity: Optional[float] = 0.3,
+        opacity: Optional[float] = 0.4,
         widget_id=None,
     ):
-        self._columns = columns_number
 
         # save data for gallery
-        self._image_urls = []
+        self._image_url = None
+        self._gt_ann = None
+        self._gt_title = None
         self._data = []
         self._titles = []
 
-        self._slider_title = slider_title
-        self._single_image_mode = single_image_mode
 
         # save gallery state
+        self._columns = 2
         self._current_grid = 0
         self._total_grids = 0
+        self._slider_title = slider_title
 
         self._first_button = Button(
             "", icon="zmdi zmdi-skip-previous", plain=True, button_size="mini"
@@ -55,24 +54,27 @@ class PredictionsGallery(Widget):
 
         @self._slider.value_changed
         def on_slider_change(value):
-            self._update_data()
             self._update_gallery(int(value))
 
         @self._first_button.click
         def on_first_button_click():
-            self._update_gallery(1)
+            if self._current_grid > 1:
+                self._update_gallery(1)
 
         @self._prev_button.click
         def on_prev_button_click():
-            self._update_gallery(self._current_grid - 1)
+            if self._current_grid > 1:
+                self._update_gallery(self._current_grid - 1)
 
         @self._next_button.click
         def on_next_button_click():
-            self._update_gallery(self._current_grid + 1)
+            if self._current_grid < self._total_grids:
+                self._update_gallery(self._current_grid + 1)
 
         @self._last_button.click
         def on_last_button_click():
-            self._update_gallery(self._total_grids)
+            if self._current_grid < self._total_grids:
+                self._update_gallery(self._total_grids)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -86,70 +88,45 @@ class PredictionsGallery(Widget):
             "sliderTitle": f" {self._slider_title}",
         }
 
-    def add_images(
-        self,
-        image_urls: List[str],
-        annotations: List[sly.Annotation] = None,
-        titles: List[str] = None,
-    ):
-        self._image_urls.extend(image_urls)
-        if titles is not None:
-            self._titles.extend(titles)
-        else:
-            self._titles.extend([""] * len(image_urls))
-        for idx in range(self._columns):
-            image_index = (
-                idx
-                if self._single_image_mode is True
-                else (self._total_grids - 1) * self._columns + idx
-            )
-            self._grid_gallery.append(
-                title=self._titles[idx],
-                image_url=self._image_urls[image_index],
-            )
-        if annotations is not None:
-            self.add_annotations(annotations=annotations)
-
-        # self._update_data()
-        # self._grid_gallery._update()
-
-    def add_image(
+    def set_ground_truth(
         self,
         image_url: str,
-        annotation: sly.Annotation = None,
-        title: str = None,
+        annotation: sly.Annotation,
+        title: str = "Ground truth",
     ):
-        annotations = [annotation] if annotation is not None else None
-        titles = [title] if title is not None else None
-        self._add_images(image_urls=[image_url], annotations=annotations, titles=titles)
+        self._image_url = image_url
+        self._gt_ann = annotation
+        self._gt_title = title
+        self._update_data()
+        # self.add_prediction(annotation=annotation, title=title)
 
-    def add_annotations(self, annotations: List[sly.Annotation]):
+    def add_predictions(self, annotations: List[sly.Annotation], titles: List[str] = None):
+        titles = titles if titles is not None else [""] * len(annotations)
         self._data.extend(annotations)
+        self._titles.extend(titles)
         self._update_data()
 
-    def add_annotation(self, annotation: sly.Annotation):
-        self._add_annotations(annotations=[annotation])
+    def add_prediction(self, annotation: sly.Annotation, title: str = None):
+        self._data.append(annotation)
+        title = title if title is not None else ""
+        self._titles.append(title)
+        self._update_data()
 
     def _update_data(self):
-        pages_cnt = len(self._data) // self._columns + len(self._data) % self._columns
-        self._total_grids = pages_cnt
+        self._total_grids = max(len(self._data), 1)
         last_page = False
         if self._slider.get_value() == self._slider.get_max():
             last_page = True
 
-        self._slider.set_max(pages_cnt)
+        self._slider.set_max(self._total_grids)
 
         if last_page:
-            self._update_gallery(pages_cnt)
-        elif self._current_grid == 0:
-            self._update_gallery(1)
+            self._update_gallery(self._total_grids)
 
-        StateJson()[self.widget_id]["totalGrids"] = pages_cnt
+        StateJson()[self.widget_id]["totalGrids"] = self._total_grids
         StateJson().send_changes()
 
     def _update_gallery(self, page: int):
-        if page < 1 or page > self._total_grids or page == self._current_grid:
-            return
         if self._grid_gallery.is_hidden():
             self._grid_gallery.show()
         self._slider.set_value(page)
@@ -158,15 +135,16 @@ class PredictionsGallery(Widget):
         StateJson().send_changes()
 
         self._grid_gallery.clean_up()
-        for idx in range(self._columns):
-            image_index = (
-                idx if self._single_image_mode is True else (page - 1) * self._columns + idx
-            )
+        self._grid_gallery.append(self._image_url, self._gt_ann, self._gt_title) # set gt
+        for idx in range(self._columns - 1):
+            ann_index = (page - 1) * (self._columns - 1) + idx
+            title_index = (page - 1) * (self._columns - 1) + idx
             self._grid_gallery.append(
-                title=self._titles[idx],
-                image_url=self._image_urls[image_index],
-                annotation=self._data[(page - 1) * self._columns + idx],
+                title=self._titles[title_index] if title_index < len(self._titles) else None,
+                image_url=self._image_url,
+                annotation=self._data[ann_index] if ann_index < len(self._data) else None,
             )
+        DataJson().send_changes()
 
     def disable(self):
         self._disabled = True
