@@ -13,16 +13,14 @@ class PredictionsGallery(Widget):
         opacity: Optional[float] = 0.4,
         widget_id=None,
     ):
-
-        # save data for gallery
+        # init data for gallery
         self._image_url = None
         self._gt_ann = None
         self._gt_title = None
         self._data = []
         self._titles = []
 
-
-        # save gallery state
+        # init gallery options
         self._columns = 2
         self._current_grid = 0
         self._total_grids = 0
@@ -99,13 +97,21 @@ class PredictionsGallery(Widget):
         self._gt_title = title
         self._update_data()
 
-    def add_predictions(self, annotations: List[sly.Annotation], titles: List[str] = None):
+    def add_predictions(
+        self,
+        annotations: List[sly.Annotation],
+        titles: List[str] = None,
+    ):
         titles = titles if titles is not None else [""] * len(annotations)
         self._data.extend(annotations)
         self._titles.extend(titles)
         self._update_data()
 
-    def add_prediction(self, annotation: sly.Annotation, title: str = None):
+    def add_prediction(
+        self,
+        annotation: sly.Annotation,
+        title: str = None,
+    ):
         self._data.append(annotation)
         title = title if title is not None else ""
         self._titles.append(title)
@@ -126,6 +132,8 @@ class PredictionsGallery(Widget):
         StateJson().send_changes()
 
     def _update_gallery(self, page: int):
+        """Rerender grid gallery (if current grid num is changed)."""
+
         if self._grid_gallery.is_hidden():
             self._grid_gallery.show()
         self._slider.set_value(page)
@@ -134,7 +142,7 @@ class PredictionsGallery(Widget):
         StateJson().send_changes()
 
         self._grid_gallery.clean_up()
-        self._grid_gallery.append(self._image_url, self._gt_ann, self._gt_title) # set gt
+        self._grid_gallery.append(self._image_url, self._gt_ann, self._gt_title)  # set gt
         for idx in range(self._columns - 1):
             ann_index = (page - 1) * (self._columns - 1) + idx
             title_index = (page - 1) * (self._columns - 1) + idx
