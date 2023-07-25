@@ -228,11 +228,11 @@ def _init(
 
         @app.on_event("shutdown")
         def shutdown():
-            from supervisely.app.content import SendToPlatform
+            from supervisely.app.content import ContentOrigin
+            ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
-            SendToPlatform().stop()
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
@@ -319,8 +319,8 @@ class Application(metaclass=Singleton):
 
             if is_production():
                 # to save offline session
-                from supervisely.app.content import SendToPlatform
-                SendToPlatform().start()
+                from supervisely.app.content import ContentOrigin
+                ContentOrigin().start()
                 client = TestClient(self._fastapi)
                 resp = run_sync(client.get("/"))
 

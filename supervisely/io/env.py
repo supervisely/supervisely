@@ -201,3 +201,13 @@ def user_id(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+
+def content_update_sleep_time():
+    return _parse_from_env(
+        name="content_update_sleep_time",
+        keys=["CONTENT_UPDATE_SLEEP_TIME"],
+        postprocess_fn=lambda x: float(x),
+        default=0.5,
+        raise_not_found=False,
+    )
