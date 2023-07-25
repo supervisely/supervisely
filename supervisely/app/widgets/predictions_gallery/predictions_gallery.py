@@ -98,7 +98,6 @@ class PredictionsGallery(Widget):
         self._gt_ann = annotation
         self._gt_title = title
         self._update_data()
-        # self.add_prediction(annotation=annotation, title=title)
 
     def add_predictions(self, annotations: List[sly.Annotation], titles: List[str] = None):
         titles = titles if titles is not None else [""] * len(annotations)
