@@ -146,24 +146,24 @@ class PredictionsGallery(Widget):
             )
         DataJson().send_changes()
 
-    # def disable(self):
-    #     self._disabled = True
-    #     self._grid_gallery.disable()
-    #     self._first_button.disable()
-    #     self._prev_button.disable()
-    #     self._next_button.disable()
-    #     self._last_button.disable()
-    #     self._slider.disable()
-    #     DataJson()[self.widget_id]["disabled"] = self._disabled
-    #     DataJson().send_changes()
+    def disable(self):
+        self._disabled = True
+        self._grid_gallery.disable()
+        self._first_button.disable()
+        self._prev_button.disable()
+        self._next_button.disable()
+        self._last_button.disable()
+        self._slider.disable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
 
-    # def enable(self):
-    #     self._disabled = False
-    #     self._grid_gallery.enable()
-    #     self._first_button.enable()
-    #     self._prev_button.enable()
-    #     self._next_button.enable()
-    #     self._last_button.enable()
-    #     self._slider.enable()
-    #     DataJson()[self.widget_id]["disabled"] = self._disabled
-    #     DataJson().send_changes()
+    def enable(self):
+        self._disabled = False
+        self._grid_gallery.enable()
+        self._first_button.enable()
+        self._prev_button.enable()
+        self._next_button.enable()
+        self._last_button.enable()
+        self._slider.enable()
+        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson().send_changes()
