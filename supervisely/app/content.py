@@ -141,11 +141,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             global_state.clear()
             global_state.update(copy.deepcopy(d))
             global_state._last = copy.deepcopy(d)
-            cls._send_to_platform(d)
-
-    @classmethod
-    def _send_to_platform(cls, d):
-        SendToPlatform().send(state=copy.deepcopy(d))
+            ContentOrigin().update(state=copy.deepcopy(d))
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
@@ -156,20 +152,18 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         async with self._lock:
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
-            self._send_to_platform(patch)
-
-    def _send_to_platform(self, patch):
-        SendToPlatform().send(data_patch=copy.deepcopy(patch))
+            ContentOrigin().update(data_patch=copy.deepcopy(patch))
 
 
-class SendToPlatform(metaclass=Singleton):
+class ContentOrigin(metaclass=Singleton):
     def __init__(self):
+        self._SLEEP_TIME = sly_env.content_update_sleep_time()
         self._data_patch_queue = queue.Queue()
         self._last_sent_data = {}
         self._state_queue = queue.Queue()
         self._stop = threading.Event()
         self._loop_thread = threading.Thread(
-            target=self._send_to_platform_loop, name="SendToPlatform._loop"
+            target=self._update_content_loop, name="ContentOrigin._update_content_loop"
         )
     
     def start(self):
@@ -180,19 +174,19 @@ class SendToPlatform(metaclass=Singleton):
     def stop(self):
         self._stop.set()
 
-    def send(self, data_patch=None, state=None):
-        if data_patch is not None:
-            self._data_patch_queue.put(data_patch)
-        if state is not None:
-            self._state_queue.put(state)
+    def update(self, data_patch=None, state=None):
+        if is_production():
+            if data_patch is not None:
+                self._data_patch_queue.put(data_patch)
+            if state is not None:
+                self._state_queue.put(state)
 
-    def _send_to_platform(self, data_patch: jsonpatch.JsonPatch, state: dict):
-        if is_production() and (state or data_patch):
-            task_id = sly_env.task_id()
-            api = Api()
-            api.task.send_app_changes(task_id, data=data_patch.to_string(), state=state)
+    def _send(self, data_patch: jsonpatch.JsonPatch, state: dict):
+        task_id = sly_env.task_id()
+        api = Api()
+        api.task._update_app_content(task_id, data_patch=list(data_patch), state=state)
 
-    def _send_to_platform_loop(self):
+    def _update_content_loop(self):
         failed_patch = None
         while not self._stop.is_set():
             last_state = None
@@ -213,7 +207,7 @@ class SendToPlatform(metaclass=Singleton):
                             continue
                         patch.apply(data, in_place=True)
                     merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
-                    self._send_to_platform(data_patch=merged_patch, state=last_state)
+                    self._send(data_patch=merged_patch, state=last_state)
                     self._last_sent_data = copy.deepcopy(data)
                     failed_patch = None
                 except Exception as exc:
@@ -229,4 +223,4 @@ class SendToPlatform(metaclass=Singleton):
                     for _ in range(state_count):
                         self._state_queue.task_done()
             
-            time.sleep(0.1)
+            time.sleep(self._SLEEP_TIME)
