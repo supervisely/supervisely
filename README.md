@@ -35,12 +35,13 @@
 
 **Supervisely Ecosystem**: [https://ecosystem.supervise.ly](https://ecosystem.supervise.ly/)
 
-**Dev Documentation**: [https://developer.supervise.ly](https://developer.supervise.ly/)
+**Dev Documentation**: [https://developer.supervisely.com](https://developer.supervisely.com/)
 
 **Source Code of SDK for Python**: [https://github.com/supervisely/supervisely](https://github.com/supervisely/supervisely)
 
 **Supervisely Ecosystem on GitHub**: [https://github.com/supervisely-ecosystem](https://github.com/supervisely-ecosystem)
 
+**Complete video course on YouTube**: [What is Supervisely?](https://supervisely.com/what-is-supervisely/#0)
 ---
 
 ## Table of contents
@@ -74,6 +75,8 @@
     - [Have an idea or ask for help?](#have-an-idea-or-ask-for-help)
 - [Contribution 👏](#contribution-)
 - [Partnership 🤝](#partnership-)
+- [Cite this Project](#cite-this-project)
+
 
 
 ## Introduction
@@ -407,3 +410,22 @@ Feel free to [contact us](https://supervise.ly/contact-us) if you have
 * custom NN models and data
 
 Let's discuss the ways of working together, particularly if we have joint interests, technologies and  customers.
+
+## Cite this Project
+
+If you use this project in a research, please cite it using the following BibTeX:
+
+```
+@misc{ supervisely,
+    title = { Supervisely Computer Vision platform },
+    type = { Computer Vision Tools },
+    author = { Supervisely },
+    howpublished = { \url{ https://supervisely.com } },
+    url = { https://supervisely.com },
+    journal = { Supervisely Ecosystem },
+    publisher = { Supervisely },
+    year = { 2023 },
+    month = { jul },
+    note = { visited on 2023-07-20 },
+}
+```

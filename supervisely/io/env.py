@@ -149,6 +149,16 @@ def server_address(raise_not_found=True):
     )
 
 
+def api_token(raise_not_found=True):
+    return _parse_from_env(
+        name="api_token",
+        keys=["API_TOKEN"],
+        postprocess_fn=lambda x: str(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
 def file(raise_not_found=True):
     return team_files_file(raise_not_found)
 

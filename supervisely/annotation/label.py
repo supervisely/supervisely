@@ -739,6 +739,9 @@ class LabelBase:
             raise TypeError("Key has to be of type string or None")
         self._binding_key = key
 
+    @property
+    def labeler_login(self):
+        return self.geometry.labeler_login
 
 class Label(LabelBase):
     def _validate_geometry_type(self):

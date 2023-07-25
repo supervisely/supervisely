@@ -4,7 +4,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
 import time
-from functools import partial
+from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
@@ -82,6 +82,9 @@ class Inference:
 
         self._use_gui = use_gui
         self._gui = None
+
+        self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
+
         if use_gui:
             self.initialize_gui()
 
@@ -287,6 +290,9 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _on_model_deployed(self):
+        pass
+
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
@@ -299,6 +305,7 @@ class Inference:
             "videos_support": True,
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
+            "async_image_inference_support": True,
         }
 
     @property
@@ -420,7 +427,7 @@ class Inference:
 
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
-                logger.warn(
+                logger.debug(
                     f"Field {key} not found in inference settings. Use default value {value}"
                 )
                 settings[key] = value
@@ -507,7 +514,7 @@ class Inference:
             results.append({"annotation": ann.to_json(), "data": data_to_return})
         return results
 
-    def _inference_image_id(self, api: Api, state: dict):
+    def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_id = state["image_id"]
@@ -519,6 +526,19 @@ class Inference:
             "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
         )
         logger.debug(f"Downloaded path: {image_path}")
+
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+
         data_to_return = {}
         ann = self._inference_image_path(
             image_path=image_path,
@@ -526,7 +546,11 @@ class Inference:
             data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        return {"annotation": ann.to_json(), "data": data_to_return}
+
+        result = {"annotation": ann.to_json(), "data": data_to_return}
+        if async_inference_request_uuid is not None and ann is not None:
+            inference_request["result"] = result
+        return result
 
     def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Inferring image_url...", extra={"state": state})
@@ -677,22 +701,22 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'inference_image_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
             return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            logger.debug(f"'inference_image_url' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            logger.debug(f"'inference_batch_ids' request in json format:{request.json()}")
+            logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            logger.debug(f"'inference_video_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
             return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
@@ -732,9 +756,35 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
+        @server.post("/inference_image_id_async")
+        def inference_image_id_async(request: Request):
+            logger.debug(f"'inference_image_id_async' request in json format:{request.state.state}")
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._inference_image_id,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            logger.debug(
+                "Inference has scheduled from 'inference_image_id_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
-            logger.debug(f"'inference_video_id_async' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -846,3 +896,59 @@ def _convert_sly_progress_to_dict(sly_progress: Progress):
         "current": sly_progress.current,
         "total": sly_progress.total,
     }
+
+
+def _create_notify_after_complete_decorator(
+    msg: str,
+    *,
+    arg_pos: Optional[int] = None,
+    arg_key: Optional[str] = None,
+):
+    """
+    Decorator to log message after wrapped function complete.
+
+    :param msg: info message
+    :type msg: str
+    :param arg_pos: position of argument in `args` to insert in message
+    :type arg_pos: Optional[int]
+    :param arg_key: key of argument in `kwargs` to insert in message.
+        If an argument can be both positional and keyword,
+        it is preferable to declare both 'arg_pos' and 'arg_key'
+    :type arg_key: Optional[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+        def wrapped_function(arg1, kwarg1)
+            return
+
+        wrapped_function("pos_arg", kwarg1="key_arg")
+        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+
+            if arg_key is not None and arg_key in kwargs:
+                arg = kwargs[arg_key]
+                logger.info(msg, str(arg))
+            elif arg_pos is not None and arg_pos < len(args):
+                arg = args[arg_pos]
+                logger.info(msg, str(arg))
+            else:
+                logger.info(msg, "some")
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)

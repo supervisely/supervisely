@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 try:
     from typing import Literal
@@ -15,15 +15,20 @@ class Container(Widget):
         direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 10,
         fractions: List[int] = None,
-        # overflow: Literal["scroll", "wrap"] = None,
-        # grid_cell_width: Literal["20%", "300px"] = None,
+        overflow: Optional[Literal["scroll", "wrap"]] = "scroll",
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
-        self._overflow = "scroll"
-        self._grid_cell_width = None  # grid_cell_width
+        self._overflow = overflow
+        
+        if self._overflow not in ["scroll", "wrap", None]:
+            raise ValueError("overflow can be only 'scroll', 'wrap' or None")
+        
+        if self._direction == "vertical" and self._overflow == "wrap":
+            raise ValueError("overflow can be 'wrap' only with horizontal direction")
+        
         if self._direction == "vertical" and fractions is not None:
             raise ValueError("fractions can be defined only with horizontal direction")
 
@@ -34,35 +39,13 @@ class Container(Widget):
 
         if self._direction == "vertical":
             self._overflow = None
-            if self._overflow is not None:
-                raise ValueError(
-                    "overflow argument can only be defined if direction is 'horizontal'"
-                )
-            if self._grid_cell_width is not None:
-                raise ValueError(
-                    "grid_cell_width argument can only be defined if direction is 'horizontal'"
-                )
-
-        if self._direction == "horizontal" and self._overflow is None:
-            self._overflow = "wrap"
-
-        if self._grid_cell_width is not None and self._overflow != "wrap":
-            raise ValueError(
-                "grid_cell_width argument can only be defined if overflow is 'wrap'"
-            )
 
         self._fractions = fractions
         self._flex_direction = "column"
         if direction == "horizontal":
             self._flex_direction = "row"
             if self._fractions is None:
-                if self._grid_cell_width is None:
-                    self._fractions = ["1 1 auto"] * len(self._widgets)
-                else:
-                    self._fractions = [
-                        f"1 1 calc({self._grid_cell_width} - {self._gap}px)"
-                    ] * len(self._widgets)
-                # self._fractions = ["1"] * len(self._widgets)
+                self._fractions = ["1 1 auto"] * len(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):

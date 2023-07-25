@@ -82,6 +82,28 @@ class Frame(KeyObject):
         return self._index
 
     def key(self) -> int:
+        """
+        Get Frame key (index) value.
+
+        :return: Frame key (index) value
+        :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            frame_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            class_car = sly.ObjClass('car', sly.Rectangle)
+            object_car = sly.VideoObject(class_car)
+            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+
+            frame = sly.Frame(frame_index, figures=[figure_car])
+            print(frame.key())
+            # Output: 7
+        """
+
         return self._index
 
     @property

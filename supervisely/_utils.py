@@ -154,6 +154,15 @@ def is_debug_with_sly_net() -> bool:
         return False
 
 
+def is_docker():
+    path = "/proc/self/cgroup"
+    return (
+        os.path.exists("/.dockerenv")
+        or os.path.isfile(path)
+        and any("docker" in line for line in open(path))
+    )
+
+
 def is_production() -> bool:
     return not is_development()
 

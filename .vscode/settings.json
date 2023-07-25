@@ -1,7 +1,9 @@
 {
     "files.exclude": {
         "**/__pycache__": true,
-        "venv": true
+        "build": true,
+        "supervisely.egg-info": true,
+        ".venv": true
     },
     "python.defaultInterpreterPath": ".venv/bin/python",
     "editor.formatOnSave": true,
@@ -22,5 +24,7 @@
     },
     "debug.inlineValues": "off",
     "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": false
+    "python.analysis.autoImportCompletions": false,
+    "autoDocstring.docstringFormat": "sphinx",
+    "autoDocstring.customTemplatePath": "docs/.mustache",
 }

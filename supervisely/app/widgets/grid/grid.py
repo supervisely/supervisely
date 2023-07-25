@@ -45,6 +45,7 @@ class Grid(Widget):
                         gap=self._gap,
                         fractions=[1] * len(batch),
                         widget_id=generate_id(),
+                        overflow=None,
                     )
                 )
             self._content = Container(

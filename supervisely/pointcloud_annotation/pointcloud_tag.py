@@ -9,6 +9,7 @@ from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.constants import KEY, ID
 
+
 class PointcloudTag(Tag):
     """
     PointcloudTag object for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`. :class:`PointcloudTag<PointcloudTag>` object is immutable.
@@ -58,12 +59,23 @@ class PointcloudTag(Tag):
         tag_coat_color = sly.PointcloudTag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]]=None,
-                 key: Optional[uuid.UUID]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
-                 updated_at: Optional[str]=None, created_at: Optional[str]=None):
-        super(PointcloudTag, self).__init__(meta, value=value, sly_id=sly_id, 
-            labeler_login=labeler_login, 
-            updated_at=updated_at, 
+
+    def __init__(
+        self,
+        meta: TagMeta,
+        value: Optional[Union[str, int, float]] = None,
+        key: Optional[uuid.UUID] = None,
+        sly_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
+        super(PointcloudTag, self).__init__(
+            meta,
+            value=value,
+            sly_id=sly_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
             created_at=created_at,
         )
 
@@ -83,8 +95,10 @@ class PointcloudTag(Tag):
             meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
             tag_cat = sly.PointcloudTag(meta_cat, value="Fluffy")
             compact_tag_cat = tag_cat.get_compact_str()
+
             print(compact_tag_cat) # cat:Fluffy
         """
+
         return super(PointcloudTag, self).get_compact_str()
 
     def __eq__(self, other: PointcloudTag) -> bool:
@@ -118,6 +132,7 @@ class PointcloudTag(Tag):
             # Compare unidentical Pointcloud Tags
             tag_lemon_1 == tag_cucumber     # False
         """
+
         return super(PointcloudTag, self).__eq__(other)
 
     def __ne__(self, other: PointcloudTag) -> bool:
@@ -151,14 +166,35 @@ class PointcloudTag(Tag):
             # Compare unidentical Pointcloud Tags
             tag_lemon_1 != tag_cucumber     # True
         """
+
         return super(PointcloudTag, self).__ne__(other)
 
     def key(self) -> uuid.UUID:
+        """
+        Get PointcloudTag key value.
+
+        :return: PointcloudTag key value
+        :rtype: uuid.UUID
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+            tag_weather = sly.Tag(meta_weather, value="Sunny")
+            key = tag_weather.key()
+
+            print(key)
+            # Output: 5c7988e0-eee4-4eb1-972c-b1e3e879f78c
+        """
+
         return self._key
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
-        Convert the PointcloudTag to a json dict. 
+        Convert the PointcloudTag to a json dict.
         Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
@@ -173,12 +209,14 @@ class PointcloudTag(Tag):
             meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
             tag_dog = sly.PointcloudTag(meta_dog)
             tag_dog_json = tag_dog.to_json()
+
             print(tag_dog_json)
             # Output: {
             #     "name": "dog",
             #     "key": "058ad7993a534082b4d94cc52542a97d"
             # }
         """
+
         data_json = super(PointcloudTag, self).to_json()
         if type(data_json) is str:
             # case when tag has no value, super.to_json() returns tag name
@@ -193,7 +231,12 @@ class PointcloudTag(Tag):
         return data_json
 
     @classmethod
-    def from_json(cls, data: Dict, tag_meta_collection: TagMetaCollection, key_id_map: Optional[KeyIdMap] = None) -> PointcloudTag:
+    def from_json(
+        cls,
+        data: Dict,
+        tag_meta_collection: TagMetaCollection,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> PointcloudTag:
         """
         Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -220,20 +263,28 @@ class PointcloudTag(Tag):
             meta_collection = sly.TagMetaCollection([meta_cat])
             tag_cat = sly.PointcloudTag.from_json(tag_cat_json, meta_collection)
         """
+
         temp = super(PointcloudTag, cls).from_json(data, tag_meta_collection)
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
             key_id_map.add_tag(key, data.get(ID, None))
 
-        return cls(meta=temp.meta, value=temp.value, key=key, sly_id=temp.sly_id, 
-                   labeler_login=temp.labeler_login, updated_at=temp.updated_at, created_at=temp.created_at)
+        return cls(
+            meta=temp.meta,
+            value=temp.value,
+            key=key,
+            sly_id=temp.sly_id,
+            labeler_login=temp.labeler_login,
+            updated_at=temp.updated_at,
+            created_at=temp.created_at,
+        )
 
     def clone(
         self,
         meta: Optional[TagMeta] = None,
         value: Optional[Union[str, int, float]] = None,
-        key: Optional[uuid.UUID] = None, 
+        key: Optional[uuid.UUID] = None,
         sly_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -257,9 +308,9 @@ class PointcloudTag(Tag):
         :param created_at: Date and Time when Pointcloud Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: :class:`str`, optional
         :return: New instance of Pointcloud Tag
-        :rtype: :class:`PointcloudTag<PointcloudTag>`    
+        :rtype: :class:`PointcloudTag<PointcloudTag>`
         :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
-        
+
         :Usage Example:
 
          .. code-block:: python
@@ -280,6 +331,7 @@ class PointcloudTag(Tag):
 
             clone_weather_3 = tag_weather.clone(value="Rainy")
         """
+
         return PointcloudTag(
             meta=take_with_default(meta, self.meta),
             value=take_with_default(value, self.value),

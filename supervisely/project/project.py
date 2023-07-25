@@ -5,9 +5,10 @@ import shutil
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
 import random
 import numpy as np
+from tqdm import tqdm
 
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -27,6 +28,7 @@ from supervisely.io.fs import (
     dir_exists,
     dir_empty,
     silent_remove,
+    file_exists,
 )
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
@@ -38,6 +40,7 @@ from supervisely.sly_logger import logger
 from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
@@ -542,6 +545,7 @@ class Dataset(KeyObject):
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
+        ann_path = ann_path.strip("/")
         return os.path.join(self.ann_dir, ann_path)
 
     def get_img_info_path(self, img_name: str) -> str:
@@ -968,7 +972,9 @@ class Dataset(KeyObject):
             return
 
         self._check_add_item_name(item_name)
+        item_name = item_name.strip("/")
         dst_img_path = os.path.join(self.item_dir, item_name)
+        os.makedirs(os.path.dirname(dst_img_path), exist_ok=True)
         with open(dst_img_path, "wb") as fout:
             fout.write(item_raw_bytes)
         self._validate_added_item_or_die(dst_img_path)
@@ -1141,6 +1147,7 @@ class Dataset(KeyObject):
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
+        os.makedirs(os.path.dirname(dst_ann_path), exist_ok=True)
         dump_json_file(ann, dst_ann_path, indent=4)
 
     def get_item_paths(self, item_name: str) -> ItemPaths:
@@ -1179,6 +1186,32 @@ class Dataset(KeyObject):
 
     def __iter__(self):
         return next(self)
+
+    def items(self) -> Generator[Tuple[str]]:
+        """
+        This method is used to iterate over dataset items, receiving item name, path to image and path to annotation
+        json file. It is useful when you need to iterate over dataset items and get paths to images and annotations.
+
+        :return: Generator object, that yields tuple of item name, path to image and path to annotation json file.
+        :rtype: Generator[Tuple[str]]
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            input = "path/to/local/directory"
+            # Creating Supervisely project from local directory.
+            project = sly.Project(input, sly.OpenMode.READ)
+
+            for dataset in project.datasets:
+                for item_name, image_path, ann_path in dataset.items():
+                    print(f"Item '{item_name}': image='{image_path}', ann='{ann_path}'")
+        """
+        for item_name in self._item_to_ann.keys():
+            img_path, ann_path = self.get_item_paths(item_name)
+            yield item_name, img_path, ann_path
 
     def delete_item(self, item_name: str) -> bool:
         """
@@ -1646,7 +1679,7 @@ class Project:
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
         target_classes: Optional[List[str]] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
     ) -> None:
         """
@@ -1665,9 +1698,8 @@ class Project:
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
                                background class "__bg__" will be added automatically.
         :type target_classes: :class:`list` [ :class:`str` ], optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
                                   will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
@@ -1740,19 +1772,17 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                seg_ann = ann.to_nonoverlapping_masks(
-                    dst_mapping
-                )  # rendered instances and filter classes
-
                 if segmentation_type == "semantic":
-                    seg_ann = seg_ann.add_bg_object(_bg_obj_class)
+                    seg_ann = ann.add_bg_object(_bg_obj_class)
 
                     dst_mapping[_bg_obj_class] = _bg_obj_class
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 
                     seg_ann = seg_ann.to_segmentation_task()
                 elif segmentation_type == "instance":
-                    pass
+                    seg_ann = ann.to_nonoverlapping_masks(
+                        dst_mapping
+                    )  # rendered instances and filter classes
                 elif segmentation_type == "panoptic":
                     raise NotImplementedError
 
@@ -1779,7 +1809,7 @@ class Project:
         src_project_dir: str,
         dst_project_dir: Optional[str] = None,
         inplace: Optional[bool] = False,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -1792,9 +1822,8 @@ class Project:
         :type dst_project_dir: :class:`str`, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2207,7 +2236,7 @@ class Project:
         log_progress: Optional[bool] = False,
         batch_size: Optional[int] = 10,
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         only_image_tags: Optional[bool] = False,
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
@@ -2229,9 +2258,8 @@ class Project:
         :type batch_size: :class:`int`, optional
         :param cache: FileCache object.
         :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
         :type only_image_tags: :class:`bool`, optional
         :param save_image_info: Download images infos or not.
@@ -2283,7 +2311,7 @@ class Project:
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = True,
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads project to Supervisely from the given directory.
@@ -2298,9 +2326,8 @@ class Project:
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress. It must be update function
-                            with 1 :class:`int` parameter. e.g. :class:`Progress.iters_done<supervisely.task.progress.Progress.iters_done>`
-        :type progress_cb: Function, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -2340,21 +2367,24 @@ class Project:
 
 def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
-    Read project from given directory.
+    Read project from given directory or tries to find project directory in subdirectories.
 
-    :param dir: Path to project parent directory, which must contain only project folder.
+    :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
     :param project_class: Project object
     :type project_class: :class:`Project<Project>`
     :return: Project class object
     :rtype: :class:`Project<Project>`
-    :raises: :class:`Exception` if given directory contains more than one subdirectory.
+    :raises: RuntimeError if the given directory doesn't contain valid project folder and doesn't contain any subdirectories.
+    :raises: FileNotFoundError if the given directory doesn't contain valid project folder and doesn't contain any
+        subdirectories with meta.json file.
+    :raises: RuntimeError if the given directory contains more than one subdirectory with meta.json file.
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
-        proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
+        proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
     try:
@@ -2363,19 +2393,33 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
     except Exception:
         pass
 
-    projects_in_dir = get_subdirs(dir)
-    if len(projects_in_dir) != 1:
-        raise RuntimeError("Found {} dirs instead of 1".format(len(projects_in_dir)))
+    subdirs = get_subdirs(dir)
 
-    project_dir = os.path.join(dir, projects_in_dir[0])
-    try:
-        project_fs = project_class(project_dir, OpenMode.READ)
-    except Exception as e:
-        projects_in_dir = get_subdirs(project_dir)
-        if len(projects_in_dir) != 1:
-            raise e
-        project_dir = os.path.join(project_dir, projects_in_dir[0])
-        project_fs = project_class(project_dir, OpenMode.READ)
+    if len(subdirs) == 0:
+        raise RuntimeError(
+            f"The given directory '{dir}' doesn't contain valid project folder and doesn't contain any subdirectories. "
+            "Make sure that the given directory contains valid project folder or subdirectory with meta.json file."
+        )
+
+    subdirs_with_meta_json = []
+
+    for subdir in subdirs:
+        if file_exists(os.path.join(dir, subdir, "meta.json")):
+            subdirs_with_meta_json.append(subdir)
+
+    if len(subdirs_with_meta_json) == 0:
+        raise FileNotFoundError(
+            f"Can't find meta.json file in any subdirectories: {subdirs} of the given directory '{dir}'."
+            "Make sure that at least one subdirectory contains meta.json file."
+        )
+    elif len(subdirs_with_meta_json) > 1:
+        raise RuntimeError(
+            f"The given directory '{dir}' must contain only one subdirectory with meta.json file, "
+            f"while following subdirectories contain meta.json: {subdirs_with_meta_json}."
+        )
+
+    project_dir = os.path.join(dir, subdirs_with_meta_json[0])
+    project_fs = project_class(project_dir, OpenMode.READ)
 
     return project_fs
 
@@ -2462,7 +2506,7 @@ def upload_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
     if project_name is None:
@@ -2511,8 +2555,47 @@ def upload_project(
         if len(img_paths) != 0:
             uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
         elif len(img_paths) == 0 and len(img_infos) != 0:
-            hashes = [img_info.hash for img_info in img_infos]
-            uploaded_img_infos = api.image.upload_hashes(dataset.id, names, hashes, progress_cb)
+            # uploading links and hashes (the code from api.image.upload_ids)
+            img_metas = [{}] * len(names)
+            links, links_names, links_order, links_metas = [], [], [], []
+            hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+            dataset_id = dataset.id
+            for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                if info.link is not None:
+                    links.append(info.link)
+                    links_names.append(name)
+                    links_order.append(idx)
+                    links_metas.append(meta)
+                else:
+                    hashes.append(info.hash)
+                    hashes_names.append(name)
+                    hashes_order.append(idx)
+                    hashes_metas.append(meta)
+
+            result = [None] * len(names)
+            if len(links) > 0:
+                res_infos_links = api.image.upload_links(
+                    dataset_id,
+                    links_names,
+                    links,
+                    progress_cb,
+                    metas=links_metas,
+                )
+                for info, pos in zip(res_infos_links, links_order):
+                    result[pos] = info
+
+            if len(hashes) > 0:
+                res_infos_hashes = api.image.upload_hashes(
+                    dataset_id,
+                    hashes_names,
+                    hashes,
+                    progress_cb,
+                    metas=hashes_metas,
+                )
+                for info, pos in zip(res_infos_hashes, hashes_order):
+                    result[pos] = info
+
+            uploaded_img_infos = result
         else:
             raise ValueError(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
@@ -2542,11 +2625,73 @@ def download_project(
     log_progress: Optional[bool] = False,
     batch_size: Optional[int] = 10,
     cache: Optional[FileCache] = None,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
 ) -> None:
+    """
+    Download image project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param batch_size: Size of a downloading batch.
+    :type batch_size: int, optional
+    :param cache: Cache of downloading files.
+    :type cache: FileCache, optional
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
+    :type only_image_tags: bool, optional
+    :param save_image_info: Include image info in the download.
+    :type save_image_info, bool, optional
+    :param save_images: Include images in the download.
+    :type save_images, bool, optional
+
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+        dest_dir = 'your/local/dest/dir'
+
+        # Download image project
+        project_id = 17732
+        project_info = api.project.get_info_by_id(project_id)
+        num_images = project_info.items_count
+
+        p = tqdm(desc="Downloading image project", total=num_images)
+        sly.download(
+            api,
+            project_id,
+            dest_dir,
+            progress_cb=p,
+        )
+    """
     if cache is None:
         _download_project(
             api,

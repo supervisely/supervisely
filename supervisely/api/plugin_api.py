@@ -17,21 +17,24 @@ class PluginApi(ModuleApi):
 
      .. code-block:: python
 
+        import os
+        from dotenv import load_dotenv
+
         import supervisely as sly
 
-        # You can connect to API directly
-        address = 'https://app.supervise.ly/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        # Or you can use API from environment
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
         api = sly.Api.from_env()
+
+        # Pass values into the API constructor (optional, not recommended)
+        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
         team_id = 8
         plugin_info = api.plugin.get_list(team_id)
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -53,26 +56,30 @@ class PluginApi(ModuleApi):
                        created_at='2020-03-30T09:17:36.000Z',
                        updated_at='2020-04-23T06:26:29.000Z')
         """
-        return [ApiField.ID,
-                ApiField.NAME,
-                ApiField.DESCRIPTION,
-                ApiField.TYPE,
-                ApiField.DEFAULT_VERSION,
-                ApiField.DOCKER_IMAGE,
-                ApiField.README,
-                ApiField.CONFIGS,
-                ApiField.VERSIONS,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT]
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.TYPE,
+            ApiField.DEFAULT_VERSION,
+            ApiField.DOCKER_IMAGE,
+            ApiField.README,
+            ApiField.CONFIGS,
+            ApiField.VERSIONS,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **PluginInfo**.
         """
-        return 'PluginInfo'
+        return "PluginInfo"
 
-    def get_list(self, team_id: int, filters: Optional[List[Dict[str, str]]] = None) -> List[NamedTuple]:
+    def get_list(
+        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
+    ) -> List[NamedTuple]:
         """
         Get list of plugins in the Team.
 
@@ -97,7 +104,9 @@ class PluginApi(ModuleApi):
 
             plugin_list_filter = api.plugin.get_list(team_id, filters=[{'field': 'name', 'operator': '=', 'value': 'Images'}])
         """
-        return self.get_list_all_pages('plugins.list',  {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []})
+        return self.get_list_all_pages(
+            "plugins.list", {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []}
+        )
 
     def get_info_by_id(self, team_id: int, plugin_id: int) -> NamedTuple:
         """

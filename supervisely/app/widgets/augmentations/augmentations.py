@@ -60,8 +60,9 @@ class Augmentations(Widget):
     
     def preview_augs(self, image_info: sly.ImageInfo = None):
         if not image_info:
-            ds_name, item_name = self.get_random_item()
-            self._image_info = self.get_image_info_from_cache(ds_name, item_name)
+            # ds_name, item_name = self.get_random_item()
+            # self._image_info = self.get_image_info_from_cache(ds_name, item_name)
+            self._image_info = self.get_random_image_info()
 
         img = self._globals.api.image.download_np(self._image_info.id)
         ann_json = self._globals.api.annotation.download(self._image_info.id).annotation
@@ -87,21 +88,29 @@ class Augmentations(Widget):
         )
         self._grid_gallery.show()
     
-    def get_random_item(self):
-        all_ds_names = self._globals.project_fs.datasets.keys()
-        ds_name = random.choice(all_ds_names)
-        ds = self._globals.project_fs.datasets.get(ds_name)
-        items = list(ds)
-        item_name = random.choice(items)
-        return ds_name, item_name
+    def get_random_image_info(self):
+        api: sly.Api = self._globals.api
+        project_id = sly.env.project_id(False) or self._globals.PROJECT_ID
+        datasets = api.dataset.get_list(project_id)
+        r_dataset = random.choice(datasets)
+        img_infos = api.image.get_list(r_dataset.id)
+        return random.choice(img_infos)
+
+    # def get_random_item(self):
+    #     all_ds_names = self._globals.project_fs.datasets.keys()
+    #     ds_name = random.choice(all_ds_names)
+    #     ds = self._globals.project_fs.datasets.get(ds_name)
+    #     items = list(ds)
+    #     item_name = random.choice(items)
+    #     return ds_name, item_name
     
-    def get_image_info_from_cache(self, dataset_name, item_name):
-        dataset_fs = self._globals.project_fs.datasets.get(dataset_name)
-        img_info_path = dataset_fs.get_img_info_path(item_name)
-        image_info_dict = sly.json.load_json_file(img_info_path)
-        ImageInfo = namedtuple('ImageInfo', image_info_dict)
-        info = ImageInfo(**image_info_dict)
-        return info
+    # def get_image_info_from_cache(self, dataset_name, item_name):
+    #     dataset_fs = self._globals.project_fs.datasets.get(dataset_name)
+    #     img_info_path = dataset_fs.get_img_info_path(item_name)
+    #     image_info_dict = sly.json.load_json_file(img_info_path)
+    #     ImageInfo = namedtuple('ImageInfo', image_info_dict)
+    #     info = ImageInfo(**image_info_dict)
+    #     return info
 
     def update_augmentations(self, path_or_data: str = None, string_format: str = 'python'):
         if path_or_data.endswith('.json'):

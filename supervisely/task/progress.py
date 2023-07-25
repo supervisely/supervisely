@@ -1,10 +1,13 @@
 # coding: utf-8
 from __future__ import annotations
 
+import inspect
 import math
 from typing import Optional
+from functools import partial
+from tqdm import tqdm
 from supervisely.sly_logger import logger, EventType
-from supervisely._utils import sizeof_fmt
+from supervisely._utils import sizeof_fmt, is_development, is_production
 
 
 # float progress of training, since zero
@@ -360,3 +363,170 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
             "optional": optional_data,
         },
     )
+
+
+class tqdm_sly(tqdm, Progress):
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        # for self._upload_monitor
+        self._iteration_value = 0
+        self._iteration_number = 0
+        self._iteration_locked = False
+        self._total_monitor_size = 0
+
+        relevant_args = {
+            "total": "total_cnt",
+            "desc": "message",
+            "unit": "is_size",
+            "unit_scale": "is_size",
+        }
+
+        for _tqdm, _progress in relevant_args.items():
+            if kwargs.get(_tqdm) is not None and kwargs.get(_progress) is not None:
+                raise ValueError(
+                    f"Ambiguity error: Please specify only one of arguments: '{_tqdm}' or '{_progress}'."
+                )
+
+        kwargs_tqdm = kwargs.copy()
+
+        # pop and convert every possible (and relevant) kwarg from Progress
+        if len(args) < 2:  # i.e. 'desc' not set as a positional argument
+            if kwargs_tqdm.get("message") is not None:
+                kwargs_tqdm.setdefault("desc", kwargs_tqdm["message"])
+                kwargs_tqdm.pop("message")
+            else:
+                kwargs_tqdm.setdefault("desc", "Processing")
+        if len(args) < 3:  # i.e. 'total' not set as a positional argument
+            if kwargs_tqdm.get("total_cnt") is not None:
+                kwargs_tqdm.setdefault("total", kwargs_tqdm["total_cnt"])
+                kwargs_tqdm.pop("total_cnt")
+        if len(args) < 12:  # i.e. 'unit' not set as a positional argument
+            if kwargs_tqdm.pop("is_size", None) == True:
+                kwargs_tqdm["unit"] = "B"
+                kwargs_tqdm["unit_scale"] = True
+
+        if is_development():
+            tqdm.__init__(
+                self,
+                *args,
+                **kwargs_tqdm,
+            )
+            self.offset = 0  # to prevent overfilling of tqdm in console
+        else:
+            # disable tqdm on prod but keep attributes
+            kwargs_tqdm.setdefault("disable", True)
+            tqdm.__init__(
+                self,
+                *args,
+                **kwargs_tqdm,
+            )
+            # pop and convert every possible (and relevant) kwarg from tqdm
+            # mention that tqdm is a prior parent class
+            if len(args) < 2:  # i.e. 'desc' not set as a positional argument
+                if kwargs.get("desc") is not None:
+                    kwargs.setdefault("message", kwargs["desc"])
+                    kwargs.pop("desc")
+                else:
+                    kwargs.setdefault("message", "Processing")
+            else:
+                kwargs.setdefault("message", args[1])  # args[1]==desc
+            if len(args) < 3:  # i.e. 'total' not set as a positional argument
+                if kwargs.get("total") is not None:
+                    kwargs.setdefault("total_cnt", kwargs["total"])
+                    kwargs.pop("total")
+            else:
+                kwargs.setdefault("total_cnt", args[2])  # args[2]==total
+            if len(args) < 12:  # i.e. 'unit' not set as a positional argument
+                if kwargs.get("unit") in [
+                    "",
+                    "B",
+                    "k",
+                    "M",
+                    "G",
+                    "T",
+                    "P",
+                    "E",
+                    "Z",
+                ] and kwargs.pop("unit_scale", None):
+                    kwargs["is_size"] = True
+                    kwargs.pop("unit")
+            else:
+                if (
+                    args[11] in ["", "B", "k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
+                ):  # i.e. unit=="B" and unit_scale==True
+                    kwargs["is_size"] = True
+
+            tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
+            for keyword in tqdm_init_params:
+                if keyword in kwargs:
+                    kwargs.pop(keyword)
+
+            Progress.__init__(
+                self,
+                **kwargs,
+            )
+            # self.disable = True/
+            self.n = 0
+
+    def update(self, count):
+        if is_development():
+            tqdm.update(
+                self,
+                min(count, self.total - self.offset),
+            )
+            self.offset += count
+
+            if self.n == self.total:
+                self.close()
+        else:
+            Progress.iters_done_report(
+                self,
+                count,
+            )
+            self.n += count
+
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        return self.update(
+            *args,
+            **kwargs,
+        )
+
+    def _progress_monitor(self, monitor):
+        if is_development() and self.n >= self.total:
+            self.refresh()
+            self.close()
+
+        if monitor.bytes_read == 8192:
+            self._total_monitor_size += monitor.len
+
+        if self._total_monitor_size > self.total:
+            self.total = self._total_monitor_size
+
+        if not self._iteration_locked:
+            if is_development():
+                super().update(self._iteration_value + monitor.bytes_read - self.n)
+            else:
+                self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
+
+        if is_production() and self.need_report():
+            self.report_progress()
+
+        if monitor.bytes_read == monitor.len and not self._iteration_locked:
+            self._iteration_value += monitor.len
+            self._iteration_number += 1
+            self._iteration_locked = True
+            if is_development():
+                self.refresh()
+
+        if monitor.bytes_read < monitor.len:
+            self._iteration_locked = False
+
+    def get_partial(self):
+        return partial(self._progress_monitor)

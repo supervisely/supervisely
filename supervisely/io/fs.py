@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Union, Literal
 
 import os
 import re
@@ -13,6 +13,8 @@ import subprocess
 import requests
 from requests.structures import CaseInsensitiveDict
 from collections.abc import Mapping
+
+from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_string_hash
 from supervisely.io.fs_cache import FileCache
@@ -498,25 +500,99 @@ def get_directory_size(dir_path: str) -> int:
     return total_size
 
 
-def archive_directory(dir_: str, tar_path: str) -> None:
+def archive_directory(
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+) -> Union[None, List[str]]:
     """
-    Create tar archive from directory.
+    Create tar archive from directory and optionally split it into parts of specified size.
 
     :param dir_: Target directory path.
     :type dir_: str
     :param tar_path: Path for output tar archive.
     :type tar_path: str
-    :returns: None
-    :rtype: :class:`NoneType`
+    :param split: Split archive into parts of specified size (in bytes) or size with
+        suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
+    :type split: Union[int, str]
+    :returns: None or list of archive parts if split is not None
+    :rtype: Union[None, List[str]]
     :Usage example:
 
      .. code-block:: python
 
         from supervisely.io.fs import archive_directory
+        # If split is not needed.
         archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+
+        # If split is specified.
+        archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
+        print(archive_parts_paths) # ['/home/admin/work/examples/archive.tar.001', '/home/admin/work/examples/archive.tar.002']
     """
     with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
+
+    if split is None:
+        return
+
+    split = string_to_byte_size(split)
+
+    if os.path.getsize(tar_path) <= split:
+        return
+
+    tar_name = os.path.basename(tar_path)
+    tar_dir = os.path.abspath(os.path.dirname(tar_path))
+    parts_paths = []
+    part_number = 1
+
+    with open(tar_path, "rb") as input_file:
+        while True:
+            part_name = f"{tar_name}.{str(part_number).zfill(3)}"
+            output_path = os.path.join(tar_dir, part_name)
+            data = input_file.read(split)
+            if not data:
+                break
+            with open(output_path, "wb") as output_file:
+                output_file.write(data)
+                parts_paths.append(output_path)
+                part_number += 1
+
+    os.remove(tar_path)
+    return parts_paths
+
+
+def string_to_byte_size(string: Union[str, int]) -> int:
+    """Returns integer representation of byte size from string representation.
+        If input is integer, returns the same integer for convenience.
+
+        :param string: string representation of byte size (e.g. 1.5Kb, 2Mb, 3.7Gb, 4.2Tb) or integer
+        :type string: Union[str, int]
+        :return: integer representation of byte size (or the same integer if input is integer)
+        :rtype: int
+
+        :raises ValueError: if input string is invalid
+
+    :Usage example:
+
+    .. code-block:: python
+        string_size = "1.5M"
+        size = string_to_byte_size(string_size)
+        print(size)  # 1572864
+
+    """
+
+    MULTIPLIER = 1024
+    units = {"KB": 1, "MB": 2, "GB": 3, "TB": 4}
+
+    if isinstance(string, int):
+        return string
+
+    try:
+        value, unit = string[:-2], string[-2:].upper()
+        multiplier = MULTIPLIER ** units[unit]
+        return int(float(value) * multiplier)
+    except (KeyError, ValueError, IndexError):
+        raise ValueError(
+            "Invalid input string. The string must be in the format of '1.5Kb', '2Mb', '3.7Gb', '4.2Tb' or integer."
+        )
 
 
 def get_file_hash(path: str) -> str:
@@ -606,7 +682,11 @@ def tree(dir_path: str) -> str:
     return stdout.decode("utf-8")
 
 
-def log_tree(dir_path: str, logger) -> None:
+def log_tree(
+    dir_path: str,
+    logger,
+    level: Literal["info", "debug", "warning", "error"] = "info",
+) -> None:
     """
     Get tree for target directory and displays it in the log.
 
@@ -614,6 +694,8 @@ def log_tree(dir_path: str, logger) -> None:
     :type dir_path: str
     :param logger: Logger to display data.
     :type logger: logger
+    :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
+    :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -625,7 +707,19 @@ def log_tree(dir_path: str, logger) -> None:
         log_tree('/home/admin/work/projects/examples', logger)
     """
     out = tree(dir_path)
-    logger.info("DIRECTORY_TREE", extra={"tree": out})
+
+    log_levels = {
+        "info": logger.info,
+        "debug": logger.debug,
+        "warning": logger.warning,
+        "error": logger.error,
+    }
+    if level not in log_levels:
+        raise ValueError(
+            f"Unknown logger level: {level}. Available levels: info, debug, warning, error"
+        )
+    log_func = log_levels[level]
+    log_func("DIRECTORY_TREE", extra={"tree": out})
 
 
 def touch(path: str) -> None:
@@ -663,7 +757,7 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: An instance of `FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
+    :param cache: An instance of FileCache class that provides caching functionality for the downloaded content. If None, caching is disabled.
     :type cache: FileCache, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
@@ -741,7 +835,7 @@ def download(
 
 
 def copy_dir_recursively(
-    src_dir: str, dst_dir: str, progress_cb: Optional[Callable] = None
+    src_dir: str, dst_dir: str, progress_cb: Optional[Union[tqdm, Callable]] = None
 ) -> List[str]:
     files = list_files_recursively(src_dir)
     for src_file_path in files:

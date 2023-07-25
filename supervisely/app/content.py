@@ -115,6 +115,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
         if "application/json" not in request.headers.get("Content-Type", ""):
             return None
         content = await request.json()
+        if content["context"].get("outside_request"):
+            return None
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
         return cls(d, __local__=True)

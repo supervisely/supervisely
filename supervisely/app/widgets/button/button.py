@@ -71,6 +71,39 @@ class Button(Widget):
         DataJson().send_changes()
 
     @property
+    def icon(self):
+        return self._icon
+
+    @icon.setter
+    def icon(self, value):
+        if value is None:
+            self._icon = ""
+        else:
+            self._icon = f'<i class="{value}" style="margin-right: {self._icon_gap}px"></i>'
+        DataJson()[self.widget_id]["icon"] = self._icon
+        DataJson().send_changes()
+
+    @property
+    def button_type(self):
+        return self._button_type
+
+    @button_type.setter
+    def button_type(self, value):
+        self._button_type = value
+        DataJson()[self.widget_id]["button_type"] = self._button_type
+        DataJson().send_changes()
+
+    @property
+    def plain(self):
+        return self._plain
+
+    @plain.setter
+    def plain(self, value):
+        self._plain = value
+        DataJson()[self.widget_id]["plain"] = self._plain
+        DataJson().send_changes()
+
+    @property
     def link(self):
         return self._link
 
