@@ -5,6 +5,7 @@ import enum
 import json
 import threading
 import queue
+import time
 import traceback
 import jsonpatch
 import asyncio
@@ -166,10 +167,18 @@ class SendToPlatform(metaclass=Singleton):
         self._data_patch_queue = queue.Queue()
         self._last_sent_data = {}
         self._state_queue = queue.Queue()
+        self._stop = threading.Event()
         self._loop_thread = threading.Thread(
             target=self._send_to_platform_loop, name="SendToPlatform._loop"
         )
-        self._loop_thread.start()
+    
+    def start(self):
+        if not self._loop_thread.is_alive():
+            self._loop_thread.start()
+            self._stop.clear()
+    
+    def stop(self):
+        self._stop.set()
 
     def send(self, data_patch=None, state=None):
         if data_patch is not None:
@@ -185,7 +194,7 @@ class SendToPlatform(metaclass=Singleton):
 
     def _send_to_platform_loop(self):
         failed_patch = None
-        while True:
+        while not self._stop.is_set():
             last_state = None
             state_count = 0
             patches = []
@@ -196,7 +205,6 @@ class SendToPlatform(metaclass=Singleton):
                 state_count += 1
 
             if patches or last_state is not None:
-                logger.info(f"patches count: {len(patches)}")
                 try:
                     merged_patch = None
                     data = copy.deepcopy(self._last_sent_data)
@@ -220,3 +228,5 @@ class SendToPlatform(metaclass=Singleton):
                         self._data_patch_queue.task_done()
                     for _ in range(state_count):
                         self._state_queue.task_done()
+            
+            time.sleep(0.1)

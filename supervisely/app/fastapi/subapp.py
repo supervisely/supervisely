@@ -228,9 +228,11 @@ def _init(
 
         @app.on_event("shutdown")
         def shutdown():
+            from supervisely.app.content import SendToPlatform
             client = TestClient(app)
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
+            SendToPlatform().stop()
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
@@ -313,8 +315,12 @@ class Application(metaclass=Singleton):
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
             
+            
+
             if is_production():
                 # to save offline session
+                from supervisely.app.content import SendToPlatform
+                SendToPlatform().start()
                 client = TestClient(self._fastapi)
                 resp = run_sync(client.get("/"))
 
