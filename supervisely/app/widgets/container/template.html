@@ -2,7 +2,7 @@
 <div
   {%
   if
-  widget._flex_direction == 'vertical'
+  widget._direction == 'vertical'
   %}
   class="container"
   {%
@@ -28,7 +28,7 @@
   {%
   endif
   %}
-  style="flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px"
+  style="flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px; {{{widget._styles}}}"
 >
   {% for item in widget._widgets %} 
     {% if widget._fractions is none %}
