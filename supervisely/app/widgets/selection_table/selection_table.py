@@ -92,11 +92,25 @@ class SelectionTable(Widget):
         self._columns = DataJson()[self.widget_id]["columns"]
         return self._columns
 
+    @property
+    def rows(self) -> List[Dict[str, Union[str, int]]]:
+        self._rows = DataJson()[self.widget_id]["rows"]
+        return self._rows
+
     def add_row(self, row: Dict[str, Union[str, int]]) -> None:
         self._check_and_add_new_rows([row])
 
     def add_rows(self, rows: List[Dict[str, Union[str, int]]]) -> None:
         self._check_and_add_new_rows(rows)
+
+    def get_selected_rows(self) -> List[Dict[str, Union[str, int]]]:
+        self._selected_rows = StateJson()[self.widget_id]["selectedRows"]
+        return self._selected_rows
+
+    def get_selected_identities(self) -> List[Union[str, int]]:
+        self._selected_rows = StateJson()[self.widget_id]["selectedRows"]
+        indentity_fields = [row[self._identity_field] for row in self._selected_rows]
+        return indentity_fields
 
     def remove_selected_rows(self) -> None:
         self._update_identities()
@@ -109,20 +123,6 @@ class SelectionTable(Widget):
         self._selected_rows = selected
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
         StateJson().send_changes()
-
-    @property
-    def rows(self):
-        self._rows = DataJson()[self.widget_id]["rows"]
-        return self._rows
-
-    def get_selected_rows(self) -> List[dict]:
-        self._selected_rows = StateJson()[self.widget_id]["selectedRows"]
-        return self._selected_rows
-
-    def get_selected_identities(self) -> List[Union[str, int]]:
-        self._selected_rows = StateJson()[self.widget_id]["selectedRows"]
-        indentity_fields = [row[self._identity_field] for row in self._selected_rows]
-        return indentity_fields
 
     def value_changed(self, func):
         route_path = self.get_route_path(SelectionTable.Routes.VALUE_CHANGED)
