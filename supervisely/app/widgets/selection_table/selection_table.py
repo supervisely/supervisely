@@ -1,6 +1,7 @@
 from typing import List, Dict, Union
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
+import uuid
 
 
 class SelectionTable(Widget):
@@ -11,20 +12,21 @@ class SelectionTable(Widget):
         self,
         columns: List[str],
         rows: List[Dict[str, Union[str, int]]] = [],
-        identity_field: str = None,
+        sortable_columns: List[str] = None,
         columns_widths: Dict[str, int] = None,
         enable_selection: bool = True,
         widget_id: str = None,
     ):
         self._changes_handled = False
+        self._identity_field = "uuid"
 
-        if enable_selection is True:
-            if identity_field is None:
-                raise ValueError(f"Identity field should be specified if enable_selection is True")
-            if identity_field not in columns:
-                raise ValueError(
-                    f"Identity field '{identity_field}' should be one of the columns (unique identifier for each row)"
-                )
+        if self._identity_field in columns:
+            raise ValueError(f"Column '{self._identity_field}' is reserved")
+
+        if sortable_columns is not None:
+            sortable_columns = [col for col in sortable_columns if col in columns]
+        else:
+            sortable_columns = columns[:1]
 
         if columns_widths is not None:
             for col in columns:
@@ -33,6 +35,8 @@ class SelectionTable(Widget):
         else:
             columns_widths = {col: None for col in columns}
 
+        for row in rows:
+            row[self._identity_field] = str(uuid.uuid4())
         self._validate_data(rows, columns)
 
         # table data
@@ -44,7 +48,7 @@ class SelectionTable(Widget):
         # table options
         self._columns_widths = columns_widths
         self._enable_selection = enable_selection
-        self._identity_field = identity_field
+        self._sortable_columns = sortable_columns
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -56,6 +60,7 @@ class SelectionTable(Widget):
                 "columnsWidths": self._columns_widths,
                 "identityField": self._identity_field,
                 "enableSelection": self._enable_selection,
+                "sortableColumns": self._sortable_columns,
             },
         }
 
@@ -74,13 +79,13 @@ class SelectionTable(Widget):
                 if col not in row:
                     raise ValueError(f"Column '{col}' is not found in row: {row}")
 
-    def _validate_new_rows(self, rows: List[Dict[str, Union[str, int]]], columns: List[str]):
-        self._validate_data(rows, columns)
-        self._update_identities()
-        
-        duplicate_identities = set([row[self._identity_field] for row in rows]) & set(self._identities)
-        if len(duplicate_identities) > 0:
-            raise ValueError(f"Rows with identities {duplicate_identities} already exist")
+    def _check_and_add_new_rows(self, rows: List[Dict[str, Union[str, int]]]):
+        self._validate_data(rows, self.columns)
+        for row in rows:
+            row[self._identity_field] = str(uuid.uuid4())
+        self._rows.extend(rows)
+        DataJson()[self.widget_id]["rows"] = self._rows
+        DataJson().send_changes()
 
     @property
     def columns(self) -> List[str]:
@@ -88,29 +93,22 @@ class SelectionTable(Widget):
         return self._columns
 
     def add_row(self, row: Dict[str, Union[str, int]]) -> None:
-        self._validate_new_rows([row], self.columns)
-        self._rows.append(row)
-        DataJson()[self.widget_id]["rows"] = self._rows
-        DataJson().send_changes()
+        self._check_and_add_new_rows([row])
 
     def add_rows(self, rows: List[Dict[str, Union[str, int]]]) -> None:
-        self._validate_new_rows(rows, self.columns)
-        self._rows.extend(rows)
-        DataJson()[self.widget_id]["rows"] = self._rows
-        DataJson().send_changes()
+        self._check_and_add_new_rows(rows)
 
-    def remove_row(self, identity: Union[str, int]) -> None:
+    def remove_selected_rows(self) -> None:
         self._update_identities()
-        if identity not in self._identities:
-            return
-        self._rows = [row for row in self._rows if row[self._identity_field] != identity]
+        identities = self.get_selected_identities()
+        self._rows = [row for row in self._rows if row[self._identity_field] not in identities]
         DataJson()[self.widget_id]["rows"] = self._rows
         DataJson().send_changes()
-        self._selected_rows = StateJson()[self.widget_id]["selectedRows"]
-        self._selected_rows = [row for row in self._selected_rows if row[self._identity_field] != identity]
+        selected = StateJson()[self.widget_id]["selectedRows"]
+        selected = [row for row in selected if row[self._identity_field] not in identities]
+        self._selected_rows = selected
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
         StateJson().send_changes()
-
 
     @property
     def rows(self):

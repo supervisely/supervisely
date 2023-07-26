@@ -17,14 +17,19 @@
         {% if widget._enable_selection == true %}
         <el-table-column type="selection" width="50"> </el-table-column>
         {% endif %} {% for column in widget._columns %}
+        {% if column != widget._identity_field %}
         <el-table-column
           property="{{{ column.lower() }}}"
           label="{{{ column.upper() }}}"
+          {% if column in widget._sortable_columns %}
+            sortable
+          {% endif %}
           {% if widget._columns_widths[column] is not none %}
             width="{{{ widget._columns_widths[column] }}}"
           {% endif %}
           >
         </el-table-column>
+        {% endif %}
         {% endfor %}
     </el-table>
 </sly-el-table-selection-container>
