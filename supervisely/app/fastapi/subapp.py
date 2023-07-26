@@ -228,6 +228,8 @@ def _init(
 
         @app.on_event("shutdown")
         def shutdown():
+            from supervisely.app.content import ContentOrigin
+            ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
@@ -312,6 +314,13 @@ class Application(metaclass=Singleton):
             templates.env.globals["hot_reload"] = self.hot_reload
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+
+            if is_production():
+                # to save offline session
+                from supervisely.app.content import ContentOrigin
+                ContentOrigin().start()
+                client = TestClient(self._fastapi)
+                resp = run_sync(client.get("/"))
 
     def get_server(self):
         return self._fastapi
