@@ -77,12 +77,16 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
+        self._device_select = Widgets.SelectString(
+            values=device_values, labels=device_names
+        )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
+        self._download_progress = Widgets.Progress(
+            "Downloading model...", hide_on_finish=True
+        )
         self._download_progress.hide()
         self._change_model_button = Widgets.Button(
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
@@ -90,9 +94,11 @@ class InferenceGUI(BaseInferenceGUI):
         self._change_model_button.hide()
 
         self._model_info_widget = Widgets.ModelInfo()
-        self._model_inference_settings_widget = Widgets.Editor(readonly=True, restore_default_button=False)
+        self._model_inference_settings_widget = Widgets.Editor(
+            readonly=True, restore_default_button=False
+        )
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
-        self._model_inference_settings_widget.hide()
+        # self._model_inference_settings_widget.hide()
         self._model_classes_widget.hide()
         self._model_info_widget.hide()
 
@@ -108,7 +114,9 @@ class InferenceGUI(BaseInferenceGUI):
                 def update_table(selected_model):
                     cols = [
                         model_key
-                        for model_key in self._models[selected_model]["checkpoints"][0].keys()
+                        for model_key in self._models[selected_model]["checkpoints"][
+                            0
+                        ].keys()
                     ]
                     rows = [
                         [value for param_name, value in model.items()]
@@ -193,7 +201,9 @@ class InferenceGUI(BaseInferenceGUI):
             custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
-            tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
+            tabs_descriptions.append(
+                "Models trained in Supervisely and located in Team Files"
+            )
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
@@ -267,7 +277,9 @@ class InferenceGUI(BaseInferenceGUI):
 
         table_subtitles, cols = self._get_table_subtitles(cols)
         if self._models_table is None:
-            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+            self._models_table = Widgets.RadioTable(
+                cols, rows, subtitles=table_subtitles
+            )
         else:
             self._models_table.set_data(cols, rows, subtitles=table_subtitles)
 
@@ -344,13 +356,20 @@ class InferenceGUI(BaseInferenceGUI):
         Progress("Model deployed", 1).iter_done_report()
 
     def show_deployed_model_info(self, inference):
-        inference_settings_str = yaml.dump(inference.custom_inference_settings_dict)
-        self._model_inference_settings_widget.set_text(inference_settings_str, "yaml")
+        self.set_inference_settings(inference)
         self._model_classes_widget.set_project_meta(inference.model_meta)
         self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
         self._model_inference_settings_widget.show()
         self._model_classes_widget.show()
         self._model_info_widget.show()
+
+    def set_inference_settings(self, inference):
+        if len(inference.custom_inference_settings_dict.keys()) == 0:
+            inference_settings_str = "# inference settings dict is empty"
+        else:
+            inference_settings_str = yaml.dump(inference.custom_inference_settings_dict)
+        self._model_inference_settings_widget.set_text(inference_settings_str, "yaml")
+        self._model_inference_settings_widget.show()
 
     def get_ui(self) -> Widgets.Widget:
         return Widgets.Container(
@@ -363,7 +382,7 @@ class InferenceGUI(BaseInferenceGUI):
                 self._change_model_button,
                 self._model_info_widget,
                 self._model_inference_settings_widget,
-                self._model_classes_widget
+                self._model_classes_widget,
             ],
             gap=3,
         )
