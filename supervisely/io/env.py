@@ -203,10 +203,10 @@ def user_id(raise_not_found=True):
     )
 
 
-def content_update_sleep_time():
+def content_origin_update_interval():
     return _parse_from_env(
-        name="content_update_sleep_time",
-        keys=["CONTENT_UPDATE_SLEEP_TIME"],
+        name="content_origin_update_interval",
+        keys=["CONTENT_ORIGIN_UPDATE_INTERVAL"],
         postprocess_fn=lambda x: float(x),
         default=0.5,
         raise_not_found=False,

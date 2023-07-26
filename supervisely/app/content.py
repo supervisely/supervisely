@@ -157,7 +157,7 @@ class DataJson(_PatchableJson, metaclass=Singleton):
 
 class ContentOrigin(metaclass=Singleton):
     def __init__(self):
-        self._SLEEP_TIME = sly_env.content_update_sleep_time()
+        self._SLEEP_TIME = sly_env.content_origin_update_interval()
         self._data_patch_queue = queue.Queue()
         self._last_sent_data = {}
         self._state_queue = queue.Queue()
