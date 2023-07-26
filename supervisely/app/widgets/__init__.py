@@ -90,3 +90,4 @@ from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePick
 from supervisely.app.widgets.transfer.transfer import Transfer
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
+from supervisely.app.widgets.selection_table.selection_table import SelectionTable

@@ -1,0 +1,31 @@
+<div
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+    >
+    <sly-el-table-selection-container
+      :data="data.{{{widget.widget_id}}}.rows"
+      :identity="(row) => !!state.{{{widget.widget_id}}}.selectedRows.find(v => v.{{{widget._identity_field}}} === row.{{{widget._identity_field}}})"
+      :selected="state.{{{widget.widget_id}}}.selectedRows"
+    >
+      <el-table
+        ref="sly-el-table-with-selection"
+        :data="data.{{{widget.widget_id}}}.rows"
+        border
+        @selection-change="(val) => state.{{{widget.widget_id}}}.selectedRows = val"
+      >
+        {% if widget._enable_selection == true %}
+        <el-table-column type="selection" width="50"> </el-table-column>
+        {% endif %} {% for column in widget._columns %}
+        <el-table-column
+          property="{{{ column.lower() }}}"
+          label="{{{ column.upper() }}}"
+          {% if widget._columns_widths[column] is not none %}
+            width="{{{ widget._columns_widths[column] }}}"
+          {% endif %}
+          >
+        </el-table-column>
+        {% endfor %}
+    </el-table>
+</sly-el-table-selection-container>
+</div>
