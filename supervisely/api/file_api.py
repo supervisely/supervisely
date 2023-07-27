@@ -1200,7 +1200,7 @@ class FileApi(ModuleApiBase):
 
         local_files = list_files_recursively(local_dir)
         remote_files = [
-            file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/")) for file in local_files
+            Path(file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/"))).as_posix() for file in local_files
         ]
 
         for local_paths_batch, remote_files_batch in zip(
