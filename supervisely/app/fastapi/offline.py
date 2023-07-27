@@ -88,6 +88,8 @@ def upload_to_supervisely(static_dir_path):
         team_id=team_id,
         local_dir=static_dir_path.as_posix(),
         remote_dir=remote_dir.as_posix(),
+        change_name_if_conflict=False,
+        replace_if_conflict=True
     )
 
     if os.getenv("TASK_ID") is not None:
