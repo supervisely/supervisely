@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/container/style.css" />
+<!-- should be widget._direction == 'vertical' instead of widget._flex_direction == 'vertical' -->
 <div
   {%
   if
@@ -28,7 +29,7 @@
   {%
   endif
   %}
-  style="flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px"
+  style="flex-direction: {{{widget._flex_direction}}}; gap: {{{widget._gap}}}px; {{{widget._style}}}"
 >
   {% for item in widget._widgets %} 
     {% if widget._fractions is none %}
