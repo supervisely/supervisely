@@ -16,7 +16,7 @@ Vue.component("sly-template-renderer", {
 
       this._staticTrees = [];
 
-      const compiled = Vue.compile(template);
+      const compiled = Vue.compile(`<div>${template}</div>`);
       this.$options.staticRenderFns = compiled.staticRenderFns;
 
       this.templateRenderer = compiled.render;
