@@ -115,7 +115,11 @@ def shutdown(process_id=None):
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
         current_process = psutil.Process(process_id)
-        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+        if os.name == "nt":
+            # for windows
+            current_process.send_signal(signal.CTRL_C_EVENT) # emit ctrl + c
+        else:
+            current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
 
@@ -332,7 +336,7 @@ class Application(metaclass=Singleton):
         shutdown(self._process_id)
 
     def stop(self):
-        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
+        self.shutdown()
 
     def reload_page(self):
         run_sync(self.hot_reload.notify.notify())

@@ -188,7 +188,7 @@ class ContentOrigin(metaclass=Singleton):
 
     def _update_content_loop(self):
         failed_patch = None
-        while not self._stop.is_set():
+        while True:
             last_state = None
             state_count = 0
             patches = []
@@ -222,5 +222,8 @@ class ContentOrigin(metaclass=Singleton):
                         self._data_patch_queue.task_done()
                     for _ in range(state_count):
                         self._state_queue.task_done()
+
+            elif self._stop.is_set():
+                return
             
             time.sleep(self._SLEEP_TIME)
