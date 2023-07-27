@@ -1,8 +1,9 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/container/style.css" />
+<!-- should be widget._direction == 'vertical' instead of widget._flex_direction == 'vertical' -->
 <div
   {%
   if
-  widget._direction == 'vertical'
+  widget._flex_direction == 'vertical'
   %}
   class="container"
   {%
