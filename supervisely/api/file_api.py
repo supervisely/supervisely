@@ -1153,6 +1153,7 @@ class FileApi(ModuleApiBase):
         local_dir: str,
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
+        replace_if_conflict: Optional[bool] = False,
         progress_size_cb: Optional[Callable] = None,
     ) -> str:
         """
@@ -1188,6 +1189,8 @@ class FileApi(ModuleApiBase):
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
                 res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
+            elif replace_if_conflict is True:
+                res_remote_dir = remote_dir
             else:
                 raise FileExistsError(
                     f"Directory {remote_dir} already exists in your team (id={team_id})"
