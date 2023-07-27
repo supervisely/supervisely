@@ -1153,8 +1153,8 @@ class FileApi(ModuleApiBase):
         local_dir: str,
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
-        replace_if_conflict: Optional[bool] = False,
         progress_size_cb: Optional[Callable] = None,
+        replace_if_conflict: Optional[bool] = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
