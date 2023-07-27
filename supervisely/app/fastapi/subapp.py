@@ -41,11 +41,11 @@ if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-def create(process_id=None, headless=False) -> FastAPI:
+def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
-    JinjaWidgets().auto_widget_id = False
-    logger.info("The app is running in compatibility mode, auto_widget_id is set to False.")
+    JinjaWidgets().auto_widget_id = auto_widget_id
+    logger.info(f"JinjaWidgets().auto_widget_id is set to {auto_widget_id}.")
 
     app = FastAPI()
     WebsocketManager().set_app(app)
@@ -184,7 +184,7 @@ def _init(
     DataJson()["slyAppDialogTitle"] = ""
     DataJson()["slyAppDialogMessage"] = ""
 
-    app.mount("/sly", create(process_id, headless))
+    app.mount("/sly", create(process_id, headless, auto_widget_id=True))
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
