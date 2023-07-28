@@ -41,11 +41,13 @@ class Input(Widget):
             "placeholder": self._placeholder,
             "size": self._size,
             "readonly": self._readonly,
-            "type": self._type,
         }
 
     def get_json_state(self):
-        return {"value": self._value}
+        return {
+            "value": self._value,
+            "type": self._type,
+        }
 
     def set_value(self, value):
         StateJson()[self.widget_id]["value"] = value
@@ -53,6 +55,13 @@ class Input(Widget):
 
     def get_value(self):
         return StateJson()[self.widget_id]["value"]
+
+    def set_type(self, value: Literal["text", "password"]):
+        StateJson()[self.widget_id]["type"] = value
+        StateJson().send_changes()
+
+    def get_type(self):
+        return StateJson()[self.widget_id]["type"]
 
     def is_readonly(self):
         return DataJson()[self.widget_id]["readonly"]
