@@ -2,10 +2,12 @@ from typing import List, Dict, Union, Optional, Callable
 
 import yaml
 import supervisely.app.widgets as Widgets
-from supervisely.task.progress import Progress
 import supervisely.io.env as env
-from supervisely.api.file_api import FileApi
+from supervisely.task.progress import Progress
 from supervisely import Api
+from supervisely.api.file_api import FileApi
+from supervisely.sly_logger import logger
+
 
 try:
     from typing import Literal
@@ -77,16 +79,12 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(
-            values=device_values, labels=device_names
-        )
+        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.Progress(
-            "Downloading model...", hide_on_finish=True
-        )
+        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
         self._download_progress.hide()
         self._change_model_button = Widgets.Button(
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
@@ -114,9 +112,7 @@ class InferenceGUI(BaseInferenceGUI):
                 def update_table(selected_model):
                     cols = [
                         model_key
-                        for model_key in self._models[selected_model]["checkpoints"][
-                            0
-                        ].keys()
+                        for model_key in self._models[selected_model]["checkpoints"][0].keys()
                     ]
                     rows = [
                         [value for param_name, value in model.items()]
@@ -201,9 +197,7 @@ class InferenceGUI(BaseInferenceGUI):
             custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
-            tabs_descriptions.append(
-                "Models trained in Supervisely and located in Team Files"
-            )
+            tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
@@ -277,9 +271,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         table_subtitles, cols = self._get_table_subtitles(cols)
         if self._models_table is None:
-            self._models_table = Widgets.RadioTable(
-                cols, rows, subtitles=table_subtitles
-            )
+            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
         else:
             self._models_table.set_data(cols, rows, subtitles=table_subtitles)
 
@@ -357,11 +349,8 @@ class InferenceGUI(BaseInferenceGUI):
 
     def show_deployed_model_info(self, inference):
         self.set_inference_settings(inference)
-        self._model_classes_widget.set_project_meta(inference.model_meta)
-        self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
-        self._model_inference_settings_widget.show()
-        self._model_classes_widget.show()
-        self._model_info_widget.show()
+        self.set_project_meta(inference)
+        self.set_model_info(inference)
 
     def set_inference_settings(self, inference):
         if len(inference.custom_inference_settings_dict.keys()) == 0:
@@ -370,6 +359,29 @@ class InferenceGUI(BaseInferenceGUI):
             inference_settings_str = yaml.dump(inference.custom_inference_settings_dict)
         self._model_inference_settings_widget.set_text(inference_settings_str, "yaml")
         self._model_inference_settings_widget.show()
+
+    def set_project_meta(self, inference):
+        if self._get_classes_from_inference(inference) is None:
+            return
+        self._model_classes_widget.set_project_meta(inference.model_meta)
+        self._model_classes_widget.show()
+
+    def set_model_info(self, inference):
+        if self._get_classes_from_inference(inference) is None:
+            return
+        self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
+        self._model_info_widget.show()
+
+    def _get_classes_from_inference(self, inference) -> Optional[List[str]]:
+        try:
+            classes = inference.get_classes()
+        except NotImplementedError:
+            logger.warn(f"get_classes() function not implemented for in {type(inference)} object.")
+
+        if classes is None or len(classes) == 0:
+            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            return None
+        return classes
 
     def get_ui(self) -> Widgets.Widget:
         return Widgets.Container(
