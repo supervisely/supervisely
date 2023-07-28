@@ -138,7 +138,7 @@ class Inference:
             add_content_to_custom_tab=self.add_content_to_custom_tab,
             custom_model_link_type=self.get_custom_model_link_type(),
         )
-        self._gui.set_inference_settings(self)
+        self._gui.show_deployed_model_info(self)
 
     def support_custom_models(self) -> bool:
         return True
