@@ -8,7 +8,14 @@ from logging import Logger
 
 
 class TrackerInterface:
-    def __init__(self, context, api, load_all_frames=False):
+    def __init__(
+        self,
+        context,
+        api,
+        load_all_frames=False,
+        notify_in_predict=False,
+        per_point_polygon_tracking=True,
+    ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
@@ -21,7 +28,6 @@ class TrackerInterface:
         self.direction = context["direction"]
 
         # all geometries
-        # self.stop = len(self.object_ids) * self.frames_count
         self.stop = len(self.figure_ids) * self.frames_count
         self.global_pos = 0
         self.global_stop_indicatior = False
@@ -31,6 +37,7 @@ class TrackerInterface:
         self._cur_frames_indexes: List[int] = []
         self._frames: Optional[np.ndarray] = None
         self.load_all_frames = load_all_frames
+        self.per_point_polygon_tracking = per_point_polygon_tracking
 
         # increase self.stop by num of frames will be loaded
         self._add_frames_indexes()
@@ -41,14 +48,17 @@ class TrackerInterface:
         self._cache: Dict[int, np.ndarray] = {}
 
         if self.load_all_frames:
+            if notify_in_predict:
+                self.stop += self.frames_count + 1
             self._load_frames()
 
-    def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
+    def add_object_geometries(
+        self, geometries: List[Geometry], object_id: int, start_fig: int
+    ):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
             if self.global_stop_indicatior:
                 self._notify(True, task="stop tracking")
                 break
-
             self.add_object_geometry_on_frame(geometry, object_id, frame)
 
         self.geometries[start_fig] = geometries[-1]
@@ -74,7 +84,9 @@ class TrackerInterface:
                 self.clear_cache()
                 return
 
-    def add_object_geometry_on_frame(self, geometry: Geometry, object_id: int, frame_ind: int):
+    def add_object_geometry_on_frame(
+        self, geometry: Geometry, object_id: int, frame_ind: int
+    ):
         self.api.video.figure.create(
             self.video_id,
             object_id,
@@ -109,10 +121,11 @@ class TrackerInterface:
             elif isinstance(geometry, sly.Polyline):
                 points += len(geometry.exterior)
 
-        if not self.load_all_frames:
-            self.stop += points * self.frames_count
-        else:
-            self.stop += points
+        if self.per_point_polygon_tracking:
+            if not self.load_all_frames:
+                self.stop += points * self.frames_count
+            else:
+                self.stop += points
 
         self.logger.info("Geometries added.")
         # TODO: other geometries
@@ -121,7 +134,10 @@ class TrackerInterface:
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
+        while (
+            0 <= cur_index < total_frames
+            and len(self.frames_indexes) < self.frames_count + 1
+        ):
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 
