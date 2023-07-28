@@ -86,6 +86,7 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
 
         if use_gui:
+            self.class_names = []
             self.initialize_gui()
 
             def on_serve_callback(gui: GUI.InferenceGUI):
