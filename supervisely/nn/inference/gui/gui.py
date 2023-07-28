@@ -362,12 +362,14 @@ class InferenceGUI(BaseInferenceGUI):
 
     def set_project_meta(self, inference):
         if self._get_classes_from_inference(inference) is None:
+            logger.warn("Skip loading project meta: no classes founded.")
             return
         self._model_classes_widget.set_project_meta(inference.model_meta)
         self._model_classes_widget.show()
 
     def set_model_info(self, inference):
         if self._get_classes_from_inference(inference) is None:
+            logger.warn("Skip loading model info: no classes founded.")
             return
         self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
         self._model_info_widget.show()
