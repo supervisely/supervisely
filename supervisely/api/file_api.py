@@ -1154,6 +1154,7 @@ class FileApi(ModuleApiBase):
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
         progress_size_cb: Optional[Callable] = None,
+        replace_if_conflict: Optional[bool] = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
@@ -1188,6 +1189,8 @@ class FileApi(ModuleApiBase):
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
                 res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
+            elif replace_if_conflict is True:
+                res_remote_dir = remote_dir
             else:
                 raise FileExistsError(
                     f"Directory {remote_dir} already exists in your team (id={team_id})"
@@ -1197,7 +1200,7 @@ class FileApi(ModuleApiBase):
 
         local_files = list_files_recursively(local_dir)
         remote_files = [
-            file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/")) for file in local_files
+            Path(file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/"))).as_posix() for file in local_files
         ]
 
         for local_paths_batch, remote_files_batch in zip(

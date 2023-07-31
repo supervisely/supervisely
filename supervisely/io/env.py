@@ -201,3 +201,13 @@ def user_id(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+
+def content_origin_update_interval():
+    return _parse_from_env(
+        name="content_origin_update_interval",
+        keys=["CONTENT_ORIGIN_UPDATE_INTERVAL"],
+        postprocess_fn=lambda x: float(x),
+        default=0.5,
+        raise_not_found=False,
+    )

@@ -79,13 +79,17 @@ def dump_html_to_dir(static_dir_path, template):
 def upload_to_supervisely(static_dir_path):
     api: sly.Api = sly.Api.from_env()
 
-    team_id, task_id = int(os.getenv("context.teamId")), int(os.getenv("TASK_ID", 0000))
+    team_id = sly.env.team_id()
+    task_id = sly.env.task_id(raise_not_found=False)
+    task_id = 0000 if task_id is None else task_id
     remote_dir = pathlib.Path("/", "offline-sessions", str(task_id), "app-template")
 
     res_remote_dir: str = api.file.upload_directory(
         team_id=team_id,
         local_dir=static_dir_path.as_posix(),
         remote_dir=remote_dir.as_posix(),
+        change_name_if_conflict=False,
+        replace_if_conflict=True
     )
 
     if os.getenv("TASK_ID") is not None:
@@ -142,10 +146,12 @@ def available_after_shutdown(app: FastAPI):
                         daemon=False,
                     ).start()
 
-                return template_response
             except Exception as ex:
                 traceback.print_exc()
                 sly.logger.warning(f"Cannot dump files for offline usage, reason: {ex}")
+
+            finally:
+                return template_response
 
         return wrapper
 

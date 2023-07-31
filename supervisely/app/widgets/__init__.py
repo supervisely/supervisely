@@ -1,4 +1,4 @@
-from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem
+from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox

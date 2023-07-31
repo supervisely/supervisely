@@ -16,12 +16,14 @@ class Container(Widget):
         gap: int = 10,
         fractions: List[int] = None,
         overflow: Optional[Literal["scroll", "wrap"]] = "scroll",
+        style: str = "",
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
         self._overflow = overflow
+        self._style = style
         
         if self._overflow not in ["scroll", "wrap", None]:
             raise ValueError("overflow can be only 'scroll', 'wrap' or None")
