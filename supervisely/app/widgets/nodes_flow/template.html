@@ -1,0 +1,11 @@
+<div>
+    <sly-nodes-flow
+        :flow="state.{{{widget.widget_id}}}.flow"
+        :flow-state="state.{{{widget.widget_id}}}.flowState"
+        :state="state"
+        :data="data"
+        :session="session"
+        :post="post"
+        height="data.{{{widget.widget_id}}}.height"
+    />
+</div>
