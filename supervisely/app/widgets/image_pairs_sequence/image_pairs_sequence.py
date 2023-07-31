@@ -184,7 +184,8 @@ class ImagePairsSequence(Widget):
             )
             dst_paths = [remote_dir.joinpath(pathlib.Path(url).name).as_posix() for url in urls]
             local_paths = [
-                os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url)) for url in urls
+                os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url))
+                for url in urls
             ]
             for remote, local in zip(urls, local_paths):
                 self._download_image(remote, local)
@@ -207,7 +208,9 @@ class ImagePairsSequence(Widget):
             app = sly.Application()
             static_dir = Path(app.get_static_dir())
             sly.logger.info(f"Static dir: {static_dir}")
-            filepath = url.lstrip("/").removeprefix("static/")
+            filepath = url.lstrip("/")
+            if filepath.startswith("static"):
+                filepath = filepath[len("static") :]
             filepath = static_dir.joinpath(filepath)
         else:
             filepath = url
