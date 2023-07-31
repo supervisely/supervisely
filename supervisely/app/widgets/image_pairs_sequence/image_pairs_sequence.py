@@ -1,5 +1,6 @@
 import os
 import json
+import pathlib
 from typing import List, Optional, Tuple
 
 import supervisely as sly
@@ -166,61 +167,76 @@ class ImagePairsSequence(Widget):
         if has_empty_before and not has_empty_after:
             self._need_update = True
 
-    def _dump_data(self, side, data, dir_path):
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        images = []
-        anntations = []
-        drawed = []
+        self._dump_images_to_offline_sessions_files([x[0] for x in data])
 
-        def _generate_name(template, names):
-            name = sly.generate_free_name(names, template, with_ext=True)
-            names.append(name)
-            return os.path.join(dir_path, name)
+    def _dump_images_to_offline_sessions_files(self, urls: List[str]):
+        if sly.is_production():
+            parent_dir = os.path.dirname(os.path.commonprefix(urls))
+            task_id = self._api.task_id
+            remote_dir = pathlib.Path("/", "offline-sessions", str(task_id), "app-template")
+            remote_dir = pathlib.Path(remote_dir, "image_pairs_sequence")
 
-        for d in data:
-            url, ann, title = d
-            ext = sly.fs.get_file_ext(url)
-
-            local_image_path = _generate_name("image" + ext, images)
-            local_ann_path = _generate_name("annotation.json", anntations)
-            annotated_path = _generate_name("drawed" + ext, drawed)
-
-            sly.fs.download(url, local_image_path)
-            img = sly.image.read(local_image_path)
-            img_size = img.shape[0], img.shape[1]
-            ann = ann if ann is not None else sly.Annotation(img_size)
-
-            ann.draw_pretty(img, output_path=annotated_path)
-            with open(local_ann_path, "w") as f:
-                json.dump(ann.to_json(), f)
-
-            self._info[side].append(
-                {"imageName": images[-1], "url": url, "ann": ann.to_json(), "title": title or ""}
+            res_remote_dir: str = self._api.file.upload_directory(
+                team_id=self._team_id,
+                local_dir=parent_dir,
+                remote_dir=remote_dir.as_posix(),
             )
+            sly.logger.info(f"File stored in {res_remote_dir} for offline usage")
+        else:
+            sly.logger.info("Debug mode: files are not stored for offline usage")
 
-    def dump_data(self, remote_dir="tmp/data/image pairs sequence/"):
-        new_suffix = 1
-        res_name = remote_dir.strip("/")
-        while self._api.file.dir_exists(self._team_id, "/" + res_name):
-            res_name = "{}_{:02d}".format(remote_dir.rstrip("/"), new_suffix)
-            new_suffix += 1
-        remote_dir = res_name
-        local_dir = os.path.join(get_data_dir(), os.path.basename(remote_dir))
-        if not os.path.exists(local_dir):
-            os.makedirs(local_dir)
-        left_data_dir = os.path.join(local_dir, "left")
-        right_data_dir = os.path.join(local_dir, "right")
+    # def _dump_data(self, side, data, dir_path):
+    #     if not os.path.exists(dir_path):
+    #         os.makedirs(dir_path)
+    #     images = []
+    #     anntations = []
+    #     drawed = []
 
-        self._dump_data("left", self._left_data, left_data_dir)
-        self._dump_data("right", self._right_data, right_data_dir)
+    #     def _generate_name(template, names):
+    #         name = sly.generate_free_name(names, template, with_ext=True)
+    #         names.append(name)
+    #         return os.path.join(dir_path, name)
 
-        with open(os.path.join(local_dir, "info.json"), "w") as f:
-            json.dump(self._info, f)
+    #     for d in data:
+    #         url, ann, title = d
+    #         ext = sly.fs.get_file_ext(url)
 
-        self._api.file.upload_directory(self._team_id, local_dir, remote_dir)
+    #         local_image_path = _generate_name("image" + ext, images)
+    #         local_ann_path = _generate_name("annotation.json", anntations)
+    #         annotated_path = _generate_name("drawed" + ext, drawed)
 
-        return remote_dir
+    #         sly.fs.download(url, local_image_path)
+    #         img = sly.image.read(local_image_path)
+    #         img_size = img.shape[0], img.shape[1]
+    #         ann = ann if ann is not None else sly.Annotation(img_size)
+
+    #         ann.draw_pretty(img, output_path=annotated_path)
+    #         with open(local_ann_path, "w") as f:
+    #             json.dump(ann.to_json(), f)
+
+    #         self._info[side].append(
+    #             {"imageName": images[-1], "url": url, "ann": ann.to_json(), "title": title or ""}
+    #         )
+
+    # def dump_data(self, remote_dir="tmp/data/image pairs sequence/"):
+    #     new_suffix = 1
+    #     res_name = remote_dir.strip("/")
+    #     while self._api.file.dir_exists(self._team_id, "/" + res_name):
+    #         res_name = "{}_{:02d}".format(remote_dir.rstrip("/"), new_suffix)
+    #         new_suffix += 1
+    #     remote_dir = res_name
+    #     local_dir = os.path.join(get_data_dir(), os.path.basename(remote_dir))
+    #     if not os.path.exists(local_dir):
+    #         os.makedirs(local_dir)
+    #     left_data_dir = os.path.join(local_dir, "left")
+    #     right_data_dir = os.path.join(local_dir, "right")
+
+    #     self._dump_data("left", self._left_data, left_data_dir)
+    #     self._dump_data("right", self._right_data, right_data_dir)
+
+    #     self._api.file.upload_directory(self._team_id, local_dir, remote_dir)
+
+    #     return remote_dir
 
     def _update_data(self):
         self._total_grids = max(len(self._left_data), len(self._right_data), 1)
