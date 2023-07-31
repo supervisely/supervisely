@@ -259,6 +259,8 @@ class Application(metaclass=Singleton):
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
 
+        self._static_dir = static_dir
+
         headless = False
         if layout is None and templates_dir is None:
             templates_dir: str = "templates"  # for back compatibility
@@ -313,7 +315,6 @@ class Application(metaclass=Singleton):
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
-        self._static_dir = static_dir
 
     def get_server(self):
         return self._fastapi
