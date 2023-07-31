@@ -213,8 +213,7 @@ class ImagePairsSequence(Widget):
                 filepath = filepath[len("static/") :]
             save_path = static_dir.joinpath(filepath).as_posix()
         else:
-            filepath = url
-            sly.fs.download(filepath, save_path)
+            sly.fs.download(url, save_path)
 
         sly.logger.info(f"Downloading file from {filepath} to {save_path}")
         return save_path
