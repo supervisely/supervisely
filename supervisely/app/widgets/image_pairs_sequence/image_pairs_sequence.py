@@ -23,7 +23,6 @@ class ImagePairsSequence(Widget):
         # init data for gallery
         self._left_data = []
         self._right_data = []
-        self._info = {"left": [], "right": []}
 
         # init gallery options
         self._columns = 2
@@ -85,7 +84,10 @@ class ImagePairsSequence(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> dict:
-        return {}
+        return {
+            "leftAnnotations": [],
+            "rightAnnotations": [],
+        }
 
     def get_json_state(self) -> dict:
         return {
@@ -95,13 +97,11 @@ class ImagePairsSequence(Widget):
         }
 
     def set_left(self, url: str, ann: sly.Annotation = None, title: str = None):
-        data = [url, ann, title]
-        self._add_with_check("left", [data])
+        self._add_with_check("left", [[url, ann, title]])
         self._update_data()
 
     def set_right(self, url: str, ann: sly.Annotation = None, title: str = None):
-        data = [url, ann, title]
-        self._add_with_check("right", [data])
+        self._add_with_check("right", [[url, ann, title]])
         self._update_data()
 
     def set_left_batch(
@@ -150,7 +150,7 @@ class ImagePairsSequence(Widget):
         StateJson().send_changes()
 
     def _add_with_check(self, side, data):
-        data: List[Tuple[str, Optional[sly.Annotation], Optional[str]]]
+        ann_jsons = [x[1].to_json() if x[1] is not None else None for x in data]
         total_grids = max(len(self._left_data), len(self._right_data), 1)
         if self._total_grids != total_grids:
             self._need_update = True
@@ -159,8 +159,11 @@ class ImagePairsSequence(Widget):
 
         if side == "left":
             self._left_data.extend(data)
+            DataJson()[self.widget_id]["leftAnnotations"].extend(ann_jsons)
         elif side == "right":
             self._right_data.extend(data)
+            DataJson()[self.widget_id]["rightAnnotations"].extend(ann_jsons)
+        DataJson().send_changes()
 
         has_empty_after = any([len(self._left_data) == 0, len(self._right_data) == 0])
         if has_empty_before and not has_empty_after:
@@ -171,7 +174,7 @@ class ImagePairsSequence(Widget):
     def _dump_image_to_offline_sessions_file(self, urls: List[str]):
         if sly.is_production():
             task_id = self._api.task_id
-            remote_dir = pathlib.Path(
+            remote_dir = Path(
                 "/",
                 "offline-sessions",
                 str(task_id),
@@ -182,43 +185,25 @@ class ImagePairsSequence(Widget):
                 "widgets",
                 "image_pairs_sequence",
             )
-            dst_paths = [remote_dir.joinpath(pathlib.Path(url).name).as_posix() for url in urls]
-            local_paths = [
-                os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url))
-                for url in urls
-            ]
-            paths = []
-            for remote, local in zip(urls, local_paths):
-                local = self._download_image(remote, local)
-                paths.append(local)
-                # files = self._api.task.get_import_files_list(task_id)
-                # self._api.task.download_import_file(task_id, os.path.basename(remote), local)
+            dst_paths = [remote_dir.joinpath(Path(url).name).as_posix() for url in urls]
+            local_paths = [self._download_image(url) for url in urls]
 
-            res_remote_dir: str = self._api.file.upload_bulk(
+            self._api.file.upload_bulk(
                 team_id=self._team_id,
-                src_paths=paths,
+                src_paths=local_paths,
                 dst_paths=dst_paths,
             )
-            sly.logger.info(f"File stored in {res_remote_dir} for offline usage")
-        else:
-            sly.logger.info("Debug mode: files are not stored for offline usage")
 
-    def _download_image(self, url: str, save_path: str):
-        sly.logger.info(f"URL: {url}")
-        filepath = None
+    def _download_image(self, url: str):
         if url.lstrip("/").startswith("static"):
             app = sly.Application()
             static_dir = Path(app.get_static_dir())
-            sly.logger.info(f"Static dir: {static_dir}")
-            filepath = url.lstrip("/")
-            if filepath.startswith("static/"):
-                filepath = filepath[len("static/") :]
-            save_path = static_dir.joinpath(filepath).as_posix()
+            filepath = url.lstrip("/")[len("static/") :]
+            path = static_dir.joinpath(filepath).as_posix()
         else:
-            sly.fs.download(url, save_path)
-
-        sly.logger.info(f"Downloading file from {filepath} to {save_path}")
-        return save_path
+            path = os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url))
+            sly.fs.download(url, path)
+        return path
 
     def _update_data(self):
         self._total_grids = max(len(self._left_data), len(self._right_data), 1)
