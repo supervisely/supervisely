@@ -201,15 +201,18 @@ class ImagePairsSequence(Widget):
             sly.logger.info("Debug mode: files are not stored for offline usage")
 
     def _download_image(self, url: str, save_path: str):
+        sly.logger.info(f"URL: {url}")
         filepath = None
         if url.startswith("/static"):
             app = self._sly_app.get_server()
             static_dir = Path(app.get_static_dir())
+            sly.logger.info(f"Static dir: {static_dir}")
             filepath = url.lstrip("/").removeprefix("static/")
             filepath = static_dir.joinpath(filepath)
         else:
             filepath = url
 
+        sly.logger.info(f"Downloading file from {filepath} to {save_path}")
         sly.fs.download(filepath, save_path)
         return save_path
 
