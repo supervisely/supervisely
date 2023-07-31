@@ -187,14 +187,16 @@ class ImagePairsSequence(Widget):
                 os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url))
                 for url in urls
             ]
+            paths = []
             for remote, local in zip(urls, local_paths):
-                self._download_image(remote, local)
+                local = self._download_image(remote, local)
+                paths.append(local)
                 # files = self._api.task.get_import_files_list(task_id)
                 # self._api.task.download_import_file(task_id, os.path.basename(remote), local)
 
             res_remote_dir: str = self._api.file.upload_bulk(
                 team_id=self._team_id,
-                src_paths=local_paths,
+                src_paths=paths,
                 dst_paths=dst_paths,
             )
             sly.logger.info(f"File stored in {res_remote_dir} for offline usage")
