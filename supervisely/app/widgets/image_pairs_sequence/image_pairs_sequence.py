@@ -211,12 +211,12 @@ class ImagePairsSequence(Widget):
             filepath = url.lstrip("/")
             if filepath.startswith("static/"):
                 filepath = filepath[len("static/") :]
-            filepath = static_dir.joinpath(filepath).as_posix()
+            save_path = static_dir.joinpath(filepath).as_posix()
         else:
             filepath = url
+            sly.fs.download(filepath, save_path)
 
         sly.logger.info(f"Downloading file from {filepath} to {save_path}")
-        sly.fs.download(filepath, save_path)
         return save_path
 
     def _update_data(self):
