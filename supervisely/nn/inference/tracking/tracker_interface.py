@@ -52,9 +52,7 @@ class TrackerInterface:
                 self.stop += self.frames_count + 1
             self._load_frames()
 
-    def add_object_geometries(
-        self, geometries: List[Geometry], object_id: int, start_fig: int
-    ):
+    def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
             if self.global_stop_indicatior:
                 self._notify(True, task="stop tracking")
@@ -85,7 +83,7 @@ class TrackerInterface:
                 return
 
     def add_object_geometry_on_frame(
-        self, geometry: Geometry, object_id: int, frame_ind: int
+        self, geometry: Geometry, object_id: int, frame_ind: int, notify: bool = True
     ):
         self.api.video.figure.create(
             self.video_id,
@@ -96,7 +94,8 @@ class TrackerInterface:
             self.track_id,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
-        self._notify(fstart=frame_ind, fend=frame_ind + 1, task="add geometry on frame")
+        if notify:
+            self._notify(task="add geometry on frame")
 
     def clear_cache(self):
         self._cache.clear()
@@ -134,10 +133,7 @@ class TrackerInterface:
         total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
         cur_index = self.frame_index
 
-        while (
-            0 <= cur_index < total_frames
-            and len(self.frames_indexes) < self.frames_count + 1
-        ):
+        while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
             self.frames_indexes.append(cur_index)
             cur_index += 1 if self.direction == "forward" else -1
 

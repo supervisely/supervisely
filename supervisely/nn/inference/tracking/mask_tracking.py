@@ -90,17 +90,13 @@ class MaskTracking(Inference):
             # combine several binary masks into one multilabel mask
             i = 0
             label2id = {}
-            frames_generator = [
-                _ for _ in self.video_interface.frames_loader_generator()
-            ]
+            frames_generator = [_ for _ in self.video_interface.frames_loader_generator()]
             for (fig_id, geometry), obj_id in zip(
                 self.video_interface.geometries.items(),
                 self.video_interface.object_ids,
             ):
                 original_geometry = geometry.clone()
-                if not isinstance(geometry, sly.Bitmap) and not isinstance(
-                    geometry, sly.Polygon
-                ):
+                if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
                     raise TypeError(
                         f"This app does not support {geometry.geometry_name()} tracking"
                     )
@@ -146,11 +142,16 @@ class MaskTracking(Inference):
                             geometries = [label.geometry for label in polygon_labels]
                         else:
                             geometries = [sly.Bitmap(mask)]
-                        for geometry in geometries:
+                        for l, geometry in enumerate(geometries):
+                            if l == 0:
+                                notify = True
+                            else:
+                                notify = False
                             self.video_interface.add_object_geometry_on_frame(
                                 geometry,
                                 obj_id,
                                 self.video_interface._cur_frames_indexes[j + 1],
+                                notify=notify,
                             )
                     if self.video_interface.global_stop_indicatior:
                         return
