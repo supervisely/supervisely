@@ -203,7 +203,7 @@ class ImagePairsSequence(Widget):
     def _download_image(self, url: str, save_path: str):
         sly.logger.info(f"URL: {url}")
         filepath = None
-        if url.startswith("/static"):
+        if url.lstrip("/").startswith("static"):
             app = self._sly_app.get_server()
             static_dir = Path(app.get_static_dir())
             sly.logger.info(f"Static dir: {static_dir}")
