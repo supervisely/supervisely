@@ -1,12 +1,11 @@
 import os
-import json
 import pathlib
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import supervisely as sly
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Button, FolderThumbnail, GridGallery, Slider, Widget
-from supervisely.app import get_data_dir
 
 
 class ImagePairsSequence(Widget):
@@ -181,71 +180,38 @@ class ImagePairsSequence(Widget):
                 "css",
                 "app",
                 "widgets",
-                "image_pairs_sequence"
+                "image_pairs_sequence",
             )
             dst_paths = [remote_dir.joinpath(pathlib.Path(url).name).as_posix() for url in urls]
+            local_paths = [
+                os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url)) for url in urls
+            ]
+            for remote, local in zip(urls, local_paths):
+                self._download_image(remote, local)
+                # files = self._api.task.get_import_files_list(task_id)
+                # self._api.task.download_import_file(task_id, os.path.basename(remote), local)
 
             res_remote_dir: str = self._api.file.upload_bulk(
                 team_id=self._team_id,
-                src_paths=urls,
+                src_paths=local_paths,
                 dst_paths=dst_paths,
             )
             sly.logger.info(f"File stored in {res_remote_dir} for offline usage")
         else:
             sly.logger.info("Debug mode: files are not stored for offline usage")
 
-    # def _dump_data(self, side, data, dir_path):
-    #     if not os.path.exists(dir_path):
-    #         os.makedirs(dir_path)
-    #     images = []
-    #     anntations = []
-    #     drawed = []
+    def _download_image(self, url: str, save_path: str):
+        filepath = None
+        if url.startswith("/static"):
+            app = self._sly_app.get_server()
+            static_dir = Path(app.get_static_dir())
+            filepath = url.lstrip("/").removeprefix("static/")
+            filepath = static_dir.joinpath(filepath)
+        else:
+            filepath = url
 
-    #     def _generate_name(template, names):
-    #         name = sly.generate_free_name(names, template, with_ext=True)
-    #         names.append(name)
-    #         return os.path.join(dir_path, name)
-
-    #     for d in data:
-    #         url, ann, title = d
-    #         ext = sly.fs.get_file_ext(url)
-
-    #         local_image_path = _generate_name("image" + ext, images)
-    #         local_ann_path = _generate_name("annotation.json", anntations)
-    #         annotated_path = _generate_name("drawed" + ext, drawed)
-
-    #         sly.fs.download(url, local_image_path)
-    #         img = sly.image.read(local_image_path)
-    #         img_size = img.shape[0], img.shape[1]
-    #         ann = ann if ann is not None else sly.Annotation(img_size)
-
-    #         ann.draw_pretty(img, output_path=annotated_path)
-    #         with open(local_ann_path, "w") as f:
-    #             json.dump(ann.to_json(), f)
-
-    #         self._info[side].append(
-    #             {"imageName": images[-1], "url": url, "ann": ann.to_json(), "title": title or ""}
-    #         )
-
-    # def dump_data(self, remote_dir="tmp/data/image pairs sequence/"):
-    #     new_suffix = 1
-    #     res_name = remote_dir.strip("/")
-    #     while self._api.file.dir_exists(self._team_id, "/" + res_name):
-    #         res_name = "{}_{:02d}".format(remote_dir.rstrip("/"), new_suffix)
-    #         new_suffix += 1
-    #     remote_dir = res_name
-    #     local_dir = os.path.join(get_data_dir(), os.path.basename(remote_dir))
-    #     if not os.path.exists(local_dir):
-    #         os.makedirs(local_dir)
-    #     left_data_dir = os.path.join(local_dir, "left")
-    #     right_data_dir = os.path.join(local_dir, "right")
-
-    #     self._dump_data("left", self._left_data, left_data_dir)
-    #     self._dump_data("right", self._right_data, right_data_dir)
-
-    #     self._api.file.upload_directory(self._team_id, local_dir, remote_dir)
-
-    #     return remote_dir
+        sly.fs.download(filepath, save_path)
+        return save_path
 
     def _update_data(self):
         self._total_grids = max(len(self._left_data), len(self._right_data), 1)

@@ -313,6 +313,8 @@ class Application(metaclass=Singleton):
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
+        self._static_dir = static_dir
+
     def get_server(self):
         return self._fastapi
 
@@ -327,6 +329,9 @@ class Application(metaclass=Singleton):
 
     def reload_page(self):
         run_sync(self.hot_reload.notify.notify())
+
+    def get_static_dir(self):
+        return self._static_dir
 
 
 def get_name_from_env(default="Supervisely App"):
