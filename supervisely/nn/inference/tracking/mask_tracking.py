@@ -136,20 +136,22 @@ class MaskTracking(Inference):
                     fig_id = label2id[i]["fig_id"]
                     obj_id = label2id[i]["obj_id"]
                     geometry_type = label2id[i]["original_geometry"]
-                    geometries = []
-                    for mask in binary_masks[1:]:
+                    for j, mask in enumerate(binary_masks[1:]):
                         if geometry_type == "polygon":
                             bitmap_geometry = sly.Bitmap(mask)
                             bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
                             bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
                             polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                            polygon_label = bitmap_label.convert(polygon_obj_class)[0]
-                            geometries.append(polygon_label.geometry)
+                            polygon_labels = bitmap_label.convert(polygon_obj_class)
+                            geometries = [label.geometry for label in polygon_labels]
                         else:
-                            geometries.append(sly.Bitmap(mask))
-                    self.video_interface.add_object_geometries(
-                        geometries, obj_id, fig_id
-                    )
+                            geometries = [sly.Bitmap(mask)]
+                        for geometry in geometries:
+                            self.video_interface.add_object_geometry_on_frame(
+                                geometry,
+                                obj_id,
+                                self.video_interface._cur_frames_indexes[j + 1],
+                            )
                     if self.video_interface.global_stop_indicatior:
                         return
                     api.logger.info(f"Figure with id {fig_id} was successfully tracked")
