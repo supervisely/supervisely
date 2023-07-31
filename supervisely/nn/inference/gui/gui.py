@@ -97,8 +97,8 @@ class InferenceGUI(BaseInferenceGUI):
         )
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
         # self._model_inference_settings_widget.hide()
-        self._model_classes_widget.hide()
-        self._model_info_widget.hide()
+        # self._model_classes_widget.hide()
+        # self._model_info_widget.hide()
 
         tabs_titles = []
         tabs_contents = []
@@ -373,6 +373,17 @@ class InferenceGUI(BaseInferenceGUI):
             return
         self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
         self._model_info_widget.show()
+
+    def create_handler_for_model_changes(self, inference):
+        if isinstance(self._models_table, Widgets.RadioTable):
+
+            @self._models_table.value_changed
+            def upd_models_info_if_possible(new_model):
+                logger.debug(f"Model changed: {new_model}")
+                self.show_deployed_model_info(inference)
+
+        else:
+            logger.warn("Failed to create handler for models table")
 
     def _get_classes_from_inference(self, inference) -> Optional[List[str]]:
         try:
