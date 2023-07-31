@@ -11,6 +11,7 @@ from supervisely.app.widgets import Button, FolderThumbnail, GridGallery, Slider
 class ImagePairsSequence(Widget):
     def __init__(
         self,
+        static_dir: str,
         opacity: Optional[float] = 0.4,
         enable_zoom: Optional[bool] = False,
         sync_views: Optional[bool] = True,
@@ -19,6 +20,7 @@ class ImagePairsSequence(Widget):
     ):
         self._api = sly.Api.from_env()
         self._team_id = sly.env.team_id()
+        self._staric_dir = static_dir
 
         # init data for gallery
         self._left_data = []
@@ -204,8 +206,7 @@ class ImagePairsSequence(Widget):
         sly.logger.info(f"URL: {url}")
         filepath = None
         if url.lstrip("/").startswith("static"):
-            app = self._sly_app.get_server()
-            static_dir = Path(app.get_static_dir())
+            static_dir = Path(self._static_dir)
             sly.logger.info(f"Static dir: {static_dir}")
             filepath = url.lstrip("/").removeprefix("static/")
             filepath = static_dir.joinpath(filepath)
