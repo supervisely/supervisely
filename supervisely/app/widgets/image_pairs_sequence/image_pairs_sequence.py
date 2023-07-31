@@ -209,9 +209,9 @@ class ImagePairsSequence(Widget):
             static_dir = Path(app.get_static_dir())
             sly.logger.info(f"Static dir: {static_dir}")
             filepath = url.lstrip("/")
-            if filepath.startswith("static"):
-                filepath = filepath[len("static") :]
-            filepath = static_dir.joinpath(filepath)
+            if filepath.startswith("static/"):
+                filepath = filepath[len("static/") :]
+            filepath = static_dir.joinpath(filepath).as_posix()
         else:
             filepath = url
 
