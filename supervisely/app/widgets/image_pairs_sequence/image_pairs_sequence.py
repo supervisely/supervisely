@@ -167,19 +167,28 @@ class ImagePairsSequence(Widget):
         if has_empty_before and not has_empty_after:
             self._need_update = True
 
-        self._dump_images_to_offline_sessions_files([x[0] for x in data])
+        self._dump_image_to_offline_sessions_file([x[0] for x in data])
 
-    def _dump_images_to_offline_sessions_files(self, urls: List[str]):
+    def _dump_image_to_offline_sessions_file(self, urls: List[str]):
         if sly.is_production():
-            parent_dir = os.path.dirname(os.path.commonprefix(urls))
             task_id = self._api.task_id
-            remote_dir = pathlib.Path("/", "offline-sessions", str(task_id), "app-template")
-            remote_dir = pathlib.Path(remote_dir, "image_pairs_sequence")
+            remote_dir = pathlib.Path(
+                "/",
+                "offline-sessions",
+                str(task_id),
+                "app-template",
+                "sly",
+                "css",
+                "app",
+                "widgets",
+                "image_pairs_sequence"
+            )
+            dst_paths = [remote_dir.joinpath(pathlib.Path(url).name).as_posix() for url in urls]
 
-            res_remote_dir: str = self._api.file.upload_directory(
+            res_remote_dir: str = self._api.file.upload_bulk(
                 team_id=self._team_id,
-                local_dir=parent_dir,
-                remote_dir=remote_dir.as_posix(),
+                src_paths=urls,
+                dst_paths=dst_paths,
             )
             sly.logger.info(f"File stored in {res_remote_dir} for offline usage")
         else:
