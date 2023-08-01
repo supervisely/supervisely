@@ -186,16 +186,17 @@ class ImagePairSequence(Widget):
     def _dump_image_to_offline_sessions_file(self, paths: List[str]):
         if sly.is_production():
             remote_dir = get_offline_session_files_path(40188)
-            print(f"file_path: {self._file_path}")
             remote_dir = remote_dir.joinpath("sly", "css", "app", "widgets", "image_pair_sequence")
             dst_paths = [remote_dir.joinpath(Path(path).name).as_posix() for path in paths]
             local_paths = [self._download_image(path) for path in paths]
 
-            self._api.file.upload_bulk(
+            fileinfos = self._api.file.upload_bulk(
                 team_id=self._team_id,
                 src_paths=local_paths,
                 dst_paths=dst_paths,
             )
+            for fileinfo in fileinfos:
+                print(f"File {fileinfo.name} was uploaded to {fileinfo.path}")
 
     def _download_image(self, path: str):
         if path.lstrip("/").startswith("static/"):
