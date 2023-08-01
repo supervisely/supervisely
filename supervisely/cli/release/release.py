@@ -149,7 +149,7 @@ def upload_archive(
             "arhcive.tar.gz",
             f,
             "application/gzip",
-        )
+        ),
     }
     if slug:
         fields["slug"] = slug
@@ -175,21 +175,29 @@ def upload_archive(
     return response
 
 
-def archivate_application(repo: git.Repo, config, slug):
+def archive_application(repo: git.Repo, config, slug):
     archive_folder = "".join(random.choice(string.ascii_letters) for _ in range(5))
     os.mkdir(archive_folder)
-    entries = [entry for entry in repo.commit().tree.traverse()]
-    entries = [entry for entry in entries if entry not in repo.ignored(entries)]
+    file_paths = [
+        Path(line.decode("utf-8")).absolute()
+        for line in subprocess.check_output(
+            "git ls-files --recurse-submodules", shell=True
+        ).splitlines()
+    ]
     if slug is None:
         app_folder_name = config["name"].lower()
     else:
         app_folder_name = slug.split("/")[1].lower()
     app_folder_name = re.sub("[ \/]", "-", app_folder_name)
     app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
+    working_dir_path = Path(repo.working_dir).absolute()
     with tarfile.open(archive_folder + "/archive.tar.gz", "w:gz") as tar:
-        for entry in entries:
-            if Path(entry.abspath).is_file():
-                tar.add(entry.abspath, app_folder_name + "/" + entry.path)
+        for path in file_paths:
+            if path.is_file():
+                tar.add(
+                    path.absolute(),
+                    Path(app_folder_name).joinpath(path.relative_to(working_dir_path)),
+                )
     return archive_folder
 
 
@@ -244,25 +252,27 @@ def release(
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
-    archive_dir = archivate_application(repo, config, slug)
+    archive_dir = archive_application(repo, config, slug)
     release = {
         "name": release_name,
         "version": release_version,
     }
     if created_at is not None:
         release["createdAt"] = created_at
-    response = upload_archive(
-        archive_dir + "/archive.tar.gz",
-        server_address,
-        api_token,
-        appKey,
-        release,
-        config,
-        readme,
-        modal_template,
-        slug,
-        user_id,
-        subapp_path,
-    )
-    delete_directory(archive_dir)
+    try:
+        response = upload_archive(
+            archive_dir + "/archive.tar.gz",
+            server_address,
+            api_token,
+            appKey,
+            release,
+            config,
+            readme,
+            modal_template,
+            slug,
+            user_id,
+            subapp_path,
+        )
+    finally:
+        delete_directory(archive_dir)
     return response

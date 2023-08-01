@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import traceback
 import click
 import re
 import subprocess
@@ -390,35 +391,40 @@ def run(
         api_token = release_token
     console.print("Uploading archive...")
     success = True
-    response = release(
-        server_address,
-        api_token,
-        appKey,
-        repo,
-        config,
-        readme,
-        release_description,
-        release_version,
-        modal_template,
-        slug,
-        user_id,
-        sub_app_directory if sub_app_directory != None else "",
-        created_at
-    )
-    if response.status_code != 200:
-        error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
-        try:
-            error += ", " + json.dumps(response.json())
-        except:
-            pass
-        console.print(error)
-        success = False
-    elif response.json()["success"] != True:
-        console.print(
-            "[red][Error][/] Error releasing the application. Please contact Supervisely team"
-            + json.dumps(response.json())
+    try:
+        response = release(
+            server_address,
+            api_token,
+            appKey,
+            repo,
+            config,
+            readme,
+            release_description,
+            release_version,
+            modal_template,
+            slug,
+            user_id,
+            sub_app_directory if sub_app_directory != None else "",
+            created_at
         )
+        if response.status_code != 200:
+            error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
+            try:
+                error += ", " + json.dumps(response.json())
+            except:
+                pass
+            console.print(error)
+            success = False
+        elif response.json()["success"] != True:
+            console.print(
+                "[red][Error][/] Error releasing the application. Please contact Supervisely team"
+                + json.dumps(response.json())
+            )
+            success = False
+    except Exception:
+        message = None
         success = False
+        console.print(f"[red][Error][/] Error releasing the application.\n{traceback.format_exc()}\n")
 
     # delete tag in case of release failure
     try:
