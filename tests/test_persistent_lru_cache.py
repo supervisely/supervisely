@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import shutil
 from functools import wraps
@@ -87,8 +88,30 @@ def test_pop():
     assert not (tmp / "3.png").exists()
 
 
+@clear_callback
+def test_clear_all():
+    tmp = create_tmp()
+    cache = PersistentImageLRUCache(3, tmp)
+
+    img1, img2, img3 = create_img(), create_img(), create_img()
+    cache[1] = img1
+    cache[2] = img2
+    cache[3] = img3
+
+    cache.clear(rm_base_folder=False)
+    assert os.listdir(cache._base_dir) == []
+
+    cache[1] = img1
+    cache.clear(rm_base_folder=True)
+    assert not tmp.exists()
+
+    cache[1] = img1
+    assert (tmp / "1.png").exists()
+
+
 if __name__ == "__main__":
     test_save()
     test_order()
     test_pop()
+    test_clear_all()
     print("All test are passed")
