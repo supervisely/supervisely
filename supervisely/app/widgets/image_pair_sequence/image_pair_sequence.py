@@ -185,7 +185,7 @@ class ImagePairSequence(Widget):
 
     def _dump_image_to_offline_sessions_file(self, paths: List[str]):
         if sly.is_production():
-            remote_dir = get_offline_session_files_path(40188)
+            remote_dir = get_offline_session_files_path(self._api.task_id)
             remote_dir = remote_dir.joinpath("sly", "css", "app", "widgets", "image_pair_sequence")
             dst_paths = [remote_dir.joinpath(Path(path).name).as_posix() for path in paths]
             local_paths = [self._download_image(path) for path in paths]
