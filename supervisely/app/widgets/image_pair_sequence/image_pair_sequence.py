@@ -198,8 +198,9 @@ class ImagePairSequence(Widget):
 
     def _download_image(self, path: str):
         if path.lstrip("/").startswith("static/"):
+            path = path.lstrip("/")[len("static/") :]
             app = sly.Application()
-            save_path = os.path.join(app.get_static_dir(), path.lstrip("/")[len("static/") :])
+            save_path = os.path.join(app.get_static_dir(), path)
             if not os.path.exists(save_path):
                 raise FileNotFoundError(f"File {save_path} not found")
         else:
