@@ -175,7 +175,7 @@ def upload_archive(
     return response
 
 
-def archivate_application(repo: git.Repo, config, slug):
+def archive_application(repo: git.Repo, config, slug):
     archive_folder = "".join(random.choice(string.ascii_letters) for _ in range(5))
     os.mkdir(archive_folder)
     file_paths = [
@@ -252,7 +252,7 @@ def release(
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
-    archive_dir = archivate_application(repo, config, slug)
+    archive_dir = archive_application(repo, config, slug)
     release = {
         "name": release_name,
         "version": release_version,
