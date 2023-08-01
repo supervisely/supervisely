@@ -182,7 +182,7 @@ class ImagePairSequence(Widget):
                 "css",
                 "app",
                 "widgets",
-                "image_pairs_sequence",
+                "image_pair_sequence",
             )
             dst_paths = [remote_dir.joinpath(Path(url).name).as_posix() for url in urls]
             local_paths = [self._download_image(url) for url in urls]
