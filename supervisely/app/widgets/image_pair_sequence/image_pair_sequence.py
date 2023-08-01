@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
+from urllib3.util import parse_url
 from typing import List, Optional, Tuple
 
 import supervisely as sly
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Button, FolderThumbnail, GridGallery, Slider, Widget
+from supervisely.app.fastapi.offline import get_offline_session_files_path
 
 
 class ImagePairSequence(Widget):
@@ -16,6 +18,8 @@ class ImagePairSequence(Widget):
         slider_title: Optional[str] = "pairs",
         widget_id=None,
     ):
+        """NOTE: The `path` argument can be either the path from the local `static_dir` or the URL to the image."""
+
         self._api = sly.Api.from_env()
         self._team_id = sly.env.team_id()
 
@@ -95,29 +99,29 @@ class ImagePairSequence(Widget):
             "sliderTitle": f" {self._slider_title}",
         }
 
-    def append_left(self, url: str, ann: sly.Annotation = None, title: str = None):
-        self._add_with_check("left", [[url, ann, title]])
+    def append_left(self, path: str, ann: sly.Annotation = None, title: str = None):
+        self._add_with_check("left", [[path, ann, title]])
         self._update_data()
 
-    def append_right(self, url: str, ann: sly.Annotation = None, title: str = None):
-        self._add_with_check("right", [[url, ann, title]])
+    def append_right(self, path: str, ann: sly.Annotation = None, title: str = None):
+        self._add_with_check("right", [[path, ann, title]])
         self._update_data()
 
     def extend_left(
-        self, urls: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
+        self, paths: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
     ):
-        anns = [None] * len(urls) if anns is None else anns
-        titles = [None] * len(urls) if titles is None else titles
-        data = list(zip(urls, anns, titles))
+        anns = [None] * len(paths) if anns is None else anns
+        titles = [None] * len(paths) if titles is None else titles
+        data = list(zip(paths, anns, titles))
         self._add_with_check("left", data)
         self._update_data()
 
     def extend_right(
-        self, urls: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
+        self, paths: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
     ):
-        anns = [None] * len(urls) if anns is None else anns
-        titles = [None] * len(urls) if titles is None else titles
-        data = list(zip(urls, anns, titles))
+        anns = [None] * len(paths) if anns is None else anns
+        titles = [None] * len(paths) if titles is None else titles
+        data = list(zip(paths, anns, titles))
         self._add_with_check("right", data)
         self._update_data()
 
@@ -148,7 +152,16 @@ class ImagePairSequence(Widget):
         StateJson()[self.widget_id]["currentGrid"] = 0
         StateJson().send_changes()
 
+    def _check_paths(self, paths):
+        for path in paths:
+            parsed_path = parse_url(path)
+            if parsed_path.scheme is not None and parsed_path.scheme not in ('http', 'https'):
+                raise ValueError(f"Invalid path or url to image: {path}")
+
     def _add_with_check(self, side, data):
+        paths = [x[0] for x in data]
+        self._check_paths(paths)
+
         ann_jsons = [x[1].to_json() if x[1] is not None else None for x in data]
         total_grids = max(len(self._left_data), len(self._right_data), 1)
         if self._total_grids != total_grids:
@@ -168,24 +181,15 @@ class ImagePairSequence(Widget):
         if has_empty_before and not has_empty_after:
             self._need_update = True
 
-        self._dump_image_to_offline_sessions_file([x[0] for x in data])
+        self._dump_image_to_offline_sessions_file(paths)
 
-    def _dump_image_to_offline_sessions_file(self, urls: List[str]):
+    def _dump_image_to_offline_sessions_file(self, paths: List[str]):
         if sly.is_production():
-            task_id = self._api.task_id
-            remote_dir = Path(
-                "/",
-                "offline-sessions",
-                str(task_id),
-                "app-template",
-                "sly",
-                "css",
-                "app",
-                "widgets",
-                "image_pair_sequence",
-            )
-            dst_paths = [remote_dir.joinpath(Path(url).name).as_posix() for url in urls]
-            local_paths = [self._download_image(url) for url in urls]
+            remote_dir = get_offline_session_files_path(40188)
+            print(f"file_path: {self._file_path}")
+            remote_dir = remote_dir.joinpath("sly", "css", "app", "widgets", "image_pair_sequence")
+            dst_paths = [remote_dir.joinpath(Path(path).name).as_posix() for path in paths]
+            local_paths = [self._download_image(path) for path in paths]
 
             self._api.file.upload_bulk(
                 team_id=self._team_id,
@@ -193,16 +197,16 @@ class ImagePairSequence(Widget):
                 dst_paths=dst_paths,
             )
 
-    def _download_image(self, url: str):
-        if url.lstrip("/").startswith("static"):
+    def _download_image(self, path: str):
+        if path.lstrip("/").startswith("static/"):
             app = sly.Application()
-            static_dir = Path(app.get_static_dir())
-            filepath = url.lstrip("/")[len("static/") :]
-            path = static_dir.joinpath(filepath).as_posix()
+            save_path = os.path.join(app.get_static_dir(), path.lstrip("/")[len("static/") :])
+            if not os.path.exists(save_path):
+                raise FileNotFoundError(f"File {save_path} not found")
         else:
-            path = os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(url))
-            sly.fs.download(url, path)
-        return path
+            save_path = os.path.join(sly.app.get_data_dir(), sly.fs.get_file_name_with_ext(path))
+            sly.fs.download(path, save_path)
+        return save_path
 
     def _update_data(self):
         self._total_grids = max(len(self._left_data), len(self._right_data), 1)
