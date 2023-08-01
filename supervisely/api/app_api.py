@@ -486,6 +486,16 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
+    def get_list_ecosystem_modules(self):
+        modules = self.get_list_all_pages(
+            method="ecosystem.list",
+            data={},
+            convert_json_info_cb=lambda x: x,
+        )
+        if len(modules) == 0:
+            raise KeyError("No modules found in ecosystem")
+        return modules
+
     # def get_sessions(self, workspace_id: int, filter_statuses: List[TaskApi.Status] = None):
     #     filters = [{"field": "type", "operator": "=", "value": "app"}]
     #     # filters = []
