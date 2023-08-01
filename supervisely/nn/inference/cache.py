@@ -1,15 +1,14 @@
 import os
 import shutil
-from typing import Any, Dict, Optional, Type, Hashable
-from cachetools import LRUCache, cached, Cache
-from shelved_cache import PersistentCache
+from collections import OrderedDict
+from functools import wraps
+from typing import Any, Dict, List, Optional, Type, Union
+from cachetools import LRUCache, Cache
 from threading import Lock
+from fastapi import Request
 
 import supervisely as sly
 from pathlib import Path
-
-
-default_lru_params = {"maxsize": 128}
 
 
 class PersistentImageLRUCache(LRUCache):
@@ -53,3 +52,103 @@ class PersistentImageLRUCache(LRUCache):
             self.popitem()
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
+
+
+def cache_pop_notifier(storage: list):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            value = func(*args, **kwargs)
+            if "key" in kwargs:
+                key = kwargs["key"]
+            else:
+                key = args[0]
+            storage.append(key)
+            return value
+
+        return wrapper
+
+    return decorator
+
+
+class InferenceVideoCache:
+    def __init__(
+        self,
+        app: sly.Application,
+        maxsize_frames: int,
+        is_persistant: bool = True,
+        base_folder_in_app_data: str = "inference_cache",
+        max_number_of_videos: Optional[int] = None,
+    ) -> None:
+        self._app = app
+        self._is_persistant = is_persistant
+        self._maxsize = maxsize_frames
+        self._max_videos = max_number_of_videos
+        self._cache = OrderedDict()
+
+        if is_persistant:
+            self._base_cls = PersistentImageLRUCache
+            self._data_dir = Path(sly.app.get_data_dir()) / base_folder_in_app_data
+            self._data_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self._base_cls = LRUCache
+
+    def get_or_create_cache_for_video(self, video_id: int) -> Type[Cache]:
+        if video_id not in self._cache:
+            self._check_max_num_videos_limits()
+            if self._is_persistent:
+                path = self._data_dir / str(video_id)
+                cache_params = {"maxsize": self._maxsize, "filepath": path}
+            else:
+                cache_params = {"maxsize": self._maxsize}
+            self._cache[video_id] = self._base_cls(**cache_params)
+
+        return self._cache[video_id]
+
+    def add_frames_to_cache(
+        self,
+        api: sly.Api,
+        video_id: int,
+        frame_index: Union[List[int], int],
+    ):
+        cache = self.get_or_create_cache_for_video(video_id)
+        self.__update(video_id)
+
+        if isinstance(frame_index, int):
+            frame_index = [frame_index]
+
+        for fi in frame_index:
+            self._add_to_cache(api, video_id, fi, cache)
+
+    def clear_cache(self, video_id: int, rm_video_folder: bool = True):
+        cache = self.get_or_create_cache_for_video(video_id)
+        if isinstance(cache, PersistentImageLRUCache):
+            cache.clear(rm_base_folder=rm_video_folder)
+        else:
+            cache.clear()
+        del self._cache[video_id]
+
+    def add_cache_endpoint(self):
+        server = self.app.get_server()
+
+        @server.post("/cache_enpoint")
+        def cache_endpoint(request: Request):
+            # some cache stuff
+            api: sly.Api = request.state.api
+            state: dict = request.state.state
+            api.logger.debug("Request state in cache endpoint", extra=state)
+
+    def _add_to_cache(self, api: sly.Api, video_id: int, frame_index: int, cache: Type[Cache]):
+        frame = api.video.frame.download_np(video_id, frame_index)
+        cache[frame_index] = frame
+
+    def _check_max_num_videos_limits(self):
+        if self._max_videos is None:
+            return
+        else:
+            if len(self._cache) + 1 > self._max_videos:
+                video_id = next(iter(self._cache))
+                self.clear_cache(video_id, rm_video_folder=True)
+
+    def __update(self, video_id: int):
+        self._cache.move_to_end(video_id)
