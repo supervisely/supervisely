@@ -95,15 +95,15 @@ class ImagePairsSequence(Widget):
             "sliderTitle": f" {self._slider_title}",
         }
 
-    def set_left(self, url: str, ann: sly.Annotation = None, title: str = None):
+    def append_left(self, url: str, ann: sly.Annotation = None, title: str = None):
         self._add_with_check("left", [[url, ann, title]])
         self._update_data()
 
-    def set_right(self, url: str, ann: sly.Annotation = None, title: str = None):
+    def append_right(self, url: str, ann: sly.Annotation = None, title: str = None):
         self._add_with_check("right", [[url, ann, title]])
         self._update_data()
 
-    def set_left_batch(
+    def extend_left(
         self, urls: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
     ):
         anns = [None] * len(urls) if anns is None else anns
@@ -112,7 +112,7 @@ class ImagePairsSequence(Widget):
         self._add_with_check("left", data)
         self._update_data()
 
-    def set_right_batch(
+    def extend_right(
         self, urls: List[str], anns: List[sly.Annotation] = None, titles: List[str] = None
     ):
         anns = [None] * len(urls) if anns is None else anns
@@ -121,7 +121,7 @@ class ImagePairsSequence(Widget):
         self._add_with_check("right", data)
         self._update_data()
 
-    def set_pair(
+    def append_pair(
         self,
         left: Tuple[str, Optional[sly.Annotation], Optional[str]],
         right: Tuple[str, Optional[sly.Annotation], Optional[str]],
@@ -130,7 +130,7 @@ class ImagePairsSequence(Widget):
         self._add_with_check("right", [right])
         self._update_data()
 
-    def set_pairs_batch(self, left: List[Tuple], right: List[Tuple]):
+    def extend_pairs(self, left: List[Tuple], right: List[Tuple]):
         self._add_with_check("left", left)
         self._add_with_check("right", right)
         self._update_data()
