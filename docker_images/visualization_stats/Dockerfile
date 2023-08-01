@@ -7,4 +7,3 @@ RUN pip install open3d==0.15.2 pycocotools==2.0.6 diskcache==5.2.1 seaborn==0.11
 
 # Supervisely
 RUN pip install --upgrade supervisely==$tag_ref_name
-RUN pip install --upgrade supervisely[apps]==$tag_ref_name

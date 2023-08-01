@@ -10,4 +10,3 @@ RUN pip install imutils==0.5.4 loguru==0.7.0
 
 # Supervisely 
 RUN pip install --upgrade supervisely==$tag_ref_name
-RUN pip install --upgrade supervisely[apps]==$tag_ref_name
