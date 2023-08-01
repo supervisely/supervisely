@@ -190,13 +190,11 @@ class ImagePairSequence(Widget):
             dst_paths = [remote_dir.joinpath(Path(path).name).as_posix() for path in paths]
             local_paths = [self._download_image(path) for path in paths]
 
-            fileinfos = self._api.file.upload_bulk(
+            self._api.file.upload_bulk(
                 team_id=self._team_id,
                 src_paths=local_paths,
                 dst_paths=dst_paths,
             )
-            for fileinfo in fileinfos:
-                print(f"File {fileinfo.name} was uploaded to {fileinfo.path}")
 
     def _download_image(self, path: str):
         if path.lstrip("/").startswith("static/"):
