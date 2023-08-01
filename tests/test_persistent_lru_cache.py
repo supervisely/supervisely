@@ -67,7 +67,28 @@ def test_order():
     assert not (tmp / "2.png").exists()
 
 
+@clear_callback
+def test_pop():
+    tmp = create_tmp()
+    cache = PersistentImageLRUCache(2, tmp)
+
+    img1, img2, img3 = create_img(), create_img(), create_img()
+    cache[1] = img1
+    cache[2] = img2
+    cache[1]
+    cache[3] = img3
+    cache[1]
+
+    k, v = cache.popitem()
+    assert k == 3
+    assert compare(v, img3)
+    assert 3 not in cache
+    assert 1 in cache
+    assert not (tmp / "3.png").exists()
+
+
 if __name__ == "__main__":
     test_save()
     test_order()
+    test_pop()
     print("All test are passed")
