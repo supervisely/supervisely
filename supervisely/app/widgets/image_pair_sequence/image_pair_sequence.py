@@ -155,7 +155,7 @@ class ImagePairSequence(Widget):
     def _check_paths(self, paths):
         for path in paths:
             parsed_path = parse_url(path)
-            if parsed_path.scheme is not None and parsed_path.scheme not in ('http', 'https'):
+            if parsed_path.scheme not in (None, 'http', 'https'):
                 raise ValueError(f"Invalid path or url to image: {path}")
 
     def _add_with_check(self, side, data):
