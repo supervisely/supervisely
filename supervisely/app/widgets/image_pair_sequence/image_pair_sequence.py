@@ -7,7 +7,7 @@ from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Button, FolderThumbnail, GridGallery, Slider, Widget
 
 
-class ImagePairsSequence(Widget):
+class ImagePairSequence(Widget):
     def __init__(
         self,
         opacity: Optional[float] = 0.4,
