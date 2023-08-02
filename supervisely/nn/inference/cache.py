@@ -150,9 +150,9 @@ class InferenceVideoCache:
     def add_cache_endpoint(self):
         server = self._app.get_server()
 
+        # TODO: change endpoint name
         @server.post("/cache_enpoint")
         def cache_endpoint(request: Request):
-            # some cache stuff
             api: sly.Api = request.state.api
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
