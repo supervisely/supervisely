@@ -62,6 +62,7 @@ INSTALL_REQUIRES = [
     "imutils==0.5.4",
     "aiocache==0.12.0",
     "urllib3==1.26.15",
+    "cachetools==5.3.1",
 ]
 
 ALT_INSTALL_REQUIRES = {
