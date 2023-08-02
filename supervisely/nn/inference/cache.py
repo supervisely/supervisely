@@ -1,5 +1,6 @@
 import os
 import shutil
+import numpy as np
 from collections import OrderedDict
 from functools import wraps
 from typing import Any, Dict, List, Optional, Type, Union
@@ -113,12 +114,7 @@ class InferenceVideoCache:
     ):
         cache = self.get_or_create_cache_for_video(video_id)
         self.__update(video_id)
-
-        if isinstance(frame_index, int):
-            frame_index = [frame_index]
-
-        for fi in frame_index:
-            self._add_to_cache(api, video_id, fi, cache)
+        self._add_to_cache(api, video_id, frame_index, cache)
 
     def clear_cache(self, video_id: int, rm_video_folder: bool = True):
         cache = self.get_or_create_cache_for_video(video_id)
@@ -128,8 +124,31 @@ class InferenceVideoCache:
             cache.clear()
         del self._cache[video_id]
 
+    def download_np(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
+        self.__update(video_id)
+        cache = self.get_or_create_cache_for_video(video_id)
+        if frame_index not in cache:
+            self._add_to_cache(api, video_id, frame_index, cache)
+        return cache[frame_index]
+
+    def download_nps(
+        self, api: sly.Api, video_id: int, frame_indexes: List[int]
+    ) -> List[np.ndarray]:
+        self.__update(video_id)
+        cache = self.get_or_create_cache_for_video(video_id)
+        indexes_to_load = []
+
+        for fi in frame_indexes:
+            if fi not in cache:
+                indexes_to_load.append(fi)
+
+        if len(indexes_to_load) > 0:
+            self._add_to_cache(api, video_id, indexes_to_load, cache)
+
+        return [cache[fi] for fi in frame_indexes]
+
     def add_cache_endpoint(self):
-        server = self.app.get_server()
+        server = self._app.get_server()
 
         @server.post("/cache_enpoint")
         def cache_endpoint(request: Request):
@@ -138,9 +157,15 @@ class InferenceVideoCache:
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
 
-    def _add_to_cache(self, api: sly.Api, video_id: int, frame_index: int, cache: Type[Cache]):
-        frame = api.video.frame.download_np(video_id, frame_index)
-        cache[frame_index] = frame
+    def _add_to_cache(
+        self, api: sly.Api, video_id: int, frame_index: Union[int, List[int]], cache: Type[Cache]
+    ):
+        if isinstance(frame_index, int):
+            frame_index = [frame_index]
+
+        frames = api.video.frame.download_nps(video_id, frame_index)
+        for fi, frame in zip(frame_index, frames):
+            cache[fi] = frame
 
     def _check_max_num_videos_limits(self):
         if self._max_videos is None:
