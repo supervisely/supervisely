@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 from collections import OrderedDict
 from functools import wraps
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from cachetools import LRUCache, Cache
 from threading import Lock
 from fastapi import Request
@@ -156,6 +156,13 @@ class InferenceVideoCache:
             api: sly.Api = request.state.api
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
+            video_id, frame_ranges = self._parse_state(state)
+            for frange in frame_ranges:
+                self.add_frames_to_cache(api, video_id, frange)
+
+    def _parse_state(self, state: dict) -> Tuple[int, List[List[int]]]:
+        """Get `video_id` and `frames_range` from state"""
+        return 1, [[0, 1, 2, 3], [10, 11]]
 
     def _add_to_cache(
         self, api: sly.Api, video_id: int, frame_index: Union[int, List[int]], cache: Type[Cache]
