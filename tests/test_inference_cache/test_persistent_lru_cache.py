@@ -1,7 +1,6 @@
 import os
 import numpy as np
-import shutil
-from functools import wraps
+import pytest
 from pathlib import Path
 
 from supervisely.nn.inference.cache import PersistentImageLRUCache
@@ -11,49 +10,21 @@ def create_img():
     return np.random.randint(0, 255, size=(320, 640, 3))
 
 
-def clear(tmp):
-    shutil.rmtree(tmp)
-
-
-def clear_callback(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        tmp = create_tmp()
-        try:
-            func(*args, **kwargs)
-        except Exception as e:
-            raise e
-        finally:
-            clear(tmp)
-
-    return wrapper
-
-
-def create_tmp() -> Path:
-    tmp = Path("./tmp").absolute()
-    tmp.mkdir(exist_ok=True)
-    return tmp
-
-
 def compare(img1: np.ndarray, img2: np.ndarray):
     return np.allclose(img1, img2, rtol=1e-16)
 
 
-@clear_callback
-def test_save():
-    tmp = create_tmp()
-    cache = PersistentImageLRUCache(1, tmp)
+def test_save(tmp_path: Path):
+    cache = PersistentImageLRUCache(1, tmp_path)
     img1 = create_img()
     cache[1] = img1
 
-    assert (tmp / "1.png").exists()
+    assert (tmp_path / "1.png").exists()
     assert compare(cache[1], img1)
 
 
-@clear_callback
-def test_order():
-    tmp = create_tmp()
-    cache = PersistentImageLRUCache(2, tmp)
+def test_order(tmp_path: Path):
+    cache = PersistentImageLRUCache(2, tmp_path)
 
     img1, img2, img3 = create_img(), create_img(), create_img()
     cache[1] = img1
@@ -65,13 +36,11 @@ def test_order():
     assert 2 not in cache
     assert 1 in cache
     assert 3 in cache
-    assert not (tmp / "2.png").exists()
+    assert not (tmp_path / "2.png").exists()
 
 
-@clear_callback
-def test_pop():
-    tmp = create_tmp()
-    cache = PersistentImageLRUCache(2, tmp)
+def test_pop(tmp_path: Path):
+    cache = PersistentImageLRUCache(2, tmp_path)
 
     img1, img2, img3 = create_img(), create_img(), create_img()
     cache[1] = img1
@@ -85,13 +54,11 @@ def test_pop():
     assert compare(v, img3)
     assert 3 not in cache
     assert 1 in cache
-    assert not (tmp / "3.png").exists()
+    assert not (tmp_path / "3.png").exists()
 
 
-@clear_callback
-def test_clear_all():
-    tmp = create_tmp()
-    cache = PersistentImageLRUCache(3, tmp)
+def test_clear_all(tmp_path: Path):
+    cache = PersistentImageLRUCache(3, tmp_path)
 
     img1, img2, img3 = create_img(), create_img(), create_img()
     cache[1] = img1
@@ -103,15 +70,7 @@ def test_clear_all():
 
     cache[1] = img1
     cache.clear(rm_base_folder=True)
-    assert not tmp.exists()
+    assert not tmp_path.exists()
 
     cache[1] = img1
-    assert (tmp / "1.png").exists()
-
-
-if __name__ == "__main__":
-    test_save()
-    test_order()
-    test_pop()
-    test_clear_all()
-    print("All test are passed")
+    assert (tmp_path / "1.png").exists()
