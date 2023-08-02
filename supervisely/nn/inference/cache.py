@@ -2,8 +2,7 @@ import os
 import shutil
 import numpy as np
 from collections import OrderedDict
-from functools import wraps
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 from cachetools import LRUCache, Cache
 from threading import Lock
 from fastapi import Request
@@ -55,23 +54,7 @@ class PersistentImageLRUCache(LRUCache):
             shutil.rmtree(self._base_dir)
 
 
-def cache_pop_notifier(storage: list):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            value = func(*args, **kwargs)
-            if "key" in kwargs:
-                key = kwargs["key"]
-            else:
-                key = args[0]
-            storage.append(key)
-            return value
-
-        return wrapper
-
-    return decorator
-
-
+# TODO: Add lock on cache changes
 class InferenceVideoCache:
     def __init__(
         self,
@@ -132,7 +115,10 @@ class InferenceVideoCache:
         return cache[frame_index]
 
     def download_nps(
-        self, api: sly.Api, video_id: int, frame_indexes: List[int]
+        self,
+        api: sly.Api,
+        video_id: int,
+        frame_indexes: List[int],
     ) -> List[np.ndarray]:
         self.__update(video_id)
         cache = self.get_or_create_cache_for_video(video_id)
