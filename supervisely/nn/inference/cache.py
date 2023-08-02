@@ -151,7 +151,11 @@ class InferenceVideoCache:
         return 1, [[0, 1, 2, 3], [10, 11]]
 
     def _add_to_cache(
-        self, api: sly.Api, video_id: int, frame_index: Union[int, List[int]], cache: Type[Cache]
+        self,
+        api: sly.Api,
+        video_id: int,
+        frame_index: Union[int, List[int]],
+        cache: Type[Cache],
     ):
         if isinstance(frame_index, int):
             frame_index = [frame_index]
