@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 from collections import OrderedDict
 from typing import Any, List, Optional, Tuple, Type, Union
-from cachetools import LRUCache, Cache
+from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request
 
@@ -14,10 +14,9 @@ from pathlib import Path
 class PersistentImageLRUCache(LRUCache):
     __marker = object()
 
-    def __init__(self, maxsize, filepath: Path, exist_ok: bool = False, getsizeof=None):
+    def __init__(self, maxsize, filepath: Path, getsizeof=None):
         super().__init__(maxsize)
         self._base_dir = filepath
-        self._exist_ok = exist_ok
 
     def __getitem__(self, key: Any) -> Any:
         filepath = super(PersistentImageLRUCache, self).__getitem__(key)
@@ -36,7 +35,7 @@ class PersistentImageLRUCache(LRUCache):
 
     def pop(self, key, default=__marker):
         if key in self:
-            filepath = super(PersistentImageLRUCache, self).__getitem__(key)
+            filepath = self._base_dir / f"{str(key)}.png"
             value = self[key]
             del self[key]
             os.remove(filepath)
@@ -54,23 +53,75 @@ class PersistentImageLRUCache(LRUCache):
             shutil.rmtree(self._base_dir)
 
 
+class PersistentImageTTLCache(TTLCache):
+    def __init__(self, maxsize: int, ttl: int, filepath: Path):
+        super().__init__(maxsize, ttl)
+        # TTLCache.__init__(self, maxsize, ttl)
+        self._base_dir = filepath
+
+    def __getitem__(self, key: Any) -> np.ndarray:
+        filepath = super(PersistentImageTTLCache, self).__getitem__(key)
+        return sly.image.read(str(filepath))
+
+    def __setitem__(self, key: Any, value: np.ndarray) -> None:
+        if not self._base_dir.exists():
+            self._base_dir.mkdir()
+
+        filepath = self._base_dir / f"{str(key)}.png"
+        super(PersistentImageTTLCache, self).__setitem__(key, filepath)
+
+        if filepath.exists():
+            sly.logger.debug(f"Rewrite image {str(filepath)}")
+        sly.image.write(str(filepath), value)
+
+    def __delitem__(self, key: Any) -> None:
+        cache_delitem = PersistentImageTTLCache.__delitem
+        return super().__delitem__(key, cache_delitem=cache_delitem)
+
+    def __delitem(self, key: Any):
+        Cache.__delitem__(self, key)
+        filepath = self._base_dir / f"{str(key)}.png"
+        os.remove(filepath)
+
+    def expire(self, time=None):
+        """Remove expired items from the cache."""
+        if time is None:
+            time = self.timer()
+        root = self._TTLCache__root
+        curr = root.next
+        links = self._TTLCache__links
+        cache_delitem = self.__delitem
+        while curr is not root and not (time < curr.expires):
+            cache_delitem(self, curr.key)
+            del links[curr.key]
+            next = curr.next
+            curr.unlink()
+            curr = next
+
+    def clear(self, rm_base_folder=True) -> None:
+        while self.currsize > 0:
+            self.popitem()
+        if rm_base_folder:
+            shutil.rmtree(self._base_dir)
+
+
 # TODO: Add lock on cache changes
 class InferenceVideoCache:
     def __init__(
         self,
         app: sly.Application,
         maxsize_frames: int,
-        is_persistant: bool = True,
-        base_folder_in_app_data: str = "inference_cache",
+        is_persistent: bool = True,
+        base_folder_in_app_data: str = "smart_tool_cache",
         max_number_of_videos: Optional[int] = None,
     ) -> None:
         self._app = app
-        self._is_persistant = is_persistant
+        self._is_persistent = is_persistent
         self._maxsize = maxsize_frames
         self._max_videos = max_number_of_videos
         self._cache = OrderedDict()
 
-        if is_persistant:
+        if is_persistent:
             self._base_cls = PersistentImageLRUCache
             self._data_dir = Path(sly.app.get_data_dir()) / base_folder_in_app_data
             self._data_dir.mkdir(parents=True, exist_ok=True)
