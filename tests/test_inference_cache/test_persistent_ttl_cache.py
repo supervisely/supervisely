@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pytest
+import time
 from pathlib import Path
 
 from supervisely.nn.inference.cache import PersistentImageTTLCache
@@ -52,7 +53,7 @@ def test_pop(tmp_path: Path):
 
 
 def test_clear_all(tmp_path: Path):
-    cache = PersistentImageTTLCache(3, 1000, tmp_path)
+    cache = PersistentImageTTLCache(3, 10, tmp_path)
 
     img1, img2, img3 = create_img(), create_img(), create_img()
     cache[1] = img1
@@ -68,3 +69,19 @@ def test_clear_all(tmp_path: Path):
 
     cache[1] = img1
     assert (tmp_path / "1.png").exists()
+
+
+def test_ttl_limit(tmp_path: Path):
+    cache = PersistentImageTTLCache(3, 1, tmp_path)
+
+    img1, img2 = create_img(), create_img()
+    cache[1] = img1
+    time.sleep(2)
+
+    cache[2] = img2
+
+    assert not (tmp_path / "1.png").exists()
+    assert (tmp_path / "2.png").exists()
+
+    with pytest.raises(KeyError):
+        cache[1]
