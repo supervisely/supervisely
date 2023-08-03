@@ -8,6 +8,7 @@ from fastapi import Request
 from enum import Enum
 
 import supervisely as sly
+from supervisely.io.fs import silent_remove
 from pathlib import Path
 
 
@@ -38,7 +39,7 @@ class PersistentImageLRUCache(LRUCache):
             filepath = self._base_dir / f"{str(key)}.png"
             value = self[key]
             del self[key]
-            os.remove(filepath)
+            silent_remove(filepath)
             sly.logger.debug(f"Remove {filepath} frame")
         elif default is self.__marker:
             raise KeyError(key)
@@ -81,7 +82,7 @@ class PersistentImageTTLCache(TTLCache):
     def __delitem(self, key: Any):
         Cache.__delitem__(self, key)
         filepath = self._base_dir / f"{str(key)}.png"
-        os.remove(filepath)
+        silent_remove(filepath)
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
@@ -146,9 +147,12 @@ class SmartSegCache:
         # TODO: bulk load with dataset_id
         return [self.download_image(api, imid) for imid in image_ids]
 
-    def download_image_by_hash(self, api: sly.Api, hashes: List[Any]):
-        raise NotImplementedError()
-        # api.image.download_paths_by_hashes()
+    def download_image_by_hash(self, api: sly.Api, img_hash: Any):
+        true_name = self._image_name(img_hash)
+        path = self._data_dir / f"tmp_{true_name}.png"
+        api.image.download_paths_by_hashes([img_hash], [path])
+        self._cache[true_name] = sly.image.read(path)
+        silent_remove(path)
 
     # def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
     #     images_to_load = []
@@ -207,7 +211,8 @@ class SmartSegCache:
             if task_type is SmartSegCache._ImageLoadType.ImageId:
                 self.download_images(api, image_ids)
             elif task_type is SmartSegCache._ImageLoadType.ImageHash:
-                self.download_image_by_hash(api, image_ids)
+                # TODO: add hashes load if needed
+                self.download_image_by_hash(api, image_ids[0])
             elif task_type is SmartSegCache._ImageLoadType.Frame:
                 video_id = state["video_id"]
                 self.download_frames(api, video_id, image_ids)
