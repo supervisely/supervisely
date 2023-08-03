@@ -90,7 +90,7 @@ class PersistentImageTTLCache(TTLCache):
         root = self._TTLCache__root
         curr = root.next
         links = self._TTLCache__links
-        cache_delitem = self.__delitem
+        cache_delitem = PersistentImageTTLCache.__delitem
         while curr is not root and not (time < curr.expires):
             cache_delitem(self, curr.key)
             del links[curr.key]
