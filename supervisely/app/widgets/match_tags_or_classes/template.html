@@ -2,13 +2,12 @@
   <sly-el-table-selection-container
     :data="data.{{{widget.widget_id}}}.table"
     :selected="state.{{{widget.widget_id}}}.selected"
-    identity-field="title"
+    :identity="(row) => state.{{{widget.widget_id}}}.selected.find(s => s[0] === row.name1 && s[1] === row.name2)"
   >
     <el-table
       ref="sly-el-table-with-selection"
       class="ultra-table"
       :data="data.{{{widget.widget_id}}}.table"
-      ref="Table"
       @selection-change="
                 (val) => {
                     state.{{{widget.widget_id}}}.selected = val.map(x => [x.name1, x.name2]);
