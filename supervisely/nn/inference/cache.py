@@ -1,11 +1,11 @@
 import os
 import shutil
 import numpy as np
-from collections import OrderedDict
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import Any, List, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request
+from enum import Enum
 
 import supervisely as sly
 from pathlib import Path
@@ -106,83 +106,92 @@ class PersistentImageTTLCache(TTLCache):
 
 
 # TODO: Add lock on cache changes
-class InferenceVideoCache:
+class SmartSegCache:
+    class _ImageLoadType(Enum):
+        ImageId: str = "IMAGE"
+        ImageHash: str = "HASH"
+        Frame: str = "FRAME"
+
     def __init__(
         self,
         app: sly.Application,
-        maxsize_frames: int,
+        maxsize: int,
+        ttl: int,
         is_persistent: bool = True,
-        base_folder_in_app_data: str = "smart_tool_cache",
-        max_number_of_videos: Optional[int] = None,
+        base_folder: str = "/tmp/smart_tool_cache",
     ) -> None:
         self._app = app
         self._is_persistent = is_persistent
-        self._maxsize = maxsize_frames
-        self._max_videos = max_number_of_videos
-        self._cache = OrderedDict()
+        self._maxsize = maxsize
+        self._ttl = ttl
 
         if is_persistent:
-            self._base_cls = PersistentImageLRUCache
-            self._data_dir = Path(sly.app.get_data_dir()) / base_folder_in_app_data
+            self._data_dir = Path(base_folder)
             self._data_dir.mkdir(parents=True, exist_ok=True)
+            self._cache = PersistentImageTTLCache(maxsize, ttl, self._data_dir)
         else:
-            self._base_cls = LRUCache
+            self._cache = TTLCache(maxsize, ttl)
 
-    def get_or_create_cache_for_video(self, video_id: int) -> Type[Cache]:
-        if video_id not in self._cache:
-            self._check_max_num_videos_limits()
-            if self._is_persistent:
-                path = self._data_dir / str(video_id)
-                cache_params = {"maxsize": self._maxsize, "filepath": path}
-            else:
-                cache_params = {"maxsize": self._maxsize}
-            self._cache[video_id] = self._base_cls(**cache_params)
+    def clear_cache(self):
+        self._cache.clear(False)
 
-        return self._cache[video_id]
+    def download_image(self, api: sly.Api, image_id: int):
+        name = f"image_{image_id}"
+        if name not in self._cache:
+            img = api.image.download_np(image_id)
+            self._add_to_cache(name, img)
+        return self._cache[name]
 
-    def add_frames_to_cache(
-        self,
-        api: sly.Api,
-        video_id: int,
-        frame_index: Union[List[int], int],
-    ):
-        cache = self.get_or_create_cache_for_video(video_id)
-        self.__update(video_id)
-        self._add_to_cache(api, video_id, frame_index, cache)
+    def download_images(self, api: sly.Api, image_ids: List[int]):
+        # TODO: bulk load with dataset_id
+        return [self.download_image(api, imid) for imid in image_ids]
 
-    def clear_cache(self, video_id: int, rm_video_folder: bool = True):
-        cache = self.get_or_create_cache_for_video(video_id)
-        if isinstance(cache, PersistentImageLRUCache):
-            cache.clear(rm_base_folder=rm_video_folder)
-        else:
-            cache.clear()
-        del self._cache[video_id]
+    def download_image_by_hash(self, api: sly.Api, hashes: List[Any]):
+        raise NotImplementedError()
+        # api.image.download_paths_by_hashes()
 
-    def download_np(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
-        self.__update(video_id)
-        cache = self.get_or_create_cache_for_video(video_id)
-        if frame_index not in cache:
-            self._add_to_cache(api, video_id, frame_index, cache)
-        return cache[frame_index]
+    # def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
+    #     images_to_load = []
+    #     names_to_load = []
 
-    def download_nps(
+    #     for img_id in image_ids:
+    #         name = self._image_name(img_id)
+    #         if name not in self._cache:
+    #             images_to_load.append(img_id)
+    #             names_to_load.append(name)
+    #         images = api.image.download_nps(dataset_id, images_to_load)
+
+    #     self._add_to_cache(names_to_load, images)
+    #     return [self._cache[self._image_name(img_id)] for img_id in image_ids]
+
+    def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
+        name = self._frame_name(video_id, frame_index)
+        if name not in self._cache:
+            frame = api.video.frame.download_np(video_id, frame_index)
+            self._add_to_cache(name, frame)
+
+        return self._cache[name]
+
+    def download_frames(
         self,
         api: sly.Api,
         video_id: int,
         frame_indexes: List[int],
     ) -> List[np.ndarray]:
-        self.__update(video_id)
-        cache = self.get_or_create_cache_for_video(video_id)
         indexes_to_load = []
+        names_to_load = []
 
         for fi in frame_indexes:
-            if fi not in cache:
+            name = self._frame_name(video_id, fi)
+            if fi not in self._cache:
+                names_to_load.append(name)
                 indexes_to_load.append(fi)
 
         if len(indexes_to_load) > 0:
-            self._add_to_cache(api, video_id, indexes_to_load, cache)
+            frames = api.video.frame.download_nps(video_id, indexes_to_load)
+            self._add_to_cache(api, names_to_load, frames)
 
-        return [cache[fi] for fi in frame_indexes]
+        return [self._cache[fi] for fi in frame_indexes]
 
     def add_cache_endpoint(self):
         server = self._app.get_server()
@@ -193,35 +202,61 @@ class InferenceVideoCache:
             api: sly.Api = request.state.api
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
-            video_id, frame_ranges = self._parse_state(state)
-            for frange in frame_ranges:
-                self.add_frames_to_cache(api, video_id, frange)
+            image_ids, task_type = self._parse_state(state)
 
-    def _parse_state(self, state: dict) -> Tuple[int, List[List[int]]]:
-        """Get `video_id` and `frames_range` from state"""
-        return 1, [[0, 1, 2, 3], [10, 11]]
+            if task_type is SmartSegCache._ImageLoadType.ImageId:
+                self.download_images(api, image_ids)
+            elif task_type is SmartSegCache._ImageLoadType.ImageHash:
+                self.download_image_by_hash(api, image_ids)
+            elif task_type is SmartSegCache._ImageLoadType.Frame:
+                video_id = state["video_id"]
+                self.download_frames(api, video_id, image_ids)
+
+    @property
+    def ttl(self):
+        return self._ttl
+
+    @property
+    def tmp_path(self):
+        if self._is_persistent:
+            return str(self._data_dir)
+        return None
+
+    def _parse_state(self, state: dict) -> Tuple[List[Any], _ImageLoadType]:
+        if "image_ids" in state:
+            return state["image_ids"], SmartSegCache._ImageLoadType.ImageId
+        elif "image_hashes" in state:
+            return state["image_hashes"], SmartSegCache._ImageLoadType.ImageHash
+        elif "video_id" in state:
+            frame_ranges = state["frame_ranges"]
+            frames = []
+            for fr_range in frame_ranges:
+                start, end = fr_range[0], fr_range[1] + 1
+                frames.extend(list(range(start, end)))
+            return frames, SmartSegCache._ImageLoadType.Frame
+        raise ValueError("State has no proper fields: image_ids, image_hashes or video_id")
 
     def _add_to_cache(
         self,
-        api: sly.Api,
-        video_id: int,
-        frame_index: Union[int, List[int]],
-        cache: Type[Cache],
+        names: Union[str, List[str]],
+        images: Union[np.ndarray, List[np.ndarray]],
     ):
-        if isinstance(frame_index, int):
-            frame_index = [frame_index]
+        if isinstance(names, str):
+            names = [names]
 
-        frames = api.video.frame.download_nps(video_id, frame_index)
-        for fi, frame in zip(frame_index, frames):
-            cache[fi] = frame
+        if isinstance(images, np.ndarray):
+            images = [images]
 
-    def _check_max_num_videos_limits(self):
-        if self._max_videos is None:
-            return
-        else:
-            if len(self._cache) + 1 > self._max_videos:
-                video_id = next(iter(self._cache))
-                self.clear_cache(video_id, rm_video_folder=True)
+        if len(images) != len(names):
+            raise ValueError(
+                f"Number of images and names do not match: {len(images)} != {len(names)}"
+            )
 
-    def __update(self, video_id: int):
-        self._cache.move_to_end(video_id)
+        for fi, img in zip(names, images):
+            self._cache[fi] = img
+
+    def _image_name(self, id_or_hash: Any) -> str:
+        return f"image_{id_or_hash}"
+
+    def _frame_name(self, video_id: int, frame_index: int) -> str:
+        return f"frame_{video_id}_{frame_index}"
