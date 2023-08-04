@@ -18,14 +18,15 @@ def tmp_path(tmp_path_factory) -> Path:
 def api_mock():
     def get_n_frames(vid, fids):
         if isinstance(fids, int):
-            fids = [fids]
+            return create_img()
         return [create_img() for _ in fids]
 
     with mock.patch("supervisely.Api"):
         api = sly.Api()
         api.video.frame.download_nps.side_effect = get_n_frames
-        api.video.frame.download_np.side_effect = lambda vid, fid: create_img()
-        api.image.download_np.side_effect = lambda imid: create_img()
+        api.video.frame.download_np.side_effect = get_n_frames
+        api.image.download_nps.side_effect = get_n_frames
+        api.image.download_np.side_effect = lambda im_id: create_img()
         yield api
 
 
