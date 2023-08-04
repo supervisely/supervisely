@@ -21,6 +21,8 @@ from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
+JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
+
 
 def get_file_name(path: str) -> str:
     """
@@ -88,12 +90,48 @@ def get_file_name_with_ext(path: str) -> str:
     return os.path.basename(path)
 
 
-def list_dir_recursively(dir: str) -> List[str]:
+def remove_junk_from_dir(dir: str) -> List[str]:
+    """
+    Cleans the given directory from junk files and dirs (e.g. .DS_Store, __MACOSX, Thumbs.db, etc.).
+
+    :param dir: Path to directory.
+    :type dir: str
+    :returns: List of global paths to removed files and dirs.
+    :rtype: List[str]
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_dir = "/home/admin/work/projects/lemons_annotated/"
+        sly.fs.remove_junk_from_dir(input_dir)
+    """
+    paths = list_dir_recursively(dir, include_subdirs=True, use_global_paths=True)
+    removed_paths = []
+    for path in paths:
+        if get_file_name(path) in JUNK_FILES:
+            if os.path.isfile(path):
+                silent_remove(path)
+                removed_paths.append(path)
+            elif os.path.isdir(path):
+                remove_dir(path)
+                removed_paths.append(path)
+
+
+def list_dir_recursively(
+    dir: str, include_subdirs: bool = False, use_global_paths: bool = False
+) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
 
     :param path: Path to directory.
     :type path: str
+    :param include_subdirs: If True, subdirectories will be included in the result list.
+    :type include_subdirs: bool
+    :param use_global_paths: If True, absolute paths will be returned instead of relative ones.
+    :type use_global_paths: bool
     :returns: List containing file paths.
     :rtype: :class:`List[str]`
     :Usage example:
@@ -111,8 +149,21 @@ def list_dir_recursively(dir: str) -> List[str]:
     for root, dirs, files in os.walk(dir):
         for name in files:
             file_path = os.path.join(root, name)
-            file_path = os.path.relpath(file_path, dir)
+            file_path = (
+                os.path.relpath(file_path, dir)
+                if not use_global_paths
+                else os.path.abspath(file_path)
+            )
             all_files.append(file_path)
+        if include_subdirs:
+            for name in dirs:
+                dir_path = os.path.join(root, name)
+                dir_path = (
+                    os.path.relpath(dir_path, dir)
+                    if not use_global_paths
+                    else os.path.abspath(dir_path)
+                )
+                all_files.append(dir_path)
     return all_files
 
 
@@ -557,6 +608,34 @@ def archive_directory(
 
     os.remove(tar_path)
     return parts_paths
+
+
+def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None:
+    """
+    Unpacks archive to the target directory, removes junk files and directories.
+
+    :param archive_path: Path to the archive.
+    :type archive_path: str
+    :param target_dir: Path to the target directory.
+    :type target_dir: str
+    :param remove_junk: Remove junk files and directories. Default is True.
+    :type remove_junk: bool
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        archive_path = '/home/admin/work/examples.tar'
+        target_dir = '/home/admin/work/projects'
+
+        sly.fs.unpack_archive(archive_path, target_dir)
+    """
+    shutil.unpack_archive(archive_path, target_dir)
+    if remove_junk:
+        remove_junk_from_dir(target_dir)
 
 
 def string_to_byte_size(string: Union[str, int]) -> int:
