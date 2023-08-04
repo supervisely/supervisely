@@ -22,6 +22,8 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     list_files,
     list_files_recursively,
+    list_dir_recursively,
+    get_file_name_with_ext,
     mkdir,
     copy_file,
     get_subdirs,
@@ -2368,60 +2370,54 @@ class Project:
 def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
     Read project from given directory or tries to find project directory in subdirectories.
-
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
     :param project_class: Project object
     :type project_class: :class:`Project<Project>`
     :return: Project class object
     :rtype: :class:`Project<Project>`
-    :raises: RuntimeError if the given directory doesn't contain valid project folder and doesn't contain any subdirectories.
-    :raises: FileNotFoundError if the given directory doesn't contain valid project folder and doesn't contain any
-        subdirectories with meta.json file.
-    :raises: RuntimeError if the given directory contains more than one subdirectory with meta.json file.
+    :raises: FileNotFoundError if the given directory or any of it's subdirectories doesn't contain valid project folder.
     :Usage example:
-
      .. code-block:: python
-
         import supervisely as sly
         proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
-    try:
-        project_fs = project_class(dir, OpenMode.READ)
-        return project_fs
-    except Exception:
-        pass
+    for meta_json_dir in find_meta_json_dirs(dir):
+        try:
+            project_fs = project_class(meta_json_dir, OpenMode.READ)
+            return project_fs
+        except Exception:
+            pass
+    raise FileNotFoundError(
+        f"The given directory {dir} or any of it's subdirectories doesn't contain valid project folder."
+    )
 
-    subdirs = get_subdirs(dir)
 
-    if len(subdirs) == 0:
-        raise RuntimeError(
-            f"The given directory '{dir}' doesn't contain valid project folder and doesn't contain any subdirectories. "
-            "Make sure that the given directory contains valid project folder or subdirectory with meta.json file."
-        )
-
-    subdirs_with_meta_json = []
-
-    for subdir in subdirs:
-        if file_exists(os.path.join(dir, subdir, "meta.json")):
-            subdirs_with_meta_json.append(subdir)
-
-    if len(subdirs_with_meta_json) == 0:
-        raise FileNotFoundError(
-            f"Can't find meta.json file in any subdirectories: {subdirs} of the given directory '{dir}'."
-            "Make sure that at least one subdirectory contains meta.json file."
-        )
-    elif len(subdirs_with_meta_json) > 1:
-        raise RuntimeError(
-            f"The given directory '{dir}' must contain only one subdirectory with meta.json file, "
-            f"while following subdirectories contain meta.json: {subdirs_with_meta_json}."
-        )
-
-    project_dir = os.path.join(dir, subdirs_with_meta_json[0])
-    project_fs = project_class(project_dir, OpenMode.READ)
-
-    return project_fs
+def find_meta_json_dirs(dir: str) -> str:
+    """Yields directories, that contain meta.json file.
+    :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
+    :type dir: str
+    :return: Path to directory, that contain meta.json file.
+    :rtype: str
+    :Usage example:
+     .. code-block:: python
+        import supervisely as sly
+        # Local folder (or any of it's subdirectories) which contains sly.Project files.
+        input_directory = "/home/admin/work/supervisely/source"
+        for meta_json_dir in sly.find_meta_json_dirs(input_directory):
+            try:
+                project_fs = sly.Project(meta_json_dir, sly.OpenMode.READ)
+                # Do something with project.
+            except Exception:
+                pass
+    """
+    paths = list_dir_recursively(dir)
+    for path in paths:
+        if get_file_name_with_ext(path) == "meta.json":
+            parent_dir = os.path.dirname(path)
+            project_dir = os.path.join(dir, parent_dir)
+            yield project_dir
 
 
 def _download_project(
