@@ -238,8 +238,8 @@ class SmartSegCache:
                 f"Number of images and names do not match: {len(images)} != {len(names)}"
             )
 
-        for fi, img in zip(names, images):
-            self._cache[fi] = img
+        for name, img in zip(names, images):
+            self._cache[name] = img
 
     def _image_name(self, id_or_hash: Any) -> str:
         return f"image_{id_or_hash}"
@@ -260,18 +260,18 @@ class SmartSegCache:
 
         for pos, fi in enumerate(indexes):
             name = name_cunstructor(fi)
-            if fi not in self._cache:
+            if name not in self._cache:
                 names_to_load.append(name)
                 indexes_to_load.append(fi)
                 pos_in_list.append(pos)
             else:
-                all_frames[pos] = self._cache[fi]
+                all_frames[pos] = self._cache[name]
 
         if len(indexes_to_load) > 0:
             frames = loader(indexes_to_load)
             self._add_to_cache(names_to_load, frames)
 
-        for pos, frame in zip(pos_in_list, frames):
-            all_frames[pos] = frame
+            for pos, frame in zip(pos_in_list, frames):
+                all_frames[pos] = frame
 
         return all_frames
