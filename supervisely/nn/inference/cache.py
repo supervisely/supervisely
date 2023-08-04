@@ -1,7 +1,7 @@
 import os
 import shutil
 import numpy as np
-from typing import Any, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request
@@ -143,9 +143,11 @@ class SmartSegCache:
             self._add_to_cache(name, img)
         return self._cache[name]
 
-    def download_images(self, api: sly.Api, image_ids: List[int]):
-        # TODO: bulk load with dataset_id
-        return [self.download_image(api, imid) for imid in image_ids]
+    def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
+        def loader(image_ids: int):
+            return api.image.download_nps(dataset_id, image_ids)
+
+        return self._download_many(image_ids, self._image_name, loader)
 
     def download_image_by_hash(self, api: sly.Api, img_hash: Any):
         true_name = self._image_name(img_hash)
@@ -153,20 +155,6 @@ class SmartSegCache:
         api.image.download_paths_by_hashes([img_hash], [path])
         self._cache[true_name] = sly.image.read(path)
         silent_remove(path)
-
-    # def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
-    #     images_to_load = []
-    #     names_to_load = []
-
-    #     for img_id in image_ids:
-    #         name = self._image_name(img_id)
-    #         if name not in self._cache:
-    #             images_to_load.append(img_id)
-    #             names_to_load.append(name)
-    #         images = api.image.download_nps(dataset_id, images_to_load)
-
-    #     self._add_to_cache(names_to_load, images)
-    #     return [self._cache[self._image_name(img_id)] for img_id in image_ids]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
@@ -182,20 +170,13 @@ class SmartSegCache:
         video_id: int,
         frame_indexes: List[int],
     ) -> List[np.ndarray]:
-        indexes_to_load = []
-        names_to_load = []
+        def name_constuctor(frame_index: int):
+            return self._frame_name(video_id, frame_index)
 
-        for fi in frame_indexes:
-            name = self._frame_name(video_id, fi)
-            if fi not in self._cache:
-                names_to_load.append(name)
-                indexes_to_load.append(fi)
+        def loader(frame_index: int):
+            return api.video.frame.download_nps(video_id, frame_index)
 
-        if len(indexes_to_load) > 0:
-            frames = api.video.frame.download_nps(video_id, indexes_to_load)
-            self._add_to_cache(api, names_to_load, frames)
-
-        return [self._cache[fi] for fi in frame_indexes]
+        return self._download_many(frame_indexes, name_constuctor, loader)
 
     def add_cache_endpoint(self):
         server = self._app.get_server()
@@ -265,3 +246,32 @@ class SmartSegCache:
 
     def _frame_name(self, video_id: int, frame_index: int) -> str:
         return f"frame_{video_id}_{frame_index}"
+
+    def _download_many(
+        self,
+        indexes: List[int],
+        name_cunstructor: Callable[[int], str],
+        loader: Callable[[List[int]], List[np.ndarray]],
+    ) -> List[np.ndarray]:
+        indexes_to_load = []
+        names_to_load = []
+        pos_in_list = []
+        all_frames = [None for _ in range(len(indexes))]
+
+        for pos, fi in enumerate(indexes):
+            name = name_cunstructor(fi)
+            if fi not in self._cache:
+                names_to_load.append(name)
+                indexes_to_load.append(fi)
+                pos_in_list.append(pos)
+            else:
+                all_frames[pos] = self._cache[fi]
+
+        if len(indexes_to_load) > 0:
+            frames = loader(indexes_to_load)
+            self._add_to_cache(names_to_load, frames)
+
+        for pos, frame in zip(pos_in_list, frames):
+            all_frames[pos] = frame
+
+        return all_frames
