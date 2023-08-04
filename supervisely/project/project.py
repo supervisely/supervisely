@@ -4,6 +4,7 @@ from __future__ import annotations
 import shutil
 from collections import namedtuple
 import os
+import re
 from enum import Enum
 from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
 import random
@@ -22,6 +23,8 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     list_files,
     list_files_recursively,
+    list_dir_recursively,
+    get_file_name_with_ext,
     mkdir,
     copy_file,
     get_subdirs,
@@ -2387,41 +2390,25 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
         proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
-    try:
-        project_fs = project_class(dir, OpenMode.READ)
-        return project_fs
-    except Exception:
-        pass
+    for project_dir in find_project_dirs(dir):
+        try:
+            project_fs = project_class(project_dir, OpenMode.READ)
+            return project_fs
+        except Exception:
+            pass
 
-    subdirs = get_subdirs(dir)
+    raise RuntimeError(
+        f"The given directory {dir} or any of it's subdirectories doesn't contain valid project folder."
+    )
 
-    if len(subdirs) == 0:
-        raise RuntimeError(
-            f"The given directory '{dir}' doesn't contain valid project folder and doesn't contain any subdirectories. "
-            "Make sure that the given directory contains valid project folder or subdirectory with meta.json file."
-        )
 
-    subdirs_with_meta_json = []
-
-    for subdir in subdirs:
-        if file_exists(os.path.join(dir, subdir, "meta.json")):
-            subdirs_with_meta_json.append(subdir)
-
-    if len(subdirs_with_meta_json) == 0:
-        raise FileNotFoundError(
-            f"Can't find meta.json file in any subdirectories: {subdirs} of the given directory '{dir}'."
-            "Make sure that at least one subdirectory contains meta.json file."
-        )
-    elif len(subdirs_with_meta_json) > 1:
-        raise RuntimeError(
-            f"The given directory '{dir}' must contain only one subdirectory with meta.json file, "
-            f"while following subdirectories contain meta.json: {subdirs_with_meta_json}."
-        )
-
-    project_dir = os.path.join(dir, subdirs_with_meta_json[0])
-    project_fs = project_class(project_dir, OpenMode.READ)
-
-    return project_fs
+def find_project_dirs(dir: str) -> str:
+    paths = list_dir_recursively(dir)
+    for path in paths:
+        if get_file_name_with_ext(path) == "meta.json":
+            parent_dir = os.path.dirname(path)
+            project_dir = os.path.join(dir, parent_dir)
+            yield project_dir
 
 
 def _download_project(
