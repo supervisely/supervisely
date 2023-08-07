@@ -55,11 +55,13 @@ class PointTracking(Inference):
                 value = None
                 try:
                     value = func(*args, **kwargs)
-                except Exception as e:
+                except Exception as exc:
                     request: Request = args[0]
                     context = request.state.context
                     api: sly.Api = request.state.api
                     track_id = context["trackId"]
+                    api.logger.error("An error accured:")
+                    api.logger.exception(exc)
 
                     api.post(
                         "videos.notify-annotation-tool",
@@ -67,7 +69,7 @@ class PointTracking(Inference):
                             "type": "videos:tracking-error",
                             "data": {
                                 "trackId": track_id,
-                                "error": {"message": repr(e)},
+                                "error": {"message": repr(exc)},
                             },
                         },
                     )
