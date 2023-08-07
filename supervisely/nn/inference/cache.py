@@ -4,7 +4,7 @@ import numpy as np
 from typing import Any, Callable, List, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
-from fastapi import Request
+from fastapi import Request, FastAPI
 from enum import Enum
 
 import supervisely as sly
@@ -115,13 +115,11 @@ class InferenceImageCache:
 
     def __init__(
         self,
-        app: sly.Application,
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
         base_folder: str = "/tmp/smart_tool_cache",
     ) -> None:
-        self._app = app
         self._is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
@@ -179,8 +177,7 @@ class InferenceImageCache:
 
         return self._download_many(frame_indexes, name_constuctor, loader)
 
-    def add_cache_endpoint(self):
-        server = self._app.get_server()
+    def add_cache_endpoint(self, server: FastAPI):
 
         # TODO: change endpoint name
         @server.post("/cache_enpoint")

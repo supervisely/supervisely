@@ -9,20 +9,29 @@ from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
+from supervisely.nn.inference.cache import InferenceImageCache
 import supervisely.nn.inference.tracking.functional as F
 
 
-class PointTracking(Inference):
+class PointTracking(Inference, InferenceImageCache):
     def __init__(
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
-        super().__init__(
+        max_saved_frames = 256
+        time_to_live_sec = 5 * 60
+        Inference.__init__(
+            self,
             model_dir,
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
+        )
+        InferenceImageCache.__init__(
+            self,
+            maxsize=max_saved_frames,
+            ttl=time_to_live_sec,
         )
 
         try:
@@ -43,6 +52,7 @@ class PointTracking(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
@@ -86,6 +96,7 @@ class PointTracking(Inference):
                 context=context,
                 api=api,
                 load_all_frames=False,
+                local_cache_frame_loader=self.download_frame,
             )
             api.logger.info("Start tracking.")
 
