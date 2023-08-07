@@ -96,7 +96,7 @@ class PointTracking(Inference, InferenceImageCache):
                 context=context,
                 api=api,
                 load_all_frames=False,
-                local_cache_frame_loader=self.download_frame,
+                frame_loader=self.download_frame,
             )
             api.logger.info("Start tracking.")
 

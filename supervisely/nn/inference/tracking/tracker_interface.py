@@ -15,7 +15,7 @@ class TrackerInterface:
         load_all_frames=False,
         notify_in_predict=False,
         per_point_polygon_tracking=True,
-        local_cache_frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
+        frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
     ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
@@ -47,7 +47,7 @@ class TrackerInterface:
         self._add_geometries()
 
         self._hot_cache: Dict[int, np.ndarray] = {}
-        self._local_cache_loader = local_cache_frame_loader
+        self._local_cache_loader = frame_loader
 
         if self.load_all_frames:
             if notify_in_predict:
