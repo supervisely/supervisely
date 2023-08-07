@@ -133,15 +133,17 @@ class InferenceImageCache:
             self._cache = TTLCache(maxsize, ttl)
 
     def clear_cache(self):
-        self._cache.clear(False)
+        with self._lock:
+            self._cache.clear(False)
 
     def download_image(self, api: sly.Api, image_id: int):
         name = f"image_{image_id}"
-        if name not in self._cache:
-            img = api.image.download_np(image_id)
-            self._add_to_cache(name, img)
-            return img
-        return self._cache[name]
+        with self._lock:
+            if name not in self._cache:
+                img = api.image.download_np(image_id)
+                self._add_to_cache(name, img)
+                return img
+            return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
         def loader(image_ids: int):
@@ -151,21 +153,25 @@ class InferenceImageCache:
 
     def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
         true_name = self._image_name(img_hash)
-        path = self._data_dir / f"tmp_{true_name}.png"
-        api.image.download_paths_by_hashes([img_hash], [path])
-        image = sly.image.read(path)
-        self._add_to_cache(true_name, image)
-        silent_remove(path)
-        return image
+        with self._lock:
+            if true_name not in self._cache:
+                path = self._data_dir / f"tmp_{true_name}.png"
+                api.image.download_paths_by_hashes([img_hash], [path])
+                image = sly.image.read(path)
+                self._add_to_cache(true_name, image)
+                silent_remove(path)
+                return image
+            return self._cache[true_name]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
-        if name not in self._cache:
-            frame = api.video.frame.download_np(video_id, frame_index)
-            self._add_to_cache(name, frame)
-            return frame
+        with self._lock:
+            if name not in self._cache:
+                frame = api.video.frame.download_np(video_id, frame_index)
+                self._add_to_cache(name, frame)
+                return frame
 
-        return self._cache[name]
+            return self._cache[name]
 
     def download_frames(
         self,
@@ -259,20 +265,21 @@ class InferenceImageCache:
         pos_in_list = []
         all_frames = [None for _ in range(len(indexes))]
 
-        for pos, fi in enumerate(indexes):
-            name = name_cunstructor(fi)
-            if name not in self._cache:
-                names_to_load.append(name)
-                indexes_to_load.append(fi)
-                pos_in_list.append(pos)
-            else:
-                all_frames[pos] = self._cache[name]
+        with self._lock:
+            for pos, fi in enumerate(indexes):
+                name = name_cunstructor(fi)
+                if name not in self._cache:
+                    names_to_load.append(name)
+                    indexes_to_load.append(fi)
+                    pos_in_list.append(pos)
+                else:
+                    all_frames[pos] = self._cache[name]
 
-        if len(indexes_to_load) > 0:
-            frames = loader(indexes_to_load)
-            self._add_to_cache(names_to_load, frames)
+            if len(indexes_to_load) > 0:
+                frames = loader(indexes_to_load)
+                self._add_to_cache(names_to_load, frames)
 
-            for pos, frame in zip(pos_in_list, frames):
-                all_frames[pos] = frame
+                for pos, frame in zip(pos_in_list, frames):
+                    all_frames[pos] = frame
 
         return all_frames
