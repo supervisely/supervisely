@@ -148,12 +148,13 @@ class InferenceImageCache:
 
         return self._download_many(image_ids, self._image_name, loader)
 
-    def download_image_by_hash(self, api: sly.Api, img_hash: Any):
+    def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
         true_name = self._image_name(img_hash)
         path = self._data_dir / f"tmp_{true_name}.png"
         api.image.download_paths_by_hashes([img_hash], [path])
         self._cache[true_name] = sly.image.read(path)
         silent_remove(path)
+        return self._cache[true_name]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
@@ -178,7 +179,6 @@ class InferenceImageCache:
         return self._download_many(frame_indexes, name_constuctor, loader)
 
     def add_cache_endpoint(self, server: FastAPI):
-
         # TODO: change endpoint name
         @server.post("/cache_enpoint")
         def cache_endpoint(request: Request):
