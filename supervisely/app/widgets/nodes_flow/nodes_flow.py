@@ -76,12 +76,14 @@ class NodesFlow(Widget):
             self,
             id,
             name="Node",
+            width: Optional[int] = 200,
             options: List[Option] = [],
             inputs: List[Input] = [],
             outputs: List[Output] = [],
         ):
             self.id = id
             self.name = name
+            self._width = width
             self.options = options
             self.inputs = inputs
             self.outputs = outputs
@@ -90,6 +92,7 @@ class NodesFlow(Widget):
             return {
                 "id": self.id,
                 "name": self.name,
+                "width": self._width,
                 "options": [option.to_json() for option in self.options],
                 "inputs": [i.to_json() for i in self.inputs],
                 "outputs": [o.to_json() for o in self.outputs],
@@ -140,5 +143,3 @@ class NodesFlow(Widget):
 
     def get_nodes_state_json(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flowState"])
-
-
