@@ -453,6 +453,8 @@ class ApiField:
     """"""
     ARCHIVE_URL = "archiveUrl"
     """"""
+    ANN_ARCHIVE_URL = "annotationsArchiveUrl"
+    """"""
     BACKUP_ARCHIVE = "backupArchive"
     """"""
     SKIP_EXPORTED = "skipExported"
