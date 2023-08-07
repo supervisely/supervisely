@@ -7,9 +7,8 @@ from supervisely.nn.inference.cache import InferenceImageCache
 
 
 # Test methods
-def test_load_functions_and_persistance(api_mock, app_mock, tmp_path: Path):
+def test_load_functions_and_persistance(api_mock, tmp_path: Path):
     inf_cache = InferenceImageCache(
-        app_mock,
         maxsize=10,
         ttl=100,
         base_folder=tmp_path,
@@ -41,9 +40,8 @@ def test_load_functions_and_persistance(api_mock, app_mock, tmp_path: Path):
     assert api_mock.video.frame.download_nps.call_count == 1
 
 
-def test_ttl_limit(api_mock, app_mock, tmp_path: Path):
+def test_ttl_limit(api_mock, tmp_path: Path):
     inf_cache = InferenceImageCache(
-        app_mock,
         maxsize=10,
         ttl=1,
         base_folder=tmp_path,
@@ -63,9 +61,8 @@ def test_ttl_limit(api_mock, app_mock, tmp_path: Path):
     assert api_mock.image.download_np.call_count == 3
 
 
-def test_size_limits(api_mock, app_mock, tmp_path: Path):
+def test_size_limits(api_mock, tmp_path: Path):
     inf_cache = InferenceImageCache(
-        app_mock,
         maxsize=2,
         ttl=100,
         base_folder=tmp_path,
