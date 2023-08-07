@@ -140,6 +140,7 @@ class InferenceImageCache:
         if name not in self._cache:
             img = api.image.download_np(image_id)
             self._add_to_cache(name, img)
+            return img
         return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
@@ -152,15 +153,17 @@ class InferenceImageCache:
         true_name = self._image_name(img_hash)
         path = self._data_dir / f"tmp_{true_name}.png"
         api.image.download_paths_by_hashes([img_hash], [path])
-        self._cache[true_name] = sly.image.read(path)
+        image = sly.image.read(path)
+        self._add_to_cache(true_name, image)
         silent_remove(path)
-        return self._cache[true_name]
+        return image
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
         if name not in self._cache:
             frame = api.video.frame.download_np(video_id, frame_index)
             self._add_to_cache(name, frame)
+            return frame
 
         return self._cache[name]
 
