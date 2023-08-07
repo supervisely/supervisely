@@ -3,12 +3,12 @@ import pytest
 import time
 from pathlib import Path
 
-from supervisely.nn.inference.cache import SmartSegCache
+from supervisely.nn.inference.cache import InferenceImageCache
 
 
 # Test methods
 def test_load_functions_and_persistance(api_mock, app_mock, tmp_path: Path):
-    inf_cache = SmartSegCache(
+    inf_cache = InferenceImageCache(
         app_mock,
         maxsize=10,
         ttl=100,
@@ -42,7 +42,7 @@ def test_load_functions_and_persistance(api_mock, app_mock, tmp_path: Path):
 
 
 def test_ttl_limit(api_mock, app_mock, tmp_path: Path):
-    inf_cache = SmartSegCache(
+    inf_cache = InferenceImageCache(
         app_mock,
         maxsize=10,
         ttl=1,
@@ -64,7 +64,7 @@ def test_ttl_limit(api_mock, app_mock, tmp_path: Path):
 
 
 def test_size_limits(api_mock, app_mock, tmp_path: Path):
-    inf_cache = SmartSegCache(
+    inf_cache = InferenceImageCache(
         app_mock,
         maxsize=2,
         ttl=100,

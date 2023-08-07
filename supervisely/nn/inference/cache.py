@@ -107,8 +107,8 @@ class PersistentImageTTLCache(TTLCache):
 
 
 # TODO: Add lock on cache changes
-class SmartSegCache:
-    class _ImageLoadType(Enum):
+class InferenceImageCache:
+    class _LoadType(Enum):
         ImageId: str = "IMAGE"
         ImageHash: str = "HASH"
         Frame: str = "FRAME"
@@ -125,6 +125,7 @@ class SmartSegCache:
         self._is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
+        self._lock = Lock()
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -189,12 +190,12 @@ class SmartSegCache:
             api.logger.debug("Request state in cache endpoint", extra=state)
             image_ids, task_type = self._parse_state(state)
 
-            if task_type is SmartSegCache._ImageLoadType.ImageId:
+            if task_type is InferenceImageCache._LoadType.ImageId:
                 self.download_images(api, image_ids)
-            elif task_type is SmartSegCache._ImageLoadType.ImageHash:
+            elif task_type is InferenceImageCache._LoadType.ImageHash:
                 # TODO: add hashes load if needed
                 self.download_image_by_hash(api, image_ids[0])
-            elif task_type is SmartSegCache._ImageLoadType.Frame:
+            elif task_type is InferenceImageCache._LoadType.Frame:
                 video_id = state["video_id"]
                 self.download_frames(api, video_id, image_ids)
 
@@ -208,18 +209,18 @@ class SmartSegCache:
             return str(self._data_dir)
         return None
 
-    def _parse_state(self, state: dict) -> Tuple[List[Any], _ImageLoadType]:
+    def _parse_state(self, state: dict) -> Tuple[List[Any], _LoadType]:
         if "image_ids" in state:
-            return state["image_ids"], SmartSegCache._ImageLoadType.ImageId
+            return state["image_ids"], InferenceImageCache._LoadType.ImageId
         elif "image_hashes" in state:
-            return state["image_hashes"], SmartSegCache._ImageLoadType.ImageHash
+            return state["image_hashes"], InferenceImageCache._LoadType.ImageHash
         elif "video_id" in state:
             frame_ranges = state["frame_ranges"]
             frames = []
             for fr_range in frame_ranges:
                 start, end = fr_range[0], fr_range[1] + 1
                 frames.extend(list(range(start, end)))
-            return frames, SmartSegCache._ImageLoadType.Frame
+            return frames, InferenceImageCache._LoadType.Frame
         raise ValueError("State has no proper fields: image_ids, image_hashes or video_id")
 
     def _add_to_cache(
