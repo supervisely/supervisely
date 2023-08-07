@@ -14,6 +14,7 @@ from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely.nn.inference import Inference
 from supervisely import ProjectMeta, ObjClass, Label
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
 
 from typing import Dict, List, Any, Optional, Union
@@ -25,7 +26,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class InteractiveSegmentation(Inference):
+class InteractiveSegmentation(Inference, InferenceImageCache):
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
@@ -42,7 +43,8 @@ class InteractiveSegmentation(Inference):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
-        super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        InferenceImageCache.__init__(self, maxsize=256, ttl=120)
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
@@ -85,6 +87,7 @@ class InteractiveSegmentation(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
@@ -141,7 +144,14 @@ class InteractiveSegmentation(Inference):
             hash_str = functional.get_hash_from_context(smtool_state)
             if run_sync(self._inference_image_cache.get(hash_str)) is None:
                 logger.debug(f"downloading image: {hash_str}")
-                image_np = functional.download_image_from_context(smtool_state, api, app_dir)
+                image_np = functional.download_image_from_context(
+                    smtool_state,
+                    api,
+                    app_dir,
+                    self.download_image,
+                    self.download_frame,
+                    self.download_image_by_hash,
+                )
                 run_sync(self._inference_image_cache.set(hash_str, image_np))
             else:
                 logger.debug(f"image found in cache: {hash_str}")
