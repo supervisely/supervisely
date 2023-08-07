@@ -57,7 +57,7 @@ class MaskTracking(Inference):
                     context = request.state.context
                     api: sly.Api = request.state.api
                     track_id = context["trackId"]
-                    api.logger.error("An error accured:")
+                    api.logger.error("An error occured:")
                     api.logger.exception(exc)
 
                     api.post(
