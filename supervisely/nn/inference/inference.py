@@ -86,7 +86,6 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
 
         if use_gui:
-            self.class_names = []
             self.initialize_gui()
 
             def on_serve_callback(gui: GUI.InferenceGUI):
@@ -300,10 +299,17 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def get_info(self) -> dict:
+        num_classes = None
+        try:
+            num_classes = len(self.get_classes())
+        except Exception as exc:
+            self._api.logger.warn("self.get_classes() not working properly")
+            self._api.logger.exception(exc)
+
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "number_of_classes": len(self.get_classes()),
+            "number_of_classes": num_classes,
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
