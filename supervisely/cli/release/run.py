@@ -151,10 +151,10 @@ def _ask_confirmation():
 def _ask_share_app(server_address):
     console = Console()
     while True:
-        confirmed = console.input((f'Do you want to share this private app on [green]{server_address}[/] instance?\n'
-                                   f'[green]yes[/] - application will be available to all users\n'
-                                   '[red]no[/] - application will only be available to you and the co-authors of the app\n'
-                                   'You will be able to change the selection after publishing on the application page in the ecosystem. \[y/n]:\n'))
+        confirmed = console.input((f'Do you want to share this private app on your private instance?\n'
+                                   f'[green]yes[/] - Application will be available for all users on [green]{server_address}[/]\n'
+                                   '[red]no[/] - Application will only be available for you and the co-authors of the app.\n'
+                                   'You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n'))
         if confirmed.lower() in ["y", "yes"]:
             return True
         if confirmed.lower() in ["n", "no"]:
@@ -368,7 +368,7 @@ def run(
     console.print(f"App Key:\t\t[green]{hided(appKey)}[/]\n")
 
     share_app = False
-    if not app_exist:
+    if not app_exist and server_address.find("app.supervise") == -1:
         share_app = _ask_share_app(server_address)
 
     # get and check release version
