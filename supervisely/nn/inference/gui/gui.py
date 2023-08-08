@@ -79,26 +79,63 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
+        self._device_select = Widgets.SelectString(
+            values=device_values, labels=device_names
+        )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
+        self._download_progress = Widgets.Progress(
+            "Downloading model...", hide_on_finish=True
+        )
         self._download_progress.hide()
         self._change_model_button = Widgets.Button(
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
         )
         self._change_model_button.hide()
 
-        self._model_info_widget = Widgets.ModelInfo()
         self._model_inference_settings_widget = Widgets.Editor(
             readonly=True, restore_default_button=False
         )
+        self._model_inference_settings_container = Widgets.Field(
+            self._model_inference_settings_widget, title="Inference settings"
+        )
+
+        self._model_info_widget = Widgets.Table()
+
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
-        # self._model_inference_settings_widget.hide()
-        # self._model_classes_widget.hide()
-        # self._model_info_widget.hide()
+        self._model_classes_plug = Widgets.Text("No classes provided")
+
+        self._model_info_collapse = Widgets.Collapse(
+            [
+                Widgets.Collapse.Item(
+                    "info",
+                    "App Info",
+                    self._model_info_widget,
+                ),
+                Widgets.Collapse.Item(
+                    "classes",
+                    "Training classes",
+                    Widgets.Container(
+                        [self._model_classes_widget, self._model_classes_plug]
+                    ),
+                ),
+            ],
+        )
+
+        self._model_full_info = Widgets.Card(
+            title="Full model info",
+            description="Inference settings, app parameters and training classes",
+            collapsable=True,
+            content=Widgets.Container(
+                [
+                    self._model_inference_settings_container,
+                    self._model_info_collapse,
+                ]
+            ),
+        )
+        # self._model_full_info.collapse()
 
         tabs_titles = []
         tabs_contents = []
@@ -112,7 +149,9 @@ class InferenceGUI(BaseInferenceGUI):
                 def update_table(selected_model):
                     cols = [
                         model_key
-                        for model_key in self._models[selected_model]["checkpoints"][0].keys()
+                        for model_key in self._models[selected_model]["checkpoints"][
+                            0
+                        ].keys()
                     ]
                     rows = [
                         [value for param_name, value in model.items()]
@@ -197,7 +236,9 @@ class InferenceGUI(BaseInferenceGUI):
             custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
-            tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
+            tabs_descriptions.append(
+                "Models trained in Supervisely and located in Team Files"
+            )
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
@@ -230,9 +271,9 @@ class InferenceGUI(BaseInferenceGUI):
             self._models_table.enable()
         if self._support_custom_models:
             self._model_path_input.enable()
-        self._model_inference_settings_widget.hide()
-        self._model_classes_widget.hide()
-        self._model_info_widget.hide()
+        # self._model_inference_settings_widget.hide()
+        # self._model_classes_widget.hide()
+        # self._model_info_widget.hide()
         Progress("model deployment canceled", 1).iter_done_report()
 
     def _set_pretrained_models(self, models):
@@ -271,7 +312,9 @@ class InferenceGUI(BaseInferenceGUI):
 
         table_subtitles, cols = self._get_table_subtitles(cols)
         if self._models_table is None:
-            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+            self._models_table = Widgets.RadioTable(
+                cols, rows, subtitles=table_subtitles
+            )
         else:
             self._models_table.set_data(cols, rows, subtitles=table_subtitles)
 
@@ -363,18 +406,26 @@ class InferenceGUI(BaseInferenceGUI):
     def set_project_meta(self, inference):
         if self._get_classes_from_inference(inference) is None:
             logger.warn("Skip loading project meta: no classes founded.")
+            self._model_classes_widget.hide()
+            self._model_classes_plug.show()
             return
         self._model_classes_widget.set_project_meta(inference.model_meta)
+        self._model_classes_plug.hide()
         self._model_classes_widget.show()
 
     def set_model_info(self, inference):
+        info: dict = inference.get_info()
         if self._get_classes_from_inference(inference) is None:
-            logger.warn("Skip loading model info: no classes founded.")
-            return
-        self._model_info_widget.set_model_info(inference._task_id, inference.get_info())
+            info["number_of_classes"] = "Not defined"
+
+        columns = ["Parameter", "Value"]
+        data = [list(pair) for pair in info.items()]
+        self._model_info_widget.read_json({"columns": columns, "data": data})
         self._model_info_widget.show()
 
     def create_handler_for_model_changes(self, inference):
+        self.show_deployed_model_info(inference)
+        # self.set_model_info(inference)
         if isinstance(self._models_table, Widgets.RadioTable):
 
             @self._models_table.value_changed
@@ -389,10 +440,14 @@ class InferenceGUI(BaseInferenceGUI):
         try:
             classes = inference.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for in {type(inference)} object.")
+            logger.warn(
+                f"get_classes() function not implemented for in {type(inference)} object."
+            )
 
         if classes is None or len(classes) == 0:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warn(
+                f"get_classes() function return {classes}; skip classes processing."
+            )
             return None
         return classes
 
@@ -405,9 +460,10 @@ class InferenceGUI(BaseInferenceGUI):
                 self._success_label,
                 self._serve_button,
                 self._change_model_button,
-                self._model_info_widget,
-                self._model_inference_settings_widget,
-                self._model_classes_widget,
+                self._model_full_info,
+                # self._model_info_widget,
+                # self._model_inference_settings_widget,
+                # self._model_classes_widget,
             ],
             gap=3,
         )

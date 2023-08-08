@@ -140,7 +140,7 @@ class Inference:
             custom_model_link_type=self.get_custom_model_link_type(),
         )
         self._gui.create_handler_for_model_changes(self)
-        self._gui.show_deployed_model_info(self)
+        # self._gui.show_deployed_model_info(self)
 
     def support_custom_models(self) -> bool:
         return True
