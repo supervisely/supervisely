@@ -1011,10 +1011,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param ids: Project IDs in Supervisely.
         :type ids: List[int]
-        :param archive_urls: Shared URLs of backup on Dropbox.
+        :param archive_urls: Shared URLs of files backup on Dropbox.
         :type archive_urls: List[str]
         :param ann_archive_urls: Shared URLs of annotations backup on Dropbox.
-        :type ann_archive_urls: List[str]
+        :type ann_archive_urls: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1036,33 +1036,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise ValueError(
                 "The list with Project IDs must have the same length as the list with URLs for archives"
             )
-        if ann_archive_urls is None:
-            for id, archive_url in zip(ids, archive_urls):
-                self._api.post(
-                    "projects.remove.permanently",
-                    {
-                        ApiField.PROJECTS: [
-                            {
-                                ApiField.ID: id,
-                                ApiField.ARCHIVE_URL: archive_url,
-                            }
-                        ]
-                    },
-                )
-        else:
-            for id, archive_url, ann_archive_url in zip(ids, archive_urls, ann_archive_urls):
-                self._api.post(
-                    "projects.remove.permanently",
-                    {
-                        ApiField.PROJECTS: [
-                            {
-                                ApiField.ID: id,
-                                ApiField.ARCHIVE_URL: archive_url,
-                                ApiField.ANN_ARCHIVE_URL: ann_archive_url,
-                            }
-                        ]
-                    },
-                )
+        for id, archive_url, ann_archive_url in zip(
+            ids, archive_urls, ann_archive_urls or [None] * len(ids)
+        ):
+            request_params = {
+                ApiField.ID: id,
+                ApiField.ARCHIVE_URL: archive_url,
+            }
+            if ann_archive_url is not None:
+                request_params[ApiField.ANN_ARCHIVE_URL] = ann_archive_url
+
+            self._api.post("projects.remove.permanently", {ApiField.PROJECTS: [request_params]})
 
     def archive(self, id: int, archive_url: str, ann_archive_url: Optional[str] = None) -> None:
         """
@@ -1070,10 +1054,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param archive_url: Shared URL of backup on Dropbox.
+        :param archive_url: Shared URL of files backup on Dropbox.
         :type archive_url: str
         :param ann_archive_url: Shared URL of annotations backup on Dropbox.
-        :type ann_archive_url: str
+        :type ann_archive_url: str, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1187,12 +1171,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def check_imageset_backup(self, id: int) -> Optional[Dict]:
         """
-        _summary_
+        Check if a backup of the project image set exists. If yes, it returns a link to the archive.
 
-        :param id: _description_
+        :param id: Project ID
         :type id: int
-        :return: _description_
-        :rtype: Optional[Dict]
+        :return: dict with shared URL of files backup or None
+        :rtype: Dict, optional
         :Usage example:
 
          .. code-block:: python
