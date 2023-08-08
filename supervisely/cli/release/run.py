@@ -151,8 +151,8 @@ def _ask_confirmation():
 def _ask_share_app(server_address):
     console = Console()
     while True:
-        confirmed = console.input((f'Do you want to share this private app on your private instance?\n'
-                                   f'[green]yes[/] - Application will be available for all users on [green]{server_address}[/]\n'
+        confirmed = console.input((f'Do you want to share this private app on your private instance [green]{server_address}[/] ?\n'
+                                   f'[green]yes[/] - Application will be available for all users on your private instance.\n'
                                    '[red]no[/] - Application will only be available for you and the co-authors of the app.\n'
                                    'You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n'))
         if confirmed.lower() in ["y", "yes"]:
