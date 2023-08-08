@@ -130,6 +130,11 @@ def _ask_release_description():
     release_description = console.input(
         "Enter release description:\n",
     )
+    while release_description.isspace() or release_description == "":
+        console.print("Release description cannot be empty")
+        release_description = console.input(
+            "Enter release description:\n",
+        )
     return release_description
 
 
