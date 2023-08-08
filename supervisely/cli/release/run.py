@@ -148,10 +148,13 @@ def _ask_confirmation():
             return False
 
 
-def _ask_share_app():
+def _ask_share_app(server_address):
+    console = Console()
     while True:
-        confirmed = input(('Do you want to share the app to all Users on instance?\n'
-                           'If yes, any user will be able to see this app in his "private apps" and release new versions. [y/n]:\n'))
+        confirmed = console.input((f'Do you want to share this private app on [green]{server_address}[/] instance?\n'
+                                   f'[green]yes[/] - application will be available to all users\n'
+                                   '[red]no[/] - application will only be available to you and the co-authors of the app\n'
+                                   'You will be able to change the selection after publishing on the application page in the ecosystem. \[y/n]:\n'))
         if confirmed.lower() in ["y", "yes"]:
             return True
         if confirmed.lower() in ["n", "no"]:
@@ -362,11 +365,11 @@ def run(
         console.print(f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]")
     console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
     console.print(f"App Name:\t\t[green]{app_name}[/]")
-    console.print(f"App Key:\t\t[green]{hided(appKey)}[/]")
+    console.print(f"App Key:\t\t[green]{hided(appKey)}[/]\n")
 
     share_app = False
     if not app_exist:
-        share_app = _ask_share_app()
+        share_app = _ask_share_app(server_address)
 
     # get and check release version
     if repo.active_branch.name in ["main", "master"]:
