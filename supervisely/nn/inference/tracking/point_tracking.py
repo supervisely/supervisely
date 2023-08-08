@@ -5,12 +5,12 @@ from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
 import supervisely as sly
+import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
 from supervisely.nn.inference.cache import InferenceImageCache
-import supervisely.nn.inference.tracking.functional as F
 
 
 class PointTracking(Inference, InferenceImageCache):

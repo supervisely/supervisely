@@ -1,28 +1,36 @@
 import numpy as np
 import functools
 from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
 import supervisely as sly
+import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference import Inference
-import supervisely.nn.inference.tracking.functional as F
-import traceback
 
 
-class MaskTracking(Inference):
+class MaskTracking(Inference, InferenceImageCache):
     def __init__(
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
-        super().__init__(
+        max_saved_frames = 256
+        time_to_live_sec = 5 * 60
+        Inference.__init__(
+            self,
             model_dir,
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
+        )
+        InferenceImageCache.__init__(
+            self,
+            maxsize=max_saved_frames,
+            ttl=time_to_live_sec,
         )
 
         try:
@@ -38,6 +46,7 @@ class MaskTracking(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
@@ -85,6 +94,7 @@ class MaskTracking(Inference):
                 load_all_frames=True,
                 notify_in_predict=True,
                 per_point_polygon_tracking=False,
+                frame_loader=self.download_frame,
             )
             api.logger.info("Starting tracking process")
             # load frames
