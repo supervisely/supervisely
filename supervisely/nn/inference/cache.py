@@ -138,6 +138,7 @@ class InferenceImageCache:
 
     def download_image(self, api: sly.Api, image_id: int):
         name = f"image_{image_id}"
+        api.logger.debug(f"Add image #{image_id} to cache")
         with self._lock:
             if name not in self._cache:
                 img = api.image.download_np(image_id)
@@ -146,6 +147,8 @@ class InferenceImageCache:
             return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
+        api.logger.debug(f"Add images from dataset #{dataset_id} to cache: {image_ids}")
+
         def loader(image_ids: int):
             return api.image.download_nps(dataset_id, image_ids)
 
@@ -197,10 +200,14 @@ class InferenceImageCache:
             image_ids, task_type = self._parse_state(state)
 
             if task_type is InferenceImageCache._LoadType.ImageId:
-                self.download_images(api, image_ids)
+                if "dataset_id" in state:
+                    self.download_images(api, state["dataset_id"], image_ids)
+                else:
+                    for img_id in image_ids:
+                        self.download_image(api, img_id)
             elif task_type is InferenceImageCache._LoadType.ImageHash:
-                # TODO: add hashes load if needed
-                self.download_image_by_hash(api, image_ids[0])
+                for img_hash in image_ids:
+                    self.download_image_by_hash(api, img_hash)
             elif task_type is InferenceImageCache._LoadType.Frame:
                 video_id = state["video_id"]
                 self.download_frames(api, video_id, image_ids)
