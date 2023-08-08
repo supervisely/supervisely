@@ -144,7 +144,17 @@ def _ask_confirmation():
         confirmed = input("Confirm? [y/n]:\n")
         if confirmed.lower() in ["y", "yes"]:
             return True
-        if confirmed.lower() in ["n", "not"]:
+        if confirmed.lower() in ["n", "no"]:
+            return False
+
+
+def _ask_share_app():
+    while True:
+        confirmed = input(('Do you want to share the app to all Users on instance?\n'
+                           'If yes, any user will be able to see this app in his "private apps" and release new versions. [y/n]:\n'))
+        if confirmed.lower() in ["y", "yes"]:
+            return True
+        if confirmed.lower() in ["n", "no"]:
             return False
 
 
@@ -326,6 +336,22 @@ def run(
     repo_url = remote.url
     appKey = get_appKey(repo, sub_app_directory, repo_url)
 
+    # check if app exist or not
+    app_exist = True
+    try:
+        app_data = get_app_from_instance(appKey, api_token, server_address)
+        if app_data is None:
+            app_exist = False
+    except PermissionError:
+        console.print(
+            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
+        )
+        return False
+    except ConnectionError:
+        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        return False
+    module_exists_label = "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]" 
+
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
     console.print(f"Server address:\t\t[green]{server_address}[/]")
@@ -338,20 +364,9 @@ def run(
     console.print(f"App Name:\t\t[green]{app_name}[/]")
     console.print(f"App Key:\t\t[green]{hided(appKey)}[/]")
 
-    # check if app exist or not
-    module_exists_label = "[yellow bold]updated[/]"
-    try:
-        app_data = get_app_from_instance(appKey, api_token, server_address)
-        if app_data is None:
-            module_exists_label = "[green bold]created[/]"
-    except PermissionError:
-        console.print(
-            "[red][Error][/] Permission denied. Check that all credentials are set correctly"
-        )
-        return False
-    except ConnectionError:
-        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
-        return False
+    share_app = False
+    if not app_exist:
+        share_app = _ask_share_app()
 
     # get and check release version
     if repo.active_branch.name in ["main", "master"]:
@@ -434,7 +449,8 @@ def run(
             slug,
             user_id,
             sub_app_directory if sub_app_directory != None else "",
-            created_at
+            created_at,
+            share_app,
         )
         if response.status_code != 200:
             error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
