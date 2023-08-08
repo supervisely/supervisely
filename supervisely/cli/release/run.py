@@ -175,6 +175,10 @@ def get_user_data(server_address, api_token):
     return user_data
 
 
+def hided(s: str):
+    return s[:4] + "*******" + s[-4:]
+
+
 def run(
     app_directory, sub_app_directory, slug, autoconfirm, release_version, release_description
 ):
@@ -214,15 +218,29 @@ def run(
         )
         return False
 
-    # get relese_token and user_id if needed
-    user_id = None
+    # get relese_token and user_id
+    user_data = get_user_data(server_address, api_token)
+    if user_data is None:
+        console.print(
+            '[red][Error][/] Cannot find User. Check that all SERVER_ADDERSS and API_TOKEN are set correctly'
+        )
+        return False
+    user_id = user_data["id"]
+    user_login = user_data["login"]
+
+    # get relese_token and user_id of releaseing user if needed
     release_token = os.getenv("APP_RELEASE_TOKEN", None)
+    release_user_id = None
+    release_user_login = None
     if release_token is not None:
-        user_data = get_user_data(server_address, api_token)
-        if user_data is None:
+        release_user_data = get_user_data(server_address, release_token)
+        if release_user_data is None:
+            console.print(
+                '[red][Error][/] Cannot find Releasing User. Check that all SERVER_ADDERSS and APP_RELEASE_TOKEN are set correctly'
+            )
             return False
-        user_id = user_data["id"]
-        user_login = user_data["login"]
+        release_user_id = release_user_data["id"]
+        release_user_login = release_user_data["login"]
     
     # check instance version
     try:
@@ -289,15 +307,6 @@ def run(
             with open(modal_template_path, "r") as f:
                 modal_template = f.read()
 
-    # print details
-    console.print(f"Application directory:\t[green]{module_path}[/]")
-    console.print(f"Server address:\t\t[green]{server_address}[/]")
-    console.print(f"User Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
-    if release_token:
-        console.print(f"Release token:\t\t[green]{release_token[:4]}*******{release_token[-4:]}[/]")
-        console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
-    console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
-
     # check that everything is commited and pushed
     success = _check_git(repo)
     if not success:
@@ -308,6 +317,18 @@ def run(
     remote = repo.remote(remote_name)
     repo_url = remote.url
     appKey = get_appKey(repo, sub_app_directory, repo_url)
+
+    # print details
+    console.print(f"Application directory:\t[green]{module_path}[/]")
+    console.print(f"Server address:\t\t[green]{server_address}[/]")
+    console.print(f"User Api token:\t\t[green]{hided(api_token)}[/]")
+    console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
+    if release_token:
+        console.print(f"Release token:\t\t[green]{hided(release_token)}[/]")
+        console.print(f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]")
+    console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
+    console.print(f"App Name:\t\t[green]{app_name}[/]")
+    console.print(f"App Key:\t\t[green]{hided(appKey)}[/]")
 
     # check if app exist or not
     module_exists_label = "[yellow bold]updated[/]"
