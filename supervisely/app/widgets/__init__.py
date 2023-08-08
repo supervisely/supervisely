@@ -1,4 +1,4 @@
-from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem
+from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
@@ -90,3 +90,4 @@ from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePick
 from supervisely.app.widgets.transfer.transfer import Transfer
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
+from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence

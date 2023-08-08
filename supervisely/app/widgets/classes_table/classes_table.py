@@ -93,7 +93,7 @@ class ClassesTable(Widget):
         stats = None
         data_to_show = []
         for obj_class in project_meta.obj_classes:
-            if self._allowed_types is None or obj_class.geometry_type not in self._allowed_types:
+            if len(self._allowed_types) == 0 or obj_class.geometry_type in self._allowed_types:
                 data_to_show.append(obj_class.to_json())
 
         if self._project_id is not None:
@@ -292,3 +292,10 @@ class ClassesTable(Widget):
         self._update_meta(project_meta)
         self.update_data()
         DataJson().send_changes()
+
+    def select_all(self) -> None:
+        self._global_checkbox = True
+        self._checkboxes = [True] * len(self._table_data)
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson().send_changes()

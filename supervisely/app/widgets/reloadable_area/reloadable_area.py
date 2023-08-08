@@ -1,11 +1,11 @@
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Widget, DynamicWidget
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.content import DataJson, StateJson
 
 
-class ReloadableArea(Widget):
+class ReloadableArea(DynamicWidget):
     """Widget for dynamic content reloading. It allows to update the content of the widget without reloading the whole
     UI of the app. It can be used when the widgets are needed to be added or removed dynamically.
 
@@ -71,7 +71,7 @@ class ReloadableArea(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
 
-        html_content = f"<div>{self._content.to_html()}</div>"
+        html_content = self._content.to_html()
         run_sync(
             WebsocketManager().broadcast(
                 {

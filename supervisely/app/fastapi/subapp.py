@@ -41,11 +41,11 @@ if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-def create(process_id=None, headless=False) -> FastAPI:
+def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
-    JinjaWidgets().auto_widget_id = False
-    logger.info("The app is running in compatibility mode, auto_widget_id is set to False.")
+    JinjaWidgets().auto_widget_id = auto_widget_id
+    logger.info(f"JinjaWidgets().auto_widget_id is set to {auto_widget_id}.")
 
     app = FastAPI()
     WebsocketManager().set_app(app)
@@ -115,7 +115,11 @@ def shutdown(process_id=None):
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
         current_process = psutil.Process(process_id)
-        current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+        if os.name == "nt":
+            # for windows
+            current_process.send_signal(signal.CTRL_C_EVENT) # emit ctrl + c
+        else:
+            current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
 
@@ -184,7 +188,7 @@ def _init(
     DataJson()["slyAppDialogTitle"] = ""
     DataJson()["slyAppDialogMessage"] = ""
 
-    app.mount("/sly", create(process_id, headless))
+    app.mount("/sly", create(process_id, headless, auto_widget_id=True))
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -228,6 +232,8 @@ def _init(
 
         @app.on_event("shutdown")
         def shutdown():
+            from supervisely.app.content import ContentOrigin
+            ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
@@ -258,6 +264,8 @@ class Application(metaclass=Singleton):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
+
+        self._static_dir = static_dir
 
         headless = False
         if layout is None and templates_dir is None:
@@ -313,6 +321,13 @@ class Application(metaclass=Singleton):
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
+            if is_production():
+                # to save offline session
+                from supervisely.app.content import ContentOrigin
+                ContentOrigin().start()
+                client = TestClient(self._fastapi)
+                resp = run_sync(client.get("/"))
+
     def get_server(self):
         return self._fastapi
 
@@ -323,10 +338,13 @@ class Application(metaclass=Singleton):
         shutdown(self._process_id)
 
     def stop(self):
-        run_sync(WebsocketManager().broadcast({"runAction": {"action": "shutdown"}}))
+        self.shutdown()
 
     def reload_page(self):
         run_sync(self.hot_reload.notify.notify())
+
+    def get_static_dir(self):
+        return self._static_dir
 
 
 def get_name_from_env(default="Supervisely App"):
