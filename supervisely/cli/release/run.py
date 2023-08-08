@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 import os
 import json
@@ -197,6 +198,8 @@ def run(
 
     # get module path and check if it is a git repo
     module_root = get_module_root(app_directory)
+    if sub_app_directory is not None:
+        sub_app_directory = Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
     module_path = get_module_path(module_root, sub_app_directory)
     try:
         repo = git.Repo(module_root)
