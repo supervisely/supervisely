@@ -1195,7 +1195,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # Pass values into the API constructor (optional, not recommended)
             # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
-            archive_url = check_imageset_backup(project_id)
+            response = check_imageset_backup(project_id)
+            archive_url = response['imagesArchiveUrl']
+
         """
         response = self._api.get("projects.images.get-backup-archive", {ApiField.ID: id})
 
