@@ -140,6 +140,9 @@ class NodesFlow(Widget):
 
     def get_nodes_json(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flow"]["nodes"])
+    
+    def get_edges_json(self):
+        return copy.deepcopy(StateJson()[self.widget_id]["flow"]["edges"])
 
     def get_nodes_state_json(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flowState"])
