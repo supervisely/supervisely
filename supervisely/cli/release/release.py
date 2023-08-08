@@ -136,6 +136,7 @@ def upload_archive(
     slug,
     user_id,
     subapp_path,
+    share_app,
 ):
     f = open(archive_path, "rb")
     fields = {
@@ -145,6 +146,7 @@ def upload_archive(
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
+        "isShared": "true" if share_app else "false",
         "archive": (
             "arhcive.tar.gz",
             f,
@@ -249,6 +251,7 @@ def release(
     user_id=None,
     subapp_path="",
     created_at=None,
+    share_app=False,
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
@@ -272,6 +275,7 @@ def release(
             slug,
             user_id,
             subapp_path,
+            share_app,
         )
     finally:
         delete_directory(archive_dir)
