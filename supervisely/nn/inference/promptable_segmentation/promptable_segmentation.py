@@ -1,13 +1,27 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Literal, Optional, Union
+from typing_extensions import Literal
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
 from supervisely.sly_logger import logger
 from supervisely.nn.inference.inference import Inference
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.decorators.inference import process_image_sliding_window
 
 
-class PromptableSegmentation(Inference):
+class PromptableSegmentation(Inference, InferenceImageCache):
+    def __init__(
+        self,
+        model_dir: Optional[str] = None,
+        custom_inference_settings: Optional[
+            Union[Dict[str, Any], str]
+        ] = None,  # dict with settings or path to .yml file
+        sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
+        use_gui: Optional[bool] = False,
+    ):
+        Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        InferenceImageCache.__init__(self, maxsize=256, ttl=120)
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "promptable segmentation"
@@ -36,7 +50,7 @@ class PromptableSegmentation(Inference):
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
-    
+
     @process_image_sliding_window
     def _inference_image_path(
         self,
