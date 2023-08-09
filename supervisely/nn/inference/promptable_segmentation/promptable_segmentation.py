@@ -20,7 +20,7 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         use_gui: Optional[bool] = False,
     ):
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        InferenceImageCache.__init__(self, maxsize=256, ttl=120)
+        InferenceImageCache.__init__(self, maxsize=256, ttl=120, is_persistent=False)
 
     def get_info(self) -> dict:
         info = super().get_info()
