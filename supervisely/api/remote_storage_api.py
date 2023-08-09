@@ -227,3 +227,49 @@ class RemoteStorageApi(ModuleApiBase):
         res_path = f"{provider}://{bucket}/{path_in_bucket.lstrip('/')}"
         Provider.validate_path(res_path)
         return res_path
+
+
+
+    def get_list_available_providers(self):
+            resp = self._api.get(
+                "remote-storage.available_providers",
+                {},
+            )
+            return resp.json()
+        
+    def get_list_supported_providers(self):
+        resp = self._api.get(
+            "remote-storage.supported_providers",
+            {},
+        )
+        return resp.json()
+    
+    def path_exists(self):
+        path = path.rstrip("/") + "/"
+        resp = self._api.get(
+            "remote-storage.exists",
+            {
+                ApiField.PATH: path,
+                "recursive": recursive,
+                "files": files,
+                "folders": folders,
+                "limit": limit,
+                "startAfter": start_after,
+            },
+        )
+        return resp.json()
+        
+    def path_stats(self, path):
+        path = path.rstrip("/") + "/"
+        resp = self._api.get(
+            "remote-storage.stat",
+            {
+                ApiField.PATH: path,
+                "recursive": recursive,
+                "files": files,
+                "folders": folders,
+                "limit": limit,
+                "startAfter": start_after,
+            },
+        )
+        return resp.json()
