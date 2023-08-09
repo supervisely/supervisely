@@ -11,7 +11,7 @@ from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import file_exists, touch
+from supervisely.io.fs import file_exists, touch, mkdir
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project import (
     Dataset,
@@ -1158,6 +1158,7 @@ def download_video_project(
     save_video_info: Optional[bool] = False,
     log_progress: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    include_custom_data: Optional[bool] = False,
 ) -> None:
     """
     Download video project to the local directory.
@@ -1243,6 +1244,8 @@ def download_video_project(
         for batch in batched(videos, batch_size=LOG_BATCH_SIZE):
             video_ids = [video_info.id for video_info in batch]
             video_names = [video_info.name for video_info in batch]
+            custom_datas = [video_info.custom_data for video_info in batch]
+
             try:
                 ann_jsons = api.video.annotation.download_bulk(dataset.id, video_ids)
             except Exception as e:
@@ -1255,13 +1258,20 @@ def download_video_project(
                     },
                 )
                 raise e
-            for video_id, video_name, ann_json, video_info in zip(
-                video_ids, video_names, ann_jsons, batch
+            for video_id, video_name, custom_data, ann_json, video_info in zip(
+                video_ids, video_names, custom_datas, ann_jsons, batch
             ):
                 if video_name != ann_json[ApiField.VIDEO_NAME]:
                     raise RuntimeError("Error in api.video.annotation.download_batch: broken order")
 
                 video_file_path = dataset_fs.generate_item_path(video_name)
+
+                if include_custom_data:
+                    CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
+                    mkdir(CUSTOM_DATA_DIR)
+                    custom_data_path = os.path.join(CUSTOM_DATA_DIR, f"{video_name}.json")
+                    dump_json_file(custom_data, custom_data_path)
+
                 if download_videos:
                     try:
                         api.video.download_path(video_id, video_file_path)
@@ -1331,6 +1341,7 @@ def upload_video_project(
     workspace_id: int,
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
+    include_custom_data: Optional[bool] = False,
 ) -> Tuple[int, str]:
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
@@ -1361,6 +1372,18 @@ def upload_video_project(
             progress_cb = ds_progress.iters_done_report
         try:
             item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
+
+            if include_custom_data:
+                for item_info in item_infos:
+                    item_name = item_info.name
+                    custom_data_path = os.path.join(
+                        dir, dataset_fs.name, "custom_data", f"{item_name}.json"
+                    )
+
+                    if os.path.exists(custom_data_path):
+                        custom_data = load_json_file(custom_data_path)
+                        api.video.update_custom_data(item_info.id, custom_data)
+
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",

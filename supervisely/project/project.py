@@ -1176,7 +1176,8 @@ class Dataset(KeyObject):
             # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
         """
         return ItemPaths(
-            img_path=self.get_item_path(item_name), ann_path=self.get_ann_path(item_name)
+            img_path=self.get_item_path(item_name),
+            ann_path=self.get_ann_path(item_name),
         )
 
     def __len__(self):
@@ -1479,7 +1480,10 @@ class Project:
             if dataset_names is not None and ds.name not in dataset_names:
                 continue
             ds_stats = ds.get_classes_stats(
-                self.meta, return_objects_count, return_figures_count, return_items_count
+                self.meta,
+                return_objects_count,
+                return_figures_count,
+                return_items_count,
             )
             for stat_name, classes_stats in ds_stats.items():
                 if stat_name not in result.keys():
@@ -2384,7 +2388,7 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
         proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
-    project_dirs = [project_dir for project_dir in find_project_dirs(dir)]
+    project_dirs = [project_dir for project_dir in find_project_dirs(dir, project_class)]
     if len(project_dirs) > 1:
         raise RuntimeError(
             f"The given directory {dir} and it's subdirectories contains more than one valid project folder. "
@@ -2398,10 +2402,12 @@ def read_single_project(dir: str, project_class: Optional[Project] = Project) ->
     return project_class(project_dirs[0], OpenMode.READ)
 
 
-def find_project_dirs(dir: str) -> str:
+def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> str:
     """Yields directories, that contain valid project folder in the given directory or in any of it's subdirectories.
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: str
+    :param project_class: Project object
+    :type project_class: :class:`Project<Project>`
     :return: Path to directory, that contain meta.json file.
     :rtype: str
     :Usage example:
@@ -2419,7 +2425,7 @@ def find_project_dirs(dir: str) -> str:
             parent_dir = os.path.dirname(path)
             project_dir = os.path.join(dir, parent_dir)
             try:
-                Project(project_dir, OpenMode.READ)
+                project_class(project_dir, OpenMode.READ)
                 yield project_dir
             except Exception:
                 pass
