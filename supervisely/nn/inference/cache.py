@@ -6,6 +6,7 @@ from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request, FastAPI
 from enum import Enum
+from logging import Logger
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
@@ -138,21 +139,24 @@ class InferenceImageCache:
 
     def download_image(self, api: sly.Api, image_id: int):
         name = f"image_{image_id}"
-        api.logger.debug(f"Add image #{image_id} to cache")
+
         with self._lock:
             if name not in self._cache:
+                api.logger.debug(f"Add image #{image_id} to cache")
                 img = api.image.download_np(image_id)
                 self._add_to_cache(name, img)
                 return img
+
+            api.logger.debug(f"Get image #{image_id} from cache")
             return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
-        api.logger.debug(f"Add images from dataset #{dataset_id} to cache: {image_ids}")
+        # api.logger.debug(f"Add images from dataset #{dataset_id} to cache: {image_ids}")
 
         def loader(image_ids: int):
             return api.image.download_nps(dataset_id, image_ids)
 
-        return self._download_many(image_ids, self._image_name, loader)
+        return self._download_many(image_ids, self._image_name, loader, api.logger)
 
     def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
         true_name = self._image_name(img_hash)
@@ -172,8 +176,10 @@ class InferenceImageCache:
             if name not in self._cache:
                 frame = api.video.frame.download_np(video_id, frame_index)
                 self._add_to_cache(name, frame)
+                api.logger.debug(f"Add frame #{frame_index} for video #{video_id} to cache")
                 return frame
 
+            api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
             return self._cache[name]
 
     def download_frames(
@@ -188,11 +194,11 @@ class InferenceImageCache:
         def loader(frame_index: int):
             return api.video.frame.download_nps(video_id, frame_index)
 
-        return self._download_many(frame_indexes, name_constuctor, loader)
+        return self._download_many(frame_indexes, name_constuctor, loader, api.logger)
 
     def add_cache_endpoint(self, server: FastAPI):
         # TODO: change endpoint name
-        @server.post("/cache_enpoint")
+        @server.post("/smart_cache")
         def cache_endpoint(request: Request):
             api: sly.Api = request.state.api
             state: dict = request.state.state
@@ -266,6 +272,7 @@ class InferenceImageCache:
         indexes: List[int],
         name_cunstructor: Callable[[int], str],
         loader: Callable[[List[int]], List[np.ndarray]],
+        logger: Logger,
     ) -> List[np.ndarray]:
         indexes_to_load = []
         names_to_load = []
@@ -288,5 +295,8 @@ class InferenceImageCache:
 
                 for pos, frame in zip(pos_in_list, frames):
                     all_frames[pos] = frame
+
+        logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
+        logger.debug(f"Images/Frames loaded from cache: {set(indexes).difference(indexes_to_load)}")
 
         return all_frames
