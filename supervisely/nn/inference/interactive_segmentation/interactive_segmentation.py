@@ -1,9 +1,8 @@
 import os
-from fastapi import Response, Request, status
-from aiocache import Cache
 import threading
-from supervisely.app.fastapi import run_sync
 import time
+from cacheout import Cache
+from fastapi import Response, Request, status
 
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionSegmentation
@@ -49,7 +48,9 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
         self._inference_image_lock = threading.Lock()
-        self._inference_image_cache = Cache(Cache.MEMORY, ttl=60)
+
+        # TODO: add maxsize after discuss
+        self._inference_image_cache = Cache(ttl=60)
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -142,7 +143,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
             # download image if needed (using cache)
             app_dir = get_data_dir()
             hash_str = functional.get_hash_from_context(smtool_state)
-            if run_sync(self._inference_image_cache.get(hash_str)) is None:
+            if hash_str in self._inference_image_cache.get(hash_str) is None:
                 logger.debug(f"downloading image: {hash_str}")
                 image_np = functional.download_image_from_context(
                     smtool_state,
@@ -152,10 +153,10 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                     self.download_frame,
                     self.download_image_by_hash,
                 )
-                run_sync(self._inference_image_cache.set(hash_str, image_np))
+                self._inference_image_cache.set(hash_str, image_np)
             else:
                 logger.debug(f"image found in cache: {hash_str}")
-                image_np = run_sync(self._inference_image_cache.get(hash_str))
+                image_np = self._inference_image_cache.get(hash_str)
 
             # crop
             image_np = functional.crop_image(crop, image_np)
