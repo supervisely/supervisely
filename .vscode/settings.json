@@ -27,4 +27,9 @@
     "python.analysis.autoImportCompletions": false,
     "autoDocstring.docstringFormat": "sphinx",
     "autoDocstring.customTemplatePath": "docs/.mustache",
+    "python.testing.pytestArgs": [
+        "tests/test_inference_cache"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
