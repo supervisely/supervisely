@@ -945,3 +945,16 @@ def parse_agent_id_and_path(remote_path: str) -> int:
         path_in_agent_folder += "/"
     # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
     return agent_id, path_in_agent_folder
+
+
+def is_bucket_url(url: str) -> bool:
+    """
+    Check if the URL is a bucket URL
+
+    :param link: URL
+    :type link: str
+    :return: True if URL is a bucket URL, False otherwise.
+    :rtype: bool
+    """
+    bucket_prefixes = ["s3://", "azure://", "google://", "gcs://", "minio://", "fs://"]
+    return any(url.startswith(prefix) for prefix in bucket_prefixes)
