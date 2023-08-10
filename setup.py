@@ -63,6 +63,7 @@ INSTALL_REQUIRES = [
     "aiocache==0.12.0",
     "urllib3==1.26.15",
     "cachetools==5.3.1",
+    "nest-asyncio==1.5.7",
 ]
 
 ALT_INSTALL_REQUIRES = {
