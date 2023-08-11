@@ -146,7 +146,6 @@ def upload_archive(
         "config": json.dumps(config),
         "readme": readme,
         "modalTemplate": modal_template,
-        "isShared": "true" if share_app else "false",
         "archive": (
             "arhcive.tar.gz",
             f,
@@ -157,6 +156,8 @@ def upload_archive(
         fields["slug"] = slug
     if user_id:
         fields["userId"] = str(user_id)
+    if share_app:
+        fields["isShared"] = "true"
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
     with tqdm(
