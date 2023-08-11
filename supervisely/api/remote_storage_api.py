@@ -1,5 +1,5 @@
 # coding: utf-8
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Union, List
 
 from tqdm import tqdm
 
@@ -236,17 +236,101 @@ class RemoteStorageApi(ModuleApiBase):
         Provider.validate_path(res_path)
         return res_path
 
-    def get_list_available_providers(self) -> dict:
+    def get_list_available_providers(self) -> List[dict]:
+        """
+        Get the list of available providers for the instance.
+
+        :return: List of available providers
+        :rtype: List[dict]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+            available_providers = api.remote_storage.get_list_available_providers()
+
+            # Output example
+
+            #    [
+            #        {
+            #            "id": "minio",
+            #            "name": "Amazon S3",
+            #            "defaultProtocol": "s3:",
+            #            "protocols": [
+            #                "s3:",
+            #                "minio:"
+            #            ],
+            #            "buckets": [
+            #                "bucket-test",
+            #                "remote-img"
+            #            ]
+            #        }
+            #    ]
+
+        """
         resp = self._api.get("remote-storage.available_providers", {})
         return resp.json()
 
-    def get_list_supported_providers(self) -> dict:
+    def get_list_supported_providers(self) -> List[dict]:
+        """
+        Get the list of supported providers for the instance.
+
+        :return: List of supported providers
+        :rtype: List[dict]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+            supported_providers = api.remote_storage.get_list_supported_providers()
+
+            # Output example
+
+            #    [
+            #        {
+            #            "id": "google",
+            #            "name": "Google Cloud Storage",
+            #            "defaultProtocol": "google:",
+            #            "protocols": [
+            #                "google:",
+            #                "gcs:"
+            #            ]
+            #        }
+            #    ]
+
+        """
         resp = self._api.get("remote-storage.supported_providers", {})
         return resp.json()
 
     def is_path_exist(self, path: str) -> bool:
         """
-        Checks if the file path exists.
+        Check if the file path exists.
 
         :param path: URL of the file in the bucket storage
         :type path: str
@@ -290,7 +374,7 @@ class RemoteStorageApi(ModuleApiBase):
 
     def get_path_stats(self, path: str) -> Optional[dict]:
         """
-        Get information about file size and date of its last modification in bucket storage.
+        Get information about file size and the date of its last modification in bucket storage.
 
         :param path: URL of the file in the bucket storage
         :type path: str
@@ -317,12 +401,12 @@ class RemoteStorageApi(ModuleApiBase):
             path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
             stats = api.remote_storage.get_path_stats(path)
 
-            # Output
+            # Output example
 
-            {
-                "size": 155790,
-                "lastModified": "2023-01-26T09:20:27.000Z"
-            }
+            #   {
+            #       "size": 155790,
+            #       "lastModified": "2023-01-26T09:20:27.000Z"
+            #   }
 
         """
         if self.is_path_exist(path):
@@ -343,11 +427,11 @@ class RemoteStorageApi(ModuleApiBase):
     @staticmethod
     def is_bucket_url(url: str) -> bool:
         """
-        Check if the URL is a bucket URL
+        Check if the URL is a bucket URL.
 
         :param url: URL
         :type url: str
-        :return: True if URL is a bucket URL, False otherwise.
+        :return: True if URL is a bucket URL, False otherwise
         :rtype: bool
 
         :Usage example:
