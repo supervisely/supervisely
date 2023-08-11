@@ -5,13 +5,11 @@ import re
 
 
 class HandleException:
-    def __init__(
-        self, exception: Exception, code: int = None, title: str = None, description: str = None
-    ):
+    def __init__(self, exception: Exception, headless: bool, **kwargs):
         self.exception = exception
-        self.code = code
-        self.title = title
-        self.description = description
+        self.code = kwargs.get("code")
+        self.title = kwargs.get("title")
+        self.description = kwargs.get("description")
 
 
 class ErrorHandler:
@@ -20,17 +18,16 @@ class ErrorHandler:
 
     class API:
         class TeamFilesFileNotFound(HandleException):
-            def __init__(self, exception: Exception):
+            def __init__(self, exception: Exception, headless: bool = False):
                 self.exception = exception
+                self.headless = headless
                 self.code = 2001
                 self.title = "File on Team Files not found"
-                self.description = (
-                    "Looks like the given path to the file on Team Files is incorrect. "
-                    "Ensure that the path is correct and try again."
-                )
+                self.description = "The given path to the file on Team Files is incorrect."
 
                 super().__init__(
-                    exception=self.exception,
+                    exception,
+                    headless,
                     code=self.code,
                     title=self.title,
                     description=self.description,
