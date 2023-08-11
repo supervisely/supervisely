@@ -38,9 +38,13 @@ def _check_git(repo: git.Repo):
             "[red][Error][/] You have untracked files. Commit all changes before releasing the app."
         )
         console.print("  Untracked files:")
-        console.print("\n".join(
-            [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][:20]
-        ))
+        console.print(
+            "\n".join(
+                [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][
+                    :20
+                ]
+            )
+        )
         if len(repo.untracked_files) > 20:
             console.print(f"  ... and {len(repo.untracked_files) - 20} more.")
         print()
@@ -92,18 +96,20 @@ def _check_git(repo: git.Repo):
 
 def _ask_release_version(repo: git.Repo):
     console = Console()
+
+    def extract_version(tag_name):
+        return tag_name[len("sly-release-"):] if tag_name.startswith("sly-release-") else tag_name
+
     try:
         sly_release_tags = [
             tag.name
             for tag in repo.tags
-            if re.match("^sly-release-v\d+\.\d+\.\d+$", tag.name)
+            if _check_release_version(extract_version(tag.name))
         ]
         sly_release_tags.sort(
-            key=lambda tag: [
-                int(n) for n in tag.split("sly-release-v")[-1].split(".")
-            ]
+            key=lambda tag: [int(n) for n in extract_version(tag)[1:].split(".")]
         )
-        current_release_version = sly_release_tags[-1][13:]
+        current_release_version = extract_version(sly_release_tags[-1])[1:]
         suggested_release_version = ".".join(
             [
                 *current_release_version.split(".")[:-1],
@@ -122,7 +128,7 @@ def _ask_release_version(repo: git.Repo):
         if _check_release_version(release_version):
             break
         console.print("Wrong version format. Should be of format vX.X.X")
-    
+
     return release_version
 
 
@@ -151,10 +157,14 @@ def _ask_confirmation():
 def _ask_share_app(server_address):
     console = Console()
     while True:
-        confirmed = console.input((f'Do you want to share this private app on your private instance [green]{server_address}[/] ?\n'
-                                   f'[green]yes[/] - Application will be available for all users on your private instance.\n'
-                                   '[red]no[/] - Application will only be available for you and the co-authors of the app.\n'
-                                   'You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n'))
+        confirmed = console.input(
+            (
+                f"Do you want to share this private app on your private instance [green]{server_address}[/] ?\n"
+                f"[green]yes[/] - Application will be available for all users on your private instance.\n"
+                "[red]no[/] - Application will only be available for you and the co-authors of the app.\n"
+                "You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n"
+            )
+        )
         if confirmed.lower() in ["y", "yes"]:
             return True
         if confirmed.lower() in ["n", "no"]:
@@ -186,10 +196,14 @@ def get_user_data(server_address, api_token):
         )
         return None
     except ConnectionError:
-        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        console.print(
+            f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible'
+        )
         return None
     if user_data is None:
-        console.print("[red][Error][/] User not found. Check that all credentials are set correctly")
+        console.print(
+            "[red][Error][/] User not found. Check that all credentials are set correctly"
+        )
         return None
     return user_data
 
@@ -199,7 +213,13 @@ def hided(s: str):
 
 
 def run(
-    app_directory, sub_app_directory, slug, autoconfirm, release_version, release_description
+    app_directory,
+    sub_app_directory,
+    slug,
+    autoconfirm,
+    release_version,
+    release_description,
+    share,
 ):
     console = Console()
     console.print("\nSupervisely Release App\n", style="bold")
@@ -212,7 +232,9 @@ def run(
     # get module path and check if it is a git repo
     module_root = get_module_root(app_directory)
     if sub_app_directory is not None:
-        sub_app_directory = Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
+        sub_app_directory = (
+            Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
+        )
     module_path = get_module_path(module_root, sub_app_directory)
     try:
         repo = git.Repo(module_root)
@@ -243,7 +265,7 @@ def run(
     user_data = get_user_data(server_address, api_token)
     if user_data is None:
         console.print(
-            '[red][Error][/] Cannot find User. Check that all SERVER_ADDERSS and API_TOKEN are set correctly'
+            "[red][Error][/] Cannot find User. Check that all SERVER_ADDERSS and API_TOKEN are set correctly"
         )
         return False
     user_id = user_data["id"]
@@ -257,12 +279,12 @@ def run(
         release_user_data = get_user_data(server_address, release_token)
         if release_user_data is None:
             console.print(
-                '[red][Error][/] Cannot find Releasing User. Check that all SERVER_ADDERSS and APP_RELEASE_TOKEN are set correctly'
+                "[red][Error][/] Cannot find Releasing User. Check that all SERVER_ADDERSS and APP_RELEASE_TOKEN are set correctly"
             )
             return False
         release_user_id = release_user_data["id"]
         release_user_login = release_user_data["login"]
-    
+
     # check instance version
     try:
         instance_version = get_instance_version(api_token, server_address)
@@ -282,7 +304,9 @@ def run(
         )
         return False
     except ConnectionError:
-        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        console.print(
+            f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible'
+        )
         return False
 
     # get config
@@ -299,7 +323,7 @@ def run(
             f'[red][red][Error][/][/] Cannot decode config json file at "{module_path.joinpath("config.json")}": {str(e)}'
         )
         return False
-    
+
     # get readme
     try:
         with open(module_path.joinpath("README.md"), "r", encoding="utf_8") as f:
@@ -351,9 +375,13 @@ def run(
         )
         return False
     except ConnectionError:
-        console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
+        console.print(
+            f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible'
+        )
         return False
-    module_exists_label = "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]" 
+    module_exists_label = (
+        "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]"
+    )
 
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
@@ -362,14 +390,21 @@ def run(
     console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
     if release_token:
         console.print(f"Release token:\t\t[green]{hided(release_token)}[/]")
-        console.print(f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]")
+        console.print(
+            f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]"
+        )
     console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
     console.print(f"App Name:\t\t[green]{app_name}[/]")
     console.print(f"App Key:\t\t[green]{hided(appKey)}[/]\n")
 
     share_app = False
     if not app_exist and server_address.find("app.supervise") == -1:
-        share_app = _ask_share_app(server_address)
+        if share:
+            share_app = True
+        elif autoconfirm:
+            share_app = True
+        else:
+            share_app = _ask_share_app(server_address)
 
     # get and check release version
     if repo.active_branch.name in ["main", "master"]:
@@ -429,7 +464,7 @@ def run(
                     f"[red][Error][/] Git push unsuccessful. You need write permissions in repository to release the application"
                 )
                 return False
-            
+
     # get created_at
     created_at = get_created_at(repo, tag_name)
 
@@ -472,7 +507,9 @@ def run(
     except Exception:
         message = None
         success = False
-        console.print(f"[red][Error][/] Error releasing the application.\n{traceback.format_exc()}\n")
+        console.print(
+            f"[red][Error][/] Error releasing the application.\n{traceback.format_exc()}\n"
+        )
 
     # delete tag in case of release failure
     try:
@@ -517,10 +554,17 @@ def run(
     required=False,
     help='[Optional] Release version in format "vX.X.X"',
 )
-@click.option("--release-description", required=False, help="[Optional] Release description")
+@click.option(
+    "--release-description", required=False, help="[Optional] Release description"
+)
+@click.option(
+    "--share",
+    is_flag=True,
+    help="[Optional] Add this flag to share the private app on your private instance",
+)
 @click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
-def cli_run(path, sub_app, slug, y, release_version, release_description):
+def cli_run(path, sub_app, slug, y, release_version, release_description, share):
     try:
         success = run(
             app_directory=path,
@@ -529,6 +573,7 @@ def cli_run(path, sub_app, slug, y, release_version, release_description):
             autoconfirm=y,
             release_version=release_version,
             release_description=release_description,
+            share=share,
         )
         if success:
             print("App released sucessfully!")
