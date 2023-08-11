@@ -26,15 +26,9 @@
     ></i>
 
     <span
-      style="
-        min-height: 35px;
-        display: flex;
-        align-items: center;
-        word-break: break-word;
-      "
-    >
-      {{ data.slyAppDialogMessage }}
-    </span>
+      style="min-height: 35px; align-items: center; word-break: break-word"
+      v-html="data.slyAppDialogMessage"
+    ></span>
   </div>
 
   <div slot="footer">
