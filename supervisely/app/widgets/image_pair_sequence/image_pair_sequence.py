@@ -1,4 +1,5 @@
 import os
+import uuid
 from pathlib import Path
 from urllib3.util import parse_url
 from typing import List, Optional, Tuple
@@ -155,20 +156,43 @@ class ImagePairSequence(Widget):
     def _check_paths(self, paths):
         for path in paths:
             parsed_path = parse_url(path)
-            if parsed_path.scheme not in (None, 'http', 'https'):
+            if parsed_path.scheme not in (None, "http", "https"):
                 raise ValueError(f"Invalid path or url to image: {path}")
+            
+    def _prepare_annotations(self, anns):
+        new_anns = []
+        for ann in anns:
+            if ann is not None:
+                new_labels = []
+                for label in ann.labels:
+                    if label.geometry.sly_id is None:
+                        label.geometry.sly_id = str(uuid.uuid4().int)
+                    new_labels.append(label)
+                ann = ann.clone(labels=new_labels)
+            new_anns.append(ann)
+        return new_anns
 
     def _add_with_check(self, side, data):
-        paths = [x[0] for x in data]
-        self._check_paths(paths)
+        paths, anns, titles = [], [], []
+        for item in data:
+            if len(item) < 3:
+                item = item + (None,) * (3 - len(item))
+            path, ann, title = item
+            paths.append(path)
+            anns.append(ann)
+            titles.append(title)
 
-        ann_jsons = [x[1].to_json() if x[1] is not None else None for x in data]
+        self._check_paths(paths)
+        new_anns = self._prepare_annotations(anns)
+
         total_grids = max(len(self._left_data), len(self._right_data), 1)
         if self._total_grids != total_grids:
             self._need_update = True
 
         has_empty_before = any([len(self._left_data) == 0, len(self._right_data) == 0])
 
+        ann_jsons = [a.to_json() if a is not None else None for a in new_anns]
+        data = list(zip(paths, new_anns, titles))
         if side == "left":
             self._left_data.extend(data)
             DataJson()[self.widget_id]["leftAnnotations"].extend(ann_jsons)

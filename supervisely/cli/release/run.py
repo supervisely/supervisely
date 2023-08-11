@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 import os
 import json
@@ -130,6 +131,11 @@ def _ask_release_description():
     release_description = console.input(
         "Enter release description:\n",
     )
+    while release_description.isspace() or release_description == "":
+        console.print("Release description cannot be empty")
+        release_description = console.input(
+            "Enter release description:\n",
+        )
     return release_description
 
 
@@ -138,7 +144,20 @@ def _ask_confirmation():
         confirmed = input("Confirm? [y/n]:\n")
         if confirmed.lower() in ["y", "yes"]:
             return True
-        if confirmed.lower() in ["n", "not"]:
+        if confirmed.lower() in ["n", "no"]:
+            return False
+
+
+def _ask_share_app(server_address):
+    console = Console()
+    while True:
+        confirmed = console.input((f'Do you want to share this private app on your private instance [green]{server_address}[/] ?\n'
+                                   f'[green]yes[/] - Application will be available for all users on your private instance.\n'
+                                   '[red]no[/] - Application will only be available for you and the co-authors of the app.\n'
+                                   'You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n'))
+        if confirmed.lower() in ["y", "yes"]:
+            return True
+        if confirmed.lower() in ["n", "no"]:
             return False
 
 
@@ -175,6 +194,10 @@ def get_user_data(server_address, api_token):
     return user_data
 
 
+def hided(s: str):
+    return s[:4] + "*******" + s[-4:]
+
+
 def run(
     app_directory, sub_app_directory, slug, autoconfirm, release_version, release_description
 ):
@@ -188,6 +211,8 @@ def run(
 
     # get module path and check if it is a git repo
     module_root = get_module_root(app_directory)
+    if sub_app_directory is not None:
+        sub_app_directory = Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
     module_path = get_module_path(module_root, sub_app_directory)
     try:
         repo = git.Repo(module_root)
@@ -214,15 +239,29 @@ def run(
         )
         return False
 
-    # get relese_token and user_id if needed
-    user_id = None
+    # get relese_token and user_id
+    user_data = get_user_data(server_address, api_token)
+    if user_data is None:
+        console.print(
+            '[red][Error][/] Cannot find User. Check that all SERVER_ADDERSS and API_TOKEN are set correctly'
+        )
+        return False
+    user_id = user_data["id"]
+    user_login = user_data["login"]
+
+    # get relese_token and user_id of releaseing user if needed
     release_token = os.getenv("APP_RELEASE_TOKEN", None)
+    release_user_id = None
+    release_user_login = None
     if release_token is not None:
-        user_data = get_user_data(server_address, api_token)
-        if user_data is None:
+        release_user_data = get_user_data(server_address, release_token)
+        if release_user_data is None:
+            console.print(
+                '[red][Error][/] Cannot find Releasing User. Check that all SERVER_ADDERSS and APP_RELEASE_TOKEN are set correctly'
+            )
             return False
-        user_id = user_data["id"]
-        user_login = user_data["login"]
+        release_user_id = release_user_data["id"]
+        release_user_login = release_user_data["login"]
     
     # check instance version
     try:
@@ -289,15 +328,6 @@ def run(
             with open(modal_template_path, "r") as f:
                 modal_template = f.read()
 
-    # print details
-    console.print(f"Application directory:\t[green]{module_path}[/]")
-    console.print(f"Server address:\t\t[green]{server_address}[/]")
-    console.print(f"User Api token:\t\t[green]{api_token[:4]}*******{api_token[-4:]}[/]")
-    if release_token:
-        console.print(f"Release token:\t\t[green]{release_token[:4]}*******{release_token[-4:]}[/]")
-        console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
-    console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
-
     # check that everything is commited and pushed
     success = _check_git(repo)
     if not success:
@@ -310,11 +340,11 @@ def run(
     appKey = get_appKey(repo, sub_app_directory, repo_url)
 
     # check if app exist or not
-    module_exists_label = "[yellow bold]updated[/]"
+    app_exist = True
     try:
         app_data = get_app_from_instance(appKey, api_token, server_address)
         if app_data is None:
-            module_exists_label = "[green bold]created[/]"
+            app_exist = False
     except PermissionError:
         console.print(
             "[red][Error][/] Permission denied. Check that all credentials are set correctly"
@@ -323,6 +353,23 @@ def run(
     except ConnectionError:
         console.print(f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible')
         return False
+    module_exists_label = "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]" 
+
+    # print details
+    console.print(f"Application directory:\t[green]{module_path}[/]")
+    console.print(f"Server address:\t\t[green]{server_address}[/]")
+    console.print(f"User Api token:\t\t[green]{hided(api_token)}[/]")
+    console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
+    if release_token:
+        console.print(f"Release token:\t\t[green]{hided(release_token)}[/]")
+        console.print(f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]")
+    console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
+    console.print(f"App Name:\t\t[green]{app_name}[/]")
+    console.print(f"App Key:\t\t[green]{hided(appKey)}[/]\n")
+
+    share_app = False
+    if not app_exist and server_address.find("app.supervise") == -1:
+        share_app = _ask_share_app(server_address)
 
     # get and check release version
     if repo.active_branch.name in ["main", "master"]:
@@ -405,7 +452,8 @@ def run(
             slug,
             user_id,
             sub_app_directory if sub_app_directory != None else "",
-            created_at
+            created_at,
+            share_app,
         )
         if response.status_code != 200:
             error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
