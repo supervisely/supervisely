@@ -1,0 +1,69 @@
+from typing import Union
+
+import traceback
+import re
+
+
+class HandleException:
+    def __init__(
+        self, exception: Exception, code: int = None, title: str = None, description: str = None
+    ):
+        self.exception = exception
+        self.code = code
+        self.title = title
+        self.description = description
+
+
+class ErrorHandler:
+    class SDK:
+        pass
+
+    class API:
+        class TeamFilesFileNotFound(HandleException):
+            def __init__(self, exception: Exception):
+                self.exception = exception
+                self.code = 2001
+                self.title = "File on Team Files not found"
+                self.description = (
+                    "Looks like the given path to the file on Team Files is incorrect. "
+                    "Ensure that the path is correct and try again."
+                )
+
+                super().__init__(
+                    exception=self.exception,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+
+ERROR_PATTERNS = {
+    AttributeError: {r".*api\.file\.download.*": ErrorHandler.API.TeamFilesFileNotFound}
+}
+
+
+def get_error_handler(exception: Exception) -> Union[ErrorHandler, None]:
+    error_type = type(exception)
+    error_value = str(exception)
+    error_tb = exception.__traceback__
+    traces = traceback.extract_tb(error_tb)[::-1]
+
+    print("----------DEBUG SECTION PRINTING-----------")
+    print("error_type: ", error_type)
+    print("error_value: ", error_value)
+    print("--------------TRACEBACK--------------------")
+    print("traceback: ", error_tb)
+    print("--------------TRACES------------------------")
+    for trace in traces:
+        print(trace)
+    print("-------END OF DEBUG SECTION PRINTING-------")
+
+    patterns = ERROR_PATTERNS.get(error_type)
+
+    if not patterns:
+        return
+
+    for trace in traces:
+        for pattern, handler in patterns.items():
+            if re.match(pattern, trace.line):
+                return handler
