@@ -349,6 +349,16 @@ class RemoteStorageApi(ModuleApiBase):
         :type url: str
         :return: True if URL is a bucket URL, False otherwise.
         :rtype: bool
+
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.api.remote_storage_api import RemoteStorageApi
+
+            url = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
+            RemoteStorageApi.is_bucket_url(url)
+
         """
         provider_protocols = [
             Provider.S3.value,
