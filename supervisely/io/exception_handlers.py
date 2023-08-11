@@ -1,5 +1,3 @@
-from typing import Union
-
 import traceback
 import re
 
@@ -18,7 +16,7 @@ class ErrorHandler:
 
     class API:
         class TeamFilesFileNotFound(HandleException):
-            def __init__(self, exception: Exception, headless: bool = False):
+            def __init__(self, exception: Exception, headless: bool):
                 self.exception = exception
                 self.headless = headless
                 self.code = 2001
@@ -39,7 +37,7 @@ ERROR_PATTERNS = {
 }
 
 
-def get_error_handler(exception: Exception) -> Union[ErrorHandler, None]:
+def handle_exception(exception: Exception, headless: bool = False):
     error_type = type(exception)
     error_value = str(exception)
     error_tb = exception.__traceback__
@@ -60,7 +58,15 @@ def get_error_handler(exception: Exception) -> Union[ErrorHandler, None]:
     if not patterns:
         return
 
+    handlers = []
+
     for trace in traces:
         for pattern, handler in patterns.items():
             if re.match(pattern, trace.line):
-                return handler
+                handlers.append(handler)
+
+    if not handlers:
+        return
+
+    for handler in handlers:
+        handler(exception, headless)
