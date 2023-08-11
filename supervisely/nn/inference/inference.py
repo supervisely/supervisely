@@ -587,21 +587,6 @@ class Inference:
         )
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
-        inf_video_interface = InferenceVideoInterface(
-            api=api,
-            start_frame_index=state.get("startFrameIndex", 0),
-            frames_count=state.get("framesCount", video_info.frames_count - 1),
-            frames_direction=state.get("framesDirection", "forward"),
-            video_info=video_info,
-            imgs_dir=video_images_path,
-        )
-        inf_video_interface.download_frames()
-
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-
-        n_frames = len(inf_video_interface.images_paths)
-        logger.debug(f"Total frames to infer: {n_frames}")
 
         if async_inference_request_uuid is not None:
             try:
@@ -615,7 +600,41 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = n_frames
+            sly_progress.total = video_info.frames_count
+            inference_request["preparing_progress"]["total"] = video_info.frames_count
+
+        # progress
+        inf_video_interface = InferenceVideoInterface(
+            api=api,
+            start_frame_index=state.get("startFrameIndex", 0),
+            frames_count=state.get("framesCount", video_info.frames_count - 1),
+            frames_direction=state.get("framesDirection", "forward"),
+            video_info=video_info,
+            imgs_dir=video_images_path,
+            preparing_progress=inference_request["preparing_progress"],
+        )
+
+        inf_video_interface.download_frames()
+
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
+        n_frames = len(inf_video_interface.images_paths)
+        logger.debug(f"Total frames to infer: {n_frames}")
+
+        # if async_inference_request_uuid is not None:
+        #     try:
+        #         inference_request = self._inference_requests[async_inference_request_uuid]
+        #     except Exception as ex:
+        #         import traceback
+
+        #         logger.error(traceback.format_exc())
+        #         raise RuntimeError(
+        #             f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+        #             f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+        #         )
+        #     sly_progress: Progress = inference_request["progress"]
+        #     sly_progress.total = n_frames
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
@@ -655,6 +674,7 @@ class Inference:
             "cancel_inference": False,
             "result": None,
             "pending_results": [],
+            "preparing_progress": {"current": 0, "total": 1},
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -877,6 +897,21 @@ class Inference:
             del self._inference_requests[inference_request_uuid]
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
+
+        @server.post(f"/get_preparing_progress")
+        def get_preparing_progress(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+            # logger.debug(
+            # f"Sending preparing progress with uuid:",
+            # extra=log_extra,
+            # )
+
+            return inference_request["preparing_progress"]
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

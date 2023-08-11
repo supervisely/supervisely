@@ -220,6 +220,7 @@ class SessionJSON:
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         process_fn=None,
+        preparing_cb=None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -241,8 +242,19 @@ class SessionJSON:
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
-        resp, has_started = self._wait_for_async_inference_start()
+
+        current = 0
+        total = frames_count
+        prev_current = 0
+        if preparing_cb:
+            while current != total:
+                resp = self._get_preparing_progress()
+                current = resp["current"]
+                preparing_cb(current - prev_current)
+                prev_current = current
+
         logger.info("Inference has started:", extra=resp)
+        resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
             resp["progress"]["total"], self, process_fn=process_fn
         )
@@ -257,6 +269,10 @@ class SessionJSON:
 
     def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
+        return self._get_from_endpoint_for_async_inference(endpoint)
+
+    def _get_preparing_progress(self) -> Dict[str, Any]:
+        endpoint = "get_preparing_progress"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _pop_pending_results(self) -> Dict[str, Any]:

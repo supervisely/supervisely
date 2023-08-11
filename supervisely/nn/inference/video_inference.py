@@ -11,7 +11,14 @@ from tqdm import tqdm
 
 class InferenceVideoInterface:
     def __init__(
-        self, api, start_frame_index, frames_count, frames_direction, video_info, imgs_dir
+        self,
+        api,
+        start_frame_index,
+        frames_count,
+        frames_direction,
+        video_info,
+        imgs_dir,
+        preparing_progress,
     ):
         self.api = api
 
@@ -33,6 +40,8 @@ class InferenceVideoInterface:
             imgs_dir, f"video_inference_{video_info.id}_{time.time_ns()}", "frames"
         )
         self._imgs_dir = imgs_dir
+
+        self._preparing_progress = preparing_progress
 
         self._local_video_path = None
 
@@ -79,6 +88,7 @@ class InferenceVideoInterface:
             vidcap = cv2.VideoCapture(video_path)
             vidcap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
 
+            self._preparing_progress["current"] = 0
             success, image = vidcap.read()
             count = 0
 
@@ -93,6 +103,7 @@ class InferenceVideoInterface:
                     self.images_paths.append(output_image_path)
                 success, image = vidcap.read()
                 count += 1
+                self._preparing_progress["current"] = count
 
             fps = vidcap.get(cv2.CAP_PROP_FPS)
 
@@ -101,7 +112,27 @@ class InferenceVideoInterface:
         self._local_video_path = os.path.join(
             self._imgs_dir, f"{time.time_ns()}_{self.video_info.name}"
         )
-        self.api.video.download_path(self.video_info.id, self._local_video_path)
+
+        # unpack download_path method from api.video to iterate over chunks
+        # and send results to progress bar
+        # self.api.video.download_path(self.video_info.id, self._local_video_path)
+        response = self.api.video._download(id, is_stream=True)
+        from supervisely.io.fs import ensure_base_path
+
+        ensure_base_path(self._local_video_path)
+
+        # set video size as total
+        self._preparing_progress["total"] = int(self.video_info.file_meta["size"])
+        with open(self._local_video_path, "wb") as fd:
+            mb1 = 1024 * 1024
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+                self._preparing_progress["current"] += len(chunk)
+
+        # set progress for cutting frames
+        self._preparing_progress["current"] = 0
+        self._preparing_progress["total"] = self.frames_count
+
         return videos_to_frames(
             self._local_video_path,
             [self.start_frame_index, self.start_frame_index + self.frames_count - 1],
