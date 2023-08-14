@@ -315,16 +315,16 @@ class AppService:
 
                 if exception_handler:
                     exception_handler.log_error_for_agent(command)
-
-                self.logger.error(
-                    traceback.format_exc(),
-                    exc_info=True,
-                    extra={
-                        "main_name": command,
-                        "exc_str": repr(e),
-                        "event_type": EventType.TASK_CRASHED,
-                    },
-                )
+                else:
+                    self.logger.error(
+                        traceback.format_exc(),
+                        exc_info=True,
+                        extra={
+                            "main_name": command,
+                            "exc_str": repr(e),
+                            "event_type": EventType.TASK_CRASHED,
+                        },
+                    )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
