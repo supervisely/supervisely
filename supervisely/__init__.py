@@ -237,3 +237,5 @@ from supervisely.task.progress import tqdm_sly
 
 _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
+
+from supervisely.io.exception_handlers import handle_exception
