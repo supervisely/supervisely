@@ -1,7 +1,9 @@
-from typing import List, Union
+from typing import List, Union, Callable
 from rich.console import Console
 
+# TODO: Remove commented line if logger will not be used.
 # from supervisely.sly_logger import logger
+from supervisely.app import DialogWindowError
 
 import traceback
 import re
@@ -41,7 +43,7 @@ class HandleException:
         #     f"Exception value: {self.exception}. "
         #     f"Error code: {self.code}. "
         #     f"Error title: {self.title}. "
-        #     f"Error message: {self.message}. "
+        #     f"Error message: {self.message} "
         #     f"Traceback: {tracelog}. "
         # )
 
@@ -52,14 +54,17 @@ class HandleException:
         console.print(f"{self.exception.__class__.__name__}: {self.exception}")
         # TODO: Uncomment code line when error codes will be added.
         # console.print(f"Error code: {self.code}.", style="bold orange")
-        console.print(f"Error title: {self.title}.")
-        console.print(f"Error message: {self.message}.")
+        console.print(f"Error title: {self.title}")
+        console.print(f"Error message: {self.message}")
 
         console.print("Traceback (most recent call last):", style="bold red")
 
         for i, trace in enumerate(traceback.format_list(self.stack)):
             console.print(f"{i + 1}. {trace}")
         console.print("❗️ End of the error report.", style="bold red")
+
+    def raise_error(self):
+        raise DialogWindowError(self.title, self.message)
 
 
 class ErrorHandler:
@@ -88,6 +93,31 @@ ERROR_PATTERNS = {
 
 
 def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
+    """Function for handling exceptions, using the stack trace and patterns for known errors.
+    Returns an instance of the ErrorHandler class if the pattern is found, otherwise returns None.
+
+    :param exception: Exception to be handled.
+    :type exception: Exception
+    :return: Instance of the ErrorHandler class or None.
+    :rtype: Union[ErrorHandler, None]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        try:
+            # Some code that may raise an exception.
+        except Exception as e:
+            exception_handler = sly.handle_exception(e)
+            if exception_handler:
+                # You may raise the exception using the raise_error() method.
+                # Or use other approaches for handling the exception (e.g. logging, printing to console, etc.)
+                exception_handler.raise_error()
+            else:
+                # If the pattern is not found, the exception is raised as usual.
+                raise
+    """
     # Extracting the stack trace.
     stack = traceback.extract_stack()
     # Adding the exception's last frame to the stack trace.
@@ -111,3 +141,36 @@ def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
         return
 
     return exception_handler(exception, stack)
+
+
+def handle_exceptions(func: Callable) -> Callable:
+    """Decorator for handling exceptions, which tries to find a matching pattern for known errors.
+    If the pattern is found, the exception is handled according to the specified handler.
+    Otherwise, the exception is raised as usual.
+
+    :param func: Function to be decorated.
+    :type func: Callable
+    :return: Decorated function.
+    :rtype: Callable
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        @sly.handle_exceptions
+        def my_func():
+            # Some code that may raise an exception.
+    """
+
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            exception_handler = handle_exception(e)
+            if handle_exception:
+                exception_handler.raise_error()
+            else:
+                raise
+
+    return wrapper
