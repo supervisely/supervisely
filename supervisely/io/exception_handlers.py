@@ -69,8 +69,7 @@ class HandleException:
         console.print("❗️ End of the error report.", style="bold red")
 
     def read_stack(self):
-        stack = traceback.extract_stack()
-        stack.append(traceback.extract_tb(self.exception.__traceback__)[-1])
+        stack = read_stack_from_exception(self.exception)
         return stack
 
     def raise_error(self):
@@ -111,11 +110,28 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class TaskSendRequestError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2010
+                self.title = "Task send request error"
+                self.message = (
+                    "The application has encountered an error while sending a request to the task. "
+                    "Please, check that the task is running."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
         class ConversionNotImplementedError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2009
-                self.title = "Not implemented error."
-                self.description = (
+                self.title = "Not implemented error"
+                self.message = (
                     "Conversion is not implemented for this annotations. "
                     "Please, check the geometry of the objects."
                 )
@@ -125,14 +141,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class FilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2002
-                self.title = "File too large."
-                self.description = (
+                self.title = "File too large"
+                self.message = (
                     "The given file size is too large for free community edition. "
                     "To use bigger files - get enterprise edition."
                 )
@@ -142,14 +158,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class ImageFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2003
-                self.title = "Image file too large."
-                self.description = (
+                self.title = "Image file too large"
+                self.message = (
                     "The given image file size is too large for free community edition. "
                     "To use bigger files - get enterprise edition."
                 )
@@ -159,14 +175,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class VideoFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
-                self.title = "Video file too large."
-                self.description = (
+                self.title = "Video file too large"
+                self.message = (
                     "The given video file size is too large for free community edition. "
                     "To use bigger files - get enterprise edition."
                 )
@@ -176,14 +192,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class VolumeFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
-                self.title = "Volume file too large."
-                self.description = (
+                self.title = "Volume file too large"
+                self.message = (
                     "The given volume file size is too large for free community edition. "
                     "To use bigger files - get enterprise edition."
                 )
@@ -193,14 +209,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class OutOfMemory(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2007
-                self.title = "Out of memory."
-                self.description = (
+                self.title = "Out of memory"
+                self.message = (
                     "The agent ran out of memory. "
                     "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
                 )
@@ -210,14 +226,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
         class DockerRuntimeError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2008
-                self.title = "Docker runtime error."
-                self.description = (
+                self.title = "Docker runtime error"
+                self.message = (
                     "The agent has encountered a Docker runtime error. "
                     "Please, check that docker is installed and running."
                 )
@@ -227,13 +243,14 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    description=self.description,
+                    message=self.message,
                 )
 
 
 ERROR_PATTERNS = {
     AttributeError: {r".*api\.file\.get_info_by_path.*": ErrorHandler.API.TeamFilesFileNotFound},
     HTTPError: {
+        r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
         r".*file-storage\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.FilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.VideoFilesSizeTooLarge,
@@ -274,9 +291,7 @@ def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
                 raise
     """
     # Extracting the stack trace.
-    stack = traceback.extract_stack()
-    # Adding the exception's last frame to the stack trace.
-    stack.append(traceback.extract_tb(exception.__traceback__)[-1])
+    stack = read_stack_from_exception(exception)
 
     # Retrieving the patterns for the given exception type.
     patterns = ERROR_PATTERNS.get(type(exception))
@@ -321,3 +336,9 @@ def handle_exceptions(func: Callable) -> Callable:
                 raise
 
     return wrapper
+
+
+def read_stack_from_exception(exception):
+    stack = traceback.extract_stack()
+    stack.extend(traceback.extract_tb(exception.__traceback__))
+    return stack
