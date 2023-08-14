@@ -2,8 +2,7 @@ from requests.exceptions import HTTPError, RetryError
 from typing import List, Union, Callable
 from rich.console import Console
 
-# TODO: Remove commented line if logger will not be used.
-# from supervisely.sly_logger import logger
+from supervisely.sly_logger import logger, EventType
 from supervisely.app import DialogWindowError
 
 import traceback
@@ -76,6 +75,17 @@ class HandleException:
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
+
+    def log_error_for_agent(self, main_name: str):
+        logger.critical(
+            self.title,
+            exc_info=True,
+            extra={
+                "main_name": main_name,
+                "event_type": EventType.TASK_CRASHED,
+                "exc_str": self.message,
+            },
+        )
 
 
 class ErrorHandler:

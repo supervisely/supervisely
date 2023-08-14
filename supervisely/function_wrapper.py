@@ -14,24 +14,25 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        # logger.critical(
-        #     repr(e),
-        #     exc_info=True,
-        #     extra={
-        #         "main_name": main_name,
-        #         "event_type": EventType.TASK_CRASHED,
-        #         "exc_str": str(e),
-        #     },
-        # )
-        logger.debug("Main finished: BAD.", extra={"main_name": main_name})
-
         from supervisely import handle_exception
 
         exception_handler = handle_exception(e)
 
+        if exception_handler:
+            exception_handler.log_error_for_agent(main_name)
+        else:
+            logger.critical(
+                repr(e),
+                exc_info=True,
+                extra={
+                    "main_name": main_name,
+                    "event_type": EventType.TASK_CRASHED,
+                    "exc_str": str(e),
+                },
+            )
+        logger.debug("Main finished: BAD.", extra={"main_name": main_name})
+
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
-            if exception_handler:
-                exception_handler.raise_error()
             raise
         else:
             os._exit(1)
