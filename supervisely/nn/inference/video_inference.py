@@ -82,6 +82,7 @@ class InferenceVideoInterface:
             img_rgb = self.api.video.frame.download_np(self.video_info.id, frame_index)
             # save frame as PNG file
             sly.image.write(os.path.join(f"{self._frames_path}", f"frame{index:06d}.png"), img_rgb)
+            self._preparing_progress["current"] += 1
 
     def _download_entire_video(self):
         def videos_to_frames(video_path, frames_range=None):
@@ -102,6 +103,7 @@ class InferenceVideoInterface:
                     cv2.imwrite(output_image_path, image)  # save frame as PNG file
                     self.images_paths.append(output_image_path)
                 success, image = vidcap.read()
+
                 count += 1
                 self._preparing_progress["current"] = count
 
@@ -116,11 +118,10 @@ class InferenceVideoInterface:
         # unpack download_path method from api.video to iterate over chunks
         # and send results to progress bar
         # self.api.video.download_path(self.video_info.id, self._local_video_path)
-        response = self.api.video._download(id, is_stream=True)
+        response = self.api.video._download(self.video_info.id, is_stream=True)
         from supervisely.io.fs import ensure_base_path
 
         ensure_base_path(self._local_video_path)
-
         # set video size as total
         self._preparing_progress["total"] = int(self.video_info.file_meta["size"])
         with open(self._local_video_path, "wb") as fd:
@@ -128,7 +129,6 @@ class InferenceVideoInterface:
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
                 self._preparing_progress["current"] += len(chunk)
-
         # set progress for cutting frames
         self._preparing_progress["current"] = 0
         self._preparing_progress["total"] = self.frames_count

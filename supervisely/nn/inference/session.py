@@ -243,14 +243,25 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
+        video_size = int(self.api.video.get_info_by_id(video_id).file_meta["size"])
+        # init progress before resp?
+        progress_widget = preparing_cb(message="Download video", total=video_size)
+
         current = 0
-        total = frames_count
         prev_current = 0
         if preparing_cb:
-            while current != total:
+            resp = self._get_preparing_progress()
+            progress_widget = preparing_cb(message="Download video", total=video_size)
+            while resp["status"] == "download":
                 resp = self._get_preparing_progress()
                 current = resp["current"]
-                preparing_cb(current - prev_current)
+                progress_widget.update(current)
+
+            progress_widget = preparing_cb(message="Cutting frames", total=frames_count)
+            while resp["status"] == "cut":
+                resp = self._get_preparing_progress()
+                current = resp["current"]
+                progress_widget.update(current - prev_current)
                 prev_current = current
 
         logger.info("Inference has started:", extra=resp)

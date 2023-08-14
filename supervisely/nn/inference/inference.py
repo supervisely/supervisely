@@ -582,7 +582,7 @@ class Inference:
             extra=dict(
                 w=video_info.frame_width,
                 h=video_info.frame_height,
-                n_frames=video_info.frames_count,
+                n_frames=state["framesCount"],
             ),
         )
 
@@ -600,8 +600,9 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = video_info.frames_count
-            inference_request["preparing_progress"]["total"] = video_info.frames_count
+
+            sly_progress.total = state["framesCount"]
+            inference_request["preparing_progress"]["total"] = state["framesCount"]
 
         # progress
         inf_video_interface = InferenceVideoInterface(
@@ -613,7 +614,6 @@ class Inference:
             imgs_dir=video_images_path,
             preparing_progress=inference_request["preparing_progress"],
         )
-
         inf_video_interface.download_frames()
 
         settings = self._get_inference_settings(state)
@@ -621,20 +621,6 @@ class Inference:
 
         n_frames = len(inf_video_interface.images_paths)
         logger.debug(f"Total frames to infer: {n_frames}")
-
-        # if async_inference_request_uuid is not None:
-        #     try:
-        #         inference_request = self._inference_requests[async_inference_request_uuid]
-        #     except Exception as ex:
-        #         import traceback
-
-        #         logger.error(traceback.format_exc())
-        #         raise RuntimeError(
-        #             f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-        #             f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-        #         )
-        #     sly_progress: Progress = inference_request["progress"]
-        #     sly_progress.total = n_frames
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
