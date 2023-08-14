@@ -27,14 +27,10 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
 
         from supervisely import handle_exception
 
-        logger.debug("Trying to find exception handler...")
         exception_handler = handle_exception(e)
 
-        logger.debug(f"Exception handler found (title): {exception_handler.title}")
-
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
-            logger.debug("Debug mode is on. Reraising exception.")
-            # raise RuntimeError("Test exception")
+            raise
         else:
             os._exit(1)
     else:
