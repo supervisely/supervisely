@@ -350,7 +350,7 @@ def handle_exceptions(func: Callable) -> Callable:
             return func(*args, **kwargs)
         except Exception as e:
             exception_handler = handle_exception(e)
-            if handle_exception:
+            if exception_handler:
                 exception_handler.raise_error()
             else:
                 raise
