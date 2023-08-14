@@ -117,7 +117,7 @@ def shutdown(process_id=None):
         current_process = psutil.Process(process_id)
         if os.name == "nt":
             # for windows
-            current_process.send_signal(signal.CTRL_C_EVENT) # emit ctrl + c
+            current_process.send_signal(signal.CTRL_C_EVENT)  # emit ctrl + c
         else:
             current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
@@ -150,7 +150,18 @@ def enable_hot_reload_on_debug(app: FastAPI):
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
-        details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+        from supervisely import handle_exception
+
+        exception_handler = handle_exception(exc)
+
+        if exception_handler is not None:
+            details = {
+                "title": exception_handler.title,
+                "message": exception_handler.message,
+            }
+        else:
+            details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+
         if isinstance(exc, DialogWindowBase):
             details["title"] = exc.title
             details["message"] = exc.description
@@ -233,6 +244,7 @@ def _init(
         @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
+
             ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
@@ -324,6 +336,7 @@ class Application(metaclass=Singleton):
             if is_production():
                 # to save offline session
                 from supervisely.app.content import ContentOrigin
+
                 ContentOrigin().start()
                 client = TestClient(self._fastapi)
                 resp = run_sync(client.get("/"))
