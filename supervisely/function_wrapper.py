@@ -33,6 +33,7 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
             if exception_handler:
                 print("DEBUG PRINTING, HANDLER FOUND")
                 exception_handler.raise_error()
+            print("DEBUG PRINTING, AFTER HANDLER CHECK")
             raise
         else:
             os._exit(1)
