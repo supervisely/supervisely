@@ -309,6 +309,13 @@ class AppService:
             self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
             if self._ignore_errors is False:
+                from supervisely import handle_exception
+
+                exception_handler = handle_exception(e)
+
+                if exception_handler:
+                    exception_handler.log_error_for_agent(command)
+
                 self.logger.error(
                     traceback.format_exc(),
                     exc_info=True,
