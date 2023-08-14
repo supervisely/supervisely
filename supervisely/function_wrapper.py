@@ -30,6 +30,8 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Trying to find exception handler...")
         exception_handler = handle_exception(e)
 
+        return
+
         logger.debug(f"Exception handler found (title): {exception_handler.title}")
 
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
