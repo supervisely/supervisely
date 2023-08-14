@@ -25,7 +25,13 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         )
         logger.debug("Main finished: BAD.", extra={"main_name": main_name})
 
+        from supervisely import handle_exception
+
+        exception_handler = handle_exception(e)
+
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
+            if exception_handler:
+                exception_handler.raise_error()
             raise
         else:
             os._exit(1)
