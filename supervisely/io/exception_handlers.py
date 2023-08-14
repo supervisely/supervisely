@@ -17,7 +17,6 @@ class HandleException:
     def __init__(
         self,
         exception: Exception,
-        raise_error: bool = True,
         stack: List[traceback.FrameSummary] = None,
         **kwargs,
     ):
@@ -39,9 +38,6 @@ class HandleException:
         # )
 
         self.dev_logging()
-
-        if raise_error:
-            self.raise_error()
 
     def dev_logging(self):
         # * Option for logging the exception with sly logger.
@@ -91,7 +87,6 @@ class ErrorHandler:
             def __init__(
                 self,
                 exception: Exception,
-                raise_error: bool = True,
                 stack: List[traceback.FrameSummary] = None,
             ):
                 self.code = 2001
@@ -243,7 +238,7 @@ ERROR_PATTERNS = {
 }
 
 
-def handle_exception(exception: Exception, raise_error: bool = True) -> Union[ErrorHandler, None]:
+def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
     """Function for handling exceptions, using the stack trace and patterns for known errors.
     Returns an instance of the ErrorHandler class if the pattern is found, otherwise returns None.
 
@@ -283,7 +278,7 @@ def handle_exception(exception: Exception, raise_error: bool = True) -> Union[Er
     for frame in stack[::-1]:
         for pattern, handler in patterns.items():
             if re.match(pattern, frame.line):
-                return handler(exception, raise_error, stack)
+                return handler(exception, stack)
 
 
 def handle_exceptions(func: Callable) -> Callable:
