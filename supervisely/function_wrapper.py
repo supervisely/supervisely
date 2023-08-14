@@ -14,13 +14,6 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        # from supervisely import handle_exception
-
-        # exception_handler = handle_exception(e)
-
-        # if exception_handler:
-        #     exception_handler.log_error_for_agent(main_name)
-        # else:
         logger.critical(
             repr(e),
             exc_info=True,
