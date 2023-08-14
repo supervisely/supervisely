@@ -34,7 +34,7 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
 
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
             logger.debug("Debug mode is on. Reraising exception.")
-            raise
+            raise RuntimeError("Test exception")
         else:
             os._exit(1)
     else:
