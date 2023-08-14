@@ -310,19 +310,11 @@ def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
     if not patterns:
         return
 
-    exception_handler = None
-
     # Looping through the stack trace from the bottom up to find matching pattern with specified Exception type.
     for frame in stack[::-1]:
         for pattern, handler in patterns.items():
             if re.match(pattern, frame.line):
-                exception_handler = handler
-                break
-
-    if not exception_handler:
-        return
-
-    return exception_handler(exception, stack)
+                return handler(exception, stack)
 
 
 def handle_exceptions(func: Callable) -> Callable:
