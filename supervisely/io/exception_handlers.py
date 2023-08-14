@@ -13,9 +13,9 @@ import re
 
 
 class HandleException:
-    def __init__(self, exception: Exception, stack: List[traceback.FrameSummary], **kwargs):
+    def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None, **kwargs):
         self.exception = exception
-        self.stack = stack
+        self.stack = stack or self.read_stack()
         self.code = kwargs.get("code")
         self.title = kwargs.get("title")
 
@@ -63,6 +63,11 @@ class HandleException:
             console.print(f"{i + 1}. {trace}")
         console.print("❗️ End of the error report.", style="bold red")
 
+    def read_stack(self):
+        stack = traceback.extract_stack()
+        stack.append(traceback.extract_tb(self.exception.__traceback__)[-1])
+        return stack
+
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
 
@@ -73,7 +78,11 @@ class ErrorHandler:
 
     class API:
         class TeamFilesFileNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(
+                self,
+                exception: Exception,
+                stack: List[traceback.FrameSummary] = None,
+            ):
                 self.code = 2001
                 self.title = "File on Team Files not found"
                 self.message = "The given path to the file on Team Files is incorrect."
