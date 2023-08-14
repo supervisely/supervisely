@@ -409,14 +409,7 @@ class AppService:
             self.logger.info("Successfully shutdown the APP service.")
 
         if self._error is not None:
-            from supervisely import handle_exception
-
-            exception_handler = handle_exception(self._error)
-
-            if exception_handler:
-                raise RuntimeError("TEST")
-            else:
-                raise self._error
+            raise self._error
 
     def stop(self, wait=True):
         # @TODO: add timeout
