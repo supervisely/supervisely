@@ -414,7 +414,7 @@ class AppService:
             exception_handler = handle_exception(self._error)
 
             if exception_handler:
-                exception_handler.raise_error()
+                raise RuntimeError("TEST")
             else:
                 raise self._error
 
