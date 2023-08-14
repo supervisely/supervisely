@@ -148,10 +148,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2002
                 self.title = "File too large"
-                self.message = (
-                    "The given file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
+                self.message = ("The given file size is too large for free community edition.")
 
                 super().__init__(
                     exception,
@@ -165,10 +162,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2003
                 self.title = "Image file too large"
-                self.message = (
-                    "The given image file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
+                self.message = ("The given image file size is too large for free community edition.")
 
                 super().__init__(
                     exception,
@@ -182,10 +176,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
                 self.title = "Video file too large"
-                self.message = (
-                    "The given video file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
+                self.message = ("The given video file size is too large for free community edition.")
 
                 super().__init__(
                     exception,
@@ -199,10 +190,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
                 self.title = "Volume file too large"
-                self.message = (
-                    "The given volume file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
+                self.message = ("The given volume file size is too large for free community edition.")
 
                 super().__init__(
                     exception,
@@ -299,10 +287,12 @@ def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
         return
 
     # Looping through the stack trace from the bottom up to find matching pattern with specified Exception type.
-    for frame in stack[::-1]:
-        for pattern, handler in patterns.items():
+    for pattern, handler in patterns.items():
+        for frame in stack[::-1]:
             if re.match(pattern, frame.line):
                 return handler(exception, stack)
+        if re.match(pattern, exception.args[0]):
+            return handler(exception, stack)
 
 
 def handle_exceptions(func: Callable) -> Callable:
