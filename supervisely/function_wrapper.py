@@ -27,13 +27,9 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
 
         from supervisely import handle_exception
 
-        exception_handler = handle_exception(e)
+        exception_handler = handle_exception(e, raise_error=True)
 
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
-            if exception_handler:
-                print("DEBUG PRINTING, HANDLER FOUND")
-                exception_handler.raise_error()
-            print("DEBUG PRINTING, AFTER HANDLER CHECK")
             raise
         else:
             os._exit(1)
