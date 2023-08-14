@@ -14,15 +14,15 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        logger.critical(
-            repr(e),
-            exc_info=True,
-            extra={
-                "main_name": main_name,
-                "event_type": EventType.TASK_CRASHED,
-                "exc_str": str(e),
-            },
-        )
+        # logger.critical(
+        #     repr(e),
+        #     exc_info=True,
+        #     extra={
+        #         "main_name": main_name,
+        #         "event_type": EventType.TASK_CRASHED,
+        #         "exc_str": str(e),
+        #     },
+        # )
         logger.debug("Main finished: BAD.", extra={"main_name": main_name})
 
         from supervisely import handle_exception
