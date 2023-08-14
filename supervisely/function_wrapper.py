@@ -31,6 +31,7 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
 
         if os.environ.get(SLY_DEBUG) or logging.getLevelName(logger.level) in ["TRACE", "DEBUG"]:
             if exception_handler:
+                print("DEBUG PRINTING, HANDLER FOUND")
                 exception_handler.raise_error()
             raise
         else:
