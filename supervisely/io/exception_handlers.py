@@ -96,110 +96,8 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        class FilesSizeTooLarge(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
-                self.code = 2002
-                self.title = "File too large."
-                self.description = (
-                    "The given file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    headless,
-                    code=self.code,
-                    title=self.title,
-                    description=self.description,
-                )
-
-        class ImageFilesSizeTooLarge(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
-                self.code = 2003
-                self.title = "Image file too large."
-                self.description = (
-                    "The given image file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    headless,
-                    code=self.code,
-                    title=self.title,
-                    description=self.description,
-                )
-
-        class RetryLimitExceeded(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
-                self.code = 2004
-                self.title = "Retry limit exceeded."
-                self.description = (
-                    "The number of retries for the request has been exceeded. "
-                    "Please, check your internet connection, agent status, try again later or contact support."
-                )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    headless,
-                    code=self.code,
-                    title=self.title,
-                    description=self.description,
-                )
-
-        class VideoFilesSizeTooLarge(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
-                self.code = 2005
-                self.title = "Video file too large."
-                self.description = (
-                    "The given video file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    headless,
-                    code=self.code,
-                    title=self.title,
-                    description=self.description,
-                )
-
-        class VolumeFilesSizeTooLarge(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
-                self.code = 2006
-                self.title = "Volume file too large."
-                self.description = (
-                    "The given volume file size is too large for free community edition. "
-                    "To use bigger files - get enterprise edition."
-                )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    headless,
-                    code=self.code,
-                    title=self.title,
-                    description=self.description,
-                )
-
         class ConversionNotImplementedError(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2009
                 self.title = "Not implemented error."
                 self.description = (
@@ -210,16 +108,81 @@ class ErrorHandler:
                 super().__init__(
                     exception,
                     stack,
-                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class FilesSizeTooLarge(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2002
+                self.title = "File too large."
+                self.description = (
+                    "The given file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class ImageFilesSizeTooLarge(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2003
+                self.title = "Image file too large."
+                self.description = (
+                    "The given image file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class VideoFilesSizeTooLarge(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2005
+                self.title = "Video file too large."
+                self.description = (
+                    "The given video file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class VolumeFilesSizeTooLarge(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2006
+                self.title = "Volume file too large."
+                self.description = (
+                    "The given volume file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
                     code=self.code,
                     title=self.title,
                     description=self.description,
                 )
 
         class OutOfMemory(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2007
                 self.title = "Out of memory."
                 self.description = (
@@ -230,16 +193,13 @@ class ErrorHandler:
                 super().__init__(
                     exception,
                     stack,
-                    headless,
                     code=self.code,
                     title=self.title,
                     description=self.description,
                 )
 
         class DockerRuntimeError(HandleException):
-            def __init__(
-                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
-            ):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2008
                 self.title = "Docker runtime error."
                 self.description = (
@@ -250,7 +210,6 @@ class ErrorHandler:
                 super().__init__(
                     exception,
                     stack,
-                    headless,
                     code=self.code,
                     title=self.title,
                     description=self.description,
@@ -268,7 +227,6 @@ ERROR_PATTERNS = {
     NotImplementedError: {
         r".*from 'graph' to 'polygon'.*": ErrorHandler.API.ConversionNotImplementedError
     },
-    RetryError: {r".*Retry limit exceeded.*": ErrorHandler.API.RetryLimitExceeded},
     # RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
