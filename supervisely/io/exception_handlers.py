@@ -95,7 +95,6 @@ class ErrorHandler:
 
                 super().__init__(
                     exception,
-                    raise_error,
                     stack,
                     code=self.code,
                     title=self.title,
