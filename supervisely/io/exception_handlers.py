@@ -1,3 +1,4 @@
+from requests.exceptions import HTTPError, RetryError
 from typing import List, Union, Callable
 from rich.console import Console
 
@@ -95,9 +96,181 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class FilesSizeTooLarge(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2002
+                self.title = "File too large."
+                self.description = (
+                    "The given file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class ImageFilesSizeTooLarge(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2003
+                self.title = "Image file too large."
+                self.description = (
+                    "The given image file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class RetryLimitExceeded(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2004
+                self.title = "Retry limit exceeded."
+                self.description = (
+                    "The number of retries for the request has been exceeded. "
+                    "Please, check your internet connection, agent status, try again later or contact support."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class VideoFilesSizeTooLarge(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2005
+                self.title = "Video file too large."
+                self.description = (
+                    "The given video file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class VolumeFilesSizeTooLarge(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2006
+                self.title = "Volume file too large."
+                self.description = (
+                    "The given volume file size is too large for free community edition. "
+                    "To use bigger files - get enterprise edition."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class ConversionNotImplementedError(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2009
+                self.title = "Not implemented error."
+                self.description = (
+                    "Conversion is not implemented for this annotations. "
+                    "Please, check the geometry of the objects."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class OutOfMemory(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2007
+                self.title = "Out of memory."
+                self.description = (
+                    "The agent ran out of memory. "
+                    "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
+        class DockerRuntimeError(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary], headless: bool
+            ):
+                self.code = 2008
+                self.title = "Docker runtime error."
+                self.description = (
+                    "The agent has encountered a Docker runtime error. "
+                    "Please, check that docker is installed and running."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    headless,
+                    code=self.code,
+                    title=self.title,
+                    description=self.description,
+                )
+
 
 ERROR_PATTERNS = {
-    AttributeError: {r".*api\.file\.get_info_by_path.*": ErrorHandler.API.TeamFilesFileNotFound}
+    AttributeError: {r".*api\.file\.get_info_by_path.*": ErrorHandler.API.TeamFilesFileNotFound},
+    HTTPError: {
+        r".*file-storage\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.FilesSizeTooLarge,
+        r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
+        r".*videos\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.VideoFilesSizeTooLarge,
+        r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
+    },
+    NotImplementedError: {
+        r".*from 'graph' to 'polygon'.*": ErrorHandler.API.ConversionNotImplementedError
+    },
+    RetryError: {r".*Retry limit exceeded.*": ErrorHandler.API.RetryLimitExceeded},
+    # RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
+    # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
 
 
