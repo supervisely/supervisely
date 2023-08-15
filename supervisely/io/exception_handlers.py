@@ -1,4 +1,6 @@
+from json import JSONDecodeError
 from requests.exceptions import HTTPError, RetryError
+from shutil import ReadError
 from typing import List, Union, Callable
 from rich.console import Console
 
@@ -87,8 +89,34 @@ class HandleException:
 
 
 class ErrorHandler:
-    class SDK:
-        pass
+    class APP:
+        class UnsupportedShapes(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1001
+                self.title = "Unsupported class shapes"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class UnsupportedArchiveFormat(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1002
+                self.title = "Unsupported archive format"
+                self.message = "The given archive format is not supported."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
 
     class API:
         class TeamFilesFileNotFound(HandleException):
@@ -114,7 +142,7 @@ class ErrorHandler:
 
         class TaskSendRequestError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2010
+                self.code = 2002
                 self.title = "Task send request error"
                 self.message = (
                     "The application has encountered an error while sending a request to the task. "
@@ -129,28 +157,13 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        class ConversionNotImplementedError(HandleException):
+        class FileSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2009
-                self.title = "Not implemented error"
+                self.code = 2003
+                self.title = "File size error"
                 self.message = (
-                    "Conversion is not implemented for this annotations. "
-                    "Please, check the geometry of the objects."
+                    "The given file size is too large (more than 10 GB) for free community edition."
                 )
-
-                super().__init__(
-                    exception,
-                    stack,
-                    code=self.code,
-                    title=self.title,
-                    message=self.message,
-                )
-
-        class FilesSizeTooLarge(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2002
-                self.title = "File too large"
-                self.message = "The given file size is too large for free community edition."
 
                 super().__init__(
                     exception,
@@ -162,9 +175,9 @@ class ErrorHandler:
 
         class ImageFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2003
-                self.title = "Image file too large"
-                self.message = "The given image file size is too large for free community edition."
+                self.code = 2004
+                self.title = "Image file size error"
+                self.message = "The given image file size is too large (more than 1 GB) for free community edition."
 
                 super().__init__(
                     exception,
@@ -177,8 +190,8 @@ class ErrorHandler:
         class VideoFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
-                self.title = "Video file too large"
-                self.message = "The given video file size is too large for free community edition."
+                self.title = "Video file size error"
+                self.message = "The given video file size is too large (more than 300 MB) for free community edition."
 
                 super().__init__(
                     exception,
@@ -191,8 +204,8 @@ class ErrorHandler:
         class VolumeFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
-                self.title = "Volume file too large"
-                self.message = "The given volume file size is too large for free community edition."
+                self.title = "Volume file size error"
+                self.message = "The given volume file size is too large (more than 150 MB) for free community edition."
 
                 super().__init__(
                     exception,
@@ -236,20 +249,189 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class AppSetFieldError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2009
+                self.title = "App set field error"
+                self.message = (
+                    "The application has encountered an error while setting a field. "
+                    "Please, check that the task is running and the field name is correct."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class TeamFilesDirectoryDownloadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2010
+                self.title = "Team files directory download error"
+                self.message = "Make sure that the directory exists in the team files, the files are not corrupted, and try again."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class PointcloudsUploadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2011
+                self.title = "Pointclouds uploading error"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class AnnotationUploadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2012
+                self.title = "Annotation uploading error"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class AnnotationNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2013
+                self.title = "Annotation not found"
+                self.message = "Please, check that the annotation(s) exists by the given path."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+    class SDK:
+        class ProjectStructureError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 3001
+                self.title = "Project structure error"
+                self.message = "Please, check the project structure and try again."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class ConversionNotImplemented(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 3002
+                self.title = "Not implemented error"
+                self.message = (
+                    "Conversion is not implemented between the given object types. "
+                    "Please, check the geometry type of the objects."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class JsonAnnotationReadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 3003
+                self.title = "JSON annotation read error"
+                self.message = (
+                    "Please, check that the file has the correct Supervisely JSON format."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class LabelFromJsonFailed(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 3004
+                self.title = "Label deserialize error"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
 
 ERROR_PATTERNS = {
     AttributeError: {r".*api\.file\.get_info_by_path.*": ErrorHandler.API.TeamFilesFileNotFound},
     HTTPError: {
         r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
-        r".*file-storage\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.FilesSizeTooLarge,
+        r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
+        r".*file-storage\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.FileSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
     },
-    NotImplementedError: {
-        r".*from 'graph' to 'polygon'.*": ErrorHandler.API.ConversionNotImplementedError
+    RuntimeError: {
+        r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
     },
-    # RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
+    FileNotFoundError: {
+        r".*api\.annotation\.upload_path.*": ErrorHandler.API.AnnotationNotFound,
+        r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationNotFound,
+        r".*read_single_project.*": ErrorHandler.SDK.ProjectStructureError,
+    },
+    JSONDecodeError: {
+        r".*sly\.json\.load_json_file.*": ErrorHandler.SDK.JsonAnnotationReadError,
+        r".*api\.annotation\.upload_path.*": ErrorHandler.SDK.JsonAnnotationReadError,
+        r".*api\.annotation\.upload_paths.*": ErrorHandler.SDK.JsonAnnotationReadError,
+    },
+    NotImplementedError: {
+        r".*geometry\.convert.*": ErrorHandler.SDK.ConversionNotImplemented,
+    },
+    ValueError: {
+        r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+    },
+    IndexError: {
+        r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+    },
+    ReadError: {
+        r".*shutil\.unpack_archive.*": ErrorHandler.APP.UnsupportedArchiveFormat,
+        r".*api\.file\.download_directory.*": ErrorHandler.API.TeamFilesDirectoryDownloadError,
+    },
+    KeyError: {
+        r".*api\.pointcloud\.upload_paths.*": ErrorHandler.API.PointcloudsUploadError,
+        r".*api\.pointcloud\.upload_project.*": ErrorHandler.SDK.ProjectStructureError,
+    },
+    TypeError: {
+        r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+    },
+    RetryError: {
+        r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
+    },
+    RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
 
