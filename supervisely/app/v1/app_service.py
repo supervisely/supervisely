@@ -455,7 +455,7 @@ class AppService:
         [task.cancel() for task in tasks]
 
         self.logger.info(f"Cancelling {len(tasks)} outstanding tasks")
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=False)
 
         self.logger.info("Shutting down ThreadPoolExecutor")
         self.executor.shutdown(wait=False)
