@@ -82,6 +82,9 @@ class HandleException:
             },
         )
 
+    def get_message_for_modal_window(self):
+        return f"{self.title}. \n{self.message}"
+
 
 class ErrorHandler:
     class SDK:

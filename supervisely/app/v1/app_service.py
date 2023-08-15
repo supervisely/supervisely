@@ -314,6 +314,13 @@ class AppService:
             if self._ignore_errors is False:
                 if exception_handler:
                     exception_handler.log_error_for_agent(command)
+
+                    if self.has_ui:
+                        self.show_modal_window(
+                            exception_handler.get_message_for_modal_window(),
+                            level="error",
+                        )
+
                 else:
                     self.logger.error(
                         traceback.format_exc(),
@@ -330,11 +337,8 @@ class AppService:
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
-                    print("Has UI")
-
                     if exception_handler:
-                        print("Exception handler is not None")
-                        message = f"{exception_handler.title}\n{exception_handler.description}"
+                        message = exception_handler.get_message_for_modal_window()
                     else:
                         message = (
                             "Oops! Something went wrong, please try again or contact tech support. "
@@ -546,6 +550,18 @@ class AppService:
                 try:
                     f(*args, **kwargs)
                 except Exception as e:
+                    from supervisely import handle_exception
+
+                    exception_handler = handle_exception(e)
+
+                    if exception_handler:
+                        message = exception_handler.get_message_for_modal_window()
+                    else:
+                        message = (
+                            f"Oops! Something went wrong, please try again or contact tech support."
+                            f" Find more info in the app logs. Error: {repr(e)}",
+                        )
+
                     self.logger.error(
                         f"please, contact support: task_id={self.task_id}, {repr(e)}",
                         exc_info=True,
@@ -554,8 +570,7 @@ class AppService:
                         },
                     )
                     self.show_modal_window(
-                        f"Oops! Something went wrong, please try again or contact tech support."
-                        f" Find more info in the app logs. Error: {repr(e)}",
+                        message,
                         level="error",
                     )
 
