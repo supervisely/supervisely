@@ -314,7 +314,6 @@ class AppService:
                 exception_handler = handle_exception(e)
 
                 if exception_handler:
-                    exception_handler.show_app_dialog()
                     exception_handler.log_error_for_agent(command)
                 else:
                     self.logger.error(
