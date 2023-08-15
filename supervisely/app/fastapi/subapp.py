@@ -147,7 +147,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-def handle_server_errors(app: FastAPI):
+def handle_server_errors(app: FastAPI, headless: bool):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
         from supervisely import handle_exception
@@ -156,6 +156,11 @@ def handle_server_errors(app: FastAPI):
 
         if handled_exception is not None:
             details = {"title": handled_exception.title, "message": handled_exception.message}
+
+            # ! Test code.
+            if headless:
+                handle_exception.raise_error()
+
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):
@@ -182,7 +187,7 @@ def _init(
     if app is None:
         app = _MainServer().get_server()
 
-    handle_server_errors(app)
+    handle_server_errors(app, headless)
 
     if headless is False:
         if "app_body_padding" not in StateJson():
