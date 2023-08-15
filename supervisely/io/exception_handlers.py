@@ -55,18 +55,18 @@ class HandleException:
         # * Printing the exception to the console line by line.
         console = Console()
 
-        console.print("❗️ Beginning of the error report.", style="bold red")
-        console.print(f"{self.exception.__class__.__name__}: {self.exception}")
+        console.print("🛑 Beginning of the error report.", style="bold red")
+        console.print(f"🔴 {self.exception.__class__.__name__}: {self.exception}")
         # TODO: Uncomment code line when error codes will be added.
         # console.print(f"Error code: {self.code}.", style="bold orange")
-        console.print(f"Error title: {self.title}")
-        console.print(f"Error message: {self.message}")
+        console.print(f"🔴 Error title: {self.title}")
+        console.print(f"🔴 Error message: {self.message}")
 
-        console.print("Traceback (most recent call last):", style="bold red")
+        console.print("🔴 Traceback (most recent call last):", style="bold red")
 
         for i, trace in enumerate(traceback.format_list(self.stack)):
             console.print(f"{i + 1}. {trace}")
-        console.print("❗️ End of the error report.", style="bold red")
+        console.print("🛑 End of the error report.", style="bold red")
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
