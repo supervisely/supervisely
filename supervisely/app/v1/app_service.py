@@ -315,6 +315,7 @@ class AppService:
 
                 if exception_handler:
                     exception_handler.log_error_for_agent(command)
+                    exception_handler.raise_error()
                 else:
                     self.logger.error(
                         traceback.format_exc(),
