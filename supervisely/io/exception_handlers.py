@@ -20,7 +20,7 @@ class HandleException:
         **kwargs,
     ):
         self.exception = exception
-        self.stack = stack or self.read_stack()
+        self.stack = stack or read_stack_from_exception(self.exception)
         self.code = kwargs.get("code")
         self.title = kwargs.get("title")
 
@@ -67,10 +67,6 @@ class HandleException:
         for i, trace in enumerate(traceback.format_list(self.stack)):
             console.print(f"{i + 1}. {trace}")
         console.print("❗️ End of the error report.", style="bold red")
-
-    def read_stack(self):
-        stack = read_stack_from_exception(self.exception)
-        return stack
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
@@ -148,7 +144,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2002
                 self.title = "File too large"
-                self.message = ("The given file size is too large for free community edition.")
+                self.message = "The given file size is too large for free community edition."
 
                 super().__init__(
                     exception,
@@ -162,7 +158,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2003
                 self.title = "Image file too large"
-                self.message = ("The given image file size is too large for free community edition.")
+                self.message = "The given image file size is too large for free community edition."
 
                 super().__init__(
                     exception,
@@ -176,7 +172,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
                 self.title = "Video file too large"
-                self.message = ("The given video file size is too large for free community edition.")
+                self.message = "The given video file size is too large for free community edition."
 
                 super().__init__(
                     exception,
@@ -190,7 +186,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
                 self.title = "Volume file too large"
-                self.message = ("The given volume file size is too large for free community edition.")
+                self.message = "The given volume file size is too large for free community edition."
 
                 super().__init__(
                     exception,
