@@ -321,9 +321,6 @@ class AppService:
                             exception_handler.get_message_for_modal_window(),
                             level="error",
                         )
-                        # Important! This is needed for _shutdown() function to be NOT showing default error message.
-                        # And should be set to None ONLY AFTER the specific error message is shown in UI.
-                        e = None
 
                 else:
                     self.logger.error(
@@ -335,9 +332,9 @@ class AppService:
                             "event_type": EventType.TASK_CRASHED,
                         },
                     )
-                self.logger.info("App will be stopped due to error")
-                # asyncio.create_task(self._shutdown(error=e))
-                asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+                    self.logger.info("App will be stopped due to error")
+                    # asyncio.create_task(self._shutdown(error=e))
+                    asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
