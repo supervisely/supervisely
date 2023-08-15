@@ -57,3 +57,50 @@ def test_multiple_deleting(tmp_path, api_mock):
 
     for thread in threads:
         thread.join()
+
+
+def test_multiple_intersections(tmp_path, api_mock):
+    def load_frame(cache: InferenceImageCache, frame: int):
+        cache.download_frame(api_mock, 0, frame)
+
+    def load_frames(cache: InferenceImageCache, frames: List[int]):
+        cache.download_frames(api_mock, 0, frames)
+
+    cache = InferenceImageCache(100, 60, base_folder=tmp_path)
+    sets_and_lists = [
+        (False, [1, 3, 5]),
+        (False, [2, 4, 6]),
+        (True, [1, 1, 2]),
+        (True, [3, 4]),
+        (True, [5, 5, 1, 6, 7]),
+        (False, [3, 5, 7]),
+        (True, [5, 3, 6, 7]),
+        (False, [1, 2, 3, 4, 5, 6, 7]),
+    ]
+
+    set_of_images = set([1, 2, 3, 4, 5, 6, 7])
+
+    threads: List[threading.Thread] = []
+    for is_sep, frames in sets_and_lists:
+        if is_sep:
+            for img_id in frames:
+                thread = threading.Thread(target=load_frame, args=(cache, img_id))
+                threads.append(thread)
+                thread.start()
+        else:
+            thread = threading.Thread(target=load_frames, args=(cache, frames))
+            threads.append(thread)
+            thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    calls = []
+
+    for call in api_mock.video.frame.download_nps.call_args_list:
+        calls.extend(call[0][1])
+
+    for call in api_mock.video.frame.download_np.call_args_list:
+        calls.append(call[0][1])
+
+    assert set(calls) == set_of_images
