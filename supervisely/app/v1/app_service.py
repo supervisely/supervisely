@@ -313,13 +313,21 @@ class AppService:
             exception_handler = handle_exception(e)
             if self._ignore_errors is False:
                 if exception_handler:
+                    print("1 Found exception handler")
+
                     exception_handler.log_error_for_agent(command)
 
+                    print("2 Logged error for agent")
+
                     if self.has_ui:
+                        print("3 Has UI")
+
                         self.show_modal_window(
                             exception_handler.get_message_for_modal_window(),
                             level="error",
                         )
+
+                        print("4 Showed modal window")
 
                 else:
                     self.logger.error(
