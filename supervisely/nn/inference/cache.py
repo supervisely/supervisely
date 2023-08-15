@@ -1,6 +1,6 @@
-import os
 import shutil
 import numpy as np
+from cacheout import Cache as CacheOut
 from typing import Any, Callable, List, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
@@ -125,6 +125,7 @@ class InferenceImageCache:
         self._maxsize = maxsize
         self._ttl = ttl
         self._lock = Lock()
+        self._load_queue = CacheOut(ttl=5)
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -139,16 +140,17 @@ class InferenceImageCache:
 
     def download_image(self, api: sly.Api, image_id: int):
         name = f"image_{image_id}"
+        self._wait_if_in_queue(name, api.logger)
 
-        with self._lock:
-            if name not in self._cache:
-                api.logger.debug(f"Add image #{image_id} to cache")
-                img = api.image.download_np(image_id)
-                self._add_to_cache(name, img)
-                return img
+        if name not in self._cache:
+            self._load_queue.set(name, image_id)
+            api.logger.debug(f"Add image #{image_id} to cache")
+            img = api.image.download_np(image_id)
+            self._add_to_cache(name, img)
+            return img
 
-            api.logger.debug(f"Get image #{image_id} from cache")
-            return self._cache[name]
+        api.logger.debug(f"Get image #{image_id} from cache")
+        return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
         # api.logger.debug(f"Add images from dataset #{dataset_id} to cache: {image_ids}")
@@ -160,27 +162,31 @@ class InferenceImageCache:
 
     def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
         true_name = self._image_name(img_hash)
-        with self._lock:
-            if true_name not in self._cache:
-                path = self._data_dir / f"tmp_{true_name}.png"
-                api.image.download_paths_by_hashes([img_hash], [path])
-                image = sly.image.read(path)
-                self._add_to_cache(true_name, image)
-                silent_remove(path)
-                return image
-            return self._cache[true_name]
+        self._wait_if_in_queue(true_name, api.logger)
+
+        if true_name not in self._cache:
+            self._load_queue.set(true_name, img_hash)
+            path = self._data_dir / f"tmp_{true_name}.png"
+            api.image.download_paths_by_hashes([img_hash], [path])
+            image = sly.image.read(path)
+            self._add_to_cache(true_name, image)
+            silent_remove(path)
+            return image
+        return self._cache[true_name]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
-        with self._lock:
-            if name not in self._cache:
-                frame = api.video.frame.download_np(video_id, frame_index)
-                self._add_to_cache(name, frame)
-                api.logger.debug(f"Add frame #{frame_index} for video #{video_id} to cache")
-                return frame
+        self._wait_if_in_queue(name, api.logger)
 
-            api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
-            return self._cache[name]
+        if name not in self._cache:
+            self._load_queue.set(name, (video_id, frame_index))
+            frame = api.video.frame.download_np(video_id, frame_index)
+            self._add_to_cache(name, frame)
+            api.logger.debug(f"Add frame #{frame_index} for video #{video_id} to cache")
+            return frame
+
+        api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
+        return self._cache[name]
 
     def download_frames(
         self,
@@ -259,7 +265,9 @@ class InferenceImageCache:
             )
 
         for name, img in zip(names, images):
-            self._cache[name] = img
+            with self._lock:
+                self._cache[name] = img
+                self._load_queue.delete(name)
 
     def _image_name(self, id_or_hash: Any) -> str:
         return f"image_{id_or_hash}"
@@ -279,24 +287,31 @@ class InferenceImageCache:
         pos_in_list = []
         all_frames = [None for _ in range(len(indexes))]
 
-        with self._lock:
-            for pos, fi in enumerate(indexes):
-                name = name_cunstructor(fi)
-                if name not in self._cache:
-                    names_to_load.append(name)
-                    indexes_to_load.append(fi)
-                    pos_in_list.append(pos)
-                else:
-                    all_frames[pos] = self._cache[name]
+        for pos, fi in enumerate(indexes):
+            name = name_cunstructor(fi)
+            self._wait_if_in_queue(name, logger)
 
-            if len(indexes_to_load) > 0:
-                frames = loader(indexes_to_load)
-                self._add_to_cache(names_to_load, frames)
+            if name not in self._cache:
+                self._load_queue.set(name, fi)
+                names_to_load.append(name)
+                indexes_to_load.append(fi)
+                pos_in_list.append(pos)
+            else:
+                all_frames[pos] = self._cache[name]
 
-                for pos, frame in zip(pos_in_list, frames):
-                    all_frames[pos] = frame
+        if len(indexes_to_load) > 0:
+            frames = loader(indexes_to_load)
+            self._add_to_cache(names_to_load, frames)
+
+            for pos, frame in zip(pos_in_list, frames):
+                all_frames[pos] = frame
 
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
         logger.debug(f"Images/Frames loaded from cache: {set(indexes).difference(indexes_to_load)}")
 
         return all_frames
+
+    def _wait_if_in_queue(self, name, logger: Logger):
+        while name in self._load_queue:
+            logger.debug(f"Waiting for other task to load {name}")
+            continue
