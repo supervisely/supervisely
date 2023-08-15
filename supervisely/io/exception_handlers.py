@@ -71,9 +71,6 @@ class HandleException:
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
 
-    def raise_error_for_output(self):
-        raise RuntimeError(self.get_message_for_modal_window())
-
     def log_error_for_agent(self, main_name: str):
         logger.critical(
             self.title,
@@ -324,7 +321,6 @@ def handle_exceptions(func: Callable) -> Callable:
             exception_handler = handle_exception(e)
             if exception_handler:
                 exception_handler.raise_error()
-                exception_handler.raise_error_for_output()
             else:
                 raise
 
