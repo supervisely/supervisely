@@ -313,21 +313,17 @@ class AppService:
             exception_handler = handle_exception(e)
             if self._ignore_errors is False:
                 if exception_handler:
-                    print("1 Found exception handler")
-
-                    # exception_handler.log_error_for_agent(command)
-
-                    print("2 Logged error for agent")
+                    # Logging the error and sets the output in Workspace Tasks.
+                    exception_handler.log_error_for_agent(command)
 
                     if self.has_ui:
-                        print("3 Has UI")
-
                         self.show_modal_window(
                             exception_handler.get_message_for_modal_window(),
                             level="error",
                         )
-
-                        print("4 Showed modal window")
+                        # Important! This is needed for _shutdown() function to be NOT showing default error message.
+                        # And should be set to None ONLY AFTER the specific error message is shown in UI.
+                        e = None
 
                 else:
                     self.logger.error(
@@ -341,7 +337,7 @@ class AppService:
                     )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
-                # asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+                asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
