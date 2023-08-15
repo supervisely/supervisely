@@ -3,7 +3,7 @@ from typing import List, Union, Callable
 from rich.console import Console
 
 from supervisely.sly_logger import logger, EventType
-from supervisely.app import DialogWindowError, show_dialog
+from supervisely.app import DialogWindowError
 
 import traceback
 import re
@@ -70,13 +70,6 @@ class HandleException:
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
-
-    def show_app_dialog(self):
-        show_dialog(
-            self.title,
-            self.message,
-            status="error",
-        )
 
     def log_error_for_agent(self, main_name: str):
         logger.critical(

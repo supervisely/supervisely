@@ -308,11 +308,10 @@ class AppService:
         except AppCommandNotFound as e:
             self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
+            from supervisely import handle_exception
+
+            exception_handler = handle_exception(e)
             if self._ignore_errors is False:
-                from supervisely import handle_exception
-
-                exception_handler = handle_exception(e)
-
                 if exception_handler:
                     exception_handler.log_error_for_agent(command)
                 else:
@@ -331,9 +330,16 @@ class AppService:
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
+                    if exception_handler:
+                        message = f"{exception_handler.title}\n{exception_handler.description}"
+                    else:
+                        message = (
+                            "Oops! Something went wrong, please try again or contact tech support. "
+                            "Find more info in the app logs."
+                        )
+
                     self.show_modal_window(
-                        "Oops! Something went wrong, please try again or contact tech support."
-                        " Find more info in the app logs.",
+                        message,
                         level="error",
                     )
 
