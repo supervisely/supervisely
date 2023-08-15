@@ -159,6 +159,7 @@ def handle_server_errors(app: FastAPI, headless: bool):
 
             # ! Test code.
             if headless:
+                print("App is headless, raising exception")
                 handle_exception.raise_error()
 
         else:
