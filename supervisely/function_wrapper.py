@@ -19,7 +19,8 @@ def main_wrapper(main_name, main_func, *args, **kwargs):
         exception_handler = handle_exception(e)
 
         if exception_handler:
-            exception_handler.show_app_dialog()
+            print("handler found")
+            exception_handler.raise_error()
 
         logger.critical(
             repr(e),
