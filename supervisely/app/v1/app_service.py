@@ -332,9 +332,9 @@ class AppService:
                             "event_type": EventType.TASK_CRASHED,
                         },
                     )
-                    self.logger.info("App will be stopped due to error")
-                    # asyncio.create_task(self._shutdown(error=e))
-                    asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+                self.logger.info("App will be stopped due to error")
+                # asyncio.create_task(self._shutdown(error=e))
+                asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
