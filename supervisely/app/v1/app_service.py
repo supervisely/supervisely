@@ -330,7 +330,10 @@ class AppService:
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
+                    print("Has UI")
+
                     if exception_handler:
+                        print("Exception handler is not None")
                         message = f"{exception_handler.title}\n{exception_handler.description}"
                     else:
                         message = (
