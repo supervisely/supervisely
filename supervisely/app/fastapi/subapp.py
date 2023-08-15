@@ -148,8 +148,11 @@ def enable_hot_reload_on_debug(app: FastAPI):
 
 
 def handle_server_errors(app: FastAPI):
+    print("handle_server_errors")
+
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
+        print("server_exception_handler")
         from supervisely import handle_exception
 
         handled_exception = handle_exception(exc)
