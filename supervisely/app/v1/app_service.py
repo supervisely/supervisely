@@ -315,7 +315,7 @@ class AppService:
                 if exception_handler:
                     print("1 Found exception handler")
 
-                    exception_handler.log_error_for_agent(command)
+                    # exception_handler.log_error_for_agent(command)
 
                     print("2 Logged error for agent")
 
