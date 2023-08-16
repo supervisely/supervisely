@@ -1,5 +1,7 @@
 from typing import Dict, List, Any, Literal, Optional, Union
 from typing_extensions import Literal
+
+from supervisely import env
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
@@ -20,7 +22,12 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         use_gui: Optional[bool] = False,
     ):
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        InferenceImageCache.__init__(self, maxsize=256, ttl=120, is_persistent=True)
+        InferenceImageCache.__init__(
+            self,
+            maxsize=env.smart_cache_size(),
+            ttl=env.smart_cache_ttl(),
+            is_persistent=True,
+        )
 
     def get_info(self) -> dict:
         info = super().get_info()

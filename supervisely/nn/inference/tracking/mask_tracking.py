@@ -18,8 +18,6 @@ class MaskTracking(Inference, InferenceImageCache):
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
-        max_saved_frames = 256
-        time_to_live_sec = 5 * 60
         Inference.__init__(
             self,
             model_dir,
@@ -29,8 +27,9 @@ class MaskTracking(Inference, InferenceImageCache):
         )
         InferenceImageCache.__init__(
             self,
-            maxsize=max_saved_frames,
-            ttl=time_to_live_sec,
+            maxsize=sly.env.smart_cache_size(),
+            ttl=sly.env.smart_cache_ttl(),
+            is_persistent=True,
         )
 
         try:
