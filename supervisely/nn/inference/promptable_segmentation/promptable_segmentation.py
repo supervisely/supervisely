@@ -30,7 +30,7 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         )
         logger.debug(
             "Smart cache params",
-            extra={"ttl": sly_env.smart_cache_size(), "maxsize": sly_env.smart_cache_size()},
+            extra={"ttl": sly_env.smart_cache_ttl(), "maxsize": sly_env.smart_cache_size()},
         )
 
     def get_info(self) -> dict:

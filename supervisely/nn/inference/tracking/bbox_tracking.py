@@ -41,7 +41,7 @@ class BBoxTracking(Inference, InferenceImageCache):
 
         sly.logger.debug(
             "Smart cache params",
-            extra={"ttl": sly.env.smart_cache_size(), "maxsize": sly.env.smart_cache_size()},
+            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
         )
 
     def get_info(self):

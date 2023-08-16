@@ -37,10 +37,10 @@ class MaskTracking(Inference, InferenceImageCache):
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
             sly.logger.warn("Failed to load model on CUDA device.")
-        
+
         sly.logger.debug(
             "Smart cache params",
-            extra={"ttl": sly.env.smart_cache_size(), "maxsize": sly.env.smart_cache_size()},
+            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
         )
 
     def get_info(self):
