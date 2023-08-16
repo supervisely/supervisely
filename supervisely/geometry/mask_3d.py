@@ -475,11 +475,11 @@ class Mask3D(Geometry):
         try:
             data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
         except ValueError:
-            logger.info(
-                "Can't reshape array with dtype=np.uint8, will try to convert from dtype=np.int16"
+            logger.warn(
+                "Can't reshape array with 'dtype=np.uint8'. Will try to automatically convert 'dtype=np.int16' to 'np.uint8' and reshape"
             )
             data = np.frombuffer(data_bytes, dtype=np.int16)
             data = np.clip(data, 0, 1).astype(np.uint8)
             data = data.reshape(shape)
-            logger.info("Converted successfully!")
+            logger.debug("Converted successfully!")
         return data
