@@ -12,7 +12,7 @@ from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely.nn.inference import Inference
-from supervisely import ProjectMeta, ObjClass, Label, env
+from supervisely import ProjectMeta, ObjClass, Label, env as sly_env, logger as sly_logger
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
 
@@ -42,12 +42,12 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
-        _smart_cache_ttl = env.smart_cache_ttl()
+        _smart_cache_ttl = sly_env.smart_cache_ttl()
         _fast_cache_ttl = max(1, _smart_cache_ttl // 2)
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
         InferenceImageCache.__init__(
             self,
-            maxsize=env.smart_cache_size(),
+            maxsize=sly_env.smart_cache_size(),
             ttl=_smart_cache_ttl,
         )
         self._class_names = ["mask_prediction"]
@@ -55,6 +55,11 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
+
+        sly_logger.debug(
+            "Smart cache params",
+            extra={"ttl": _smart_cache_ttl, "maxsize": sly_env.smart_cache_size()},
+        )
 
     def get_info(self) -> dict:
         info = super().get_info()

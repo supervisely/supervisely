@@ -37,6 +37,12 @@ class BBoxTracking(Inference, InferenceImageCache):
             self.load_on_device(model_dir, "cuda")
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
+            sly.logger.warn("Failed to load model on CUDA device.")
+
+        sly.logger.debug(
+            "Smart cache params",
+            extra={"ttl": sly.env.smart_cache_size(), "maxsize": sly.env.smart_cache_size()},
+        )
 
     def get_info(self):
         info = super().get_info()
