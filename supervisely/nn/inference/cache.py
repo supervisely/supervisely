@@ -137,7 +137,7 @@ class InferenceImageCache:
             self._cache.clear(False)
 
     def download_image(self, api: sly.Api, image_id: int):
-        name = f"image_{image_id}"
+        name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
@@ -157,18 +157,18 @@ class InferenceImageCache:
         return self._download_many(image_ids, self._image_name, loader, api.logger)
 
     def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
-        true_name = self._image_name(img_hash)
-        self._wait_if_in_queue(true_name, api.logger)
+        image_key = self._image_name(img_hash)
+        self._wait_if_in_queue(image_key, api.logger)
 
-        if true_name not in self._cache:
-            self._load_queue.set(true_name, img_hash)
-            path = self._data_dir / f"tmp_{true_name}.png"
+        if image_key not in self._cache:
+            self._load_queue.set(image_key, img_hash)
+            path = self._data_dir / f"tmp_{image_key}.png"
             api.image.download_paths_by_hashes([img_hash], [path])
             image = sly.image.read(path)
-            self._add_to_cache(true_name, image)
+            self._add_to_cache(image_key, image)
             silent_remove(path)
             return image
-        return self._cache[true_name]
+        return self._cache[image_key]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
