@@ -28,7 +28,7 @@ def download_image_from_context(
         return api.image.download_np(context["image_id"])
     elif "image_hash" in context:
         if cache_load_img_hash is not None:
-            return cache_load_img_hash(api, context["image_id"])
+            return cache_load_img_hash(api, context["image_hash"])
         img_path = os.path.join(output_dir, "base_image.png")
         return get_image_by_hash(context["image_hash"], img_path, api=api)
     elif "volume" in context:
