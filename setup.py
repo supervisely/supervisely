@@ -60,7 +60,6 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "aiocache==0.12.0",
     "urllib3==1.26.15",
     "cachetools==5.3.1",
     "cacheout==0.14.1",
