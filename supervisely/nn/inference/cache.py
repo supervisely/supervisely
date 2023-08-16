@@ -58,7 +58,6 @@ class PersistentImageLRUCache(LRUCache):
 class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
-        # TTLCache.__init__(self, maxsize, ttl)
         self._base_dir = filepath
 
     def __getitem__(self, key: Any) -> np.ndarray:
@@ -107,7 +106,6 @@ class PersistentImageTTLCache(TTLCache):
             shutil.rmtree(self._base_dir)
 
 
-# TODO: Add lock on cache changes
 class InferenceImageCache:
     class _LoadType(Enum):
         ImageId: str = "IMAGE"
@@ -153,8 +151,6 @@ class InferenceImageCache:
         return self._cache[name]
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
-        # api.logger.debug(f"Add images from dataset #{dataset_id} to cache: {image_ids}")
-
         def loader(image_ids: int):
             return api.image.download_nps(dataset_id, image_ids)
 
@@ -203,7 +199,6 @@ class InferenceImageCache:
         return self._download_many(frame_indexes, name_constuctor, loader, api.logger)
 
     def add_cache_endpoint(self, server: FastAPI):
-        # TODO: change endpoint name
         @server.post("/smart_cache")
         def cache_endpoint(request: Request):
             api: sly.Api = request.state.api
