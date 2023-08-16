@@ -390,9 +390,9 @@ ERROR_PATTERNS = {
     HTTPError: {
         r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
         r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
-        r".*file-storage\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.FileSizeTooLarge,
+        r".*file-storage\.bulk\.upload.*File too large.*": ErrorHandler.API.FileSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
-        r".*videos\.bulk\.upload.*FileSize.*sizeLimit.*": ErrorHandler.API.VideoFilesSizeTooLarge,
+        r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":314572800.*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
     },
     RuntimeError: {
