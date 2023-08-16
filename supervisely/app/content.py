@@ -123,9 +123,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             return None
         content = await request.json()
 
-        if "context" in content:
-            if content["context"].get("outside_request"):
-                return None
+        if content.get("context", {}).get("outside_request", False) is True:
+            return None
 
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
