@@ -308,7 +308,7 @@ def download_volume_project(
         datasets_infos = api.dataset.get_list(project_id)
 
     for dataset in datasets_infos:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_fs: VolumeDataset = project_fs.create_dataset(dataset.name)
         volumes = api.volume.get_list(dataset.id)
 
         ds_progress = None
@@ -375,7 +375,9 @@ def download_volume_project(
     project_fs.set_key_id_map(key_id_map)
 
 
-def load_figure_data(api: Api, volume_file_path: str, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
+def load_figure_data(
+    api: Api, volume_file_path: str, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
+):
     """
     Load data into figure geometry.
 
@@ -409,6 +411,7 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
     for dataset_fs in project_fs.datasets:
+        dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
         names, item_paths, ann_paths, interpolation_dirs = [], [], [], []
