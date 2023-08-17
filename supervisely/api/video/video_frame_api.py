@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, List, Optional, Union
+from typing import Callable, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder
@@ -140,6 +140,21 @@ class VideoFrameAPI(ModuleApi):
             except Exception as e:
                 raise Exception(f"Couldn't read frame: {frame_idx}.") from e
         return downloaded_frames
+
+    def download_nps_generator(
+        self,
+        video_id: int,
+        frame_indexes: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        keep_alpha: Optional[bool] = False,
+    ) -> Generator[Tuple[int, np.ndarray], None, None]:
+
+        for frame_idx, resp_part in self._download_batch(video_id, frame_indexes, progress_cb),
+            frame_bytes = resp_part.content
+            try:
+                yield frame_idx, sly_image.read_bytes(frame_bytes, keep_alpha)
+            except Exception as e:
+                raise Exception(f"Couldn't read frame: {frame_idx}.") from e
 
     def download_path(self, video_id: int, frame_index: int, path: str) -> None:
         """
