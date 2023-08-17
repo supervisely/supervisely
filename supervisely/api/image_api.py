@@ -756,6 +756,17 @@ class ImageApi(RemoveableBulkModuleApi):
             )
         ]
 
+    def download_nps_generator(
+        self,
+        dataset_id: int,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        keep_alpha: Optional[bool] = False,
+    ) -> Generator[[int, np.ndarray], None, None]:
+        for img_id, img_part in self._download_batch(dataset_id, ids, progress_cb):
+            img_bytes = img_part.content
+            yield img_id, sly_image.read_bytes(img_bytes, keep_alpha)
+
     def check_existing_hashes(
         self, hashes: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> List[str]:
