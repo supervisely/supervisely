@@ -175,6 +175,22 @@ class InferenceImageCache:
             return image
         return self._cache[image_key]
 
+    def download_images_by_hashes(
+        self, api: sly.Api, img_hashes: List[str], **kwargs
+    ) -> List[np.ndarray]:
+        return_images = kwargs.get("return_images", True)
+
+        def load_generator(img_hashes: List[str]):
+            return api.image.download_nps_by_hashes_generator(img_hashes)
+
+        return self._download_many(
+            img_hashes,
+            self._image_name,
+            load_generator,
+            api.logger,
+            return_images,
+        )
+
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
         self._wait_if_in_queue(name, api.logger)
@@ -224,8 +240,7 @@ class InferenceImageCache:
                     for img_id in image_ids:
                         self.download_image(api, img_id)
             elif task_type is InferenceImageCache._LoadType.ImageHash:
-                for img_hash in image_ids:
-                    self.download_image_by_hash(api, img_hash)
+                self.download_images_by_hashes(api, image_ids, **kwargs)
             elif task_type is InferenceImageCache._LoadType.Frame:
                 video_id = state["video_id"]
                 self.download_frames(api, video_id, image_ids, **kwargs)
