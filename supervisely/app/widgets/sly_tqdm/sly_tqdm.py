@@ -143,7 +143,7 @@ class _slyProgressBarIO:
 
         for idx, unit in enumerate(UNITS):
             if self.unit == unit:
-                return f"{round(bytes / (MULTIPLIER**idx), 2)} {unit}"
+                return f"{round(bytes / (1000**idx), 2)} {unit}"
 
 
 class CustomTqdm(tqdm):
