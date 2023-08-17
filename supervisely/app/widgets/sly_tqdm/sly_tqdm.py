@@ -62,14 +62,13 @@ class _slyProgressBarIO:
         extra = {
             "event_type": EventType.PROGRESS,
             "subtask": self.progress.get("message", None),
+            "current": self._n,
+            "total": self.total,
         }
 
         if self.unit_scale and self.unit != "it":
             extra["current_label"] = f"{self.bytes_to_unit(self._n)} {self.unit}"
             extra["total_label"] = f"{self.bytes_to_unit(self.total)} {self.unit}"
-        else:
-            extra["current"] = self._n
-            extra["total"] = self.total
 
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
