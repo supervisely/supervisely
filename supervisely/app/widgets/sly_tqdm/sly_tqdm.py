@@ -74,9 +74,9 @@ class _slyProgressBarIO:
             "total": total,
         }
 
-        if self.unit != "it":
-            extra["current_label"] = self.unit
-            extra["total_label"] = self.unit
+        # if self.unit != "it":
+        #     extra["current_label"] = self.unit
+        #     extra["total_label"] = self.unit
 
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
