@@ -32,12 +32,12 @@ def test_load_functions_and_persistance(api_mock, tmp_path: Path):
     inf_cache.download_image(api_mock, sep_img)
 
     # Should load images
-    assert api_mock.video.frame.download_nps.call_count == 1
+    assert api_mock.video.frame.download_nps_generator.call_count == 1
     assert sorted(os.listdir(tmp_path)) == sorted(existing_imgs)
 
     # Should get images from cache
     inf_cache.download_frames(api_mock, video_id, frame_indexes)
-    assert api_mock.video.frame.download_nps.call_count == 1
+    assert api_mock.video.frame.download_nps_generator.call_count == 1
 
 
 def test_ttl_limit(api_mock, tmp_path: Path):

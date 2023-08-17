@@ -36,9 +36,9 @@ def test_multiple_loading(tmp_path, api_mock):
         thread.join()
 
     assert api_mock.image.download_np.call_count == len(set_of_images)
-    assert api_mock.video.frame.download_nps.call_args_list[0][0] == (0, [1, 2, 3])
-    assert api_mock.video.frame.download_nps.call_args_list[1][0] == (0, [4])
-    assert api_mock.video.frame.download_nps.call_count == 2
+    assert api_mock.video.frame.download_nps_generator.call_args_list[0][0] == (0, [1, 2, 3])
+    assert api_mock.video.frame.download_nps_generator.call_args_list[1][0] == (0, [4])
+    assert api_mock.video.frame.download_nps_generator.call_count == 2
 
 
 def test_multiple_deleting(tmp_path, api_mock):
@@ -97,7 +97,7 @@ def test_multiple_intersections(tmp_path, api_mock):
 
     calls = []
 
-    for call in api_mock.video.frame.download_nps.call_args_list:
+    for call in api_mock.video.frame.download_nps_generator.call_args_list:
         calls.extend(call[0][1])
 
     for call in api_mock.video.frame.download_np.call_args_list:

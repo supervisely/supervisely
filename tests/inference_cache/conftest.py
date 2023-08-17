@@ -16,16 +16,15 @@ def tmp_path(tmp_path_factory) -> Path:
 
 @pytest.fixture()
 def api_mock():
-    def get_n_frames(vid, fids):
-        if isinstance(fids, int):
-            return create_img()
-        return [create_img() for _ in fids]
+    def get_n_frames_gen(vid, fids):
+        for fid in fids:
+            yield fid, create_img()
 
     with mock.patch("supervisely.Api"):
         api = sly.Api()
-        api.video.frame.download_nps.side_effect = get_n_frames
-        api.video.frame.download_np.side_effect = get_n_frames
-        api.image.download_nps.side_effect = get_n_frames
+        api.video.frame.download_nps_generator.side_effect = get_n_frames_gen
+        api.video.frame.download_np.side_effect = lambda vid, imid: create_img()
+        api.image.download_nps_generator.side_effect = get_n_frames_gen
         api.image.download_np.side_effect = lambda im_id: create_img()
         yield api
 
