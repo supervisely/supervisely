@@ -8,7 +8,18 @@ import io
 import json
 import re
 import urllib.parse
-from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Union
+from typing import (
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Union,
+    Generator,
+    Tuple,
+    Any,
+)
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
@@ -2037,7 +2048,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return result
 
-    def _download_batch_by_hashes(self, hashes):
+    def _download_batch_by_hashes(self, hashes) -> Generator[Tuple[str, Any], None, None]:
         """ """
         for batch_hashes in batched(hashes):
             response = self._api.post(
@@ -2102,6 +2113,66 @@ class ImageApi(RemoveableBulkModuleApi):
                 w.write(resp_part.content)
             if progress_cb is not None:
                 progress_cb(1)
+
+    def download_nps_by_hashes_generator(
+        self,
+        hashes: List[str],
+        keep_alpha: bool = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> Generator[Tuple[str, np.ndarray], None, None]:
+        if len(hashes) == 0:
+            return []
+
+        if len(hashes) != len(set(hashes)):
+            logger.warn("Found nonunique hashes in download task")
+
+        for im_hash, resp_part in self._download_batch_by_hashes(hashes):
+            yield im_hash, sly_image.read_bytes(resp_part.content, keep_alpha)
+            if progress_cb is not None:
+                progress_cb(1)
+
+    def download_nps_by_hashes(
+        self,
+        hashes: List[str],
+        keep_alpha: bool = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[np.ndarray]:
+        """
+        Download Images with given hashes in Supervisely server in numpy format.
+
+        :param hashes: List of images hashes in Supervisely.
+        :type hashes: List[str]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: List of images
+        :rtype: :class: List[np.ndarray]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [770918, 770919, 770920]
+            image_hashes = []
+
+            for img_id in image_ids:
+                img_info = api.image.get_info_by_id(image_id)
+                image_hashes.append(img_info.hash)
+
+            image_nps = api.image.download_nps_by_hashes(image_hashes)
+        """
+        return [
+            img
+            for _, img in self.download_nps_by_hashes_generator(
+                hashes,
+                keep_alpha,
+                progress_cb,
+            )
+        ]
 
     def get_project_id(self, image_id: int) -> int:
         """
