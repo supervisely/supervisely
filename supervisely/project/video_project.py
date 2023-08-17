@@ -1274,10 +1274,10 @@ def download_video_project(
 
                 if download_videos:
                     try:
-                        if log_progress:
+                        if log_progress and "size" in video_info.file_meta:
                             item_progress = Progress(
                                 f"Downloading {video_name}",
-                                total_cnt=video_info.sizeb,
+                                total_cnt=int(video_info.file_meta["size"]),
                                 is_size=True,
                             )
                             api.video.download_path(
