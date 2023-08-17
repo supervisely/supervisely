@@ -150,13 +150,12 @@ def enable_hot_reload_on_debug(app: FastAPI):
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
-        from supervisely import handle_exception
+        from supervisely.io.exception_handlers import handle_exception
 
         handled_exception = handle_exception(exc)
 
         if handled_exception is not None:
             details = {"title": handled_exception.title, "message": handled_exception.message}
-
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):

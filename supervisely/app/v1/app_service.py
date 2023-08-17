@@ -308,7 +308,7 @@ class AppService:
         except AppCommandNotFound as e:
             self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
-            from supervisely import handle_exception
+            from supervisely.io.exception_handlers import handle_exception
 
             exception_handler = handle_exception(e)
             if self._ignore_errors is False:

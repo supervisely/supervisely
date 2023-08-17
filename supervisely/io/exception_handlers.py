@@ -128,7 +128,7 @@ class ErrorHandler:
                 self.code = 2001
                 self.title = "Requested file was not found in Team Files"
                 self.message = (
-                    "The requested doesn't exist in Team Files in current Team. "
+                    "The requested file doesn't exist in Team Files in current Team. "
                     "Please, ensure that the file exists and you're working in the correct Team."
                 )
 
