@@ -1276,13 +1276,14 @@ def download_video_project(
                     try:
                         video_file_size = video_info.file_meta.get("size", "")
                         if log_progress and video_file_size != "":
-                            item_progress = tqdm(
-                                desc=f"Downloading {video_name}",
-                                total=int(video_file_size),
-                                unit="B",
-                                unit_scale=True,
+                            item_progress = Progress(
+                                f"Downloading {video_name}",
+                                total_cnt=int(video_file_size),
+                                is_size=True,
                             )
-                            api.video.download_path(video_id, video_file_path, item_progress)
+                            api.video.download_path(
+                                video_id, video_file_path, item_progress.iters_done_report
+                            )
                         else:
                             api.video.download_path(video_id, video_file_path)
                     except Exception as e:
