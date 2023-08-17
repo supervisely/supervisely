@@ -1,7 +1,7 @@
 import shutil
 import numpy as np
 from cacheout import Cache as CacheOut
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request, FastAPI
@@ -150,23 +150,28 @@ class InferenceImageCache:
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache[name]
 
-    def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int]):
-        def loader(image_ids: int):
-            return api.image.download_nps(dataset_id, image_ids)
+    def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs):
+        return_images = kwargs.get("return_images", True)
 
-        return self._download_many(image_ids, self._image_name, loader, api.logger)
+        def load_generator(image_ids: List[int]):
+            return api.image.download_nps_generator(dataset_id, image_ids)
 
-    def download_image_by_hash(self, api: sly.Api, img_hash: Any) -> np.ndarray:
+        return self._download_many(
+            image_ids,
+            self._image_name,
+            load_generator,
+            api.logger,
+            return_images,
+        )
+
+    def download_image_by_hash(self, api: sly.Api, img_hash: str) -> np.ndarray:
         image_key = self._image_name(img_hash)
         self._wait_if_in_queue(image_key, api.logger)
 
         if image_key not in self._cache:
             self._load_queue.set(image_key, img_hash)
-            path = self._data_dir / f"tmp_{image_key}.png"
-            api.image.download_paths_by_hashes([img_hash], [path])
-            image = sly.image.read(path)
+            image = api.image.download_nps_by_hashes([img_hash])
             self._add_to_cache(image_key, image)
-            silent_remove(path)
             return image
         return self._cache[image_key]
 
@@ -185,18 +190,23 @@ class InferenceImageCache:
         return self._cache[name]
 
     def download_frames(
-        self,
-        api: sly.Api,
-        video_id: int,
-        frame_indexes: List[int],
+        self, api: sly.Api, video_id: int, frame_indexes: List[int], **kwargs
     ) -> List[np.ndarray]:
+        return_images = kwargs.get("return_images", True)
+
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
 
-        def loader(frame_index: int):
-            return api.video.frame.download_nps(video_id, frame_index)
+        def load_generator(frame_indexes: List[int]):
+            return api.video.frame.download_nps_generator(video_id, frame_indexes)
 
-        return self._download_many(frame_indexes, name_constuctor, loader, api.logger)
+        return self._download_many(
+            frame_indexes,
+            name_constuctor,
+            load_generator,
+            api.logger,
+            return_images,
+        )
 
     def add_cache_endpoint(self, server: FastAPI):
         @server.post("/smart_cache")
@@ -205,10 +215,11 @@ class InferenceImageCache:
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
             image_ids, task_type = self._parse_state(state)
+            kwargs = {"return_images": False}
 
             if task_type is InferenceImageCache._LoadType.ImageId:
                 if "dataset_id" in state:
-                    self.download_images(api, state["dataset_id"], image_ids)
+                    self.download_images(api, state["dataset_id"], image_ids, **kwargs)
                 else:
                     for img_id in image_ids:
                         self.download_image(api, img_id)
@@ -217,7 +228,7 @@ class InferenceImageCache:
                     self.download_image_by_hash(api, img_hash)
             elif task_type is InferenceImageCache._LoadType.Frame:
                 video_id = state["video_id"]
-                self.download_frames(api, video_id, image_ids)
+                self.download_frames(api, video_id, image_ids, **kwargs)
 
     @property
     def ttl(self):
@@ -264,47 +275,56 @@ class InferenceImageCache:
                 self._cache[name] = img
                 self._load_queue.delete(name)
 
-    def _image_name(self, id_or_hash: Any) -> str:
-        return f"image_{id_or_hash}"
+    def _image_name(self, id_or_hash: Union[str, int]) -> str:
+        if isinstance(id_or_hash, int):
+            return f"image_{id_or_hash}"
+        hash_wo_slash = id_or_hash.replace("/", "-")
+        return f"image_{hash_wo_slash}"
 
     def _frame_name(self, video_id: int, frame_index: int) -> str:
         return f"frame_{video_id}_{frame_index}"
 
     def _download_many(
         self,
-        indexes: List[int],
+        indexes: List[Union[int, str]],
         name_cunstructor: Callable[[int], str],
-        loader: Callable[[List[int]], List[np.ndarray]],
+        load_generator: Callable[
+            [List[int]],
+            Generator[Tuple[Union[int, str], np.ndarray], None, None],
+        ],
         logger: Logger,
-    ) -> List[np.ndarray]:
+        return_images: bool = True,
+    ) -> Optional[List[np.ndarray]]:
         indexes_to_load = []
-        names_to_load = []
-        pos_in_list = []
+        pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
 
-        for pos, fi in enumerate(indexes):
-            name = name_cunstructor(fi)
+        for pos, hash_or_id in enumerate(indexes):
+            name = name_cunstructor(hash_or_id)
             self._wait_if_in_queue(name, logger)
 
             if name not in self._cache:
-                self._load_queue.set(name, fi)
-                names_to_load.append(name)
-                indexes_to_load.append(fi)
-                pos_in_list.append(pos)
-            else:
+                self._load_queue.set(name, hash_or_id)
+                indexes_to_load.append(hash_or_id)
+                pos_by_name[name] = pos
+            elif return_images is True:
                 all_frames[pos] = self._cache[name]
 
         if len(indexes_to_load) > 0:
-            frames = loader(indexes_to_load)
-            self._add_to_cache(names_to_load, frames)
+            for id_or_hash, image in load_generator(indexes_to_load):
+                name = name_cunstructor(id_or_hash)
+                self._add_to_cache(name, image)
 
-            for pos, frame in zip(pos_in_list, frames):
-                all_frames[pos] = frame
+                if return_images:
+                    pos = pos_by_name[name]
+                    all_frames[pos] = image
 
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
-        logger.debug(f"Images/Frames loaded from cache: {set(indexes).difference(indexes_to_load)}")
+        logger.debug(f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}")
 
-        return all_frames
+        if return_images:
+            return all_frames
+        return
 
     def _wait_if_in_queue(self, name, logger: Logger):
         while name in self._load_queue:
