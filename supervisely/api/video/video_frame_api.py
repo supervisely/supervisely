@@ -148,8 +148,7 @@ class VideoFrameAPI(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         keep_alpha: Optional[bool] = False,
     ) -> Generator[Tuple[int, np.ndarray], None, None]:
-
-        for frame_idx, resp_part in self._download_batch(video_id, frame_indexes, progress_cb),
+        for frame_idx, resp_part in self._download_batch(video_id, frame_indexes, progress_cb):
             frame_bytes = resp_part.content
             try:
                 yield frame_idx, sly_image.read_bytes(frame_bytes, keep_alpha)
