@@ -74,6 +74,9 @@ class _slyProgressBarIO:
             "total": total,
         }
 
+        if self.unit != "it":
+            extra["current_label"] = extra["total_label"] = self.unit
+
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
 
@@ -128,22 +131,21 @@ class _slyProgressBarIO:
                 return unit
             total /= 1000
 
-    def bytes_to_unit(self, bytes: int) -> Union[str, Any]:
+    def bytes_to_unit(self, bytes: int) -> Union[float, Any]:
         """Returns a human-readable string representation of bytes according to the
         self.unit.
 
         :param bytes: number of bytes
         :type bytes: int
-        :return: human-readable string representation of bytes or passed value if
-            self.unit is not in UNITS or bytes is not int
-        :rtype: Union[str, Any]
+        :return: converted size from bytes to self.unit
+        :rtype: Union[float, Any]
         """
         if not isinstance(bytes, int) or self.unit not in UNITS:
             return bytes
 
         for idx, unit in enumerate(UNITS):
             if self.unit == unit:
-                return f"{round(bytes / (1000**idx), 2)} {unit}"
+                return round(bytes / (1000**idx), 2)
 
 
 class CustomTqdm(tqdm):
