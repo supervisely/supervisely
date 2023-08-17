@@ -1274,7 +1274,17 @@ def download_video_project(
 
                 if download_videos:
                     try:
-                        api.video.download_path(video_id, video_file_path)
+                        if log_progress:
+                            item_progress = Progress(
+                                f"Downloading {video_name}",
+                                total_cnt=video_info.sizeb,
+                                is_size=True,
+                            )
+                            api.video.download_path(
+                                video_id, video_file_path, item_progress.iters_done_report
+                            )
+                        else:
+                            api.video.download_path(video_id, video_file_path)
                     except Exception as e:
                         logger.info(
                             "INFO FOR DEBUGGING",
