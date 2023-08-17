@@ -485,7 +485,7 @@ class _JsonConvertibleModule:
 class ModuleApiBase(_JsonConvertibleModule):
     """ModuleApiBase"""
 
-    MAX_WAIT_ATTEMPTS = 999
+    MAX_WAIT_ATTEMPTS = 99999
     """ Maximum number of attempts that will be made to wait for a certain condition to be met."""
     WAIT_ATTEMPT_TIMEOUT_SEC = 1
     """Number of seconds for intervals between attempts."""
