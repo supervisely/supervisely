@@ -1274,8 +1274,8 @@ def download_video_project(
 
                 if download_videos:
                     try:
-                        video_file_size = video_info.file_meta.get("size", "")
-                        if log_progress and video_file_size != "":
+                        video_file_size = video_info.file_meta.get("size")
+                        if log_progress and video_file_size is not None:
                             item_progress = Progress(
                                 f"Downloading {video_name}",
                                 total_cnt=int(video_file_size),
