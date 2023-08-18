@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal
+from typing import Dict, List, Optional, Callable, Union, Literal, Generator
 
 import os
 import re
@@ -945,3 +945,70 @@ def parse_agent_id_and_path(remote_path: str) -> int:
         path_in_agent_folder += "/"
     # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
     return agent_id, path_in_agent_folder
+
+
+def markered_dirs(
+    input_path: str,
+    markers: Union[str, List[str]],
+    check_function: Callable = None,
+    ignore_case: bool = False,
+) -> Generator[str, None, None]:
+    """
+    Generator that yields paths to directories that contain markers files. If the check_function is specified,
+    then the markered directory will be yielded only if the check_function returns True. The check_function
+    must take a single argument - the path to the markered directory and return True or False.
+
+    :param input_path: path to the directory in which the search will be performed
+    :type input_path: str
+    :param markers: single marker or list of markers (e.g. 'config.json' or ['config.json', 'config.yaml'])
+    :type markers: Union[str, List[str]]
+    :param check_function: function to check that directory meets the requirements and returns bool
+    :type check_function: Callable
+    :param ignore_case: ignore case when searching for markers
+    :type ignore_case: bool
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = '/home/admin/work/projects/examples'
+
+        # You can pass a string if you have only one marker.
+        # markers = 'config.json'
+
+        # Or a list of strings if you have several markers.
+        # There's no need to pass one marker in different cases, you can use ignore_case=True for this.
+        markers = ['config.json', 'config.yaml']
+
+
+        # Check function is optional, if you don't need the directories to meet any requirements,
+        # you can omit it.
+
+        def check_function(dir_path):
+            test_file_path = os.path.join(dir_path, 'test.txt')
+            return os.path.exists(test_file_path)
+
+        for directory in sly.fs.markered_dirs(input_path, markers, check_function, ignore_case=True):
+            # Now you can be sure that the directory contains the markers and meets the requirements.
+            # Do something with it.
+            print(directory)
+    """
+
+    if isinstance(markers, str):
+        markers = [markers]
+
+    paths = list_dir_recursively(input_path)
+    for path in paths:
+        for marker in markers:
+            filename = get_file_name_with_ext(path)
+            if ignore_case:
+                filename = filename.lower()
+                marker = marker.lower()
+
+            if filename == marker:
+                parent_dir = os.path.dirname(path)
+                markered_dir = os.path.join(input_path, parent_dir)
+
+                if check_function is None or check_function(markered_dir):
+                    yield markered_dir
