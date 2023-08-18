@@ -93,7 +93,7 @@ class MaskTracking(Inference, InferenceImageCache):
             context = request.state.context
             api: sly.Api = request.state.api
 
-            self.video_interface = TrackerInterface(
+            video_interface = TrackerInterface(
                 context=context,
                 api=api,
                 load_all_frames=True,
@@ -103,14 +103,14 @@ class MaskTracking(Inference, InferenceImageCache):
             )
             api.logger.info("Starting tracking process")
             # load frames
-            frames = self.video_interface.frames
+            frames = video_interface.frames
             # combine several binary masks into one multilabel mask
             i = 0
             label2id = {}
-            frames_generator = [_ for _ in self.video_interface.frames_loader_generator()]
+            # frames_generator = [_ for _ in video_interface.frames_loader_generator()]
             for (fig_id, geometry), obj_id in zip(
-                self.video_interface.geometries.items(),
-                self.video_interface.object_ids,
+                video_interface.geometries.items(),
+                video_interface.object_ids,
             ):
                 original_geometry = geometry.clone()
                 if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
@@ -164,12 +164,12 @@ class MaskTracking(Inference, InferenceImageCache):
                                 notify = True
                             else:
                                 notify = False
-                            self.video_interface.add_object_geometry_on_frame(
+                            video_interface.add_object_geometry_on_frame(
                                 geometry,
                                 obj_id,
-                                self.video_interface._cur_frames_indexes[j + 1],
+                                video_interface.frames_indexes[j + 1],
                                 notify=notify,
                             )
-                    if self.video_interface.global_stop_indicatior:
+                    if video_interface.global_stop_indicatior:
                         return
                     api.logger.info(f"Figure with id {fig_id} was successfully tracked")
