@@ -291,7 +291,7 @@ class InferenceImageCache:
                 self._cache[name] = img
                 self._load_queue.delete(name)
 
-        sly.logger.debug(f"All stored files: {os.listdir(self.tmp_path)}")
+        sly.logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
 
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
         if isinstance(id_or_hash, int):
