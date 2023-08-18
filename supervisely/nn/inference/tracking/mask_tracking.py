@@ -167,7 +167,7 @@ class MaskTracking(Inference, InferenceImageCache):
                             self.video_interface.add_object_geometry_on_frame(
                                 geometry,
                                 obj_id,
-                                self.video_interface.frame[j + 1],
+                                self.video_interface.frames_indexes[j + 1],
                                 notify=notify,
                             )
                     if self.video_interface.global_stop_indicatior:
