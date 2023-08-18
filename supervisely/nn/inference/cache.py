@@ -1,3 +1,4 @@
+import os
 import shutil
 import numpy as np
 from cacheout import Cache as CacheOut
@@ -289,6 +290,8 @@ class InferenceImageCache:
             with self._lock:
                 self._cache[name] = img
                 self._load_queue.delete(name)
+
+        sly.logger.debug(f"All stored files: {os.listdir(self.tmp_path)}")
 
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
         if isinstance(id_or_hash, int):
