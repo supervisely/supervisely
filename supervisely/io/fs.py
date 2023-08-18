@@ -947,7 +947,7 @@ def parse_agent_id_and_path(remote_path: str) -> int:
     return agent_id, path_in_agent_folder
 
 
-def markered_dirs(
+def dirs_with_marker(
     input_path: str,
     markers: Union[str, List[str]],
     check_function: Callable = None,
@@ -989,7 +989,7 @@ def markered_dirs(
             test_file_path = os.path.join(dir_path, 'test.txt')
             return os.path.exists(test_file_path)
 
-        for directory in sly.fs.markered_dirs(input_path, markers, check_function, ignore_case=True):
+        for directory in sly.fs.dirs_with_marker(input_path, markers, check_function, ignore_case=True):
             # Now you can be sure that the directory contains the markers and meets the requirements.
             # Do something with it.
             print(directory)
