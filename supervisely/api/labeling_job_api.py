@@ -263,7 +263,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """Api remove method name."""
 
         return "jobs.bulk.remove"
-    
+
     def _remove_batch_field_name(self):
         """Returns onstant string that represents API field name."""
 
@@ -751,6 +751,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             # ]
         """
         return self._get_info_by_id(id, "jobs.info")
+
+    def get_info_by_name(self, team_id: int, name: str) -> LabelingJobInfo:
+        jobs = self.get_list_all_pages(
+            "jobs.list",
+            {
+                ApiField.TEAM_ID: team_id,
+                "showDisabled": True,
+                ApiField.FILTER: [{"field": ApiField.NAME, "operator": "=", "value": name}],
+            },
+        )
+        if len(jobs) > 0:
+            return jobs[0]
+        return None
 
     def archive(self, id: int) -> None:
         """
