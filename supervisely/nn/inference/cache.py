@@ -1,6 +1,7 @@
 import os
 import shutil
 import numpy as np
+from async_asgi_testclient import TestClient
 from cacheout import Cache as CacheOut
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
@@ -8,10 +9,11 @@ from threading import Lock
 from fastapi import Request, FastAPI
 from enum import Enum
 from logging import Logger
+from pathlib import Path
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
-from pathlib import Path
+from supervisely.app.fastapi.utils import run_sync
 
 
 class PersistentImageLRUCache(LRUCache):
@@ -125,6 +127,7 @@ class InferenceImageCache:
         self._ttl = ttl
         self._lock = Lock()
         self._load_queue = CacheOut(ttl=5)
+        self.__endpoint_added = False
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -226,6 +229,8 @@ class InferenceImageCache:
         )
 
     def add_cache_endpoint(self, server: FastAPI):
+        self.__endpoint_added = True
+
         @server.post("/smart_cache")
         def cache_endpoint(request: Request):
             api: sly.Api = request.state.api
@@ -245,6 +250,43 @@ class InferenceImageCache:
             elif task_type is InferenceImageCache._LoadType.Frame:
                 video_id = state["video_id"]
                 self.download_frames(api, video_id, image_ids, **kwargs)
+
+    def send_task_to_endpoint(
+        self,
+        server: FastAPI,
+        api: sly.Api,
+        list_of_ids_or_hashes: List[Union[str, int]],
+        *,
+        dataset_id: Optional[int] = None,
+        video_id: Optional[int] = None,
+    ) -> None:
+        state = {}
+        if isinstance(list_of_ids_or_hashes[0], str):
+            api.logger.debug("Got a task to add images using hash")
+            state["image_hashes"] = list_of_ids_or_hashes
+        elif video_id is None:
+            if dataset_id is None:
+                api.logger.error("dataset_id or video_id must be defined if not hashes are used")
+                return
+            api.logger.debug("Got a task to add images using IDs")
+            state["image_ids"] = list_of_ids_or_hashes
+            state["dataset_id"] = dataset_id
+        else:
+            api.logger.debug("Got a task to add frames")
+            state["video_id"] = video_id
+            state["frame_ranges"] = list_of_ids_or_hashes
+
+        if self.__endpoint_added is False:
+            api.logger.warn("Endpoint not founded; adding to the app.")
+            self.add_cache_endpoint(server)
+
+        body = {
+            "state": state,
+            "api_token": api.token,
+        }
+
+        test_client = TestClient(server)
+        run_sync(test_client.post("/smart_cache", json=body))
 
     @property
     def ttl(self):
