@@ -307,7 +307,7 @@ class InferenceImageCache:
             "api_token": api.token,
         }
 
-        test_client = TestClient(app=server)  # , headers={"Content-Type": "application/json"})
+        test_client = TestClient(server)  # , headers={"Content-Type": "application/json"})
         run_sync(test_client.post("/smart_cache", json=body))
 
     @property
