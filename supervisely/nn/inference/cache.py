@@ -4,10 +4,9 @@ import numpy as np
 
 from async_asgi_testclient import TestClient
 from cacheout import Cache as CacheOut
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
-from threading import Lock
+from threading import Lock, Thread
 from fastapi import Request, FastAPI, BackgroundTasks
 
 # from fastapi.testclient import TestClient
@@ -158,9 +157,7 @@ class InferenceImageCache:
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache[name]
 
-    def download_images(
-        self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs
-    ):
+    def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs):
         return_images = kwargs.get("return_images", True)
 
         def load_generator(image_ids: List[int]):
@@ -201,9 +198,7 @@ class InferenceImageCache:
             return_images,
         )
 
-    def download_frame(
-        self, api: sly.Api, video_id: int, frame_index: int
-    ) -> np.ndarray:
+    def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
         self._wait_if_in_queue(name, api.logger)
 
@@ -303,9 +298,7 @@ class InferenceImageCache:
             state["image_hashes"] = list_of_ids_ranges_or_hashes
         elif video_id is None:
             if dataset_id is None:
-                api.logger.error(
-                    "dataset_id or video_id must be defined if not hashes are used"
-                )
+                api.logger.error("dataset_id or video_id must be defined if not hashes are used")
                 return
             api.logger.debug("Got a task to add images using IDs")
             state["image_ids"] = list_of_ids_ranges_or_hashes
@@ -319,8 +312,8 @@ class InferenceImageCache:
             api.logger.warn("Endpoint not founded; adding to the app.")
             self.add_cache_endpoint(server)
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            executor.submit(self.cache_endpoint_task, kwargs={"api": api, "state": state})
+        thread = Thread(target=self.cache_endpoint_task, kwargs={"api": api, "state": state})
+        thread.start()
 
     @property
     def ttl(self):
@@ -347,9 +340,7 @@ class InferenceImageCache:
                 start, end = fr_range[0], fr_range[1] + shift
                 frames.extend(list(range(start, end, shift)))
             return frames, InferenceImageCache._LoadType.Frame
-        raise ValueError(
-            "State has no proper fields: image_ids, image_hashes or video_id"
-        )
+        raise ValueError("State has no proper fields: image_ids, image_hashes or video_id")
 
     def _add_to_cache(
         self,
@@ -419,9 +410,7 @@ class InferenceImageCache:
                     all_frames[pos] = image
 
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
-        logger.debug(
-            f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}"
-        )
+        logger.debug(f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}")
 
         if return_images:
             return all_frames
