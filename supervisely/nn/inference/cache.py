@@ -1,7 +1,9 @@
 import os
 import shutil
 import numpy as np
-from async_asgi_testclient import TestClient
+
+# from async_asgi_testclient import TestClient
+from fastapi.testclient import TestClient
 from cacheout import Cache as CacheOut
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
@@ -285,8 +287,8 @@ class InferenceImageCache:
             "api_token": api.token,
         }
 
-        test_client = TestClient(server)
-        run_sync(test_client.post("/smart_cache", json=body))
+        test_client = TestClient(app=server, headers={"Content-Type": "application/json"})
+        test_client.post("/smart_cache", json=body)
 
     @property
     def ttl(self):
