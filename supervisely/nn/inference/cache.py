@@ -2,14 +2,13 @@ import os
 import shutil
 import numpy as np
 
-from async_asgi_testclient import TestClient
-
-# from fastapi.testclient import TestClient
+# from async_asgi_testclient import TestClient
 from cacheout import Cache as CacheOut
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
-from fastapi import Request, FastAPI
+from fastapi import Request, FastAPI, BackgroundTasks
+from fastapi.testclient import TestClient
 from enum import Enum
 from logging import Logger
 from pathlib import Path
@@ -235,7 +234,11 @@ class InferenceImageCache:
         self.__endpoint_added = True
 
         @server.post("/smart_cache")
-        def cache_endpoint(request: Request):
+        def cache_endpoint(request: Request, task: BackgroundTasks):
+            task.add_task(cache_endpoint_task, request)
+            return {"message": "Get smart cache task."}
+
+        def cache_endpoint_task(request: Request):
             api: sly.Api = request.state.api
             state: dict = request.state.state
             api.logger.debug("Request state in cache endpoint", extra=state)
@@ -307,8 +310,8 @@ class InferenceImageCache:
             "api_token": api.token,
         }
 
-        test_client = TestClient(server)  # , headers={"Content-Type": "application/json"})
-        run_sync(test_client.post("/smart_cache", json=body))
+        test_client = TestClient(server, headers={"Content-Type": "application/json"})
+        test_client.post("/smart_cache", json=body)
 
     @property
     def ttl(self):
