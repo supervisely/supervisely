@@ -417,6 +417,6 @@ class InferenceImageCache:
         return
 
     def _wait_if_in_queue(self, name, logger: Logger):
+        logger.debug(f"Waiting for other task to load {name}")
         while name in self._load_queue:
-            logger.debug(f"Waiting for other task to load {name}")
             continue
