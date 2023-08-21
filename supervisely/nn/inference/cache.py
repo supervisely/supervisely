@@ -130,7 +130,6 @@ class InferenceImageCache:
         self._ttl = ttl
         self._lock = Lock()
         self._load_queue = CacheOut(ttl=5)
-        self.__endpoint_added = False
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -232,12 +231,10 @@ class InferenceImageCache:
         )
 
     def add_cache_endpoint(self, server: FastAPI):
-        self.__endpoint_added = True
-
         @server.post("/smart_cache")
         def cache_endpoint(request: Request, task: BackgroundTasks):
             task.add_task(
-                self.cache_endpoint_task,
+                self.cache_task,
                 kwargs={
                     "api": request.state.api,
                     "state": request.state.state,
@@ -245,9 +242,7 @@ class InferenceImageCache:
             )
             return {"message": "Get smart cache task."}
 
-        # @server.post("/smart_cache")
-
-    def cache_endpoint_task(self, api: sly.Api, state: dict):
+    def cache_task(self, api: sly.Api, state: dict):
         api.logger.debug("Request state in cache endpoint", extra=state)
         image_ids, task_type = self._parse_state(state)
         kwargs = {"return_images": False}
@@ -264,9 +259,8 @@ class InferenceImageCache:
             video_id = state["video_id"]
             self.download_frames(api, video_id, image_ids, **kwargs)
 
-    def send_task_to_endpoint(
+    def run_cache_task_manually(
         self,
-        server: FastAPI,
         api: sly.Api,
         list_of_ids_ranges_or_hashes: List[Union[str, int, List[int]]],
         *,
@@ -274,11 +268,8 @@ class InferenceImageCache:
         video_id: Optional[int] = None,
     ) -> None:
         """
-        Send POST request to "/smart_cache" endpoint. Endpoint will be added,
-        if not exists.
+        Run cache_task in new thread.
 
-        :param server: FastAPI app
-        :type server: FastAPI
         :param api: supervisely api
         :type api: sly.Api
         :param list_of_ids_ranges_or_hashes: information abount images/frames need to be loaded;
@@ -308,11 +299,7 @@ class InferenceImageCache:
             state["video_id"] = video_id
             state["frame_ranges"] = list_of_ids_ranges_or_hashes
 
-        if self.__endpoint_added is False:
-            api.logger.warn("Endpoint not founded; adding to the app.")
-            self.add_cache_endpoint(server)
-
-        thread = Thread(target=self.cache_endpoint_task, kwargs={"api": api, "state": state})
+        thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
         thread.start()
 
     @property
@@ -363,8 +350,6 @@ class InferenceImageCache:
                 self._cache[name] = img
                 self._load_queue.delete(name)
 
-        sly.logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
         if isinstance(id_or_hash, int):
             return f"image_{id_or_hash}"
@@ -409,6 +394,7 @@ class InferenceImageCache:
                     pos = pos_by_name[name]
                     all_frames[pos] = image
 
+        logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
         logger.debug(f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}")
 
@@ -417,6 +403,8 @@ class InferenceImageCache:
         return
 
     def _wait_if_in_queue(self, name, logger: Logger):
-        logger.debug(f"Waiting for other task to load {name}")
+        if name not in self._load_queue:
+            logger.debug(f"Waiting for other task to load {name}")
+
         while name in self._load_queue:
             continue

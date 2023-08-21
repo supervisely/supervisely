@@ -109,8 +109,7 @@ class PointTracking(Inference, InferenceImageCache):
                 video_interface.frames_indexes[-1],
             ]
 
-            self.send_task_to_endpoint(
-                self._app.get_server(),
+            self.run_cache_task_manually(
                 api,
                 [range_of_frames],
                 video_id=video_interface.video_id,
