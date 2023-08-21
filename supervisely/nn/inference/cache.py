@@ -2,13 +2,15 @@ import os
 import shutil
 import numpy as np
 
-# from async_asgi_testclient import TestClient
+from async_asgi_testclient import TestClient
 from cacheout import Cache as CacheOut
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
 from threading import Lock
 from fastapi import Request, FastAPI, BackgroundTasks
-from fastapi.testclient import TestClient
+
+# from fastapi.testclient import TestClient
 from enum import Enum
 from logging import Logger
 from pathlib import Path
@@ -156,7 +158,9 @@ class InferenceImageCache:
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache[name]
 
-    def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs):
+    def download_images(
+        self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs
+    ):
         return_images = kwargs.get("return_images", True)
 
         def load_generator(image_ids: List[int]):
@@ -197,7 +201,9 @@ class InferenceImageCache:
             return_images,
         )
 
-    def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
+    def download_frame(
+        self, api: sly.Api, video_id: int, frame_index: int
+    ) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
         self._wait_if_in_queue(name, api.logger)
 
@@ -235,27 +241,33 @@ class InferenceImageCache:
 
         @server.post("/smart_cache")
         def cache_endpoint(request: Request, task: BackgroundTasks):
-            task.add_task(cache_endpoint_task, request)
+            task.add_task(
+                self.cache_endpoint_task,
+                kwargs={
+                    "api": request.state.api,
+                    "state": request.state.state,
+                },
+            )
             return {"message": "Get smart cache task."}
 
-        def cache_endpoint_task(request: Request):
-            api: sly.Api = request.state.api
-            state: dict = request.state.state
-            api.logger.debug("Request state in cache endpoint", extra=state)
-            image_ids, task_type = self._parse_state(state)
-            kwargs = {"return_images": False}
+        # @server.post("/smart_cache")
 
-            if task_type is InferenceImageCache._LoadType.ImageId:
-                if "dataset_id" in state:
-                    self.download_images(api, state["dataset_id"], image_ids, **kwargs)
-                else:
-                    for img_id in image_ids:
-                        self.download_image(api, img_id)
-            elif task_type is InferenceImageCache._LoadType.ImageHash:
-                self.download_images_by_hashes(api, image_ids, **kwargs)
-            elif task_type is InferenceImageCache._LoadType.Frame:
-                video_id = state["video_id"]
-                self.download_frames(api, video_id, image_ids, **kwargs)
+    def cache_endpoint_task(self, api: sly.Api, state: dict):
+        api.logger.debug("Request state in cache endpoint", extra=state)
+        image_ids, task_type = self._parse_state(state)
+        kwargs = {"return_images": False}
+
+        if task_type is InferenceImageCache._LoadType.ImageId:
+            if "dataset_id" in state:
+                self.download_images(api, state["dataset_id"], image_ids, **kwargs)
+            else:
+                for img_id in image_ids:
+                    self.download_image(api, img_id)
+        elif task_type is InferenceImageCache._LoadType.ImageHash:
+            self.download_images_by_hashes(api, image_ids, **kwargs)
+        elif task_type is InferenceImageCache._LoadType.Frame:
+            video_id = state["video_id"]
+            self.download_frames(api, video_id, image_ids, **kwargs)
 
     def send_task_to_endpoint(
         self,
@@ -291,7 +303,9 @@ class InferenceImageCache:
             state["image_hashes"] = list_of_ids_ranges_or_hashes
         elif video_id is None:
             if dataset_id is None:
-                api.logger.error("dataset_id or video_id must be defined if not hashes are used")
+                api.logger.error(
+                    "dataset_id or video_id must be defined if not hashes are used"
+                )
                 return
             api.logger.debug("Got a task to add images using IDs")
             state["image_ids"] = list_of_ids_ranges_or_hashes
@@ -305,13 +319,8 @@ class InferenceImageCache:
             api.logger.warn("Endpoint not founded; adding to the app.")
             self.add_cache_endpoint(server)
 
-        body = {
-            "state": state,
-            "api_token": api.token,
-        }
-
-        test_client = TestClient(server, headers={"Content-Type": "application/json"})
-        test_client.post("/smart_cache", json=body)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(self.cache_endpoint_task, kwargs={"api": api, "state": state})
 
     @property
     def ttl(self):
@@ -338,7 +347,9 @@ class InferenceImageCache:
                 start, end = fr_range[0], fr_range[1] + shift
                 frames.extend(list(range(start, end, shift)))
             return frames, InferenceImageCache._LoadType.Frame
-        raise ValueError("State has no proper fields: image_ids, image_hashes or video_id")
+        raise ValueError(
+            "State has no proper fields: image_ids, image_hashes or video_id"
+        )
 
     def _add_to_cache(
         self,
@@ -408,7 +419,9 @@ class InferenceImageCache:
                     all_frames[pos] = image
 
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
-        logger.debug(f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}")
+        logger.debug(
+            f"Images/Frames founded in cache: {set(indexes).difference(indexes_to_load)}"
+        )
 
         if return_images:
             return all_frames
