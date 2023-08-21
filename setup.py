@@ -63,6 +63,7 @@ INSTALL_REQUIRES = [
     "urllib3==1.26.15",
     "cachetools==5.3.1",
     "cacheout==0.14.1",
+    "httpx==0.24.1",
 ]
 
 ALT_INSTALL_REQUIRES = {
