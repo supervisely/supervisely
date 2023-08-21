@@ -257,26 +257,45 @@ class InferenceImageCache:
         self,
         server: FastAPI,
         api: sly.Api,
-        list_of_ids_or_hashes: List[Union[str, int]],
+        list_of_ids_ranges_or_hashes: List[Union[str, int, List[int]]],
         *,
         dataset_id: Optional[int] = None,
         video_id: Optional[int] = None,
     ) -> None:
+        """
+        Send POST request to "/smart_cache" endpoint. Endpoint will be added,
+        if not exists.
+
+        :param server: FastAPI app
+        :type server: FastAPI
+        :param api: supervisely api
+        :type api: sly.Api
+        :param list_of_ids_ranges_or_hashes: information abount images/frames need to be loaded;
+        to download images, pass list of integer IDs (`dataset_id` requires)
+        or list of hash strings (`dataset_id` could be None);
+        to download frames, pass list of pairs of indices of the first and last frame
+        and `video_id` (ex.: [[1, 3], [5, 5], [7, 10]])
+        :type list_of_ids_ranges_or_hashes: List[Union[str, int, List[int]]]
+        :param dataset_id: id of dataset on supervisely platform; default is None
+        :type dataset_id: Optional[int]
+        :param video_id: id of video on supervisely platform; default is None
+        :type video_id: Optional[int]
+        """
         state = {}
-        if isinstance(list_of_ids_or_hashes[0], str):
+        if isinstance(list_of_ids_ranges_or_hashes[0], str):
             api.logger.debug("Got a task to add images using hash")
-            state["image_hashes"] = list_of_ids_or_hashes
+            state["image_hashes"] = list_of_ids_ranges_or_hashes
         elif video_id is None:
             if dataset_id is None:
                 api.logger.error("dataset_id or video_id must be defined if not hashes are used")
                 return
             api.logger.debug("Got a task to add images using IDs")
-            state["image_ids"] = list_of_ids_or_hashes
+            state["image_ids"] = list_of_ids_ranges_or_hashes
             state["dataset_id"] = dataset_id
         else:
             api.logger.debug("Got a task to add frames")
             state["video_id"] = video_id
-            state["frame_ranges"] = list_of_ids_or_hashes
+            state["frame_ranges"] = list_of_ids_ranges_or_hashes
 
         if self.__endpoint_added is False:
             api.logger.warn("Endpoint not founded; adding to the app.")
@@ -309,8 +328,11 @@ class InferenceImageCache:
             frame_ranges = state["frame_ranges"]
             frames = []
             for fr_range in frame_ranges:
-                start, end = fr_range[0], fr_range[1] + 1
-                frames.extend(list(range(start, end)))
+                shift = 1
+                if fr_range[0] > fr_range[1]:
+                    shift = -1
+                start, end = fr_range[0], fr_range[1] + shift
+                frames.extend(list(range(start, end, shift)))
             return frames, InferenceImageCache._LoadType.Frame
         raise ValueError("State has no proper fields: image_ids, image_hashes or video_id")
 

@@ -103,10 +103,16 @@ class PointTracking(Inference, InferenceImageCache):
                 load_all_frames=False,
                 frame_loader=self.download_frame,
             )
+
+            range_of_frames = [
+                video_interface.frames_indexes[0],
+                video_interface.frames_indexes[-1],
+            ]
+
             self.send_task_to_endpoint(
                 self._app.get_server(),
                 api,
-                video_interface.frames_indexes,
+                range_of_frames,
                 video_id=video_interface.video_id,
             )
             api.logger.info("Start tracking.")
