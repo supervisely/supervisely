@@ -24,3 +24,4 @@ from supervisely.nn.inference.session import Session, SessionJSON
 from supervisely.nn.inference.tracking.point_tracking import PointTracking
 from supervisely.nn.inference.tracking.bbox_tracking import BBoxTracking
 from supervisely.nn.inference.tracking.mask_tracking import MaskTracking
+from supervisely.nn.inference.tracking.cuboid3d_tracking import Cuboid3DTracking
