@@ -21,7 +21,7 @@
                 "debug-test"
             ],
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": true
         }
     ]
 }
