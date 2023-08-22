@@ -399,4 +399,5 @@ class InferenceImageCache:
             logger.debug(f"Waiting for other task to load {name}")
 
         while name in self._load_queue:
+            # TODO: sleep if slowdown
             continue
