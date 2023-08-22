@@ -232,15 +232,11 @@ class InferenceImageCache:
 
     def add_cache_endpoint(self, server: FastAPI):
         @server.post("/smart_cache")
-        def cache_endpoint(request: Request, task: BackgroundTasks):
-            task.add_task(
-                self.cache_task,
-                kwargs={
-                    "api": request.state.api,
-                    "state": request.state.state,
-                },
+        def cache_endpoint(request: Request):
+            return self.cache_task(
+                api=request.state.api,
+                state=request.state.state,
             )
-            return {"message": "Get smart cache task."}
 
     def cache_task(self, api: sly.Api, state: dict):
         api.logger.debug("Request state in cache endpoint", extra=state)
