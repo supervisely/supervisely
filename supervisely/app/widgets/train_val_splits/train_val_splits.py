@@ -191,7 +191,7 @@ class TrainValSplits(Widget):
             project = Project(project_dir, sly.OpenMode.READ)
             n_images = project.total_items
             new_val_count = round(val_part * n_images)
-            new_train_count = n_images - val_count
+            new_train_count = n_images - new_val_count
             train_set, val_set = Project.get_train_val_splits_by_count(
                 project_dir, new_train_count, new_val_count
             )
