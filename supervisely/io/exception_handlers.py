@@ -322,6 +322,48 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class ServerSideHighLoad(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2014
+                self.title = "High load on server side"
+                self.message = "The server has encountered an error. Please, try again later."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class DatasetNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2015
+                self.title = "Dataset not found"
+                self.message = "Please, check that the dataset exists."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class ApiError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2016
+                self.title = "API error"
+                self.message = "The server has encountered an error. Please, try again later."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class SDK:
         class ProjectStructureError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
@@ -394,6 +436,7 @@ ERROR_PATTERNS = {
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":314572800.*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
+        r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
@@ -424,12 +467,15 @@ ERROR_PATTERNS = {
     KeyError: {
         r".*api\.pointcloud\.upload_paths.*": ErrorHandler.API.PointcloudsUploadError,
         r".*api\.pointcloud\.upload_project.*": ErrorHandler.SDK.ProjectStructureError,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerSideHighLoad,
+        r".*api\.video\.frame\.download_np.*": ErrorHandler.API.ServerSideHighLoad,
     },
     TypeError: {
         r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
     },
     RetryError: {
         r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
+        r".*api\.task\.set_field.*": ErrorHandler.API.ApiError,
     },
     RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
