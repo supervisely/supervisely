@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": false,
+            "justMyCode": true,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
             }
@@ -21,7 +21,7 @@
                 "debug-test"
             ],
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": false
         }
     ]
 }
