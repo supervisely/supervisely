@@ -98,6 +98,18 @@ class BBoxTracking(Inference, InferenceImageCache):
                 load_all_frames=False,
                 frame_loader=self.download_frame,
             )
+
+            range_of_frames = [
+                video_interface.frames_indexes[0],
+                video_interface.frames_indexes[-1],
+            ]
+
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
+            )
+
             api.logger.info("Start tracking.")
 
             for fig_id, obj_id in zip(
