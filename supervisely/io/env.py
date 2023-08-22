@@ -211,3 +211,23 @@ def content_origin_update_interval():
         default=0.5,
         raise_not_found=False,
     )
+
+
+def smart_cache_ttl(raise_not_found=False, default=120):
+    return _parse_from_env(
+        name="smart_cache_ttl",
+        keys=["SMART_CACHE_TTL"],
+        postprocess_fn=lambda x: max(int(x), 1),
+        default=default,
+        raise_not_found=raise_not_found,
+    )
+
+
+def smart_cache_size(raise_not_found=False, default=256):
+    return _parse_from_env(
+        name="smart_cache_size",
+        keys=["SMART_CACHE_SIZE"],
+        postprocess_fn=lambda x: max(int(x), 1),
+        default=default,
+        raise_not_found=raise_not_found,
+    )

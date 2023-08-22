@@ -1,34 +1,47 @@
 import numpy as np
 import functools
 from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
 import supervisely as sly
+import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference import Inference
-import supervisely.nn.inference.tracking.functional as F
-import traceback
 
 
-class MaskTracking(Inference):
+class MaskTracking(Inference, InferenceImageCache):
     def __init__(
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
-        super().__init__(
+        Inference.__init__(
+            self,
             model_dir,
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
+        )
+        InferenceImageCache.__init__(
+            self,
+            maxsize=sly.env.smart_cache_size(),
+            ttl=sly.env.smart_cache_ttl(),
+            is_persistent=True,
         )
 
         try:
             self.load_on_device(model_dir, "cuda")
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
+            sly.logger.warn("Failed to load model on CUDA device.")
+
+        sly.logger.debug(
+            "Smart cache params",
+            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
+        )
 
     def get_info(self):
         info = super().get_info()
@@ -38,6 +51,7 @@ class MaskTracking(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
@@ -85,6 +99,7 @@ class MaskTracking(Inference):
                 load_all_frames=True,
                 notify_in_predict=True,
                 per_point_polygon_tracking=False,
+                frame_loader=self.download_frame,
             )
             api.logger.info("Starting tracking process")
             # load frames
@@ -92,7 +107,7 @@ class MaskTracking(Inference):
             # combine several binary masks into one multilabel mask
             i = 0
             label2id = {}
-            frames_generator = [_ for _ in self.video_interface.frames_loader_generator()]
+
             for (fig_id, geometry), obj_id in zip(
                 self.video_interface.geometries.items(),
                 self.video_interface.object_ids,
@@ -152,7 +167,7 @@ class MaskTracking(Inference):
                             self.video_interface.add_object_geometry_on_frame(
                                 geometry,
                                 obj_id,
-                                self.video_interface._cur_frames_indexes[j + 1],
+                                self.video_interface.frames_indexes[j + 1],
                                 notify=notify,
                             )
                     if self.video_interface.global_stop_indicatior:
