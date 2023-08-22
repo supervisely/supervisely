@@ -12,7 +12,7 @@ from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely.nn.inference import Inference
-from supervisely import ProjectMeta, ObjClass, Label, env as sly_env, logger as sly_logger
+from supervisely import ProjectMeta, ObjClass, Label, env as sly_env
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
 
@@ -56,7 +56,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
 
-        sly_logger.debug(
+        logger.debug(
             "Smart cache params",
             extra={"ttl": _smart_cache_ttl, "maxsize": sly_env.smart_cache_size()},
         )

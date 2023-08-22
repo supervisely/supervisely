@@ -2,21 +2,17 @@ import os
 import shutil
 import numpy as np
 
-from async_asgi_testclient import TestClient
 from cacheout import Cache as CacheOut
-from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 from cachetools import LRUCache, Cache, TTLCache
-from threading import Lock, Thread
-from fastapi import Request, FastAPI, BackgroundTasks
-
-# from fastapi.testclient import TestClient
 from enum import Enum
+from fastapi import Request, FastAPI
 from logging import Logger
 from pathlib import Path
+from typing import Any, Callable, Generator, List, Optional, Tuple, Union
+from threading import Lock, Thread
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
-from supervisely.app.fastapi.utils import run_sync
 
 
 class PersistentImageLRUCache(LRUCache):

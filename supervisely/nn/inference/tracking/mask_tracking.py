@@ -107,7 +107,7 @@ class MaskTracking(Inference, InferenceImageCache):
             # combine several binary masks into one multilabel mask
             i = 0
             label2id = {}
-            # frames_generator = [_ for _ in self.video_interface.frames_loader_generator()]
+
             for (fig_id, geometry), obj_id in zip(
                 self.video_interface.geometries.items(),
                 self.video_interface.object_ids,
