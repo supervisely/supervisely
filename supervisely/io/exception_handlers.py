@@ -177,7 +177,7 @@ class ErrorHandler:
         class FileSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2003
-                self.title = "File size error"
+                self.title = "File size limit exceeded"
                 self.message = (
                     "The given file size is too large (more than 10 GB) for free community edition."
                 )
@@ -193,7 +193,7 @@ class ErrorHandler:
         class ImageFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2004
-                self.title = "Image file size error"
+                self.title = "Image files size limit exceeded"
                 self.message = "The given image file size is too large (more than 1 GB) for free community edition."
 
                 super().__init__(
@@ -207,7 +207,7 @@ class ErrorHandler:
         class VideoFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
-                self.title = "Video file size error"
+                self.title = "Video files size limit exceeded"
                 self.message = "The given video file size is too large (more than 300 MB) for free community edition."
 
                 super().__init__(
@@ -221,7 +221,7 @@ class ErrorHandler:
         class VolumeFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
-                self.title = "Volume file size error"
+                self.title = "Volume files size limit exceeded"
                 self.message = "The given volume file size is too large (more than 150 MB) for free community edition."
 
                 super().__init__(
