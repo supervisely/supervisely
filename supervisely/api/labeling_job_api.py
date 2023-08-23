@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import time
-from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
-
+from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING, Any
+from collections import defaultdict
 from tqdm import tqdm
 
 if TYPE_CHECKING:
@@ -285,6 +285,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_range: Optional[List[int, int]] = None,
         reviewer_id: Optional[int] = None,
         images_ids: Optional[List[int]] = [],
+        meta: Optional[Dict[str, Any]] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -317,6 +318,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type reviewer_id: int, optional
         :param images_ids: List of images ids to label in dataset
         :type images_ids: List[int], optional
+        :param meta: Labeling job meta
+        :type meta: Dict[str, Any], optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -471,19 +474,25 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if tags_limit_per_image is None:
             tags_limit_per_image = 0
 
-        data = {
-            ApiField.NAME: name,
-            ApiField.DATASET_ID: dataset_id,
-            ApiField.USER_IDS: user_ids,
-            # ApiField.DESCRIPTION: description,
-            ApiField.META: {
+        if meta is None:
+            meta = {
                 "classes": classes_to_label,
                 "projectTags": tags_to_label,
                 "imageTags": filter_images_by_tags,
                 "imageFiguresLimit": objects_limit_per_image,
                 "imageTagsLimit": tags_limit_per_image,
                 "entityIds": images_ids,
-            },
+            }
+        else:
+            if meta["range"]["start"] is None and meta["range"]["end"] is None:
+                meta.pop("range")
+
+        data = {
+            ApiField.NAME: name,
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.USER_IDS: user_ids,
+            # ApiField.DESCRIPTION: description,
+            ApiField.META: meta,
         }
 
         if readme is not None:
@@ -762,7 +771,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             },
         )
         if len(jobs) > 0:
-            return jobs[0]
+            return self.get_info_by_id(jobs[0].id)
         return None
 
     def archive(self, id: int) -> None:
@@ -1117,3 +1126,118 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             api.labeling_job.set_status(id=9, status="completed")
         """
         self._api.post("jobs.set-status", {ApiField.ID: id, ApiField.STATUS: status})
+
+    def get_figures(self, id: int):
+        dataset_id = self.get_info_by_id(id).dataset_id
+        self._api.add_header("x-job-id", f"{id}")
+        response = self._api.post("figures.list", {ApiField.DATASET_ID: dataset_id})
+        self._api.remove_header("x-job-id")
+        response_json = response.json()
+        return response_json.get(ApiField.ENTITIES)
+
+    def get_tags(self, id: int):
+        project_id = self.get_info_by_id(id).project_id
+        self._api.add_header("x-job-id", f"{id}")
+        response = self._api.post("tags.list", {ApiField.PROJECT_ID: project_id})
+        self._api.remove_header("x-job-id")
+        response_json = response.json()
+        return response_json.get(ApiField.ENTITIES)
+
+    def add_objects(self, id: int):
+        dataset_id = self.get_info_by_id(id).dataset_id
+        figures = self.get_figures(id)
+        self._api.add_header("x-job-id", f"{id}")
+        ann_objects = []
+        for figure in figures:
+            ann_objects.append(
+                {
+                    ApiField.CLASS_ID: figure.get(ApiField.CLASS_ID),
+                    ApiField.ENTITY_ID: figure.get(ApiField.ENTITY_ID),
+                }
+            )
+        response = self._api.post(
+            "annotation-objects.bulk.add",
+            {ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATION_OBJECTS: ann_objects},
+        )
+        self._api.remove_header("x-job-id")
+        response_json = response.json()
+        return response_json
+
+    def add_figures(self, id: int, figures: list):
+        self._api.add_header("x-job-id", f"{id}")
+        figures_map = defaultdict(list)
+        for figure in figures:
+            if figure.get("meta") is None:
+                figure["meta"] = {}
+
+            figures_map[figure["entityId"]].append(figure)
+        responses = []
+        for entity_id in figures_map:
+            response = self._api.post(
+                "figures.bulk.add",
+                {
+                    ApiField.ENTITY_ID: f"{entity_id}",
+                    ApiField.FIGURES: figures_map[entity_id],
+                },
+            )
+            if len(response.json()) == 0:
+                continue
+            responses.append(response.json()[0])
+        self._api.remove_header("x-job-id")
+        return responses
+
+    def get_meta(self, id):
+        response = self._get_response_by_id(id, "jobs.info", id_field=ApiField.ID)
+        return response.json().get(ApiField.META)
+
+    def set_entity_status(self, id, entity_id: int, status: str):
+        self._api.post(
+            "jobs.entities.update-review-status",
+            {
+                ApiField.JOB_ID: f"{id}",
+                ApiField.ENTITY_ID: f"{entity_id}",
+                ApiField.STATUS: status,
+            },
+        )
+
+    def update_entity_ann_duration(self, id, entity_id: int, duration: int):
+        self._api.post(
+            "entity.add-annotation-duration",
+            {
+                ApiField.JOB_ID: f"{id}",
+                ApiField.ENTITY_ID: f"{entity_id}",
+                ApiField.DURATION: f"{duration}",
+            },
+        )
+
+    def update_figure_ann_duration(self, id, figure_id: int, duration: int):
+        self._api.post(
+            "figures.add-annotation-duration",
+            {
+                ApiField.JOB_ID: f"{id}",
+                ApiField.FIGURE_ID: figure_id,
+                ApiField.DURATION: duration,
+            },
+        )
+
+    def remove_all_figures(self, id):
+        figures = self.get_figures(id)
+        figure_ids = [f"{figure[ApiField.ID]}" for figure in self.get_figures(id)]
+
+        figures_map = defaultdict(list)
+        for figure in figures:
+            if figure.get("meta") is None:
+                figure["meta"] = {}
+
+            figures_map[figure["entityId"]].append(figure)
+
+        self._api.add_header("x-job-id", f"{id}")
+        for entity_id in figures_map:
+            figure_ids = [figure[ApiField.ID] for figure in figures_map[entity_id]]
+            self._api.post(
+                "figures.bulk.remove",
+                {
+                    ApiField.FIGURE_IDS: figure_ids,
+                },
+            )
+        self._api.remove_header("x-job-id")

@@ -36,6 +36,12 @@ import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.github_api as github_api
 import supervisely.api.volume.volume_api as volume_api
+
+import supervisely.api.entity_annotation.entity_annotation_api as entity_annotation_api
+import supervisely.api.entity_annotation.figure_api as figure_api
+import supervisely.api.entity_annotation.object_api as object_api
+import supervisely.api.entity_annotation.tag_api as tag_api
+
 from supervisely.sly_logger import logger
 import supervisely.io.env as sly_env
 from supervisely._utils import is_development
@@ -157,6 +163,11 @@ class Api:
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
 
+        self.entity = entity_annotation_api.EntityAnnotationAPI(self)
+        self.figure = figure_api.FigureApi(self)
+        self.object = object_api.ObjectApi(self)
+        self.tag = tag_api.TagApi(self)
+
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
@@ -257,6 +268,20 @@ class Api:
                 f"Current value: {self.headers[key]!r}. Tried to set value: {value!r}"
             )
         self.headers[key] = value
+
+    def remove_header(self, key: str) -> None:
+        """
+        Remove given key from headers dictionary.
+
+        :param key: New key.
+        :type key: str
+        :raises: :class:`RuntimeError`, if key is not found
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        if key not in self.headers:
+            raise RuntimeError(f"Header {key!r} not found. ")
+        self.headers.pop(key)
 
     def add_additional_field(self, key: str, value: str) -> None:
         """
