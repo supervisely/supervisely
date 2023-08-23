@@ -118,6 +118,23 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class UnicodeDecodeError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1003
+                self.title = "Unicode decode error"
+                self.message = (
+                    "The given file contains non-unicode characters. "
+                    "Please, check the file and try again."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(
@@ -465,6 +482,9 @@ ERROR_PATTERNS = {
         r".*sly\.json\.load_json_file.*": ErrorHandler.SDK.JsonAnnotationReadError,
         r".*api\.annotation\.upload_path.*": ErrorHandler.SDK.JsonAnnotationReadError,
         r".*api\.annotation\.upload_paths.*": ErrorHandler.SDK.JsonAnnotationReadError,
+    },
+    UnicodeDecodeError: {
+        r".*codec can't decode byte.*": ErrorHandler.APP.UnicodeDecodeError,
     },
     NotImplementedError: {
         r".*geometry\.convert.*": ErrorHandler.SDK.ConversionNotImplemented,
