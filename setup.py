@@ -61,7 +61,7 @@ INSTALL_REQUIRES = [
     "click",
     "imutils==0.5.4",
     "urllib3==1.26.15",
-    "cachetools==5.3.1",
+    "cachetools==4.2.4",
     "cacheout==0.14.1",
 ]
 
