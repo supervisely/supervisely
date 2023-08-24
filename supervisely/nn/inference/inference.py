@@ -892,14 +892,6 @@ class Inference:
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
-            )
-            logger.debug(
-                f"Sending preparing progress with uuid:",
-                extra=log_extra,
-            )
-
             return inference_request["preparing_progress"]
 
 
