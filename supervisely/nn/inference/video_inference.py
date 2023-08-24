@@ -6,6 +6,7 @@ import cv2
 import ffmpeg
 
 import supervisely as sly
+from supervisely.io.fs import ensure_base_path
 from tqdm import tqdm
 
 
@@ -68,6 +69,8 @@ class InferenceVideoInterface:
             self._frames_indexes = []
 
     def _download_video_by_frames(self):
+        self._preparing_progress["status"] = "download_frames"
+        self._preparing_progress["current"] = 0
         for index, frame_index in tqdm(
             enumerate(self._frames_indexes),
             desc="Downloading frames",
@@ -85,14 +88,14 @@ class InferenceVideoInterface:
             self._preparing_progress["current"] += 1
 
     def _download_entire_video(self):
-        def videos_to_frames(video_path, frames_range=None):
+        def videos_to_frames(video_path, progress, frames_range=None):
+            progress["status"] = "cut"
+            progress["current"] = 0
+            progress["total"] = self.frames_count
             vidcap = cv2.VideoCapture(video_path)
             vidcap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
-
-            self._preparing_progress["current"] = 0
             success, image = vidcap.read()
             count = 0
-
             while success:
                 output_image_path = os.path.join(f"{self._frames_path}", f"frame{count:06d}.png")
                 if frames_range:
@@ -105,36 +108,31 @@ class InferenceVideoInterface:
                 success, image = vidcap.read()
 
                 count += 1
-                self._preparing_progress["current"] = count
+                progress["current"] = count
 
             fps = vidcap.get(cv2.CAP_PROP_FPS)
 
             return {"frames_path": self._frames_path, "fps": fps, "video_path": video_path}
 
+        def download_video(video_path, video_info, progress):
+            progress["status"] = "download_video"
+            progress["current"] = 0
+            progress["total"] = int(video_info.file_meta["size"])
+            response = self.api.video._download(video_info.id, is_stream=True)
+            ensure_base_path(video_path)
+            with open(video_path, "wb") as fd:
+                mb1 = 1024 * 1024
+                for chunk in response.iter_content(chunk_size=mb1):
+                    fd.write(chunk)
+                    progress["current"] += len(chunk)
+
         self._local_video_path = os.path.join(
             self._imgs_dir, f"{time.time_ns()}_{self.video_info.name}"
         )
-
-        # unpack download_path method from api.video to iterate over chunks
-        # and send results to progress bar
-        # self.api.video.download_path(self.video_info.id, self._local_video_path)
-        response = self.api.video._download(self.video_info.id, is_stream=True)
-        from supervisely.io.fs import ensure_base_path
-
-        ensure_base_path(self._local_video_path)
-        # set video size as total
-        self._preparing_progress["total"] = int(self.video_info.file_meta["size"])
-        with open(self._local_video_path, "wb") as fd:
-            mb1 = 1024 * 1024
-            for chunk in response.iter_content(chunk_size=mb1):
-                fd.write(chunk)
-                self._preparing_progress["current"] += len(chunk)
-        # set progress for cutting frames
-        self._preparing_progress["current"] = 0
-        self._preparing_progress["total"] = self.frames_count
-
+        download_video(self._local_video_path, self.video_info, self._preparing_progress)
         return videos_to_frames(
             self._local_video_path,
+            self._preparing_progress,
             [self.start_frame_index, self.start_frame_index + self.frames_count - 1],
         )
 
@@ -145,6 +143,7 @@ class InferenceVideoInterface:
         else:
             sly.logger.debug("Downloading video frame by frame")
             self._download_video_by_frames()
+        self._preparing_progress["status"] = "inference"
 
     def __del__(self):
         if os.path.isdir(self._frames_path):
