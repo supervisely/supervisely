@@ -341,11 +341,10 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        # ошибка будет выдавать когда, сервер/хранилище не справляется
         class ServerOverload(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2014
-                self.title = "Server overload"
+                self.title = "High load on the server"
                 self.message = "Sorry, the server is overloaded. Please, try again later."
 
                 super().__init__(
@@ -353,7 +352,7 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    message=self.message,
+                    message=self.message
                 )
 
         class ProjectNotFound(HandleException):
