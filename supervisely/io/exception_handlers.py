@@ -271,8 +271,10 @@ class ErrorHandler:
                 self.code = 2009
                 self.title = "App set field error"
                 self.message = (
-                    "The application has encountered an error while setting a field. "
-                    "Please, check that the task is running and the field name is correct."
+                    "The application has encountered an error while sending a request. "
+                    "It may be caused by connection issues. "
+                    "Please, check your internet connection, the app is running and input parameters. "
+                    "If you are using a model in other session, please, check that the model is serving and it's logs."
                 )
 
                 super().__init__(
@@ -353,39 +355,25 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        class DatasetNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2015
-                self.title = "Dataset not found"
-                self.message = "Please, check that the dataset exists."
-
-                super().__init__(
-                    exception,
-                    stack,
-                    code=self.code,
-                    title=self.title,
-                    message=self.message,
-                )
-
-        class ApiError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2016
-                self.title = "API error"
-                self.message = "The server has encountered an error. Please, try again later."
-
-                super().__init__(
-                    exception,
-                    stack,
-                    code=self.code,
-                    title=self.title,
-                    message=self.message,
-                )
-
         class ProjectNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
-                self.code = 2017
+                self.code = 2015
                 self.title = "Project not found"
-                self.message = "Please, check that the project exists."
+                self.message = "Please, check that the project exists, not archived and you have enough permissions to access it"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class DatasetNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2016
+                self.title = "Dataset not found"
+                self.message = "Please, check that the dataset exists, not archived and you have enough permissions to access it."
 
                 super().__init__(
                     exception,
@@ -511,7 +499,7 @@ ERROR_PATTERNS = {
     },
     RetryError: {
         r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
-        r".*api\.task\.set_field.*": ErrorHandler.API.ApiError,
+        r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
     },
     RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
