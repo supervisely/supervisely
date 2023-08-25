@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 from typing import List, Optional
 from supervisely.app.widgets import Widget
@@ -13,12 +14,11 @@ from supervisely.app.widgets.nodes_flow.option_components import (
     NumberOptionComponent,
     SelectOptionComponent,
     SliderOptionComponent,
-    TextOptionComponent
+    TextOptionComponent,
 )
 
 
 class NodesFlow(Widget):
-
     class OptionComponent(OptionComponent):
         pass
 
@@ -98,6 +98,11 @@ class NodesFlow(Widget):
                 "outputs": [o.to_json() for o in self.outputs],
             }
 
+    class Routes:
+        SAVE = "save_cb"
+        FLOW_CHANGED = "flow_changed_cb"
+        FLOW_STATE_CHANGED = "flow_state_changed_cb"
+
     def __init__(
         self,
         nodes: List[Node] = [],
@@ -138,11 +143,71 @@ class NodesFlow(Widget):
                 return self.pop_node(i)
         return None
 
+    def get_flow_json(self):
+        return copy.deepcopy(StateJson()[self.widget_id]["flow"])
+
     def get_nodes_json(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flow"]["nodes"])
-    
+
     def get_edges_json(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flow"]["edges"])
 
-    def get_nodes_state_json(self):
+    def get_flow_state(self):
         return copy.deepcopy(StateJson()[self.widget_id]["flowState"])
+
+    def get_nodes_state_json(self):
+        """Alias for get_flow_state"""
+        return self.get_flow_state()
+
+    def on_save(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.SAVE)
+        server = self._sly_app.get_server()
+        self._save_handled = True
+
+        @server.post(route_path)
+        def _click():
+            func()
+
+        return _click
+
+    def flow_changed(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.FLOW_CHANGED)
+        server = self._sly_app.get_server()
+        self._flow_change_handled = True
+
+        @server.post(route_path)
+        def _click():
+            func()
+
+        return _click
+
+    def flow_state_changed(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.FLOW_STATE_CHANGED)
+        server = self._sly_app.get_server()
+        self._flow_state_change_handled = True
+
+        @server.post(route_path)
+        def _click():
+            func()
+
+        return _click
+
+    def update_nodes_state(self, state: dict):
+        # old_state = copy.deepcopy(StateJson()[self.widget_id]["flowState"])
+        # for node_id, node_state in state.items():
+        #     for key, value in node_state.items():
+        #         if node_id in old_state:
+        #             old_state[node_id][key] = value
+        old_state = copy.deepcopy(state)
+        StateJson()[self.widget_id]["flowState"] = old_state
+        StateJson().send_changes()
+
+    def clear(self):
+        StateJson()[self.widget_id]["flow"]["nodes"] = []
+        StateJson()[self.widget_id]["flow"]["edges"] = []
+        StateJson()[self.widget_id]["flowState"] = {}
+        StateJson().send_changes()
+
+    def set_edges(self, edges: List[dict]):
+        StateJson()[self.widget_id]["flow"]["edges"] = edges
+        StateJson().send_changes()

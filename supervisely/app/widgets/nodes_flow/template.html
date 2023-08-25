@@ -7,5 +7,14 @@
         :session="session"
         :post="post"
         height="data.{{{widget.widget_id}}}.height"
+        {% if widget._save_handled %}
+        @save="post('/{{{widget.widget_id}}}/save_cb')"
+        {% endif %}
+        {% if widget._flow_change_handled %}
+        @flow-changed="post('/{{{widget.widget_id}}}/flow_changed_cb')"
+        {% endif %}
+        {% if widget._flow_state_change_handled %}
+        @flow-state-changed="post('/{{{widget.widget_id}}}/flow_state_changed_cb')"
+        {% endif %}
     />
 </div>
