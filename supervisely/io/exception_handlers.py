@@ -536,6 +536,7 @@ def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
     stack = read_stack_from_exception(exception)
 
     # Retrieving the patterns for the given exception type.
+    logger.info(f"🛑 Exception type: {type(exception)}")
     patterns = ERROR_PATTERNS.get(type(exception))
     if not patterns:
         return
