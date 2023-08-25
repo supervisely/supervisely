@@ -124,6 +124,7 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
 
             if status is PullStatus.START:
                 started.add(layer_id)
+                logger.debug(f"started: {len(started)}")
                 need_report = False
             elif status is PullStatus.DOWNLOAD:
                 layers_total_load[layer_id] = progress_details["total"]
@@ -138,6 +139,7 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                     need_report = False
             elif status is PullStatus.COMPLETE_LOAD:
                 loaded.add(layer_id)
+                logger.debug(f"loaded: {len(loaded)}")
             elif status is PullStatus.EXTRACT:
                 layers_total_extract[layer_id] = progress_details["total"]
                 layers_current_extract[layer_id] = progress_details["current"]
@@ -152,15 +154,17 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
             elif status is PullStatus.COMPLETE_PULL:
                 need_report = False
                 pulled.add(layer_id)
+                logger.debug(f"pulled: {len(pulled)}")
             
-            if len(started) > len(pulled):
-                loading = len(loaded) < len(started)
+            if (started != pulled):
+                loading = (started != loaded)
                 if need_report:
                     if loading:
                         progress_load.report_progress()
                     else:
                         progres_ext.report_progress()
-            else:
+            elif len(pulled) > 0:
+                logger.debug(f"started: {len(started)}; loaded: {len(loaded)}; pulled: {len(pulled)}")
                 progress_full.report_progress()
 
         progress_full.iter_done()
