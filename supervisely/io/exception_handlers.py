@@ -504,6 +504,7 @@ ERROR_PATTERNS = {
         r".*api\.pointcloud\.upload_project.*": ErrorHandler.SDK.ProjectStructureError,
         r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerSideHighLoad,
         r".*api\.video\.frame\.download_np.*": ErrorHandler.API.ServerSideHighLoad,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerSideHighLoad,
     },
     TypeError: {
         r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
