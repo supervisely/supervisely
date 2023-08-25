@@ -152,7 +152,6 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                 else:
                     need_report = False
             elif status is PullStatus.COMPLETE_PULL:
-                need_report = False
                 pulled.add(layer_id)
                 logger.debug(f"pulled: {len(pulled)}")
             
