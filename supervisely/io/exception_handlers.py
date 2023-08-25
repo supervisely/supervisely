@@ -341,11 +341,12 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        class ServerSideHighLoad(HandleException):
+        # ошибка будет выдавать когда, сервер/хранилище не справляется
+        class ServerOverload(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2014
-                self.title = "High load on server side"
-                self.message = "The server has encountered an error. Please, try again later."
+                self.title = "Server overload"
+                self.message = "Sorry, the server is overloaded. Please, try again later."
 
                 super().__init__(
                     exception,
@@ -490,9 +491,9 @@ ERROR_PATTERNS = {
     KeyError: {
         r".*api\.pointcloud\.upload_paths.*": ErrorHandler.API.PointcloudsUploadError,
         r".*api\.pointcloud\.upload_project.*": ErrorHandler.SDK.ProjectStructureError,
-        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerSideHighLoad,
-        r".*api\.video\.frame\.download_np.*": ErrorHandler.API.ServerSideHighLoad,
-        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerSideHighLoad,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerOverload,
+        r".*api\.video\.frame\.download_np.*": ErrorHandler.API.ServerOverload,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerOverload,
     },
     TypeError: {
         r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
