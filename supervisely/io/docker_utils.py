@@ -157,12 +157,13 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                 logger.debug(f"pulled: {len(pulled)}")
             
             if (started != pulled):
-                loading = (started != loaded)
                 if need_report:
-                    if loading:
-                        progress_load.report_progress()
-                    else:
+                    if started == loaded:
+                        logger.debug(f"Report ext: started {len(started)}, loaded {len(loaded)}")
                         progres_ext.report_progress()
+                    else:
+                        logger.debug(f"Report load: started {len(started)}, loaded {len(loaded)}")
+                        progress_load.report_progress()
             elif len(pulled) > 0:
                 logger.debug(f"started: {len(started)}; loaded: {len(loaded)}; pulled: {len(pulled)}")
                 progress_full.report_progress()
