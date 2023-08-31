@@ -127,19 +127,25 @@ class SelectTagMeta(Widget):
         return StateJson()[self.widget_id]["tags"]
 
     def get_tag_meta_by_name(self, name: str) -> TagMeta:
-        if self._project_meta is None or self._project_meta.tag_metas.get(name) is None:
+        if self._project_id and (
+            self._project_meta is None or self._project_meta.tag_metas.get(name) is None
+        ):
             self._project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
         tag_meta = self._project_meta.tag_metas.get(name)
         if tag_meta is None:
-            raise ValueError(f"Tag with name {name} not found in project {self._project_id}")
+            raise ValueError(f"Tag with name {name} not found in project meta")
         return tag_meta
 
     def get_selected_item(self) -> TagMeta:
         name = self.get_selected_name()
+        if name is None:
+            return None
         return self.get_tag_meta_by_name(name)
 
     def get_selected_items(self) -> List[TagMeta]:
         names = self.get_selected_names()
+        if names is None:
+            return None
         results = [self.get_tag_meta_by_name(name) for name in names]
         return results
 
