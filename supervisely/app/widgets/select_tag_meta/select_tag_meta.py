@@ -14,6 +14,9 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class SelectTagMeta(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         default: str = None,
@@ -25,14 +28,17 @@ class SelectTagMeta(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        self._changes_handled = False
         self._api = Api()
         self._default = default
         self._project_id = project_id
         self._project_info = None
         self._project_meta: ProjectMeta = project_meta
         if project_meta is not None and project_id is not None:
-            raise ValueError("You can not provide both project_id and project_meta parameters to SelectTagMeta widget.")
-        
+            raise ValueError(
+                "You can not provide both project_id and project_meta parameters to SelectTagMeta widget."
+            )
+
         self._allowed_types = allowed_types
         self._multiselect = multiselect
         self._show_label = show_label
@@ -60,12 +66,12 @@ class SelectTagMeta(Widget):
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
             self._project_id = dataset_info.project_id
 
-            self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
-        
+            self._project_info = self._api.project.get_info_by_id(
+                self._project_id, raise_error=True
+            )
+
         elif self._project_meta is not None:
             self._tags = self._project_meta.tag_metas.to_json()
-            if len(self._tags):
-                self._value = self._tags[0]["name"]
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -86,14 +92,18 @@ class SelectTagMeta(Widget):
         return res
 
     def get_json_state(self) -> Dict:
+        val = self._default
+        if val is not None:
+            if len(self._tags) == 0:
+                val = None
+            elif val not in [t["name"] for t in self._tags]:
+                val = self._tags[0]["name"]
         res = {
             "projectId": self._project_id,
-            "tags": self._default,
+            "tags": val,
         }
         if self._multiselect is True:
-            res["tags"] = [self._default]
-        if self._value is not None:
-            res["value"] = self._value
+            res["tags"] = [val]
         return res
 
     def get_selected_name(self) -> str:
@@ -117,7 +127,7 @@ class SelectTagMeta(Widget):
         return StateJson()[self.widget_id]["tags"]
 
     def get_tag_meta_by_name(self, name: str) -> TagMeta:
-        if self._project_meta is None or name not in self._project_meta.tag_metas:
+        if self._project_meta is None or self._project_meta.tag_metas.get(name) is None:
             self._project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
         tag_meta = self._project_meta.tag_metas.get(name)
         if tag_meta is None:
@@ -147,3 +157,29 @@ class SelectTagMeta(Widget):
             )
         StateJson()[self.widget_id]["tags"] = names
         StateJson().send_changes()
+
+    def set_project_meta(self, project_meta: ProjectMeta):
+        if self._project_id is not None:
+            raise ValueError(
+                "You can not provide both project_id and project_meta parameters to SelectTagMeta widget."
+            )
+        self._project_meta = project_meta
+        self._tags = self._project_meta.tag_metas.to_json()
+        self.update_data()
+        self.update_state()
+        StateJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(SelectTagMeta.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        async def _click():
+            if self._multiselect is True:
+                res = self.get_selected_items()
+            else:
+                res = self.get_selected_item()
+            func(res)
+
+        return _click
