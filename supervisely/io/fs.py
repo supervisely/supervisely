@@ -1012,3 +1012,40 @@ def dirs_with_marker(
 
                 if check_function is None or check_function(markered_dir):
                     yield markered_dir
+
+
+def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, None, None]:
+    """
+    Generator that yields paths to directories that meet the requirements of the check_function.
+
+    :param input_path: path to the directory in which the search will be performed
+    :type input_path: str
+    :param check_function: function to check that directory meets the requirements and returns bool
+    :type check_function: Callable
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = '/home/admin/work/projects/examples'
+
+        # Prepare the check function.
+
+        def check_function(directory) -> bool:
+        images_dir = os.path.join(directory, "images")
+        annotations_dir = os.path.join(directory, "annotations")
+
+        return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
+
+        for directory in sly.fs.dirs(input_path, check_function):
+            # Now you can be sure that the directory meets the requirements.
+            # Do something with it.
+            print(directory)
+    """
+    paths = [os.path.abspath(input_path)]
+    paths.extend(list_dir_recursively(input_path, include_subdirs=True, use_global_paths=True))
+    for path in paths:
+        if os.path.isdir(path):
+            if check_function(path):
+                yield path
