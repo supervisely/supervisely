@@ -1,9 +1,8 @@
 import os
-from fastapi import Response, Request, status
-from aiocache import Cache
 import threading
-from supervisely.app.fastapi import run_sync
 import time
+from cacheout import Cache
+from fastapi import Response, Request, status
 
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.prediction_dto import PredictionSegmentation
@@ -13,7 +12,8 @@ from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
 from supervisely.nn.inference import Inference
-from supervisely import ProjectMeta, ObjClass, Label
+from supervisely import ProjectMeta, ObjClass, Label, env as sly_env
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
 
 from typing import Dict, List, Any, Optional, Union
@@ -25,7 +25,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class InteractiveSegmentation(Inference):
+class InteractiveSegmentation(Inference, InferenceImageCache):
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
@@ -42,12 +42,24 @@ class InteractiveSegmentation(Inference):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
-        super().__init__(model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        _smart_cache_ttl = sly_env.smart_cache_ttl()
+        _fast_cache_ttl = max(1, _smart_cache_ttl // 2)
+        Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        InferenceImageCache.__init__(
+            self,
+            maxsize=sly_env.smart_cache_size(),
+            ttl=_smart_cache_ttl,
+        )
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
         self._inference_image_lock = threading.Lock()
-        self._inference_image_cache = Cache(Cache.MEMORY, ttl=60)
+        self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
+
+        logger.debug(
+            "Smart cache params",
+            extra={"ttl": _smart_cache_ttl, "maxsize": sly_env.smart_cache_size()},
+        )
 
     def get_info(self) -> dict:
         info = super().get_info()
@@ -85,6 +97,7 @@ class InteractiveSegmentation(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
@@ -139,13 +152,20 @@ class InteractiveSegmentation(Inference):
             # download image if needed (using cache)
             app_dir = get_data_dir()
             hash_str = functional.get_hash_from_context(smtool_state)
-            if run_sync(self._inference_image_cache.get(hash_str)) is None:
+            if hash_str not in self._inference_image_cache:
                 logger.debug(f"downloading image: {hash_str}")
-                image_np = functional.download_image_from_context(smtool_state, api, app_dir)
-                run_sync(self._inference_image_cache.set(hash_str, image_np))
+                image_np = functional.download_image_from_context(
+                    smtool_state,
+                    api,
+                    app_dir,
+                    self.download_image,
+                    self.download_frame,
+                    self.download_image_by_hash,
+                )
+                self._inference_image_cache.set(hash_str, image_np)
             else:
                 logger.debug(f"image found in cache: {hash_str}")
-                image_np = run_sync(self._inference_image_cache.get(hash_str))
+                image_np = self._inference_image_cache.get(hash_str)
 
             # crop
             image_np = functional.crop_image(crop, image_np)

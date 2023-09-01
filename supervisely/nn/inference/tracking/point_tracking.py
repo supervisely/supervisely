@@ -5,30 +5,44 @@ from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
 import supervisely as sly
+import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Label
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
-import supervisely.nn.inference.tracking.functional as F
+from supervisely.nn.inference.cache import InferenceImageCache
 
 
-class PointTracking(Inference):
+class PointTracking(Inference, InferenceImageCache):
     def __init__(
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
-        super().__init__(
+        Inference.__init__(
+            self,
             model_dir,
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
+        )
+        InferenceImageCache.__init__(
+            self,
+            maxsize=sly.env.smart_cache_size(),
+            ttl=sly.env.smart_cache_ttl(),
+            is_persistent=True,
         )
 
         try:
             self.load_on_device(model_dir, "cuda")
         except RuntimeError:
             self.load_on_device(model_dir, "cpu")
+            sly.logger.warn("Failed to load model on CUDA device.")
+
+        sly.logger.debug(
+            "Smart cache params",
+            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
+        )
 
     def get_info(self):
         info = super().get_info()
@@ -43,6 +57,7 @@ class PointTracking(Inference):
     def serve(self):
         super().serve()
         server = self._app.get_server()
+        self.add_cache_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
@@ -86,6 +101,18 @@ class PointTracking(Inference):
                 context=context,
                 api=api,
                 load_all_frames=False,
+                frame_loader=self.download_frame,
+            )
+
+            range_of_frames = [
+                video_interface.frames_indexes[0],
+                video_interface.frames_indexes[-1],
+            ]
+
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
             )
             api.logger.info("Start tracking.")
 

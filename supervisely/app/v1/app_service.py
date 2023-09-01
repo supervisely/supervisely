@@ -55,9 +55,7 @@ def _default_stop(api: Api, task_id, context, state, app_logger):
 
 class AppService:
     NETW_CHUNK_SIZE = 1048576
-    QUEUE_MAX_SIZE = (
-        2000  # Maximum number of in-flight requests to avoid exhausting server memory.
-    )
+    QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]
 
     def __init__(
@@ -73,9 +71,7 @@ class AppService:
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
         self.task_id = take_with_default(task_id, int(os.environ["TASK_ID"]))
-        self.server_address = take_with_default(
-            server_address, os.environ[SERVER_ADDRESS]
-        )
+        self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
         self.public_api = Api.from_env(ignore_task_id=self._ignore_task_id)
         self._app_url = self.public_api.app.get_url(self.task_id)
@@ -142,9 +138,7 @@ class AppService:
         msg = context.get("exception", context["message"])
         if isinstance(msg, Exception):
             # self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(msg), 'future_info': context["future"]})
-            self.logger.error(
-                msg, exc_info=True, extra={"future_info": context["future"]}
-            )
+            self.logger.error(msg, exc_info=True, extra={"future_info": context["future"]})
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
@@ -201,9 +195,7 @@ class AppService:
                 f(api=self.public_api, task_id=self.task_id)
             except Exception as ex:
                 tb = traceback.format_exc()
-                self.logger.error(
-                    f"Exception in periodic function: {f.__name__}\n" f"{tb}"
-                )
+                self.logger.error(f"Exception in periodic function: {f.__name__}\n" f"{tb}")
                 self.logger.info("App will be stopped due to error")
 
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
@@ -252,7 +244,6 @@ class AppService:
 
     def handle_message_sync(self, request_msg):
         try:
-
             state = request_msg.get(STATE, None)
             context = request_msg.get(CONTEXT, None)
             if context is not None:
@@ -273,9 +264,7 @@ class AppService:
                 self.stop_event.set()
 
             if command == STOP_COMMAND and command not in self.callbacks:
-                _default_stop(
-                    user_public_api, self.task_id, context, state, self.logger
-                )
+                _default_stop(user_public_api, self.task_id, context, state, self.logger)
                 if self._ignore_stop_for_debug is False:
                     # self.stop()
                     asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
@@ -319,27 +308,46 @@ class AppService:
         except AppCommandNotFound as e:
             self.logger.debug(repr(e), exc_info=False)
         except Exception as e:
+            from supervisely.io.exception_handlers import handle_exception
+
+            exception_handler = handle_exception(e)
             if self._ignore_errors is False:
-                self.logger.error(
-                    traceback.format_exc(),
-                    exc_info=True,
-                    extra={
-                        "main_name": command,
-                        "exc_str": repr(e),
-                        "event_type": EventType.TASK_CRASHED,
-                    },
-                )
+                if exception_handler:
+                    # Logging the error and sets the output in Workspace Tasks.
+                    exception_handler.log_error_for_agent(command)
+
+                    if self.has_ui:
+                        self.show_modal_window(
+                            exception_handler.get_message_for_modal_window(),
+                            level="error",
+                        )
+
+                else:
+                    self.logger.error(
+                        traceback.format_exc(),
+                        exc_info=True,
+                        extra={
+                            "main_name": command,
+                            "exc_str": repr(e),
+                            "event_type": EventType.TASK_CRASHED,
+                        },
+                    )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
-                self.logger.error(
-                    traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)}
-                )
+                self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
+                    if exception_handler:
+                        message = exception_handler.get_message_for_modal_window()
+                    else:
+                        message = (
+                            "Oops! Something went wrong, please try again or contact tech support. "
+                            "Find more info in the app logs."
+                        )
+
                     self.show_modal_window(
-                        "Oops! Something went wrong, please try again or contact tech support."
-                        " Find more info in the app logs.",
+                        message,
                         level="error",
                     )
 
@@ -350,9 +358,7 @@ class AppService:
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
-                self.loop.run_in_executor(
-                    self.executor, self.handle_message_sync, request_msg
-                ),
+                self.loop.run_in_executor(self.executor, self.handle_message_sync, request_msg),
                 loop=self.loop,
             )
 
@@ -379,9 +385,7 @@ class AppService:
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.processing_queue.put(event_obj)
             except Exception as error:
-                self.logger.warning(
-                    "App exception: ", extra={"error_message": repr(error)}
-                )
+                self.logger.warning("App exception: ", extra={"error_message": repr(error)})
 
         raise ConnectionClosedByServerException(
             "Requests stream to a deployed model closed by the server."
@@ -405,9 +409,7 @@ class AppService:
             template_path = os.path.join(self.repo_dir, "src/gui.html")
 
         if not file_exists(template_path):
-            self.logger.info(
-                "App will be running without GUI", extra={"app_url": self.app_url}
-            )
+            self.logger.info("App will be running without GUI", extra={"app_url": self.app_url})
             template = ""
         else:
             with open(template_path, "r") as file:
@@ -415,9 +417,7 @@ class AppService:
             self.has_ui = True
 
         self.public_api.app.initialize(self.task_id, template, data, state)
-        self.logger.info(
-            "Application session is initialized", extra={"app_url": self.app_url}
-        )
+        self.logger.info("Application session is initialized", extra={"app_url": self.app_url})
 
         try:
             self._run_executors()
@@ -460,9 +460,7 @@ class AppService:
         self.logger.info("Shutting down ThreadPoolExecutor")
         self.executor.shutdown(wait=False)
 
-        self.logger.info(
-            f"Releasing {len(self.executor._threads)} threads from executor"
-        )
+        self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
         for thread in self.executor._threads:
             try:
                 thread._tstate_lock.release()
@@ -487,9 +485,7 @@ class AppService:
     def show_modal_window(self, message, level="info"):
         all_levels = ["warning", "info", "error"]
         if level not in all_levels:
-            raise ValueError(
-                "Unknown level {!r}. Supported levels: {}".format(level, all_levels)
-            )
+            raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
 
         if level == "info":
             self.logger.info(message)
@@ -505,9 +501,7 @@ class AppService:
     def get_template_path(self):
         if self._template_path is not None:
             return self._template_path
-        config_path = os.path.join(
-            self.repo_dir, os.environ.get("CONFIG_DIR", ""), "config.json"
-        )
+        config_path = os.path.join(self.repo_dir, os.environ.get("CONFIG_DIR", ""), "config.json")
         if file_exists(config_path):
             config = load_json_file(config_path)
             self._template_path = config.get("gui_template", None)
@@ -516,9 +510,7 @@ class AppService:
             else:
                 self._template_path = os.path.join(self.repo_dir, self._template_path)
                 if not file_exists(self._template_path):
-                    self._template_path = os.path.join(
-                        os.path.dirname(sys.argv[0]), "gui.html"
-                    )
+                    self._template_path = os.path.join(os.path.dirname(sys.argv[0]), "gui.html")
         if self._template_path is None:
             self._template_path = os.path.join(os.path.dirname(sys.argv[0]), "gui.html")
         if file_exists(self._template_path):
@@ -544,9 +536,7 @@ class AppService:
             template = file.read()
 
         regex = r"{\%.*include.*'(.*)'.*\%}"
-        result = re.sub(
-            regex, lambda m: _my_replace_function(m), template, 0, re.MULTILINE
-        )
+        result = re.sub(regex, lambda m: _my_replace_function(m), template, 0, re.MULTILINE)
         res_path = os.path.join(self.data_dir, "gui.html")
         with open(os.path.join(self.data_dir, "gui.html"), "w") as file:
             file.write(result)
@@ -561,6 +551,18 @@ class AppService:
                 try:
                     f(*args, **kwargs)
                 except Exception as e:
+                    from supervisely import handle_exception
+
+                    exception_handler = handle_exception(e)
+
+                    if exception_handler:
+                        message = exception_handler.get_message_for_modal_window()
+                    else:
+                        message = (
+                            f"Oops! Something went wrong, please try again or contact tech support."
+                            f" Find more info in the app logs. Error: {repr(e)}",
+                        )
+
                     self.logger.error(
                         f"please, contact support: task_id={self.task_id}, {repr(e)}",
                         exc_info=True,
@@ -569,8 +571,7 @@ class AppService:
                         },
                     )
                     self.show_modal_window(
-                        f"Oops! Something went wrong, please try again or contact tech support."
-                        f" Find more info in the app logs. Error: {repr(e)}",
+                        message,
                         level="error",
                     )
 

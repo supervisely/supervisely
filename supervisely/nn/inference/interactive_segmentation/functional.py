@@ -1,5 +1,7 @@
 import os
+import numpy as np
 from copy import deepcopy
+from typing import Callable
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
@@ -12,10 +14,21 @@ def get_image_by_hash(hash, save_path, api: sly.Api):
     return base_image
 
 
-def download_image_from_context(context: dict, api: sly.Api, output_dir: str):
+def download_image_from_context(
+    context: dict,
+    api: sly.Api,
+    output_dir: str,
+    cache_load_img: Callable[[sly.Api, int], np.ndarray] = None,
+    cache_load_frame: Callable[[sly.Api, int, int], np.ndarray] = None,
+    cache_load_img_hash: Callable[[sly.Api, str], np.ndarray] = None,
+):
     if "image_id" in context:
+        if cache_load_img is not None:
+            return cache_load_img(api, context["image_id"])
         return api.image.download_np(context["image_id"])
     elif "image_hash" in context:
+        if cache_load_img_hash is not None:
+            return cache_load_img_hash(api, context["image_hash"])
         img_path = os.path.join(output_dir, "base_image.png")
         return get_image_by_hash(context["image_hash"], img_path, api=api)
     elif "volume" in context:
@@ -29,6 +42,12 @@ def download_image_from_context(context: dict, api: sly.Api, output_dir: str):
             volume_id, slice_index, plane, window_center, window_width
         )
     elif "video" in context:
+        if cache_load_frame is not None:
+            return cache_load_frame(
+                api,
+                context["video"]["video_id"],
+                context["video"]["frame_index"],
+            )
         return api.video.frame.download_np(
             context["video"]["video_id"], context["video"]["frame_index"]
         )

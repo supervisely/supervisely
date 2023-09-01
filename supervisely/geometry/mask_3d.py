@@ -19,6 +19,7 @@ from supervisely.geometry.constants import (
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
 from supervisely.io.fs import remove_dir
+from supervisely import logger
 import numpy as np
 import base64
 import gzip
@@ -471,5 +472,14 @@ class Mask3D(Geometry):
         shape_str, data_str = decompressed_string.split("|")
         shape = tuple(int(dim) for dim in shape_str.split(","))
         data_bytes = data_str.encode("utf-8")
-        data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
+        try:
+            data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
+        except ValueError:
+            logger.warn(
+                "Can't reshape array with 'dtype=np.uint8'. Will try to automatically convert 'dtype=np.int16' to 'np.uint8' and reshape"
+            )
+            data = np.frombuffer(data_bytes, dtype=np.int16)
+            data = np.clip(data, 0, 1).astype(np.uint8)
+            data = data.reshape(shape)
+            logger.debug("Converted successfully!")
         return data
