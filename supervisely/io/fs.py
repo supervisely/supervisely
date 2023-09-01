@@ -1033,10 +1033,10 @@ def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, Non
         # Prepare the check function.
 
         def check_function(directory) -> bool:
-        images_dir = os.path.join(directory, "images")
-        annotations_dir = os.path.join(directory, "annotations")
+            images_dir = os.path.join(directory, "images")
+            annotations_dir = os.path.join(directory, "annotations")
 
-        return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
+            return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
 
         for directory in sly.fs.dirs(input_path, check_function):
             # Now you can be sure that the directory meets the requirements.
