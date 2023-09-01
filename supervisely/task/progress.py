@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import inspect
 import math
-from typing import Optional
 from functools import partial
+from typing import Optional
+
 from tqdm import tqdm
-from supervisely.sly_logger import logger, EventType
-from supervisely._utils import sizeof_fmt, is_development, is_production
+
+from supervisely._utils import is_development, is_production, sizeof_fmt
+from supervisely.sly_logger import EventType, logger
 
 
 # float progress of training, since zero
@@ -391,6 +393,7 @@ class tqdm_sly(tqdm, Progress):
                 )
 
         kwargs_tqdm = kwargs.copy()
+        kwargs_tqdm["unit_divisor"] = 1024
 
         # pop and convert every possible (and relevant) kwarg from Progress
         if len(args) < 2:  # i.e. 'desc' not set as a positional argument
