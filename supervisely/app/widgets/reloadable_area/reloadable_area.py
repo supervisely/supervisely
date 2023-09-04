@@ -82,3 +82,9 @@ class ReloadableArea(DynamicWidget):
                 }
             )
         )
+
+    def hide(self):
+        self._content.hide()
+        
+    def show(self):
+        self._content.show()
