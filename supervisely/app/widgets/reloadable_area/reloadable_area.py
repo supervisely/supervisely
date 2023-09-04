@@ -84,7 +84,9 @@ class ReloadableArea(DynamicWidget):
         )
 
     def hide(self):
+        """Hides the content of the ReloadableArea."""
         self._content.hide()
         
     def show(self):
+        """Shows the content of the ReloadableArea."""
         self._content.show()
