@@ -6,7 +6,7 @@
         :data="data"
         :session="session"
         :post="post"
-        height="data.{{{widget.widget_id}}}.height"
+        :options="{height: data.{{{widget.widget_id}}}.height}"
         {% if widget._save_handled %}
         @save="post('/{{{widget.widget_id}}}/save_cb')"
         {% endif %}

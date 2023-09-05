@@ -138,7 +138,7 @@ class SliderOptionComponent(OptionComponent):
         }
         default_value = min if default_value is None else default_value
         super().__init__(
-            component_name="NumberOption",
+            component_name="SliderOption",
             default_value=default_value,
             options=options,
         )
