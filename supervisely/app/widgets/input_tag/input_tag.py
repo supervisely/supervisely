@@ -3,7 +3,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets import Switch, Empty, Input, InputNumber, RadioGroup, OneOf, Select
-from supervisely.app.widgets import DataJson
+from supervisely.app import DataJson
 
 
 VALUE_TYPE_NAME = {
