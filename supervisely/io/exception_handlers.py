@@ -118,6 +118,23 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class UnicodeDecodeError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1003
+                self.title = "Unicode decode error"
+                self.message = (
+                    "The given file contains non-unicode characters. "
+                    "Please, check the file and try again."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(
@@ -160,7 +177,7 @@ class ErrorHandler:
         class FileSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2003
-                self.title = "File size error"
+                self.title = "File size limit exceeded"
                 self.message = (
                     "The given file size is too large (more than 10 GB) for free community edition."
                 )
@@ -176,7 +193,7 @@ class ErrorHandler:
         class ImageFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2004
-                self.title = "Image file size error"
+                self.title = "Image files size limit exceeded"
                 self.message = "The given image file size is too large (more than 1 GB) for free community edition."
 
                 super().__init__(
@@ -190,7 +207,7 @@ class ErrorHandler:
         class VideoFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2005
-                self.title = "Video file size error"
+                self.title = "Video files size limit exceeded"
                 self.message = "The given video file size is too large (more than 300 MB) for free community edition."
 
                 super().__init__(
@@ -204,7 +221,7 @@ class ErrorHandler:
         class VolumeFilesSizeTooLarge(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
                 self.code = 2006
-                self.title = "Volume file size error"
+                self.title = "Volume files size limit exceeded"
                 self.message = "The given volume file size is too large (more than 150 MB) for free community edition."
 
                 super().__init__(
@@ -254,8 +271,10 @@ class ErrorHandler:
                 self.code = 2009
                 self.title = "App set field error"
                 self.message = (
-                    "The application has encountered an error while setting a field. "
-                    "Please, check that the task is running and the field name is correct."
+                    "The application has encountered an error while sending a request. "
+                    "It may be caused by connection issues. "
+                    "Please, check your internet connection, the app is running and input parameters. "
+                    "If you are using a model in other session, please, check that the model is serving and it's logs."
                 )
 
                 super().__init__(
@@ -313,6 +332,48 @@ class ErrorHandler:
                 self.code = 2013
                 self.title = "Annotation not found"
                 self.message = "Please, check that the annotation(s) exists by the given path."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class ServerOverload(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2014
+                self.title = "High load on the server"
+                self.message = "Sorry, the server is overloaded. Please, try again later."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message
+                )
+
+        class ProjectNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2015
+                self.title = "Project not found"
+                self.message = "Please, check that the project exists, not archived and you have enough permissions to access it"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class DatasetNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 2016
+                self.title = "Dataset not found"
+                self.message = "Please, check that the dataset exists, not archived and you have enough permissions to access it."
 
                 super().__init__(
                     exception,
@@ -394,6 +455,8 @@ ERROR_PATTERNS = {
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":314572800.*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
+        r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
+        r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
@@ -407,6 +470,9 @@ ERROR_PATTERNS = {
         r".*sly\.json\.load_json_file.*": ErrorHandler.SDK.JsonAnnotationReadError,
         r".*api\.annotation\.upload_path.*": ErrorHandler.SDK.JsonAnnotationReadError,
         r".*api\.annotation\.upload_paths.*": ErrorHandler.SDK.JsonAnnotationReadError,
+    },
+    UnicodeDecodeError: {
+        r".*codec can't decode byte.*": ErrorHandler.APP.UnicodeDecodeError,
     },
     NotImplementedError: {
         r".*geometry\.convert.*": ErrorHandler.SDK.ConversionNotImplemented,
@@ -424,12 +490,16 @@ ERROR_PATTERNS = {
     KeyError: {
         r".*api\.pointcloud\.upload_paths.*": ErrorHandler.API.PointcloudsUploadError,
         r".*api\.pointcloud\.upload_project.*": ErrorHandler.SDK.ProjectStructureError,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerOverload,
+        r".*api\.video\.frame\.download_np.*": ErrorHandler.API.ServerOverload,
+        r".*api\.image\.download_bytes.*": ErrorHandler.API.ServerOverload,
     },
     TypeError: {
         r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
     },
     RetryError: {
         r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
+        r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
     },
     RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
