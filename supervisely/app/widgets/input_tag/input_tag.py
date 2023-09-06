@@ -3,6 +3,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets import Switch, Empty, Input, InputNumber, RadioGroup, OneOf, Select
+from supervisely.app.widgets import DataJson
 
 
 VALUE_TYPE_NAME = {
@@ -165,3 +166,4 @@ class InputTag(Widget):
         self._set_default_value()
         self.deactivate()
         self.update_data()
+        DataJson().send_changes()
