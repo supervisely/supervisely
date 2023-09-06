@@ -473,6 +473,8 @@ class ApiField:
     """"""
     DURATION = "duration"
     """"""
+    RAW_VIDEO_META = "rawVideoMeta"
+    """"""
 
 
 def _get_single_item(items):
