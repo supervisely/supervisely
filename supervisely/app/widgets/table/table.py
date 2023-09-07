@@ -136,12 +136,12 @@ class Table(Widget):
         :param data: Data of table in different formats:
         1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
         2. Python dict with structure {
-                                        'columns_names': ['col_name_1', 'col_name_2', ...],
-                                        'values_by_rows': [
-                                                            ['row_1_column_1', 'row_1_column_2', ...],
-                                                            ['row_2_column_1', 'row_2_column_2', ...],
-                                                            ...
-                                                          ]
+                                        'columns': ['col_name_1', 'col_name_2', ...],
+                                        'data': [
+                                                    ['row_1_column_1', 'row_1_column_2', ...],
+                                                    ['row_2_column_1', 'row_2_column_2', ...],
+                                                    ...
+                                                ]
                                       }
         """
 
