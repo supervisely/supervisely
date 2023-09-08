@@ -475,6 +475,8 @@ class ApiField:
     """"""
     RAW_VIDEO_META = "rawVideoMeta"
     """"""
+    IS_DIR = "isDir"
+    """"""
 
 
 def _get_single_item(items):

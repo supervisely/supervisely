@@ -16,7 +16,7 @@
     if
     widget._viewer_path_changed
     %}
-    @change="(evt) => { if (evt.type !== 'folder') return; state.{{{widget.widget_id}}}.viewer_path = evt.path; post('/{{{widget.widget_id}}}/path_changed') }"
+    @change="(evt) => { if (evt.type === 'file') return; state.{{{widget.widget_id}}}.viewer_path = evt.path; post('/{{{widget.widget_id}}}/path_changed') }"
     {%
     endif
     %}
