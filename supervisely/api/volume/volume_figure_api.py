@@ -1,10 +1,9 @@
 # coding: utf-8
 import re
-import os
-from typing import List, Union
+from typing import List, Dict, Union
 from uuid import UUID
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-from supervisely.io.fs import ensure_base_path, file_exists, get_nested_dicts_data
+from supervisely.io.fs import ensure_base_path, get_nested_dicts_data
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -13,7 +12,6 @@ from supervisely.volume_annotation.plane import Plane
 from supervisely.geometry.mask_3d import Mask3D
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.volume.nrrd_encoder import encode
 
 
@@ -146,24 +144,26 @@ class VolumeFigureApi(FigureApi):
             api.volume.figure.append_bulk(volume_id, [figure], key_id_map)
         """
 
-        if len(figures) == 0:
+        if not figures:
             return
+
         keys = []
-        keys_mask3d = []
+        mask3d_keys = []
         figures_json = []
-        figures_mask3d_json = []
+        mask3d_figures_json = []
+
         for figure in figures:
             if figure.geometry.name() == Mask3D.name():
-                keys_mask3d.append(figure.key())
-                figures_mask3d_json.append(figure.to_json(key_id_map, save_meta=True))
+                mask3d_keys.append(figure.key())
+                mask3d_figures_json.append(figure.to_json(key_id_map, save_meta=True))
             else:
                 keys.append(figure.key())
                 figures_json.append(figure.to_json(key_id_map, save_meta=True))
         # Figure is missing required field \"meta.normal\"","index":0}}
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
-        if len(figures_mask3d_json) != 0:
+        if mask3d_figures_json:
             self._append_bulk_mask3d(
-                volume_id, figures_mask3d_json, keys_mask3d, key_id_map
+                volume_id, mask3d_figures_json, mask3d_keys, key_id_map
             )
 
     def _download_geometries_batch(self, ids: List[int]):
@@ -185,9 +185,11 @@ class VolumeFigureApi(FigureApi):
                 )
                 yield figure_id, part
 
-    def download_stl_meshes(self, ids: List[int], paths: List[str]):
+    def download_sf_geometries(
+        self, ids: List[int], save_to_file: bool = False, paths: List[str] = None
+    ):
         """
-        Download STL meshes for the specified figure IDs and saves them to the specified paths.
+        Download spatial figures geometry for the specified figure IDs and saves them to the specified paths.
 
         :param ids: VolumeFigure ID in Supervisely.
         :type ids: int
@@ -227,202 +229,24 @@ class VolumeFigureApi(FigureApi):
                 api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
         """
 
-        if len(ids) == 0:
-            return
-        if len(ids) != len(paths):
-            raise RuntimeError(
-                'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
-            )
-
-        id_to_path = {id: path for id, path in zip(ids, paths)}
-        for img_id, resp_part in self._download_geometries_batch(ids):
-            ensure_base_path(id_to_path[img_id])
-            with open(id_to_path[img_id], "wb") as w:
-                w.write(resp_part.content)
-
-    def interpolate(
-        self, volume_id: int, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
-    ):
-        """
-        Interpolate a spatial figure with a ClosedSurfaceMesh geometry.
-
-        :param volume_id: VolumeFigure ID in Supervisely.
-        :type volume_id: int
-        :param spatial_figure: Spatial figure to interpolate.
-        :type spatial_figure: VolumeFigure
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            volume_id = 19371414
-            project_id = 17215
-
-            volume = api.volume.get_info_by_id(volume_id)
-
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
-
-            for sp_figure in vol_ann.spatial_figures:
-                res = volume_figure_api.interpolate(volume_id, sp_figure, key_id_map)
-        """
-
-        if type(spatial_figure._geometry) != ClosedSurfaceMesh:
-            raise TypeError(
-                "Interpolation can be created only for figures with geometry ClosedSurfaceMesh"
-            )
-        object_id = key_id_map.get_object_id(spatial_figure.volume_object.key())
-        response = self._api.post(
-            "figures.volumetric_interpolation",
-            {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
-        )
-        return response.content
-
-    # def interpolate_batch(
-    #     self, volume_id, spatial_figures: List[VolumeFigure], key_id_map: KeyIdMap
-    # ):
-    #     # raise NotImplementedError()
-    #     # STL mesh interpolations can not be uploaded:
-    #     # 400 Client Error: Bad Request for url: public/api/v3/figures.bulk.add ({"error":"Please, use \"figures.bulk.upload.geometry\" method to update figures with \"geometryType\" closed_surface_mesh","details":{"figures":[14]}})
-    #     # figures.bulk.upload.geometry
-
-    #     meshes = []
-    #     for mesh in spatial_figures:
-    #         object_id = key_id_map.get_object_id(mesh.volume_object.key())
-    #         response = self._api.post(
-    #             "figures.volumetric_interpolation",
-    #             {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
-    #         )
-    #         figure_id = key_id_map.get_figure_id(mesh.key())
-
-    #         # @TODO: load from disk or get from server
-    #         meshes.append(response.json())
-
-    #     # for batch in batched(items_to_upload):
-    #     #     content_dict = {}
-    #     #     for idx, item in enumerate(batch):
-    #     #         content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'nrrd/*')
-    #     #     encoder = MultipartEncoder(fields=content_dict)
-    #     #     self._api.post('import-storage.bulk.upload', encoder)
-    #     #     if progress_cb is not None:
-    #     #         progress_cb(len(batch))
-
-    #     # content_dict = {}
-    #     # for idx, item in enumerate(meshes):
-    #     #     content_dict[f"{idx}-mesh"] = (
-    #     #         str(idx),
-    #     #         func_item_to_byte_stream(item),
-    #     #     )
-    #     # encoder = MultipartEncoder(fields=content_dict)
-
-    #     # self._api.post("figures.bulk.upload.geometry", encoder)
-
-    #     # # if progress_cb is not None:
-    #     # #     progress_cb(len(batch))
-
-    #     # #     self._api.post(
-    #     # #         "figures.bulk.upload.geometry",
-    #     # #         {ApiField.FIGURE_ID: figure_id, ApiField.GEOMETRY: response.json()},
-    #     # #     )
-
-    #     # #     results.append(response.json())
-    #     # return results
-
-    # def _upload_geometries_batch(ids, )
-    def _upload_meshes_batch(self, figure2bytes):
-        """
-        Private method. Upload figures geometry by given ID to storage.
-
-        :param figure2bytes: Dictionary with figures IDs and geometries.
-        :type figure2bytes: dict
-        :rtype: :class:`NoneType`
-        :Usage example:
-        """
-
-        for figure_id, figure_bytes in figure2bytes.items():
-            content_dict = {
-                ApiField.FIGURE_ID: str(figure_id),
-                ApiField.GEOMETRY: (str(figure_id), figure_bytes, "application/sla"),
-            }
-            encoder = MultipartEncoder(fields=content_dict)
-            resp = self._api.post("figures.bulk.upload.geometry", encoder)
-
-    def upload_stl_meshes(
-        self,
-        volume_id: int,
-        spatial_figures: List[VolumeFigure],
-        key_id_map: KeyIdMap,
-        interpolation_dir=None,
-    ):
-        """
-        Upload existing interpolations or create on the fly and and add them to empty mesh figures.
-
-        :param volume_id: VolumeFigure ID in Supervisely.
-        :type volume_id: int
-        :param spatial_figures: List of spatial figures to upload.
-        :type spatial_figures: List[VolumeFigure]
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            volume_id = 19371414
-            project_id = 17215
-
-            volume = api.volume.get_info_by_id(volume_id)
-
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
-            sp_figures = vol_ann.spatial_figures
-
-            res = volume_figure_api.upload_stl_meshes(volume_id, sp_figures, key_id_map)
-        """
-
-        if len(spatial_figures) == 0:
+        if not ids:
             return
 
-        figure2bytes = {}
-        for sp in spatial_figures:
-            figure_id = key_id_map.get_figure_id(sp.key())
-            if interpolation_dir is not None:
-                meth_path = os.path.join(interpolation_dir, sp.key().hex + ".stl")
-                if file_exists(meth_path):
-                    with open(meth_path, "rb") as in_file:
-                        meth_bytes = in_file.read()
-                    figure2bytes[figure_id] = meth_bytes
-            # else - no stl file
-            if figure_id not in figure2bytes:
-                meth_bytes = self.interpolate(volume_id, sp, key_id_map)
-                figure2bytes[figure_id] = meth_bytes
-        self._upload_meshes_batch(figure2bytes)
+        if save_to_file:
+            if len(ids) != len(paths):
+                raise RuntimeError(
+                    'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
+                )
+            id_to_path = {id: path for id, path in zip(ids, paths)}
+            for figure_id, resp_part in self._download_geometries_batch(ids):
+                ensure_base_path(id_to_path[figure_id])
+                with open(id_to_path[figure_id], "wb") as w:
+                    w.write(resp_part.content)
+        else:
+            id_to_data = {}
+            for figure_id, resp_part in self._download_geometries_batch(ids):
+                id_to_data[figure_id] = resp_part.content
+            return id_to_data
 
     def _append_bulk_mask3d(
         self,
@@ -483,26 +307,28 @@ class VolumeFigureApi(FigureApi):
                         geometry = Mask3D.base64_2_data(geometry)
                         geometry_bytes = encode(geometry)
 
-                        self.upload_sf_geometry([key], [geometry_bytes], key_id_map)
+                        self.upload_sf_geometries([key], [geometry_bytes], key_id_map)
 
-    def upload_sf_geometry(
+    def upload_sf_geometries(
         self,
-        spatial_figures: Union[List[VolumeFigure], str],
-        geometries: List,
+        spatial_figures: List[Union[VolumeFigure, str]],
+        geometries: List[bytes],
         key_id_map: KeyIdMap,
     ):
         """
         Upload spatial figures geometry as bytes to storage by given ID.
 
         :param spatial_figures: List with VolumeFigure objects or figure key
-        :type spatial_figures: Union[List[VolumeFigure], str]
+        :type spatial_figures: List[Union[VolumeFigure, str]]
         :param geometries: List with geometries, which represented as NRRD in byte format.
-        :type geometries: list
+        :type geometries: List[bytes]
         :param key_id_map: KeyIdMap object (dict with bidict values)
         :type key_id_map: KeyIdMap
         :rtype: :class:`NoneType`
         :Usage example:
         """
+        if len(spatial_figures) == 0:
+            return
 
         for sf, geometry_bytes in zip(spatial_figures, geometries):
             if type(sf) == UUID:
