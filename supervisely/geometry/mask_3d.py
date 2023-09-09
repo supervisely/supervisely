@@ -53,7 +53,9 @@ class PointVolume(JsonSerializable):
         loc = sly.PointVolume(x, y, z)
     """
 
-    def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
+    def __init__(
+        self, x: Union[int, float], y: Union[int, float], z: Union[int, float]
+    ):
         self._x = round(unwrap_if_numpy(x))
         self._y = round(unwrap_if_numpy(y))
         self._z = round(unwrap_if_numpy(z))
@@ -359,7 +361,9 @@ class Mask3D(Geometry):
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
             raise ValueError(
-                "Data must contain {} field to create Mask3D object.".format(json_root_key)
+                "Data must contain {} field to create Mask3D object.".format(
+                    json_root_key
+                )
             )
 
         if DATA not in json_data[json_root_key]:
@@ -387,9 +391,7 @@ class Mask3D(Geometry):
         if SPACE_ORIGIN in json_data[json_root_key]:
             x, y, z = json_data[json_root_key][SPACE_ORIGIN]
             instance._space_origin = PointVolume(x=x, y=y, z=z)
-            return instance
-        else:
-            return instance
+        return instance
 
     @classmethod
     def _impl_json_class_name(cls):
