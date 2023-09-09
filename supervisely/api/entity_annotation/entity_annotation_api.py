@@ -5,9 +5,6 @@ from tqdm import tqdm
 from typing import List, Dict, Union, Optional, Callable
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
-from supervisely.api.volume.volume_figure_api import VolumeFigureApi
-from supervisely.api.volume.volume_tag_api import VolumeTagApi
-from supervisely.api.volume.volume_object_api import VolumeObjectApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -47,9 +44,9 @@ class EntityAnnotationAPI(ModuleApi):
 
     def _append(
         self,
-        tag_api: VolumeTagApi,
-        object_api: VolumeObjectApi,
-        figure_api: VolumeFigureApi,
+        tag_api,
+        object_api,
+        figure_api,
         project_id,
         dataset_id,
         entity_id,
@@ -69,9 +66,7 @@ class EntityAnnotationAPI(ModuleApi):
         for fig_batch in batched(figures, batch_size=1000):
             figure_api.append_bulk(entity_id, fig_batch, key_id_map)
             if progress_cb is not None:
-                if hasattr(progress_cb, "update") and callable(
-                    getattr(progress_cb, "update")
-                ):
+                if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
                     progress_cb.update(len(fig_batch))
                 else:
                     progress_cb(len(fig_batch))
