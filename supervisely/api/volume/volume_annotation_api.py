@@ -1,15 +1,18 @@
 # coding: utf-8
 
 import json
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Union, Callable, Dict
 
 from tqdm import tqdm
+import nrrd
+import tempfile
 
-
+import supervisely as sly
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely.api.volume.volume_figure_api import VolumeFigureApi
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
@@ -107,9 +110,48 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         """
 
         volume_info = self._api.volume.get_info_by_id(volume_id)
-        return self._download(volume_info.dataset_id, volume_id)
+        return self.download_bulk(volume_info.dataset_id, [volume_id])[0]
 
-    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+    def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> Dict:
+        """
+        Download a list of content (annotations with given ids from dataset with given id).
+
+        :param dataset_id: int
+        :param entity_ids: list of integers
+        :return: list of content(annotations with given ids from dataset with given id), received after execution post request
+        """
+        response = self._api.post(
+            self._method_download_bulk,
+            {ApiField.DATASET_ID: dataset_id, self._entity_ids_str: entity_ids},
+        )
+        response = response.json()
+        ids = []
+        for volume in response:
+            for spatial_figure in volume.get("spatialFigures"):
+                sf_id = spatial_figure.get("id")
+                ids.append(sf_id)
+
+        nrrd_geometries = VolumeFigureApi.download_sf_geometries(
+            self._api.volume.figure, ids=ids
+        )
+
+        for volume in response:
+            for spatial_figure in volume.get("spatialFigures"):
+                nrrd_geometry = nrrd_geometries.get(spatial_figure.get("id"))
+                with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+                    temp_file.write(nrrd_geometry)
+                    file_path = temp_file.name
+                    data_array, _ = nrrd.read(temp_file.name)
+                data_array = sly.Mask3D.data_2_base64(data_array)
+                spatial_figure["geometry"] = {
+                    sly.Mask3D.name(): {"data": f"{data_array}"}
+                }
+
+        return response
+
+    def append(
+        self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None
+    ):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -159,7 +201,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_ids: List[int],
         ann_paths: List[str],
         project_meta: ProjectMeta,
-        interpolation_dirs=None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """
@@ -171,8 +212,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann_paths: List[str]
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
         :type project_meta: ProjectMeta
-        :param interpolation_dirs:
-        :type interpolation_dirs:
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: None
@@ -193,20 +232,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
-        if interpolation_dirs is None:
-            interpolation_dirs = [None] * len(ann_paths)
-
         key_id_map = KeyIdMap()
-        for volume_id, ann_path, interpolation_dir in zip(
-            volume_ids, ann_paths, interpolation_dirs
-        ):
+        for volume_id, ann_path in zip(volume_ids, ann_paths):
             ann_json = load_json_file(ann_path)
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
             self.append(volume_id, ann, key_id_map)
 
-            # upload existing interpolations or create on the fly and and add them to empty mesh figures
-            self._api.volume.figure.upload_stl_meshes(
-                volume_id, ann.spatial_figures, key_id_map, interpolation_dir
-            )
             if progress_cb is not None:
                 progress_cb(1)
