@@ -2,13 +2,10 @@
 
 from collections import namedtuple
 from typing import Optional, List, Callable, Tuple, Union
-import os
-import nrrd
 
 from tqdm import tqdm
 
-from supervisely.io.fs import file_exists, touch, remove_dir
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.fs import touch
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely._utils import batched
@@ -19,13 +16,10 @@ from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.volume import volume as sly_volume
 
-from supervisely.project.project import Dataset, Project, OpenMode
+from supervisely.project.project import OpenMode
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
-from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.geometry.mask_3d import Mask3D
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -50,12 +44,6 @@ class VolumeDataset(VideoDataset):
         path = item_name
         _, volume_meta = sly_volume.read_nrrd_serie_volume(path)
         return self.annotation_class(volume_meta)
-
-    def get_interpolation_dir(self, item_name):
-        return os.path.join(self.directory, self.interpolation_dir, item_name)
-
-    def get_interpolation_path(self, item_name, figure):
-        return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
 
     def get_classes_stats(
         self,
@@ -349,10 +337,6 @@ def download_volume_project(
 
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
-                for sf in ann.spatial_figures:
-                    if sf.geometry.name() == Mask3D.name():
-                        load_figure_data(api, volume_file_path, sf, key_id_map)
-
                 dataset_fs.add_item_file(
                     volume_name,
                     volume_file_path,
@@ -360,43 +344,11 @@ def download_volume_project(
                     _validate_item=False,
                 )
 
-                mesh_ids = []
-                mesh_paths = []
-                for sf in ann.spatial_figures:
-                    figure_id = key_id_map.get_figure_id(sf.key())
-                    mesh_ids.append(figure_id)
-                    figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
-                    mesh_paths.append(figure_path)
-                api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
             if progress_cb is not None:
                 progress_cb(len(batch))
     project_fs.set_key_id_map(key_id_map)
-
-
-def load_figure_data(
-    api: Api, volume_file_path: str, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
-):
-    """
-    Load data into figure geometry.
-
-    :param api: Supervisely API address and token.
-    :type api: Api
-    :param volume_file_path: Path to Volume file location
-    :type volume_file_path: str
-    :param spatial_figure: Spatial figure
-    :type spatial_figure: VolumeFigure object
-    :param key_id_map: Mapped keys and IDs
-    :type key_id_map: KeyIdMap object
-    """
-    figure_id = key_id_map.get_figure_id(spatial_figure.key())
-    figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
-    api.volume.figure.download_stl_meshes([figure_id], [figure_path])
-    Mask3D.from_file(spatial_figure, figure_path)
-
-
-# TODO: add methods to convert to 3d masks
 
 
 def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
@@ -414,13 +366,12 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths, interpolation_dirs = [], [], [], []
+        names, item_paths, ann_paths = [], [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(img_path)
             ann_paths.append(ann_path)
-            interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
 
         progress_cb = None
         if log_progress:
@@ -442,8 +393,6 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
             )
             progress_cb = ds_progress.iters_done_report
 
-        api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb
-        )
+        api.volume.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
 
     return project.id, project.name
