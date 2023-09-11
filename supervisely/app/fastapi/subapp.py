@@ -313,6 +313,7 @@ class Application(metaclass=Singleton):
             static_dir=static_dir,
             hot_reload=hot_reload,
         )
+        self.test_client = TestClient(self._fastapi)
 
         if not headless:
             templates = Jinja2Templates()
@@ -334,8 +335,7 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                client = TestClient(self._fastapi)
-                resp = run_sync(client.get("/"))
+                resp = run_sync(self.test_client.get("/"))
 
     def get_server(self):
         return self._fastapi

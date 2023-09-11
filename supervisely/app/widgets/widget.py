@@ -265,9 +265,9 @@ class DynamicWidget(Widget):
         def wrapper():
             func()
             # to update template for offline session
+            from supervisely.app.fastapi.subapp import Application
             os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
-            server = self._sly_app.get_server()
-            client = TestClient(server)
+            client = Application().test_client
             _ = run_sync(client.get("/"))
 
         return wrapper
