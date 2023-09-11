@@ -1,6 +1,6 @@
 # coding: utf-8
 import re
-from typing import List, Dict, Union
+from typing import List, Union, Optional
 from uuid import UUID
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely.io.fs import ensure_base_path, get_nested_dicts_data
@@ -185,15 +185,14 @@ class VolumeFigureApi(FigureApi):
                 )
                 yield figure_id, part
 
-    def download_sf_geometries(
-        self, ids: List[int], save_to_file: bool = False, paths: List[str] = None
-    ):
+    def download_sf_geometries(self, ids: List[int], paths: Optional[List[str]] = None):
         """
-        Download spatial figures geometry for the specified figure IDs and saves them to the specified paths.
+        Download spatial figures geometry for the specified figure IDs. 
+        Saves them to the specified paths if paths are passed.
 
-        :param ids: VolumeFigure ID in Supervisely.
+        :param ids: VolumeFigure ID in Supervisely
         :type ids: int
-        :param paths: List of paths to download.
+        :param paths: List of paths to save
         :type paths: List[str]
         :return: None
         :rtype: :class:`NoneType`
@@ -224,29 +223,31 @@ class VolumeFigureApi(FigureApi):
 
             for sp_figure in vol_ann.spatial_figures:
                 figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.stl"
+                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.nrrd"
             if id_to_paths:
-                api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
+                api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
         """
 
         if not ids:
             return
 
-        if save_to_file:
+        id_to_data = {}
+        
+        if paths:
             if len(ids) != len(paths):
                 raise RuntimeError(
                     'Can not match "ids" and "paths" lists, len(ids) != len(paths)'
                 )
             id_to_path = {id: path for id, path in zip(ids, paths)}
-            for figure_id, resp_part in self._download_geometries_batch(ids):
+            
+        for figure_id, resp_part in self._download_geometries_batch(ids):
+            id_to_data[figure_id] = resp_part.content
+            if paths:
                 ensure_base_path(id_to_path[figure_id])
                 with open(id_to_path[figure_id], "wb") as w:
                     w.write(resp_part.content)
-        else:
-            id_to_data = {}
-            for figure_id, resp_part in self._download_geometries_batch(ids):
-                id_to_data[figure_id] = resp_part.content
-            return id_to_data
+        
+        return id_to_data
 
     def _append_bulk_mask3d(
         self,
@@ -257,8 +258,7 @@ class VolumeFigureApi(FigureApi):
         field_name=ApiField.ENTITY_ID,
     ):
         """
-        The same method as _append_bulk but for spatial figures. Uploads figures to given Volume by ID.
-        You need to upload the geometry right after figures will be created
+        The same method as _append_bulk but for spatial figures. Uploads figures with geometry to given Volume by ID.
 
         :param entity_id: Volume ID.
         :type entity_id: int
