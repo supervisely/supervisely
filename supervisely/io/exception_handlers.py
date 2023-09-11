@@ -349,7 +349,11 @@ class ErrorHandler:
                 self.message = "Sorry, the server is overloaded. Please, try again later."
 
                 super().__init__(
-                    exception, stack, code=self.code, title=self.title, message=self.message
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message
                 )
 
         class ProjectNotFound(HandleException):
