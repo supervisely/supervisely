@@ -51,7 +51,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
-    def download(self, volume_id: int):
+    def download(self, volume_id: int) -> Dict:
         """
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
