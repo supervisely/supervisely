@@ -118,7 +118,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         :param dataset_id: int
         :param entity_ids: list of integers
-        :return: 
+        :return: Information about VolumeAnnotations in json format
+        :rtype: :class:`dict`
         """
         response = self._api.post(
             self._method_download_bulk,
@@ -211,7 +212,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann_paths: List[str]
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
         :type project_meta: ProjectMeta
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
