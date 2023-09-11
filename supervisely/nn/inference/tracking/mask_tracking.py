@@ -40,10 +40,7 @@ class MaskTracking(Inference, InferenceImageCache):
 
         sly.logger.debug(
             "Smart cache params",
-            extra={
-                "ttl": sly.env.smart_cache_ttl(),
-                "maxsize": sly.env.smart_cache_size(),
-            },
+            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
         )
 
     def get_info(self):
@@ -155,38 +152,26 @@ class MaskTracking(Inference, InferenceImageCache):
                     obj_id = label2id[i]["obj_id"]
                     geometry_type = label2id[i]["original_geometry"]
                     for j, mask in enumerate(binary_masks[1:]):
-                        # check if mask is not empty
-                        if not np.any(mask):
-                            api.logger.info(
-                                f"Skipping empty mask on frame {self.video_interface.frame_index + j + 1}"
-                            )
-                            # update progress bar anyway (otherwise it will not be finished)
-                            self.video_interface._notify(task="add geometry on frame")
+                        if geometry_type == "polygon":
+                            bitmap_geometry = sly.Bitmap(mask)
+                            bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                            bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
+                            polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                            polygon_labels = bitmap_label.convert(polygon_obj_class)
+                            geometries = [label.geometry for label in polygon_labels]
                         else:
-                            if geometry_type == "polygon":
-                                bitmap_geometry = sly.Bitmap(mask)
-                                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                bitmap_label = sly.Label(
-                                    bitmap_geometry, bitmap_obj_class
-                                )
-                                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                                polygon_labels = bitmap_label.convert(polygon_obj_class)
-                                geometries = [
-                                    label.geometry for label in polygon_labels
-                                ]
+                            geometries = [sly.Bitmap(mask)]
+                        for l, geometry in enumerate(geometries):
+                            if l == 0:
+                                notify = True
                             else:
-                                geometries = [sly.Bitmap(mask)]
-                            for l, geometry in enumerate(geometries):
-                                if l == len(geometries) - 1:
-                                    notify = True
-                                else:
-                                    notify = False
-                                self.video_interface.add_object_geometry_on_frame(
-                                    geometry,
-                                    obj_id,
-                                    self.video_interface.frames_indexes[j + 1],
-                                    notify=notify,
-                                )
+                                notify = False
+                            self.video_interface.add_object_geometry_on_frame(
+                                geometry,
+                                obj_id,
+                                self.video_interface.frames_indexes[j + 1],
+                                notify=notify,
+                            )
                     if self.video_interface.global_stop_indicatior:
                         return
                     api.logger.info(f"Figure with id {fig_id} was successfully tracked")
