@@ -102,11 +102,11 @@ class VolumeFigureApi(FigureApi):
         Add VolumeFigures to given Volume by ID.
 
         :param volume_id: Volume ID in Supervisely.
-        :type volume_id: int
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type volume_id: int        
         :param figures: List of VolumeFigure objects.
         :type figures: List[VolumeFigure]
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -114,6 +114,7 @@ class VolumeFigureApi(FigureApi):
          .. code-block:: python
 
             import supervisely as sly
+            import numpy as np
 
             from supervisely.volume_annotation.plane import Plane
 
@@ -134,11 +135,13 @@ class VolumeFigureApi(FigureApi):
             volume_obj_collection = vol_ann.objects.to_json()
             vol_obj = sly.VolumeObject.from_json(volume_obj_collection[1], project_meta)
 
+            geometry = sly.Mask3D(np.zeros(3, 3, 3). dtype=np.bool_)  
+            
             figure = sly.VolumeFigure(
                 vol_obj,
-                sly.Rectangle(20, 20, 129, 200),
-                sly.Plane.AXIAL,
-                45,
+                geometry,
+                None,
+                None,
             )
 
             api.volume.figure.append_bulk(volume_id, [figure], key_id_map)
@@ -217,15 +220,17 @@ class VolumeFigureApi(FigureApi):
             project_meta_json = api.project.get_meta(project_id)
             project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
+            vol_ann_json = api.volume.annotation.download(volume_id)            
             vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
 
+            ids = []
+            paths = []
+            
             for sp_figure in vol_ann.spatial_figures:
                 figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.nrrd"
-            if id_to_paths:
-                api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
+                ids.append(figure_id)
+                paths.appen(f"{STORAGE_DIR}/{figure_id}.nrrd")                        
+            api.volume.figure.download_sf_geometries(ids, paths)
         """
 
         if not ids:
