@@ -116,7 +116,9 @@ class MaskTracking(Inference, InferenceImageCache):
                 self.video_interface.object_ids,
             ):
                 original_geometry = geometry.clone()
-                if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
+                if not isinstance(geometry, sly.Bitmap) and not isinstance(
+                    geometry, sly.Polygon
+                ):
                     raise TypeError(
                         f"This app does not support {geometry.geometry_name()} tracking"
                     )
@@ -164,10 +166,14 @@ class MaskTracking(Inference, InferenceImageCache):
                             if geometry_type == "polygon":
                                 bitmap_geometry = sly.Bitmap(mask)
                                 bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
+                                bitmap_label = sly.Label(
+                                    bitmap_geometry, bitmap_obj_class
+                                )
                                 polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
                                 polygon_labels = bitmap_label.convert(polygon_obj_class)
-                                geometries = [label.geometry for label in polygon_labels]
+                                geometries = [
+                                    label.geometry for label in polygon_labels
+                                ]
                             else:
                                 geometries = [sly.Bitmap(mask)]
                             for l, geometry in enumerate(geometries):
