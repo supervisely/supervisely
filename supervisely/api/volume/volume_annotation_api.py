@@ -114,11 +114,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
     def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> Dict:
         """
-        Download a list of content (annotations with given ids from dataset with given id).
+        Download annotations for entities with given ids from dataset.
 
         :param dataset_id: int
         :param entity_ids: list of integers
-        :return: list of content(annotations with given ids from dataset with given id), received after execution post request
+        :return: 
         """
         response = self._api.post(
             self._method_download_bulk,
@@ -140,7 +140,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 nrrd_geometry = nrrd_geometries.get(spatial_figure.get("id"))
                 with tempfile.NamedTemporaryFile(delete=True) as temp_file:
                     temp_file.write(nrrd_geometry)
-                    file_path = temp_file.name
                     data_array, _ = nrrd.read(temp_file.name)
                 data_array = sly.Mask3D.data_2_base64(data_array)
                 spatial_figure["geometry"] = {
