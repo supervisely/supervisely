@@ -1,7 +1,8 @@
+from functools import wraps
 from json import JSONDecodeError
 from requests.exceptions import HTTPError, RetryError
 from shutil import ReadError
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Dict
 from rich.console import Console
 
 from supervisely.sly_logger import logger, EventType
@@ -569,6 +570,7 @@ def handle_exceptions(func: Callable) -> Callable:
             # Some code that may raise an exception.
     """
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -580,6 +582,27 @@ def handle_exceptions(func: Callable) -> Callable:
                 raise
 
     return wrapper
+
+
+def handle_additional_exceptions(
+    errors: Dict[BaseException, Dict[str, HandleException]] = {},
+) -> Callable:
+    ERROR_PATTERNS.update(errors)
+
+    def inner(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                exception_handler = handle_exception(e)
+                if exception_handler:
+                    exception_handler.raise_error()
+                else:
+                    raise
+
+        return wrapper
+
+    return inner
 
 
 def read_stack_from_exception(exception):
