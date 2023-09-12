@@ -331,6 +331,8 @@ class ApiField:
     """"""
     FIGURE_ID = "figureId"
     """"""
+    FIGURE_IDS = "figureIds"
+    """"""
     VALUE = "value"
     """"""
     ZOOM_FACTOR = "zoomFactor"
@@ -468,6 +470,12 @@ class ApiField:
     TO = "to"
     """"""
     DATA = "data"
+    """"""
+    DURATION = "duration"
+    """"""
+    RAW_VIDEO_META = "rawVideoMeta"
+    """"""
+    IS_DIR = "isDir"
     """"""
 
 
