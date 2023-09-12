@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import inspect
 import math
-from typing import Optional
 from functools import partial
+from typing import Optional
+
 from tqdm import tqdm
-from supervisely.sly_logger import logger, EventType
-from supervisely._utils import sizeof_fmt, is_development, is_production
+
+from supervisely._utils import is_development, is_production, sizeof_fmt
+from supervisely.sly_logger import EventType, logger
 
 
 # float progress of training, since zero
@@ -376,6 +378,8 @@ class tqdm_sly(tqdm, Progress):
         self._iteration_number = 0
         self._iteration_locked = False
         self._total_monitor_size = 0
+
+        self.unit_divisor = 1024
 
         relevant_args = {
             "total": "total_cnt",
