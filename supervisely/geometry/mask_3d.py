@@ -387,9 +387,7 @@ class Mask3D(Geometry):
         if SPACE_ORIGIN in json_data[json_root_key]:
             x, y, z = json_data[json_root_key][SPACE_ORIGIN]
             instance._space_origin = PointVolume(x=x, y=y, z=z)
-            return instance
-        else:
-            return instance
+        return instance
 
     @classmethod
     def _impl_json_class_name(cls):
