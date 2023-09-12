@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal, Generator
+from typing import Dict, List, Optional, Callable, Union, Literal, Generator, Any
 
 import os
 import re
@@ -1049,3 +1049,37 @@ def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, Non
         if os.path.isdir(path):
             if check_function(path):
                 yield path
+
+
+def get_nested_dicts_data(data_dict: Dict, *dict_keys: str) -> Any:
+    """
+    Recursively traverses all keys and returns the value of the last key.
+    :param data_dict: dict with nested dicts
+    :type data_dict: dict
+    :return: value of the last key
+    :rtype: Any
+    :Usage example:
+     .. code-block:: python
+        from supervisely.io.fs import get_nested_dicts_data
+        nested_dict = {
+            'first_level': {
+                'second_level': {
+                    'third_level_1': 'You are wrong',
+                    'third_level_2': 'This is the innermost value'
+                }
+            }
+        }
+        required_value = get_nested_dicts_data(nested_dict, 'first_level', 'second_level', 'third_level_2')
+        print(required_value)
+        Output: 'This is the innermost value'
+    """
+    if not dict_keys:
+        return data_dict
+
+    dict_key = dict_keys[0]
+    if data_dict.get(dict_key):
+        return get_nested_dicts_data(data_dict.get(dict_key), *dict_keys[1:])
+    else:
+        raise KeyError(
+            "The key you are searching for is missing or is at a different nesting level"
+        )
