@@ -1368,6 +1368,7 @@ class VideoApi(RemoveableBulkModuleApi):
         links: List[str],
         infos: List[Dict],
         metas: Optional[List[Dict]] = None,
+        skip_download: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given links to Dataset.
@@ -1382,6 +1383,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos: List[dict]
         :param metas: Videos metadatas.
         :type metas: List[dict], optional
+        :param skip_download: Skip download videos to local storage.
+        :type skip_download: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1423,7 +1426,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ]
         """
 
-        if infos is not None:
+        if infos is not None and not skip_download:
             self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
@@ -1474,6 +1477,7 @@ class VideoApi(RemoveableBulkModuleApi):
         link: str,
         name: Optional[str] = None,
         meta: Optional[List[Dict]] = None,
+        skip_download: Optional[bool] = False,
     ):
         """
         Upload Video from given link to Dataset.
@@ -1486,6 +1490,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param meta: Video metadata.
         :type meta: List[dict], optional
+        :param skip_download: Skip download video to local storage.
+        :type skip_download: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
@@ -1549,17 +1555,27 @@ class VideoApi(RemoveableBulkModuleApi):
             name = rand_str(10) + get_file_ext(link)
         local_path = os.path.join(os.getcwd(), name)
 
-        try:
-            sly_fs.download(link, local_path)
-            video_info = get_info(local_path)
-            h = get_file_hash(local_path)
-            sly_fs.silent_remove(local_path)
-        except Exception as e:
-            sly_fs.silent_remove(local_path)
-            raise e
+        if not skip_download:
+            try:
+                sly_fs.download(link, local_path)
+                video_info = get_info(local_path)
+                h = get_file_hash(local_path)
+                sly_fs.silent_remove(local_path)
+            except Exception as e:
+                sly_fs.silent_remove(local_path)
+                raise e
+        else:
+            video_info = None
+            h = None
         name = self.get_free_name(dataset_id, name)
         return self.upload_links(
-            dataset_id, names=[name], hashes=[h], links=[link], infos=[video_info], metas=[meta]
+            dataset_id,
+            names=[name],
+            hashes=[h],
+            links=[link],
+            infos=[video_info],
+            metas=[meta],
+            skip_download=skip_download,
         )
 
     def add_existing(
