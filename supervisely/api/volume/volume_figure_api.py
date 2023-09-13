@@ -3,7 +3,7 @@ import re
 import os
 from typing import List, Dict, Union
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-from supervisely.io.fs import ensure_base_path, file_exists
+from supervisely.io.fs import ensure_base_path, file_exists, list_files, get_file_name
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -498,3 +498,25 @@ class VolumeFigureApi(FigureApi):
             ensure_base_path(id_to_path[figure_id])
             with open(id_to_path[figure_id], "wb") as w:
                 w.write(resp_part.content)
+
+    def read_sf_geometries(self, path: str) -> Dict:
+        """
+        Read geometries as bytes in dictionary and maps in to figure UUID.
+        NRRD file must be named with UUID.
+
+        :param path: Path to file or dir with files
+        :type path: str
+        :return: Dictionary with geometries
+        :rtype: dict
+        """
+        geometries_dict = {}
+        if os.path.isdir(path):
+            files_list = list_files(path)
+        else:
+            files_list = [path]
+        for nrrd_file in files_list:
+            key = get_file_name(nrrd_file)
+            with open(nrrd_file, "rb") as file:
+                geometry_bytes = file.read()
+            geometries_dict[key] = geometry_bytes
+        return geometries_dict
