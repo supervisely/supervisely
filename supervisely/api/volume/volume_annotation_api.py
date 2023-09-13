@@ -211,8 +211,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_ids, ann_paths, interpolation_dirs, mask_dirs
         ):
             ann_json = load_json_file(ann_path)
-            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
-
+            obj_classes_list = []
+            objects_list = []
             if dir_exists(interpolation_dir):
                 nrrd_full_paths = stl_converter.save_to_nrrd_file(
                     self._api, volume_id, ann_path, interpolation_dir
@@ -221,19 +221,22 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     f"STL format is not supported anymore. Will be automatically converted and uploaded as NRRD"
                 )
                 stl_figures_list = []
-                stl_geometries_dict = {}
-                ann_objects_list = []
+                stl_geometries_dict = {}                
                 for path in nrrd_full_paths:
-                    for sf in ann.spatial_figures:
-                        if sf.key().hex == get_file_name(path):
-                            class_title = sf.volume_object.to_json().get("classTitle")
+                    for sf in ann_json.get('spatialFigures'):
+                        if sf.get('key') == get_file_name(path):
+                            object_key = sf.get('objectKey')
                             break
+                    for obj in ann_json.get('objects'):
+                        if obj.get('key') == object_key:
+                            class_title = obj.get('classTitle')
+                            break   
                     new_obj_class = supervisely.ObjClass(
                         f"stl_{class_title}", supervisely.Mask3D
-                    )  # insert to project_meta
-                    self._api.project.update_meta(project_meta)
+                    )
+                    obj_classes_list.append(new_obj_class)
                     new_object = supervisely.VolumeObject(new_obj_class)
-                    ann_objects_list.append(new_object)
+                    objects_list.append(new_object)
                     new_class_figure = supervisely.VolumeFigure(
                         new_object,
                         supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
@@ -244,11 +247,21 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     with open(path, "rb") as file:
                         geometry_bytes = file.read()
                     stl_geometries_dict[new_class_figure.key().hex] = geometry_bytes
+
+                if obj_classes_list:
+                    new_meta = ProjectMeta(obj_classes_list)
+                    self._api.project.update_meta(27669, new_meta)
+                    project_meta = self._api.project.get_meta(27669)
+                    project_meta = ProjectMeta.from_json(project_meta)
+                                        
+            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
+            
+            if objects_list:
                 ann = ann.clone(
-                    objects=supervisely.VolumeObjectCollection(ann_objects_list),
+                    objects=supervisely.VolumeObjectCollection(objects_list),
                     spatial_figures=stl_figures_list,
                 )
-
+                
             if dir_exists(mask_dir):
                 files_list = list_files(mask_dir)
                 for nrrd_file in files_list:
