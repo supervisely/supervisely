@@ -501,7 +501,7 @@ class VolumeFigureApi(FigureApi):
 
     def read_sf_geometries(self, path: str) -> Dict:
         """
-        Read geometries as bytes in dictionary and maps in to figure UUID.
+        Read geometries as bytes in dictionary and maps them to figure UUID.
         NRRD file must be named with UUID.
 
         :param path: Path to file or dir with files
