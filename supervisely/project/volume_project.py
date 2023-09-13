@@ -26,6 +26,7 @@ from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -33,6 +34,7 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
     interpolation_dir = "interpolation"
+    mask_dir = "mask"
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
@@ -56,6 +58,12 @@ class VolumeDataset(VideoDataset):
 
     def get_interpolation_path(self, item_name, figure):
         return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
+
+    def get_mask_dir(self, item_name):
+        return os.path.join(self.directory, self.mask_dir, item_name)
+
+    def get_mask_path(self, item_name, figure):
+        return os.path.join(self.get_mask_dir(item_name), figure.key().hex + ".nrrd")
 
     def get_classes_stats(
         self,
@@ -349,9 +357,9 @@ def download_volume_project(
 
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
-                for sf in ann.spatial_figures:
-                    if sf.geometry.name() == Mask3D.name():
-                        load_figure_data(api, volume_file_path, sf, key_id_map)
+                # for sf in ann.spatial_figures:
+                #     if sf.geometry.name() == Mask3D.name():
+                #         load_figure_data(api, volume_file_path, sf, key_id_map)
 
                 dataset_fs.add_item_file(
                     volume_name,
@@ -360,14 +368,24 @@ def download_volume_project(
                     _validate_item=False,
                 )
 
+                mask_ids = []
+                mask_paths = []
                 mesh_ids = []
                 mesh_paths = []
                 for sf in ann.spatial_figures:
                     figure_id = key_id_map.get_figure_id(sf.key())
-                    mesh_ids.append(figure_id)
-                    figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
-                    mesh_paths.append(figure_path)
+                    if sf.geometry.name() == Mask3D.name():
+                        mask_ids.append(figure_id)
+                        figure_path = dataset_fs.get_mask_path(volume_name, sf)
+                        mask_paths.append(figure_path)
+                    if sf.geometry.name() == ClosedSurfaceMesh.name():
+                        mesh_ids.append(figure_id)
+                        figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
+                        mesh_paths.append(figure_path)
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
+                # replace figure with stl to mask3d
+                # convert stl to nrrd and add txt file in interpolation dir
+                api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
             if progress_cb is not None:
@@ -392,7 +410,7 @@ def load_figure_data(
     """
     figure_id = key_id_map.get_figure_id(spatial_figure.key())
     figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
-    api.volume.figure.download_stl_meshes([figure_id], [figure_path])
+    api.volume.figure.download_sf_geometries([figure_id], [figure_path])
     Mask3D.from_file(spatial_figure, figure_path)
 
 
@@ -414,13 +432,14 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths, interpolation_dirs = [], [], [], []
+        names, item_paths, ann_paths, mask_dirs, interpolation_dirs = [], [], [], [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(img_path)
             ann_paths.append(ann_path)
             interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
+            mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
         progress_cb = None
         if log_progress:
@@ -443,7 +462,7 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
             progress_cb = ds_progress.iters_done_report
 
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb
+            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb, mask_dirs
         )
 
     return project.id, project.name
