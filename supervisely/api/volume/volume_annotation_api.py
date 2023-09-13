@@ -1,7 +1,7 @@
 # coding: utf-8
 
 
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Union, Callable, Dict, Tuple
 
 from tqdm import tqdm
 import numpy as np
@@ -158,6 +158,92 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             key_id_map,
         )
 
+    def _update_project_if_stl(
+        self,
+        project_id: int,
+        project_meta: ProjectMeta,
+        nrrd_full_paths: List[str],
+        ann_json: Dict,
+        key_id_map: KeyIdMap,
+    ) -> Tuple[Dict, ProjectMeta, Dict]:
+        """
+        Creates new ObjClasse and VolumeFigure annotations for converted STL and updates project meta.
+        Replaces ClosedMeshSurface spatial figures with Mask 3D.
+        Read geometries for new figures and store in dictionary.
+
+        :param project_id: Project ID
+        :type project_id: int
+        :param project_meta: ProjectMeta object
+        :type project_meta: ProjectMeta
+        :param nrrd_full_paths: Paths for converted NRRD from STL
+        :type nrrd_full_paths: List[str]
+        :param ann_json: Volume Annotation in JSON format
+        :type ann_json: Dict
+        :param key_id_map: Key to ID map
+        :type key_id_map: KeyIdMap
+        :return: Updated ann_json, project_meta and prepared geometries_dict
+        :rtype: Tuple[Dict, ProjectMeta, Dict]
+        :Usage example:
+
+        """
+
+        obj_classes_list = []
+        geometries_dict = {}
+
+        for path in nrrd_full_paths:
+            object_key = None
+
+            # searching connection between interpolation and spatial figure in annotations and set its object_key
+            for sf in ann_json.get("spatialFigures"):
+                if sf.get("key") == get_file_name(path):
+                    object_key = sf.get("objectKey")
+                    break
+
+            if object_key:
+                for obj in ann_json.get("objects"):
+                    if obj.get("key") == object_key:
+                        class_title = obj.get("classTitle")
+                        break
+            # if this external interpolation class name generates with the class_title as file name
+            else:
+                class_title = get_file_name(path)
+                sf = None
+
+            new_obj_class = supervisely.ObjClass(
+                f"stl_{class_title}_interpolation", supervisely.Mask3D
+            )
+            obj_classes_list.append(new_obj_class)
+            new_object = supervisely.VolumeObject(new_obj_class)
+
+            # add new Volume object to ann_json
+            ann_json.get("objects").append(new_object.to_json(key_id_map))
+            new_class_figure = supervisely.VolumeFigure(
+                new_object,
+                supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
+                None,
+                None,
+            )
+
+            # add new spatial figure to ann_json
+            ann_json.get("spatialFigures").append(new_class_figure.to_json(key_id_map))
+            # remove stl spatial figure from ann_json
+            if sf:
+                ann_json.get("spatialFigures").remove(sf)
+
+            with open(path, "rb") as file:
+                geometry_bytes = file.read()
+            geometries_dict[new_class_figure.key().hex] = geometry_bytes
+
+            # geometries_dict.update(self._api.volume.figure.read_sf_geometries(path))
+
+        # updates project meta if there are new classes
+        if obj_classes_list:
+            new_meta = ProjectMeta(obj_classes_list)
+            project_meta = project_meta.merge(new_meta)
+            self._api.project.update_meta(project_id, project_meta)
+
+        return ann_json, project_meta, geometries_dict
+
     def upload_paths(
         self,
         volume_ids: List[int],
@@ -200,8 +286,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
+        # to use in updating project meta if it needs
         project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
-        
+
         if interpolation_dirs is None:
             interpolation_dirs = [None] * len(ann_paths)
 
@@ -211,78 +298,33 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         key_id_map = KeyIdMap()
         for volume_id, ann_path, interpolation_dir, mask_dir in zip(
             volume_ids, ann_paths, interpolation_dirs, mask_dirs
-        ):  
+        ):
             ann_json = load_json_file(ann_path)
-            obj_classes_list = []
-            objects_list = []
+
+            geometries_dict = {}
+
             if dir_exists(interpolation_dir):
                 nrrd_full_paths = stl_converter.save_to_nrrd_file(
                     self._api, volume_id, ann_path, interpolation_dir
                 )
-                supervisely.logger.warning(
-                    f"STL format is not supported anymore. Will be automatically converted and uploaded as NRRD"
-                )
-                stl_figures_list = []
-                stl_geometries_dict = {}                
-                for path in nrrd_full_paths:
-                    for sf in ann_json.get('spatialFigures'):
-                        if sf.get('key') == get_file_name(path):
-                            object_key = sf.get('objectKey')
-                            break
-                    for obj in ann_json.get('objects'):
-                        if obj.get('key') == object_key:
-                            class_title = obj.get('classTitle')
-                            break   
-                    new_obj_class = supervisely.ObjClass(
-                        f"stl_{class_title}", supervisely.Mask3D
-                    )
-                    obj_classes_list.append(new_obj_class)
-                    new_object = supervisely.VolumeObject(new_obj_class)
-                    objects_list.append(new_object)
-                    new_class_figure = supervisely.VolumeFigure(
-                        new_object,
-                        supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
-                        None,
-                        None,
-                    )
-                    stl_figures_list.append(new_class_figure)
-                    with open(path, "rb") as file:
-                        geometry_bytes = file.read()
-                    stl_geometries_dict[new_class_figure.key().hex] = geometry_bytes
 
-                if obj_classes_list:
-                    new_meta = ProjectMeta(obj_classes_list)
-                    project_meta = project_meta.merge(new_meta)
-                    self._api.project.update_meta(project_id, project_meta)
-                                        
-            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
-            
-            if objects_list:
-                ann = ann.clone(
-                    objects=supervisely.VolumeObjectCollection(objects_list),
-                    spatial_figures=stl_figures_list,
+                ann_json, project_meta, stl_geometries_dict = self._update_project_if_stl(
+                    project_id, project_meta, nrrd_full_paths, ann_json, key_id_map
                 )
-                
+                geometries_dict.update(stl_geometries_dict)
+
+            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
+
             if dir_exists(mask_dir):
-                files_list = list_files(mask_dir)
-                for nrrd_file in files_list:
-                    key = get_file_name(nrrd_file)
-                    with open(path, "rb") as file:
-                        geometry_bytes = file.read()
-                    stl_geometries_dict[key] = geometry_bytes
+                geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
 
             self.append(volume_id, ann, key_id_map)
 
+            # upload geometries for spatial figures after appending them to volume
             if ann.spatial_figures:
                 self._api.volume.figure.upload_sf_geometries(
-                    ann.spatial_figures, stl_geometries_dict
+                    ann.spatial_figures, geometries_dict, key_id_map
                 )
 
-            # convert STL to NRRD and upload
-            # add message that  STL is notsupported from version XXXX
-            # upload existing interpolations or create on the fly and and add them to empty mesh figures
-            # self._api.volume.figure.upload_stl_meshes(
-            #     volume_id, ann.spatial_figures, key_id_map, interpolation_dir
-            # )
             if progress_cb is not None:
                 progress_cb(1)
