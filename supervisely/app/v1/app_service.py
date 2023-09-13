@@ -551,7 +551,7 @@ class AppService:
                 try:
                     f(*args, **kwargs)
                 except Exception as e:
-                    from supervisely import handle_exception
+                    from supervisely.io.exception_handlers import handle_exception
 
                     exception_handler = handle_exception(e)
 
