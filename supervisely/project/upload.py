@@ -77,7 +77,7 @@ def upload(
             progress_cb=p,
         )
 
-        # Download video project
+        # Upload video project
         project_id_video = 60498
         project_fs = sly.read_single_project(src_dir)
         num_videos = project_fs.items_count
@@ -116,12 +116,12 @@ def upload(
             progress_cb=p,
         )
 
-        # Upload some datasets from pointcloud episodes project
+        # Upload pointcloud episodes project
         project_fs = PointcloudProject.read_single(src_dir)
         num_ptclep = project_fs.items_count
 
         p = tqdm(
-            desc="Upload some datasets from pointcloud episodes project",
+            desc="Upload pointcloud episodes project",
             total=num_ptclep,
         )
         sly.upload(
