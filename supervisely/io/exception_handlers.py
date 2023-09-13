@@ -164,7 +164,9 @@ class ErrorHandler:
                 self.title = "Task send request error"
                 self.message = (
                     "The application has encountered an error while sending a request to the task. "
-                    "Please, check that the task is running."
+                    "It may be caused by connection issues. "
+                    "Please, check your internet connection, the task is running and input parameters. "
+                    "If you are using a model in other session, please, check that the model is serving and it's logs."
                 )
 
                 super().__init__(
@@ -482,6 +484,7 @@ ERROR_PATTERNS = {
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
         r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
         r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
+        r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
@@ -525,8 +528,9 @@ ERROR_PATTERNS = {
     RetryError: {
         r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
+        r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
     },
-    RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
+    RuntimeError: {r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
 
