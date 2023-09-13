@@ -200,6 +200,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
+        project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
+        
         if interpolation_dirs is None:
             interpolation_dirs = [None] * len(ann_paths)
 
@@ -209,7 +211,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         key_id_map = KeyIdMap()
         for volume_id, ann_path, interpolation_dir, mask_dir in zip(
             volume_ids, ann_paths, interpolation_dirs, mask_dirs
-        ):
+        ):  
             ann_json = load_json_file(ann_path)
             obj_classes_list = []
             objects_list = []
@@ -250,9 +252,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
                 if obj_classes_list:
                     new_meta = ProjectMeta(obj_classes_list)
-                    self._api.project.update_meta(27669, new_meta)
-                    project_meta = self._api.project.get_meta(27669)
-                    project_meta = ProjectMeta.from_json(project_meta)
+                    project_meta = project_meta.merge(new_meta)
+                    self._api.project.update_meta(project_id, project_meta)
                                         
             ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
             
