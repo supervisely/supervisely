@@ -1,5 +1,5 @@
 from functools import wraps
-from json import JSONDecodeError
+from json import JSONDecodeError, loads
 from requests.exceptions import HTTPError, RetryError
 from shutil import ReadError
 from typing import List, Union, Callable, Dict
@@ -445,6 +445,30 @@ class ErrorHandler:
                     title=self.title,
                     message=self.message,
                 )
+        
+    class AgentDocker:
+        class ImageNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                # TODO: rule for error codes inside side apps/modules
+                self.code = 4001
+                self.title = "Docker image not found"
+                default_msg = str(exception)
+
+                try:
+                    json_text = exception.args[0].response.text
+                    info = loads(json_text)
+                    self.message = info.get("message", default_msg)
+                except JSONDecodeError:
+                    self.message = default_msg
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
 
 
 ERROR_PATTERNS = {
@@ -505,6 +529,16 @@ ERROR_PATTERNS = {
     RuntimeError: {r".*CUDA out of memory.*Tried to allocate.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
+
+try:
+    from docker.errors import ImageNotFound
+    docker_patterns = {
+        ImageNotFound: {r".*sly\.docker_utils\.docker_pull_if_needed.*": ErrorHandler.AgentDocker.ImageNotFound}
+    }
+except ModuleNotFoundError:
+    docker_patterns = {}
+
+ERROR_PATTERNS.update(docker_patterns)
 
 
 def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
