@@ -188,7 +188,7 @@ class Mask3D(Geometry):
         import supervisely as sly
 
         # Create simple Mask 3D
-        mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
+        mask3d = np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)
         mask3d[0:2, 0:2, 0:2] = True
 
         shape = sly.Mask3D(mask3d)
@@ -354,7 +354,7 @@ class Mask3D(Geometry):
             figure = sly.Mask3D.from_json(figure_json)
         """
         if json_data == {}:
-            return cls(data=np.zeros((3, 3, 3), dtype=np.bool_))
+            return cls(data=np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
 
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
