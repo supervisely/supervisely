@@ -8,6 +8,8 @@ from supervisely.io.fs import get_directory_size
 
 import traceback
 from rich.console import Console
+from dotenv import load_dotenv
+import os
 
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
@@ -27,8 +29,26 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             self.iteration_locked = False
             self.total_monitor_size = 0
 
-    api = sly.Api.from_env()
     console = Console()
+
+    # get server address
+    load_dotenv(os.path.expanduser("~/supervisely.env"))
+    server_address = os.getenv("SERVER_ADDRESS", None)
+    if server_address is None:
+        console.print(
+            '[red][Error][/] Cannot find [green]SERVER_ADDRESS[/]. Add it to your "~/supervisely.env" file or to environment variables'
+        )
+        return False
+
+    # get api token
+    api_token = os.getenv("API_TOKEN", None)
+    if api_token is None:
+        console.print(
+            '[red][Error][/] Cannot find [green]API_TOKEN[/]. Add it to your "~/supervisely.env" file or to environment variables'
+        )
+        return False
+
+    api = sly.Api.from_env()
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(
