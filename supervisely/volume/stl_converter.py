@@ -4,7 +4,7 @@ import numpy as np
 import supervisely
 import trimesh
 from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 import os
 import nrrd
 from supervisely import logger
@@ -117,17 +117,21 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     return padded_mask
 
 
-def save_to_nrrd_file(api, volume_id, ann_path, interpolation_dir) -> Any:
-    
+def save_to_nrrd_file(api, volume_id, ann_path, interpolation_dir: Union[List, str]) -> Any:
     # additional check for interpolation folder
-    if not dir_exists(interpolation_dir):
-        return None
-    
-    files_list = os.listdir(interpolation_dir)
+    if type(interpolation_dir) == str:
+        if not dir_exists(interpolation_dir):
+            return None
+        files_list = os.listdir(interpolation_dir)
+    else:
+        files_list = interpolation_dir
     nrrd_full_paths = []
     for file in files_list:
         if os.path.splitext(file)[1] == _stl_ext:
-            stl_full_path = os.path.join(interpolation_dir, file)
+            if type(interpolation_dir) == str:
+                stl_full_path = os.path.join(interpolation_dir, file)
+            else:
+                stl_full_path = file
             nrrd_full_path = stl_full_path.replace(_stl_ext, _nrrd_ext)
 
             # doesn't need to convert if already exists interpolation in NRRD
