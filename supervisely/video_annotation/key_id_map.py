@@ -13,6 +13,7 @@ VIDEOS = "videos"
 
 ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
+
 # @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
 class KeyIdMap:
     """
@@ -375,6 +376,32 @@ class KeyIdMap:
                 sub_dict[uuid.hex] = int_id
             simple_dict[type_str] = sub_dict
         return simple_dict
+
+    @classmethod
+    def from_dict(cls, dict: Dict[str, Dict]) -> KeyIdMap:
+        """
+        Convert dict(bidict values to dictionary with dict values) into KeyIdMap.
+
+        :return: KeyIdMap object
+        :rtype: :class:`KeyIdMap`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            dict = {
+                  "tags": {},
+                  "objects": {},
+                  "figures": {},
+                  "videos": {}
+              }
+            key_id_map = KeyIdMap.from_dict(dict)
+        """
+        result = cls()
+        for key_type, value_dict in dict.items():
+            for key_str, id in value_dict.items():
+                result._add(key_type, uuid.UUID(key_str), id)
+        return result
 
     def dump_json(self, path: str) -> None:
         """
