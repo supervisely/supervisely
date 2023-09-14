@@ -113,7 +113,13 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
-    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+    def append(
+        self,
+        volume_id: int,
+        ann: VolumeAnnotation,
+        key_id_map: KeyIdMap = None,
+        sf_geometries: Dict = None,
+    ):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -123,6 +129,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann: VolumeAnnotation
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
+        :param sf_geometries: Dict where keys are hex of sf.key(), and values are geometries, which represented as NRRD in byte format
+        :type key_id_map: Dict, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -157,6 +165,10 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             figures,
             key_id_map,
         )
+        if sf_geometries:
+            self._api.volume.figure.upload_sf_geometries(
+                ann.spatial_figures, sf_geometries, key_id_map
+            )
 
     def upload_paths(
         self,
@@ -234,13 +246,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             if dir_exists(mask_dir):
                 geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
 
-            self.append(volume_id, ann, key_id_map)
-
-            # upload geometries for spatial figures after appending them to volume
-            if ann.spatial_figures:
-                self._api.volume.figure.upload_sf_geometries(
-                    ann.spatial_figures, geometries_dict, key_id_map
-                )
+            self.append(volume_id, ann, key_id_map, geometries_dict)
 
             if progress_cb is not None:
                 progress_cb(1)
