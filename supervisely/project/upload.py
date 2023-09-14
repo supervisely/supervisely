@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Union
 from tqdm import tqdm
 
 from supervisely.api.api import Api
-from supervisely.project import read_any_single_project
+from supervisely.project import read_project
 from supervisely.project.pointcloud_episode_project import (
     upload_pointcloud_episode_project,
 )
@@ -65,7 +65,7 @@ def upload(
         src_dir = 'your/local/source/dir'
 
         # Upload image project
-        project_fs = sly.read_any_single_project(src_dir)
+        project_fs = sly.read_project(src_dir)
         num_images = project_fs.total_items
 
         pbar = tqdm(desc="Uploading image project", total=num_images)
@@ -85,7 +85,7 @@ def upload(
         sly.upload(src_dir, api, workspace_id, project_name="Some Volume Project", log_progress=True)
 
         # Upload pointcloud project
-        project_fs = read_any_single_project(directory)
+        project_fs = read_project(directory)
         num_ptcl = project_fs.items_count
 
         pbar = tqdm(desc="Uploading pointcloud project", total=num_ptcl)
@@ -98,7 +98,7 @@ def upload(
         )
 
         # Upload pointcloud episodes project
-        project_fs = read_any_single_project(src_dir)
+        project_fs = read_project(src_dir)
         num_ptclep = project_fs.items_count
 
         with tqdm(desc="Upload pointcloud episodes project", total=num_ptclep) as pbar:
@@ -111,7 +111,7 @@ def upload(
             )
     """
 
-    project_fs = read_any_single_project(src_dir)
+    project_fs = read_project(src_dir)
 
     if progress_cb:
         log_progress = False

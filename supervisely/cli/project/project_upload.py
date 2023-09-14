@@ -22,7 +22,7 @@ def upload_run(src_dir: str, workspace_id: int, project_name: str = None) -> boo
         )
         return False
 
-    project_fs = sly.read_any_single_project(src_dir)
+    project_fs = sly.read_project(src_dir)
     if project_name is None:
         project_name = project_fs.name
 
