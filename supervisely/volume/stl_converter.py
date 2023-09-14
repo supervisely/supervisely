@@ -1,13 +1,13 @@
-import math
-
-import numpy as np
-import supervisely
-import trimesh
-from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists
-from typing import List, Dict, Any, Union
 import os
 import nrrd
-from supervisely import logger
+import math
+import supervisely
+import trimesh
+import numpy as np
+
+from typing import List, Dict, Any
+from supervisely import logger, Api
+from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists
 
 _stl_ext = ".stl"
 _nrrd_ext = ".nrrd"
@@ -117,21 +117,34 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     return padded_mask
 
 
-def save_to_nrrd_file(api, volume_id, ann_path, interpolation_dir: Union[List, str]) -> Any:
+def save_to_nrrd_file(api: Api, volume_id: int, ann_path: str, interpolation_dir: str) -> Any:
+    """
+    Save STL as NRRD containing 3D Mask in the same directory with the same name
+
+    :param api: Api object
+    :type api: Api
+    :param volume_id: Volume ID
+    :type volume_id: int
+    :param ann_path: Path to annotation file in JSON format
+    :type ann_path: str
+    :param interpolation_dir: Path to the directory where the interpolation is stored
+    :type interpolation_dir: str
+    :return: List of paths where interpolations in NRRD format are stored or None
+    :rtype: Any
+    """
     # additional check for interpolation folder
-    if type(interpolation_dir) == str:
-        if not dir_exists(interpolation_dir):
-            return None
-        files_list = os.listdir(interpolation_dir)
-    else:
-        files_list = interpolation_dir
+    if not dir_exists(interpolation_dir):
+        return None
+
+    make_warn = False
+
+    files_list = os.listdir(interpolation_dir)
     nrrd_full_paths = []
+
     for file in files_list:
         if os.path.splitext(file)[1] == _stl_ext:
-            if type(interpolation_dir) == str:
-                stl_full_path = os.path.join(interpolation_dir, file)
-            else:
-                stl_full_path = file
+            make_warn = True
+            stl_full_path = os.path.join(interpolation_dir, file)
             nrrd_full_path = stl_full_path.replace(_stl_ext, _nrrd_ext)
 
             # doesn't need to convert if already exists interpolation in NRRD
@@ -145,12 +158,12 @@ def save_to_nrrd_file(api, volume_id, ann_path, interpolation_dir: Union[List, s
             world_matrix = matrix_from_nrrd_header(header)
             shape = header["sizes"]
 
-            logger.warning(
-                f"STL format is not supported anymore. Will be automatically converted and uploaded as NRRD"
-            )
             mask = voxels_to_mask(shape, world_matrix, stl_full_path)
 
             nrrd.write(nrrd_full_path, mask, header)
             nrrd_full_paths.append(nrrd_full_path)
-
+    if make_warn:
+        logger.warning(
+            f"STL format is no longer supported. STL is automatically converted to NRRD containing 3D Mask"
+        )
     return nrrd_full_paths
