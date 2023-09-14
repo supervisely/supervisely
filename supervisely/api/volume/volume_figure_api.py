@@ -1,6 +1,7 @@
 # coding: utf-8
 import re
 import os
+import tempfile
 from typing import List, Dict, Union
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely.io.fs import ensure_base_path, file_exists, list_files, get_file_name
@@ -520,3 +521,18 @@ class VolumeFigureApi(FigureApi):
                 geometry_bytes = file.read()
             geometries_dict[key] = geometry_bytes
         return geometries_dict
+
+    def load_sf_geometry_to_ann(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
+        """
+        Load data into VolumeFigure geometry in VolumeAnnotation
+
+        :param spatial_figure: Spatial figure object from VolumeAnnotation
+        :type spatial_figure: VolumeFigure
+        :param key_id_map: Mapped keys and IDs
+        :type key_id_map: KeyIdMap object
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            figure_id = key_id_map.get_figure_id(spatial_figure.key())
+            figure_path = f"{temp_dir}/{figure_id}.nrrd"
+            self.download_sf_geometries([figure_id], [figure_path])
+            Mask3D.from_file(spatial_figure, figure_path)

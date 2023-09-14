@@ -387,27 +387,6 @@ def download_volume_project(
     project_fs.set_key_id_map(key_id_map)
 
 
-def load_figure_data(
-    api: Api, volume_file_path: str, spatial_figure: VolumeFigure, key_id_map: KeyIdMap
-):
-    """
-    Load data into figure geometry.
-
-    :param api: Supervisely API address and token.
-    :type api: Api
-    :param volume_file_path: Path to Volume file location
-    :type volume_file_path: str
-    :param spatial_figure: Spatial figure
-    :type spatial_figure: VolumeFigure object
-    :param key_id_map: Mapped keys and IDs
-    :type key_id_map: KeyIdMap object
-    """
-    figure_id = key_id_map.get_figure_id(spatial_figure.key())
-    figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
-    api.volume.figure.download_sf_geometries([figure_id], [figure_path])
-    Mask3D.from_file(spatial_figure, figure_path)
-
-
 # TODO: add methods to convert to 3d masks
 
 
