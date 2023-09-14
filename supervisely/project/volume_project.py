@@ -353,10 +353,6 @@ def download_volume_project(
                 else:
                     touch(volume_file_path)
 
-                # for sf in ann.spatial_figures:
-                #     if sf.geometry.name() == Mask3D.name():
-                #         load_figure_data(api, volume_file_path, sf, key_id_map)
-
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 mask_ids = []
@@ -376,22 +372,6 @@ def download_volume_project(
 
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
-
-                ann_path = os.path.join(volume_file_path.split("volume")[0], "ann")
-
-                nrrd_full_paths = stl_converter.save_to_nrrd_file(
-                    api, volume_id, ann_path, mesh_paths
-                )
-                ann_json, meta = api.volume.annotation.update_project_on_download(
-                    meta, nrrd_full_paths, ann_json, key_id_map
-                )
-                project_fs.set_meta(meta)
-
-                # replace figure with stl to mask3d
-                # convert stl to nrrd and add txt file in interpolation dir
-
-                # need to do something with creation new ann
-                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 dataset_fs.add_item_file(
                     volume_name,
