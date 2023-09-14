@@ -6,7 +6,7 @@ import trimesh
 import numpy as np
 
 from typing import List, Dict, Any
-from supervisely import logger, Api
+from supervisely import logger
 from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists
 
 _stl_ext = ".stl"
@@ -117,7 +117,7 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     return padded_mask
 
 
-def save_to_nrrd_file(api: Api, volume_id: int, ann_path: str, interpolation_dir: str) -> Any:
+def save_to_nrrd_file(api, volume_id: int, ann_path: str, interpolation_dir: str) -> Any:
     """
     Save STL as NRRD containing 3D Mask in the same directory with the same name
 
