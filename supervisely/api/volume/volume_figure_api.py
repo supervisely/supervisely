@@ -419,7 +419,7 @@ class VolumeFigureApi(FigureApi):
         key_id_map: KeyIdMap,
     ):
         """
-        Upload spatial figures geometry as bytes to storage by given ID.
+        Upload spatial figures geometry as bytes to project by given ID.
 
         :param spatial_figures: List with VolumeFigure objects or figure key
         :type spatial_figures: List[Union[VolumeFigure, str]]
