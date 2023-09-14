@@ -10,24 +10,15 @@ import os
 def download_run(id: int, dest_dir: str) -> bool:
     console = Console()
 
-    # get server address
     load_dotenv(os.path.expanduser("~/supervisely.env"))
-    server_address = os.getenv("SERVER_ADDRESS", None)
-    if server_address is None:
+    try:
+        api = sly.Api.from_env()
+    except ValueError as e:
         console.print(
-            '[red][Error][/] Cannot find [green]SERVER_ADDRESS[/]. Add it to your "~/supervisely.env" file or to environment variables'
+            f'{e}\nAdd it to your "~/supervisely.env" file or to environment variables',
+            style="bold red",
         )
         return False
-
-    # get api token
-    api_token = os.getenv("API_TOKEN", None)
-    if api_token is None:
-        console.print(
-            '[red][Error][/] Cannot find [green]API_TOKEN[/]. Add it to your "~/supervisely.env" file or to environment variables'
-        )
-        return False
-
-    api = sly.Api.from_env()
 
     console.print(
         f"\nDownloading data from project with ID={id} to directory: '{dest_dir}' ...\n",

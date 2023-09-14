@@ -65,73 +65,50 @@ def upload(
         src_dir = 'your/local/source/dir'
 
         # Upload image project
-        project_fs = sly.read_single_project(src_dir)
+        project_fs = sly.read_any_single_project(src_dir)
         num_images = project_fs.total_items
 
-        p = tqdm(desc="Uploading image project", total=num_images)
-        sly.upload(
-            src_dir,
-            api,
-            workspace_id,
-            project_name,
-            progress_cb=p,
-        )
+        pbar = tqdm(desc="Uploading image project", total=num_images)
+        sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
 
         # Upload video project
-        project_id_video = 60498
-        project_fs = sly.read_single_project(src_dir)
-        num_videos = project_fs.items_count
-
-        p = tqdm(desc="Uploading video project", total=num_videos)
         sly.upload(
             src_dir,
             api,
             workspace_id,
-            project_name = "Some Video Project",
-            log_progress = True,
-            include_custom_data = True,
+            project_name="Some Video Project",
+            log_progress=True,
+            include_custom_data=True
         )
 
         # Upload volume project
-
-        sly.upload(
-            src_dir,
-            api,
-            workspace_id,
-            project_name = "Some Volume Project",
-            log_progress = True,
-        )
+        sly.upload(src_dir, api, workspace_id, project_name="Some Volume Project", log_progress=True)
 
         # Upload pointcloud project
-        project_fs = PointcloudProject.read_single(directory)
+        project_fs = read_any_single_project(directory)
         num_ptcl = project_fs.items_count
 
-        p = tqdm(desc="Uploading pointcloud project", total=num_ptcl)
+        pbar = tqdm(desc="Uploading pointcloud project", total=num_ptcl)
         sly.upload(
             src_dir,
             api,
             workspace_id,
-            project_name = "Some Pointcloud Project",
-            log_progress = True,
-            progress_cb=p,
+            project_name="Some Pointcloud Project",
+            progress_cb=pbar,
         )
 
         # Upload pointcloud episodes project
-        project_fs = PointcloudProject.read_single(src_dir)
+        project_fs = read_any_single_project(src_dir)
         num_ptclep = project_fs.items_count
 
-        p = tqdm(
-            desc="Upload pointcloud episodes project",
-            total=num_ptclep,
-        )
-        sly.upload(
-            src_dir,
-            api,
-            workspace_id,
-            project_name="Some Pointcloud Episodes Project",
-            log_progress=True,
-            progress_cb=p,
-        )
+        with tqdm(desc="Upload pointcloud episodes project", total=num_ptclep) as pbar:
+            sly.upload(
+                src_dir,
+                api,
+                workspace_id,
+                project_name="Some Pointcloud Episodes Project",
+                progress_cb=pbar,
+            )
     """
 
     project_fs = read_any_single_project(src_dir)

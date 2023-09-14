@@ -10,11 +10,27 @@ from supervisely.project.video_project import VideoProject
 from supervisely.project.volume_project import VolumeProject
 
 
-def read_any_single_project(
+def read_project(
     dir: str,
 ) -> Optional[
     Union[Project, VideoProject, VolumeProject, PointcloudProject, PointcloudEpisodeProject]
 ]:
+    """
+    Read project of arbitrary modality from given directory.
+
+    :param dir: Path to directory, which contains project folder.
+    :type dir: :class: str
+
+    :return: Project class object of specific modality
+    :rtype: :class: Project or VideoProject or VolumeProject or PointcloudProject or PointcloudEpisodeProject
+
+    :Usage example:
+     .. code-block:: python
+        import supervisely as sly
+
+        proj_dir = "/path/to/your/source/project"
+        project_fs = sly.read_project(proj_dir)
+    """
     paths = list_files(dir)
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":

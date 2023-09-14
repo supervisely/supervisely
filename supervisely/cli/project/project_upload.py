@@ -12,24 +12,15 @@ import os
 def upload_run(src_dir: str, workspace_id: int, project_name: str = None) -> bool:
     console = Console()
 
-    # get server address
     load_dotenv(os.path.expanduser("~/supervisely.env"))
-    server_address = os.getenv("SERVER_ADDRESS", None)
-    if server_address is None:
+    try:
+        api = sly.Api.from_env()
+    except KeyError as e:
         console.print(
-            '[red][Error][/] Cannot find [green]SERVER_ADDRESS[/]. Add it to your "~/supervisely.env" file or to environment variables'
+            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
+            style="bold red",
         )
         return False
-
-    # get api token
-    api_token = os.getenv("API_TOKEN", None)
-    if api_token is None:
-        console.print(
-            '[red][Error][/] Cannot find [green]API_TOKEN[/]. Add it to your "~/supervisely.env" file or to environment variables'
-        )
-        return False
-
-    api = sly.Api.from_env()
 
     project_fs = sly.read_any_single_project(src_dir)
     if project_name is None:
