@@ -3,12 +3,10 @@
 from collections import namedtuple
 from typing import Optional, List, Callable, Tuple, Union
 import os
-import nrrd
 
 from tqdm import tqdm
 
-from supervisely.io.fs import file_exists, touch, remove_dir
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.fs import touch
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely._utils import batched
@@ -19,14 +17,14 @@ from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.volume import volume as sly_volume
 
-from supervisely.project.project import Dataset, Project, OpenMode
+from supervisely.project.project import OpenMode
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.volume import stl_converter
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -355,18 +353,11 @@ def download_volume_project(
                 else:
                     touch(volume_file_path)
 
-                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
-
                 # for sf in ann.spatial_figures:
                 #     if sf.geometry.name() == Mask3D.name():
                 #         load_figure_data(api, volume_file_path, sf, key_id_map)
 
-                dataset_fs.add_item_file(
-                    volume_name,
-                    volume_file_path,
-                    ann=ann,
-                    _validate_item=False,
-                )
+                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 mask_ids = []
                 mask_paths = []
@@ -382,10 +373,33 @@ def download_volume_project(
                         mesh_ids.append(figure_id)
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
+
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
+                api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
+
+                ann_path = os.path.join(volume_file_path.split("volume")[0], "ann")
+
+                nrrd_full_paths = stl_converter.save_to_nrrd_file(
+                    api, volume_id, ann_path, mesh_paths
+                )
+                ann_json, meta = api.volume.annotation.update_project_on_download(
+                    meta, nrrd_full_paths, ann_json, key_id_map
+                )
+                project_fs.set_meta(meta)
+
                 # replace figure with stl to mask3d
                 # convert stl to nrrd and add txt file in interpolation dir
-                api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
+
+                # need to do something with creation new ann
+                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+
+                dataset_fs.add_item_file(
+                    volume_name,
+                    volume_file_path,
+                    ann=ann,
+                    _validate_item=False,
+                )
+
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
             if progress_cb is not None:
