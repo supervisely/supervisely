@@ -423,7 +423,7 @@ class VolumeFigureApi(FigureApi):
 
         :param spatial_figures: List with VolumeFigure objects or figure key
         :type spatial_figures: List[Union[VolumeFigure, str]]
-        :param geometries: Dict with geometries, which represented as NRRD in byte format.
+        :param geometries: Dict where keys are hex of sf.key(), and values are geometries, which represented as NRRD in byte format
         :type geometries: Dict[bytes]
         :param key_id_map: KeyIdMap object (dict with bidict values)
         :type key_id_map: KeyIdMap
