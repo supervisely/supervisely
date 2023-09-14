@@ -17,6 +17,7 @@ from supervisely.io.json import load_json_file
 from supervisely.io.fs import dir_exists, list_files, get_file_name
 from supervisely.volume import stl_converter
 import supervisely
+from uuid import UUID
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
@@ -158,7 +159,92 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             key_id_map,
         )
 
-    def _update_project_if_stl(
+    def upload_paths(
+        self,
+        volume_ids: List[int],
+        ann_paths: List[str],
+        project_meta: ProjectMeta,
+        interpolation_dirs=None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        mask_dirs=None,
+    ):
+        """
+        Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
+
+        :param volume_ids: Volumes IDs in Supervisely.
+        :type volume_ids: List[int]
+        :param ann_paths: Paths to annotations on local machine.
+        :type ann_paths: List[str]
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
+        :type project_meta: ProjectMeta
+        :param interpolation_dirs:
+        :type interpolation_dirs:
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param mask_dirs:
+        :type mask_dirs:
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_ids = [121236918, 121236919]
+            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
+        """
+
+        # to use in updating project meta if it needs
+        project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
+
+        if interpolation_dirs is None:
+            interpolation_dirs = [None] * len(ann_paths)
+
+        if mask_dirs is None:
+            mask_dirs = [None] * len(ann_paths)
+
+        key_id_map = KeyIdMap()
+        for volume_id, ann_path, interpolation_dir, mask_dir in zip(
+            volume_ids, ann_paths, interpolation_dirs, mask_dirs
+        ):
+            ann_json = load_json_file(ann_path)
+
+            geometries_dict = {}
+
+            if dir_exists(interpolation_dir):
+                nrrd_full_paths = stl_converter.save_to_nrrd_file(
+                    self._api, volume_id, ann_path, interpolation_dir
+                )
+
+                ann_json, project_meta, stl_geometries_dict = self.update_project_on_upload(
+                    project_id, project_meta, nrrd_full_paths, ann_json, key_id_map
+                )
+                geometries_dict.update(stl_geometries_dict)
+
+            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
+
+            if dir_exists(mask_dir):
+                geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
+
+            self.append(volume_id, ann, key_id_map)
+
+            # upload geometries for spatial figures after appending them to volume
+            if ann.spatial_figures:
+                self._api.volume.figure.upload_sf_geometries(
+                    ann.spatial_figures, geometries_dict, key_id_map
+                )
+
+            if progress_cb is not None:
+                progress_cb(1)
+
+    def update_project_on_upload(
         self,
         project_id: int,
         project_meta: ProjectMeta,
@@ -244,87 +330,75 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         return ann_json, project_meta, geometries_dict
 
-    def upload_paths(
+    def update_project_on_download(
         self,
-        volume_ids: List[int],
-        ann_paths: List[str],
         project_meta: ProjectMeta,
-        interpolation_dirs=None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-        mask_dirs=None,
-    ):
+        nrrd_full_paths: List[str],
+        ann_json: Dict,
+        key_id_map: KeyIdMap,
+    ) -> Tuple[Dict, ProjectMeta, Dict]:
         """
-        Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
+        Creates new ObjClasse and VolumeFigure annotations for converted STL and updates project meta.
+        Replaces ClosedMeshSurface spatial figures with Mask 3D.
+        Read geometries for new figures and store in dictionary.
 
-        :param volume_ids: Volumes IDs in Supervisely.
-        :type volume_ids: List[int]
-        :param ann_paths: Paths to annotations on local machine.
-        :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
+        :param project_id: Project ID
+        :type project_id: int
+        :param project_meta: ProjectMeta object
         :type project_meta: ProjectMeta
-        :param interpolation_dirs:
-        :type interpolation_dirs:
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm or callable, optional
-        :param mask_dirs:
-        :type mask_dirs:
-        :return: None
-        :rtype: :class:`NoneType`
-
+        :param nrrd_full_paths: Paths for converted NRRD from STL
+        :type nrrd_full_paths: List[str]
+        :param ann_json: Volume Annotation in JSON format
+        :type ann_json: Dict
+        :param key_id_map: Key to ID map
+        :type key_id_map: KeyIdMap
+        :return: Updated ann_json, project_meta and prepared geometries_dict
+        :rtype: Tuple[Dict, ProjectMeta, Dict]
         :Usage example:
 
-         .. code-block:: python
-
-            import supervisely as sly
-
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            volume_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
-        # to use in updating project meta if it needs
-        project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
+        obj_classes_list = []
 
-        if interpolation_dirs is None:
-            interpolation_dirs = [None] * len(ann_paths)
+        for path in nrrd_full_paths:
+            object_id = None
+            figure_uuid = UUID(get_file_name(path))
+            # searching connection between interpolation and spatial figure in annotations and set its object_key
+            for sf in ann_json.get("spatialFigures"):
+                if sf.get("id") == key_id_map.get_figure_id(figure_uuid):
+                    object_id = sf.get("objectId")
+                    break
 
-        if mask_dirs is None:
-            mask_dirs = [None] * len(ann_paths)
+            if object_id:
+                for obj in ann_json.get("objects"):
+                    if obj.get("id") == object_id:
+                        class_title = obj.get("classTitle")
+                        break
+            # if this external interpolation class name generates with the class_title as file name
+            else:
+                class_title = get_file_name(path)
 
-        key_id_map = KeyIdMap()
-        for volume_id, ann_path, interpolation_dir, mask_dir in zip(
-            volume_ids, ann_paths, interpolation_dirs, mask_dirs
-        ):
-            ann_json = load_json_file(ann_path)
+            new_obj_class = supervisely.ObjClass(
+                f"stl_{class_title}_interpolation", supervisely.Mask3D
+            )
+            obj_classes_list.append(new_obj_class)
+            new_object = supervisely.VolumeObject(new_obj_class)
 
-            geometries_dict = {}
+            # add new Volume object to ann_json
+            ann_json.get("objects").append(new_object.to_json(key_id_map))
+            new_class_figure = supervisely.VolumeFigure(
+                new_object,
+                supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
+                None,
+                None,
+            )
 
-            if dir_exists(interpolation_dir):
-                nrrd_full_paths = stl_converter.save_to_nrrd_file(
-                    self._api, volume_id, ann_path, interpolation_dir
-                )
+            # add new spatial figure to ann_json
+            ann_json.get("spatialFigures").append(new_class_figure.to_json(key_id_map))
 
-                ann_json, project_meta, stl_geometries_dict = self._update_project_if_stl(
-                    project_id, project_meta, nrrd_full_paths, ann_json, key_id_map
-                )
-                geometries_dict.update(stl_geometries_dict)
+        # updates project meta if there are new classes
+        if obj_classes_list:
+            new_meta = ProjectMeta(obj_classes_list)
+            project_meta = project_meta.merge(new_meta)
 
-            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
-
-            if dir_exists(mask_dir):
-                geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
-
-            self.append(volume_id, ann, key_id_map)
-
-            # upload geometries for spatial figures after appending them to volume
-            if ann.spatial_figures:
-                self._api.volume.figure.upload_sf_geometries(
-                    ann.spatial_figures, geometries_dict, key_id_map
-                )
-
-            if progress_cb is not None:
-                progress_cb(1)
+        return ann_json, project_meta
