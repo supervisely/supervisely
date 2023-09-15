@@ -668,7 +668,12 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         results = self._upload_bulk_add(
-            lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
+            lambda item: (ApiField.HASH, item),
+            dataset_id,
+            names,
+            hashes,
+            metas,
+            progress_cb,
         )
         return results
 
@@ -699,7 +704,8 @@ class VideoApi(RemoveableBulkModuleApi):
                     }
                 )
             response = self._api.post(
-                "videos.bulk.add", {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images}
+                "videos.bulk.add",
+                {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images},
             )
             if progress_cb is not None:
                 progress_cb(len(images))
@@ -764,7 +770,11 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(chunk))
 
     def download_range_by_id(
-        self, id: int, frame_start: int, frame_end: int, is_stream: Optional[bool] = True
+        self,
+        id: int,
+        frame_start: int,
+        frame_end: int,
+        is_stream: Optional[bool] = True,
     ) -> Response:
         """
         Downloads Video with given ID between given start and end frames.
@@ -916,7 +926,10 @@ class VideoApi(RemoveableBulkModuleApi):
                     ApiField.TRACK_ID: track_id,
                     ApiField.VIDEO_ID: video_id,
                     ApiField.FRAME_RANGE: [frame_start, frame_end],
-                    ApiField.PROGRESS: {ApiField.CURRENT: current, ApiField.TOTAL: total},
+                    ApiField.PROGRESS: {
+                        ApiField.CURRENT: current,
+                        ApiField.TOTAL: total,
+                    },
                 },
             },
         )
@@ -1363,10 +1376,10 @@ class VideoApi(RemoveableBulkModuleApi):
     def upload_links(
         self,
         dataset_id: int,
-        names: List[str],
-        hashes: List[str],
         links: List[str],
-        infos: List[Dict],
+        names: List[str],
+        infos: List[Dict] = None,
+        hashes: List[str] = None,
         metas: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
     ) -> List[VideoInfo]:
@@ -1375,12 +1388,14 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Videos names.
-        :type names: List[str]
         :param links: Videos links.
         :type links: List[str]
+        :param names: Videos names.
+        :type names: List[str]
         :param infos: Videos infos.
         :type infos: List[dict]
+        :param hashes: Videos hashes.
+        :type hashes: List[str]
         :param metas: Videos metadatas.
         :type metas: List[dict], optional
         :param skip_download: Skip download videos to local storage.
@@ -1404,19 +1419,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 "https://videos...040243048_main.mp4",
                 "https://videos...065451525_main.mp4"
             ]
-            names = ["dog1", "dog2", "dog3"]
-            hashes = []
-            infos = []
-
-            for i, l in enumerate(links):
-                local_path = os.path.join(os.getcwd(), names[i])
-                sly.fs.download(l, local_path)
-                info = get_info(local_path)
-                infos.append(info)
-                h = sly.io.fs.get_file_hash(local_path)
-                hashes.append(h)
-                sly.fs.silent_remove(local_path)
-            video_infos = api.video.upload_links(dataset_id, names, hashes, links, infos)
+            names = ["cars.mp4", "animals.mp4", "traffic.mp4"]
+            video_infos = api.video.upload_links(dataset_id, links, names)
             print(video_infos)
 
             # Output: [
@@ -1426,7 +1430,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ]
         """
 
-        if infos is not None and not skip_download:
+        if infos is not None and hashes is not None and not skip_download:
             self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
@@ -1476,6 +1480,8 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         link: str,
         name: Optional[str] = None,
+        info: Optional[Dict] = None,
+        hash: Optional[str] = None,
         meta: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
     ):
@@ -1488,8 +1494,12 @@ class VideoApi(RemoveableBulkModuleApi):
         :type link: str
         :param name: Video name.
         :type name: str, optional
+        :param info: Video info.
+        :type info: dict, optional
+        :param hash: Video hash.
+        :type hash: str, optional
         :param meta: Video metadata.
-        :type meta: List[dict], optional
+        :type meta: List[Dict], optional
         :param skip_download: Skip download video to local storage.
         :type skip_download: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
@@ -1506,7 +1516,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
             dataset_id = 55847
             link = "https://video...040243048_main.mp4"
-            name = "dog"
+            name = "cars.mp4"
 
             info = api.video.upload_link(dataset_id, link, name)
             print(info)
@@ -1514,7 +1524,7 @@ class VideoApi(RemoveableBulkModuleApi):
             # Output: [
             #     VideoInfo(
             #         id=19371139,
-            #         name='dog.mp4'
+            #         name='cars.mp4'
             #         hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
             #         link=None,
             #         team_id=435,
@@ -1553,9 +1563,9 @@ class VideoApi(RemoveableBulkModuleApi):
 
         if name is None:
             name = rand_str(10) + get_file_ext(link)
-        local_path = os.path.join(os.getcwd(), name)
 
         if not skip_download:
+            local_path = os.path.join(os.getcwd(), name)
             try:
                 sly_fs.download(link, local_path)
                 video_info = get_info(local_path)
@@ -1565,15 +1575,14 @@ class VideoApi(RemoveableBulkModuleApi):
                 sly_fs.silent_remove(local_path)
                 raise e
         else:
-            video_info = None
-            h = None
+            video_info = info
         name = self.get_free_name(dataset_id, name)
         return self.upload_links(
             dataset_id,
-            names=[name],
-            hashes=[h],
             links=[link],
+            names=[name],
             infos=[video_info],
+            hashes=[hash],
             metas=[meta],
             skip_download=skip_download,
         )
