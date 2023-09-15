@@ -93,12 +93,12 @@ class VolumeFigure(VideoFigure):
         created_at=None,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
-        if type(geometry) != Mask3D:
-            if not plane_name and not slice_index:
+        if type(geometry) not in [Mask3D, ClosedSurfaceMesh]:
+            if plane_name is None and slice_index is None:
                 raise TypeError(
                     "VolumeFigure.__init__() missing 2 required positional arguments: 'plane_name' and 'slice_index'"
                 )
-            if not plane_name or not slice_index:
+            if plane_name is None or slice_index is None:
                 if plane_name is None:
                     arg_name = "plane_name"
                 else:
