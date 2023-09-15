@@ -336,75 +336,81 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         return ann_json, project_meta, geometries_dict
 
-    # def update_project_on_download(
-    #     self,
-    #     ann: VolumeAnnotation,
-    #     project_meta: ProjectMeta,
-    #     nrrd_full_paths: List[str],
-    #     key_id_map: KeyIdMap,
-    # ) -> Tuple[VolumeAnnotation, ProjectMeta]:
-    #     """
-    #     Creates new ObjClass and VolumeFigure annotations for converted STL.
-    #     Replaces ClosedMeshSurface spatial figures with Mask 3D.
-    #     Updates ann, project meta, key_id_map
-    #
-    #     :param ann_json: VolumeAnnotation object
-    #     :type ann_json: VolumeAnnotation
-    #     :param project_meta: ProjectMeta object
-    #     :type project_meta: ProjectMeta
-    #     :param nrrd_full_paths: Paths for converted NRRD from STL
-    #     :type nrrd_full_paths: List[str]
-    #     :param key_id_map: Key to ID map
-    #     :type key_id_map: KeyIdMap
-    #     :return: Updated ann, project_meta
-    #     :rtype: Tuple[VolumeAnnotation, ProjectMeta]
-    #     :Usage example:
-    #     """
+    def update_project_on_download(
+        self,
+        ann: VolumeAnnotation,
+        project_meta: ProjectMeta,
+        nrrd_full_paths: List[str],
+        key_id_map: KeyIdMap,
+    ) -> Tuple[VolumeAnnotation, ProjectMeta]:
+        """
+        Creates new ObjClass and VolumeFigure annotations for converted STL.
+        Replaces ClosedMeshSurface spatial figures with Mask 3D.
+        Updates ann, project meta, key_id_map
 
-    #     for path in nrrd_full_paths:
-    #         object_key = None
+        :param ann_json: VolumeAnnotation object
+        :type ann_json: VolumeAnnotation
+        :param project_meta: ProjectMeta object
+        :type project_meta: ProjectMeta
+        :param nrrd_full_paths: Paths for converted NRRD from STL
+        :type nrrd_full_paths: List[str]
+        :param key_id_map: Key to ID map
+        :type key_id_map: KeyIdMap
+        :return: Updated ann, project_meta
+        :rtype: Tuple[VolumeAnnotation, ProjectMeta]
+        :Usage example:
+        """
 
-    #         # searching connection between interpolation and spatial figure in annotations and set its object_key
-    #         for sf in ann.spatial_figures:
-    #             if sf.key().hex == get_file_name(path):
-    #                 object_key = sf.parent_object.key()
-    #                 break
+        for path in nrrd_full_paths:
+            object_key = None
 
-    #         if object_key:
-    #             for obj in ann.objects:
-    #                 if obj.key() == object_key:
-    #                     class_title = obj.obj_class.name
-    #                     break
-    #         # if this external interpolation class name generates with the class_title as file name
-    #         else:
-    #             class_title = get_file_name(path)
-    #             sf = None
+            # searching connection between interpolation and spatial figure in annotations and set its object_key
+            for sf in ann.spatial_figures:
+                if sf.key().hex == get_file_name(path):
+                    object_key = sf.parent_object.key()
+                    break
 
-    #         new_obj_class = supervisely.ObjClass(
-    #             f"stl_{class_title}_interpolation", supervisely.Mask3D, sly_id=1
-    #         )
+            if object_key:
+                for obj in ann.objects:
+                    if obj.key() == object_key:
+                        class_title = obj.obj_class.name
+                        break
+            # if this external interpolation class name generates with the class_title as file name
+            else:
+                class_title = get_file_name(path)
+                sf = None
 
-    #         new_collection = ann.objects.add(new_obj_class)
-    #         ann = ann.clone(objects=new_collection)
-    #         project_meta = project_meta.add_obj_class(new_obj_class)
-    #         # obj_classes_list.append(new_obj_class)
-    #         new_object = supervisely.VolumeObject(new_obj_class)
-    #         key_id_map.add_object(new_object.key(), 1)
-    #         # add new Volume object to ann_json
-    #         # ann_json.get("objects").append(new_object.to_json(key_id_map))
-    #         new_class_figure = supervisely.VolumeFigure(
-    #             new_object,
-    #             supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
-    #             None,
-    #             None,
-    #         )
+            new_obj_class = supervisely.ObjClass(
+                f"stl_{class_title}_interpolation", supervisely.Mask3D
+            )
 
-    #         # add new spatial figure to ann_json
-    #         ann.spatial_figures.append(new_class_figure)
-    #         key_id_map.add_figure(new_class_figure.key(), 1)
-    #         # remove stl spatial figure from ann_json
-    #         if sf:
-    #             ann.spatial_figures.remove(sf)
-    #             # remove class from meta
+            new_collection = ann.objects.add(new_obj_class)
+            ann = ann.clone(objects=new_collection)
+            project_meta = project_meta.add_obj_class(new_obj_class)
 
-    #     return ann, project_meta
+            # obj_classes_list.append(new_obj_class)
+            new_object = supervisely.VolumeObject(new_obj_class)
+            key_id_map.add_object(new_object.key())
+
+            #
+            # does it need to add new_object to ann??
+            #
+
+            # add new Volume object to ann
+            new_class_figure = supervisely.VolumeFigure(
+                new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
+            )
+
+            # add new spatial figure to ann
+            ann.spatial_figures.append(new_class_figure)
+            key_id_map.add_figure(new_class_figure.key())
+
+            # remove stl spatial figure from ann
+            if sf:
+                ann.spatial_figures.remove(sf)
+
+                #
+                # does it need to remove class from meta??
+                #
+
+        return ann, project_meta
