@@ -92,6 +92,7 @@ class VolumeFigure(VideoFigure):
         updated_at=None,
         created_at=None,
     ):
+        # only Mask3D can be created without 'plane_name' and 'slice_index'
         if type(geometry) != Mask3D:
             if not plane_name and not slice_index:
                 raise TypeError(
