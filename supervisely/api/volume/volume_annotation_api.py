@@ -390,7 +390,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             # obj_classes_list.append(new_obj_class)
             new_object = supervisely.VolumeObject(new_obj_class)
-            key_id_map.add_object(new_object.key())
+            key_id_map.add_object(new_object.key(), id=1)
 
             #
             # does it need to add new_object to ann??
@@ -403,7 +403,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             # add new spatial figure to ann
             ann.spatial_figures.append(new_class_figure)
-            key_id_map.add_figure(new_class_figure.key())
+            key_id_map.add_figure(new_class_figure.key(), id=1)
 
             # remove stl spatial figure from ann
             if sf:
