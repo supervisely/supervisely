@@ -313,10 +313,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             # add new Volume object to ann_json
             ann_json.get("objects").append(new_object.to_json(key_id_map))
             new_class_figure = supervisely.VolumeFigure(
-                new_object,
-                supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
-                None,
-                None,
+                new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
             )
 
             # add new spatial figure to ann_json
