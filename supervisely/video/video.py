@@ -345,12 +345,16 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     )
     stdout, stderr = session.communicate()
     if len(stderr) != 0:
-        raise RuntimeError(stderr.decode("utf-8"))
+        default_logger.warning(stderr.decode("utf-8"))
+        # * Return error instead of warning if some problems will appear.
+        # raise RuntimeError(stderr.decode("utf-8"))
+
     video_meta = ast.literal_eval(stdout.decode("utf-8"))
 
     frames_to_timecodes = []
     has_video = False
-    audio_stream_info = None
+    # ? Assigned but never used, consider removing.
+    # audio_stream_info = None
 
     for frame in video_meta["frames"]:
         if frame["stream_index"] == 0:
