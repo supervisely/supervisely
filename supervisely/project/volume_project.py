@@ -373,6 +373,12 @@ def download_volume_project(
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
 
+                ann, meta = api.volume.annotation.update_project_on_download(
+                    ann, project_fs.meta, mesh_paths, key_id_map
+                )
+
+                project_fs.set_meta(meta)
+
                 dataset_fs.add_item_file(
                     volume_name,
                     volume_file_path,
