@@ -2,7 +2,7 @@
 
 # docs
 from __future__ import annotations
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Dict
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
     SPACE_ORIGIN,
@@ -481,3 +481,38 @@ class Mask3D(Geometry):
             data = data.reshape(shape)
             logger.debug("Converted successfully!")
         return data
+
+    def add_mask_2d(
+        self,
+        mask_2d: np.ndarray,
+        plane_name: str,
+        slice_index: int,
+        origin: Optional[List[int]] = None,
+    ):
+        """
+        Draw 2D mask on 3D Mask.
+
+        :param mask_2d: 2D array with flat mask
+        :type mask_2d: np.ndarray
+        :param plane_name: Name of the plane
+        :type plane_name: str
+        :param slice_index: Slice index of volume figure
+        :type slice_index: int
+        :param origin: (row, col) position, top-left corner of the mask is located on slice
+        :type origin: Optional[List[int]], NoneType
+        """
+        from supervisely.volume_annotation.plane import Plane
+
+        Plane.validate_name(plane_name)
+
+        if origin:
+            y, x = origin.col, origin.row
+            new_mask = np.zeros(self.data.shape, dtype=mask_2d.dtype)
+            new_mask[x : x + mask_2d.shape[0], y : y + mask_2d.shape[1]] = mask_2d
+
+        if plane_name == "axial":
+            self.data[:, :, slice_index] = new_mask
+        elif plane_name == "sagittal":
+            self.data[slice_index, :, :] = new_mask
+        elif plane_name == "coronal":
+            self.data[:, slice_index, :] = new_mask
