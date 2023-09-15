@@ -355,7 +355,7 @@ class ErrorHandler:
                     stack,
                     code=self.code,
                     title=self.title,
-                    message=self.message
+                    message=self.message,
                 )
 
         class ProjectNotFound(HandleException):
@@ -447,7 +447,7 @@ class ErrorHandler:
                     title=self.title,
                     message=self.message,
                 )
-        
+
     class AgentDocker:
         class ImageNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
@@ -471,6 +471,23 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+    class Agent:
+        class AgentError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 5001
+                self.title = "Agent issue"
+                self.message = (
+                    "The agent has encountered an error. "
+                    "Please, check the agent's logs for more information."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
 
 
 ERROR_PATTERNS = {
@@ -485,6 +502,7 @@ ERROR_PATTERNS = {
         r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
         r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
+        r".*Unauthorized for url.*": ErrorHandler.Agent.AgentError,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
@@ -529,6 +547,7 @@ ERROR_PATTERNS = {
         r".*api\.annotation\.upload_paths.*": ErrorHandler.API.AnnotationUploadError,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
+        r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
     },
     RuntimeError: {r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory},
     # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
@@ -536,8 +555,11 @@ ERROR_PATTERNS = {
 
 try:
     from docker.errors import ImageNotFound
+
     docker_patterns = {
-        ImageNotFound: {r".*sly\.docker_utils\.docker_pull_if_needed.*": ErrorHandler.AgentDocker.ImageNotFound}
+        ImageNotFound: {
+            r".*sly\.docker_utils\.docker_pull_if_needed.*": ErrorHandler.AgentDocker.ImageNotFound
+        }
     }
 except ModuleNotFoundError:
     docker_patterns = {}
