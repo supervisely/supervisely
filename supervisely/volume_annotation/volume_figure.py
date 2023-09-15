@@ -3,6 +3,7 @@ import uuid
 from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
@@ -83,14 +84,28 @@ class VolumeFigure(VideoFigure):
         self,
         volume_object,
         geometry,
-        plane_name,
-        slice_index,
+        plane_name=None,
+        slice_index=None,
         key=None,
         class_id=None,
         labeler_login=None,
         updated_at=None,
         created_at=None,
     ):
+        if type(geometry) != Mask3D:
+            if not plane_name and not slice_index:
+                raise TypeError(
+                    "VolumeFigure.__init__() missing 2 required positional arguments: 'plane_name' and 'slice_index'"
+                )
+            if not plane_name or not slice_index:
+                if plane_name is None:
+                    arg_name = "plane_name"
+                else:
+                    arg_name = "slice_index"
+                raise TypeError(
+                    f"VolumeFigure.__init__() missing 1 required positional argument: '{arg_name}'"
+                )
+
         super().__init__(
             video_object=volume_object,
             geometry=geometry,
