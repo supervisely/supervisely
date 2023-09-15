@@ -5,7 +5,7 @@ from typing import List, Literal, Optional, Union
 import supervisely.io.env as env
 from supervisely._utils import is_development, is_production
 from supervisely.api.api import Api
-from supervisely.app import DialogWindowError, get_data_dir
+from supervisely.app import DialogWindowError, get_data_dir, show_dialog
 from supervisely.app.fastapi.subapp import Application
 from supervisely.app.widgets import (
     Button,
@@ -1166,4 +1166,4 @@ class Import(Application):
                 self.__step_three_btn.enable()
                 self.__start_button.enable()
                 self.__start_button.loading = False
-                raise DialogWindowError(title="Import error", description=f"Error: {str(e)}")
+                show_dialog(title="Import Error", description=f"Error: {str(e)}", status="error")
