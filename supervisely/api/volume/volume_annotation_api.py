@@ -262,7 +262,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         key_id_map: KeyIdMap,
     ) -> Tuple[Dict, ProjectMeta, Dict]:
         """
-        Creates new ObjClasse and VolumeFigure annotations for converted STL and updates project meta.
+        Creates new ObjClass and VolumeFigure annotations for converted STL and updates project meta.
         Replaces ClosedMeshSurface spatial figures with Mask 3D.
         Read geometries for new figures and store in dictionary.
 
@@ -347,21 +347,20 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     #     key_id_map: KeyIdMap,
     # ) -> Tuple[VolumeAnnotation, ProjectMeta]:
     #     """
-    #     Creates new ObjClasse and VolumeFigure annotations for converted STL and updates project meta.
+    #     Creates new ObjClass and VolumeFigure annotations for converted STL.
     #     Replaces ClosedMeshSurface spatial figures with Mask 3D.
-    #     Read geometries for new figures and store in dictionary.
-    #     :param project_id: Project ID
-    #     :type project_id: int
+    #     Updates ann, project meta, key_id_map
+    #
+    #     :param ann_json: VolumeAnnotation object
+    #     :type ann_json: VolumeAnnotation
     #     :param project_meta: ProjectMeta object
     #     :type project_meta: ProjectMeta
     #     :param nrrd_full_paths: Paths for converted NRRD from STL
     #     :type nrrd_full_paths: List[str]
-    #     :param ann_json: Volume Annotation in JSON format
-    #     :type ann_json: Dict
     #     :param key_id_map: Key to ID map
     #     :type key_id_map: KeyIdMap
-    #     :return: Updated ann_json, project_meta and prepared geometries_dict
-    #     :rtype: Tuple[Dict, ProjectMeta, Dict]
+    #     :return: Updated ann, project_meta
+    #     :rtype: Tuple[VolumeAnnotation, ProjectMeta]
     #     :Usage example:
     #     """
 
