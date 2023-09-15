@@ -18,6 +18,8 @@ from supervisely.io.fs import dir_exists, get_file_name
 from supervisely.volume import stl_converter
 import supervisely
 
+# from uuid import UUID
+
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
     """
@@ -336,3 +338,77 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             self._api.project.update_meta(project_id, project_meta)
 
         return ann_json, project_meta, geometries_dict
+
+    # def update_project_on_download(
+    #     self,
+    #     ann: VolumeAnnotation,
+    #     project_meta: ProjectMeta,
+    #     nrrd_full_paths: List[str],
+    #     key_id_map: KeyIdMap,
+    # ) -> Tuple[VolumeAnnotation, ProjectMeta]:
+    #     """
+    #     Creates new ObjClasse and VolumeFigure annotations for converted STL and updates project meta.
+    #     Replaces ClosedMeshSurface spatial figures with Mask 3D.
+    #     Read geometries for new figures and store in dictionary.
+    #     :param project_id: Project ID
+    #     :type project_id: int
+    #     :param project_meta: ProjectMeta object
+    #     :type project_meta: ProjectMeta
+    #     :param nrrd_full_paths: Paths for converted NRRD from STL
+    #     :type nrrd_full_paths: List[str]
+    #     :param ann_json: Volume Annotation in JSON format
+    #     :type ann_json: Dict
+    #     :param key_id_map: Key to ID map
+    #     :type key_id_map: KeyIdMap
+    #     :return: Updated ann_json, project_meta and prepared geometries_dict
+    #     :rtype: Tuple[Dict, ProjectMeta, Dict]
+    #     :Usage example:
+    #     """
+
+    #     for path in nrrd_full_paths:
+    #         object_key = None
+
+    #         # searching connection between interpolation and spatial figure in annotations and set its object_key
+    #         for sf in ann.spatial_figures:
+    #             if sf.key().hex == get_file_name(path):
+    #                 object_key = sf.parent_object.key()
+    #                 break
+
+    #         if object_key:
+    #             for obj in ann.objects:
+    #                 if obj.key() == object_key:
+    #                     class_title = obj.obj_class.name
+    #                     break
+    #         # if this external interpolation class name generates with the class_title as file name
+    #         else:
+    #             class_title = get_file_name(path)
+    #             sf = None
+
+    #         new_obj_class = supervisely.ObjClass(
+    #             f"stl_{class_title}_interpolation", supervisely.Mask3D, sly_id=1
+    #         )
+
+    #         new_collection = ann.objects.add(new_obj_class)
+    #         ann = ann.clone(objects=new_collection)
+    #         project_meta = project_meta.add_obj_class(new_obj_class)
+    #         # obj_classes_list.append(new_obj_class)
+    #         new_object = supervisely.VolumeObject(new_obj_class)
+    #         key_id_map.add_object(new_object.key(), 1)
+    #         # add new Volume object to ann_json
+    #         # ann_json.get("objects").append(new_object.to_json(key_id_map))
+    #         new_class_figure = supervisely.VolumeFigure(
+    #             new_object,
+    #             supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)),
+    #             None,
+    #             None,
+    #         )
+
+    #         # add new spatial figure to ann_json
+    #         ann.spatial_figures.append(new_class_figure)
+    #         key_id_map.add_figure(new_class_figure.key(), 1)
+    #         # remove stl spatial figure from ann_json
+    #         if sf:
+    #             ann.spatial_figures.remove(sf)
+    #             # remove class from meta
+
+    #     return ann, project_meta
