@@ -24,17 +24,22 @@ class OptionComponent:
         }
 
 
-class WidgetOptionComponent(OptionComponent):
-    def __init__(self, widget: Widget):
+class HtmlOptionComponent(OptionComponent):
+    def __init__(self, html: str):
         super().__init__(
             component_name="SlyFlowOptionRenderer",
-            options={"template": f'<div>{widget.to_html()}</div>'},
+            options={"template": f"<div>{html}</div>"},
         )
+
+
+class WidgetOptionComponent(HtmlOptionComponent):
+    def __init__(self, widget: Widget):
+        super().__init__(widget.to_html())
 
 
 class ButtonOptionComponent(OptionComponent):
     """A button that opens the sidebar when clicked. The label of the button is determined by the name of the option."""
-    
+
     def __init__(self, sidebar_component: Optional[OptionComponent] = None):
         sidebar_component_name = None
         options = {}
@@ -55,8 +60,7 @@ class CheckboxOptionComponent(OptionComponent):
 
 class InputOptionComponent(OptionComponent):
     """A simple text field. The option name will be displayed as placeholder."""
-    
-    
+
     def __init__(self, default_value: str = ""):
         super().__init__(component_name="InputOption", default_value=default_value)
 
@@ -84,7 +88,7 @@ class IntegerOptionComponent(OptionComponent):
 
 class NumberOptionComponent(OptionComponent):
     """A numeric up/down field for numeric values."""
-    
+
     def __init__(
         self,
         min: Optional[float] = None,

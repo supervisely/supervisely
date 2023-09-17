@@ -6,6 +6,7 @@ from supervisely.app.content import StateJson
 
 from supervisely.app.widgets.nodes_flow.option_components import (
     OptionComponent,
+    HtmlOptionComponent,
     WidgetOptionComponent,
     ButtonOptionComponent,
     CheckboxOptionComponent,
@@ -20,6 +21,9 @@ from supervisely.app.widgets.nodes_flow.option_components import (
 
 class NodesFlow(Widget):
     class OptionComponent(OptionComponent):
+        pass
+
+    class HtmlOptionComponent(HtmlOptionComponent):
         pass
 
     class WidgetOptionComponent(WidgetOptionComponent):
@@ -193,12 +197,12 @@ class NodesFlow(Widget):
         return _click
 
     def update_nodes_state(self, state: dict):
-        # old_state = copy.deepcopy(StateJson()[self.widget_id]["flowState"])
-        # for node_id, node_state in state.items():
-        #     for key, value in node_state.items():
-        #         if node_id in old_state:
-        #             old_state[node_id][key] = value
-        old_state = copy.deepcopy(state)
+        old_state = copy.deepcopy(StateJson()[self.widget_id]["flowState"])
+        for node_id, node_state in state.items():
+            if node_id in old_state:
+                for key, value in node_state.items():
+                    old_state[node_id][key] = value
+
         StateJson()[self.widget_id]["flowState"] = old_state
         StateJson().send_changes()
 
