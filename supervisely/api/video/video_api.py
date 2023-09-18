@@ -1576,16 +1576,26 @@ class VideoApi(RemoveableBulkModuleApi):
                 raise e
         else:
             video_info = info
+            h = hash
         name = self.get_free_name(dataset_id, name)
-        return self.upload_links(
+        links = self.upload_links(
             dataset_id,
             links=[link],
             names=[name],
             infos=[video_info],
-            hashes=[hash],
+            hashes=[h],
             metas=[meta],
             skip_download=skip_download,
         )
+        if len(links) != 1:
+            raise RuntimeError(
+                (
+                    f"API response: '{links}' (len > 1). "
+                    "Validation error. Only one item is allowed. "
+                    "Please, contact technical support."
+                )
+            )
+        return links[0]
 
     def add_existing(
         self,
