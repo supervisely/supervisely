@@ -384,12 +384,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 f"stl_{class_title}_interpolation", supervisely.Mask3D
             )
 
-            new_collection = ann.objects.add(new_obj_class)
-            ann = ann.clone(objects=new_collection)
             project_meta = project_meta.add_obj_class(new_obj_class)
 
             # obj_classes_list.append(new_obj_class)
             new_object = supervisely.VolumeObject(new_obj_class)
+            new_collection = ann.objects.add(new_object)
+            ann = ann.clone(objects=new_collection)
             key_id_map.add_object(new_object.key(), id=1)
 
             #
