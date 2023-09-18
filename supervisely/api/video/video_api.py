@@ -1590,7 +1590,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(links) != 1:
             raise RuntimeError(
                 (
-                    f"API response '{links}' (len > 1). "
+                    f"API response: '{links}' (len > 1). "
                     "Validation error. Only one item is allowed. "
                     "Please, contact technical support."
                 )
