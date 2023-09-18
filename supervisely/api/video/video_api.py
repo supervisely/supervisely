@@ -1576,12 +1576,20 @@ class VideoApi(RemoveableBulkModuleApi):
                 raise e
         else:
             video_info = info
+            h = hash
         name = self.get_free_name(dataset_id, name)
         links = self.upload_links(
-            dataset_id, names=[name], hashes=[h], links=[link], infos=[video_info], metas=[meta]
+            dataset_id,
+            links=[link],
+            names=[name],
+            infos=[video_info],
+            hashes=[h],
+            metas=[meta],
+            skip_download=skip_download,
         )
-        if len(links) > 0:
-            return links[0]
+        if len(links) == 0:
+            raise RuntimeError(f"Video link: '{link}' failed to upload to dataset '{dataset_id}'")
+        return links[0]
 
     def add_existing(
         self,
