@@ -5,6 +5,8 @@ from typing import List, Optional, Union, Callable, Dict, Tuple
 
 from tqdm import tqdm
 import numpy as np
+import os
+import random
 
 
 from supervisely.project.project_meta import ProjectMeta
@@ -233,14 +235,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             # convert STL interplations to NRRD and prepare to upload as a spatial figures
             if dir_exists(interpolation_dir):
-                nrrd_full_paths = stl_converter.save_to_nrrd_file(
-                    self._api, volume_id, ann_path, interpolation_dir
-                )
+                nrrd_paths = stl_converter.save_to_nrrd_file_on_upload(interpolation_dir)
 
                 ann_json, project_meta, stl_geometries_dict = self.update_project_on_upload(
-                    project_id, project_meta, nrrd_full_paths, ann_json, key_id_map
+                    project_id, ann_json, project_meta, nrrd_paths, key_id_map
                 )
                 geometries_dict.update(stl_geometries_dict)
+                geometries_dict.update(
+                    self._api.volume.figure.read_sf_geometries(interpolation_dir)
+                )
 
             ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
 
@@ -256,9 +259,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     def update_project_on_upload(
         self,
         project_id: int,
+        ann_json: Dict,
         project_meta: ProjectMeta,
         nrrd_full_paths: List[str],
-        ann_json: Dict,
         key_id_map: KeyIdMap,
     ) -> Tuple[Dict, ProjectMeta, Dict]:
         """
@@ -268,12 +271,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         :param project_id: Project ID
         :type project_id: int
+        :param ann_json: Volume Annotation in JSON format
+        :type ann_json: Dict
         :param project_meta: ProjectMeta object
         :type project_meta: ProjectMeta
         :param nrrd_full_paths: Paths for converted NRRD from STL
         :type nrrd_full_paths: List[str]
-        :param ann_json: Volume Annotation in JSON format
-        :type ann_json: Dict
         :param key_id_map: Key to ID map
         :type key_id_map: KeyIdMap
         :return: Updated ann_json, project_meta and prepared geometries_dict
@@ -310,7 +313,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             obj_classes_list.append(new_obj_class)
             new_object = supervisely.VolumeObject(new_obj_class)
 
-            # add new Volume object to ann_json
+            # add new Volume object to ann_json with dummy figure
             ann_json.get("objects").append(new_object.to_json(key_id_map))
             new_class_figure = supervisely.VolumeFigure(
                 new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
@@ -326,8 +329,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 geometry_bytes = file.read()
             geometries_dict[new_class_figure.key().hex] = geometry_bytes
 
-            # geometries_dict.update(self._api.volume.figure.read_sf_geometries(path))
-
         # updates project meta if there are new classes
         if obj_classes_list:
             new_meta = ProjectMeta(obj_classes_list)
@@ -340,7 +341,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         self,
         ann: VolumeAnnotation,
         project_meta: ProjectMeta,
-        nrrd_full_paths: List[str],
+        nrrd_paths: List[str],
         key_id_map: KeyIdMap,
     ) -> Tuple[VolumeAnnotation, ProjectMeta]:
         """
@@ -348,20 +349,26 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         Replaces ClosedMeshSurface spatial figures with Mask 3D.
         Updates ann, project meta, key_id_map
 
-        :param ann_json: VolumeAnnotation object
-        :type ann_json: VolumeAnnotation
+        :param ann: VolumeAnnotation object
+        :type ann: VolumeAnnotation
         :param project_meta: ProjectMeta object
         :type project_meta: ProjectMeta
-        :param nrrd_full_paths: Paths for converted NRRD from STL
-        :type nrrd_full_paths: List[str]
+        :param nrrd_paths: Paths for converted NRRD from STL
+        :type nrrd_paths: List[str]
         :param key_id_map: Key to ID map
         :type key_id_map: KeyIdMap
         :return: Updated ann, project_meta
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
         :Usage example:
         """
+        # create unique ids for new objects
+        if nrrd_paths:
+            max_f_id = max(key_id_map.to_dict().get("figures").values())
+            max_o_id = max(key_id_map.to_dict().get("objects").values())
+            new_f_id = max_f_id + (10 ** (len(str(max_f_id)) - 1)) + random.randint(100, 999)
+            new_o_id = max_o_id + (10 ** (len(str(max_o_id)) - 1)) + random.randint(100, 999)
 
-        for path in nrrd_full_paths:
+        for path in nrrd_paths:
             object_key = None
 
             # searching connection between interpolation and spatial figure in annotations and set its object_key
@@ -383,34 +390,25 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             new_obj_class = supervisely.ObjClass(
                 f"stl_{class_title}_interpolation", supervisely.Mask3D
             )
-
             project_meta = project_meta.add_obj_class(new_obj_class)
-
-            # obj_classes_list.append(new_obj_class)
             new_object = supervisely.VolumeObject(new_obj_class)
             new_collection = ann.objects.add(new_object)
             ann = ann.clone(objects=new_collection)
-            key_id_map.add_object(new_object.key(), id=1)
+            key_id_map.add_object(new_object.key(), id=new_o_id)
 
-            #
-            # does it need to add new_object to ann??
-            #
-
-            # add new Volume object to ann
+            # add new Volume object to ann with dummy geometry
             new_class_figure = supervisely.VolumeFigure(
                 new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
             )
 
             # add new spatial figure to ann
             ann.spatial_figures.append(new_class_figure)
-            key_id_map.add_figure(new_class_figure.key(), id=1)
+            key_id_map.add_figure(new_class_figure.key(), id=new_f_id)
+
+            os.rename(path, f"{os.path.dirname(path)}/{new_class_figure.key().hex}.nrrd")
 
             # remove stl spatial figure from ann
             if sf:
                 ann.spatial_figures.remove(sf)
-
-                #
-                # does it need to remove class from meta??
-                #
 
         return ann, project_meta
