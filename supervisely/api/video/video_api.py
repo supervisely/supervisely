@@ -1587,8 +1587,14 @@ class VideoApi(RemoveableBulkModuleApi):
             metas=[meta],
             skip_download=skip_download,
         )
-        if len(links) == 0:
-            raise RuntimeError(f"Video link: '{link}' failed to upload to dataset '{dataset_id}'")
+        if len(links) != 1:
+            raise RuntimeError(
+                (
+                    f"API response '{links}' (len > 1). "
+                    "Validation error. Only one item is allowed. "
+                    "Please, contact technical support."
+                )
+            )
         return links[0]
 
     def add_existing(
