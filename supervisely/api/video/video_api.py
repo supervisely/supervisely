@@ -1577,15 +1577,11 @@ class VideoApi(RemoveableBulkModuleApi):
         else:
             video_info = info
         name = self.get_free_name(dataset_id, name)
-        return self.upload_links(
-            dataset_id,
-            links=[link],
-            names=[name],
-            infos=[video_info],
-            hashes=[hash],
-            metas=[meta],
-            skip_download=skip_download,
+        links = self.upload_links(
+            dataset_id, names=[name], hashes=[h], links=[link], infos=[video_info], metas=[meta]
         )
+        if len(links) > 0:
+            return links[0]
 
     def add_existing(
         self,
