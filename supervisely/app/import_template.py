@@ -41,11 +41,25 @@ PROJECT_TYPES: List[ProjectType] = [
     ProjectType.POINT_CLOUD_EPISODES,
 ]
 DESTINATION_OPTIONS = ["New Project", "Existing Project", "Existing Dataset"]
-DATAS_ELECTION_OPTIONS = ["Drag & Drop", "TeamFiles Selector"]
 DATA_TYPES = ["folder", "file"]
 
 
 class Import(Application):
+    class Destination:
+        NEW_PROJECT = "New Project"
+        EXISTING_PROJECT = "Existing Project"
+        EXISTING_DATASET = "Existing Dataset"
+
+    class DataSelector:
+        ALL = None
+        DRAG_AND_DROP = "Drag & Drop"
+        TEAM_FILES_SELECTOR = "TeamFiles Selector"
+
+    class DataType:
+        ALL = None
+        FOLDER = "folder"
+        FILE = "file"
+
     class Context:
         def __init__(
             self,
@@ -332,7 +346,7 @@ class Import(Application):
                     team_id=env.team_id(), path=self.__storage_upload_path
                 )
                 self.__input_data_tabs = RadioTabs(
-                    titles=["Drag & Drop", "TeamFiles Selector"],
+                    titles=[self.DataSelector.DRAG_AND_DROP, self.DataSelector.TEAM_FILES_SELECTOR],
                     contents=[
                         self.__input_drag_n_drop,
                         self.__input_file_selector,
@@ -689,9 +703,9 @@ class Import(Application):
             path = env.folder()
         elif self.__input_mode in ["ecosystem", "project", "dataset"]:
             data_mode = self.__input_data_tabs.get_active_tab()
-            if data_mode == "TeamFiles Selector":
+            if data_mode == self.DataSelector.TEAM_FILES_SELECTOR:
                 path = self.__input_file_selector.get_selected_paths()[0]
-            elif data_mode == "Drag & Drop":
+            elif data_mode == self.DataSelector.DRAG_AND_DROP:
                 path = self.__storage_upload_path
 
         return path
@@ -726,7 +740,7 @@ class Import(Application):
                 path = local_save_path
             elif self.__input_mode in ["ecosystem", "project", "dataset"]:
                 data_mode = self.__input_data_tabs.get_active_tab()
-                if data_mode == "TeamFiles Selector":
+                if data_mode == self.DataSelector.TEAM_FILES_SELECTOR:
                     paths = self.__input_file_selector.get_selected_paths()
 
                     data_path = self.__input_file_selector.get_selected_paths()[0]
@@ -741,7 +755,7 @@ class Import(Application):
                         api.file.download_directory(
                             team_id=team_id, remote_path=data_path, local_save_path=path
                         )
-                elif data_mode == "Drag & Drop":
+                elif data_mode == self.DataSelector.DRAG_AND_DROP:
                     paths = self.__input_drag_n_drop.get_uploaded_paths()
                     for path in paths:
                         local_save_path = join(
@@ -867,12 +881,12 @@ class Import(Application):
         @self.__step_one_btn.click
         def finish_step_one():
             if self.__input_data_tabs is not None:
-                if self.__input_data_tabs.get_active_tab() == "TeamFiles Selector":
+                if self.__input_data_tabs.get_active_tab() == self.DataSelector.TEAM_FILES_SELECTOR:
                     if len(self.__input_file_selector.get_selected_items()) == 0:
                         self.__step_one_text.show()
                         self.__step_one_text.set(text="Select a data to import", status="error")
                         return
-                elif self.__input_data_tabs.get_active_tab() == "Drag & Drop":
+                elif self.__input_data_tabs.get_active_tab() == self.DataSelector.DRAG_AND_DROP:
                     if len(self.__input_drag_n_drop.get_uploaded_paths()) == 0:
                         self.__step_one_text.show()
                         self.__step_one_text.set(text="Drag & Drop data to import", status="error")
@@ -1009,19 +1023,23 @@ class Import(Application):
                 self.__output_project_tabs is not None
                 and len(self._allowed_destination_options) > 1
             ):
-                if self.__output_project_tabs.get_active_tab() == "New Project":
+                if self.__output_project_tabs.get_active_tab() == self.Destination.NEW_PROJECT:
                     if self.__output_new_project_name.get_value() == "":
                         self.__step_three_text.show()
                         self.__step_three_text.set(text="Enter a project name", status="error")
                         return
-                elif self.__output_project_tabs.get_active_tab() == "Existing Project":
+                elif (
+                    self.__output_project_tabs.get_active_tab() == self.Destination.EXISTING_PROJECT
+                ):
                     if self.__output_project_selector.get_selected_id() is None:
                         self.__step_three_text.show()
                         self.__step_three_text.set(
                             text="Select a project to import to", status="error"
                         )
                         return
-                elif self.__output_project_tabs.get_active_tab() == "Existing Dataset":
+                elif (
+                    self.__output_project_tabs.get_active_tab() == self.Destination.EXISTING_DATASET
+                ):
                     if (
                         self.__output_dataset_selector.get_selected_id() is None
                         or type(self.__output_dataset_selector.get_selected_id()) is not int
@@ -1033,19 +1051,19 @@ class Import(Application):
                         return
 
             else:
-                if self._allowed_destination_options == ["New Project"]:
+                if self._allowed_destination_options == [self.Destination.NEW_PROJECT]:
                     if self.__output_new_project_name.get_value() == "":
                         self.__step_three_text.show()
                         self.__step_three_text.set(text="Enter a project name", status="error")
                         return
-                elif self._allowed_destination_options == ["Existing Project"]:
+                elif self._allowed_destination_options == [self.Destination.EXISTING_PROJECT]:
                     if self.__output_project_selector.get_selected_id() is None:
                         self.__step_three_text.show()
                         self.__step_three_text.set(
                             text="Select a project to import to", status="error"
                         )
                         return
-                elif self._allowed_destination_options == ["Existing Dataset"]:
+                elif self._allowed_destination_options == [self.Destination.EXISTING_DATASET]:
                     if (
                         self.__output_dataset_selector.get_selected_id() is None
                         or len(self.__output_dataset_selector.get_selected_id()) == 0
