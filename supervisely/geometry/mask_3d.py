@@ -501,13 +501,24 @@ class Mask3D(Geometry):
         :param origin: (row, col) position, top-left corner of the mask is located on slice
         :type origin: Optional[List[int]], NoneType
         """
+
+        mask_2d = np.fliplr(mask_2d)
+        mask_2d = np.rot90(mask_2d, 2)
+
         from supervisely.volume_annotation.plane import Plane
 
         Plane.validate_name(plane_name)
 
+        if plane_name == "axial":
+            new_shape = self.data.shape[:2]
+        elif plane_name == "sagittal":
+            new_shape = self.data.shape[1:]
+        elif plane_name == "coronal":
+            new_shape = self.data.shape[::2]
+
         if origin:
-            y, x = origin.col, origin.row
-            new_mask = np.zeros(self.data.shape, dtype=mask_2d.dtype)
+            x, y = origin
+            new_mask = np.zeros(new_shape, dtype=mask_2d.dtype)
             new_mask[x : x + mask_2d.shape[0], y : y + mask_2d.shape[1]] = mask_2d
 
         if plane_name == "axial":
