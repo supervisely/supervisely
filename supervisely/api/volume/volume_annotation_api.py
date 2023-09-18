@@ -261,7 +261,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         project_id: int,
         ann_json: Dict,
         project_meta: ProjectMeta,
-        nrrd_full_paths: List[str],
+        nrrd_paths: List[str],
         key_id_map: KeyIdMap,
     ) -> Tuple[Dict, ProjectMeta, Dict]:
         """
@@ -275,8 +275,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann_json: Dict
         :param project_meta: ProjectMeta object
         :type project_meta: ProjectMeta
-        :param nrrd_full_paths: Paths for converted NRRD from STL
-        :type nrrd_full_paths: List[str]
+        :param nrrd_paths: Paths for converted NRRD from STL
+        :type nrrd_paths: List[str]
         :param key_id_map: Key to ID map
         :type key_id_map: KeyIdMap
         :return: Updated ann_json, project_meta and prepared geometries_dict
@@ -288,7 +288,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         obj_classes_list = []
         geometries_dict = {}
 
-        for path in nrrd_full_paths:
+        for path in nrrd_paths:
             object_key = None
 
             # searching connection between interpolation and spatial figure in annotations and set its object_key
