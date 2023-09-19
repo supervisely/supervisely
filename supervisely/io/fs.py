@@ -1053,11 +1053,13 @@ def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, Non
 
 def get_nested_dicts_data(data_dict: Dict, *dict_keys: str) -> Any:
     """
-    Recursively traverses all keys and returns the value of the last key.
+    Recursively searches all keys and returns the value of the last key
+
     :param data_dict: dict with nested dicts
     :type data_dict: dict
     :return: value of the last key
     :rtype: Any
+    :raises KeyError: If key is missing or is at a different nesting level
     :Usage example:
      .. code-block:: python
         from supervisely.io.fs import get_nested_dicts_data
