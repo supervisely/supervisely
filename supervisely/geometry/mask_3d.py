@@ -18,7 +18,6 @@ from supervisely.geometry.constants import (
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
-from supervisely.io.fs import remove_dir
 from supervisely import logger
 import numpy as np
 import base64
@@ -255,27 +254,49 @@ class Mask3D(Geometry):
         """Return geometry name"""
         return "mask_3d"
 
-    @staticmethod
-    def from_file(figure, file_path: str):
+    @classmethod
+    def from_file(cls, file_path: str) -> Mask3D:
         """
-        Load figure geometry from file.
+        Creates Mask3D geometry from file.
 
-        :param figure: Spatial figure
-        :type figure: VolumeFigure
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
-        figure.geometry.data = mask3d_data
-        figure.geometry._space_origin = PointVolume(
+        geometry = cls(data=mask3d_data)
+        geometry._space_origin = PointVolume(
             x=mask3d_header["space origin"][0],
             y=mask3d_header["space origin"][1],
             z=mask3d_header["space origin"][2],
         )
-        figure.geometry._space = mask3d_header["space"]
-        figure.geometry._space_directions = mask3d_header["space directions"]
-        path_without_filename = "/".join(file_path.split("/")[:-1])
-        remove_dir(path_without_filename)
+        geometry._space = mask3d_header["space"]
+        geometry._space_directions = mask3d_header["space directions"]
+        return geometry
+
+    @staticmethod
+    def to_figure_from_file(figure, file_path: str):
+        """
+        Load Mask3D geometry from file to figure.
+
+        :param figure: Spatial figure object
+        :type figure: VolumeFigure
+        :param file_path: Path to nrrd file with data
+        :type file_path: str
+        """
+
+        figure.geometry = Mask3D.from_file(file_path)
+
+    @classmethod
+    def to_figure_from_array(cls, figure, data_array: np.ndarray):
+        """
+        Load Mask3D geometry from file to figure.
+
+        :param figure: Spatial figure object
+        :type figure: VolumeFigure
+        :param file_path: Path to nrrd file with data
+        :type file_path: str
+        """
+        figure.geometry = cls(data_array)
 
     def to_json(self) -> Dict:
         """
