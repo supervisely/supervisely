@@ -13,12 +13,15 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely.volume_annotation.volume_object import VolumeObject
+from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.mask_3d import Mask3D
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
 from supervisely.io.fs import dir_exists, get_file_name
 from supervisely.volume import stl_converter
-import supervisely
 
 # from uuid import UUID
 
@@ -122,7 +125,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_id: int,
         ann: VolumeAnnotation,
         key_id_map: KeyIdMap = None,
-        sf_geometries: Dict = None,
     ):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
@@ -134,7 +136,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :param sf_geometries: Dict where keys are hex of sf.key(), and values are geometries, which represented as NRRD in byte format
-        :type key_id_map: Dict, optional
+        :type sf_geometries: Dict, optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -169,10 +171,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             figures,
             key_id_map,
         )
-        if sf_geometries:
-            self._api.volume.figure.upload_sf_geometries(
-                ann.spatial_figures, sf_geometries, key_id_map
-            )
 
     def upload_paths(
         self,
@@ -192,12 +190,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann_paths: List[str]
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
         :type project_meta: ProjectMeta
-        :param interpolation_dirs:
-        :type interpolation_dirs:
+        :param interpolation_dirs: Paths to interpolations on local machine
+        :type interpolation_dirs: List[str], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param mask_dirs:
-        :type mask_dirs:
+        :param mask_dirs: Paths to 3D Mask geometries on local machine
+        :type mask_dirs: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -237,21 +235,25 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             if dir_exists(interpolation_dir):
                 nrrd_paths = stl_converter.save_to_nrrd_file_on_upload(interpolation_dir)
 
-                ann_json, project_meta, stl_geometries_dict = self.update_project_on_upload(
+                ann_json, project_meta = self.update_project_on_upload(
                     project_id, ann_json, project_meta, nrrd_paths, key_id_map
                 )
-                geometries_dict.update(stl_geometries_dict)
+
                 geometries_dict.update(
                     self._api.volume.figure.read_sf_geometries(interpolation_dir)
                 )
 
-            ann = supervisely.VolumeAnnotation.from_json(ann_json, project_meta)
-
-            # prepare spatial figure geometries
+            # collect spatial figures geometries
             if dir_exists(mask_dir):
                 geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
 
-            self.append(volume_id, ann, key_id_map, geometries_dict)
+            ann = VolumeAnnotation.from_json(ann_json, project_meta)
+
+            for sf in ann.spatial_figures:
+                geometry_bytes = geometries_dict[sf.key().hex]
+                Mask3D.to_figure_from_bytes(sf, geometry_bytes)
+
+            self.append(volume_id, ann, key_id_map)
 
             if progress_cb is not None:
                 progress_cb(1)
@@ -263,7 +265,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         project_meta: ProjectMeta,
         nrrd_paths: List[str],
         key_id_map: KeyIdMap,
-    ) -> Tuple[Dict, ProjectMeta, Dict]:
+    ) -> Tuple[Dict, ProjectMeta]:
         """
         Creates new ObjClass and VolumeFigure annotations for converted STL and updates project meta.
         Replaces ClosedMeshSurface spatial figures with Mask 3D.
@@ -279,14 +281,13 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type nrrd_paths: List[str]
         :param key_id_map: Key to ID map
         :type key_id_map: KeyIdMap
-        :return: Updated ann_json, project_meta and prepared geometries_dict
-        :rtype: Tuple[Dict, ProjectMeta, Dict]
+        :return: Updated ann_json, project_meta
+        :rtype: Tuple[Dict, ProjectMeta]
         :Usage example:
 
         """
 
         obj_classes_list = []
-        geometries_dict = {}
 
         for path in nrrd_paths:
             object_key = None
@@ -307,35 +308,25 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 class_title = get_file_name(path)
                 sf = None
 
-            new_obj_class = supervisely.ObjClass(
-                f"stl_{class_title}_interpolation", supervisely.Mask3D
-            )
+            new_obj_class = ObjClass(f"stl_{class_title}_interpolation", Mask3D)
             obj_classes_list.append(new_obj_class)
-            new_object = supervisely.VolumeObject(new_obj_class)
+            new_object = VolumeObject(new_obj_class, mask_3d=Mask3D.from_file(path))
 
             # add new Volume object to ann_json with dummy figure
             ann_json.get("objects").append(new_object.to_json(key_id_map))
-            new_class_figure = supervisely.VolumeFigure(
-                new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
-            )
 
             # add new spatial figure to ann_json
-            ann_json.get("spatialFigures").append(new_class_figure.to_json(key_id_map))
+            ann_json.get("spatialFigures").append(new_object.figure.to_json(key_id_map))
             # remove stl spatial figure from ann_json
             if sf:
                 ann_json.get("spatialFigures").remove(sf)
-
-            with open(path, "rb") as file:
-                geometry_bytes = file.read()
-            geometries_dict[new_class_figure.key().hex] = geometry_bytes
-
         # updates project meta if there are new classes
         if obj_classes_list:
             new_meta = ProjectMeta(obj_classes_list)
             project_meta = project_meta.merge(new_meta)
             self._api.project.update_meta(project_id, project_meta)
 
-        return ann_json, project_meta, geometries_dict
+        return ann_json, project_meta
 
     def update_project_on_download(
         self,
@@ -387,25 +378,19 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 class_title = get_file_name(path)
                 sf = None
 
-            new_obj_class = supervisely.ObjClass(
-                f"stl_{class_title}_interpolation", supervisely.Mask3D
-            )
+            new_obj_class = ObjClass(f"stl_{class_title}_interpolation", Mask3D)
             project_meta = project_meta.add_obj_class(new_obj_class)
-            new_object = supervisely.VolumeObject(new_obj_class)
-            new_collection = ann.objects.add(new_object)
-            ann = ann.clone(objects=new_collection)
+            new_object = VolumeObject(
+                new_obj_class, mask_3d=Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
+            )
+            ann = ann.add_objects([new_object])
             key_id_map.add_object(new_object.key(), id=new_o_id)
 
-            # add new Volume object to ann with dummy geometry
-            new_class_figure = supervisely.VolumeFigure(
-                new_object, supervisely.Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
-            )
-
             # add new spatial figure to ann
-            ann.spatial_figures.append(new_class_figure)
-            key_id_map.add_figure(new_class_figure.key(), id=new_f_id)
+            ann.spatial_figures.append(new_object.figure)
+            key_id_map.add_figure(new_object.figure.key(), id=new_f_id)
 
-            os.rename(path, f"{os.path.dirname(path)}/{new_class_figure.key().hex}.nrrd")
+            os.rename(path, f"{os.path.dirname(path)}/{new_object.figure.key().hex}.nrrd")
 
             # remove stl spatial figure from ann
             if sf:
