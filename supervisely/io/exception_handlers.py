@@ -546,7 +546,6 @@ ERROR_PATTERNS = {
         r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
     },
     RuntimeError: {r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory},
-    # Exception: {r".*unable to start container process.*": ErrorHandler.API.DockerRuntimeError},
 }
 
 try:
@@ -666,7 +665,7 @@ def read_stack_from_exception(exception):
     try:
         stack.extend(traceback.extract_tb(exception.__traceback__))
     except AttributeError:
-        pass # to use ErrorHandler in the apps
+        pass
     return stack
 
 
