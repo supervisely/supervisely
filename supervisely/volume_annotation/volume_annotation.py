@@ -1,8 +1,9 @@
 # coding: utf-8
 
+from __future__ import annotations
 from copy import deepcopy
 from re import L
-from typing import List
+from typing import List, Union
 import uuid
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
@@ -11,9 +12,9 @@ from supervisely._utils import take_with_default
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
-from supervisely.volume_annotation.volume_object_collection import (
-    VolumeObjectCollection,
-)
+from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
+from supervisely.volume_annotation.volume_object import VolumeObject
+
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.constants import (
     NAME,
@@ -658,3 +659,35 @@ class VolumeAnnotation:
                 res_json[VOLUME_ID] = volume_id
 
         return res_json
+
+    def add_objects(
+        self, objects: Union[List[VolumeObject], VolumeObjectCollection]
+    ) -> VolumeAnnotation:
+        """
+        Add new objects to VolumeAnnotation object
+
+        :param objects: List or VolumeObjectCollection with new VolumeObjects
+        :type objects: List[VolumeObject] or VolumeObjectCollection
+        :return: VolumeAnnotation with old and new VolumeObjects
+        :rtype: VolumeAnnotation
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            path = "/vol_01.nrrd"
+            _, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            volume_ann = sly.VolumeAnnotation(volume_meta)
+            obj_class_heart = sly.ObjClass('heart', sly.Mask3D)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_ann = volume_ann.add_objects([volume_obj_heart])
+
+        """
+        if isinstance(objects, List):
+            objects = VolumeObjectCollection(objects)
+        collection = self.objects.add_items(objects)
+        return self.clone(objects=collection)
