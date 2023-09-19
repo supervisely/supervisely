@@ -216,7 +216,7 @@ class VolumeFigureApi(FigureApi):
 
             for sp_figure in vol_ann.spatial_figures:
                 figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.stl"
+                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
             if id_to_paths:
                 api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
         """
@@ -484,7 +484,7 @@ class VolumeFigureApi(FigureApi):
 
             for sp_figure in vol_ann.spatial_figures:
                 figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.stl"
+                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
             if id_to_paths:
                 api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
         """
