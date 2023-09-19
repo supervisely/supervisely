@@ -11,6 +11,7 @@ import errno
 import tarfile
 import subprocess
 import requests
+import sys
 from requests.structures import CaseInsensitiveDict
 from collections.abc import Mapping
 
@@ -1057,31 +1058,39 @@ def get_nested_dicts_data(data_dict: Dict, *dict_keys: str) -> Any:
 
     :param data_dict: dict with nested dicts
     :type data_dict: dict
-    :return: value of the last key
+    :return: value of the last key or None
     :rtype: Any
-    :raises KeyError: If key is missing or is at a different nesting level
-    :Usage example:
      .. code-block:: python
         from supervisely.io.fs import get_nested_dicts_data
         nested_dict = {
             'first_level': {
                 'second_level': {
                     'third_level_1': 'You are wrong',
-                    'third_level_2': 'This is the innermost value'
+                    'third_level_2': 'This is the value you are looking for'
                 }
             }
         }
         required_value = get_nested_dicts_data(nested_dict, 'first_level', 'second_level', 'third_level_2')
         print(required_value)
-        Output: 'This is the innermost value'
+        Output: 'This is the value you are looking form'
     """
     if not dict_keys:
         return data_dict
 
     dict_key = dict_keys[0]
+
+    try:
+        data_dict.get(dict_key)
+    except AttributeError:
+        logger.exception(
+            "The key you are searching for is missing, at a different nesting level or is not a key at all"
+        )
+        return None
+
     if data_dict.get(dict_key):
         return get_nested_dicts_data(data_dict.get(dict_key), *dict_keys[1:])
     else:
-        raise KeyError(
+        logger.exception(
             "The key you are searching for is missing or is at a different nesting level"
         )
+        return None
