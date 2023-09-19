@@ -2371,7 +2371,7 @@ class Project:
         )
 
 
-def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
+def read_single_project(dir: str, project_class: Optional[Project] = Project):
     """
     Read project from given directory or tries to find project directory in subdirectories.
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.

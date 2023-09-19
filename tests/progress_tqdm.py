@@ -23,6 +23,8 @@ PROJECT_ID = 18142
 batch_size = 10
 data = range(100)
 
+sly.download(api, 27677, "/tmp/lemmm/")
+
 from tqdm import tqdm
 
 # from supervisely.task.progress import WrapTqdm as tqdm

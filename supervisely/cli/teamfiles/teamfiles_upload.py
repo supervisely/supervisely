@@ -31,14 +31,8 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
     console = Console()
 
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
-    try:
-        api = sly.Api.from_env()
-    except KeyError as e:
-        console.print(
-            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
-            style="bold red",
-        )
+    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+    if not api:
         return False
 
     # force directories to end with slash '/'

@@ -9,14 +9,8 @@ import os
 def remove_file_run(team_id: int, path: str) -> bool:
     console = Console()
 
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
-    try:
-        api = sly.Api.from_env()
-    except KeyError as e:
-        console.print(
-            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
-            style="bold red",
-        )
+    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+    if not api:
         return False
 
     if api.team.get_info_by_id(team_id) is None:
@@ -37,14 +31,8 @@ def remove_file_run(team_id: int, path: str) -> bool:
 def remove_directory_run(team_id: int, path: str) -> bool:
     console = Console()
 
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
-    try:
-        api = sly.Api.from_env()
-    except KeyError as e:
-        console.print(
-            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
-            style="bold red",
-        )
+    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+    if not api:
         return False
 
     if api.team.get_info_by_id(team_id) is None:

@@ -1,7 +1,8 @@
 import traceback
 
 from rich.console import Console
-from tqdm import tqdm
+import tqdm
+
 import supervisely as sly
 from supervisely.io.fs import dir_exists
 
@@ -12,14 +13,8 @@ import os
 def upload_run(src_dir: str, workspace_id: int, project_name: str = None) -> bool:
     console = Console()
 
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
-    try:
-        api = sly.Api.from_env()
-    except KeyError as e:
-        console.print(
-            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
-            style="bold red",
-        )
+    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+    if not api:
         return False
 
     project_fs = sly.read_project(src_dir)
@@ -40,15 +35,14 @@ def upload_run(src_dir: str, workspace_id: int, project_name: str = None) -> boo
 
     try:
         if sly.is_development():
-            with tqdm(total=project_fs.total_items) as pbar:
-                sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar.update)
-                pbar.refresh()
+            with tqdm.tqdm(total=project_fs.total_items) as pbar:
+                sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
         else:
             sly.upload(src_dir, api, workspace_id, project_name, log_progress=True)
 
         console.print(f"\nProject '{project_name}' is uploaded sucessfully!\n", style="bold green")
         return True
     except:
-        console.print(f"\nProject is not uploaded\n", style="bold red")
+        console.print(f"\nProject '{project_name}' is not uploaded\n", style="bold red")
         traceback.print_exc()
         return False

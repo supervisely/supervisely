@@ -2,6 +2,7 @@ from typing import Callable, List, Optional, Union
 
 from tqdm import tqdm
 
+import supervisely as sly
 from supervisely.api.api import Api
 from supervisely.project import read_project
 from supervisely.project.pointcloud_episode_project import (
@@ -116,54 +117,19 @@ def upload(
     if progress_cb:
         log_progress = False
 
-    if project_fs.meta.project_type == ProjectType.IMAGES.value:
-        upload_project(
-            dir=src_dir,
-            api=api,
-            workspace_id=workspace_id,
-            project_name=project_name,
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-        )
-    elif project_fs.meta.project_type == ProjectType.VIDEOS.value:
-        if progress_cb:
-            log_progress = True
-        upload_video_project(
-            dir=src_dir,
-            api=api,
-            workspace_id=workspace_id,
-            project_name=project_name,
-            log_progress=log_progress,
-            **kwargs,
-        )
-    elif project_fs.meta.project_type == ProjectType.VOLUMES.value:
-        if progress_cb:
-            log_progress = True
-        upload_volume_project(
-            dir=src_dir,
-            api=api,
-            workspace_id=workspace_id,
-            project_name=project_name,
-            log_progress=log_progress,
-        )
+    if progress_cb and project_fs.meta.project_type in (
+        ProjectType.VIDEOS.value,
+        ProjectType.VOLUMES.value,
+    ):
+        log_progress = True
 
-    elif project_fs.meta.project_type == ProjectType.POINT_CLOUDS.value:
-        upload_pointcloud_project(
-            directory=src_dir,
-            api=api,
-            workspace_id=workspace_id,
-            project_name=project_name,
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-        )
-    elif project_fs.meta.project_type == ProjectType.POINT_CLOUD_EPISODES.value:
-        upload_pointcloud_episode_project(
-            directory=src_dir,
-            api=api,
-            workspace_id=workspace_id,
-            project_name=project_name,
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-        )
-    else:
-        raise ValueError(f"Unknown type of project ({project_fs.meta.project_type})")
+    project_class = sly.get_project_class(project_fs.meta.project_type)
+
+    project_class.upload(
+        src_dir,
+        api=api,
+        workspace_id=workspace_id,
+        project_name=project_name,
+        log_progress=log_progress,
+        **kwargs,
+    )

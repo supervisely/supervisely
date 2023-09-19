@@ -2,7 +2,7 @@ import os
 import supervisely as sly
 import re
 
-from tqdm import tqdm
+import tqdm
 
 import traceback
 from rich.console import Console
@@ -19,14 +19,8 @@ def download_directory_run(
 ) -> bool:
     console = Console()
 
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
-    try:
-        api = sly.Api.from_env()
-    except KeyError as e:
-        console.print(
-            f"Error: {e}\n\nAdd it to your '~/supervisely.env' file or to environment variables",
-            style="bold red",
-        )
+    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+    if not api:
         return False
 
     if api.team.get_info_by_id(team_id) is None:
@@ -63,7 +57,7 @@ def download_directory_run(
 
     try:
         if filter is not None:
-            with tqdm(desc="Downloading from Team files...", total=len(filtered)) as p:
+            with tqdm.tqdm(desc="Downloading from Team files...", total=len(filtered)) as pbar:
                 for remote_path in filtered:
                     local_save_path = os.path.join(
                         local_dir,
@@ -75,13 +69,13 @@ def download_directory_run(
                         remote_path,
                         local_save_path,
                     )
-                    p.update(1)
+                    pbar.update(1)
         else:
             total_size = api.file.get_directory_size(team_id, remote_dir)
-            p = tqdm(
+            pbar = tqdm.tqdm(
                 desc="Downloading from Team files...", total=total_size, unit="B", unit_scale=True
             )
-            api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=p)
+            api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=pbar)
 
         console.print(
             f"\nTeam files directory was sucessfully downloaded to the local path: '{local_dir}'.\n",
@@ -90,6 +84,6 @@ def download_directory_run(
         return True
 
     except:
-        console.print("\nDownload failed\n", style="bold red")
+        console.print("\nError: Download failed\n", style="bold red")
         traceback.print_exc()
         return False

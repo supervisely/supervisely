@@ -52,7 +52,7 @@ from supervisely.task.progress import (
 
 
 import supervisely.project as project
-from supervisely.project import read_project
+from supervisely.project import read_project, get_project_class
 from supervisely.project.download import download
 from supervisely.project.upload import upload
 from supervisely.project.project import (
@@ -119,6 +119,8 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
+
+from supervisely.cli import _handle_creds_error_to_console
 
 from supervisely._utils import (
     rand_str,
