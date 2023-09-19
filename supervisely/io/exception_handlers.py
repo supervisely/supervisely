@@ -92,7 +92,7 @@ class HandleException:
 class ErrorHandler:
     class APP:
         class UnsupportedShapes(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1001
                 self.title = "Unsupported class shapes"
                 self.message = exception.args[0]
@@ -106,7 +106,7 @@ class ErrorHandler:
                 )
 
         class UnsupportedArchiveFormat(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1002
                 self.title = "Unsupported archive format"
                 self.message = "The given archive format is not supported."
@@ -120,7 +120,7 @@ class ErrorHandler:
                 )
 
         class UnicodeDecodeError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1003
                 self.title = "Unicode decode error"
                 self.message = (
@@ -137,12 +137,10 @@ class ErrorHandler:
                 )
 
         class ImageUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1004
                 self.title = "Image uploading error"
-                self.message = get_message_from_exception(
-                    exception, title="Image uploading failed"
-                )
+                self.message = get_message_from_exception(exception, title="Image uploading failed")
 
                 super().__init__(
                     exception,
@@ -153,12 +151,10 @@ class ErrorHandler:
                 )
 
         class VideoUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1005
                 self.title = "Video uploading error"
-                self.message = get_message_from_exception(
-                    exception, title="Video uploading failed"
-                )
+                self.message = get_message_from_exception(exception, title="Video uploading failed")
 
                 super().__init__(
                     exception,
@@ -170,11 +166,7 @@ class ErrorHandler:
 
     class API:
         class TeamFilesFileNotFound(HandleException):
-            def __init__(
-                self,
-                exception: Exception,
-                stack: List[traceback.FrameSummary] = None,
-            ):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2001
                 self.title = "Requested file was not found in Team Files"
                 self.message = (
@@ -191,7 +183,7 @@ class ErrorHandler:
                 )
 
         class TaskSendRequestError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2002
                 self.title = "Task send request error"
                 self.message = (
@@ -210,7 +202,7 @@ class ErrorHandler:
                 )
 
         class FileSizeTooLarge(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2003
                 self.title = "File size limit exceeded"
                 self.message = (
@@ -226,7 +218,7 @@ class ErrorHandler:
                 )
 
         class ImageFilesSizeTooLarge(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
                 self.message = "The given image file size is too large (more than 1 GB) for free community edition."
@@ -240,7 +232,7 @@ class ErrorHandler:
                 )
 
         class VideoFilesSizeTooLarge(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2005
                 self.title = "Video files size limit exceeded"
                 self.message = "The given video file size is too large (more than 300 MB) for free community edition."
@@ -254,7 +246,7 @@ class ErrorHandler:
                 )
 
         class VolumeFilesSizeTooLarge(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2006
                 self.title = "Volume files size limit exceeded"
                 self.message = "The given volume file size is too large (more than 150 MB) for free community edition."
@@ -268,7 +260,7 @@ class ErrorHandler:
                 )
 
         class OutOfMemory(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2007
                 self.title = "Out of memory"
                 self.message = (
@@ -285,7 +277,7 @@ class ErrorHandler:
                 )
 
         class DockerRuntimeError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2008
                 self.title = "Docker runtime error"
                 self.message = (
@@ -302,7 +294,7 @@ class ErrorHandler:
                 )
 
         class AppSetFieldError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2009
                 self.title = "App set field error"
                 self.message = (
@@ -321,7 +313,7 @@ class ErrorHandler:
                 )
 
         class TeamFilesDirectoryDownloadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2010
                 self.title = "Team files directory download error"
                 self.message = "Make sure that the directory exists in the team files, the files are not corrupted, and try again."
@@ -335,7 +327,7 @@ class ErrorHandler:
                 )
 
         class PointcloudsUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2011
                 self.title = "Pointclouds uploading error"
                 self.message = exception.args[0]
@@ -349,7 +341,7 @@ class ErrorHandler:
                 )
 
         class AnnotationUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2012
                 self.title = "Annotation uploading error"
                 self.message = exception.args[0]
@@ -363,7 +355,7 @@ class ErrorHandler:
                 )
 
         class AnnotationNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2013
                 self.title = "Annotation not found"
                 self.message = "Please, check that the annotation(s) exists by the given path."
@@ -377,7 +369,7 @@ class ErrorHandler:
                 )
 
         class ServerOverload(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2014
                 self.title = "High load on the server"
                 self.message = "Sorry, the server is overloaded. Please, try again later."
@@ -391,7 +383,7 @@ class ErrorHandler:
                 )
 
         class ProjectNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2015
                 self.title = "Project not found"
                 self.message = "Please, check that the project exists, not archived and you have enough permissions to access it"
@@ -405,7 +397,7 @@ class ErrorHandler:
                 )
 
         class DatasetNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2016
                 self.title = "Dataset not found"
                 self.message = "Please, check that the dataset exists, not archived and you have enough permissions to access it."
@@ -420,7 +412,7 @@ class ErrorHandler:
 
     class SDK:
         class ProjectStructureError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3001
                 self.title = "Project structure error"
                 self.message = "Please, check the project structure and try again."
@@ -434,7 +426,7 @@ class ErrorHandler:
                 )
 
         class ConversionNotImplemented(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3002
                 self.title = "Not implemented error"
                 self.message = (
@@ -451,7 +443,7 @@ class ErrorHandler:
                 )
 
         class JsonAnnotationReadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3003
                 self.title = "JSON annotation read error"
                 self.message = (
@@ -467,7 +459,7 @@ class ErrorHandler:
                 )
 
         class LabelFromJsonFailed(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3004
                 self.title = "Label deserialize error"
                 self.message = exception.args[0]
@@ -482,7 +474,7 @@ class ErrorHandler:
 
     class AgentDocker:
         class ImageNotFound(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 # TODO: rule for error codes inside side apps/modules
                 self.code = 4001
                 self.title = "Docker image not found"
@@ -505,7 +497,7 @@ class ErrorHandler:
 
     class Agent:
         class AgentError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 5001
                 self.title = "Agent issue"
                 self.message = (
