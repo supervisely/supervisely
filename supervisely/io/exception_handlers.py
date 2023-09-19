@@ -691,7 +691,10 @@ def handle_additional_exceptions(
 
 def read_stack_from_exception(exception):
     stack = traceback.extract_stack()
-    stack.extend(traceback.extract_tb(exception.__traceback__))
+    try:
+        stack.extend(traceback.extract_tb(exception.__traceback__))
+    except AttributeError:
+        pass # to use ErrorHandler in the apps
     return stack
 
 
