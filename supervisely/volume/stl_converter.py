@@ -148,7 +148,6 @@ def save_to_nrrd_file_on_upload(interpolation_dir: str) -> List[str]:
 
             # doesn't need to convert if already exists interpolation in NRRD
             if file_exists(nrrd_path):
-                nrrd_paths.append(nrrd_path)
                 make_warn = False
                 continue
 
