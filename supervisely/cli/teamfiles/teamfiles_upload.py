@@ -35,6 +35,12 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     if not api:
         return False
 
+    if api.team.get_info_by_id(team_id) is None:
+        console.print(
+            f"\nError: Team with ID={team_id} is either not exist or not found in your acocunt\n",
+            style="bold red",
+        )
+
     # force directories to end with slash '/'
     if not local_dir.endswith(os.path.sep):
         local_dir = os.path.join(local_dir, "")
