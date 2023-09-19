@@ -1,6 +1,16 @@
 # coding: utf-8
 
+import uuid
+
+from typing import Optional, Union
+from numpy import ndarray
+
 from supervisely.video_annotation.video_object import VideoObject
+
+from supervisely.volume_annotation import volume_figure
+
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+from supervisely.geometry.mask_3d import Mask3D
 
 
 class VolumeObject(VideoObject):
@@ -21,6 +31,8 @@ class VolumeObject(VideoObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeObject was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param mask_3d: Path for local geometry file, array with geometry data or Mask3D geometry object
+    :type mask_3d: Union[str, ndarray, Mask3D], optional
     :Usage example:
 
      .. code-block:: python
@@ -38,4 +50,39 @@ class VolumeObject(VideoObject):
         # }
     """
 
-    pass
+    def __init__(
+        self,
+        obj_class,
+        tags: Optional[VideoTagCollection] = None,
+        key: Optional[uuid.UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+        mask_3d: Optional[Union[str, ndarray, Mask3D]] = None,
+    ):
+        super().__init__(
+            obj_class=obj_class,
+            tags=tags,
+            key=key,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
+
+        if mask_3d:
+            if isinstance(mask_3d, str):
+                self.figure = volume_figure.VolumeFigure(
+                    self, Mask3D.from_file(mask_3d), labeler_login, updated_at, created_at
+                )
+            elif isinstance(mask_3d, ndarray):
+                self.figure = volume_figure.VolumeFigure(
+                    self, Mask3D(ndarray), labeler_login, updated_at, created_at
+                )
+            elif isinstance(mask_3d, Mask3D):
+                self.figure = volume_figure.VolumeFigure(
+                    self, mask_3d, labeler_login, updated_at, created_at
+                )
+            else:
+                raise TypeError("mask_3d type must be one of [str, ndarray, Mask3D]")
