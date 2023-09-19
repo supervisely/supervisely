@@ -136,34 +136,6 @@ class ErrorHandler:
                     message=self.message,
                 )
 
-        class ImageUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
-                self.code = 1004
-                self.title = "Image uploading error"
-                self.message = get_message_from_exception(exception, title="Image uploading failed")
-
-                super().__init__(
-                    exception,
-                    stack,
-                    code=self.code,
-                    title=self.title,
-                    message=self.message,
-                )
-
-        class VideoUploadError(HandleException):
-            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
-                self.code = 1005
-                self.title = "Video uploading error"
-                self.message = get_message_from_exception(exception, title="Video uploading failed")
-
-                super().__init__(
-                    exception,
-                    stack,
-                    code=self.code,
-                    title=self.title,
-                    message=self.message,
-                )
-
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
