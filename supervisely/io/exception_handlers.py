@@ -136,6 +136,38 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class ImageUploadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1004
+                self.title = "Image uploading error"
+                self.message = get_message_from_exception(
+                    exception, title="Image uploading failed"
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class VideoUploadError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary]):
+                self.code = 1005
+                self.title = "Video uploading error"
+                self.message = get_message_from_exception(
+                    exception, title="Video uploading failed"
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(
@@ -669,3 +701,14 @@ def read_stack_from_exception(exception):
     stack = traceback.extract_stack()
     stack.extend(traceback.extract_tb(exception.__traceback__))
     return stack
+
+
+def get_message_from_exception(exception, title):
+    try:
+        json_text = exception.args[0].response.text
+        info = loads(json_text)
+        exc_message = info.get("message", str(exception))
+    except:
+        exc_message = str(exception)
+
+    return f"{title}: {exc_message}"
