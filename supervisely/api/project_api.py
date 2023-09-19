@@ -1003,14 +1003,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
         )
 
-    def archive_batch(self, ids: List[int], archive_urls: List[str]) -> None:
+    def archive_batch(
+        self, ids: List[int], archive_urls: List[str], ann_archive_urls: Optional[List[str]] = None
+    ) -> None:
         """
-        Archive Projects by ID and save backup URL in Project info for every Project.
+        Archive Projects by ID and save backup URLs in Project info for every Project.
 
         :param ids: Project IDs in Supervisely.
         :type ids: List[int]
-        :param archive_urls: Shared URLs of backup on Dropbox.
+        :param archive_urls: Shared URLs of files backup on Dropbox.
         :type archive_urls: List[str]
+        :param ann_archive_urls: Shared URLs of annotations backup on Dropbox.
+        :type ann_archive_urls: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1026,27 +1030,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.project.archive_batch(ids, archive_urls)
+            api.project.archive_batch(ids, archive_urls, ann_archive_urls)
         """
         if len(ids) != len(archive_urls):
             raise ValueError(
                 "The list with Project IDs must have the same length as the list with URLs for archives"
             )
+        for id, archive_url, ann_archive_url in zip(
+            ids, archive_urls, ann_archive_urls or [None] * len(ids)
+        ):
+            request_params = {
+                ApiField.ID: id,
+                ApiField.ARCHIVE_URL: archive_url,
+            }
+            if ann_archive_url is not None:
+                request_params[ApiField.ANN_ARCHIVE_URL] = ann_archive_url
 
-        for id, archive_url in zip(ids, archive_urls):
-            self._api.post(
-                "projects.remove.permanently",
-                {ApiField.PROJECTS: [{ApiField.ID: id, ApiField.ARCHIVE_URL: archive_url}]},
-            )
+            self._api.post("projects.remove.permanently", {ApiField.PROJECTS: [request_params]})
 
-    def archive(self, id: int, archive_url: str) -> None:
+    def archive(self, id: int, archive_url: str, ann_archive_url: Optional[str] = None) -> None:
         """
-        Archive Project by ID and save backup URL in Project info.
+        Archive Project by ID and save backup URLs in Project info.
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param archive_url: Shared URL of backup on Dropbox.
+        :param archive_url: Shared URL of files backup on Dropbox.
         :type archive_url: str
+        :param ann_archive_url: Shared URL of annotations backup on Dropbox.
+        :type ann_archive_url: str, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1062,10 +1073,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.project.archive(id, archive_url)
+            api.project.archive(id, archive_url, ann_archive_url)
         """
-
-        self.archive_batch([id], [archive_url])
+        if ann_archive_url is None:
+            self.archive_batch([id], [archive_url])
+        else:
+            self.archive_batch([id], [archive_url], [ann_archive_url])
 
     def get_archivation_list(
         self,
@@ -1155,3 +1168,37 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post("projects.list.all", request_body)
 
         return [self._convert_json_info(item) for item in response.json()]
+
+    def check_imageset_backup(self, id: int) -> Optional[Dict]:
+        """
+        Check if a backup of the project image set exists. If yes, it returns a link to the archive.
+
+        :param id: Project ID
+        :type id: int
+        :return: dict with shared URL of files backup or None
+        :rtype: Dict, optional
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+            response = check_imageset_backup(project_id)
+            archive_url = response['imagesArchiveUrl']
+
+        """
+        response = self._api.get("projects.images.get-backup-archive", {ApiField.ID: id})
+
+        return response.json()

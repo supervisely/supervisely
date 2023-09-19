@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Generator, Optional, List, Tuple, OrderedDict, Dict
+from typing import Generator, Optional, List, Callable, OrderedDict, Dict
 from collections import OrderedDict
 
 import supervisely as sly
@@ -15,6 +15,7 @@ class TrackerInterface:
         load_all_frames=False,
         notify_in_predict=False,
         per_point_polygon_tracking=True,
+        frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
     ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
@@ -45,7 +46,8 @@ class TrackerInterface:
         # increase self.stop by num of points
         self._add_geometries()
 
-        self._cache: Dict[int, np.ndarray] = {}
+        self._hot_cache: Dict[int, np.ndarray] = {}
+        self._local_cache_loader = frame_loader
 
         if self.load_all_frames:
             if notify_in_predict:
@@ -83,7 +85,11 @@ class TrackerInterface:
                 return
 
     def add_object_geometry_on_frame(
-        self, geometry: Geometry, object_id: int, frame_ind: int, notify: bool = True
+        self,
+        geometry: Geometry,
+        object_id: int,
+        frame_ind: int,
+        notify: bool = True,
     ):
         self.api.video.figure.create(
             self.video_id,
@@ -98,7 +104,7 @@ class TrackerInterface:
             self._notify(task="add geometry on frame")
 
     def clear_cache(self):
-        self._cache.clear()
+        self._hot_cache.clear()
 
     def _add_geometries(self):
         self.logger.info("Adding geometries.")
@@ -141,11 +147,17 @@ class TrackerInterface:
             self.stop += len(self.frames_indexes)
 
     def _load_frame(self, frame_index):
-        if frame_index in self._cache:
-            return self._cache[frame_index]
-        frame = self.api.video.frame.download_np(self.video_id, frame_index)
-        self._cache[frame_index] = frame
-        return frame
+        if frame_index in self._hot_cache:
+            return self._hot_cache[frame_index]
+        if self._local_cache_loader is None:
+            self._hot_cache[frame_index] = self.api.video.frame.download_np(
+                self.video_id, frame_index
+            )
+        else:
+            self._hot_cache[frame_index] = self._local_cache_loader(
+                self.api, self.video_id, frame_index
+            )
+        return self._hot_cache[frame_index]
 
     def _load_frames(self):
         rgbs = []

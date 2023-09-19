@@ -5,7 +5,7 @@ import time
 import supervisely
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
-from typing import List
+from typing import List, Optional
 from supervisely.app.content import StateJson
 
 
@@ -24,6 +24,7 @@ class GridGallery(Widget):
         fill_rectangle: bool = True,
         border_width: int = 3,
         show_preview: bool = False,
+        view_height: Optional[int] = None,
         widget_id: str = None,
     ):
         self._data = []
@@ -49,6 +50,7 @@ class GridGallery(Widget):
         self._resize_on_zoom: bool = resize_on_zoom
         self._show_preview: bool = show_preview
         self._views_bindings: list = []
+        self._view_height: int = view_height
         #############################
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -91,7 +93,7 @@ class GridGallery(Widget):
                 "fillRectangle": self._fill_rectangle,
                 "borderWidth": self._border_width,
                 "selectable": False,
-                "viewHeight": None,
+                "viewHeight": self._view_height,
                 "showPreview": self._show_preview,
             },
             "selectedImage": None,

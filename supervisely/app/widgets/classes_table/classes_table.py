@@ -51,7 +51,7 @@ class ClassesTable(Widget):
         self._global_checkbox = False
         self._checkboxes = []
         self._selectable = selectable
-        self._disabled = disabled
+        self._selection_disabled = disabled
         self._loading = False
         self._allowed_types = allowed_types if allowed_types is not None else []
         if project_id is not None:
@@ -240,7 +240,7 @@ class ClassesTable(Widget):
             "table_data": self._table_data,
             "columns": self._columns,
             "loading": self._loading,
-            "disabled": self._disabled,
+            "disabled": self._selection_disabled,
             "selectable": self._selectable,
         }
 

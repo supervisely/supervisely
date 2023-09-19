@@ -136,6 +136,7 @@ def upload_archive(
     slug,
     user_id,
     subapp_path,
+    share_app,
 ):
     f = open(archive_path, "rb")
     fields = {
@@ -155,6 +156,8 @@ def upload_archive(
         fields["slug"] = slug
     if user_id:
         fields["userId"] = str(user_id)
+    if share_app:
+        fields["isShared"] = "true"
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
     with tqdm(
@@ -249,6 +252,7 @@ def release(
     user_id=None,
     subapp_path="",
     created_at=None,
+    share_app=False,
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
@@ -272,6 +276,7 @@ def release(
             slug,
             user_id,
             subapp_path,
+            share_app,
         )
     finally:
         delete_directory(archive_dir)
