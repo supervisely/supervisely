@@ -2,6 +2,11 @@
 
 # docs
 from __future__ import annotations
+import numpy as np
+import base64
+import gzip
+import nrrd
+import tempfile
 from typing import Optional, Union, List, Dict
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
@@ -19,10 +24,6 @@ from supervisely.geometry.constants import (
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
 from supervisely import logger
-import numpy as np
-import base64
-import gzip
-import nrrd
 
 
 if not hasattr(np, "bool"):
@@ -286,6 +287,22 @@ class Mask3D(Geometry):
 
         figure.geometry = Mask3D.from_file(file_path)
 
+    @staticmethod
+    def to_figure_from_bytes(figure, geometry_bytes: bytes):
+        """
+        Load Mask3D geometry from bytes.
+
+        :param figure: Spatial figure object
+        :type figure: VolumeFigure
+        :param file_path: Bytes with NRRD file
+        :type file_path: bytes
+        """
+        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+            temp_file.write(geometry_bytes)
+            data_array, _ = nrrd.read(temp_file.name)
+
+        figure.geometry.data = data_array
+
     @classmethod
     def to_figure_from_array(cls, figure, data_array: np.ndarray):
         """
@@ -296,7 +313,10 @@ class Mask3D(Geometry):
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
-        figure.geometry = cls(data_array)
+        if figure.geometry:
+            figure.geometry.dat = data_array
+        else:
+            figure.geometry = cls(data_array)
 
     def to_json(self) -> Dict:
         """
