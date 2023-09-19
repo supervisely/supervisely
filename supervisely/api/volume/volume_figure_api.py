@@ -512,8 +512,8 @@ class VolumeFigureApi(FigureApi):
 
     def read_sf_geometries(self, path: str) -> Dict[str, bytes]:
         """
-        Read geometries as bytes in dictionary and maps them to figure UUID.
-        NRRD file must be named with UUID.
+        Read geometries as bytes in dictionary and maps them to figure UUID hex value.
+        NRRD file must be named with UUID hex value.
 
         :param path: Path to file or dir with files
         :type path: str
@@ -548,7 +548,7 @@ class VolumeFigureApi(FigureApi):
             Mask3D.to_figure_from_file(spatial_figure, figure_path)
 
     def append_geometry_to_figure(
-        self, spatial_figure: VolumeFigure, geometry: Union[str, ndarray]
+        self, spatial_figure: VolumeFigure, geometry: Union[str, ndarray, bytes]
     ):
         """
         Load geometry from file into VolumeFigure object
@@ -558,7 +558,9 @@ class VolumeFigureApi(FigureApi):
         :param geometry: Spatial figure object from VolumeAnnotation
         :type geometry: VolumeFigure
         """
-        if type(geometry) == str:
+        if isinstance(geometry, str):
             Mask3D.to_figure_from_file(spatial_figure, geometry)
-        if type(geometry) == ndarray:
+        if isinstance(geometry, ndarray):
             Mask3D.to_figure_from_array(spatial_figure, geometry)
+        if isinstance(geometry, bytes):
+            Mask3D.to_figure_from_bytes(spatial_figure, geometry)
