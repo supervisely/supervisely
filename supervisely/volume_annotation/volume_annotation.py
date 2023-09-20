@@ -665,10 +665,11 @@ class VolumeAnnotation:
     ) -> VolumeAnnotation:
         """
         Add new objects to VolumeAnnotation object
+        NOTE: Supported only objects with spatial figures (Mask3D)
 
-        :param objects: List or VolumeObjectCollection with new VolumeObjects
+        :param objects: New volume objects
         :type objects: List[VolumeObject] or VolumeObjectCollection
-        :return: VolumeAnnotation with old and new VolumeObjects
+        :return: Volume annotation with old and new volume objects
         :rtype: VolumeAnnotation
         :Usage example:
 
@@ -689,5 +690,19 @@ class VolumeAnnotation:
         """
         if isinstance(objects, List):
             objects = VolumeObjectCollection(objects)
+
+        # check if objects without figures
+        for _, vobject in objects._collection.items():
+            try:
+                vobject.figure
+            except AttributeError as e:
+                e.args = [
+                    "There is no spatial figure in 'VolumeObject'",
+                ]
+                raise e
+
+        sf_figures = [vobject.figure for vobject in objects]
         collection = self.objects.add_items(objects)
+        self = self.clone(objects=collection)
+        self.spatial_figures.extend(sf_figures)
         return self.clone(objects=collection)
