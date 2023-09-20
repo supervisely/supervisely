@@ -29,6 +29,7 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
+from supervisely.io.fs import mkdir
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from tqdm import tqdm
@@ -51,14 +52,21 @@ class Import(Application):
         EXISTING_DATASET = "Existing Dataset"
 
     class DataSelector:
-        ALL = None
         DRAG_AND_DROP = "Drag & Drop"
         TEAM_FILES_SELECTOR = "TeamFiles Selector"
+        ALL = None
 
     class DataType:
-        ALL = None
         FOLDER = "folder"
         FILE = "file"
+        ALL = None
+
+    class InputMode:
+        PROJECT = "project"
+        DATASET = "dataset"
+        ECOSYSTEM = "ecosystem"
+        FILE = "file"
+        FOLDER = "folder"
 
     class Context:
         def __init__(
@@ -239,14 +247,14 @@ class Import(Application):
                 project_info=project_info, dataset_info=dataset_info
             )
             self.__project_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
-            self.__input_mode = "dataset"
+            self.__input_mode = self.InputMode.DATASET
 
         # Launch from Project
         elif env.project_id(raise_not_found=False) is not None:
             project_info = api.project.get_info_by_id(env.project_id())
             self.__input_thumbnail = ProjectThumbnail(info=project_info)
             self.__project_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
-            self.__input_mode = "project"
+            self.__input_mode = self.InputMode.PROJECT
         # Launch from Ecosystem
         else:
             self.__output_workspace_selector = SelectWorkspace(
@@ -267,9 +275,9 @@ class Import(Application):
                 allowed_project_types=self._allowed_project_types
             )
             destination_widgets_map = {
-                "New Project": self.__output_new_project,
-                "Existing Project": self.__output_project_selector,
-                "Existing Dataset": self.__output_dataset_selector,
+                self.Destination.NEW_PROJECT: self.__output_new_project,
+                self.Destination.EXISTING_PROJECT: self.__output_project_selector,
+                self.Destination.EXISTING_DATASET: self.__output_dataset_selector,
             }
 
             if len(self._allowed_destination_options) > 1:
@@ -290,7 +298,7 @@ class Import(Application):
                         self.__step_three_text,
                     ]
                 )
-            self.__input_mode = "ecosystem"
+            self.__input_mode = self.InputMode.ECOSYSTEM
 
         ####################
         #  FILES SELECTOR  #
@@ -302,8 +310,8 @@ class Import(Application):
                 file_info = api.file.get_info_by_path(team_id=env.team_id(), remote_path=env.file())
                 self.__input_thumbnail = FileThumbnail(info=file_info)
                 self.__files_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
-                if self.__input_mode is None or self.__input_mode == "ecosystem":
-                    self.__input_mode = "file"
+                if self.__input_mode is None or self.__input_mode == self.InputMode.ECOSYSTEM:
+                    self.__input_mode = self.InputMode.FILE
                 self.__step_two_btn.enable()
 
             # Launch from Folder
@@ -318,8 +326,8 @@ class Import(Application):
                 self.__input_thumbnail = FolderThumbnail(info=file_info)
                 api.file.remove(team_id=env.team_id(), path=remote_path)
                 self.__files_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
-                if self.__input_mode is None or self.__input_mode == "ecosystem":
-                    self.__input_mode = "folder"
+                if self.__input_mode is None or self.__input_mode == self.InputMode.ECOSYSTEM:
+                    self.__input_mode = self.InputMode.FOLDER
                 self.__step_two_btn.enable()
 
             # Launch from Ecosystem
@@ -343,7 +351,7 @@ class Import(Application):
                     self.__storage_upload_path = f"/import/{app_name}/{env.task_id()}/"
 
                 self.__input_drag_n_drop = FileStorageUpload(
-                    team_id=env.team_id(), path=self.__storage_upload_path
+                    team_id=env.team_id(), path=self.__storage_upload_path, show_reset=True
                 )
                 self.__input_data_tabs = RadioTabs(
                     titles=[self.DataSelector.DRAG_AND_DROP, self.DataSelector.TEAM_FILES_SELECTOR],
@@ -356,7 +364,7 @@ class Import(Application):
                     widgets=[self.__input_data_tabs, self.__step_one_text]
                 )
                 if self.__input_mode is None:
-                    self.__input_mode = "ecosystem"
+                    self.__input_mode = self.InputMode.ECOSYSTEM
 
         # if is_development():
         else:
@@ -416,11 +424,13 @@ class Import(Application):
         self.__output_project_thumbnail = ProjectThumbnail()
         self.__output_project_thumbnail.hide()
         self.__import_progress = SlyTqdm()
+        self.__prep_progress = SlyTqdm()
         self.__output_card_container = Container(
             widgets=[
                 self.__output_project_thumbnail,
                 self.__output_text,
                 self.__start_button,
+                self.__prep_progress,
                 self.__import_progress,
             ]
         )
@@ -442,7 +452,7 @@ class Import(Application):
             input_files_card_desc = "Application was launched in local debug mode. Data folder is specified in local.env file"
             local_debug_msg = " in local debug mode"
 
-        if self.__input_mode == "project":
+        if self.__input_mode == self.InputMode.PROJECT:
             self.__input_project_card = Card(
                 title="Destination Project",
                 description=f"Application was launched from the context menu of the project{local_debug_msg}",
@@ -475,7 +485,7 @@ class Import(Application):
             self.__settings_card.lock(message="Select data to import to unlock this card")
             self.__output_card.lock(message="Configure import settings to unlock this card")
 
-        elif self.__input_mode == "dataset":
+        elif self.__input_mode == self.InputMode.DATASET:
             self.__input_project_card = Card(
                 title="Destination Dataset",
                 description=f"Application was launched from the context menu of the dataset{local_debug_msg}",
@@ -507,7 +517,7 @@ class Import(Application):
             self.__settings_card.lock(message="Select data to import to unlock this card")
             self.__output_card.lock(message="Configure import settings to unlock this card")
 
-        elif self.__input_mode == "file":
+        elif self.__input_mode == self.InputMode.FILE:
             self.__input_project_card = Card(
                 title="Destination Project",
                 description="Select where do you want to import your data",
@@ -540,7 +550,7 @@ class Import(Application):
             self.__input_project_card.lock(message="Configure import settings to unlock this card")
             self.__output_card.lock(message="Select destination project to unlock this card")
 
-        elif self.__input_mode == "folder":
+        elif self.__input_mode == self.InputMode.FOLDER:
             self.__input_project_card = Card(
                 title="Destination Project",
                 description="Select where do you want to import your data",
@@ -663,25 +673,32 @@ class Import(Application):
         dataset_id = None
         project_name = None
         if is_production():
-            if self.__input_mode == "project":
+            if self.__input_mode == self.InputMode.PROJECT:
                 project_id = env.project_id()
-            elif self.__input_mode == "dataset":
+            elif self.__input_mode == self.InputMode.DATASET:
                 project_id = env.project_id()
                 dataset_id = env.dataset_id()
-            elif self.__input_mode in ["ecosystem", "file", "folder"]:
-                project_mode = self.__output_project_tabs.get_active_tab()
-                if project_mode == "New Project":
+            elif self.__input_mode in [
+                self.InputMode.ECOSYSTEM,
+                self.InputMode.FILE,
+                self.InputMode.FOLDER,
+            ]:
+                if self.__output_project_tabs is not None:
+                    project_mode = self.__output_project_tabs.get_active_tab()
+                else:
+                    project_mode = self._allowed_destination_options[0]
+                if project_mode == self.Destination.NEW_PROJECT:
                     team_id = self.__output_workspace_selector._team_selector.get_selected_id()
                     workspace_id = self.__output_workspace_selector.get_selected_id()
                     project_name = self.__output_new_project_name.get_value()
-                elif project_mode == "Existing Project":
+                elif project_mode == self.Destination.EXISTING_PROJECT:
                     team_id = (
                         self.__output_project_selector._ws_selector._team_selector.get_selected_id()
                     )
                     workspace_id = self.__output_project_selector._ws_selector.get_selected_id()
                     project_id = self.__output_project_selector.get_selected_id()
                     dataset_id = None
-                elif project_mode == "Existing Dataset":
+                elif project_mode == self.Destination.EXISTING_DATASET:
                     team_id = (
                         self.__output_dataset_selector._project_selector._ws_selector._team_selector.get_selected_id()
                     )
@@ -697,11 +714,15 @@ class Import(Application):
         return team_id, workspace_id, project_id, dataset_id, project_name
 
     def __get_remote_path(self):
-        if self.__input_mode == "file":
+        if self.__input_mode == self.InputMode.FILE:
             path = env.file()
-        elif self.__input_mode == "folder":
+        elif self.__input_mode == self.InputMode.FOLDER:
             path = env.folder()
-        elif self.__input_mode in ["ecosystem", "project", "dataset"]:
+        elif self.__input_mode in [
+            self.InputMode.ECOSYSTEM,
+            self.InputMode.PROJECT,
+            self.InputMode.DATASET,
+        ]:
             data_mode = self.__input_data_tabs.get_active_tab()
             if data_mode == self.DataSelector.TEAM_FILES_SELECTOR:
                 path = self.__input_file_selector.get_selected_paths()[0]
@@ -726,19 +747,47 @@ class Import(Application):
             )
 
             data_dir = get_data_dir()
-            if self.__input_mode == "file":
+            mkdir(data_dir, True)
+
+            self.__prep_progress.show()
+            if self.__input_mode == self.InputMode.FILE:
                 path = env.file()
-                local_save_path = join(data_dir, basename(path.rstrip("/")))
-                api.file.download(team_id=team_id, remote_path=path, local_save_path=path)
-                path = local_save_path
-            elif self.__input_mode == "folder":
-                path = env.folder()
-                local_save_path = join(data_dir, basename(path.rstrip("/")))
-                api.file.download_directory(
-                    team_id=team_id, remote_path=path, local_save_path=local_save_path
+                sizeb = api.file.get_info_by_path(team_id=team_id, remote_path=path).sizeb
+                prep_progress = self.__prep_progress(
+                    message="Preparing data", total=sizeb, unit="iB", unit_divisor=1024
+                )
+                local_save_path = join(data_dir, basename(path.strip("/")))
+                api.file.download(
+                    team_id=team_id,
+                    remote_path=path,
+                    local_save_path=path,
+                    progress=prep_progress.update,
                 )
                 path = local_save_path
-            elif self.__input_mode in ["ecosystem", "project", "dataset"]:
+
+            elif self.__input_mode == self.InputMode.FOLDER:
+                path = env.folder()
+                paths = api.file.list(
+                    team_id=team_id, path=path, recursive=True, return_type="fileinfo"
+                )
+                sizeb = sum([path.sizeb for path in paths])
+                prep_progress = self.__prep_progress(
+                    message="Preparing data", total=sizeb, unit="iB", unit_divisor=1024
+                )
+                local_save_path = join(data_dir, basename(path.strip("/")))
+                api.file.download_directory(
+                    team_id=team_id,
+                    remote_path=path,
+                    local_save_path=local_save_path,
+                    progress_cb=prep_progress.update,
+                )
+                path = local_save_path
+
+            elif self.__input_mode in [
+                self.InputMode.ECOSYSTEM,
+                self.InputMode.PROJECT,
+                self.InputMode.DATASET,
+            ]:
                 data_mode = self.__input_data_tabs.get_active_tab()
                 if data_mode == self.DataSelector.TEAM_FILES_SELECTOR:
                     paths = self.__input_file_selector.get_selected_paths()
@@ -746,26 +795,57 @@ class Import(Application):
                     data_path = self.__input_file_selector.get_selected_paths()[0]
                     data_type = self.__input_file_selector.get_selected_items()[0]["type"]
 
-                    path = join(data_dir, basename(data_path.rstrip("/")))
-                    if data_type == "file":
+                    path = join(data_dir, basename(data_path.strip("/")))
+                    if data_type == self.DataType.FILE:
+                        sizeb = api.file.get_info_by_path(
+                            team_id=team_id, remote_path=data_path
+                        ).sizeb
+                        prep_progress = self.__prep_progress(
+                            message="Preparing data",
+                            total=sizeb,
+                            unit="iB",
+                            unit_divisor=1024,
+                        )
                         api.file.download(
-                            team_id=team_id, remote_path=data_path, local_save_path=path
+                            team_id=team_id,
+                            remote_path=data_path,
+                            local_save_path=path,
+                            progress=prep_progress.update,
                         )
                     else:
+                        paths = api.file.list(
+                            team_id=team_id,
+                            path=data_path,
+                            recursive=True,
+                            return_type="fileinfo",
+                        )
+                        sizeb = sum([path.sizeb for path in paths])
+                        prep_progress = self.__prep_progress(
+                            message="Preparing data",
+                            total=sizeb,
+                            unit="iB",
+                            unit_divisor=1024,
+                        )
                         api.file.download_directory(
-                            team_id=team_id, remote_path=data_path, local_save_path=path
+                            team_id=team_id,
+                            remote_path=data_path,
+                            local_save_path=path,
+                            progress_cb=prep_progress.update,
                         )
                 elif data_mode == self.DataSelector.DRAG_AND_DROP:
                     paths = self.__input_drag_n_drop.get_uploaded_paths()
+                    prep_progress = self.__prep_progress(message="Preparing data", total=len(paths))
                     for path in paths:
                         local_save_path = join(
-                            data_dir, path.replace(self.__storage_upload_path, "")
+                            data_dir, path.replace(self.__storage_upload_path, "").strip("/")
                         )
                         api.file.download(
                             team_id=team_id, remote_path=path, local_save_path=local_save_path
                         )
+                        prep_progress.update()
                     path = data_dir
-
+                self.__prep_progress.hide()
+                prep_progress.reset()
             return Import.Context(
                 team_id=team_id,
                 workspace_id=workspace_id,
@@ -789,26 +869,7 @@ class Import(Application):
             if len(listdir(data_dir)) == 0:
                 raise ValueError(f"Please put the data in the data folder: {data_dir}")
 
-            # file = env.file(raise_not_found=False)
-            # folder = env.folder(raise_not_found=False)
-
-            # if file is not None and folder is not None:
-            #     raise KeyError(
-            #         "Both FILE and FOLDER envs are defined, but only one is allowed for the import"
-            #     )
-
-            # if file is None and folder is None:
-            #     raise KeyError(
-            #         "One of the environment variables has to be defined for the import app: FILE or FOLDER"
-            #     )
-
-            # path = folder
-            # if file is not None:
-            #     path = file
-
             is_on_agent = False
-            # if path is not None:
-            #     is_on_agent = api.file.is_on_agent(path)
 
             project_id = env.project_id(raise_not_found=False)
             dataset_id = env.dataset_id(raise_not_found=False)
@@ -865,7 +926,6 @@ class Import(Application):
         #     info = api.project.get_info_by_id(project_id)
         #     logger.info(f"Result project: id={info.id}, name={info.name}")
 
-        # if is_production() is True:
         if self.__input_data_tabs is not None:
 
             @self.__input_data_tabs.value_changed
@@ -895,18 +955,18 @@ class Import(Application):
             if self.__step_one_btn.text == "Next":
                 self.__step_one_text.hide()
 
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_project_card.unlock()
                     self.__input_files_card.lock(
                         message="Press the button to restart from this step"
                     )
                     self.__layout.set_active_step(3)
 
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__input_project_card.unlock()
                     self.__layout.set_active_step(3)
 
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_files_card.lock(
                         message="Press the button to restart from this step"
                     )
@@ -914,6 +974,7 @@ class Import(Application):
                     self.__layout.set_active_step(2)
 
                 self.__step_one_btn.text = "Restart"
+                self.__step_one_btn.plain = True
                 self.__step_one_btn.icon = "zmdi zmdi-rotate-left"
 
                 self.__settings_card.unlock()
@@ -922,18 +983,18 @@ class Import(Application):
             elif self.__step_one_btn.text == "Restart":
                 self.__step_one_text.hide()
 
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_project_card.unlock()
                     self.__input_files_card.unlock()
                     self.__output_card.lock(message="Configure import settings to unlock this card")
                     self.__layout.set_active_step(2)
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__input_project_card.unlock()
                     self.__layout.set_active_step(2)
                     self.__output_card.lock(
                         message="Select destination project to unlock this card"
                     )
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_files_card.unlock()
                     self.__input_project_card.lock(
                         message="Configure import settings to unlock this card"
@@ -944,11 +1005,14 @@ class Import(Application):
                     )
 
                 self.__step_two_btn.text = "Next"
+                self.__step_two_btn.plain = False
                 self.__step_two_btn.icon = "zmdi zmdi-check"
                 self.__step_three_btn.text = "Next"
+                self.__step_three_btn.plain = False
                 self.__step_three_btn.icon = "zmdi zmdi-check"
 
                 self.__step_one_btn.text = "Next"
+                self.__step_one_btn.plain = False
                 self.__step_one_btn.icon = "zmdi zmdi-check"
                 self.__step_two_btn.disable()
                 self.__step_three_btn.disable()
@@ -960,7 +1024,7 @@ class Import(Application):
         @self.__step_two_btn.click
         def finish_step_two():
             if self.__step_two_btn.text == "Next":
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_files_card.lock()
                     self.__settings_card.lock(message="Press the button to restart from this step")
 
@@ -974,32 +1038,33 @@ class Import(Application):
                     self.__output_card.unlock()
                     self.__layout.set_active_step(4)
 
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__input_project_card.unlock()
                     self.__settings_card.lock(message="Press the button to restart from this step")
                     self.__layout.set_active_step(3)
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_files_card.lock()
                     self.__input_project_card.unlock()
                     self.__settings_card.lock(message="Press the button to restart from this step")
                     self.__layout.set_active_step(3)
 
                 self.__step_two_btn.text = "Restart"
+                self.__step_two_btn.plain = True
                 self.__step_two_btn.icon = "zmdi zmdi-rotate-left"
                 self.__step_three_btn.enable()
 
             elif self.__step_two_btn.text == "Restart":
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_files_card.lock()
                     self.__settings_card.unlock()
                     self.__layout.set_active_step(3)
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__settings_card.unlock()
                     self.__input_project_card.lock(
                         message="Configure import settings to unlock this card"
                     )
                     self.__layout.set_active_step(2)
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_files_card.lock()
                     self.__settings_card.unlock()
                     self.__input_project_card.lock(
@@ -1008,6 +1073,7 @@ class Import(Application):
                     self.__layout.set_active_step(2)
 
                 self.__step_three_btn.text = "Next"
+                self.__step_three_btn.plain = False
                 self.__step_three_btn.icon = "zmdi zmdi-check"
                 self.__step_three_btn.disable()
                 self.__output_card.lock()
@@ -1015,6 +1081,7 @@ class Import(Application):
                 self.__output_text.hide()
                 self.__start_button.disable()
                 self.__step_two_btn.text = "Next"
+                self.__step_two_btn.plain = False
                 self.__step_two_btn.icon = "zmdi zmdi-check"
 
         @self.__step_three_btn.click
@@ -1076,14 +1143,14 @@ class Import(Application):
 
             if self.__step_three_btn.text == "Next":
                 self.__step_three_text.hide()
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_files_card.unlock()
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__settings_card.lock()
                     self.__input_project_card.lock(
                         message="Press the button to restart from this step"
                     )
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__settings_card.lock()
                     self.__input_project_card.lock(
                         message="Press the button to restart from this step"
@@ -1100,21 +1167,22 @@ class Import(Application):
                 self.__layout.set_active_step(4)
 
                 self.__step_three_btn.text = "Restart"
+                self.__step_three_btn.plain = True
                 self.__step_three_btn.icon = "zmdi zmdi-rotate-left"
                 self.__output_card.unlock()
 
             elif self.__step_three_btn.text == "Restart":
                 self.__step_three_text.hide()
-                if self.__input_mode in ["dataset", "project"]:
+                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
                     self.__input_files_card.unlock()
                     self.__output_card.lock(message="Configure import settings to unlock this card")
-                elif self.__input_mode in ["file", "folder"]:
+                elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__settings_card.lock()
                     self.__input_project_card.unlock()
                     self.__output_card.lock(
                         message="Select destination project to unlock this card"
                     )
-                elif self.__input_mode == "ecosystem":
+                elif self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_project_card.unlock()
                     self.__settings_card.lock()
                     self.__output_card.lock(
@@ -1126,6 +1194,7 @@ class Import(Application):
                 self.__output_text.hide()
                 self.__start_button.disable()
                 self.__step_three_btn.text = "Next"
+                self.__step_three_btn.plain = False
                 self.__step_three_btn.icon = "zmdi zmdi-check"
 
         @self.__start_button.click
