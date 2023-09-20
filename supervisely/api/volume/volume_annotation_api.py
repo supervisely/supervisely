@@ -120,12 +120,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
-    def append(
-        self,
-        volume_id: int,
-        ann: VolumeAnnotation,
-        key_id_map: KeyIdMap = None,
-    ):
+    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -135,8 +130,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann: VolumeAnnotation
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :param sf_geometries: Dict where keys are hex of sf.key(), and values are geometries, which represented as NRRD in byte format
-        :type sf_geometries: Dict, optional
         :return: None
         :rtype: :class:`NoneType`
 
