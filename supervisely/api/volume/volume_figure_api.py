@@ -424,32 +424,52 @@ class VolumeFigureApi(FigureApi):
 
     def upload_sf_geometries(
         self,
-        spatial_figures: List[Union[VolumeFigure, str]],
-        geometries: Dict[str, bytes],
+        spatial_figures: List[UUID],
+        geometries: Dict[UUID, bytes],
         key_id_map: KeyIdMap,
     ):
         """
-        Upload spatial figure geometries as bytes to figures by given ID in project .
+        Upload geometries into spatial figures in project as bytes using their keys.
 
-        :param spatial_figures: List with VolumeFigure objects or figure key
-        :type spatial_figures: List[Union[VolumeFigure, str]]
-        :param geometries: Dict where keys are hex of sf.key(), and values are geometries, which represented as NRRD in byte format
-        :type geometries: Dict[bytes]
+        :param spatial_figures: List with figure UUID keys
+        :type spatial_figures: List[UUID]
+        :param geometries: Dict where keys are UUID of spatial figure, and values are geometries, which represented as NRRD in bytes.
+        :type geometries: Dict[UUID, bytes]
         :param key_id_map: KeyIdMap object (dict with bidict values)
         :type key_id_map: KeyIdMap
         :rtype: :class:`NoneType`
         :Usage example:
+        .. code-block:: python
+
+            import numpy as np
+            import supervisely as sly
+            from supervisely.volume.nrrd_encoder import encode
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 23772225
+            project_id = 28159
+            geometries = {}
+            key_id_map = sly.KeyIdMap()
+            geometry_bytes = encode(np.random.randint(2, size=(20, 20, 20), dtype=np.uint8))
+
+            vol_ann_json = api.volume.annotation.download(volume_id)
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+            spatial_figures = [sp_figure.key() for sp_figure in ann.spatial_figures]
+            for figure in spatial_figures:
+                geometries[figure] = geometry_bytes
+            api.volume.figure.upload_sf_geometries(spatial_figures, geometries, key_id_map)
         """
+
         if not spatial_figures:
             return
 
         for sf in spatial_figures:
-            if type(sf) == UUID:
-                figure_id = key_id_map.get_figure_id(sf)
-                geometry_bytes = geometries.get(sf)
-            else:
-                figure_id = key_id_map.get_figure_id(sf.key())
-                geometry_bytes = geometries.get(sf.key().hex)
+            figure_id = key_id_map.get_figure_id(sf)
+            geometry_bytes = geometries.get(sf)
             content_dict = {
                 ApiField.FIGURE_ID: str(figure_id),
                 ApiField.GEOMETRY: (str(figure_id), geometry_bytes, "application/sla"),
