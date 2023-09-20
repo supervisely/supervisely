@@ -302,9 +302,13 @@ class Inference:
         num_classes = None
         try:
             num_classes = len(self.get_classes())
+        except NotImplementedError:
+            logger.warn(f"get_classes() function not implemented for in {type(self)} object.")
+        except AttributeError:
+            logger.warn("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            self._api.logger.warn("self.get_classes() not working properly")
-            self._api.logger.exception(exc)
+            logger.warn("Unknown exception. Please, contact support")
+            logger.exception(exc)
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -337,13 +341,16 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            colors = get_predefined_colors(len(self.get_classes()))
-            classes = []
-            for name, rgb in zip(self.get_classes(), colors):
-                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
-            self._model_meta = ProjectMeta(classes)
-            self._get_confidence_tag_meta()
+            self.update_model_meta()
         return self._model_meta
+
+    def update_model_meta(self):
+        colors = get_predefined_colors(len(self.get_classes()))
+        classes = []
+        for name, rgb in zip(self.get_classes(), colors):
+            classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+        self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
 
     @property
     def task_id(self) -> int:
