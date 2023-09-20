@@ -95,3 +95,4 @@ from supervisely.app.widgets.docstring.docstring import Docstring
 from supervisely.app.widgets.markdown.markdown import Markdown
 from supervisely.app.widgets.class_balance.class_balance import ClassBalance
 from supervisely.app.widgets.image_slider.image_slider import ImageSlider
+from supervisely.app.widgets.rate.rate import Rate
