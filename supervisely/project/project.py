@@ -2376,15 +2376,15 @@ def read_single_project(
     dir: str,
     project_class: Optional[
         (
-            sly.Project
+            Project
             | sly.VideoProject
             | sly.VolumeProject
             | sly.PointcloudProject
             | sly.PointcloudEpisodeProject
         )
-    ] = sly.Project,
+    ] = Project,
 ) -> (
-    sly.Project
+    Project
     | sly.VideoProject
     | sly.VolumeProject
     | sly.PointcloudProject
@@ -2392,7 +2392,7 @@ def read_single_project(
 ):
     """
     Read project from given directory or tries to find project directory in subdirectories.
-    
+
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
     :param project_class: Project object of arbitrary modality

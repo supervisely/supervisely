@@ -23,13 +23,18 @@ PROJECT_ID = 18142
 batch_size = 10
 data = range(100)
 
-sly.download(api, 27677, "/tmp/lemmm/")
 
 from tqdm import tqdm
 
 # from supervisely.task.progress import WrapTqdm as tqdm
 
 # os.environ["ENV"] = "production"
+project_fs = sly.read_project(
+    "/home/grokhi/supervisely/dataset-ninja/pascal-voc-2012/APP_DATA/43489_18606_Football.tar/Football"
+)
+with tqdm(total=project_fs.total_items) as pbar:
+    # sly.download(api, 27677, "/tmp/lemmmmM/", progress_cb=pbar)
+    sly.upload("/tmp/lemmmmM/", api, 691, progress_cb=pbar)
 
 # with tqdm(total=len(data)) as pbar:
 #     for batch in sly.batched(data, batch_size):

@@ -35,7 +35,7 @@ def upload_run(src_dir: str, workspace_id: int, project_name: str = None) -> boo
     try:
         with tqdm.tqdm(total=project_fs.total_items) as pbar:
             sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
-
+            pbar.refresh()
         console.print(
             f"\nProject '{project_name}' has been uploaded sucessfully!\n", style="bold green"
         )

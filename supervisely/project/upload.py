@@ -63,13 +63,12 @@ def upload(
         # Pass values into the API constructor (optional, not recommended)
         # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
-        src_dir = 'your/local/source/dir'
+        src_dir = '/your/local/source/dir'
 
         # Upload image project
         project_fs = sly.read_project(src_dir)
-        num_images = project_fs.total_items
 
-        pbar = tqdm(desc="Uploading image project", total=num_images)
+        pbar = tqdm(desc="Uploading image project", total=project_fs.total_items)
         sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
 
         # Upload video project
@@ -87,9 +86,8 @@ def upload(
 
         # Upload pointcloud project
         project_fs = read_project(directory)
-        num_ptcl = project_fs.items_count
 
-        pbar = tqdm(desc="Uploading pointcloud project", total=num_ptcl)
+        pbar = tqdm(desc="Uploading pointcloud project", total=project_fs.total_items)
         sly.upload(
             src_dir,
             api,
@@ -100,9 +98,8 @@ def upload(
 
         # Upload pointcloud episodes project
         project_fs = read_project(src_dir)
-        num_ptclep = project_fs.items_count
 
-        with tqdm(desc="Upload pointcloud episodes project", total=num_ptclep) as pbar:
+        with tqdm(desc="Upload pointcloud episodes project", total=project_fs.total_items) as pbar:
             sly.upload(
                 src_dir,
                 api,
@@ -116,6 +113,7 @@ def upload(
 
     if progress_cb is not None:
         log_progress = False
+        kwargs["progress_cb"] = progress_cb
 
     if progress_cb is not None and project_fs.meta.project_type in (
         ProjectType.VIDEOS.value,
