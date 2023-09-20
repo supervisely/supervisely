@@ -92,3 +92,4 @@ from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
 from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
 from supervisely.app.widgets.docstring.docstring import Docstring
+from supervisely.app.widgets.markdown.markdown import Markdown
