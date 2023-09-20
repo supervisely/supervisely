@@ -30,9 +30,7 @@ def get_project_class(
 
 def read_project(
     dir: str,
-) -> Optional[
-    (Project | VideoProject | VolumeProject | PointcloudProject | PointcloudEpisodeProject)
-]:
+) -> Project | VideoProject | VolumeProject | PointcloudProject | PointcloudEpisodeProject | None:
     """
     Read project of arbitrary modality from given directory.
 

@@ -18,9 +18,9 @@ def download(
     api: Api,
     project_id: int,
     dest_dir: str,
-    dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = False,
-    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    dataset_ids: List[int] | None = None,
+    log_progress: bool | None = False,
+    progress_cb: tqdm | Callable | None = None,
     **kwargs,
 ) -> None:
     """

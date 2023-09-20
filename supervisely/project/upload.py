@@ -19,9 +19,9 @@ def upload(
     src_dir: str,
     api: Api,
     workspace_id: int,
-    project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
-    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    project_name: str | None = None,
+    log_progress: bool | None = True,
+    progress_cb: tqdm | Callable | None = None,
     **kwargs,
 ) -> None:
     """
