@@ -284,19 +284,24 @@ class Mask3D(Geometry):
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
-
-        figure.geometry = Mask3D.from_file(file_path)
+        if not isinstance(figure.geometry, Mask3D):
+            raise Exception(f"You trying to add Mask3D geometry to {figure.geometry.name()}")
+        figure.geometry.data = Mask3D.from_file(file_path).data
 
     @staticmethod
     def to_figure_from_bytes(figure, geometry_bytes: bytes):
         """
-        Load Mask3D geometry from bytes.
+        Load Mask3D geometry data from bytes into the figure.
+        The current geometry data will be overwritten if geometry already exists.
 
         :param figure: Spatial figure object
         :type figure: VolumeFigure
         :param file_path: Bytes with NRRD file
         :type file_path: bytes
         """
+        if not isinstance(figure.geometry, Mask3D):
+            raise Exception(f"You trying to add Mask3D geometry to {figure.geometry.name()}")
+
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(geometry_bytes)
             data_array, _ = nrrd.read(temp_file.name)
@@ -304,18 +309,20 @@ class Mask3D(Geometry):
         figure.geometry.data = data_array
 
     @classmethod
-    def to_figure_from_array(cls, figure, data_array: np.ndarray):
+    def to_figure_from_array(cls, figure, data_array: np.ndarray) -> None:
         """
-        Load Mask3D geometry from file to figure.
+        Load Mask3D geometry from array into the figure.
+        The current geometry data will be overwritten if geometry already exists.
 
         :param figure: Spatial figure object
         :type figure: VolumeFigure
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
-        if figure.geometry:
-            figure.geometry.dat = data_array
-        else:
+
+        try:
+            figure.geometry.data = data_array
+        except:
             figure.geometry = cls(data_array)
 
     def to_json(self) -> Dict:
@@ -526,7 +533,7 @@ class Mask3D(Geometry):
     def add_mask_2d(
         self,
         mask_2d: np.ndarray,
-        plane_name: str,
+        plane_name: str["axial", "sagittal", "coronal"],
         slice_index: int,
         origin: Optional[List[int]] = None,
     ):
@@ -535,7 +542,7 @@ class Mask3D(Geometry):
 
         :param mask_2d: 2D array with flat mask
         :type mask_2d: np.ndarray
-        :param plane_name: Name of the plane
+        :param plane_name: Name of the plane: "axial", "sagittal", "coronal"
         :type plane_name: str
         :param slice_index: Slice index of volume figure
         :type slice_index: int
@@ -543,12 +550,12 @@ class Mask3D(Geometry):
         :type origin: Optional[List[int]], NoneType
         """
 
-        mask_2d = np.fliplr(mask_2d)
-        mask_2d = np.rot90(mask_2d, 2)
-
         from supervisely.volume_annotation.plane import Plane
 
         Plane.validate_name(plane_name)
+
+        mask_2d = np.fliplr(mask_2d)
+        mask_2d = np.rot90(mask_2d, 2)
 
         if plane_name == "axial":
             new_shape = self.data.shape[:2]
