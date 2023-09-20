@@ -93,3 +93,4 @@ from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableAr
 from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
 from supervisely.app.widgets.docstring.docstring import Docstring
 from supervisely.app.widgets.markdown.markdown import Markdown
+from supervisely.app.widgets.class_balance.class_balance import ClassBalance
