@@ -24,12 +24,16 @@ class Markdown(Widget):
     def get_json_state(self) -> Dict:
         return {}
 
-    def set_value(self, value: str):
-        if not isinstance(value, str):
-            raise TypeError("Value type has to be str.")
-        self._md = value
+    def set_content(self, content: str):
+        if not isinstance(content, str):
+            raise TypeError("Content type has to be str.")
+        self._md = content
         DataJson()[self.widget_id]["md"] = self._md
         DataJson().send_changes()
+    
+    def get_content(self):
+        self._md = DataJson()[self.widget_id]["md"]
+        return self._md
 
     def get_height(self):
         self._height = DataJson()[self.widget_id]["options"]["height"]
