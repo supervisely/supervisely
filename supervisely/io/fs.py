@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal, Generator, Any
+from typing import Dict, List, Optional, Callable, Union, Literal, Generator
 
 import os
 import re
@@ -11,7 +11,6 @@ import errno
 import tarfile
 import subprocess
 import requests
-import sys
 from requests.structures import CaseInsensitiveDict
 from collections.abc import Mapping
 
