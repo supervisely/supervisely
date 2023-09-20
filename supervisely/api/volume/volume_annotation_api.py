@@ -378,9 +378,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             )
             ann = ann.add_objects([new_object])
             key_id_map.add_object(new_object.key(), id=new_o_id)
-
-            # add new spatial figure to ann
-            ann.spatial_figures.append(new_object.figure)
             key_id_map.add_figure(new_object.figure.key(), id=new_f_id)
 
             os.rename(path, f"{os.path.dirname(path)}/{new_object.figure.key().hex}.nrrd")
