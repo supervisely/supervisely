@@ -80,7 +80,6 @@ from supervisely.app.widgets.stepper.stepper import Stepper
 from supervisely.app.widgets.slider.slider import Slider
 from supervisely.app.widgets.copy_to_clipboard.copy_to_clipboard import CopyToClipboard
 from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
-from supervisely.app.widgets.image_region_selector.image_region_selector import ImageRegionSelector
 from supervisely.app.widgets.collapse.collapse import Collapse
 from supervisely.app.widgets.team_files_selector.team_files_selector import TeamFilesSelector
 from supervisely.app.widgets.icons.icons import Icons
@@ -96,3 +95,4 @@ from supervisely.app.widgets.markdown.markdown import Markdown
 from supervisely.app.widgets.class_balance.class_balance import ClassBalance
 from supervisely.app.widgets.image_slider.image_slider import ImageSlider
 from supervisely.app.widgets.rate.rate import Rate
+from supervisely.app.widgets.carousel.carousel import Carousel
