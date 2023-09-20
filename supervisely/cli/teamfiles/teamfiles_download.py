@@ -6,7 +6,6 @@ import tqdm
 
 import traceback
 from rich.console import Console
-from dotenv import load_dotenv
 import os
 
 
@@ -20,12 +19,12 @@ def download_directory_run(
     console = Console()
 
     api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if not api:
+    if api is False:
         return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(
-            f"\nError: Team with ID={team_id} is either not exist or not found in your account\n",
+            f"\nError: Team with ID={team_id} is either doesn't exist or not found in your account\n",
             style="bold red",
         )
         return False
@@ -40,11 +39,13 @@ def download_directory_run(
     if len(files) == 0:
         if ignore_if_not_exists:
             console.print(
-                f"\nWarning: Team files folder '{remote_dir}' not exists. Skipping command...\n",
+                f"\nWarning: Team files folder '{remote_dir}' doesn't exist. Skipping command...\n",
                 style="bold yellow",
             )
             return True
-        console.print(f"\nError: Team files folder '{remote_dir}' not exists\n", style="bold red")
+        console.print(
+            f"\nError: Team files folder '{remote_dir}' doesn't exist\n", style="bold red"
+        )
         return False
 
     if filter is not None:
@@ -78,7 +79,7 @@ def download_directory_run(
             api.file.download_directory(team_id, remote_dir, local_dir, progress_cb=pbar)
 
         console.print(
-            f"\nTeam files directory was sucessfully downloaded to the local path: '{local_dir}'.\n",
+            f"\nTeam files directory has been sucessfully downloaded to the local path: '{local_dir}'.\n",
             style="bold green",
         )
         return True

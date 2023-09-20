@@ -114,10 +114,10 @@ def upload(
 
     project_fs = read_project(src_dir)
 
-    if progress_cb:
+    if progress_cb is not None:
         log_progress = False
 
-    if progress_cb and project_fs.meta.project_type in (
+    if progress_cb is not None and project_fs.meta.project_type in (
         ProjectType.VIDEOS.value,
         ProjectType.VOLUMES.value,
     ):

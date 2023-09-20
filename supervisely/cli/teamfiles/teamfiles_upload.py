@@ -32,12 +32,12 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     console = Console()
 
     api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if not api:
+    if api is False:
         return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(
-            f"\nError: Team with ID={team_id} is either not exist or not found in your acocunt\n",
+            f"\nError: Team with ID={team_id} is either doesn't exist or not found in your acocunt\n",
             style="bold red",
         )
 
@@ -48,14 +48,14 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         remote_dir += "/"
 
     if not os.path.isdir(local_dir):
-        console.print(f"\nError: local directory '{local_dir}' not exists\n", style="bold red")
+        console.print(f"\nError: Local directory '{local_dir}' doesn't exist\n", style="bold red")
         return False
 
     files = api.file.list2(team_id, remote_dir, recursive=True)
     if len(files) > 0:
         if files[0].path.startswith(remote_dir):
             console.print(
-                f"\nError: Team files folder '{remote_dir}' already exists. Please enter unique path for your folder.\n",
+                f"\nError: The Team files folder '{remote_dir}' already exists. Please enter unique path for your folder.\n",
                 style="bold red",
             )
             return False
@@ -63,7 +63,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         pass  # new folder
 
     console.print(
-        f"\nUploading local directory '{local_dir}' to Team files ...\n",
+        f"\nUploading local directory '{local_dir}' to the Team files ...\n",
         style="bold",
     )
 
@@ -94,7 +94,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             print("Please wait ...")
 
             progress = MyTqdm(
-                desc="Uploading to Team files...", total=total_size, unit="B", unit_scale=True
+                desc="Uploading to the Team files...", total=total_size, unit="B", unit_scale=True
             )
             progress_size_cb = partial(upload_monitor_console, progress=progress)
 
@@ -132,7 +132,7 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
         )
 
         console.print(
-            f"\nLocal directory was sucessfully uploaded to Team files with following path: '{remote_dir}'.\n",
+            f"\nLocal directory was sucessfully uploaded to the following path: '{remote_dir}'.\n",
             style="bold green",
         )
         return True

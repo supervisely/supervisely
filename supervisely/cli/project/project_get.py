@@ -3,15 +3,13 @@ import traceback
 from rich.console import Console
 
 import supervisely as sly
-from dotenv import load_dotenv
-import os
 
 
 def get_project_name_run(project_id: int) -> bool:
     console = Console()
 
     api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if not api:
+    if api is False:
         return False
 
     try:
