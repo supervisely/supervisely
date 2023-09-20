@@ -2374,15 +2374,14 @@ class Project:
 
 def read_single_project(
     dir: str,
-    project_class: Optional[
-        (
-            Project
-            | sly.VideoProject
-            | sly.VolumeProject
-            | sly.PointcloudProject
-            | sly.PointcloudEpisodeProject
-        )
-    ] = Project,
+    project_class: (
+        Project
+        | sly.VideoProject
+        | sly.VolumeProject
+        | sly.PointcloudProject
+        | sly.PointcloudEpisodeProject
+        | None
+    ) = Project,
 ) -> (
     Project
     | sly.VideoProject
