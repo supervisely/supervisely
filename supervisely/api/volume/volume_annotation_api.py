@@ -14,7 +14,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.mask_3d import Mask3D
 
@@ -397,3 +397,63 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 ann.spatial_figures.remove(sf)
 
         return ann, project_meta
+
+    def append_objects(
+        self,
+        volume_id: int,
+        objects: Union[List[VolumeObject], VolumeObjectCollection],
+        key_id_map: KeyIdMap = None,
+    ) -> None:
+        """
+        Add new VolumeObjects with spatial figures to VolumeAnnotation in project.
+        NOTE: Supported only objects with spatial figures (Mask3D)
+
+        :param volume_id: Volume ID
+        :type volume_id: int
+        :param objects: Volume objects with spatial figures (Mask3D)
+        :type objects: List of :class:`VolumeObject` or :class:`VolumeObjectCollection
+        :param key_id_map: KeyIdMap
+        :type key_id_map: KeyIdMap, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            volume_id = 151344
+            volume_info = api.volume.get_info_by_id(volume_id)
+            mask_3d_path = "data/mask/lung.nrrd"
+            lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
+            lung = sly.VolumeObject(lung_obj_class, mask_3d=mask_3d_path)
+            objects = sly.VolumeObjectCollection([lung])
+            api.volume.annotation.append_objects(volume_info.id, objects)
+        """
+
+        if isinstance(objects, List):
+            objects = VolumeObjectCollection(objects)
+
+        # check if objects without figures
+        for _, vobject in objects._collection.items():
+            try:
+                vobject.figure
+            except AttributeError as e:
+                e.args = [
+                    "There is no spatial figure in 'VolumeObject'",
+                ]
+                raise e
+
+        sf_figures = [vobject.figure for vobject in objects]
+        volume_meta = self._api.volume.get_info_by_id(volume_id).meta
+        ann = VolumeAnnotation(volume_meta, objects, spatial_figures=sf_figures)
+        self.append(volume_id, ann, key_id_map)
