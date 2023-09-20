@@ -63,7 +63,6 @@ INSTALL_REQUIRES = [
     "imutils==0.5.4",
     "urllib3==1.26.15",
     "cacheout==0.14.1",
-    "markdown",
 ]
 
 ALT_INSTALL_REQUIRES = {
