@@ -555,7 +555,7 @@ class Mask3D(Geometry):
         Plane.validate_name(plane_name)
 
         mask_2d = np.fliplr(mask_2d)
-        mask_2d = np.rot90(mask_2d, 2)
+        mask_2d = np.rot90(mask_2d, 1, (1, 0))
 
         if plane_name == "axial":
             new_shape = self.data.shape[:2]
