@@ -84,42 +84,56 @@ class NodesFlow(Widget):
             options: List[Option] = [],
             inputs: List[Input] = [],
             outputs: List[Output] = [],
+            inputs_up: bool = False,
+            position: Optional[dict] = None,
         ):
             self.id = id
             self.name = name
             self._width = width
+            self._inputs_up = inputs_up
             self.options = options
             self.inputs = inputs
             self.outputs = outputs
+            self._position = position
 
         def to_json(self):
             return {
                 "id": self.id,
                 "name": self.name,
                 "width": self._width,
+                "twoColumn": self._inputs_up,
                 "options": [option.to_json() for option in self.options],
                 "inputs": [i.to_json() for i in self.inputs],
                 "outputs": [o.to_json() for o in self.outputs],
+                "position": self._position
             }
+        
+        def set_position(self, position):
+            self._position = position
 
     class Routes:
         SAVE = "save_cb"
         FLOW_CHANGED = "flow_changed_cb"
         FLOW_STATE_CHANGED = "flow_state_changed_cb"
+        CONTEXT_MENU_CLICKED = "context_menu_item_click_cb"
+        SIDEBAR_TOGGLE_HANDLED = "sidebar_toggled_cb"
 
     def __init__(
         self,
         nodes: List[Node] = [],
         height: str = None,
+        context_menu: dict = None,
         widget_id: str = None,
     ):
         self.nodes = nodes
         self.height = height if height is not None else "500px"
+        self.context_menu = context_menu
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
             "height": self.height,
+            "contextMenuItems": self.context_menu,
         }
 
     def get_json_state(self):
@@ -215,3 +229,26 @@ class NodesFlow(Widget):
     def set_edges(self, edges: List[dict]):
         StateJson()[self.widget_id]["flow"]["edges"] = edges
         StateJson().send_changes()
+    
+    def context_menu_clicked(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.CONTEXT_MENU_CLICKED)
+        server = self._sly_app.get_server()
+        self._contex_menu_item_click_handled = True
+
+        @server.post(route_path)
+        def _click():
+            item = StateJson()[self.widget_id]["selectedContextItem"]
+            func(item)
+        
+        return _click
+    
+    def sidebar_toggled(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.SIDEBAR_TOGGLE_HANDLED)
+        server = self._sly_app.get_server()
+        self._sidebar_toggle_handled = True
+
+        @server.post(route_path)
+        def _click():
+            func()
+        
+        return _click
