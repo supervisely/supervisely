@@ -2,7 +2,6 @@ from typing import Callable, List, Optional, Union
 
 from tqdm import tqdm
 
-import supervisely as sly
 from supervisely.api.api import Api
 from supervisely.project import read_project
 from supervisely.project.pointcloud_episode_project import (
@@ -13,15 +12,16 @@ from supervisely.project.project import upload_project
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import upload_video_project
 from supervisely.project.volume_project import upload_volume_project
+from supervisely import get_project_class
 
 
 def upload(
     src_dir: str,
     api: Api,
     workspace_id: int,
-    project_name: str | None = None,
-    log_progress: bool | None = True,
-    progress_cb: tqdm | Callable | None = None,
+    project_name: Optional[None] = None,
+    log_progress: Optional[bool] = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
     """
@@ -121,7 +121,7 @@ def upload(
     ):
         log_progress = True
 
-    project_class = sly.get_project_class(project_fs.meta.project_type)
+    project_class = get_project_class(project_fs.meta.project_type)
 
     project_class.upload(
         src_dir,

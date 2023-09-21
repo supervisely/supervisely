@@ -1,11 +1,11 @@
 from supervisely.cli.cli import cli
 import supervisely as sly
-from typing import Callable, Literal
+from typing import Callable, Literal, Union
 
 
 def _handle_creds_error_to_console(
     api_func: sly.Api, printer: Callable = print
-) -> sly.Api | Literal[False]:
+) -> Union[sly.Api, Literal[False]]:
     try:
         api = api_func()
     except (KeyError, ValueError) as e:

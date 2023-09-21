@@ -2,7 +2,7 @@ from typing import Callable, List, Optional, Union
 
 from tqdm import tqdm
 
-import supervisely as sly
+from supervisely import get_project_class
 from supervisely.api.api import Api
 from supervisely.project.pointcloud_episode_project import (
     download_pointcloud_episode_project,
@@ -18,9 +18,9 @@ def download(
     api: Api,
     project_id: int,
     dest_dir: str,
-    dataset_ids: List[int] | None = None,
-    log_progress: bool | None = False,
-    progress_cb: tqdm | Callable | None = None,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
     """
@@ -144,7 +144,7 @@ def download(
 
     project_info = api.project.get_info_by_id(project_id)
 
-    project_class = sly.get_project_class(project_info.type)
+    project_class = get_project_class(project_info.type)
 
     project_class.download(
         api=api,

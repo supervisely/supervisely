@@ -2374,21 +2374,22 @@ class Project:
 
 def read_single_project(
     dir: str,
-    project_class: (
-        Project
-        | sly.VideoProject
-        | sly.VolumeProject
-        | sly.PointcloudProject
-        | sly.PointcloudEpisodeProject
-        | None
-    ) = Project,
-) -> (
-    Project
-    | sly.VideoProject
-    | sly.VolumeProject
-    | sly.PointcloudProject
-    | sly.PointcloudEpisodeProject
-):
+    project_class: Optional[
+        Union[
+            Project,
+            sly.VideoProject,
+            sly.VolumeProject,
+            sly.PointcloudProject,
+            sly.PointcloudEpisodeProject,
+        ]
+    ] = Project,
+) -> Union[
+    Project,
+    sly.VideoProject,
+    sly.VolumeProject,
+    sly.PointcloudProject,
+    sly.PointcloudEpisodeProject,
+]:
     """
     Read project from given directory or tries to find project directory in subdirectories.
 
