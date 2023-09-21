@@ -128,24 +128,30 @@ class ImageSlider(Widget):
     def get_json_state(self):
         return {"selected": self._selected}
 
-    def get_selected_preview_url(self):
-        selected = StateJson()[self.widget_id]["selected"]
+    def get_selected_preview(self):
+        selected = StateJson()[self.widget_id].get("selected")
         if selected is None:
             return None
         return selected["preview"]
 
-    def set_selected_preview_url(self, value: str):
+    def set_selected_preview(self, value: str):
         self._update_selected_by_url(value)
 
-    def get_selected_preview_idx(self):
-        selected = StateJson()[self.widget_id]["selected"]
+    def get_selected_idx(self):
+        selected = StateJson()[self.widget_id].get("selected")
         if selected is None:
             return None
         self._selected_idx = selected["idx"]
         return self._selected_idx
 
-    def set_selected_preview_idx(self, value: int):
+    def set_selected_idx(self, value: int):
         self._update_selected_by_idx(value)
+    
+    def get_selected_examples(self):
+        selected = StateJson()[self.widget_id].get("selected")
+        if selected is None:
+            return None
+        return selected["moreExamples"]
 
     @property
     def is_selectable(self):
