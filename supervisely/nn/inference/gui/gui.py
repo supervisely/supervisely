@@ -431,7 +431,7 @@ class InferenceGUI(BaseInferenceGUI):
         try:
             classes = inference.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for in {type(inference)} object.")
+            logger.warn(f"get_classes() function not implemented for {type(inference)} object.")
         except AttributeError:
             logger.warn("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
