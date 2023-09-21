@@ -7,7 +7,7 @@ import base64
 import gzip
 import nrrd
 import tempfile
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Literal
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
     SPACE_ORIGIN,
@@ -533,7 +533,7 @@ class Mask3D(Geometry):
     def add_mask_2d(
         self,
         mask_2d: np.ndarray,
-        plane_name: str["axial", "sagittal", "coronal"],
+        plane_name: Literal["axial", "sagittal", "coronal"],
         slice_index: int,
         origin: Optional[List[int]] = None,
     ):
