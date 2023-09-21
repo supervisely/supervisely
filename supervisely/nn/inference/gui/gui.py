@@ -261,9 +261,6 @@ class InferenceGUI(BaseInferenceGUI):
             self._models_table.enable()
         if self._support_custom_models:
             self._model_path_input.enable()
-        # self._model_inference_settings_widget.hide()
-        # self._model_classes_widget.hide()
-        # self._model_info_widget.hide()
         Progress("model deployment canceled", 1).iter_done_report()
 
     def _set_pretrained_models(self, models):
@@ -293,7 +290,7 @@ class InferenceGUI(BaseInferenceGUI):
             selected_model = self._model_select.get_value()
             cols = list(models[selected_model]["checkpoints"][0].keys())
             rows = [
-                [value for param_name, value in model.items()]
+                [value for _, value in model.items()]
                 for model in models[selected_model]["checkpoints"]
             ]
         else:
