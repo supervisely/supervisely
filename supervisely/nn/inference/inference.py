@@ -298,7 +298,7 @@ class Inference:
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def get_info(self) -> dict:
+    def get_info(self) -> Dict[str, Any]:
         num_classes = None
         try:
             num_classes = len(self.get_classes())
@@ -320,6 +320,16 @@ class Inference:
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
         }
+
+    def get_human_readable_info(self):
+        hr_info = {}
+        info = self.get_info()
+
+        for name, data in info.items():
+            hr_name = name.replace("_", " ").capitalize()
+            hr_info[hr_name] = data
+
+        return hr_info
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -712,6 +722,10 @@ class Inference:
         @server.post(f"/get_session_info")
         def get_session_info():
             return self.get_info()
+
+        @server.post("/get_human_readable_session_info")
+        def get_human_readable_session_info():
+            return self.get_human_readable_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
