@@ -13,7 +13,7 @@ from supervisely.project.volume_project import VolumeProject
 
 def get_project_class(
     project_type: str,
-) -> Project | VideoProject | VolumeProject | PointcloudProject | PointcloudEpisodeProject:
+) -> Union[Project, VideoProject, VolumeProject, PointcloudProject, PointcloudEpisodeProject]:
     type_mapping = {
         ProjectType.IMAGES.value: Project,
         ProjectType.VIDEOS.value: VideoProject,
@@ -30,7 +30,9 @@ def get_project_class(
 
 def read_project(
     dir: str,
-) -> Project | VideoProject | VolumeProject | PointcloudProject | PointcloudEpisodeProject | None:
+) -> Optional[
+    Union[Project, VideoProject, VolumeProject, PointcloudProject, PointcloudEpisodeProject]
+]:
     """
     Read project of arbitrary modality from given directory.
 
