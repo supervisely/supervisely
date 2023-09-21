@@ -13,7 +13,7 @@ class ImageSlider(Widget):
         examples: List[List[str]] = None,
         combined_data: List[dict] = None,
         height: int = 200,
-        selectable: bool = False,
+        selectable: bool = True,
         preview_idx: int = None,
         preview_url: str = None,
         widget_id: str = None,
