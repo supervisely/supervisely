@@ -29,11 +29,15 @@ class Field(str, enum.Enum):
 def get_data_dir():
     dir = None
 
-    task_id = os.environ.get("TASK_ID")
+    task_id = sly_env.task_id(raise_not_found=False)
     if task_id is not None:
         dir = f"/sessions/{task_id}"
 
-    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    if is_production():
+        keys = ["SLY_APP_DATA_DIR"]
+    else:
+        keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+
     for key in keys:
         value = os.environ.get(key)
         if value is not None:
@@ -52,7 +56,11 @@ def get_data_dir():
 def get_synced_data_dir():
     dir = "/sly-app-data"
 
-    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    if is_production():
+        keys = ["SLY_APP_DATA_DIR"]
+    else:
+        keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+
     for key in keys:
         value = os.environ.get(key)
         if value is not None:
