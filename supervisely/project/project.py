@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Gen
 import random
 import numpy as np
 from tqdm import tqdm
+import supervisely as sly
 
 from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -2371,17 +2372,37 @@ class Project:
         )
 
 
-def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
+def read_single_project(
+    dir: str,
+    project_class: Optional[
+        Union[
+            Project,
+            sly.VideoProject,
+            sly.VolumeProject,
+            sly.PointcloudProject,
+            sly.PointcloudEpisodeProject,
+        ]
+    ] = Project,
+) -> Union[
+    Project,
+    sly.VideoProject,
+    sly.VolumeProject,
+    sly.PointcloudProject,
+    sly.PointcloudEpisodeProject,
+]:
     """
     Read project from given directory or tries to find project directory in subdirectories.
+
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
-    :param project_class: Project object
-    :type project_class: :class:`Project<Project>`
-    :return: Project class object
-    :rtype: :class:`Project<Project>`
+    :param project_class: Project object of arbitrary modality
+    :type project_class: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`, optional
+
+    :return: Project class object of arbitrary modality
+    :rtype: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`
     :raises: RuntimeError if the given directory and it's subdirectories contains more than one valid project folder.
     :raises: FileNotFoundError if the given directory or any of it's subdirectories doesn't contain valid project folder.
+
     :Usage example:
      .. code-block:: python
         import supervisely as sly

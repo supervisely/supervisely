@@ -207,8 +207,8 @@ class Api:
             api = sly.Api.from_env()
         """
 
-        server_address = sly_env.server_address()
-        token = sly_env.api_token()
+        server_address = sly_env.server_address(raise_not_found=False)
+        token = sly_env.api_token(raise_not_found=False)
 
         if is_development() and None in (server_address, token):
             env_path = os.path.expanduser(env_file)
