@@ -486,7 +486,6 @@ class InferenceGUI(BaseInferenceGUI):
                 self._success_label,
                 self._serve_button,
                 self._change_model_button,
-                self._model_full_info_card,
             ],
             gap=3,
         )
