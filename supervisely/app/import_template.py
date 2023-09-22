@@ -391,6 +391,7 @@ class Import(Application):
                     team_id=env.team_id(),
                     path=self.__storage_upload_path,
                     show_reset=True,
+                    selection_type="folder",
                 )
                 self.__input_data_tabs = RadioTabs(
                     titles=[
