@@ -50,8 +50,8 @@ class ClassBalance(Widget):
         return {
             "content": {
                 "maxValue": self._max_value,
-                "segments": self._segments,
-                "rows": self._rows_data,
+                "segments": deepcopy(self._segments),
+                "rows": deepcopy(self._rows_data),
             },
             "options": {
                 "selectable": self._selectable,
@@ -60,7 +60,7 @@ class ClassBalance(Widget):
                 "clickableSegment": self._clickable_segment,
                 "maxHeight": self._max_height,
             },
-            "imageSliderData": self._slider_data,
+            "imageSliderData": deepcopy(self._slider_data),
             "imageSliderOptions": {"selectable": False, "height": self._rows_height},
         }
 
