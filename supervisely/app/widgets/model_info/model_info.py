@@ -2,6 +2,7 @@ try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
+from typing import Optional
 import supervisely as sly
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
@@ -29,8 +30,16 @@ class ModelInfo(Widget):
         data = {}
         data["teamId"] = self._team_id
         if self._session_id is not None:
-            data["model_info"] = self._model_info
             data["model_connected"] = True
+            if self._model_info is None:
+                data["model_info"] = self._api.task.send_request(
+                    self._session_id, "get_human_readable_session_info", data={}
+                )
+            else:
+                data["model_info"] = self._model_info
+        elif self._session_id is None and self._model_info is not None:
+            data["model_info"] = self._model_info
+            data["model_connected"] = False
         else:
             data["model_info"] = None
             data["model_connected"] = False
@@ -44,14 +53,19 @@ class ModelInfo(Widget):
     def set_session_id(self, session_id):
         self._session_id = session_id
         self._model_info = self._api.task.send_request(
-            self._session_id, "get_session_info", data={}
+            self._session_id, "get_human_readable_session_info", data={}
         )
         self.update_data()
         self.update_state()
         DataJson().send_changes()
         StateJson().send_changes()
 
-    def set_model_info(self, session_id: int, model_info: dict):
+    def set_model_info(
+        self, session_id: Optional[int], model_info: Optional[dict] = None
+    ):
+        if session_id is None and model_info is None:
+            raise ValueError("Both session_id and model_info can't be None.")
+
         self._session_id = session_id
         self._model_info = model_info
         self.update_data()
