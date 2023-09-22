@@ -37,17 +37,17 @@ class Dropdown(Widget):
     def __init__(
         self,
         items: List[Dropdown.Item] = None,
-        trigger: Literal["hover", "click"] = "hover",
+        header: str = "Dropdown List",
+        trigger: Literal["hover", "click"] = "click",
         menu_align: Literal["start", "end"] = "end",
         hide_on_click: bool = True,
-        header: str = "Dropdown List",
         widget_id: str = None,
     ):
-        self._trigger = trigger
         self._items = items
+        self._header = header
+        self._trigger = trigger
         self._menu_align = menu_align
         self._hide_on_click = hide_on_click
-        self._header = header
         self._changes_handled = False
         self._clicked_value = None
 
@@ -60,26 +60,28 @@ class Dropdown(Widget):
         return {
             "trigger": self._trigger,
             "items": self._set_items(),
-            "menu_align": self._menu_align,
-            "hide_on_click": self._hide_on_click,
+            "menuAlign": self._menu_align,
+            "hideOnClick": self._hide_on_click,
             "header": self._header,
         }
 
     def get_json_state(self):
-        return {"clicked_value": self._clicked_value}
+        return {"clickedValue": self._clicked_value}
 
-    def get_clicked_value(self):
-        return StateJson()[self.widget_id]["clicked_value"]
+    def get_value(self):
+        return StateJson()[self.widget_id]["clickedValue"]
 
-    def set_clicked_value(self, value: str):
+    def set_value(self, value: str):
         self._clicked_value = value
-        StateJson()[self.widget_id]["clicked_value"] = self._clicked_value
+        StateJson()[self.widget_id]["clickedValue"] = self._clicked_value
         StateJson().send_changes()
 
     def get_items(self):
         return DataJson()[self.widget_id]["items"]
 
     def set_items(self, value: List[Dropdown.Item]):
+        if not all(isinstance(item, Dropdown.Item) for item in value):
+            raise TypeError("Items must be a list of Dropdown.Item")
         self._items = value
         DataJson()[self.widget_id]["items"] = self._set_items()
         DataJson().send_changes()
@@ -89,40 +91,12 @@ class Dropdown(Widget):
         DataJson()[self.widget_id]["items"] = self._set_items()
         DataJson().send_changes()
 
-    def expand_to_hover(self):
-        self._trigger = "hover"
-        DataJson()[self.widget_id]["trigger"] = self._trigger
-        DataJson().send_changes()
-
-    def expand_to_click(self):
-        self._trigger = "click"
-        DataJson()[self.widget_id]["trigger"] = self._trigger
-        DataJson().send_changes()
-
-    def set_menu_align_from_start(self):
-        self._menu_align = "start"
-        DataJson()[self.widget_id]["menu_align"] = self._menu_align
-        DataJson().send_changes()
-
-    def set_menu_align_from_end(self):
-        self._menu_align = "end"
-        DataJson()[self.widget_id]["menu_align"] = self._menu_align
-        DataJson().send_changes()
-
-    def unable_hide_on_click(self):
-        self._hide_on_click = True
-        DataJson()[self.widget_id]["hide_on_click"] = self._hide_on_click
-        DataJson().send_changes()
-
-    def disable_hide_on_click(self):
-        self._hide_on_click = False
-        DataJson()[self.widget_id]["hide_on_click"] = self._hide_on_click
-        DataJson().send_changes()
-
     def get_header_text(self):
         return DataJson()[self.widget_id]["header"]
 
     def set_header_text(self, value: str):
+        if type(value) is not str:
+            raise TypeError("Header value must be a string")
         self._header = value
         DataJson()[self.widget_id]["header"] = self._header
         DataJson().send_changes()
@@ -134,7 +108,7 @@ class Dropdown(Widget):
 
         @server.post(route_path)
         def _click():
-            res = self.get_clicked_value()
+            res = self.get_value()
             func(res)
 
         return _click

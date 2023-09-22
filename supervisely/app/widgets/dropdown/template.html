@@ -1,14 +1,13 @@
 <el-dropdown
 
   {% if widget._changes_handled == true %}
-  @command="state.{{{ widget.widget_id }}}.clicked_value = $event;
+  @command="state.{{{ widget.widget_id }}}.clickedValue = $event;
             post('/{{{ widget.widget_id }}}/value_changed')"
   {% endif %}
 
   :trigger="data.{{{widget.widget_id}}}.trigger"
-  :menu-align="data.{{{widget.widget_id}}}.menu_align"
-  :hide-on-click="data.{{{widget.widget_id}}}.hide_on_click"
-  
+  :menu-align="data.{{{widget.widget_id}}}.menuAlign"
+  :hide-on-click="data.{{{widget.widget_id}}}.hideOnClick" 
 >
   <span class="el-dropdown-link">
     {{data.{{{widget.widget_id}}}.header}}<i class="el-icon-caret-bottom el-icon--right"></i>
@@ -25,5 +24,3 @@
     >
   </el-dropdown-menu>
 </el-dropdown>
-
-
