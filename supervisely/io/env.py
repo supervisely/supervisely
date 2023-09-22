@@ -187,7 +187,7 @@ def app_name(raise_not_found=True):
     return _parse_from_env(
         name="app_name",
         keys=["APP_NAME"],
-        postprocess_fn=lambda x: int(x),
+        postprocess_fn=lambda x: str(x),
         default="Supervisely App (debug)",
         raise_not_found=raise_not_found,
     )
