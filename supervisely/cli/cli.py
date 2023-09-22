@@ -40,9 +40,14 @@ def cli():
     required=False,
     help="[Optional] Release description (max length is 64 symbols)",
 )
+@click.option(
+    "--share",
+    is_flag=True,
+    help="[Optional] Add this flag to share the private app on your private instance",
+)
 @click.option("-y", is_flag=True, help="[Optional] Add this flag for autoconfirm")
 @click.option("-s", "--slug", required=False, help="[Optional] For internal use")
-def release(path, sub_app, slug, y, release_version, release_description):
+def release(path, sub_app, slug, y, release_version, release_description, share):
     from supervisely.cli.release import run
 
     try:
@@ -53,6 +58,7 @@ def release(path, sub_app, slug, y, release_version, release_description):
             autoconfirm=y,
             release_version=release_version,
             release_description=release_description,
+            share=share,
         )
         if success:
             print("App released sucessfully!")

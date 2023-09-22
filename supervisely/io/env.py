@@ -201,3 +201,33 @@ def user_id(raise_not_found=True):
         default=None,
         raise_not_found=raise_not_found,
     )
+
+
+def content_origin_update_interval():
+    return _parse_from_env(
+        name="content_origin_update_interval",
+        keys=["CONTENT_ORIGIN_UPDATE_INTERVAL"],
+        postprocess_fn=lambda x: float(x),
+        default=0.5,
+        raise_not_found=False,
+    )
+
+
+def smart_cache_ttl(raise_not_found=False, default=120):
+    return _parse_from_env(
+        name="smart_cache_ttl",
+        keys=["SMART_CACHE_TTL"],
+        postprocess_fn=lambda x: max(int(x), 1),
+        default=default,
+        raise_not_found=raise_not_found,
+    )
+
+
+def smart_cache_size(raise_not_found=False, default=256):
+    return _parse_from_env(
+        name="smart_cache_size",
+        keys=["SMART_CACHE_SIZE"],
+        postprocess_fn=lambda x: max(int(x), 1),
+        default=default,
+        raise_not_found=raise_not_found,
+    )

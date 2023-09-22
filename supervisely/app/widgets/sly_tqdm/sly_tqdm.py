@@ -1,16 +1,22 @@
 import asyncio
 import copy
+import math
 import re
 import sys
 import weakref
+from functools import partial
+from typing import Any, Union
 
 from tqdm import tqdm
 
-from supervisely.app.fastapi import run_sync
+from supervisely import is_development, is_production
+
+# from supervisely import _original_tqdm as tqdm
 from supervisely.app import DataJson
+from supervisely.app.fastapi import run_sync
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets import Widget
-from supervisely.sly_logger import logger, EventType
+from supervisely.sly_logger import EventType, logger
 
 
 def extract_by_regexp(regexp, string):
@@ -21,8 +27,11 @@ def extract_by_regexp(regexp, string):
         return ""
 
 
+UNITS = ["B", "KB", "MB", "GB", "TB"]
+
+
 class _slyProgressBarIO:
-    def __init__(self, widget_id, message=None, total=None):
+    def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
         self.widget_id = widget_id
 
         self.progress = {
@@ -35,6 +44,11 @@ class _slyProgressBarIO:
 
         self.prev_state = self.progress.copy()
         self.total = total
+
+        self.unit_scale = unit_scale
+        self.unit = unit
+        if self.unit_scale and self.unit == "B":
+            self.unit = self.get_unit()
 
         self._n = 0
 
@@ -49,12 +63,17 @@ class _slyProgressBarIO:
             return
 
         self.progress["n"] = self._n
+
         extra = {
             "event_type": EventType.PROGRESS,
             "subtask": self.progress.get("message", None),
             "current": self._n,
             "total": self.total,
         }
+
+        if self.unit_scale and self.unit != "it":
+            extra["current_label"] = f"{self.bytes_to_unit(self._n)} {self.unit}"
+            extra["total_label"] = f"{self.bytes_to_unit(self.total)} {self.unit}"
 
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
@@ -70,7 +89,7 @@ class _slyProgressBarIO:
                     self.progress["percent"] = 100
                 else:
                     self.progress["percent"] = int(self._n / self.total * 100)
-                self.progress["info"] = extract_by_regexp(r"(\d+(?:\.\d+\w+)?)*/.*\]", new_text)
+                self.progress["info"] = extract_by_regexp(r"(\d+(?:\.\d+\w+)?)*\w*/.*\]", new_text)
             else:
                 self.progress["percent"] = int(self._n)
                 self.progress["info"] = extract_by_regexp(r"(\d+(?:\.\d+\w+)?)*.*\]", new_text)
@@ -98,15 +117,58 @@ class _slyProgressBarIO:
         self.flush(synchronize_changes=False)
         self.print_progress_to_supervisely_tasks_section()
 
+    def get_unit(self) -> str:
+        """Returns the unit of the progress bar according to the total number of bytes.
+
+        :return: unit of the progress bar
+        :rtype: str
+        """
+        total = self.total
+        for unit in UNITS:
+            if total < 1000:
+                return unit
+            total /= 1000
+
+    def bytes_to_unit(self, bytes: int) -> Union[float, Any]:
+        """Returns a human-readable string representation of bytes according to the
+        self.unit.
+
+        :param bytes: number of bytes
+        :type bytes: int
+        :return: converted size from bytes to self.unit
+        :rtype: Union[float, Any]
+        """
+        if not isinstance(bytes, int) or self.unit not in UNITS:
+            return bytes
+
+        for idx, unit in enumerate(UNITS):
+            if self.unit == unit:
+                return round(bytes / (1000**idx), 2)
+
 
 class CustomTqdm(tqdm):
     def __init__(self, widget_id, message, *args, **kwargs):
         extracted_total = copy.copy(
             tqdm(iterable=kwargs["iterable"], total=kwargs["total"], disable=True).total
         )
+        unit_scale = kwargs.get("unit_scale")
+        unit = kwargs.get("unit")
+
+        self._iteration_value = 0
+        self._iteration_number = 0
+        self._iteration_locked = False
+        self._total_monitor_size = 0
+
+        self.unit_divisor = 1024
+
+        # self.n = 0
+        # self.reported_cnt = 0
+        # self.report_every = max(1, math.ceil(self.extracted_total / 100))
 
         super().__init__(
-            file=_slyProgressBarIO(widget_id, message, extracted_total), *args, **kwargs
+            file=_slyProgressBarIO(widget_id, message, extracted_total, unit, unit_scale),
+            *args,
+            **kwargs,
         )
 
     def refresh(self, *args, **kwargs):
@@ -124,6 +186,36 @@ class CustomTqdm(tqdm):
         super(CustomTqdm, self).__del__()
         if self.fp is not None:
             self.fp.__del__()
+
+    def _progress_monitor(self, monitor):
+        if is_development() and self.n >= self.total:
+            self.refresh()
+            self.close()
+
+        if monitor.bytes_read == 8192:
+            self._total_monitor_size += monitor.len
+
+        if self._total_monitor_size > self.total:
+            self.total = self._total_monitor_size
+
+        if not self._iteration_locked:
+            # if is_development():
+            super().update(self._iteration_value + monitor.bytes_read - self.n)
+            # else:
+            #     self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
+
+        if monitor.bytes_read == monitor.len and not self._iteration_locked:
+            self._iteration_value += monitor.len
+            self._iteration_number += 1
+            self._iteration_locked = True
+            if is_development():
+                self.refresh()
+
+        if monitor.bytes_read < monitor.len:
+            self._iteration_locked = False
+
+    def get_partial(self):
+        return partial(self._progress_monitor)
 
 
 class SlyTqdm(Widget):
@@ -222,6 +314,11 @@ class SlyTqdm(Widget):
 
     def get_json_state(self):
         return None
+
+    def set_message(self, message):
+        self.message = message
+        DataJson()[self.widget_id]["message"] = message
+        DataJson().send_changes()
 
 
 class Progress(SlyTqdm):

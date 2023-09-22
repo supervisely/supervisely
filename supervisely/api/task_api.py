@@ -828,10 +828,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         context: Optional[Dict] = {},
         skip_response: bool = False,
         timeout: Optional[int] = 60,
+        outside_request: bool = True,
     ):
         """send_request"""
         if type(data) is not dict:
             raise TypeError("data argument has to be a dict")
+        context["outside_request"] = outside_request
         resp = self._api.post(
             "tasks.request.direct",
             {
@@ -880,3 +882,16 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 }
 
         self._api.post("tasks.meta.update", data)
+
+    def _update_app_content(self, task_id: int, data_patch: List[Dict] = None, state: Dict = None):
+        payload = {}
+        if data_patch is not None and len(data_patch) > 0:
+            payload[ApiField.DATA] = data_patch
+        if state is not None and len(state) > 0:
+            payload[ApiField.STATE] = state
+
+        resp = self._api.post(
+            "tasks.app-v2.data.set",
+            {ApiField.TASK_ID: task_id, ApiField.PAYLOAD: payload},
+        )
+        return resp.json()

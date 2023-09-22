@@ -135,6 +135,9 @@ class VideoInfo(NamedTuple):
     #: :class:`dict`: A dictionary containing metadata about the video file.
     file_meta: dict
 
+    #: :class:`dict`: Video object meta information.
+    meta: dict
+
     #: :class:`dict`: A dictionary containing custom data associated with the video.
     custom_data: dict
 
@@ -255,6 +258,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.UPDATED_AT,
             ApiField.TAGS,
             ApiField.FILE_META,
+            ApiField.META,
             ApiField.CUSTOM_DATA,
             ApiField.PROCESSING_PATH,
         ]
@@ -303,7 +307,10 @@ class VideoApi(RemoveableBulkModuleApi):
         return VideoInfo(**d)
 
     def get_list(
-        self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        raw_video_meta: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
@@ -312,6 +319,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
+        :param raw_video_metadata: Get normalized metadata from server.
+        :type raw_video_metadata: bool
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -337,7 +346,12 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         return self.get_list_all_pages(
-            "videos.list", {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}
+            "videos.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters or [],
+                ApiField.RAW_VIDEO_META: raw_video_meta,
+            },
         )
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
@@ -1062,7 +1076,16 @@ class VideoApi(RemoveableBulkModuleApi):
         if update_headers:
             self.upsert_infos(hashes, infos)
             self._api.pop_header("x-skip-processing")
-        metas = self._api.import_storage.get_meta_by_hashes(hashes)
+
+        unique_hashes = list(set(hashes))
+        unique_metas = self._api.import_storage.get_meta_by_hashes(unique_hashes)
+
+        hash_meta_dict = {}
+        for hash_value, meta in zip(unique_hashes, unique_metas):
+            hash_meta_dict[hash_value] = meta
+
+        metas = [hash_meta_dict[hash_value] for hash_value in hashes]
+
         metas2 = [meta["meta"] for meta in metas]
 
         for name, hash, meta in zip(names, hashes, metas2):

@@ -1,10 +1,11 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
+from supervisely.project.project_type import ProjectType
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget, SelectProject, generate_id, Checkbox, Empty
 from supervisely.api.api import Api
@@ -27,6 +28,7 @@ class SelectDataset(Widget):
         disabled: Optional[bool] = False,
         widget_id: str = None,
         select_all_datasets: bool = False,
+        allowed_project_types: List[ProjectType] = [],
     ):
         self._api = Api()
         self._default_id = default_id
@@ -38,6 +40,7 @@ class SelectDataset(Widget):
         self._team_selector = None
         self._all_datasets_checkbox = Empty()
         self._project_selector = Empty()
+        self._project_types = allowed_project_types
         self._changes_handled = False
         self._disabled = disabled
 
@@ -62,6 +65,7 @@ class SelectDataset(Widget):
                 default_id=self._project_id,
                 show_label=True,
                 size=self._size,
+                allowed_types=allowed_project_types,
                 widget_id=generate_id(),
             )
             if self._disabled is True:
@@ -85,6 +89,7 @@ class SelectDataset(Widget):
             "valueProperty": "id",
             "multiple": self._multiselect,
             "flat": True,
+            "availableProjectTypes": [ptype.value for ptype in self._project_types],
         }
         if self._size is not None:
             res["options"]["size"] = self._size
@@ -112,6 +117,8 @@ class SelectDataset(Widget):
                 project_id = self._project_id
             else:
                 project_id = self._project_selector.get_selected_id()
+            if project_id is None:
+                return [None]
             datasets = self._api.dataset.get_list(project_id)
             ids = [ds.id for ds in datasets]
             return ids

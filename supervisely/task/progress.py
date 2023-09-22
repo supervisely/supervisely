@@ -1,12 +1,15 @@
 # coding: utf-8
 from __future__ import annotations
 
+import inspect
 import math
-from typing import Optional
 from functools import partial
+from typing import Optional
+
 from tqdm import tqdm
-from supervisely.sly_logger import logger, EventType
-from supervisely._utils import sizeof_fmt, is_development, is_production
+
+from supervisely._utils import is_development, is_production, sizeof_fmt
+from supervisely.sly_logger import EventType, logger
 
 
 # float progress of training, since zero
@@ -376,6 +379,8 @@ class tqdm_sly(tqdm, Progress):
         self._iteration_locked = False
         self._total_monitor_size = 0
 
+        self.unit_divisor = 1024
+
         relevant_args = {
             "total": "total_cnt",
             "desc": "message",
@@ -439,11 +444,29 @@ class tqdm_sly(tqdm, Progress):
             else:
                 kwargs.setdefault("total_cnt", args[2])  # args[2]==total
             if len(args) < 12:  # i.e. 'unit' not set as a positional argument
-                if kwargs.pop("unit", None) == "B" and kwargs.pop("unit_scale", None):
+                if kwargs.get("unit") in [
+                    "",
+                    "B",
+                    "k",
+                    "M",
+                    "G",
+                    "T",
+                    "P",
+                    "E",
+                    "Z",
+                ] and kwargs.pop("unit_scale", None):
                     kwargs["is_size"] = True
+                    kwargs.pop("unit")
             else:
-                if args[11] == "B" and args[12] == True:  # i.e. unit=="B" and unit_scale==True
+                if (
+                    args[11] in ["", "B", "k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
+                ):  # i.e. unit=="B" and unit_scale==True
                     kwargs["is_size"] = True
+
+            tqdm_init_params = inspect.signature(tqdm.__init__).parameters.keys()
+            for keyword in tqdm_init_params:
+                if keyword in kwargs:
+                    kwargs.pop(keyword)
 
             Progress.__init__(
                 self,

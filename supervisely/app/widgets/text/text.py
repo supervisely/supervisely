@@ -1,3 +1,4 @@
+from typing import Optional
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
@@ -42,6 +43,7 @@ class Text(Widget):
         self,
         text: str = None,
         status: Literal["text", "info", "success", "warning", "error"] = "text",
+        color: Optional[str] = None,
         widget_id: str = None,
     ):
         self._text = None
@@ -51,6 +53,8 @@ class Text(Widget):
         self._text_color = None
         super().__init__(widget_id=widget_id, file_path=__file__)
         self.set(text, status)
+        if color is not None:
+            self.color = color
 
     def get_json_data(self):
         return {
@@ -66,6 +70,9 @@ class Text(Widget):
 
     @property
     def text(self):
+        return self._text
+    
+    def get_value(self):
         return self._text
 
     @text.setter
@@ -92,3 +99,13 @@ class Text(Widget):
     def set(self, text: str, status: Literal["text", "info", "success", "warning", "error"]):
         self.text = text
         self.status = status
+
+    @property
+    def color(self):
+        return self._text_color
+    
+    @color.setter
+    def color(self, value):
+        self._text_color = value
+        self.update_data()
+        DataJson().send_changes()

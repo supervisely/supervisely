@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 try:
     from typing import Literal
@@ -15,16 +15,18 @@ class Container(Widget):
         direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 10,
         fractions: List[int] = None,
-        overflow: Literal["scroll", "wrap"] = "scroll",
+        overflow: Optional[Literal["scroll", "wrap"]] = "scroll",
+        style: str = "",
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
         self._overflow = overflow
+        self._style = style
         
-        if self._overflow not in ["scroll", "wrap"]:
-            raise ValueError("overflow can be only 'scroll' or 'wrap'")
+        if self._overflow not in ["scroll", "wrap", None]:
+            raise ValueError("overflow can be only 'scroll', 'wrap' or None")
         
         if self._direction == "vertical" and self._overflow == "wrap":
             raise ValueError("overflow can be 'wrap' only with horizontal direction")

@@ -4,7 +4,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
 import time
-from functools import partial
+from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
@@ -82,6 +82,9 @@ class Inference:
 
         self._use_gui = use_gui
         self._gui = None
+
+        self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
+
         if use_gui:
             self.initialize_gui()
 
@@ -579,26 +582,11 @@ class Inference:
             extra=dict(
                 w=video_info.frame_width,
                 h=video_info.frame_height,
-                n_frames=video_info.frames_count,
+                n_frames=state["framesCount"],
             ),
         )
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
-        inf_video_interface = InferenceVideoInterface(
-            api=api,
-            start_frame_index=state.get("startFrameIndex", 0),
-            frames_count=state.get("framesCount", video_info.frames_count - 1),
-            frames_direction=state.get("framesDirection", "forward"),
-            video_info=video_info,
-            imgs_dir=video_images_path,
-        )
-        inf_video_interface.download_frames()
-
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-
-        n_frames = len(inf_video_interface.images_paths)
-        logger.debug(f"Total frames to infer: {n_frames}")
 
         if async_inference_request_uuid is not None:
             try:
@@ -612,7 +600,27 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = n_frames
+
+            sly_progress.total = state["framesCount"]
+            inference_request["preparing_progress"]["total"] = state["framesCount"]
+
+        # progress
+        inf_video_interface = InferenceVideoInterface(
+            api=api,
+            start_frame_index=state.get("startFrameIndex", 0),
+            frames_count=state.get("framesCount", video_info.frames_count - 1),
+            frames_direction=state.get("framesDirection", "forward"),
+            video_info=video_info,
+            imgs_dir=video_images_path,
+            preparing_progress=inference_request["preparing_progress"],
+        )
+        inf_video_interface.download_frames()
+
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
+        n_frames = len(inf_video_interface.images_paths)
+        logger.debug(f"Total frames to infer: {n_frames}")
 
         results = []
         for i, image_path in enumerate(inf_video_interface.images_paths):
@@ -652,6 +660,7 @@ class Inference:
             "cancel_inference": False,
             "result": None,
             "pending_results": [],
+            "preparing_progress": {"current": 0, "total": 1},
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -698,22 +707,22 @@ class Inference:
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'inference_image_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
             return self._inference_image_id(request.state.api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            logger.debug(f"'inference_image_url' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
-            logger.debug(f"'inference_batch_ids' request in json format:{request.json()}")
+            logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
-            logger.debug(f"'inference_video_id' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
             return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
@@ -755,7 +764,7 @@ class Inference:
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
-            logger.debug(f"'inference_image_id_async' request in json format:{request.json()}")
+            logger.debug(f"'inference_image_id_async' request in json format:{request.state.state}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -781,7 +790,7 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(request: Request):
-            logger.debug(f"'inference_video_id_async' request in json format:{request.json()}")
+            logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -875,6 +884,16 @@ class Inference:
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
+        @server.post(f"/get_preparing_progress")
+        def get_preparing_progress(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+            return inference_request["preparing_progress"]
+
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
     log_extra = {
@@ -893,3 +912,59 @@ def _convert_sly_progress_to_dict(sly_progress: Progress):
         "current": sly_progress.current,
         "total": sly_progress.total,
     }
+
+
+def _create_notify_after_complete_decorator(
+    msg: str,
+    *,
+    arg_pos: Optional[int] = None,
+    arg_key: Optional[str] = None,
+):
+    """
+    Decorator to log message after wrapped function complete.
+
+    :param msg: info message
+    :type msg: str
+    :param arg_pos: position of argument in `args` to insert in message
+    :type arg_pos: Optional[int]
+    :param arg_key: key of argument in `kwargs` to insert in message.
+        If an argument can be both positional and keyword,
+        it is preferable to declare both 'arg_pos' and 'arg_key'
+    :type arg_key: Optional[str]
+    :Usage example:
+
+     .. code-block:: python
+
+        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+        def wrapped_function(arg1, kwarg1)
+            return
+
+        wrapped_function("pos_arg", kwarg1="key_arg")
+        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+
+            if arg_key is not None and arg_key in kwargs:
+                arg = kwargs[arg_key]
+                logger.info(msg, str(arg))
+            elif arg_pos is not None and arg_pos < len(args):
+                arg = args[arg_pos]
+                logger.info(msg, str(arg))
+            else:
+                logger.info(msg, "some")
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)

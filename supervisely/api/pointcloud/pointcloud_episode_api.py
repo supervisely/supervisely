@@ -8,6 +8,7 @@ from supervisely.api.pointcloud.pointcloud_api import PointcloudApi
 from supervisely.api.pointcloud.pointcloud_episode_annotation_api import (
     PointcloudEpisodeAnnotationAPI,
 )
+from supervisely.api.pointcloud.pointcloud_episode_object_api import PointcloudEpisodeObjectApi
 
 
 class PointcloudEpisodeApi(PointcloudApi):
@@ -44,6 +45,7 @@ class PointcloudEpisodeApi(PointcloudApi):
     def __init__(self, api):
         super().__init__(api)
         self.annotation = PointcloudEpisodeAnnotationAPI(api)
+        self.object = PointcloudEpisodeObjectApi(api)
         self.tag = None
 
     def _convert_json_info(self, info: dict, skip_missing=True):

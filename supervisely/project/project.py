@@ -5,7 +5,7 @@ import shutil
 from collections import namedtuple
 import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable
+from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
 import random
 import numpy as np
 from tqdm import tqdm
@@ -22,12 +22,15 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     list_files,
     list_files_recursively,
+    list_dir_recursively,
+    get_file_name_with_ext,
     mkdir,
     copy_file,
     get_subdirs,
     dir_exists,
     dir_empty,
     silent_remove,
+    file_exists,
 )
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
@@ -544,6 +547,7 @@ class Dataset(KeyObject):
         if ann_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
+        ann_path = ann_path.strip("/")
         return os.path.join(self.ann_dir, ann_path)
 
     def get_img_info_path(self, img_name: str) -> str:
@@ -970,7 +974,9 @@ class Dataset(KeyObject):
             return
 
         self._check_add_item_name(item_name)
+        item_name = item_name.strip("/")
         dst_img_path = os.path.join(self.item_dir, item_name)
+        os.makedirs(os.path.dirname(dst_img_path), exist_ok=True)
         with open(dst_img_path, "wb") as fout:
             fout.write(item_raw_bytes)
         self._validate_added_item_or_die(dst_img_path)
@@ -1143,6 +1149,7 @@ class Dataset(KeyObject):
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
         dst_ann_path = self.get_ann_path(item_name)
+        os.makedirs(os.path.dirname(dst_ann_path), exist_ok=True)
         dump_json_file(ann, dst_ann_path, indent=4)
 
     def get_item_paths(self, item_name: str) -> ItemPaths:
@@ -1169,7 +1176,8 @@ class Dataset(KeyObject):
             # ann_path: /home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_0748.jpeg.json
         """
         return ItemPaths(
-            img_path=self.get_item_path(item_name), ann_path=self.get_ann_path(item_name)
+            img_path=self.get_item_path(item_name),
+            ann_path=self.get_ann_path(item_name),
         )
 
     def __len__(self):
@@ -1181,6 +1189,32 @@ class Dataset(KeyObject):
 
     def __iter__(self):
         return next(self)
+
+    def items(self) -> Generator[Tuple[str]]:
+        """
+        This method is used to iterate over dataset items, receiving item name, path to image and path to annotation
+        json file. It is useful when you need to iterate over dataset items and get paths to images and annotations.
+
+        :return: Generator object, that yields tuple of item name, path to image and path to annotation json file.
+        :rtype: Generator[Tuple[str]]
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            input = "path/to/local/directory"
+            # Creating Supervisely project from local directory.
+            project = sly.Project(input, sly.OpenMode.READ)
+
+            for dataset in project.datasets:
+                for item_name, image_path, ann_path in dataset.items():
+                    print(f"Item '{item_name}': image='{image_path}', ann='{ann_path}'")
+        """
+        for item_name in self._item_to_ann.keys():
+            img_path, ann_path = self.get_item_paths(item_name)
+            yield item_name, img_path, ann_path
 
     def delete_item(self, item_name: str) -> bool:
         """
@@ -1446,7 +1480,10 @@ class Project:
             if dataset_names is not None and ds.name not in dataset_names:
                 continue
             ds_stats = ds.get_classes_stats(
-                self.meta, return_objects_count, return_figures_count, return_items_count
+                self.meta,
+                return_objects_count,
+                return_figures_count,
+                return_items_count,
             )
             for stat_name, classes_stats in ds_stats.items():
                 if stat_name not in result.keys():
@@ -1741,19 +1778,17 @@ class Project:
                 img_path, ann_path = src_dataset.get_item_paths(item_name)
                 ann = Annotation.load_json_file(ann_path, src_project.meta)
 
-                seg_ann = ann.to_nonoverlapping_masks(
-                    dst_mapping
-                )  # rendered instances and filter classes
-
                 if segmentation_type == "semantic":
-                    seg_ann = seg_ann.add_bg_object(_bg_obj_class)
+                    seg_ann = ann.add_bg_object(_bg_obj_class)
 
                     dst_mapping[_bg_obj_class] = _bg_obj_class
                     seg_ann = seg_ann.to_nonoverlapping_masks(dst_mapping)  # get_labels with bg
 
                     seg_ann = seg_ann.to_segmentation_task()
                 elif segmentation_type == "instance":
-                    pass
+                    seg_ann = ann.to_nonoverlapping_masks(
+                        dst_mapping
+                    )  # rendered instances and filter classes
                 elif segmentation_type == "panoptic":
                     raise NotImplementedError
 
@@ -2338,44 +2373,62 @@ class Project:
 
 def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
     """
-    Read project from given directory.
-
-    :param dir: Path to project parent directory, which must contain only project folder.
+    Read project from given directory or tries to find project directory in subdirectories.
+    :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
     :param project_class: Project object
     :type project_class: :class:`Project<Project>`
     :return: Project class object
     :rtype: :class:`Project<Project>`
-    :raises: :class:`Exception` if given directory contains more than one subdirectory.
+    :raises: RuntimeError if the given directory and it's subdirectories contains more than one valid project folder.
+    :raises: FileNotFoundError if the given directory or any of it's subdirectories doesn't contain valid project folder.
     :Usage example:
-
      .. code-block:: python
-
         import supervisely as sly
-        proj_dir = "/home/admin/work/supervisely/source/project" # Is a Project's parent directory containing project folder!
+        proj_dir = "/home/admin/work/supervisely/source/project" # Project directory or directory with project subdirectory.
         project = sly.read_single_project(proj_dir)
     """
-    try:
-        project_fs = project_class(dir, OpenMode.READ)
-        return project_fs
-    except Exception:
-        pass
+    project_dirs = [project_dir for project_dir in find_project_dirs(dir, project_class)]
+    if len(project_dirs) > 1:
+        raise RuntimeError(
+            f"The given directory {dir} and it's subdirectories contains more than one valid project folder. "
+            f"The following project folders were found: {project_dirs}. "
+            "Ensure that you have only one project in the given directory and it's subdirectories."
+        )
+    elif len(project_dirs) == 0:
+        raise FileNotFoundError(
+            f"The given directory {dir} or any of it's subdirectories doesn't contain valid project folder."
+        )
+    return project_class(project_dirs[0], OpenMode.READ)
 
-    projects_in_dir = get_subdirs(dir)
-    if len(projects_in_dir) != 1:
-        raise RuntimeError("Found {} dirs instead of 1".format(len(projects_in_dir)))
 
-    project_dir = os.path.join(dir, projects_in_dir[0])
-    try:
-        project_fs = project_class(project_dir, OpenMode.READ)
-    except Exception as e:
-        projects_in_dir = get_subdirs(project_dir)
-        if len(projects_in_dir) != 1:
-            raise e
-        project_dir = os.path.join(project_dir, projects_in_dir[0])
-        project_fs = project_class(project_dir, OpenMode.READ)
-
-    return project_fs
+def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> str:
+    """Yields directories, that contain valid project folder in the given directory or in any of it's subdirectories.
+    :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
+    :type dir: str
+    :param project_class: Project object
+    :type project_class: :class:`Project<Project>`
+    :return: Path to directory, that contain meta.json file.
+    :rtype: str
+    :Usage example:
+     .. code-block:: python
+        import supervisely as sly
+        # Local folder (or any of it's subdirectories) which contains sly.Project files.
+        input_directory = "/home/admin/work/supervisely/source"
+        for project_dir in sly.find_project_dirs(input_directory):
+            project_fs = sly.Project(meta_json_dir, sly.OpenMode.READ)
+            # Do something with project_fs
+    """
+    paths = list_dir_recursively(dir)
+    for path in paths:
+        if get_file_name_with_ext(path) == "meta.json":
+            parent_dir = os.path.dirname(path)
+            project_dir = os.path.join(dir, parent_dir)
+            try:
+                project_class(project_dir, OpenMode.READ)
+                yield project_dir
+            except Exception:
+                pass
 
 
 def _download_project(

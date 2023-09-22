@@ -5,7 +5,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
 
@@ -61,6 +61,21 @@ class TeamFilesSelector(Widget):
     def get_json_state(self) -> Dict:
         return {"selected": self._selected}
 
+    def get_selected_items(self) -> List[dict]:
+        selected = StateJson()[self.widget_id]["selected"]
+        return [item for item in selected]
+
     def get_selected_paths(self) -> List[str]:
         selected = StateJson()[self.widget_id]["selected"]
         return [item["path"] for item in selected]
+
+    def set_team_id(self, team_id: int):
+        if type(team_id) != int:
+            raise ValueError(f"team_id must be int, got {type(team_id)}")
+        if team_id == self._team_id:
+            return
+        DataJson()[self.widget_id]["teamId"] = None
+        DataJson().send_changes()
+        self._team_id = team_id
+        DataJson()[self.widget_id]["teamId"] = self._team_id
+        DataJson().send_changes()

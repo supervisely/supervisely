@@ -87,7 +87,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         return self._download(video_info.dataset_id, video_id)
 
     def append(
-        self, video_id: int, ann: VideoAnnotation, key_id_map: Optional[KeyIdMap] = None
+        self,
+        video_id: int,
+        ann: VideoAnnotation,
+        key_id_map: Optional[KeyIdMap] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
@@ -98,6 +102,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type ann: VideoAnnotation
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
+        :param progress: Progress.
+        :type progress: Optional[Union[tqdm, Callable]]
         :return: None
         :rtype: :class:`NoneType`
 
@@ -127,6 +133,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             ann.objects,
             ann.figures,
             key_id_map,
+            progress_cb,
         )
 
     def upload_paths(
@@ -161,8 +168,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api = sly.Api.from_env()
 
             video_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.video.annotation.upload_paths(video_ids, ann_pathes, meta)
+            ann_paths = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+            api.video.annotation.upload_paths(video_ids, ann_paths, meta)
         """
         # video_ids from the same dataset
 

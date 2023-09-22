@@ -331,6 +331,8 @@ class ApiField:
     """"""
     FIGURE_ID = "figureId"
     """"""
+    FIGURE_IDS = "figureIds"
+    """"""
     VALUE = "value"
     """"""
     ZOOM_FACTOR = "zoomFactor"
@@ -451,9 +453,29 @@ class ApiField:
     """"""
     PROJECTS = "projects"
     """"""
+    URL = "url"
+    """"""
+    ANN_URL = "annotationsUrl"
+    """"""
     ARCHIVE_URL = "archiveUrl"
     """"""
+    ANN_ARCHIVE_URL = "annotationsArchiveUrl"
+    """"""
     BACKUP_ARCHIVE = "backupArchive"
+    """"""
+    SKIP_EXPORTED = "skipExported"
+    """"""
+    FROM = "from"
+    """"""
+    TO = "to"
+    """"""
+    DATA = "data"
+    """"""
+    DURATION = "duration"
+    """"""
+    RAW_VIDEO_META = "rawVideoMeta"
+    """"""
+    IS_DIR = "isDir"
     """"""
 
 
@@ -740,7 +762,6 @@ class ModuleApi(ModuleApiBase):
     WAIT_ATTEMPT_TIMEOUT_SEC = ModuleApiBase.WAIT_ATTEMPT_TIMEOUT_SEC
     """Number of seconds for intervals between attempts."""
 
-
     def __init__(self, api):
         super().__init__(api)
         self._api = api
@@ -818,7 +839,7 @@ class ModuleApi(ModuleApiBase):
             images = api.image.get_list(dataset_id)
             print(images)
             # Output: [
-                ImageInfo(id=19369642, ...) 
+                ImageInfo(id=19369642, ...)
                 ImageInfo(id=19369643, ...)
                 ImageInfo(id=19369644, ...)
             ]
@@ -1042,7 +1063,7 @@ class RemoveableModuleApi(ModuleApi):
     def remove(self, id):
         """
         Remove an entity with the specified ID from the Supervisely server.
-        
+
         :param id: Entity ID in Supervisely
         :type id: int
         """
@@ -1083,7 +1104,7 @@ class RemoveableBulkModuleApi(ModuleApi):
     def remove_batch(self, ids, progress_cb=None, batch_size=50):
         """
         Remove entities in batches from the Supervisely server.
-        
+
         :param ids: IDs of entities in Supervisely.
         :type ids: List[int]
         :param progress_cb: Function for control remove progress.
@@ -1119,7 +1140,7 @@ class RemoveableBulkModuleApi(ModuleApi):
     def remove(self, id):
         """
         Remove an entity with the specified ID from the Supervisely server.
-        
+
         :param id: Entity ID in Supervisely.
         :type id: int
         :Usage example:

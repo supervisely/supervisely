@@ -1,4 +1,5 @@
 import copy
+from typing import Optional
 import uuid
 
 from supervisely.annotation.annotation import Annotation
@@ -16,6 +17,7 @@ class LabeledImage(GridGallery):
         resize_on_zoom: bool = False,
         fill_rectangle: bool = True,
         border_width: int = 3,
+        view_height: Optional[int] = None,
         widget_id: str = None,
     ):
         self._image_id = None
@@ -27,12 +29,33 @@ class LabeledImage(GridGallery):
             resize_on_zoom=resize_on_zoom,
             fill_rectangle=fill_rectangle,
             border_width=border_width,
+            view_height=view_height,
             widget_id=widget_id,
         )
 
-    def set(self, title, image_url, ann: Annotation = None, image_id=None, zoom_to=None, zoom_factor=1.2, title_url=None):
+    def set(
+        self,
+        title,
+        image_url,
+        ann: Annotation = None,
+        image_id=None,
+        zoom_to=None,
+        zoom_factor=1.2,
+        title_url=None,
+        force_clean_up=False,
+    ):
         self.clean_up()
-        self.append(image_url=image_url, annotation=ann, title=title, zoom_to=zoom_to, zoom_factor=zoom_factor, title_url=title_url)
+        if force_clean_up:
+            # if image url is the same, we need to force clean up
+            DataJson().send_changes()
+        self.append(
+            image_url=image_url,
+            annotation=ann,
+            title=title,
+            zoom_to=zoom_to,
+            zoom_factor=zoom_factor,
+            title_url=title_url,
+        )
         self._image_id = image_id
         DataJson().send_changes()
 

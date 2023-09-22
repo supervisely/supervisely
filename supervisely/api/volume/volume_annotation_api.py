@@ -135,6 +135,10 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_id = 19581134
             api.volume.annotation.append(volume_id, volume_ann)
         """
+        if ann.spatial_figures:
+            figures = ann.figures + ann.spatial_figures
+        else:
+            figures = ann.figures
 
         info = self._api.volume.get_info_by_id(volume_id)
         self._append(
@@ -146,7 +150,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_id,
             ann.tags,
             ann.objects,
-            ann.figures,
+            figures,
             key_id_map,
         )
 
@@ -200,8 +204,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
             self.append(volume_id, ann, key_id_map)
 
-            # create empty figures for meshes
-            self._api.volume.figure.append_bulk(volume_id, ann.spatial_figures, key_id_map)
             # upload existing interpolations or create on the fly and and add them to empty mesh figures
             self._api.volume.figure.upload_stl_meshes(
                 volume_id, ann.spatial_figures, key_id_map, interpolation_dir

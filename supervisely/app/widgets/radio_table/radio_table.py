@@ -150,7 +150,7 @@ class RadioTable(Widget):
         DataJson().send_changes()
 
     def select_row(self, row_index):
-        if row_index < 0 or row_index >= len(self._rows) - 1:
+        if row_index < 0 or row_index > len(self._rows) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()

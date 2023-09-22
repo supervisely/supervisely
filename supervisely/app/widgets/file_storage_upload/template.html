@@ -1,6 +1,7 @@
 <div>
   <sly-file-storage-upload
-    :options="{ folder: data.{{{widget.widget_id}}}.path }"
+    :team-id="data.{{{widget.widget_id}}}.team_id"
+    :options="data.{{{widget.widget_id}}}.options"
     @files-uploaded="state.{{{widget.widget_id}}}.files = $event"
   >
   </sly-file-storage-upload>

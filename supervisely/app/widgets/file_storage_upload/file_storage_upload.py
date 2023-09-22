@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 
 from supervisely.api.api import Api
 from supervisely.app import DataJson, StateJson
@@ -11,19 +11,24 @@ class FileStorageUpload(Widget):
         team_id: int,
         path: str,
         change_name_if_conflict: Optional[bool] = False,
+        show_reset: Optional[bool] = False,
+        selection_type: Optional[Literal["file", "folder"]] = "file",
         widget_id: str = None,
     ):
         self._api = Api()
         self._team_id = team_id
         self._change_name_if_conflict = change_name_if_conflict
         self._path = self._get_path(path)
+
+        self._show_reset = show_reset
+        self._selection_type = selection_type
         self._files = []
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _set_path(self, path: str):
         self._path = self._get_path(path)
-        DataJson()[self.widget_id]["path"] = self._path
+        DataJson()[self.widget_id]["options"]["path"] = self._path
         DataJson().send_changes()
 
     def _get_path(self, path: str):
@@ -33,14 +38,21 @@ class FileStorageUpload(Widget):
         return path
 
     def get_json_data(self):
-        return {"path": self._path}
+        return {
+            "team_id": self._team_id,
+            "options": {
+                "path": self._path,
+                "showReset": self._show_reset,
+                "selectionType": self._selection_type,
+            },
+        }
 
     def get_json_state(self):
         return {"files": self._files}
 
     @property
     def path(self):
-        return DataJson()[self.widget_id]["path"]
+        return DataJson()[self.widget_id]["options"]["path"]
 
     @path.setter
     def path(self, path: str):
@@ -49,8 +61,13 @@ class FileStorageUpload(Widget):
     def set_path(self, path: str):
         self._set_path(path)
 
+    def get_team_id(self):
+        return self._team_id
+
     def get_uploaded_paths(self) -> Union[List[str], None]:
         response = StateJson()[self.widget_id]["files"]
+        if len(response) == 0 or response is None:
+            return []
         uploaded_files = response["uploadedFiles"]
         if len(uploaded_files) == 0:
             return None

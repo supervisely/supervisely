@@ -2,7 +2,7 @@
 
 # docs
 from re import L
-from typing import Dict, List, Optional, Callable, Union
+from typing import Dict, List, Optional, Callable, Union, Literal, Generator
 
 import os
 import re
@@ -20,6 +20,8 @@ from supervisely._utils import get_bytes_hash, get_string_hash
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+
+JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
 
 
 def get_file_name(path: str) -> str:
@@ -88,12 +90,48 @@ def get_file_name_with_ext(path: str) -> str:
     return os.path.basename(path)
 
 
-def list_dir_recursively(dir: str) -> List[str]:
+def remove_junk_from_dir(dir: str) -> List[str]:
+    """
+    Cleans the given directory from junk files and dirs (e.g. .DS_Store, __MACOSX, Thumbs.db, etc.).
+
+    :param dir: Path to directory.
+    :type dir: str
+    :returns: List of global paths to removed files and dirs.
+    :rtype: List[str]
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_dir = "/home/admin/work/projects/lemons_annotated/"
+        sly.fs.remove_junk_from_dir(input_dir)
+    """
+    paths = list_dir_recursively(dir, include_subdirs=True, use_global_paths=True)
+    removed_paths = []
+    for path in paths:
+        if get_file_name(path) in JUNK_FILES:
+            if os.path.isfile(path):
+                silent_remove(path)
+                removed_paths.append(path)
+            elif os.path.isdir(path):
+                remove_dir(path)
+                removed_paths.append(path)
+
+
+def list_dir_recursively(
+    dir: str, include_subdirs: bool = False, use_global_paths: bool = False
+) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
 
     :param path: Path to directory.
     :type path: str
+    :param include_subdirs: If True, subdirectories will be included in the result list.
+    :type include_subdirs: bool
+    :param use_global_paths: If True, absolute paths will be returned instead of relative ones.
+    :type use_global_paths: bool
     :returns: List containing file paths.
     :rtype: :class:`List[str]`
     :Usage example:
@@ -111,8 +149,21 @@ def list_dir_recursively(dir: str) -> List[str]:
     for root, dirs, files in os.walk(dir):
         for name in files:
             file_path = os.path.join(root, name)
-            file_path = os.path.relpath(file_path, dir)
+            file_path = (
+                os.path.relpath(file_path, dir)
+                if not use_global_paths
+                else os.path.abspath(file_path)
+            )
             all_files.append(file_path)
+        if include_subdirs:
+            for name in dirs:
+                dir_path = os.path.join(root, name)
+                dir_path = (
+                    os.path.relpath(dir_path, dir)
+                    if not use_global_paths
+                    else os.path.abspath(dir_path)
+                )
+                all_files.append(dir_path)
     return all_files
 
 
@@ -500,25 +551,127 @@ def get_directory_size(dir_path: str) -> int:
     return total_size
 
 
-def archive_directory(dir_: str, tar_path: str) -> None:
+def archive_directory(
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+) -> Union[None, List[str]]:
     """
-    Create tar archive from directory.
+    Create tar archive from directory and optionally split it into parts of specified size.
 
     :param dir_: Target directory path.
     :type dir_: str
     :param tar_path: Path for output tar archive.
     :type tar_path: str
+    :param split: Split archive into parts of specified size (in bytes) or size with
+        suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
+    :type split: Union[int, str]
+    :returns: None or list of archive parts if split is not None
+    :rtype: Union[None, List[str]]
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import archive_directory
+        # If split is not needed.
+        archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+
+        # If split is specified.
+        archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
+        print(archive_parts_paths) # ['/home/admin/work/examples/archive.tar.001', '/home/admin/work/examples/archive.tar.002']
+    """
+    with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
+        tar.add(dir_, arcname=os.path.sep)
+
+    if split is None:
+        return
+
+    split = string_to_byte_size(split)
+
+    if os.path.getsize(tar_path) <= split:
+        return
+
+    tar_name = os.path.basename(tar_path)
+    tar_dir = os.path.abspath(os.path.dirname(tar_path))
+    parts_paths = []
+    part_number = 1
+
+    with open(tar_path, "rb") as input_file:
+        while True:
+            part_name = f"{tar_name}.{str(part_number).zfill(3)}"
+            output_path = os.path.join(tar_dir, part_name)
+            data = input_file.read(split)
+            if not data:
+                break
+            with open(output_path, "wb") as output_file:
+                output_file.write(data)
+                parts_paths.append(output_path)
+                part_number += 1
+
+    os.remove(tar_path)
+    return parts_paths
+
+
+def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None:
+    """
+    Unpacks archive to the target directory, removes junk files and directories.
+
+    :param archive_path: Path to the archive.
+    :type archive_path: str
+    :param target_dir: Path to the target directory.
+    :type target_dir: str
+    :param remove_junk: Remove junk files and directories. Default is True.
+    :type remove_junk: bool
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
 
      .. code-block:: python
 
-        from supervisely.io.fs import archive_directory
-        archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+        import supervisely as sly
+
+        archive_path = '/home/admin/work/examples.tar'
+        target_dir = '/home/admin/work/projects'
+
+        sly.fs.unpack_archive(archive_path, target_dir)
     """
-    with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
-        tar.add(dir_, arcname=os.path.sep)
+    shutil.unpack_archive(archive_path, target_dir)
+    if remove_junk:
+        remove_junk_from_dir(target_dir)
+
+
+def string_to_byte_size(string: Union[str, int]) -> int:
+    """Returns integer representation of byte size from string representation.
+        If input is integer, returns the same integer for convenience.
+
+        :param string: string representation of byte size (e.g. 1.5Kb, 2Mb, 3.7Gb, 4.2Tb) or integer
+        :type string: Union[str, int]
+        :return: integer representation of byte size (or the same integer if input is integer)
+        :rtype: int
+
+        :raises ValueError: if input string is invalid
+
+    :Usage example:
+
+    .. code-block:: python
+        string_size = "1.5M"
+        size = string_to_byte_size(string_size)
+        print(size)  # 1572864
+
+    """
+
+    MULTIPLIER = 1024
+    units = {"KB": 1, "MB": 2, "GB": 3, "TB": 4}
+
+    if isinstance(string, int):
+        return string
+
+    try:
+        value, unit = string[:-2], string[-2:].upper()
+        multiplier = MULTIPLIER ** units[unit]
+        return int(float(value) * multiplier)
+    except (KeyError, ValueError, IndexError):
+        raise ValueError(
+            "Invalid input string. The string must be in the format of '1.5Kb', '2Mb', '3.7Gb', '4.2Tb' or integer."
+        )
 
 
 def get_file_hash(path: str) -> str:
@@ -608,7 +761,11 @@ def tree(dir_path: str) -> str:
     return stdout.decode("utf-8")
 
 
-def log_tree(dir_path: str, logger) -> None:
+def log_tree(
+    dir_path: str,
+    logger,
+    level: Literal["info", "debug", "warning", "error"] = "info",
+) -> None:
     """
     Get tree for target directory and displays it in the log.
 
@@ -616,6 +773,8 @@ def log_tree(dir_path: str, logger) -> None:
     :type dir_path: str
     :param logger: Logger to display data.
     :type logger: logger
+    :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
+    :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -627,7 +786,19 @@ def log_tree(dir_path: str, logger) -> None:
         log_tree('/home/admin/work/projects/examples', logger)
     """
     out = tree(dir_path)
-    logger.info("DIRECTORY_TREE", extra={"tree": out})
+
+    log_levels = {
+        "info": logger.info,
+        "debug": logger.debug,
+        "warning": logger.warning,
+        "error": logger.error,
+    }
+    if level not in log_levels:
+        raise ValueError(
+            f"Unknown logger level: {level}. Available levels: info, debug, warning, error"
+        )
+    log_func = log_levels[level]
+    log_func("DIRECTORY_TREE", extra={"tree": out})
 
 
 def touch(path: str) -> None:
@@ -774,3 +945,107 @@ def parse_agent_id_and_path(remote_path: str) -> int:
         path_in_agent_folder += "/"
     # path_in_agent_folder = os.path.normpath(path_in_agent_folder)
     return agent_id, path_in_agent_folder
+
+
+def dirs_with_marker(
+    input_path: str,
+    markers: Union[str, List[str]],
+    check_function: Callable = None,
+    ignore_case: bool = False,
+) -> Generator[str, None, None]:
+    """
+    Generator that yields paths to directories that contain markers files. If the check_function is specified,
+    then the markered directory will be yielded only if the check_function returns True. The check_function
+    must take a single argument - the path to the markered directory and return True or False.
+
+    :param input_path: path to the directory in which the search will be performed
+    :type input_path: str
+    :param markers: single marker or list of markers (e.g. 'config.json' or ['config.json', 'config.yaml'])
+    :type markers: Union[str, List[str]]
+    :param check_function: function to check that directory meets the requirements and returns bool
+    :type check_function: Callable
+    :param ignore_case: ignore case when searching for markers
+    :type ignore_case: bool
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = '/home/admin/work/projects/examples'
+
+        # You can pass a string if you have only one marker.
+        # markers = 'config.json'
+
+        # Or a list of strings if you have several markers.
+        # There's no need to pass one marker in different cases, you can use ignore_case=True for this.
+        markers = ['config.json', 'config.yaml']
+
+
+        # Check function is optional, if you don't need the directories to meet any requirements,
+        # you can omit it.
+
+        def check_function(dir_path):
+            test_file_path = os.path.join(dir_path, 'test.txt')
+            return os.path.exists(test_file_path)
+
+        for directory in sly.fs.dirs_with_marker(input_path, markers, check_function, ignore_case=True):
+            # Now you can be sure that the directory contains the markers and meets the requirements.
+            # Do something with it.
+            print(directory)
+    """
+
+    if isinstance(markers, str):
+        markers = [markers]
+
+    paths = list_dir_recursively(input_path)
+    for path in paths:
+        for marker in markers:
+            filename = get_file_name_with_ext(path)
+            if ignore_case:
+                filename = filename.lower()
+                marker = marker.lower()
+
+            if filename == marker:
+                parent_dir = os.path.dirname(path)
+                markered_dir = os.path.join(input_path, parent_dir)
+
+                if check_function is None or check_function(markered_dir):
+                    yield markered_dir
+
+
+def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, None, None]:
+    """
+    Generator that yields paths to directories that meet the requirements of the check_function.
+
+    :param input_path: path to the directory in which the search will be performed
+    :type input_path: str
+    :param check_function: function to check that directory meets the requirements and returns bool
+    :type check_function: Callable
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = '/home/admin/work/projects/examples'
+
+        # Prepare the check function.
+
+        def check_function(directory) -> bool:
+            images_dir = os.path.join(directory, "images")
+            annotations_dir = os.path.join(directory, "annotations")
+
+            return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
+
+        for directory in sly.fs.dirs(input_path, check_function):
+            # Now you can be sure that the directory meets the requirements.
+            # Do something with it.
+            print(directory)
+    """
+    paths = [os.path.abspath(input_path)]
+    paths.extend(list_dir_recursively(input_path, include_subdirs=True, use_global_paths=True))
+    for path in paths:
+        if os.path.isdir(path):
+            if check_function(path):
+                yield path

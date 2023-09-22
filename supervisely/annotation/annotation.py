@@ -31,6 +31,7 @@ from supervisely._utils import take_with_default
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.io.fs import ensure_base_path
 
 
@@ -2136,7 +2137,8 @@ class Annotation:
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
             # if mapping[lbl.obj_class] is not None:
-            lbl.draw(common_img, color=idx)
+            if isinstance(lbl.geometry, (Bitmap, Polygon)):
+                lbl.draw(common_img, color=idx)
 
         # (unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
@@ -2603,7 +2605,7 @@ class Annotation:
             dest_class = aux_mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
-            if dest_class == lbl.obj_class:
+            if dest_class == lbl.obj_class and lbl.obj_class.geometry_type != AnyGeometry:
                 new_labels.append(lbl)
             else:
                 bbox = lbl.geometry.to_bbox()

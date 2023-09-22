@@ -139,7 +139,7 @@ class Transfer(Widget):
                  right_checked: Optional[List[str]] = None):    
         
         self._changes_handled = False
-        self._items = None
+        self._items = []
         self._transferred_items = []
         
         if items:
@@ -237,9 +237,9 @@ class Transfer(Widget):
         """
 
         res = {
-            "items": None,
+            "items": [],
         }
-        if self._items is not None:
+        if self._items:
             res["items"] = [item.to_json() for item in self._items]
 
         return res
@@ -345,8 +345,11 @@ class Transfer(Widget):
 
             # As you can see, the list of items was replaced with the new one.
         """
-
-        self._items = self.__checked_items(items)
+        
+        if items:
+            self._items = self.__checked_items(items)
+        else:
+            self._items = []
 
         self.update_data()
         DataJson().send_changes()

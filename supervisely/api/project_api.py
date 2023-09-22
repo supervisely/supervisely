@@ -125,6 +125,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         type='images',
                         reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
                         custom_data={}
+                        backup_archive={}
         """
         return [
             ApiField.ID,
@@ -194,7 +195,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+            #             custom_data={},
+            #             backup_archive={}),
             # ProjectInfo(id=999,
             #             name='Cat_breeds',
             #             description='',
@@ -207,7 +210,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-17T17:44:28.158Z',
             #             updated_at='2021-03-01T10:51:57.545Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             custom_data={},
+            #             backup_archive={})
             # ]
 
             # Filtered Project list
@@ -225,7 +230,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-17T17:44:28.158Z',
             #                     updated_at='2021-03-01T10:51:57.545Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
             # ]
 
         """
@@ -278,7 +285,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
+
 
         """
         info = self._get_info_by_id(id, "projects.info")
@@ -329,7 +339,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg')
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     custom_data={},
+            #                     backup_archive={})
         """
         info = super().get_info_by_name(parent_id, name)
         self._check_project_info(
@@ -502,7 +514,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2021-03-11T09:28:42.585Z',
             #                     updated_at='2021-03-11T09:28:42.585Z',
             #                     type='images',
-            #                     reference_image_url=None)
+            #                     reference_image_url=None),
+            #                     custom_data={},
+            #                     backup_archive={})
+
         """
         effective_name = self._get_effective_new_name(
             parent_id=workspace_id,
@@ -988,14 +1003,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
         )
 
-    def archive_batch(self, ids: List[int], archive_urls: List[str]) -> None:
+    def archive_batch(
+        self, ids: List[int], archive_urls: List[str], ann_archive_urls: Optional[List[str]] = None
+    ) -> None:
         """
-        Archive Projects by ID and save backup URL in Project info for every Project.
+        Archive Projects by ID and save backup URLs in Project info for every Project.
 
         :param ids: Project IDs in Supervisely.
         :type ids: List[int]
-        :param archive_urls: Shared URLs of backup on Dropbox.
+        :param archive_urls: Shared URLs of files backup on Dropbox.
         :type archive_urls: List[str]
+        :param ann_archive_urls: Shared URLs of annotations backup on Dropbox.
+        :type ann_archive_urls: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1011,27 +1030,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.project.archive_batch(ids, archive_urls)
+            api.project.archive_batch(ids, archive_urls, ann_archive_urls)
         """
         if len(ids) != len(archive_urls):
             raise ValueError(
                 "The list with Project IDs must have the same length as the list with URLs for archives"
             )
+        for id, archive_url, ann_archive_url in zip(
+            ids, archive_urls, ann_archive_urls or [None] * len(ids)
+        ):
+            request_params = {
+                ApiField.ID: id,
+                ApiField.ARCHIVE_URL: archive_url,
+            }
+            if ann_archive_url is not None:
+                request_params[ApiField.ANN_ARCHIVE_URL] = ann_archive_url
 
-        for id, archive_url in zip(ids, archive_urls):
-            self._api.post(
-                "projects.remove.permanently",
-                {ApiField.PROJECTS: [{ApiField.ID: id, ApiField.ARCHIVE_URL: archive_url}]},
-            )
+            self._api.post("projects.remove.permanently", {ApiField.PROJECTS: [request_params]})
 
-    def archive(self, id: int, archive_url: str) -> None:
+    def archive(self, id: int, archive_url: str, ann_archive_url: Optional[str] = None) -> None:
         """
-        Archive Project by ID and save backup URL in Project info.
+        Archive Project by ID and save backup URLs in Project info.
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param archive_url: Shared URL of backup on Dropbox.
+        :param archive_url: Shared URL of files backup on Dropbox.
         :type archive_url: str
+        :param ann_archive_url: Shared URL of annotations backup on Dropbox.
+        :type ann_archive_url: str, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1047,7 +1073,132 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.project.archive(id, archive_url)
+            api.project.archive(id, archive_url, ann_archive_url)
         """
+        if ann_archive_url is None:
+            self.archive_batch([id], [archive_url])
+        else:
+            self.archive_batch([id], [archive_url], [ann_archive_url])
 
-        self.archive_batch([id], [archive_url])
+    def get_archivation_list(
+        self,
+        to_day: Optional[int] = None,
+        from_day: Optional[int] = None,
+        skip_exported: Optional[bool] = None,
+        sort: Optional[
+            str[
+                "id",
+                "title",
+                "size",
+                "createdAt",
+                "updatedAt",
+            ]
+        ] = None,
+        sort_order: Optional[str["asc", "desc"]] = None,
+    ) -> List[ProjectInfo]:
+        """
+        List of all projects in all available workspaces that can be archived.
+
+        :param to_day: Sets the number of days from today. If the project has not been updated during this period, it will be added to the list.
+        :type to_day: int, optional
+        :param from_day: Sets the number of days from today. If the project has not been updated before this period, it will be added to the list.
+        :type from_day: int, optional
+        :param skip_exported: Determines whether to skip already archived projects.
+        :type skip_exported: bool, optional.
+        :param sort: Specifies by which parameter to sort the project list.
+        :type sort: str, optional.
+        :param sort_order: Determines which value to list from.
+        :type sort_order: str, optional.
+        :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ProjectInfo]`
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_list = api.project.get_archivation_list()
+            print(project_list)
+            # Output: [
+            # ProjectInfo(id=861,
+            #             name='Project_COCO'
+            #             size='22172241',
+            #             workspace_id=58,
+            #             created_at='2020-11-09T18:21:32.356Z',
+            #             updated_at='2020-11-09T18:21:32.356Z',
+            #             type='images',),
+            # ProjectInfo(id=777,
+            #             name='Trucks',
+            #             size='76154769',
+            #             workspace_id=58,
+            #             created_at='2021-07-077T17:44:28.158Z',
+            #             updated_at='2023-07-15T12:33:45.747Z',
+            #             type='images',)
+            # ]
+
+            # Project list for desired date range
+            project_list = api.project.get_archivation_list(to_day=2)
+            print(project_list)
+            # Output: ProjectInfo(id=777,
+            #                     name='Trucks',
+            #                     size='76154769',
+            #                     workspace_id=58,
+            #                     created_at='2021-07-077T17:44:28.158Z',
+            #                     updated_at='2023-07-15T12:33:45.747Z',
+            #                     type='images',)
+            # ]
+
+        """
+        request_body = {}
+        if from_day is not None:
+            request_body[ApiField.FROM] = from_day
+        if to_day is not None:
+            request_body[ApiField.TO] = to_day
+        if skip_exported is not None:
+            request_body[ApiField.SKIP_EXPORTED] = skip_exported
+        if sort is not None:
+            request_body[ApiField.SORT] = sort
+        if sort_order is not None:
+            request_body[ApiField.SORT_ORDER] = sort_order
+
+        response = self._api.post("projects.list.all", request_body)
+
+        return [self._convert_json_info(item) for item in response.json()]
+
+    def check_imageset_backup(self, id: int) -> Optional[Dict]:
+        """
+        Check if a backup of the project image set exists. If yes, it returns a link to the archive.
+
+        :param id: Project ID
+        :type id: int
+        :return: dict with shared URL of files backup or None
+        :rtype: Dict, optional
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+            response = check_imageset_backup(project_id)
+            archive_url = response['imagesArchiveUrl']
+
+        """
+        response = self._api.get("projects.images.get-backup-archive", {ApiField.ID: id})
+
+        return response.json()

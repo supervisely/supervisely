@@ -22,7 +22,7 @@
         margin: 10px 0;
         position: relative;
       }
-      
+
        @keyframes app-loading-rotation {
         0% {
           transform: rotate(0deg);
@@ -98,8 +98,21 @@
         </template>
       </sly-app>
     </div>
+
+    <!-- Offline session styles fix -->
+    <script>
+      let resizeCounter = 0;
+      let resizeInterval = setInterval(() => {
+        resizeCounter += 1;
+        window.dispatchEvent(new Event('resize'));
+      
+        if (resizeCounter > 3) {
+          clearInterval(resizeInterval);
+        }
+      }, 2000);
+    </script>
     <!-- Hot reload script -->
-    {% if DEBUG %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}} {%
-    endif %}
+    {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}
+    {% endif %}
   </body>
 </html>

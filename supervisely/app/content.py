@@ -3,6 +3,10 @@ import copy
 import os
 import enum
 import json
+import threading
+import queue
+import time
+import traceback
 import jsonpatch
 import asyncio
 from fastapi import Request
@@ -11,6 +15,9 @@ from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi import run_sync
+from supervisely._utils import is_production
+from supervisely.io import env as sly_env
+from supervisely.api.api import Api
 
 
 class Field(str, enum.Enum):
@@ -115,6 +122,10 @@ class StateJson(_PatchableJson, metaclass=Singleton):
         if "application/json" not in request.headers.get("Content-Type", ""):
             return None
         content = await request.json()
+
+        if content.get("context", {}).get("outside_request", False) is True:
+            return None
+
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
         return cls(d, __local__=True)
@@ -126,8 +137,89 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             global_state.clear()
             global_state.update(copy.deepcopy(d))
             global_state._last = copy.deepcopy(d)
+            ContentOrigin().update(state=copy.deepcopy(d))
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
+
+    async def _apply_patch(self, patch):
+        async with self._lock:
+            patch.apply(self._last, in_place=True)
+            self._last = copy.deepcopy(self._last)
+            ContentOrigin().update(data_patch=copy.deepcopy(patch))
+
+
+class ContentOrigin(metaclass=Singleton):
+    def __init__(self):
+        self._SLEEP_TIME = sly_env.content_origin_update_interval()
+        self._data_patch_queue = queue.Queue()
+        self._last_sent_data = {}
+        self._state_queue = queue.Queue()
+        self._stop = threading.Event()
+        self._loop_thread = threading.Thread(
+            target=self._update_content_loop, name="ContentOrigin._update_content_loop"
+        )
+
+    def start(self):
+        if not self._loop_thread.is_alive():
+            self._loop_thread.start()
+            self._stop.clear()
+
+    def stop(self):
+        self._stop.set()
+
+    def update(self, data_patch=None, state=None):
+        if is_production():
+            if data_patch is not None:
+                self._data_patch_queue.put(data_patch)
+            if state is not None:
+                self._state_queue.put(state)
+
+    def _send(self, data_patch: jsonpatch.JsonPatch, state: dict):
+        task_id = sly_env.task_id()
+        api = Api()
+        api.task._update_app_content(task_id, data_patch=list(data_patch), state=state)
+
+    def _update_content_loop(self):
+        failed_patch = None
+        while True:
+            last_state = None
+            state_count = 0
+            patches = []
+            while not self._data_patch_queue.empty():
+                patches.append(self._data_patch_queue.get())
+            while not self._state_queue.empty():
+                last_state = self._state_queue.get()
+                state_count += 1
+
+            if patches or last_state is not None:
+                try:
+                    merged_patch = None
+                    data = copy.deepcopy(self._last_sent_data)
+                    for patch in [failed_patch, *patches]:
+                        if patch is None:
+                            continue
+                        patch.apply(data, in_place=True)
+                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                    self._send(data_patch=merged_patch, state=last_state)
+                    self._last_sent_data = copy.deepcopy(data)
+                    failed_patch = None
+                except Exception as exc:
+                    failed_patch = merged_patch
+                    logger.error(
+                        traceback.format_exc(),
+                        exc_info=True,
+                        extra={"exc_str": str(exc)},
+                    )
+                finally:
+                    for _ in range(len(patches)):
+                        self._data_patch_queue.task_done()
+                    for _ in range(state_count):
+                        self._state_queue.task_done()
+
+            elif self._stop.is_set():
+                return
+
+            time.sleep(self._SLEEP_TIME)

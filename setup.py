@@ -18,6 +18,7 @@ version = response.json()["tag_name"]
 
 
 INSTALL_REQUIRES = [
+    "cachetools<5.0.0",
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.5.5.62, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
@@ -38,7 +39,8 @@ INSTALL_REQUIRES = [
     "trimesh>=3.11.2, <4.0.0",
     "scikit-video>=1.1.11, <2.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "fastapi>=0.79.0, <1.0.0",
+    "pydantic>=1.7.4, <2.0.0",
+    "fastapi>=0.79.0, <0.100.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",
     "psutil>=5.9.0, <6.0.0",
@@ -59,8 +61,8 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "aiocache==0.12.0",
     "urllib3==1.26.15",
+    "cacheout==0.14.1",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -109,6 +111,7 @@ def get_install_requirements(main_requires, alternative_requires):
 # already have PyTorch installed.
 setup(
     name="supervisely",
+    maintainer="Max Kolomeychenko",
     version=version,
     description="Supervisely Python SDK.",
     long_description=read("README.md"),

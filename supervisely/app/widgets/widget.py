@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from pathlib import Path
 from bs4 import BeautifulSoup
 import re
@@ -14,6 +15,8 @@ from fastapi import FastAPI
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely._utils import generate_free_name, rand_str
+from async_asgi_testclient import TestClient
+from supervisely.app.fastapi.utils import run_sync
 
 
 class Hidable:
@@ -247,6 +250,27 @@ class ConditionalItem:
 
     def to_json(self):
         return {"label": self.label, "value": self.value}
+
+
+class DynamicWidget(Widget):
+
+    def __init__(self, widget_id: str = None, file_path: str = __file__):
+        self.reload = self.update_template_for_offline_session(self.reload)
+        super().__init__(widget_id=widget_id, file_path=file_path)
+
+    def reload(self):
+        raise NotImplementedError()
+
+    def update_template_for_offline_session(self, func):
+        def wrapper():
+            func()
+            # to update template for offline session
+            from supervisely.app.fastapi.subapp import Application
+            os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
+            client = Application().test_client
+            _ = run_sync(client.get("/"))
+
+        return wrapper
 
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
