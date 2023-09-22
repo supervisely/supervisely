@@ -11,6 +11,7 @@ from supervisely.app.widgets import (
     Button,
     Card,
     Checkbox,
+    Collapse,
     Container,
     DatasetThumbnail,
     Field,
@@ -27,12 +28,14 @@ from supervisely.app.widgets import (
     Stepper,
     TeamFilesSelector,
     Text,
+    Markdown,
     Widget,
 )
 from supervisely.io.fs import mkdir
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from tqdm import tqdm
+
 
 PROJECT_TYPES: List[ProjectType] = [
     ProjectType.IMAGES,
@@ -41,8 +44,6 @@ PROJECT_TYPES: List[ProjectType] = [
     ProjectType.POINT_CLOUDS,
     ProjectType.POINT_CLOUD_EPISODES,
 ]
-DESTINATION_OPTIONS = ["New Project", "Existing Project", "Existing Dataset"]
-DATA_TYPES = ["folder", "file"]
 
 
 class Import(Application):
@@ -180,11 +181,21 @@ class Import(Application):
             self._allowed_project_types: List[ProjectType] = allowed_project_types
 
         if allowed_destination_options is None:
-            self._allowed_destination_options = DESTINATION_OPTIONS
+            self._allowed_destination_options = [
+                self.Destination.NEW_PROJECT,
+                self.Destination.EXISTING_PROJECT,
+                self.Destination.EXISTING_DATASET,
+            ]
         else:
             for option in allowed_destination_options:
-                if option not in DESTINATION_OPTIONS:
-                    raise ValueError(f"Destination must be one of {DESTINATION_OPTIONS}: {option}")
+                if option not in [
+                    self.Destination.NEW_PROJECT,
+                    self.Destination.EXISTING_PROJECT,
+                    self.Destination.EXISTING_DATASET,
+                ]:
+                    raise ValueError(
+                        f"Destination must be one of {[self.Destintaiton.NEW_PROJECT, self.Destination.EXISTING_PROJECT, self.Destination.EXISTING_DATASET]}: {option}"
+                    )
             if len(allowed_destination_options) > 3:
                 raise ValueError(
                     f"Maximum 3 destinations can be specified: {allowed_destination_options}"
@@ -196,9 +207,9 @@ class Import(Application):
         if allowed_data_type is None:
             self._allowed_data_type = None
         else:
-            if allowed_data_type not in DATA_TYPES:
+            if allowed_data_type not in [self.DataType.FOLDER, self.DataType.FILE]:
                 raise ValueError(
-                    f"Data type must be one of {DATA_TYPES} or 'None' to use both: {allowed_data_type}"
+                    f"Data type must be one of {[self.DataType.FOLDER, self.DataType.FILE]} or 'None' to use both: {allowed_data_type}"
                 )
 
             self._allowed_data_type = allowed_data_type
@@ -300,6 +311,29 @@ class Import(Application):
                 )
             self.__input_mode = self.InputMode.ECOSYSTEM
 
+        ########################
+        # FORMAT STRUCTURE DOC #
+        ########################
+
+        self.__import_format_structure = None
+        import_format_structure_content = self.show_format_structure()
+        if import_format_structure_content is not None:
+            if not isinstance(import_format_structure_content, Widget) and not isinstance(
+                import_format_structure_content, str
+            ):
+                raise ValueError("Import format tip must return Widget or a string")
+            if isinstance(import_format_structure_content, str):
+                import_format_structure_content = Text(
+                    text=import_format_structure_content, status="text"
+                )
+
+            import_format_structure_item = Collapse.Item(
+                name="Format Structure",
+                title="Format Structure",
+                content=import_format_structure_content,
+            )
+            self.__import_format_structure = Collapse(items=[import_format_structure_item])
+
         ####################
         #  FILES SELECTOR  #
         ####################
@@ -309,7 +343,9 @@ class Import(Application):
             if env.file(raise_not_found=False) is not None:
                 file_info = api.file.get_info_by_path(team_id=env.team_id(), remote_path=env.file())
                 self.__input_thumbnail = FileThumbnail(info=file_info)
-                self.__files_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
+                self.__files_selector_card_widgets = Container(
+                    widgets=[self.__import_format_structure, self.__input_thumbnail]
+                )
                 if self.__input_mode is None or self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_mode = self.InputMode.FILE
                 self.__step_two_btn.enable()
@@ -325,7 +361,9 @@ class Import(Application):
                 file_info = api.file.upload(team_id=env.team_id(), src=file_path, dst=remote_path)
                 self.__input_thumbnail = FolderThumbnail(info=file_info)
                 api.file.remove(team_id=env.team_id(), path=remote_path)
-                self.__files_selector_card_widgets = Container(widgets=[self.__input_thumbnail])
+                self.__files_selector_card_widgets = Container(
+                    widgets=[self.__import_format_structure, self.__input_thumbnail]
+                )
                 if self.__input_mode is None or self.__input_mode == self.InputMode.ECOSYSTEM:
                     self.__input_mode = self.InputMode.FOLDER
                 self.__step_two_btn.enable()
@@ -351,17 +389,26 @@ class Import(Application):
                     self.__storage_upload_path = f"/import/{app_name}/{env.task_id()}/"
 
                 self.__input_drag_n_drop = FileStorageUpload(
-                    team_id=env.team_id(), path=self.__storage_upload_path, show_reset=True
+                    team_id=env.team_id(),
+                    path=self.__storage_upload_path,
+                    show_reset=True,
                 )
                 self.__input_data_tabs = RadioTabs(
-                    titles=[self.DataSelector.DRAG_AND_DROP, self.DataSelector.TEAM_FILES_SELECTOR],
+                    titles=[
+                        self.DataSelector.DRAG_AND_DROP,
+                        self.DataSelector.TEAM_FILES_SELECTOR,
+                    ],
                     contents=[
                         self.__input_drag_n_drop,
                         self.__input_file_selector,
                     ],
                 )
                 self.__files_selector_card_widgets = Container(
-                    widgets=[self.__input_data_tabs, self.__step_one_text]
+                    widgets=[
+                        self.__import_format_structure,
+                        self.__input_data_tabs,
+                        self.__step_one_text,
+                    ]
                 )
                 if self.__input_mode is None:
                     self.__input_mode = self.InputMode.ECOSYSTEM
@@ -386,11 +433,13 @@ class Import(Application):
             else:
                 self.__input_file_text.set(f"Data folder: {data_dir}", "success")
 
-            self.__files_selector_card_widgets = Container(widgets=[self.__input_file_text])
+            self.__files_selector_card_widgets = Container(
+                widgets=[self.__import_format_structure, self.__input_file_text]
+            )
 
         ############
         # SETTINGS #
-        #############
+        ############
 
         self.__remove_source_files_checkbox = Checkbox(
             "Remove source files after import", checked=True
@@ -620,7 +669,13 @@ class Import(Application):
         super().__init__(layout=self.__layout, hot_reload=False)
 
     def __generate_output_text(self, api: Api):
-        team_id, workspace_id, project_id, dataset_id, project_name = self.__get_destination(api)
+        (
+            team_id,
+            workspace_id,
+            project_id,
+            dataset_id,
+            project_name,
+        ) = self.__get_destination(api)
         if is_production():
             path = self.__get_remote_path()
         else:
@@ -742,9 +797,13 @@ class Import(Application):
         is_on_agent = False
 
         if is_production():
-            team_id, workspace_id, project_id, dataset_id, project_name = self.__get_destination(
-                api
-            )
+            (
+                team_id,
+                workspace_id,
+                project_id,
+                dataset_id,
+                project_name,
+            ) = self.__get_destination(api)
 
             data_dir = get_data_dir()
             mkdir(data_dir, True)
@@ -837,10 +896,13 @@ class Import(Application):
                     prep_progress = self.__prep_progress(message="Preparing data", total=len(paths))
                     for path in paths:
                         local_save_path = join(
-                            data_dir, path.replace(self.__storage_upload_path, "").strip("/")
+                            data_dir,
+                            path.replace(self.__storage_upload_path, "").strip("/"),
                         )
                         api.file.download(
-                            team_id=team_id, remote_path=path, local_save_path=local_save_path
+                            team_id=team_id,
+                            remote_path=path,
+                            local_save_path=local_save_path,
                         )
                         prep_progress.update()
                     path = data_dir
@@ -909,7 +971,11 @@ class Import(Application):
                 is_on_agent=is_on_agent,
             )
 
-    def add_custom_settings(self) -> List[Widget]:
+    def show_format_structure(self) -> Union[Widget, str]:
+        # implement your own method for showing format structure
+        return None
+
+    def add_custom_settings(self) -> Widget:
         # implement your own method for import settings
         return None
 
@@ -955,7 +1021,10 @@ class Import(Application):
             if self.__step_one_btn.text == "Next":
                 self.__step_one_text.hide()
 
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_project_card.unlock()
                     self.__input_files_card.lock(
                         message="Press the button to restart from this step"
@@ -983,7 +1052,10 @@ class Import(Application):
             elif self.__step_one_btn.text == "Restart":
                 self.__step_one_text.hide()
 
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_project_card.unlock()
                     self.__input_files_card.unlock()
                     self.__output_card.lock(message="Configure import settings to unlock this card")
@@ -1024,7 +1096,10 @@ class Import(Application):
         @self.__step_two_btn.click
         def finish_step_two():
             if self.__step_two_btn.text == "Next":
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_files_card.lock()
                     self.__settings_card.lock(message="Press the button to restart from this step")
 
@@ -1054,7 +1129,10 @@ class Import(Application):
                 self.__step_three_btn.enable()
 
             elif self.__step_two_btn.text == "Restart":
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_files_card.lock()
                     self.__settings_card.unlock()
                     self.__layout.set_active_step(3)
@@ -1143,7 +1221,10 @@ class Import(Application):
 
             if self.__step_three_btn.text == "Next":
                 self.__step_three_text.hide()
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_files_card.unlock()
                 elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
                     self.__settings_card.lock()
@@ -1173,7 +1254,10 @@ class Import(Application):
 
             elif self.__step_three_btn.text == "Restart":
                 self.__step_three_text.hide()
-                if self.__input_mode in [self.InputMode.PROJECT, self.InputMode.DATASET]:
+                if self.__input_mode in [
+                    self.InputMode.PROJECT,
+                    self.InputMode.DATASET,
+                ]:
                     self.__input_files_card.unlock()
                     self.__output_card.lock(message="Configure import settings to unlock this card")
                 elif self.__input_mode in [self.InputMode.FILE, self.InputMode.FOLDER]:
@@ -1204,6 +1288,8 @@ class Import(Application):
                 self.__step_two_btn.disable()
                 self.__step_three_btn.disable()
                 self.__output_text.hide()
+                if self.__import_format_structure is not None:
+                    self.__import_format_structure.set_active_panel(value=[])
                 context = self.__get_context(api)
                 self.__import_progress.show()
 
@@ -1239,11 +1325,13 @@ class Import(Application):
                     self.__step_one_btn.enable()
                     self.__step_two_btn.enable()
                     self.__step_three_btn.enable()
+                    self.__import_progress.hide()
                     raise DialogWindowError(
                         title="Import error",
                         description=f"Error: '{project_id}' is not a valid project id",
                     )
 
+                self.__import_progress.hide()
                 self.__start_button.disable()
             except Exception as e:
                 self.__import_progress.hide()
@@ -1253,4 +1341,6 @@ class Import(Application):
                 self.__step_three_btn.enable()
                 self.__start_button.enable()
                 self.__start_button.loading = False
+                if self.__import_format_structure is not None:
+                    self.__import_format_structure.set_active_panel(value=["Format Structure"])
                 show_dialog(title="Import Error", description=f"Error: {str(e)}", status="error")
