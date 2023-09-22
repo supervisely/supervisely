@@ -16,7 +16,9 @@
   >
     <template v-slot:collapse-row="{ row }">
       <sly-image-slider
+        v-if="data.{{{widget.widget_id}}}.imageSliderData[row.name]"
         :data="data.{{{widget.widget_id}}}.imageSliderData[row.name]"
+        :options="data.{{{widget.widget_id}}}.imageSliderOptions"
       />
     </template>
   </sly-class-balance>
