@@ -34,7 +34,7 @@ class Carousel(Widget):
         trigger: Literal["hover", "click"] = "click",
         autoplay: bool = False,
         interval: int = 3000,
-        indicator_position: Literal["outside", "none"] = "none",
+        indicator_position: Union[Literal["outside", "none"], None] = "none",
         arrow: Literal["always", "hover", "never"] = "hover",
         type: Union[Literal["card"], None] = None,
         widget_id: str = None,
@@ -45,7 +45,7 @@ class Carousel(Widget):
         self._trigger = trigger
         self._autoplay = autoplay
         self._interval = interval
-        self._indicator_position = indicator_position
+        self._indicator_position = indicator_position if indicator_position is not None else "none"
         self._arrow = arrow
         self._type = type
 
