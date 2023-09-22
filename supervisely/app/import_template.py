@@ -1343,6 +1343,7 @@ class Import(Application):
 
                 self.__import_progress.hide()
                 self.__start_button.disable()
+                self.shutdown()
             except Exception as e:
                 self.__import_progress.hide()
                 self.__output_project_thumbnail.hide()
