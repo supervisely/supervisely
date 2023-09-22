@@ -28,7 +28,6 @@ from supervisely.app.widgets import (
     Stepper,
     TeamFilesSelector,
     Text,
-    Markdown,
     Widget,
 )
 from supervisely.io.fs import mkdir
@@ -813,14 +812,18 @@ class Import(Application):
                 path = env.file()
                 sizeb = api.file.get_info_by_path(team_id=team_id, remote_path=path).sizeb
                 prep_progress = self.__prep_progress(
-                    message="Preparing data", total=sizeb, unit="iB", unit_divisor=1024
+                    message="Preparing data",
+                    total=sizeb,
+                    unit="iB",
+                    unit_divisor=1024,
+                    unit_scale=True,
                 )
                 local_save_path = join(data_dir, basename(path.strip("/")))
                 api.file.download(
                     team_id=team_id,
                     remote_path=path,
                     local_save_path=path,
-                    progress=prep_progress.update,
+                    progress_cb=prep_progress.update,
                 )
                 path = local_save_path
 
@@ -831,7 +834,11 @@ class Import(Application):
                 )
                 sizeb = sum([path.sizeb for path in paths])
                 prep_progress = self.__prep_progress(
-                    message="Preparing data", total=sizeb, unit="iB", unit_divisor=1024
+                    message="Preparing data",
+                    total=sizeb,
+                    unit="iB",
+                    unit_divisor=1024,
+                    unit_scale=True,
                 )
                 local_save_path = join(data_dir, basename(path.strip("/")))
                 api.file.download_directory(
@@ -864,12 +871,13 @@ class Import(Application):
                             total=sizeb,
                             unit="iB",
                             unit_divisor=1024,
+                            unit_scale=True,
                         )
                         api.file.download(
                             team_id=team_id,
                             remote_path=data_path,
                             local_save_path=path,
-                            progress=prep_progress.update,
+                            progress_cb=prep_progress.update,
                         )
                     else:
                         paths = api.file.list(
@@ -884,6 +892,7 @@ class Import(Application):
                             total=sizeb,
                             unit="iB",
                             unit_divisor=1024,
+                            unit_scale=True,
                         )
                         api.file.download_directory(
                             team_id=team_id,
