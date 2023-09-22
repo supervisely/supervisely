@@ -1,17 +1,22 @@
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
-from typing import Dict
+from typing import Dict, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 
 class Markdown(Widget):
     def __init__(
         self,
         content: str = "",
-        height: int = 300,
+        height: Union[int, Literal["fit-content"]] = "fit-content",
         widget_id: str = None,
     ):
         self._md = content
-        self._height = f"{height}px"
+        self._height = f"{height}px" if type(height) == int else height
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -24,20 +29,26 @@ class Markdown(Widget):
     def get_json_state(self) -> Dict:
         return {}
 
-    def set_value(self, value: str):
-        if not isinstance(value, str):
-            raise TypeError("Value type has to be str.")
-        self._md = value
+    def set_content(self, content: str) -> None:
+        if not isinstance(content, str):
+            raise TypeError("Content type has to be str.")
+        self._md = content
         DataJson()[self.widget_id]["md"] = self._md
         DataJson().send_changes()
 
-    def get_height(self):
+    def get_content(self) -> str:
+        self._md = DataJson()[self.widget_id]["md"]
+        return self._md
+
+    def get_height(self) -> Union[int, Literal["fit-content"]]:
         self._height = DataJson()[self.widget_id]["options"]["height"]
+        if self._height == "fit-content":
+            return self._height
         return int(self._height[:-2])
 
-    def set_height(self, height: int):
-        if not isinstance(height, int):
-            raise TypeError("Height value type has to be an integer.")
-        self._height = f"{height}px"
+    def set_height(self, height: Union[int, Literal["fit-content"]]) -> None:
+        if type(height) != int and height != "fit-content":
+            raise TypeError("Height value type has to be an integer or 'fit-content' string.")
+        self._height = f"{height}px" if type(height) == int else height
         DataJson()[self.widget_id]["options"]["height"] = self._height
         DataJson().send_changes()
