@@ -98,16 +98,6 @@ class Rate(Widget):
         DataJson()[self.widget_id]["colors"] = self._colors
         DataJson().send_changes()
 
-    def disable(self):
-        self._disabled = True
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
-
-    def enable(self):
-        self._disabled = False
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
-
     def allow_half_precision(self):
         self._allow_half = True
         DataJson()[self.widget_id]["allow_half"] = self._allow_half
