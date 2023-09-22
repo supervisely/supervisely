@@ -1,16 +1,16 @@
 <el-carousel 
 
 {% if widget._changes_handled == true %}
-@change="state.{{{ widget.widget_id }}}.clicked_value = $event;
+@change="state.{{{ widget.widget_id }}}.clickedValue = $event;
           post('/{{{ widget.widget_id }}}/value_changed')"
 {% endif %}
 
 :height="data.{{{widget.widget_id}}}.height"
-:initial-index="data.{{{widget.widget_id}}}.initial_index"
+:initial-index="data.{{{widget.widget_id}}}.initialIndex"
 :trigger="data.{{{widget.widget_id}}}.trigger"
 :autoplay="data.{{{widget.widget_id}}}.autoplay"
 :interval="data.{{{widget.widget_id}}}.interval"
-:indicator-position="data.{{{widget.widget_id}}}.indicator_position" 
+:indicator-position="data.{{{widget.widget_id}}}.indicatorPosition" 
 :arrow="data.{{{widget.widget_id}}}.arrow"
 :type="data.{{{widget.widget_id}}}.type"
 >

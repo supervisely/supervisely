@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List
+from typing import List, Union
 
 try:
     from typing import Literal
@@ -31,12 +31,12 @@ class Carousel(Widget):
         items: List[Carousel.Item],
         height: int = 350,
         initial_index: int = 0,
-        trigger: Literal["hover", "click"] = "hover",
-        autoplay: bool = True,
+        trigger: Literal["hover", "click"] = "click",
+        autoplay: bool = False,
         interval: int = 3000,
         indicator_position: Literal["outside", "none"] = "none",
         arrow: Literal["always", "hover", "never"] = "hover",
-        type: Literal["card"] = None,
+        type: Union[Literal["card"], None] = None,
         widget_id: str = None,
     ):
         self._height = f"{height}px"
@@ -61,25 +61,27 @@ class Carousel(Widget):
         return {
             "height": self._height,
             "items": self._set_items(),
-            "initial_index": self._initial_index,
+            "initialIndex": self._initial_index,
             "trigger": self._trigger,
             "autoplay": self._autoplay,
             "interval": self._interval,
-            "indicator_position": self._indicator_position,
+            "indicatorPosition": self._indicator_position,
             "arrow": self._arrow,
             "type": self._type,
         }
 
     def get_json_state(self):
-        return {"clicked_value": self._clicked_value}
+        return {"clickedValue": self._clicked_value}
 
     def get_active_item(self):
-        return StateJson()[self.widget_id]["clicked_value"]
+        return StateJson()[self.widget_id]["clickedValue"]
 
     def get_items(self):
         return DataJson()[self.widget_id]["items"]
 
     def set_items(self, value: List[Carousel.Item]):
+        if not all(isinstance(item, Carousel.Item) for item in value):
+            raise ValueError("Items must be of type Carousel.Item")
         self._items = value
         DataJson()[self.widget_id]["items"] = self._set_items()
         DataJson().send_changes()
@@ -89,24 +91,22 @@ class Carousel(Widget):
         DataJson()[self.widget_id]["items"] = self._set_items()
         DataJson().send_changes()
 
-    def get_height(self):
-        return DataJson()[self.widget_id]["height"]
-
     def set_height(self, value: int):
+        if type(value) is not int:
+            raise ValueError("Height value must be an integer")
         self._height = f"{value}px"
         DataJson()[self.widget_id]["height"] = self._height
         DataJson().send_changes()
 
     def get_initial_index(self):
-        return DataJson()[self.widget_id]["initial_index"]
+        return DataJson()[self.widget_id]["initialIndex"]
 
     def set_initial_index(self, value: int):
-        if value < len(self._items):
-            self._initial_index = value
-            DataJson()[self.widget_id]["initial_index"] = self._initial_index
-            DataJson().send_changes()
-        else:
+        if value >= len(self._items):
             raise ValueError("Index of the value being set exceeds the size of the carousel items.")
+        self._initial_index = value
+        DataJson()[self.widget_id]["initialIndex"] = self._initial_index
+        DataJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Carousel.Routes.VALUE_CHANGED)
