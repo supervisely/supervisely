@@ -18,19 +18,24 @@ class ImageSlider(Widget):
         preview_url: str = None,
         widget_id: str = None,
     ):
-        # previews = ["https://i.imgur.com/1Ys222.png", "https://i.imgur.com/2Yj2QjQ.png",]
-        # examples = [["https://i.imgur.com/1Ys222.png", "https://i.imgur.com/3Yd243.png"], ...]
+        """
+        Input parameters format examples:
 
-        # combined_data = [
-        #   {
-        #       "moreExamples": [
-        #           "https://i.imgur.com/1Ys222.png",
-        #           "https://i.imgur.com/3Yd243.png",
-        #       ],
-        #       "preview": "https://i.imgur.com/2Yj2QjQ.png"
-        #   },
-        #   ...
-        # ]
+            previews = ["https://i.imgur.com/1Ys222.png", "https://i.imgur.com/2Yj2QjQ.png",]
+
+            examples = [["https://i.imgur.com/1Ys222.png", "https://i.imgur.com/3Yd243.png"], ...]
+
+            combined_data = [
+                {
+                    "moreExamples": [
+                        "https://i.imgur.com/1Ys222.png",
+                        "https://i.imgur.com/3Yd243.png",
+                    ],
+                    "preview": "https://i.imgur.com/2Yj2QjQ.png"
+                },
+                ...
+            ]
+        """
 
         self._data, self._image_url_to_idx = self._process_data(previews, examples, combined_data)
         self._height = height
@@ -146,7 +151,7 @@ class ImageSlider(Widget):
 
     def set_selected_idx(self, value: int):
         self._update_selected_by_idx(value)
-    
+
     def get_selected_examples(self):
         selected = StateJson()[self.widget_id].get("selected")
         if selected is None:
