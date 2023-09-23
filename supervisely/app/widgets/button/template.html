@@ -15,6 +15,9 @@ endif
   {% if widget._click_handled %}
   @click="post('/{{{widget.widget_id}}}/button_clicked_cb')"
   {% endif %}
+  {% if widget._style %}
+  style="{{{widget._style}}}"
+  {% endif %}
 >
   <span v-html="data.{{{widget.widget_id}}}.icon"></span>
   <span v-html="data.{{{widget.widget_id}}}.text"></span>

@@ -24,6 +24,7 @@ class Button(Widget):
         icon_gap: int = 5,
         widget_id=None,
         link: str = None,
+        style: str = None,
     ):
         self._widget_routes = {}
 
@@ -42,6 +43,7 @@ class Button(Widget):
         self._disabled = False
         self._show_loading = show_loading
         self._click_handled = False
+        self._style = style
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
