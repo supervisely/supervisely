@@ -1231,5 +1231,5 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         meta_json = self.get_meta(id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(meta.clone(obj_classes=classes))
+        meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
