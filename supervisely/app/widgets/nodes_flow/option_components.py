@@ -25,27 +25,48 @@ class OptionComponent:
 
 
 class HtmlOptionComponent(OptionComponent):
-    def __init__(self, html: str):
+    def __init__(
+        self,
+        html: str,
+        sidebar_component: Optional[OptionComponent] = None,
+        sidebar_width: Optional[int] = None,
+    ):
+        options = {}
+        sidebar_component_name = None
+        if sidebar_component is not None:
+            sidebar_component_name = sidebar_component.component_name
+            sidebar_template = sidebar_component.options["template"]
+            options["sidebarTemplate"] = f"<div>{sidebar_template}</div>"
+            options["sidebarWidth"] = sidebar_width
+        options["template"] = f"<div>{html}</div>"
         super().__init__(
             component_name="SlyFlowOptionRenderer",
-            options={"template": f"<div>{html}</div>"},
+            options=options,
+            sidebar_component=sidebar_component_name
         )
 
 
 class WidgetOptionComponent(HtmlOptionComponent):
-    def __init__(self, widget: Widget):
-        super().__init__(widget.to_html())
+    def __init__(self, widget: Widget, sidebar_component=None, sidebar_width: Optional[int] = None):
+        super().__init__(
+            widget.to_html(), sidebar_component=sidebar_component, sidebar_width=sidebar_width
+        )
 
 
 class ButtonOptionComponent(OptionComponent):
     """A button that opens the sidebar when clicked. The label of the button is determined by the name of the option."""
 
-    def __init__(self, sidebar_component: Optional[OptionComponent] = None):
+    def __init__(
+        self,
+        sidebar_component: Optional[OptionComponent] = None,
+        sidebar_width: Optional[int] = None,
+    ):
         sidebar_component_name = None
         options = {}
         if sidebar_component is not None:
             sidebar_component_name = sidebar_component.component_name
             options = sidebar_component.options
+            options["sidebarWidth"] = sidebar_width
         super().__init__(
             component_name="ButtonOption", sidebar_component=sidebar_component_name, options=options
         )
@@ -153,3 +174,16 @@ class TextOptionComponent(OptionComponent):
 
     def __init__(self, text: str):
         super().__init__(component_name="TextOption", default_value=text)
+
+
+class SidebarNodeInfoOptionComponent(OptionComponent):
+    def __init__(self, sidebar_template: str, sidebar_width: Optional[int] = None):
+        options = {
+            "sidebarTemplate": f"<div>{sidebar_template}</div>", 
+            "sidebarWidth": sidebar_width
+        }
+        super().__init__(
+            component_name="SlyFlowOptionRenderer",
+            sidebar_component="SlyFlowOptionRenderer",
+            options=options,
+        )

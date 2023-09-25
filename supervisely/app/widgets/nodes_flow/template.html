@@ -6,8 +6,14 @@
         :data="data"
         :session="session"
         :post="post"
-        :options="{height: data.{{{widget.widget_id}}}.height}"
+        :options="{
+            height: data.{{{widget.widget_id}}}.height,
+            colorTheme: data.{{{widget.widget_id}}}.colorTheme,
+            showDDArea: data.{{{widget.widget_id}}}.showDDArea, 
+            ddSectionWidth: data.{{{widget.widget_id}}}.ddSectionWidth,
+        }"
         :context-menu-items="data.{{{widget.widget_id}}}.contextMenuItems"
+        :node-type-list="data.{{{widget.widget_id}}}.nodeTypeList"
         {% if widget._save_handled %}
         @save="post('/{{{widget.widget_id}}}/save_cb')"
         {% endif %}

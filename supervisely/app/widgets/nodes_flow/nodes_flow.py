@@ -1,6 +1,6 @@
 from __future__ import annotations
 import copy
-from typing import List, Optional
+from typing import List, Literal, Optional
 from supervisely.app.widgets import Widget
 from supervisely.app.content import StateJson
 
@@ -16,6 +16,7 @@ from supervisely.app.widgets.nodes_flow.option_components import (
     SelectOptionComponent,
     SliderOptionComponent,
     TextOptionComponent,
+    SidebarNodeInfoOptionComponent,
 )
 
 
@@ -51,6 +52,9 @@ class NodesFlow(Widget):
         pass
 
     class TextOptionComponent(TextOptionComponent):
+        pass
+
+    class SidebarNodeInfoOptionComponent(SidebarNodeInfoOptionComponent):
         pass
 
     class Node:
@@ -105,9 +109,9 @@ class NodesFlow(Widget):
                 "options": [option.to_json() for option in self.options],
                 "inputs": [i.to_json() for i in self.inputs],
                 "outputs": [o.to_json() for o in self.outputs],
-                "position": self._position
+                "position": self._position,
             }
-        
+
         def set_position(self, position):
             self._position = position
 
@@ -123,27 +127,39 @@ class NodesFlow(Widget):
         nodes: List[Node] = [],
         height: str = None,
         context_menu: dict = None,
+        color_theme: Literal["white", "black"] = None,
+        drag_and_drop_menu: dict = None,
+        drag_and_drop_menu_width: int = "400px",
         widget_id: str = None,
     ):
-        self.nodes = nodes
-        self.height = height if height is not None else "500px"
-        self.context_menu = context_menu
+        self._nodes = nodes
+        self._height = height if height is not None else "500px"
+        self._context_menu = context_menu
+        self._color_theme = color_theme
+        self._dd_menu = drag_and_drop_menu
+        if self._dd_menu:
+            self._show_dd_area = True
+            self._dd_section_width = drag_and_drop_menu_width
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         return {
-            "height": self.height,
-            "contextMenuItems": self.context_menu,
+            "height": self._height,
+            "contextMenuItems": self._context_menu,
+            "colorTheme": self._color_theme,
+            "nodeTypeList": self._dd_menu,
+            "showDDArea": self._show_dd_area,
+            "ddSectionWidth": self._dd_section_width,
         }
 
     def get_json_state(self):
         return {
             "flowState": {},
-            "flow": {"nodes": [node.to_json() for node in self.nodes], "edges": []},
+            "flow": {"nodes": [node.to_json() for node in self._nodes], "edges": []},
         }
 
     def add_node(self, node: Node):
-        self.nodes.append(node)
+        self._nodes.append(node)
         StateJson()[self.widget_id]["flow"]["nodes"].append(node.to_json())
         StateJson().send_changes()
 
@@ -156,7 +172,7 @@ class NodesFlow(Widget):
         return removed
 
     def delete_node_by_id(self, id: str):
-        for i, node in enumerate(self.nodes):
+        for i, node in enumerate(self._nodes):
             if node.id == id:
                 return self.pop_node(i)
         return None
@@ -210,16 +226,6 @@ class NodesFlow(Widget):
 
         return _click
 
-    def update_nodes_state(self, state: dict):
-        old_state = copy.deepcopy(StateJson()[self.widget_id]["flowState"])
-        for node_id, node_state in state.items():
-            if node_id in old_state:
-                for key, value in node_state.items():
-                    old_state[node_id][key] = value
-
-        StateJson()[self.widget_id]["flowState"] = old_state
-        StateJson().send_changes()
-
     def clear(self):
         StateJson()[self.widget_id]["flow"]["nodes"] = []
         StateJson()[self.widget_id]["flow"]["edges"] = []
@@ -229,7 +235,7 @@ class NodesFlow(Widget):
     def set_edges(self, edges: List[dict]):
         StateJson()[self.widget_id]["flow"]["edges"] = edges
         StateJson().send_changes()
-    
+
     def context_menu_clicked(self, func):
         route_path = self.get_route_path(NodesFlow.Routes.CONTEXT_MENU_CLICKED)
         server = self._sly_app.get_server()
@@ -239,9 +245,9 @@ class NodesFlow(Widget):
         def _click():
             item = StateJson()[self.widget_id]["selectedContextItem"]
             func(item)
-        
+
         return _click
-    
+
     def sidebar_toggled(self, func):
         route_path = self.get_route_path(NodesFlow.Routes.SIDEBAR_TOGGLE_HANDLED)
         server = self._sly_app.get_server()
@@ -250,5 +256,5 @@ class NodesFlow(Widget):
         @server.post(route_path)
         def _click():
             func()
-        
+
         return _click
