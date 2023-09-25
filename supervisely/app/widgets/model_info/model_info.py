@@ -62,12 +62,13 @@ class ModelInfo(Widget):
 
     def set_model_info(
         self,
-        session_id: Optional[int],
+        session_id: int,
         model_info: Optional[dict] = None,
     ):
         if session_id is None and model_info is None:
             raise ValueError("Both session_id and model_info can't be None.")
 
+        self._session_id = session_id
         self._model_info = model_info
         self.update_data()
         self.update_state()
