@@ -95,3 +95,4 @@ from supervisely.app.widgets.message_box.message_box import MessageBox
 from supervisely.app.widgets.cascader.cascader import Cascader
 from supervisely.app.widgets.pagination.pagination import Pagination
 from supervisely.app.widgets.time_picker.time_picker import TimePicker
+from supervisely.app.widgets.timeline.timeline import Timeline

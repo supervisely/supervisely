@@ -1,0 +1,41 @@
+<div>
+  <div
+    class="fflex mb15"
+    style="justify-content: space-between; align-items: flex-start"
+  >
+    <el-input-number
+      :min="0"
+      :max="data.{{{widget.widget_id}}}.framesCount"
+      v-model="state.{{{widget.widget_id}}}.pointer"
+    />
+  </div>
+
+  <sly-timeline
+    :frames-count="data.{{{widget.widget_id}}}.framesCount"
+    :intervals="data.{{{widget.widget_id}}}.intervals"
+    :colors="data.{{{widget.widget_id}}}.colors"
+    :pointer.sync="state.{{{widget.widget_id}}}.pointer"
+    :options="data.{{{widget.widget_id}}}.options"
+    @segment-selected="val => state.{{{widget.widget_id}}}.selectedSegment = val"
+    {%
+    if
+    widget._click_handled
+    %}
+    :pointer="state.{{{widget.widget_id}}}.pointer"
+    @update:pointer="state.{{{ widget.widget_id }}}.pointer = $event;
+              post('/{{{ widget.widget_id }}}/timeline_clicked_cb')"
+    {%
+    endif
+    %}
+  >
+    <template slot-scope="{ activeInterval }">
+      <span v-if="activeInterval">
+        <div>Pointer: {{state.{{{widget.widget_id}}}.pointer}}</div>
+        <span
+          >Interval: {{ activeInterval.interval[0] }} - {{
+          activeInterval.interval[1] }}</span
+        >
+      </span>
+    </template>
+  </sly-timeline>
+</div>
