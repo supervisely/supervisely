@@ -59,14 +59,17 @@ class NodesFlow(Widget):
 
     class Node:
         class Input:
-            def __init__(self, name, label: Optional[str] = None):
+            def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
                 self.name = name
                 self.label = label
+                self.color = color
 
             def to_json(self):
                 j = {"name": self.name}
                 if self.label is not None:
-                    j["options"] = {"displayName": self.label}
+                    j.setdefault("options", {})["displayName"] = self.label
+                if self.color is not None:
+                    j.setdefault("options", {})["color"] = self.color
                 return j
 
         class Output(Input):
