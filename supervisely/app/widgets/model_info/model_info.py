@@ -39,10 +39,11 @@ class ModelInfo(Widget):
                 data["model_info"] = self._model_info
         elif self._session_id is None and self._model_info is not None:
             data["model_info"] = self._model_info
-            data["model_connected"] = False
+            data["model_connected"] = True
         else:
             data["model_info"] = None
             data["model_connected"] = False
+
         return data
 
     def get_json_state(self):
@@ -50,10 +51,13 @@ class ModelInfo(Widget):
         state["sessionId"] = self._session_id
         return state
 
-    def set_session_id(self, session_id):
+    def set_session_id(self, session_id: int):
         self._session_id = session_id
+        # self._model_info = self._api.task.send_request(
+        #     self._session_id, "get_human_readable_session_info", data={}
+        # )
         self._model_info = self._api.task.send_request(
-            self._session_id, "get_human_readable_session_info", data={}
+            self._session_id, "get_session_info", data={}
         )
         self.update_data()
         self.update_state()
@@ -62,7 +66,7 @@ class ModelInfo(Widget):
 
     def set_model_info(
         self,
-        session_id: int,
+        session_id: Optional[int] = None,
         model_info: Optional[dict] = None,
     ):
         if session_id is None and model_info is None:

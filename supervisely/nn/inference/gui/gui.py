@@ -429,7 +429,7 @@ class InferenceGUI(BaseInferenceGUI):
         if info["Number of classes"] is None:
             info["Number of classes"] = "Not provided"
 
-        self._model_info_widget.set_model_info(inference.task_id, info)
+        self._model_info_widget.set_model_info(inference.task_id) #, info)
 
     # def create_handler_on_model_changes(
     #     self,
