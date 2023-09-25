@@ -299,14 +299,19 @@ class Inference:
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
         try:
-            num_classes = len(self.get_classes())
+            classes = self.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for in {type(self)} object.")
+            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
             logger.warn("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
             logger.warn("Unknown exception. Please, contact support")
             logger.exception(exc)
+        
+        if classes is None or len(classes) == 0:
+            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+        else:
+            num_classes = len(classes)
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),

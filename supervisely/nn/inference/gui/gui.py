@@ -425,9 +425,11 @@ class InferenceGUI(BaseInferenceGUI):
         self._model_classes_widget.show()
 
     def set_model_info(self, inference):
-        self._model_info_widget.set_model_info(
-            inference.task_id, inference.get_human_readable_info()
-        )
+        info = inference.get_human_readable_info()
+        if info["Number of classes"] is None:
+            info["Number of classes"] = "Not provided"
+
+        self._model_info_widget.set_model_info(inference.task_id, info)
 
     # def create_handler_on_model_changes(
     #     self,
