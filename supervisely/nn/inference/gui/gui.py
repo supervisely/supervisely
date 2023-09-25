@@ -39,7 +39,7 @@ class BaseInferenceGUI:
         raise NotImplementedError("Have to be implemented in child class")
 
 
-CallbackT = List[Callable[[BaseInferenceGUI], None]]
+CallbackT = Callable[[BaseInferenceGUI], None]
 
 
 class InferenceGUI(BaseInferenceGUI):
@@ -251,8 +251,8 @@ class InferenceGUI(BaseInferenceGUI):
             descriptions=tabs_descriptions,
         )
 
-        self.on_change_model_callbacks: CallbackT = [InferenceGUI._hide_info_after_change]
-        self.on_serve_callbacks: CallbackT = []
+        self.on_change_model_callbacks: List[CallbackT] = [InferenceGUI._hide_info_after_change]
+        self.on_serve_callbacks: List[CallbackT] = []
 
         @self.serve_button.click
         def serve_model():
