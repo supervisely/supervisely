@@ -93,3 +93,4 @@ from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableAr
 from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
 from supervisely.app.widgets.message_box.message_box import MessageBox
 from supervisely.app.widgets.cascader.cascader import Cascader
+from supervisely.app.widgets.pagination.pagination import Pagination
