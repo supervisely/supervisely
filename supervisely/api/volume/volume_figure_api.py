@@ -3,12 +3,12 @@ import re
 import os
 import tempfile
 from uuid import UUID
-from numpy import ndarray, uint8
-from typing import List, Dict, Union
+from numpy import uint8
+from typing import List, Dict
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 import supervisely.volume_annotation.constants as constants
-from supervisely.io.fs import ensure_base_path, file_exists, list_files, get_file_name
+from supervisely.io.fs import ensure_base_path, file_exists
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -147,7 +147,7 @@ class VolumeFigureApi(FigureApi):
             api.volume.figure.append_bulk(volume_id, [figure], key_id_map)
         """
 
-        if not figures:
+        if len(figures) == 0:
             return
 
         keys = []
@@ -285,6 +285,56 @@ class VolumeFigureApi(FigureApi):
         )
         return response.content
 
+    # def interpolate_batch(
+    #     self, volume_id, spatial_figures: List[VolumeFigure], key_id_map: KeyIdMap
+    # ):
+    #     # raise NotImplementedError()
+    #     # STL mesh interpolations can not be uploaded:
+    #     # 400 Client Error: Bad Request for url: public/api/v3/figures.bulk.add ({"error":"Please, use \"figures.bulk.upload.geometry\" method to update figures with \"geometryType\" closed_surface_mesh","details":{"figures":[14]}})
+    #     # figures.bulk.upload.geometry
+
+    #     meshes = []
+    #     for mesh in spatial_figures:
+    #         object_id = key_id_map.get_object_id(mesh.volume_object.key())
+    #         response = self._api.post(
+    #             "figures.volumetric_interpolation",
+    #             {ApiField.VOLUME_ID: volume_id, ApiField.OBJECT_ID: object_id},
+    #         )
+    #         figure_id = key_id_map.get_figure_id(mesh.key())
+
+    #         # @TODO: load from disk or get from server
+    #         meshes.append(response.json())
+
+    #     # for batch in batched(items_to_upload):
+    #     #     content_dict = {}
+    #     #     for idx, item in enumerate(batch):
+    #     #         content_dict["{}-file".format(idx)] = (str(idx), func_item_to_byte_stream(item), 'nrrd/*')
+    #     #     encoder = MultipartEncoder(fields=content_dict)
+    #     #     self._api.post('import-storage.bulk.upload', encoder)
+    #     #     if progress_cb is not None:
+    #     #         progress_cb(len(batch))
+
+    #     # content_dict = {}
+    #     # for idx, item in enumerate(meshes):
+    #     #     content_dict[f"{idx}-mesh"] = (
+    #     #         str(idx),
+    #     #         func_item_to_byte_stream(item),
+    #     #     )
+    #     # encoder = MultipartEncoder(fields=content_dict)
+
+    #     # self._api.post("figures.bulk.upload.geometry", encoder)
+
+    #     # # if progress_cb is not None:
+    #     # #     progress_cb(len(batch))
+
+    #     # #     self._api.post(
+    #     # #         "figures.bulk.upload.geometry",
+    #     # #         {ApiField.FIGURE_ID: figure_id, ApiField.GEOMETRY: response.json()},
+    #     # #     )
+
+    #     # #     results.append(response.json())
+    #     # return results
+
     def _upload_meshes_batch(self, figure2bytes):
         """
         Private method. Upload figures geometry by given ID to storage.
@@ -390,8 +440,8 @@ class VolumeFigureApi(FigureApi):
         :rtype: :class:`NoneType`
         :Usage example:
         """
-        figures_count = len(figures)
-        if figures_count == 0:
+
+        if len(figures) == 0:
             return
 
         empty_figures = []
@@ -464,7 +514,7 @@ class VolumeFigureApi(FigureApi):
             api.volume.figure.upload_sf_geometries(spatial_figures, geometries, key_id_map)
         """
 
-        if not spatial_figures:
+        if len(spatial_figures) == 0:
             return
 
         for sf in spatial_figures:
@@ -519,7 +569,7 @@ class VolumeFigureApi(FigureApi):
                 api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
         """
 
-        if not ids:
+        if len(ids) == 0:
             return
         if len(ids) != len(paths):
             raise RuntimeError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
@@ -529,28 +579,6 @@ class VolumeFigureApi(FigureApi):
             ensure_base_path(id_to_path[figure_id])
             with open(id_to_path[figure_id], "wb") as w:
                 w.write(resp_part.content)
-
-    def read_sf_geometries(self, path: str) -> Dict[str, bytes]:
-        """
-        Read geometries as bytes in dictionary and maps them to figure UUID hex value.
-        NRRD file must be named with UUID hex value.
-
-        :param path: Path to file or dir with files
-        :type path: str
-        :return: Dictionary with geometries
-        :rtype: Dict[str, bytes]
-        """
-        geometries_dict = {}
-        if os.path.isdir(path):
-            files_list = list_files(path)
-        else:
-            files_list = [path]
-        for nrrd_file in files_list:
-            key = get_file_name(nrrd_file)
-            with open(nrrd_file, "rb") as file:
-                geometry_bytes = file.read()
-            geometries_dict[key] = geometry_bytes
-        return geometries_dict
 
     def copy_geometry_to_figure(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
         """
@@ -566,21 +594,3 @@ class VolumeFigureApi(FigureApi):
             figure_path = f"{temp_dir}/{spatial_figure.key().hex}.nrrd"
             self.download_sf_geometries([figure_id], [figure_path])
             Mask3D.to_figure_from_file(spatial_figure, figure_path)
-
-    def append_geometry_to_figure(
-        self, spatial_figure: VolumeFigure, geometry: Union[str, ndarray, bytes]
-    ):
-        """
-        Load geometry from file into VolumeFigure object
-
-        :param spatial_figure: Spatial figure object from VolumeAnnotation
-        :type spatial_figure: VolumeFigure
-        :param geometry: Spatial figure object from VolumeAnnotation
-        :type geometry: VolumeFigure
-        """
-        if isinstance(geometry, str):
-            Mask3D.to_figure_from_file(spatial_figure, geometry)
-        if isinstance(geometry, ndarray):
-            Mask3D.to_figure_from_array(spatial_figure, geometry)
-        if isinstance(geometry, bytes):
-            Mask3D.to_figure_from_bytes(spatial_figure, geometry)
