@@ -664,12 +664,13 @@ class VolumeAnnotation:
         self, objects: Union[List[VolumeObject], VolumeObjectCollection]
     ) -> VolumeAnnotation:
         """
-        Add new objects to VolumeAnnotation object
-        NOTE: Supported only objects with spatial figures (Mask3D)
+        Add new objects to a VolumeAnnotation object.
 
-        :param objects: New volume objects
+        Only objects with spatial figures (Mask3D) are supported.
+
+        :param objects: New volume objects.
         :type objects: List[VolumeObject] or VolumeObjectCollection
-        :return: Volume annotation with old and new volume objects
+        :return: A VolumeAnnotation object containing the original and new volume objects.
         :rtype: VolumeAnnotation
         :Usage example:
 
@@ -697,12 +698,12 @@ class VolumeAnnotation:
                 vobject.figure
             except AttributeError as e:
                 e.args = [
-                    "There is no spatial figure in 'VolumeObject'",
+                    "3D mask for object is not defined",
                 ]
                 raise e
 
         sf_figures = [vobject.figure for vobject in objects]
         collection = self.objects.add_items(objects)
-        self = self.clone(objects=collection)
-        self.spatial_figures.extend(sf_figures)
-        return self.clone(objects=collection)
+        new_ann = self.clone(objects=collection)
+        new_ann.spatial_figures.extend(sf_figures)
+        return new_ann
