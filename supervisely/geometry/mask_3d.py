@@ -274,56 +274,21 @@ class Mask3D(Geometry):
         geometry._space_directions = mask3d_header["space directions"]
         return geometry
 
-    @staticmethod
-    def to_figure_from_file(figure, file_path: str):
+    @classmethod
+    def from_bytes(cls, geometry_bytes: bytes) -> Mask3D:
         """
-        Load Mask3D geometry from file to figure.
+        Create a Mask3D geometry object from bytes.
 
-        :param figure: Spatial figure object
-        :type figure: VolumeFigure
-        :param file_path: Path to nrrd file with data
-        :type file_path: str
+        :param geometry_bytes: NRRD file represented as bytes.
+        :type geometry_bytes: bytes
+        :return: A Mask3D geometry object.
+        :rtype: Mask3D
         """
-        if not isinstance(figure.geometry, Mask3D):
-            raise Exception(f"You trying to add Mask3D geometry to {figure.geometry.name()}")
-        figure.geometry.data = Mask3D.from_file(file_path).data
-
-    @staticmethod
-    def to_figure_from_bytes(figure, geometry_bytes: bytes):
-        """
-        Load Mask3D geometry data from bytes into the figure.
-        The current geometry data will be overwritten if geometry already exists.
-
-        :param figure: Spatial figure object
-        :type figure: VolumeFigure
-        :param file_path: Bytes with NRRD file
-        :type file_path: bytes
-        """
-        if not isinstance(figure.geometry, Mask3D):
-            raise Exception(f"You trying to add Mask3D geometry to {figure.geometry.name()}")
-
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(geometry_bytes)
             data_array, _ = nrrd.read(temp_file.name)
 
-        figure.geometry.data = data_array
-
-    @classmethod
-    def to_figure_from_array(cls, figure, data_array: np.ndarray) -> None:
-        """
-        Load Mask3D geometry from array into the figure.
-        The current geometry data will be overwritten if geometry already exists.
-
-        :param figure: Spatial figure object
-        :type figure: VolumeFigure
-        :param file_path: Path to nrrd file with data
-        :type file_path: str
-        """
-
-        try:
-            figure.geometry.data = data_array
-        except:
-            figure.geometry = cls(data_array)
+        return cls(data_array)
 
     def to_json(self) -> Dict:
         """
