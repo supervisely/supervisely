@@ -15,14 +15,14 @@ class Markdown(Widget):
         height: Union[int, Literal["fit-content"]] = "fit-content",
         widget_id: str = None,
     ):
-        self._md = content
+        self._content = content
         self._height = f"{height}px" if type(height) == int else height
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
         return {
-            "md": self._md,
+            "content": self._content,
             "options": {"height": self._height},
         }
 
@@ -32,13 +32,13 @@ class Markdown(Widget):
     def set_content(self, content: str) -> None:
         if not isinstance(content, str):
             raise TypeError("Content type has to be str.")
-        self._md = content
-        DataJson()[self.widget_id]["md"] = self._md
+        self._content = content
+        DataJson()[self.widget_id]["content"] = self._content
         DataJson().send_changes()
 
     def get_content(self) -> str:
-        self._md = DataJson()[self.widget_id]["md"]
-        return self._md
+        self._content = DataJson()[self.widget_id]["content"]
+        return self._content
 
     def get_height(self) -> Union[int, Literal["fit-content"]]:
         self._height = DataJson()[self.widget_id]["options"]["height"]
