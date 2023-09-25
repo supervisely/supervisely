@@ -1,7 +1,7 @@
 from __future__ import annotations
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
-from typing import List, Dict
+from typing import List, Dict, Union
 
 try:
     from typing import Literal
@@ -49,97 +49,97 @@ class Cascader(Widget):
         placeholder: str = "select",
         size: Literal["large", "small", "mini"] = None,
         expand_trigger: Literal["click", "hover"] = "click",
-        disabled: bool = False,
-        clearable: bool = False,
+        clearable: bool = True,
         show_all_levels: bool = True,
-        change_on_select: bool = False,
-        selected_options: List[str] = None,
+        parent_selectable: bool = False,
+        selected_items: List[str] = None,
         widget_id: str = None,
     ):
-
         self._items = items
+        self._selected_items = selected_items
         self._filterable = filterable
         self._placeholder = placeholder
-        self._changes_handled = False
         self._size = size
         self._expand_trigger = expand_trigger
-        self._disabled = disabled
         self._clearable = clearable
         self._show_all_levels = show_all_levels
-        self._change_on_select = change_on_select
-        self._selected_options = selected_options
+        self._parent_selectable = parent_selectable
         self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    def _to_json(self, items: List[Cascader.Item]):
+        return [item.to_json() for item in items]
+
     def _set_items(self):
-        return [item.to_json() for item in self._items]
+        DataJson()[self.widget_id]["items"] = self._to_json(self._items)
+        DataJson().send_changes()
 
     def get_json_data(self) -> Dict:
         res = {
             "filterable": self._filterable,
             "placeholder": self._placeholder,
-            "expand_trigger": self._expand_trigger,
+            "expandTrigger": self._expand_trigger,
             "size": self._size,
             "disabled": self._disabled,
             "clearable": self._clearable,
-            "show_all_levels": self._show_all_levels,
-            "change_on_select": self._change_on_select,
-            "props": {
-                "label": "label",
-                "value": "value",
-                "children": "children",
-                "disabled": "disabled",
-            },
+            "showAllLevels": self._show_all_levels,
+            "parentSelectable": self._parent_selectable,
         }
         if self._items is not None:
-            res["options"] = self._set_items()
+            res["items"] = self._to_json(self._items)
 
         return res
 
     def get_json_state(self) -> Dict:
-        return {"selectedOptions": self._selected_options}
+        return {"selectedItems": self._selected_items}
 
-    def get_value(self):
-        return StateJson()[self.widget_id]["selectedOptions"]
+    def get_selected_items(self):
+        return StateJson()[self.widget_id]["selectedItems"]
 
-    def set_value(self, value: List[str]):
-        self._selected_options = value
-        StateJson()[self.widget_id]["selectedOptions"] = self._selected_options
+    def select_item(self, values: List[Union[str, Cascader.Item]]):
+        """
+        values example:
+        values = ["cat", "black cat", "fluffy cat"]
+        or
+        values = [Cascader.Item("cat"), Cascader.Item("black cat"), Cascader.Item("fluffy cat")]
+        """
+
+        str_values = []
+        for item in values:
+            if type(item) == Cascader.Item:
+                str_values.append(item.value)
+            else:
+                str_values.append(item)
+
+        self._selected_items = str_values
+        StateJson()[self.widget_id]["selectedItems"] = self._selected_items
         StateJson().send_changes()
 
+    def deselect(self):
+        self.select_item([])
+
     def get_items(self):
-        return DataJson()[self.widget_id]["options"]
+        return DataJson()[self.widget_id]["items"]
 
-    def set_items(self, value: List[Cascader.Item]):
-        self._items = value
-        DataJson()[self.widget_id]["options"] = self._set_items()
-        DataJson().send_changes()
+    def set_items(self, items: List[Cascader.Item]):
+        if any(type(item) != Cascader.Item for item in items):
+            raise TypeError("All items must be of type Cascader.Item")
+        self._items = items
+        self._set_items()
+        self.deselect()
 
-    def add_items(self, value: List[Cascader.Item]):
-        self._items.extend(value)
-        DataJson()[self.widget_id]["options"] = self._set_items()
-        DataJson().send_changes()
+    def add_item(self, item: Cascader.Item):
+        self.add_items([item])
 
-    def expand_to_hover(self):
-        self._expand_trigger = "hover"
-        DataJson()[self.widget_id]["expand_trigger"] = self._expand_trigger
-        DataJson().send_changes()
-
-    def expand_to_click(self):
-        self._expand_trigger = "click"
-        DataJson()[self.widget_id]["expand_trigger"] = self._expand_trigger
-        DataJson().send_changes()
-
-    def set_disabled(self):
-        self._disabled = True
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
-
-    def set_unabled(self):
-        self._disabled = False
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
+    def add_items(self, items: List[Cascader.Item]):
+        if any(type(item) != Cascader.Item for item in items):
+            raise TypeError("All items must be of type Cascader.Item")
+        for item in items:
+            if item.value in [i.value for i in self._items]:
+                raise ValueError(f"Item with value '{item.value}' already exists.")
+        self._items.extend(items)
+        self._set_items()
 
     def value_changed(self, func):
         route_path = self.get_route_path(Cascader.Routes.VALUE_CHANGED)
@@ -148,7 +148,7 @@ class Cascader(Widget):
 
         @server.post(route_path)
         def _click():
-            res = self.get_value()
+            res = self.get_selected_items()
             func(res)
 
         return _click
