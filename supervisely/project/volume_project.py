@@ -373,10 +373,12 @@ def download_volume_project(
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
 
-                nrrd_paths = stl_converter.save_to_nrrd_file_on_download(mesh_paths)
+                # convert STL to NRRD
+                nrrd_paths = [file.replace(".stl", ".nrrd") for file in mesh_paths]
+                stl_converter.to_nrrd(mesh_paths, nrrd_paths)
 
-                ann, meta = api.volume.annotation.update_project_on_download(
-                    ann, project_fs.meta, nrrd_paths, key_id_map
+                ann, meta = api.volume.annotation._update_on_transfer(
+                    "download", ann, project_fs.meta, nrrd_paths, key_id_map
                 )
 
                 project_fs.set_meta(meta)
