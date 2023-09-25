@@ -1,12 +1,12 @@
 # coding: utf-8
 
 
-from typing import List, Optional, Union, Callable, Dict, Tuple
+from typing import List, Optional, Union, Callable, Tuple, Literal
 
 from tqdm import tqdm
 import numpy as np
 import os
-import random
+import re
 
 
 from supervisely.project.project_meta import ProjectMeta
@@ -14,13 +14,14 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
+from supervisely.geometry.geometry import Geometry
 from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.mask_3d import Mask3D
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
-from supervisely.io.fs import dir_exists, get_file_name
+from supervisely.io.fs import dir_exists, get_file_name, list_files, file_exists
 from supervisely.volume import stl_converter
 
 # from uuid import UUID
@@ -170,22 +171,22 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_ids: List[int],
         ann_paths: List[str],
         project_meta: ProjectMeta,
-        interpolation_dirs=None,
+        interpolation_dirs: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        mask_dirs=None,
-    ):
+        mask_dirs: Optional[List[str]] = None,
+    ) -> None:
         """
         Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
 
         :param volume_ids: Volumes IDs in Supervisely.
         :type volume_ids: List[int]
-        :param ann_paths: Paths to annotations on local machine.
+        :param ann_paths: Paths to annotations on local machine
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations
         :type project_meta: ProjectMeta
         :param interpolation_dirs: Paths to interpolations on local machine
         :type interpolation_dirs: List[str], optional
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking download progress
         :type progress_cb: tqdm or callable, optional
         :param mask_dirs: Paths to 3D Mask geometries on local machine
         :type mask_dirs: List[str], optional
@@ -221,143 +222,91 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             volume_ids, ann_paths, interpolation_dirs, mask_dirs
         ):
             ann_json = load_json_file(ann_path)
+            ann = VolumeAnnotation.from_json(ann_json, project_meta)
 
             geometries_dict = {}
 
-            # convert STL interplations to NRRD and prepare to upload as a spatial figures
-            if dir_exists(interpolation_dir):
-                nrrd_paths = stl_converter.save_to_nrrd_file_on_upload(interpolation_dir)
+            if interpolation_dir is not None and dir_exists(interpolation_dir):
+                # list all STL files that need to be converted
+                stl_paths = list_files(interpolation_dir)
+                nrrd_paths = []
+                # check if the STL + NRRD pair already exists
+                for stl_path in stl_paths:
+                    stl_path = re.sub(r"\.[^.]+$", ".stl", stl_path)
+                    nrrd_path = re.sub(r"\.[^.]+$", ".nrrd", stl_path)
+                    if file_exists(stl_path) and file_exists(nrrd_path):
+                        stl_paths.remove(stl_path)
+                        stl_paths.remove(nrrd_path)
+                    else:
+                        # if only STL exists - will be converted
+                        nrrd_paths.append(nrrd_path)
 
-                ann_json, project_meta = self.update_project_on_upload(
-                    project_id, ann_json, project_meta, nrrd_paths, key_id_map
-                )
+                if len(stl_paths) != 0:
+                    stl_converter.to_nrrd(stl_paths, nrrd_paths)
+                    ann, project_meta = self._update_on_transfer(
+                        "upload", ann, project_meta, nrrd_paths, key_id_map, project_id
+                    )
 
-                geometries_dict.update(
-                    self._api.volume.figure.read_sf_geometries(interpolation_dir)
-                )
+                # list all Mask 3D geometries for interpolations that already been stored in NRRD
+                stored_geometries = [
+                    x for x in list_files(interpolation_dir) if x not in nrrd_paths
+                ]
+                geometries_dict.update(Geometry.bytes_from_file_batch(stored_geometries))
 
-            # collect spatial figures geometries
-            if dir_exists(mask_dir):
-                geometries_dict.update(self._api.volume.figure.read_sf_geometries(mask_dir))
+            # list all Mask 3D geometries
+            if mask_dir is not None and dir_exists(mask_dir):
+                mask_paths = list_files(mask_dir)
+                geometries_dict.update(Geometry.bytes_from_file_batch(mask_paths))
 
-            ann = VolumeAnnotation.from_json(ann_json, project_meta)
-
+            # add geometries into spatial figure objects
             for sf in ann.spatial_figures:
-                geometry_bytes = geometries_dict[sf.key().hex]
-                Mask3D.to_figure_from_bytes(sf, geometry_bytes)
+                try:
+                    geometry_bytes = geometries_dict[sf.key().hex]
+                except KeyError:  # skip figures that doesn't need to update geometry
+                    continue
+                maks3d = Mask3D.from_bytes(geometry_bytes)
+                sf.set_geometry(maks3d)
 
             self.append(volume_id, ann, key_id_map)
 
             if progress_cb is not None:
                 progress_cb(1)
 
-    def update_project_on_upload(
+    def _update_on_transfer(
         self,
-        project_id: int,
-        ann_json: Dict,
-        project_meta: ProjectMeta,
-        nrrd_paths: List[str],
-        key_id_map: KeyIdMap,
-    ) -> Tuple[Dict, ProjectMeta]:
-        """
-        Creates new ObjClass and VolumeFigure annotations for converted STL and updates project meta.
-        Replaces ClosedMeshSurface spatial figures with Mask 3D.
-        Read geometries for new figures and store in dictionary.
-
-        :param project_id: Project ID
-        :type project_id: int
-        :param ann_json: Volume Annotation in JSON format
-        :type ann_json: Dict
-        :param project_meta: ProjectMeta object
-        :type project_meta: ProjectMeta
-        :param nrrd_paths: Paths for converted NRRD from STL
-        :type nrrd_paths: List[str]
-        :param key_id_map: Key to ID map
-        :type key_id_map: KeyIdMap
-        :return: Updated ann_json, project_meta
-        :rtype: Tuple[Dict, ProjectMeta]
-        :Usage example:
-
-        """
-
-        obj_classes_list = []
-
-        for path in nrrd_paths:
-            object_key = None
-
-            # searching connection between interpolation and spatial figure in annotations and set its object_key
-            for sf in ann_json.get("spatialFigures"):
-                if sf.get("key") == get_file_name(path):
-                    object_key = sf.get("objectKey")
-                    break
-
-            if object_key:
-                for obj in ann_json.get("objects"):
-                    if obj.get("key") == object_key:
-                        class_title = obj.get("classTitle")
-                        break
-            # if this external interpolation class name generates with the class_title as file name
-            else:
-                class_title = get_file_name(path)
-                sf = None
-
-            new_obj_class = ObjClass(f"stl_{class_title}_interpolation", Mask3D)
-            obj_classes_list.append(new_obj_class)
-            new_object = VolumeObject(new_obj_class, mask_3d=Mask3D.from_file(path))
-
-            # add new Volume object to ann_json with dummy figure
-            ann_json.get("objects").append(new_object.to_json(key_id_map))
-
-            # add new spatial figure to ann_json
-            ann_json.get("spatialFigures").append(new_object.figure.to_json(key_id_map))
-            # remove stl spatial figure from ann_json
-            if sf:
-                ann_json.get("spatialFigures").remove(sf)
-        # updates project meta if there are new classes
-        if obj_classes_list:
-            new_meta = ProjectMeta(obj_classes_list)
-            project_meta = project_meta.merge(new_meta)
-            self._api.project.update_meta(project_id, project_meta)
-
-        return ann_json, project_meta
-
-    def update_project_on_download(
-        self,
+        transfer_type: Literal["download", "upload"],
         ann: VolumeAnnotation,
         project_meta: ProjectMeta,
         nrrd_paths: List[str],
         key_id_map: KeyIdMap,
+        project_id: Optional[int] = None,
     ) -> Tuple[VolumeAnnotation, ProjectMeta]:
         """
         Creates new ObjClass and VolumeFigure annotations for converted STL.
         Replaces ClosedMeshSurface spatial figures with Mask 3D.
         Updates ann, project meta, key_id_map
 
+        :param transfer_type: Defines the process during which the update will be performed
+        :type transfer_type: Literal["download", "upload"]
         :param ann: VolumeAnnotation object
         :type ann: VolumeAnnotation
         :param project_meta: ProjectMeta object
         :type project_meta: ProjectMeta
-        :param nrrd_paths: Paths for converted NRRD from STL
+        :param nrrd_paths: Paths to converted NRRD from STL
         :type nrrd_paths: List[str]
         :param key_id_map: Key to ID map
         :type key_id_map: KeyIdMap
-        :return: Updated ann, project_meta
+        :param project_id: Project ID to update meta on upload
+        :type project_id: int
+        :return: Updated ann and project_meta
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
-        :Usage example:
         """
-        # create unique ids for new objects
-        if nrrd_paths:
-            max_f_id = max(key_id_map.to_dict().get("figures").values())
-            max_o_id = max(key_id_map.to_dict().get("objects").values())
-            new_f_id = max_f_id + (10 ** (len(str(max_f_id)) - 1)) + random.randint(100, 999)
-            new_o_id = max_o_id + (10 ** (len(str(max_o_id)) - 1)) + random.randint(100, 999)
-
-        for path in nrrd_paths:
+        for nrrd_path in nrrd_paths:
             object_key = None
 
             # searching connection between interpolation and spatial figure in annotations and set its object_key
             for sf in ann.spatial_figures:
-                if sf.key().hex == get_file_name(path):
+                if sf.key().hex == get_file_name(nrrd_path):
                     object_key = sf.parent_object.key()
                     break
 
@@ -366,23 +315,38 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     if obj.key() == object_key:
                         class_title = obj.obj_class.name
                         break
-            # if this external interpolation class name generates with the class_title as file name
+
             else:
-                class_title = get_file_name(path)
-                sf = None
+                raise Exception(
+                    f"Can't find volume object for Mask 3D from unknown file '{nrrd_path}'. Please check the project structure."
+                )
 
-            new_obj_class = ObjClass(f"stl_{class_title}_interpolation", Mask3D)
+            new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
             project_meta = project_meta.add_obj_class(new_obj_class)
-            new_object = VolumeObject(
-                new_obj_class, mask_3d=Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
-            )
+
+            if transfer_type == "download":
+                geometry = Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
+            elif transfer_type == "upload":
+                self._api.project.update_meta(project_id, project_meta)
+                geometry = Mask3D.from_file(nrrd_path)
+
+            new_object = VolumeObject(new_obj_class, mask_3d=geometry)
+
+            # add new Volume object to VolumeAnnotation with spatial figure
             ann = ann.add_objects([new_object])
-            key_id_map.add_object(new_object.key(), id=new_o_id)
-            key_id_map.add_figure(new_object.figure.key(), id=new_f_id)
+            key_id_map.add_object(new_object.key(), id=None)
+            key_id_map.add_figure(new_object.figure.key(), id=None)
 
-            os.rename(path, f"{os.path.dirname(path)}/{new_object.figure.key().hex}.nrrd")
+            if transfer_type == "download":
+                os.rename(
+                    nrrd_path, f"{os.path.dirname(nrrd_path)}/{new_object.figure.key().hex}.nrrd"
+                )
+                stl_path = re.sub(r"\.[^.]+$", ".stl", nrrd_path)
+                os.rename(
+                    stl_path, f"{os.path.dirname(nrrd_path)}/{new_object.figure.key().hex}.stl"
+                )
 
-            # remove stl spatial figure from ann
+            # remove STL spatial figure from VolumeAnnotation
             if sf:
                 ann.spatial_figures.remove(sf)
 
@@ -392,11 +356,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         self,
         volume_id: int,
         objects: Union[List[VolumeObject], VolumeObjectCollection],
-        key_id_map: KeyIdMap = None,
+        key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
         Add new VolumeObjects with spatial figures to VolumeAnnotation in project.
-        NOTE: Supported only objects with spatial figures (Mask3D)
+        Support only objects with spatial figures (Mask3D).
 
         :param volume_id: Volume ID
         :type volume_id: int
@@ -439,7 +403,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 vobject.figure
             except AttributeError as e:
                 e.args = [
-                    "There is no spatial figure in 'VolumeObject'",
+                    "3D mask for object is not defined",
                 ]
                 raise e
 
