@@ -2,7 +2,7 @@ try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
-from typing import Optional
+from typing import Any, Dict, Optional
 import supervisely as sly
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
@@ -32,9 +32,7 @@ class ModelInfo(Widget):
         if self._session_id is not None:
             data["model_connected"] = True
             if self._model_info is None:
-                data["model_info"] = self._api.task.send_request(
-                    self._session_id, "get_human_readable_session_info", data={}
-                )
+                data["model_info"] = self._get_info()
             else:
                 data["model_info"] = self._model_info
         elif self._session_id is None and self._model_info is not None:
@@ -53,12 +51,7 @@ class ModelInfo(Widget):
 
     def set_session_id(self, session_id: int):
         self._session_id = session_id
-        # self._model_info = self._api.task.send_request(
-        #     self._session_id, "get_human_readable_session_info", data={}
-        # )
-        self._model_info = self._api.task.send_request(
-            self._session_id, "get_session_info", data={}
-        )
+        self._model_info = self._get_info()
         self.update_data()
         self.update_state()
         DataJson().send_changes()
@@ -78,6 +71,18 @@ class ModelInfo(Widget):
         self.update_state()
         DataJson().send_changes()
         StateJson().send_changes()
+
+    # can be later replaced with `get_human_readable_session_info` post request
+    def _get_info(self):
+        info: Dict[str, Any] = self._api.task.send_request(
+            self._session_id, "get_session_info", data={}
+        )
+        hr_info = {}
+        for name, data in info.items():
+            hr_name = name.replace("_", " ").capitalize()
+            hr_info[hr_name] = data
+
+        return hr_info
 
     @property
     def session_id(self):
