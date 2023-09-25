@@ -479,15 +479,17 @@ class VolumeFigureApi(FigureApi):
         key_id_map: KeyIdMap,
     ):
         """
-        Upload geometries into spatial figures in project as bytes using their keys.
+        Upload geometries as bytes into spatial figures in the project using their UUID keys.
 
-        :param spatial_figures: List with figure UUID keys
+        :param spatial_figures: List of UUID keys representing spatial figures.
         :type spatial_figures: List[UUID]
-        :param geometries: Dict where keys are UUID of spatial figure, and values are geometries, which represented as NRRD in bytes.
+        :param geometries: Dictionary where keys are UUIDs of spatial figures, and values are geometries represented as NRRD files in byte format.
         :type geometries: Dict[UUID, bytes]
-        :param key_id_map: KeyIdMap object (dict with bidict values)
+        :param key_id_map: The KeyIdMap object (a dictionary with bidict values).
         :type key_id_map: KeyIdMap
-        :rtype: :class:`NoneType`
+        :return: None
+        :rtype: NoneType
+
         :Usage example:
         .. code-block:: python
 
@@ -529,14 +531,15 @@ class VolumeFigureApi(FigureApi):
 
     def download_sf_geometries(self, ids: List[int], paths: List[str]):
         """
-        Download spatial figures geometry for the specified figure IDs and saves them to the specified paths
+        Download spatial figure geometries for the specified figure IDs and save them to the specified paths.
 
-        :param ids: VolumeFigure ID in Supervisely
-        :type ids: int
-        :param paths: List of paths to save
+        :param ids: List of VolumeFigure IDs in Supervisely.
+        :type ids: List[int]
+        :param paths: List of paths to save the downloaded geometries.
         :type paths: List[str]
         :return: None
-        :rtype: :class:`NoneType`
+        :rtype: NoneType
+
         :Usage example:
 
          .. code-block:: python
@@ -582,11 +585,12 @@ class VolumeFigureApi(FigureApi):
 
     def copy_geometry_to_figure(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
         """
-        Download geometry by figure ID from existent figure in ecosystems project and load this data into new VolumeFigure object
+        Download geometry by figure ID from an existing figure in the ecosystem project
+        and load this data into a new VolumeFigure object.
 
-        :param spatial_figure: Spatial figure object from VolumeAnnotation
+        :param spatial_figure: The spatial figure object from VolumeAnnotation.
         :type spatial_figure: VolumeFigure
-        :param key_id_map: Mapped keys and IDs
+        :param key_id_map: The mapped keys and IDs.
         :type key_id_map: KeyIdMap object
         """
         with tempfile.TemporaryDirectory() as temp_dir:

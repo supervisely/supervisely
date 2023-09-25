@@ -282,23 +282,23 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         project_id: Optional[int] = None,
     ) -> Tuple[VolumeAnnotation, ProjectMeta]:
         """
-        Creates new ObjClass and VolumeFigure annotations for converted STL.
-        Replaces ClosedMeshSurface spatial figures with Mask 3D.
-        Updates ann, project meta, key_id_map
+        Create new ObjClass and VolumeFigure annotations for converted STL.
+        Replace ClosedMeshSurface spatial figures with Mask 3D.
+        Update the ann, project_meta, and key_id_map.
 
-        :param transfer_type: Defines the process during which the update will be performed
+        :param transfer_type: Defines the process during which the update will be performed ("download" or "upload").
         :type transfer_type: Literal["download", "upload"]
-        :param ann: VolumeAnnotation object
+        :param ann: The VolumeAnnotation object to update.
         :type ann: VolumeAnnotation
-        :param project_meta: ProjectMeta object
+        :param project_meta: The ProjectMeta object.
         :type project_meta: ProjectMeta
-        :param nrrd_paths: Paths to converted NRRD from STL
+        :param nrrd_paths: Paths to the converted NRRD files from STL.
         :type nrrd_paths: List[str]
-        :param key_id_map: Key to ID map
+        :param key_id_map: The Key to ID map.
         :type key_id_map: KeyIdMap
-        :param project_id: Project ID to update meta on upload
-        :type project_id: int
-        :return: Updated ann and project_meta
+        :param project_id: The Project ID to update metadata on upload (optional).
+        :type project_id: int, optional
+        :return: A tuple containing the updated ann and project_meta objects.
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
         """
         for nrrd_path in nrrd_paths:
@@ -359,17 +359,17 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
-        Add new VolumeObjects with spatial figures to VolumeAnnotation in project.
-        Support only objects with spatial figures (Mask3D).
+        Add new VolumeObjects with spatial figures (Mask3D) to a VolumeAnnotation in the project.
 
-        :param volume_id: Volume ID
+        :param volume_id: The ID of the volume.
         :type volume_id: int
-        :param objects: Volume objects with spatial figures (Mask3D)
-        :type objects: List of :class:`VolumeObject` or :class:`VolumeObjectCollection
-        :param key_id_map: KeyIdMap
+        :param objects: New volume objects with spatial figures (Mask3D).
+        :type objects: List[VolumeObject] or VolumeObjectCollection
+        :param key_id_map: The KeyIdMap (optional).
         :type key_id_map: KeyIdMap, optional
         :return: None
-        :rtype: :class:`NoneType`
+        :rtype: NoneType
+
         :Usage example:
 
          .. code-block:: python

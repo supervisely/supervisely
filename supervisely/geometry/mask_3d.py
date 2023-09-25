@@ -503,15 +503,15 @@ class Mask3D(Geometry):
         origin: Optional[List[int]] = None,
     ):
         """
-        Draw 2D mask on 3D Mask.
+        Draw a 2D mask on a 3D Mask.
 
-        :param mask_2d: 2D array with flat mask
+        :param mask_2d: 2D array with a flat mask.
         :type mask_2d: np.ndarray
-        :param plane_name: Name of the plane: "axial", "sagittal", "coronal"
+        :param plane_name: Name of the plane: "axial", "sagittal", "coronal".
         :type plane_name: str
-        :param slice_index: Slice index of volume figure
+        :param slice_index: Slice index of the volume figure.
         :type slice_index: int
-        :param origin: (row, col) position, top-left corner of the mask is located on slice
+        :param origin: (row, col) position. The top-left corner of the mask is located on the specified slice (optional).
         :type origin: Optional[List[int]], NoneType
         """
 

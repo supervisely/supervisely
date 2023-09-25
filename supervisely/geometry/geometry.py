@@ -255,10 +255,9 @@ class Geometry(JsonSerializable):
     @staticmethod
     def bytes_from_file(path: str) -> Tuple[str, bytes]:
         """
-        Read geometry as bytes.
+        Read geometry from a file as bytes.
 
-        The NRRD file must be named with a hexadecimal UUID value.
-        Only NRRD files are supported.
+        The NRRD file must be named with a hexadecimal UUID value. Only NRRD files are supported.
 
         :param path: Path to the NRRD file containing geometry.
         :type path: str
@@ -277,10 +276,9 @@ class Geometry(JsonSerializable):
     @staticmethod
     def bytes_from_file_batch(paths: List[str]) -> Dict[str, bytes]:
         """
-        Read geometries as bytes and map them to figure UUID hex values in a dictionary.
+        Read geometries from multiple files as bytes and map them to figure UUID hex values in a dictionary.
 
-        The NRRD files must be named with a hexadecimal UUID value.
-        Only NRRD files are supported.
+        The NRRD files must be named with a hexadecimal UUID value. Only NRRD files are supported.
 
         :param paths: Paths to the NRRD files containing geometry.
         :type paths: List[str]
