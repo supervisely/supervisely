@@ -140,9 +140,10 @@ class NodesFlow(Widget):
         self._context_menu = context_menu
         self._color_theme = color_theme
         self._dd_menu = drag_and_drop_menu
+        self._show_dd_area = False
+        self._dd_section_width = drag_and_drop_menu_width
         if self._dd_menu:
             self._show_dd_area = True
-            self._dd_section_width = drag_and_drop_menu_width
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
