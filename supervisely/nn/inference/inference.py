@@ -324,13 +324,16 @@ class Inference:
             "async_image_inference_support": True,
         }
 
-    def get_human_readable_info(self):
+    def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
         info = self.get_info()
 
         for name, data in info.items():
             hr_name = name.replace("_", " ").capitalize()
-            hr_info[hr_name] = data
+            if data is None:
+                hr_info[hr_name] = replace_none_with
+            else:
+                hr_info[hr_name] = data
 
         return hr_info
 
