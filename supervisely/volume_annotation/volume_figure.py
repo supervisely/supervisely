@@ -1,5 +1,9 @@
 # coding: utf-8
+from __future__ import annotations
 import uuid
+from typing import Union, Optional, Literal
+from numpy import ndarray
+from uuid import UUID
 from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
@@ -9,6 +13,7 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely._utils import take_with_default
 from supervisely.volume_annotation.volume_object import VolumeObject
+from supervisely.geometry.geometry import Geometry
 import supervisely.volume_annotation.constants as constants
 from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
 from supervisely.geometry.constants import (
@@ -35,8 +40,8 @@ class VolumeFigure(VideoFigure):
     :type plane_name: str
     :param slice_index: Index of slice to which VolumeFigure belongs.
     :type slice_index: int
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
+    :param key: The UUID key associated with the VolumeFigure.
+    :type key: UUID, optional
     :param class_id: ID of :class:`VolumeObject<VolumeObject>` to which VolumeFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VolumeFigure.
@@ -82,15 +87,15 @@ class VolumeFigure(VideoFigure):
 
     def __init__(
         self,
-        volume_object,
-        geometry,
-        plane_name=None,
-        slice_index=None,
-        key=None,
-        class_id=None,
-        labeler_login=None,
-        updated_at=None,
-        created_at=None,
+        volume_object: VolumeObject,
+        geometry: Geometry,
+        plane_name: Literal["axial", "sagittal", "coronal"] = None,
+        slice_index: int = None,
+        key: Optional[UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
         if not isinstance(geometry, (Mask3D, ClosedSurfaceMesh)):
@@ -598,3 +603,68 @@ class VolumeFigure(VideoFigure):
             json_data.pop(ApiField.GEOMETRY)
             json_data.pop(ApiField.META)
         return json_data
+
+    @classmethod
+    def from_mask3d(
+        cls,
+        volume_object: VolumeObject,
+        geometry_data: Union[str, ndarray, bytes],
+        key: Optional[UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> VolumeFigure:
+        """
+        Create a VolumeFigure from Mask 3D geometry.
+
+        :param volume_object: The VolumeObject object to which the VolumeFigure belongs.
+        :type volume_object: VolumeObject
+        :param geometry_data: Geometry data represented as a path, NumPy array, or bytes.
+        :type geometry_data: str or ndarray or bytes
+        :param key: The UUID key associated with the VolumeFigure.
+        :type key: UUID, optional
+        :param class_id: The ID of the VolumeObject to which the VolumeFigure belongs.
+        :type class_id: int, optional
+        :param labeler_login: The login of the user who created the VolumeFigure.
+        :type labeler_login: str, optional
+        :param updated_at: The date and time when the VolumeFigure was last modified (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
+        :type updated_at: str, optional
+        :param created_at: The date and time when the VolumeFigure was created (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
+        :type created_at: str, optional
+        :return: A VolumeFigure object created from Mask 3D geometry.
+        :rtype: VolumeFigure
+        """
+        if isinstance(geometry_data, str):
+            mask_3d = Mask3D.from_file(geometry_data)
+        if isinstance(geometry_data, ndarray):
+            mask_3d = Mask3D(geometry_data)
+        if isinstance(geometry_data, bytes):
+            mask_3d = Mask3D.from_bytes(geometry_data)
+        return cls(
+            volume_object,
+            mask_3d,
+            key=key,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
+
+    def set_geometry(self, new_geometry: Mask3D) -> None:
+        """
+        Change the Mask3D geometry data in the figure.
+
+        :param new_geometry: The new Mask3D geometry object.
+        :type new_geometry: Mask3D
+        """
+        if new_geometry.name() != Mask3D.name():
+            raise TypeError(
+                f"You trying to add '{new_geometry.name()}' data, accepted only '{Mask3D.name()}' geometry data"
+            )
+        if self.geometry.name() != new_geometry.name():
+            raise TypeError(
+                f"You trying to change '{self.geometry.name()}' data with '{new_geometry.name()}' geometry data"
+            )
+
+        self.geometry.data = new_geometry.data
