@@ -103,29 +103,36 @@ class InferenceGUI(BaseInferenceGUI):
         )
 
         self._model_info_widget = Widgets.ModelInfo()
+        self._model_info_widget_container = Widgets.Field(self._model_info_widget, title="App Info")
 
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
         self._model_classes_plug = Widgets.Text("No classes provided")
-
-        self._model_info_collapse = Widgets.Collapse(
-            [
-                Widgets.Collapse.Item(
-                    "info",
-                    "App Info",
-                    self._model_info_widget,
-                ),
-                Widgets.Collapse.Item(
-                    "classes",
-                    "Training classes",
-                    Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
-                ),
-            ],
+        self._model_classes_widget_container = Widgets.Field(
+            content=Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
+            title="Training classes",
         )
+
+        # self._model_info_collapse = Widgets.Collapse(
+        #     [
+        #         Widgets.Collapse.Item(
+        #             "info",
+        #             "App Info",
+        #             self._model_info_widget,
+        #         ),
+        #         Widgets.Collapse.Item(
+        #             "classes",
+        #             "Training classes",
+        #             Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
+        #         ),
+        #     ],
+        # )
 
         self._model_full_info = Widgets.Container(
             [
                 self._model_inference_settings_container,
-                self._model_info_collapse,
+                # self._model_info_collapse,
+                self._model_info_widget_container,
+                self._model_classes_widget_container,
             ]
         )
         self._model_full_info.hide()
@@ -280,6 +287,7 @@ class InferenceGUI(BaseInferenceGUI):
 
     def _hide_info_after_change(self):
         self._model_full_info_card.collapse()
+        logger.info("_model_full_info_card should be collapced")
         self._model_full_info.hide()
         self._before_deploy_msg.show()
 
@@ -419,7 +427,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         inference.update_model_meta()
         # collapse all info
-        self._model_info_collapse.set_active_panel([])
+        # self._model_info_collapse.set_active_panel([])
         self._model_classes_widget.set_project_meta(inference.model_meta)
         self._model_classes_plug.hide()
         self._model_classes_widget.show()
