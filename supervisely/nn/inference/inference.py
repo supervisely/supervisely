@@ -213,7 +213,7 @@ class Inference:
                     with progress(
                         message="Downloading file from Team Files...",
                         total=file_info.sizeb,
-                        unit="bytes",
+                        unit="B",
                         unit_scale=True,
                     ) as pbar:
                         download_file(team_id, src_path, dst_path, pbar.update)
