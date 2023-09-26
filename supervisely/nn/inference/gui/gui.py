@@ -127,19 +127,31 @@ class InferenceGUI(BaseInferenceGUI):
         #     ],
         # )
 
-        self._model_full_info = Widgets.Container(
+        # self._model_full_info = Widgets.Container(
+        #     [
+        #         Widgets.Flexbox(
+        #             [
+        #                 self._model_info_widget_container,
+        #                 self._model_inference_settings_container,
+        #             ],
+        #             gap=10,
+        #             center_content=True,
+        #         ),
+        #         self._model_classes_widget_container,
+        #     ],
+        #     gap=3,
+        # )
+
+        self._model_full_info = Widgets.Grid(
             [
-                Widgets.Flexbox(
-                    [
-                        self._model_info_widget_container,
-                        self._model_inference_settings_container,
-                    ],
-                    gap=3,
-                ),
+                self._model_info_widget_container,
+                self._model_inference_settings_container,
+                # self._model_inference_settings_widget
                 self._model_classes_widget_container,
             ],
-            gap=3,
+            columns=2,
         )
+
         self._model_full_info.hide()
         self._before_deploy_msg = Widgets.Text("Deploy model to see the information.")
 
