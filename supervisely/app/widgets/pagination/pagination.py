@@ -1,6 +1,6 @@
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from typing import List
+from typing import List, Union
 
 try:
     from typing import Literal
@@ -18,8 +18,8 @@ class Pagination(Widget):
         total: int,
         page_size: int = 10,
         current_page: int = 1,
-        layout: Literal[
-            "sizes", "prev", "pager", "next", "jumper", "->", "total", "slot"
+        layout: Union[
+            str, List[Literal["sizes", "prev", "pager", "next", "jumper", "->", "total", "slot"]]
         ] = "prev, pager, next",
         compact: bool = False,
         page_size_options: List[int] = [10, 20, 30, 40, 50, 100],
@@ -28,7 +28,7 @@ class Pagination(Widget):
         self._total = total
         self._page_size = page_size
         self._current_page = current_page
-        self._layout = layout
+        self._layout = ", ".join(layout) if type(layout) == list else layout
         self._compact = compact
         self._page_size_options = page_size_options
 
@@ -93,6 +93,20 @@ class Pagination(Widget):
             raise TypeError("Page size options value must be list of integers")
         self._page_size_options = value
         DataJson()[self.widget_id]["pageSizeOptions"] = self._page_size_options
+        DataJson().send_changes()
+
+    def set_layout(
+        self,
+        value: Union[
+            str, List[Literal["sizes", "prev", "pager", "next", "jumper", "->", "total", "slot"]]
+        ],
+    ):
+        if type(value) == list:
+            value = ", ".join(value)
+        if type(value) != str:
+            raise TypeError("Layout value must be str or list")
+        self._layout = value
+        DataJson()[self.widget_id]["layout"] = self._layout
         DataJson().send_changes()
 
     def page_changed(self, func):
