@@ -112,46 +112,13 @@ class InferenceGUI(BaseInferenceGUI):
             title="Training classes",
         )
 
-        # self._model_info_collapse = Widgets.Collapse(
-        #     [
-        #         Widgets.Collapse.Item(
-        #             "info",
-        #             "App Info",
-        #             self._model_info_widget,
-        #         ),
-        #         Widgets.Collapse.Item(
-        #             "classes",
-        #             "Training classes",
-        #             Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
-        #         ),
-        #     ],
-        # )
-
-        # self._model_full_info = Widgets.Container(
-        #     [
-        #         Widgets.Flexbox(
-        #             [
-        #                 self._model_info_widget_container,
-        #                 self._model_inference_settings_container,
-        #             ],
-        #             gap=10,
-        #             center_content=True,
-        #         ),
-        #         self._model_classes_widget_container,
-        #     ],
-        #     gap=3,
-        # )
-
-        self._model_full_info = Widgets.Grid(
+        self._model_full_info = Widgets.Container(
             [
                 self._model_info_widget_container,
                 self._model_inference_settings_container,
-                # self._model_inference_settings_widget
                 self._model_classes_widget_container,
-            ],
-            columns=2,
+            ]
         )
-
         self._model_full_info.hide()
         self._before_deploy_msg = Widgets.Text("Deploy model to see the information.")
 
@@ -304,7 +271,6 @@ class InferenceGUI(BaseInferenceGUI):
 
     def _hide_info_after_change(self):
         self._model_full_info_card.collapse()
-        logger.info("_model_full_info_card should be collapced")
         self._model_full_info.hide()
         self._before_deploy_msg.show()
 
@@ -426,6 +392,7 @@ class InferenceGUI(BaseInferenceGUI):
         self.set_model_info(inference)
         self._before_deploy_msg.hide()
         self._model_full_info.show()
+        self._model_full_info_card.uncollapse()
 
     def set_inference_settings(self, inference):
         if len(inference.custom_inference_settings_dict.keys()) == 0:
@@ -448,7 +415,6 @@ class InferenceGUI(BaseInferenceGUI):
         self._model_classes_widget.set_project_meta(inference.model_meta)
         self._model_classes_plug.hide()
         self._model_classes_widget.show()
-        self._model_full_info_card.uncollapse()
 
     def set_model_info(self, inference):
         info = inference.get_human_readable_info(replace_none_with="Not provided")
