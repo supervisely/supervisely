@@ -131,7 +131,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._model_full_info_card = Widgets.Card(
             title="Full model info",
-            description="Inference settings, app parameters and training classes",
+            description="Inference settings, session parameters and model classes",
             collapsable=True,
             content=Widgets.Container(
                 [
