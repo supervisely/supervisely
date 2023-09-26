@@ -129,9 +129,13 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._model_full_info = Widgets.Container(
             [
-                self._model_inference_settings_container,
-                # self._model_info_collapse,
-                self._model_info_widget_container,
+                Widgets.Container(
+                    [
+                        self._model_info_widget_container,
+                        self._model_inference_settings_container,
+                    ],
+                    direction="horizontal",
+                ),
                 self._model_classes_widget_container,
             ]
         )
@@ -431,6 +435,7 @@ class InferenceGUI(BaseInferenceGUI):
         self._model_classes_widget.set_project_meta(inference.model_meta)
         self._model_classes_plug.hide()
         self._model_classes_widget.show()
+        self._model_full_info_card.uncollapse()
 
     def set_model_info(self, inference):
         info = inference.get_human_readable_info(replace_none_with="Not provided")
