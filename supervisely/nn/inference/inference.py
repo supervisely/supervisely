@@ -240,7 +240,7 @@ class Inference:
                         with progress(
                             message="Downloading file from external URL",
                             total=total_size,
-                            unit="bytes",
+                            unit="B",
                             unit_scale=True,
                         ) as pbar:
                             download_content(save_path, pbar.update)
