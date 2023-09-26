@@ -45,6 +45,7 @@ class Cascader(Widget):
     def __init__(
         self,
         items: List[Cascader.Item] = None,
+        selected_items: List[str] = None,
         filterable: bool = False,
         placeholder: str = "select",
         size: Literal["large", "small", "mini"] = None,
@@ -52,7 +53,6 @@ class Cascader(Widget):
         clearable: bool = True,
         show_all_levels: bool = True,
         parent_selectable: bool = False,
-        selected_items: List[str] = None,
         widget_id: str = None,
     ):
         self._items = items
