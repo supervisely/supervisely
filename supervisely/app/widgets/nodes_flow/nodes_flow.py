@@ -69,7 +69,7 @@ class NodesFlow(Widget):
                 if self.label is not None:
                     j.setdefault("options", {})["displayName"] = self.label
                 if self.color is not None:
-                    j.setdefault("options", {})["color"] = self.color
+                    j.setdefault("options", {})["type"] = self.color
                 return j
 
         class Output(Input):
@@ -77,6 +77,8 @@ class NodesFlow(Widget):
 
         class Option:
             def __init__(self, name: str, option_component: OptionComponent):
+                if isinstance(option_component, NodesFlow.SidebarNodeInfoOptionComponent):
+                    name = "sidebarNodeInfo"
                 self.name = name
                 self.option_component = option_component
 
@@ -93,6 +95,8 @@ class NodesFlow(Widget):
             outputs: List[Output] = [],
             inputs_up: bool = False,
             position: Optional[dict] = None,
+            header_color: Optional[str] = None,
+            header_text_color: Optional[str] = None,
         ):
             self.id = id
             self.name = name
@@ -102,6 +106,8 @@ class NodesFlow(Widget):
             self.inputs = inputs
             self.outputs = outputs
             self._position = position
+            self._header_background_color = header_color
+            self._header_color = header_text_color
 
         def to_json(self):
             return {
@@ -113,6 +119,10 @@ class NodesFlow(Widget):
                 "inputs": [i.to_json() for i in self.inputs],
                 "outputs": [o.to_json() for o in self.outputs],
                 "position": self._position,
+                "header": {
+                    "backgroundColor": self._header_background_color,
+                    "color": self._header_color
+                },
             }
 
         def set_position(self, position):
