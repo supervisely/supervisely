@@ -46,7 +46,7 @@ def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
         text = "disconnected from"
     try:
         process.check_returncode()
-        logger.info(f"Supervisely VPN Network has been successfully {text}")
+        logger.info(f"You have been successfully {text} Supervisely VPN Network")
     except subprocess.CalledProcessError as e:
         print(e.stdout)
 
