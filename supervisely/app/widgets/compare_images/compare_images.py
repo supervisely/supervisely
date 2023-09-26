@@ -10,61 +10,51 @@ class CompareImages(Widget):
         right: Optional[Image or LabeledImage] = None,
         widget_id: str = None,
     ):
-        self._left = left
-        self._right = right
-
-        self._check_input_items()
-
+        self._set_items(left=left, right=right)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def _check_input_items(self):
-        if type(self._left) not in [Image, LabeledImage] and self._left is not None:
-            raise TypeError(
-                f"Left widget has {type(self._left)} type, Image, LabeledImage only are possible"
-            )
+    def _set_items(self, left, right):
+        self._check_input_items(left=left, right=right)
+        if left is None:
+            left = LabeledImage() if type(right) == LabeledImage else Image()
 
-        if type(self._right) not in [Image, LabeledImage] and self._right is not None:
-            raise TypeError(
-                f"Right widget has {type(self._right)} type, Image, LabeledImage only are possible"
-            )
+        if right is None:
+            right = LabeledImage() if type(left) == LabeledImage else Image()
 
-        if self._left is None and self._right is None:
+        self._left, self._right = left, right
+
+    def _check_input_items(self, left, right):
+        if type(left) not in [Image, LabeledImage, None]:
+            raise TypeError(f"Left widget type has to be Image or LabeledImage, got {type(left)}")
+
+        if type(right) not in [Image, LabeledImage, None]:
+            raise TypeError(f"Right widget type has to be Image or LabeledImage, got {type(left)}")
+
+        if left is None and right is None:
             raise TypeError("Both left and right widgets are not set")
 
-        self._correct_input_items()
-
-    def _correct_input_items(self):
-        if self._left is None:
-            if type(self._right) == LabeledImage:
-                self._left = LabeledImage()
-            else:
-                self._left = Image()
-
-        if self._right is None:
-            if type(self._left) == LabeledImage:
-                self._right = LabeledImage()
-            else:
-                self._right = Image()
-
-        if type(self._left) != type(self._right):
-            raise TypeError(
-                f"You try to compare different content types: {type(self._left)} with {type(self._right)}, check your input data"
-            )
+        if left is not None and right is not None:
+            if type(left) != type(right):
+                raise TypeError(f"Please provide the same type of widgets for left and right.")
 
     def get_json_data(self):
         return {}
 
     def get_json_state(self):
-        {}
+        return {}
 
-    def get_left(self):
-        return self._left
-
-    def get_right(self):
-        return self._right
-
-    def set_left(self, *args, **kwargs):
+    def update_left(self, *args, **kwargs):
         self._left.set(*args, **kwargs)
 
-    def set_right(self, *args, **kwargs):
+    def update_right(self, *args, **kwargs):
         self._right.set(*args, **kwargs)
+
+    def clean_up_left(self):
+        self._left.clean_up()
+
+    def clean_up_right(self):
+        self._right.clean_up()
+
+    def clean_up(self):
+        self.clean_up_left()
+        self.clean_up_right()
