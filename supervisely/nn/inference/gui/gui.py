@@ -129,12 +129,11 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._model_full_info = Widgets.Container(
             [
-                Widgets.Grid(
+                Widgets.Flexbox(
                     [
                         self._model_info_widget_container,
                         self._model_inference_settings_container,
                     ],
-                    columns=2,
                     gap=3,
                 ),
                 self._model_classes_widget_container,
