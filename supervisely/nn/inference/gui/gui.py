@@ -99,17 +99,24 @@ class InferenceGUI(BaseInferenceGUI):
             readonly=True, restore_default_button=False
         )
         self._model_inference_settings_container = Widgets.Field(
-            self._model_inference_settings_widget, title="Inference settings"
+            self._model_inference_settings_widget,
+            title="Inference settings",
+            description="Model allows user to configure the following parameters on prediction phase",
         )
 
         self._model_info_widget = Widgets.ModelInfo()
-        self._model_info_widget_container = Widgets.Field(self._model_info_widget, title="App Info")
+        self._model_info_widget_container = Widgets.Field(
+            self._model_info_widget,
+            title="Session Info",
+            description="Basic information about the deployed model",
+        )
 
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
         self._model_classes_plug = Widgets.Text("No classes provided")
         self._model_classes_widget_container = Widgets.Field(
             content=Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
-            title="Training classes",
+            title="Model classes",
+            description="List of classes model predicts",
         )
 
         self._model_full_info = Widgets.Container(
