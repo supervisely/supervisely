@@ -3,10 +3,12 @@ try:
 except ImportError:
     from typing_extensions import Literal
 from typing import Any, Dict, Optional
-import supervisely as sly
+
+import supervisely.io.env as sly_env
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
+from supervisely.nn.inference import Session
 
 
 class ModelInfo(Widget):
@@ -15,14 +17,17 @@ class ModelInfo(Widget):
         session_id: int = None,
         team_id: int = None,
         widget_id: str = None,
+        replace_none_with: Optional[str] = None,
     ):
         self._api = Api()
         self._session_id = session_id
         self._team_id = team_id
         self._model_info = None
+        # used only if session data recieved from Session instance directly
+        self._replace_none_with = replace_none_with
 
         if self._team_id is None:
-            self._team_id = sly.env.team_id()
+            self._team_id = sly_env.team_id()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -72,17 +77,9 @@ class ModelInfo(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
 
-    # can be later replaced with `get_human_readable_session_info` post request
     def _get_info(self):
-        info: Dict[str, Any] = self._api.task.send_request(
-            self._session_id, "get_session_info", data={}
-        )
-        hr_info = {}
-        for name, data in info.items():
-            hr_name = name.replace("_", " ").capitalize()
-            hr_info[hr_name] = data
-
-        return hr_info
+        session = Session(self._api, self._session_id)
+        return session.get_human_readable_info(self._replace_none_with)
 
     @property
     def session_id(self):
