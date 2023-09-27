@@ -426,6 +426,7 @@ class InferenceGUI(BaseInferenceGUI):
     def set_model_info(self, inference):
         info = inference.get_human_readable_info(replace_none_with="Not provided")
         self._model_info_widget.set_model_info(inference.task_id, info)
+        self._model_info_widget.set_session_id(inference.task_id)
 
     # def create_handler_on_model_changes(
     #     self,
