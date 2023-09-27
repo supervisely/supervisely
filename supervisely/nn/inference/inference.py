@@ -307,7 +307,7 @@ class Inference:
         except Exception as exc:
             logger.warn("Unknown exception. Please, contact support")
             logger.exception(exc)
-        
+
         if classes is None or len(classes) == 0:
             logger.warn(f"get_classes() function return {classes}; skip classes processing.")
         else:
@@ -728,10 +728,6 @@ class Inference:
         @server.post(f"/get_session_info")
         def get_session_info():
             return self.get_info()
-
-        @server.post("/get_human_readable_session_info")
-        def get_human_readable_session_info():
-            return self.get_human_readable_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
