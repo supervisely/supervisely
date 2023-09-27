@@ -41,8 +41,21 @@ class MessageBox(Widget):
     def get_json_state(self) -> Dict:
         return {}
 
-    def open(self):
+    def open(
+        self,
+        title: str = None,
+        message: str = None,
+        type: Literal["info", "warning", "error"] = None,
+    ):
         data = DataJson()[self.widget_id]["data"]
+        if title is not None:
+            data["title"] = title
+        if message is not None:
+            data["message"] = message
+        if type is not None:
+            if type not in ["info", "warning", "error"]:
+                raise ValueError("type should be one of ['info', 'warning', 'error']")
+            data["type"] = type
         DataJson().send_changes()
         StateJson().send_changes()
 
