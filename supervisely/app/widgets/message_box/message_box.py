@@ -1,6 +1,10 @@
-from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget
 from typing import Dict
+
+from supervisely.app import DataJson, StateJson
+from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.widgets import Widget
+from supervisely.app.widgets_context import JinjaWidgets
 
 try:
     from typing import Literal
@@ -9,49 +13,94 @@ except ImportError:
 
 
 class MessageBox(Widget):
-    class Routes:
-        OPEN_CLICKED = "open_cb"
-        CLOSE_CLICKED = "close_cb"
-
     def __init__(
         self,
         title: str = "",
-        type: Literal["info", "warning", "error"] = "info",
         message: str = "",
+        type: Literal["info", "warning", "error"] = "info",
         widget_id: str = None,
     ):
         self._title = title
-        self._type = type
         self._message = message
-        self._open_clicked_handled = False
+        self._type = type
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+        script_path = "./sly/css/app/widgets/message_box/script.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
+
     def get_json_data(self) -> Dict:
-        return {"example1": {"title": self._title, "type": self._type, "message": self._message}}
+        return {
+            "data": {
+                "title": self._title,
+                "type": self._type,
+                "message": self._message,
+            }
+        }
 
     def get_json_state(self) -> Dict:
-        return {"selected": []}
+        return {}
 
-    def open_clicked(self, func):
-        route_path = self.get_route_path(MessageBox.Routes.OPEN_CLICKED)
-        server = self._sly_app.get_server()
-        self._open_clicked_handled = True
+    def open(self):
+        data = DataJson()[self.widget_id]["data"]
+        DataJson().send_changes()
+        StateJson().send_changes()
 
-        @server.post(route_path)
-        def _click():
-            res = self.get_current_frame()
-            func(res)
+        run_sync(
+            WebsocketManager().broadcast(
+                {
+                    "runAction": {
+                        "action": f"message-box-{self.widget_id}",
+                        "payload": {"data": data},
+                    }
+                }
+            )
+        )
 
-        return _click
+    def set_title(self, title: str):
+        self._set({"title": title})
 
-    # def set_value(self, value: str):
-    #     self._md = value
-    #     DataJson()[self.widget_id]["md"] = value
-    #     DataJson().send_changes()
+    def get_title(self):
+        return DataJson()[self.widget_id]["data"]["title"]
 
-    # def get_value(self):
-    #     return DataJson()[self.widget_id]["md"]
+    def set_message(self, message: str):
+        self._set({"message": message})
 
-    # def get_height(self):
-    #     return DataJson()[self.widget_id]["options"]["height"]
+    def get_message(self):
+        return DataJson()[self.widget_id]["data"]["message"]
+
+    def set_type(self, value: Literal["info", "warning", "error"]):
+        if value not in ["info", "warning", "error"]:
+            raise ValueError("Value should be one of ['info', 'warning', 'error']")
+        self._set({"type": value})
+
+    def get_type(self):
+        return DataJson()[self.widget_id]["data"]["type"]
+
+    def set(self, data: dict):
+        if type(data) is not dict:
+            raise TypeError("data should be dict")
+        new_type = data.get("type")
+        if new_type is not None and new_type not in ["info", "warning", "error"]:
+            raise ValueError("type should be one of ['info', 'warning', 'error']")
+        self._set(data)
+
+    def get_data(self):
+        return DataJson()[self.widget_id]["data"]
+
+    def _set(self, data):
+        if data.get("title") is None:
+            data["title"] = self._title
+        else:
+            self._title = data.get("title")
+        if data.get("message") is None:
+            data["message"] = self._message
+        else:
+            self._message = data.get("message")
+        if data.get("type") is None:
+            data["type"] = self._type
+        else:
+            self._type = data.get("type")
+
+        DataJson()[self.widget_id]["data"] = data
+        DataJson().send_changes()
