@@ -6,6 +6,10 @@ try:
 except TypeError as e:
     __version__ = "development"
 
+from supervisely._utils import setup_certificates
+
+setup_certificates()
+
 from supervisely.sly_logger import (
     logger,
     ServiceType,
