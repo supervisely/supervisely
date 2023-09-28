@@ -1,19 +1,22 @@
 # coding: utf-8
 
-import os
-import urllib
-import string
-import re
 import base64
+import copy
 import hashlib
 import json
-import numpy as np
+import os
 import random
-from datetime import datetime
+import re
+import string
 import time
+import urllib
+from datetime import datetime
+from tempfile import gettempdir
+from typing import List, Optional
 
-import copy
-from typing import Optional
+import numpy as np
+from requests.utils import DEFAULT_CA_BUNDLE_PATH
+
 from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
 
@@ -209,3 +212,60 @@ def get_readable_datetime(value: str) -> str:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_certificates_list(path: str = DEFAULT_CA_BUNDLE_PATH) -> List[str]:
+    with open(path, "r", encoding="ascii") as f:
+        content = f.read().strip()
+        certs = []
+
+        begin_cert = "-----BEGIN CERTIFICATE-----"
+        end_cert = "-----END CERTIFICATE-----"
+
+        while begin_cert in content:
+            start_index = content.index(begin_cert)
+            end_index = content.index(end_cert, start_index) + len(end_cert)
+            cert = content[start_index:end_index]
+            certs.append(cert)
+            content = content[end_index:]
+        return certs
+
+
+def setup_certificates():
+    """
+    This function is used to add extra certificates to the default CA bundle on Supervisely import.
+    """
+    path_to_certificate: str = os.environ.get("SLY_EXTRA_CA_CERTS", "").strip()
+    if path_to_certificate == "":
+        return
+
+    if os.path.exists(path_to_certificate):
+        if os.path.isfile(path_to_certificate):
+            with open(path_to_certificate, "r", encoding="ascii") as f:
+                extra_ca_contents = f.read().strip()
+                if extra_ca_contents == "":
+                    raise RuntimeError(f"File with certificates is empty: {path_to_certificate}")
+
+            requests_ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE")
+            if requests_ca_bundle is not None:
+                if os.path.exists(requests_ca_bundle):
+                    if os.path.isfile(requests_ca_bundle):
+                        certificates = get_certificates_list(os.environ.get("REQUESTS_CA_BUNDLE"))
+                    else:
+                        raise RuntimeError(f"Path to bundle is not a file: {requests_ca_bundle}")
+            else:
+                certificates = get_certificates_list(DEFAULT_CA_BUNDLE_PATH)
+
+            certificates.insert(0, extra_ca_contents)
+            new_bundle_path = os.path.join(gettempdir(), "sly_extra_ca_certs.crt")
+            with open(new_bundle_path, "w", encoding="ascii") as f:
+                f.write("\n".join(certificates))
+
+            os.environ["REQUESTS_CA_BUNDLE"] = new_bundle_path
+            if os.environ.get("SSL_CERT_FILE") is None:
+                os.environ["SSL_CERT_FILE"] = new_bundle_path
+            logger.info(f"Certificates were added to the bundle: {path_to_certificate}")
+        else:
+            raise RuntimeError(f"Path to certificate is not a file: {path_to_certificate}")
+    else:
+        raise RuntimeError(f"Path to certificate does not exist: {path_to_certificate}")

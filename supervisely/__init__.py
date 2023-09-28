@@ -139,7 +139,9 @@ from supervisely._utils import (
     get_datetime,
     get_readable_datetime,
     generate_free_name,
+    setup_certificates,
 )
+
 import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
 
@@ -243,3 +245,5 @@ _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
 
 from supervisely.io.exception_handlers import handle_exceptions
+
+setup_certificates()
