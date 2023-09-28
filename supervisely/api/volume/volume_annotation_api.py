@@ -14,7 +14,6 @@ from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.geometry.geometry import Geometry
 from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.mask_3d import Mask3D
@@ -23,8 +22,7 @@ from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnota
 from supervisely.io.json import load_json_file
 from supervisely.io.fs import dir_exists, get_file_name, list_files, file_exists
 from supervisely.volume import stl_converter
-
-# from uuid import UUID
+from supervisely.collection.key_indexed_collection import DuplicateKeyError
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
@@ -208,7 +206,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
-        # for use in updating project metadata, if necessary
+        # use in updating project metadata
         project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
 
         if interpolation_dirs is None:
@@ -251,12 +249,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 stored_geometries = [
                     x for x in list_files(interpolation_dir) if x not in nrrd_paths
                 ]
-                geometries_dict.update(Geometry.bytes_from_file_batch(stored_geometries))
+                geometries_dict.update(Mask3D._bytes_from_file_batch(stored_geometries))
 
             # list all Mask 3D geometries
             if mask_dir is not None and dir_exists(mask_dir):
                 mask_paths = list_files(mask_dir)
-                geometries_dict.update(Geometry.bytes_from_file_batch(mask_paths))
+                geometries_dict.update(Mask3D._bytes_from_file_batch(mask_paths))
 
             # add geometries into spatial figure objects
             for sf in ann.spatial_figures:
@@ -265,7 +263,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 except KeyError:  # skip figures that doesn't need to update geometry
                     continue
                 maks3d = Mask3D.from_bytes(geometry_bytes)
-                sf.set_geometry(maks3d)
+                sf._set_3d_geometry(maks3d)
 
             self.append(volume_id, ann, key_id_map)
 
@@ -322,10 +320,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 )
 
             new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
-            project_meta = project_meta.add_obj_class(new_obj_class)
+
+            try:
+                project_meta = project_meta.add_obj_class(new_obj_class)
+            except DuplicateKeyError:
+                new_obj_class = project_meta.get_obj_class(f"{class_title}_mask_3d")
 
             if transfer_type == "download":
-                geometry = Mask3D(np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
+                geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
             elif transfer_type == "upload":
                 self._api.project.update_meta(project_id, project_meta)
                 geometry = Mask3D.from_file(nrrd_path)
@@ -359,11 +361,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
-        Add new VolumeObjects with spatial figures (Mask3D) to a VolumeAnnotation in the project.
+        Add new VolumeObjects to a volume annotation in Supervisely project.
 
         :param volume_id: The ID of the volume.
         :type volume_id: int
-        :param objects: New volume objects with spatial figures (Mask3D).
+        :param objects: New volume objects.
         :type objects: List[VolumeObject] or VolumeObjectCollection
         :param key_id_map: The KeyIdMap (optional).
         :type key_id_map: KeyIdMap, optional
@@ -394,20 +396,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.append_objects(volume_info.id, objects)
         """
 
-        if isinstance(objects, List):
-            objects = VolumeObjectCollection(objects)
-
-        # check if objects without figures
-        for _, vobject in objects._collection.items():
-            try:
-                vobject.figure
-            except AttributeError as e:
-                e.args = [
-                    "3D mask for object is not defined",
-                ]
-                raise e
-
-        sf_figures = [vobject.figure for vobject in objects]
+        sf_figures = [
+            volume_object.figure
+            for volume_object in objects
+            if volume_object.obj_class.geometry_type == Mask3D
+        ]
         volume_meta = self._api.volume.get_info_by_id(volume_id).meta
         ann = VolumeAnnotation(volume_meta, objects, spatial_figures=sf_figures)
         self.append(volume_id, ann, key_id_map)
