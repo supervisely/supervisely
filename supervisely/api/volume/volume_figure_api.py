@@ -583,10 +583,10 @@ class VolumeFigureApi(FigureApi):
             with open(id_to_path[figure_id], "wb") as w:
                 w.write(resp_part.content)
 
-    def copy_geometry_to_figure(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
+    def load_sf_geometry(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
         """
-        Download geometry by figure ID from an existing figure in the ecosystem project
-        and load this data into a new VolumeFigure object.
+        Download geometry of an existing in Supervisely figure
+        and load this data into the VolumeFigure object to complete this figure representation.
 
         :param spatial_figure: The spatial figure object from VolumeAnnotation.
         :type spatial_figure: VolumeFigure
@@ -597,4 +597,5 @@ class VolumeFigureApi(FigureApi):
             figure_id = key_id_map.get_figure_id(spatial_figure.key())
             figure_path = f"{temp_dir}/{spatial_figure.key().hex}.nrrd"
             self.download_sf_geometries([figure_id], [figure_path])
-            Mask3D.to_figure_from_file(spatial_figure, figure_path)
+            geometry = Mask3D.from_file(figure_path)
+            spatial_figure._set_3d_geometry(geometry)
