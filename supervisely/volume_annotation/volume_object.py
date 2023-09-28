@@ -59,7 +59,7 @@ class VolumeObject(VideoObject):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
-        mask_3d: Optional[Union[str, ndarray, Mask3D]] = None,
+        mask_3d: Optional[Union[Mask3D, ndarray, str]] = None,
     ):
         super().__init__(
             obj_class=obj_class,
@@ -78,11 +78,11 @@ class VolumeObject(VideoObject):
                 )
             elif isinstance(mask_3d, ndarray):
                 self.figure = volume_figure.VolumeFigure(
-                    self, Mask3D(ndarray), labeler_login, updated_at, created_at
+                    self, Mask3D(mask_3d), labeler_login, updated_at, created_at
                 )
             elif isinstance(mask_3d, Mask3D):
                 self.figure = volume_figure.VolumeFigure(
                     self, mask_3d, labeler_login, updated_at, created_at
                 )
             else:
-                raise TypeError("mask_3d type must be one of [str, ndarray, Mask3D]")
+                raise TypeError("mask_3d type must be one of [Mask3D, ndarray, str]")
