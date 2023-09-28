@@ -88,13 +88,13 @@ class Inference:
         if use_gui:
             self.initialize_gui()
 
-            @self.gui.serve_button.click
-            def load_model():
+            def on_serve_callback(gui: GUI.InferenceGUI):
                 Progress("Deploying model ...", 1)
-                device = self.gui.get_device()
+                device = gui.get_device()
                 self.load_on_device(self._model_dir, device)
-                self._on_model_deployed()
-                self.gui.set_deployed()
+                gui.show_deployed_model_info(self)
+
+            self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
@@ -296,17 +296,46 @@ class Inference:
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def get_info(self) -> dict:
+    def get_info(self) -> Dict[str, Any]:
+        num_classes = None
+        try:
+            classes = self.get_classes()
+        except NotImplementedError:
+            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+        except AttributeError:
+            logger.warn("Probably, get_classes() function not working without model deploy.")
+        except Exception as exc:
+            logger.warn("Unknown exception. Please, contact support")
+            logger.exception(exc)
+
+        if classes is None or len(classes) == 0:
+            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+        else:
+            num_classes = len(classes)
+
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "number_of_classes": len(self.get_classes()),
+            "number_of_classes": num_classes,
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
         }
+
+    def get_human_readable_info(self, replace_none_with: Optional[str] = None):
+        hr_info = {}
+        info = self.get_info()
+
+        for name, data in info.items():
+            hr_name = name.replace("_", " ").capitalize()
+            if data is None:
+                hr_info[hr_name] = replace_none_with
+            else:
+                hr_info[hr_name] = data
+
+        return hr_info
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -319,7 +348,7 @@ class Inference:
         return self._api
 
     @property
-    def gui(self) -> GUI.BaseInferenceGUI:
+    def gui(self) -> GUI.InferenceGUI:
         return self._gui
 
     def _get_obj_class_shape(self):
@@ -328,13 +357,16 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            colors = get_predefined_colors(len(self.get_classes()))
-            classes = []
-            for name, rgb in zip(self.get_classes(), colors):
-                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
-            self._model_meta = ProjectMeta(classes)
-            self._get_confidence_tag_meta()
+            self.update_model_meta()
         return self._model_meta
+
+    def update_model_meta(self):
+        colors = get_predefined_colors(len(self.get_classes()))
+        classes = []
+        for name, rgb in zip(self.get_classes(), colors):
+            classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+        self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
 
     @property
     def task_id(self) -> int:

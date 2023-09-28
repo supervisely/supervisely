@@ -288,6 +288,11 @@ class ClassesTable(Widget):
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
 
+    def set_project_meta(self, project_meta: sly.ProjectMeta):
+        self._update_meta(project_meta)
+        self.update_data()
+        DataJson().send_changes()
+
     def select_all(self) -> None:
         self._global_checkbox = True
         self._checkboxes = [True] * len(self._table_data)
