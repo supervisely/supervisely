@@ -361,6 +361,10 @@ class Inference:
         return self._model_meta
 
     def update_model_meta(self):
+        """
+        Update model meta.
+        Make sure `self._get_obj_class_shape()` method returns the correct shape.
+        """
         colors = get_predefined_colors(len(self.get_classes()))
         classes = []
         for name, rgb in zip(self.get_classes(), colors):
