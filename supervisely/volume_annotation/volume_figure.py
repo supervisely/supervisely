@@ -651,20 +651,20 @@ class VolumeFigure(VideoFigure):
             created_at=created_at,
         )
 
-    def set_geometry(self, new_geometry: Mask3D) -> None:
+    def _set_3d_geometry(self, new_geometry: Mask3D) -> None:
         """
         Change the Mask3D geometry data in the figure.
 
         :param new_geometry: The new Mask3D geometry object.
         :type new_geometry: Mask3D
         """
-        if new_geometry.name() != Mask3D.name():
+        if not isinstance(new_geometry, Mask3D):
             raise TypeError(
                 f"You trying to add '{new_geometry.name()}' data, accepted only '{Mask3D.name()}' geometry data"
             )
-        if self.geometry.name() != new_geometry.name():
+        if not isinstance(self.geometry, Mask3D):
             raise TypeError(
-                f"You trying to change '{self.geometry.name()}' data with '{new_geometry.name()}' geometry data"
+                f"You trying to change '{self.geometry.name()}' geometry data with '{new_geometry.name()}' data"
             )
 
         self.geometry.data = new_geometry.data
