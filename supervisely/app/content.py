@@ -33,10 +33,8 @@ def get_data_dir():
     if task_id is not None:
         dir = f"/sessions/{task_id}"
 
-    if is_production():
-        keys = ["SLY_APP_DATA_DIR"]
-    else:
-        keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    # order matters
+    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
 
     for key in keys:
         value = os.environ.get(key)
@@ -56,10 +54,8 @@ def get_data_dir():
 def get_synced_data_dir():
     dir = "/sly-app-data"
 
-    if is_production():
-        keys = ["SLY_APP_DATA_DIR"]
-    else:
-        keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+    # order matters
+    keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
 
     for key in keys:
         value = os.environ.get(key)
