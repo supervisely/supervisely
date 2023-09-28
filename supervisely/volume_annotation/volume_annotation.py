@@ -11,6 +11,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.slice import Slice
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.volume_annotation.volume_object import VolumeObject
@@ -666,8 +667,6 @@ class VolumeAnnotation:
         """
         Add new objects to a VolumeAnnotation object.
 
-        Only objects with spatial figures (Mask3D) are supported.
-
         :param objects: New volume objects.
         :type objects: List[VolumeObject] or VolumeObjectCollection
         :return: A VolumeAnnotation object containing the original and new volume objects.
@@ -689,20 +688,12 @@ class VolumeAnnotation:
             volume_ann = volume_ann.add_objects([volume_obj_heart])
 
         """
-        if isinstance(objects, List):
-            objects = VolumeObjectCollection(objects)
 
-        # check if objects without figures
-        for _, vobject in objects._collection.items():
-            try:
-                vobject.figure
-            except AttributeError as e:
-                e.args = [
-                    "3D mask for object is not defined",
-                ]
-                raise e
-
-        sf_figures = [vobject.figure for vobject in objects]
+        sf_figures = [
+            volume_object.figure
+            for volume_object in objects
+            if volume_object.obj_class.geometry_type == Mask3D
+        ]
         collection = self.objects.add_items(objects)
         new_ann = self.clone(objects=collection)
         new_ann.spatial_figures.extend(sf_figures)
