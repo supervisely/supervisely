@@ -7,7 +7,8 @@ import base64
 import gzip
 import nrrd
 import tempfile
-from typing import Optional, Union, List, Dict, Literal
+from typing import Optional, Union, List, Dict, Literal, Tuple
+from supervisely.io.fs import get_file_name, get_file_ext
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
     SPACE_ORIGIN,
@@ -188,7 +189,7 @@ class Mask3D(Geometry):
         import supervisely as sly
 
         # Create simple Mask 3D
-        mask3d = np.random.randint(2, size=(3, 3, 3), dtype=np.bool_)
+        mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
         mask3d[0:2, 0:2, 0:2] = True
 
         shape = sly.Mask3D(mask3d)
@@ -265,13 +266,18 @@ class Mask3D(Geometry):
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
         geometry = cls(data=mask3d_data)
-        geometry._space_origin = PointVolume(
-            x=mask3d_header["space origin"][0],
-            y=mask3d_header["space origin"][1],
-            z=mask3d_header["space origin"][2],
-        )
-        geometry._space = mask3d_header["space"]
-        geometry._space_directions = mask3d_header["space directions"]
+        try:
+            geometry._space_origin = PointVolume(
+                x=mask3d_header["space origin"][0],
+                y=mask3d_header["space origin"][1],
+                z=mask3d_header["space origin"][2],
+            )
+            geometry._space = mask3d_header["space"]
+            geometry._space_directions = mask3d_header["space directions"]
+        except KeyError:
+            logger.debug(
+                "The Mask3D geometry created from the file does not contain private attributes"
+            )
         return geometry
 
     @classmethod
@@ -367,7 +373,7 @@ class Mask3D(Geometry):
             figure = sly.Mask3D.from_json(figure_json)
         """
         if json_data == {}:
-            return cls(data=np.random.randint(2, size=(3, 3, 3), dtype=np.bool_))
+            return cls(data=np.zeros((3, 3, 3), dtype=np.bool_))
 
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
@@ -390,7 +396,7 @@ class Mask3D(Geometry):
         sly_id = json_data.get(ID, None)
         class_id = json_data.get(CLASS_ID, None)
         instance = cls(
-            data=data,
+            data=data.astype(np.bool_),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
@@ -540,3 +546,44 @@ class Mask3D(Geometry):
             self.data[slice_index, :, :] = new_mask
         elif plane_name == "coronal":
             self.data[:, slice_index, :] = new_mask
+
+    @staticmethod
+    def _bytes_from_file(path: str) -> Tuple[str, bytes]:
+        """
+        Read geometry from a file as bytes.
+
+        The NRRD file must be named with a hexadecimal UUID value. Only NRRD files are supported.
+
+        :param path: Path to the NRRD file containing geometry.
+        :type path: str
+        :return: A tuple containing the key hex value and geometry bytes, or (None, None) if the file is not found.
+        :rtype: Tuple[str, bytes]
+        """
+
+        if get_file_ext(path) == ".nrrd":
+            key = get_file_name(path)
+            with open(path, "rb") as file:
+                geometry_bytes = file.read()
+            return key, geometry_bytes
+        else:
+            return None, None
+
+    @staticmethod
+    def _bytes_from_file_batch(paths: List[str]) -> Dict[str, bytes]:
+        """
+        Read geometries from multiple files as bytes and map them to figure UUID hex values in a dictionary.
+
+        The NRRD files must be named with a hexadecimal UUID value. Only NRRD files are supported.
+
+        :param paths: Paths to the NRRD files containing geometry.
+        :type paths: List[str]
+        :return: A dictionary mapping figure UUID hex values to their respective geometries.
+        :rtype: Dict[str, bytes]
+        """
+        geometries_dict = {}
+        for path in paths:
+            key, geometry_bytes = Mask3D._bytes_from_file(path)
+            if key is None and geometry_bytes is None:
+                continue
+            geometries_dict[key] = geometry_bytes
+        return geometries_dict
