@@ -57,7 +57,7 @@ class TreemapChart(Apexchart):
 
     class ClickedDataPoint(NamedTuple):
         """Class, representing clicked datapoint, which contains information about series, data index and data itself.
-        It will be returned after click event on datapoint in unmutable namedtuple
+        It will be returned after click event on datapoint in immutable namedtuple
         with fields: series_index, data_index, data."""
 
         series_index: int
