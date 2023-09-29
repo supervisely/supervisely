@@ -8,16 +8,48 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+"""
+series = [
+    {"name": "Team A", "data": 44},
+    {"name": "Team B", "data": 55},
+    {"name": "Team C", "data": 13},
+    {"name": "Team D", "data": 43},
+    {"name": "Team E", "data": 22},
+]
+
+pie_chart = sly.app.widgets.PieChart(
+    title="Simple Pie",
+    series=series,
+    stroke_curve="smooth"
+    stroke_width=1
+    data_labels=True
+    type="pie"
+    height=350
+)
+
+text = sly.app.widgets.Text("Click on the slice to see it's value", status="info")
+container = Container(widgets=[pie_chart, text])
+card = Card(title="Pie Chart", content=container)
+app = sly.Application(layout=card)
+
+
+@pie_chart.click
+def show_selection(datapoint: sly.app.widgets.PieChart.ClickedDataPoint):
+    data_name = datapoint.data["name"]
+    data_value = datapoint.data["value"]
+    text.set(text=f"Selected slice: {data_name}, Value: {data_value}", status="info")
+"""
+
 
 class PieChart(Apexchart):
     class ClickedDataPoint(NamedTuple):
         """Class, representing clicked datapoint, which contains information about series, data index and data itself.
-        It will be returned after click event on datapoint in unmutable namedtuple
+        It will be returned after click event on datapoint in immutable namedtuple
         with fields: series_index, data_index, data."""
 
         series_index: int
         data_index: int
-        data: int
+        data: dict
 
     def __init__(
         self,
@@ -50,7 +82,7 @@ class PieChart(Apexchart):
             "stroke": {"curve": self._stroke_curve, "width": self._stroke_width},
             "title": {"text": self._title},
         }
-        super(PieChart, self).__init__(
+        super(LineChart, self).__init__(
             series=self._series_data,
             options=self._options,
             type=self._type,
@@ -143,7 +175,6 @@ class PieChart(Apexchart):
         DataJson().send_changes()
 
     def get_clicked_value(self):
-        xx = StateJson()[self.widget_id]
         return StateJson()[self.widget_id]["clicked_value"]
 
     def get_clicked_datapoint(self) -> Union[ClickedDataPoint, None]:
@@ -161,12 +192,10 @@ class PieChart(Apexchart):
             # If click was outside of the cells.
             return
 
-        raw_data = self._series[series_index]["data"][data_index]
         data = {
-            "name": raw_data["x"],
-            "value": raw_data["y"],
+            "name": self._series_labels[data_index],
+            "value": self._series[data_index],
         }
 
-        res = PieChart.ClickedDataPoint(series_index, data_index, data)
-
+        res = ClickedDataPoint(series_index, data_index, data)
         return res
