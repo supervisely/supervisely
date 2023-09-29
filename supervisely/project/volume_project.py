@@ -415,7 +415,7 @@ def load_figure_data(
     figure_id = key_id_map.get_figure_id(spatial_figure.key())
     figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
     api.volume.figure.download_sf_geometries([figure_id], [figure_path])
-    geometry = Mask3D.from_file(figure_path)
+    geometry = Mask3D.create_from_file(figure_path)
     spatial_figure._set_3d_geometry(geometry)
 
 
