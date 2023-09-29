@@ -6,10 +6,8 @@ from typing import Optional, Union
 from numpy import ndarray
 
 from supervisely.video_annotation.video_object import VideoObject
-
 from supervisely.volume_annotation import volume_figure
-
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.geometry.mask_3d import Mask3D
 
 
@@ -53,7 +51,7 @@ class VolumeObject(VideoObject):
     def __init__(
         self,
         obj_class,
-        tags: Optional[VideoTagCollection] = None,
+        tags: Optional[VolumeTagCollection] = None,
         key: Optional[uuid.UUID] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
@@ -74,7 +72,7 @@ class VolumeObject(VideoObject):
         if mask_3d is not None:
             if isinstance(mask_3d, str):
                 self.figure = volume_figure.VolumeFigure(
-                    self, Mask3D.from_file(mask_3d), labeler_login, updated_at, created_at
+                    self, Mask3D.create_from_file(mask_3d), labeler_login, updated_at, created_at
                 )
             elif isinstance(mask_3d, ndarray):
                 self.figure = volume_figure.VolumeFigure(
