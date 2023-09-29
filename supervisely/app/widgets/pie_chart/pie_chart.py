@@ -1,5 +1,4 @@
-from typing import Union, NamedTuple, List, Dict, Any
-from functools import wraps
+from typing import Union, NamedTuple, List, Dict
 from supervisely.app.widgets.apexchart.apexchart import Apexchart
 from supervisely.app.content import StateJson, DataJson
 
