@@ -28,8 +28,8 @@ pie_chart = sly.app.widgets.PieChart(
 )
 
 text = sly.app.widgets.Text("Click on the slice to see it's value", status="info")
-container = Container(widgets=[pie_chart, text])
-card = Card(title="Pie Chart", content=container)
+container = sly.app.widgets.Container(widgets=[pie_chart, text])
+card = sly.app.widgets.Card(title="Pie Chart", content=container)
 app = sly.Application(layout=card)
 
 
@@ -37,7 +37,8 @@ app = sly.Application(layout=card)
 def show_selection(datapoint: sly.app.widgets.PieChart.ClickedDataPoint):
     data_name = datapoint.data["name"]
     data_value = datapoint.data["value"]
-    text.set(text=f"Selected slice: {data_name}, Value: {data_value}", status="info")
+    data_index = datapoint.data_index
+    text.set(f"Selected slice: {data_name}, Value: {data_value}, Index: {data_index}", "info")
 """
 
 
@@ -82,7 +83,7 @@ class PieChart(Apexchart):
             "stroke": {"curve": self._stroke_curve, "width": self._stroke_width},
             "title": {"text": self._title},
         }
-        super(LineChart, self).__init__(
+        super(PieChart, self).__init__(
             series=self._series_data,
             options=self._options,
             type=self._type,
@@ -94,9 +95,9 @@ class PieChart(Apexchart):
         It will add or set series to the chart, depending on set parameter. If set is True, all previous series will be
         deleted, otherwise new series will be added to the chart.
 
-        :param names: list of names of the cells in series, which will be displayed on the chart
+        :param names: list of names of the slices in series, which will be displayed on the chart
         :type names: List[str]
-        :param values: list of values of the cells in series, which will be displayed on the chart
+        :param values: list of values of the slices in series, which will be displayed on the chart
         :type values: List[Union[int, float]
         :param set: if True, all previous series will be deleted, otherwise new series will be added to the chart,
             defaults to False
@@ -114,15 +115,17 @@ class PieChart(Apexchart):
                     f"All values must be ints or floats, but {value} is {type(value)}."
                 )
 
-        data = [{"x": x, "y": y} for x, y in zip(names, values)]
         if set:
-            self._series = [{"data": data}]
+            self._series = values
+            self._options["labels"] = names
         else:
-            self._series.append({"data": data})
+            self._series.extend(values)
+            self._options["labels"].extend(names)
+
         self.update_data()
         DataJson().send_changes()
 
-    def add_series(self, names: List[str], values: List[int]):
+    def add_series(self, names: List[str], values: List[Union[int, float]]):
         # print(self._options["yaxis"]["min"], self._options["yaxis"]["max"])
         self._manage_series(names, values)
 
@@ -130,30 +133,29 @@ class PieChart(Apexchart):
         """Sets series to the chart, deleting all previous series. Len of names and values must be equal,
         otherwise ValueError will be raised.
 
-        :param names: list of names of the cells in series, which will be displayed on the chart
+        :param names: list of names of the slices in series, which will be displayed on the chart
         :type names: List[str]
-        :param values: list of values of the cells in series, which will be displayed on the chart
+        :param values: list of values of the slices in series, which will be displayed on the chart
         :type values: List[Union[int, float]]
         """
         self._manage_series(names, values, set=True)
 
-    def get_series(self, index: int) -> Dict[str, List[Dict[str, Union[int, float]]]]:
+    def get_series(self, index: int) -> Dict[str, Union[str, int, float]]:
         """Returns series by index. If index is out of range, IndexError will be raised.
-        Returned series is a dict with key "data" and a value is a list of dicts with keys "x" and "y",
-        where "x" is a name of the cell and "y" is a value of the cell.
+        Returned series is a dict with keys "name" and "data".
 
         :param index: index of the series, if index is out of range, IndexError will be raised
         :type index: int
         :raises TypeError: if index is not int
         :raises IndexError: if index is out of range
-        :return: series data by given index
-        :rtype: Dict[str, Union[int, float]]
+        :return: series name ans data by given index
+        :rtype: Dict[str, Union[str, int, float]]
         """
 
         if not isinstance(index, int):
             raise TypeError(f"Index must be int, but {index} is {type(index)}.")
         try:
-            return self._series[index]
+            return {"name": self._options["labels"][index], "data": self._series[index]}
         except IndexError:
             raise IndexError(f"Series with index {index} does not exist.")
 
@@ -169,6 +171,7 @@ class PieChart(Apexchart):
             raise TypeError(f"Index must be int, but {index} is {type(index)}.")
         try:
             del self._series[index]
+            del self._options["labels"][index]
         except IndexError:
             raise IndexError(f"Series with index {index} does not exist.")
         self.update_data()
@@ -179,9 +182,9 @@ class PieChart(Apexchart):
 
     def get_clicked_datapoint(self) -> Union[ClickedDataPoint, None]:
         """Returns clicked datapoint as a ClickedDataPoint object, which is a namedtuple with fields:
-        series_index, data_index and data. If click was outside of the cells, None will be returned.
+        series_index, data_index and data. If click was outside of the slices, None will be returned.
 
-        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
+        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the slices
         :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()
@@ -189,13 +192,13 @@ class PieChart(Apexchart):
         data_index = value["dataPointIndex"]
 
         if series_index == -1 or data_index == -1:
-            # If click was outside of the cells.
+            # If click was outside of the slices.
             return
 
         data = {
-            "name": self._series_labels[data_index],
+            "name": self._options["labels"][data_index],
             "value": self._series[data_index],
         }
 
-        res = ClickedDataPoint(series_index, data_index, data)
+        res = self.ClickedDataPoint(series_index, data_index, data)
         return res
