@@ -164,7 +164,7 @@ class VolumeFigureApi(FigureApi):
                 figures_json.append(figure.to_json(key_id_map, save_meta=True))
         # Figure is missing required field \"meta.normal\"","index":0}}
         self._append_bulk(volume_id, figures_json, keys, key_id_map)
-        if mask3d_figures:
+        if len(mask3d_figures) != 0:
             self._append_bulk_mask3d(volume_id, mask3d_figures, mask3d_keys, key_id_map)
 
     def _download_geometries_batch(self, ids: List[int]):
@@ -597,5 +597,5 @@ class VolumeFigureApi(FigureApi):
             figure_id = key_id_map.get_figure_id(spatial_figure.key())
             figure_path = f"{temp_dir}/{spatial_figure.key().hex}.nrrd"
             self.download_sf_geometries([figure_id], [figure_path])
-            geometry = Mask3D.from_file(figure_path)
+            geometry = Mask3D.create_from_file(figure_path)
             spatial_figure._set_3d_geometry(geometry)
