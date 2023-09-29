@@ -103,14 +103,12 @@ class VolumeFigure(VideoFigure):
                 raise TypeError(
                     "VolumeFigure.__init__() missing 2 required positional arguments: 'plane_name' and 'slice_index'"
                 )
-            if plane_name is None or slice_index is None:
-                if plane_name is None:
-                    arg_name = "plane_name"
-                else:
-                    arg_name = "slice_index"
+            if plane_name is None:
                 raise TypeError(
-                    f"VolumeFigure.__init__() missing 1 required positional argument: '{arg_name}'"
+                    f"Argument 'plane_name' must be set as one of 'axial', 'sagittal', 'coronal' str"
                 )
+            elif slice_index is None:
+                raise TypeError(f"Argument 'slice_index' must be set as int number")
 
         super().__init__(
             video_object=volume_object,
@@ -636,7 +634,7 @@ class VolumeFigure(VideoFigure):
         :rtype: VolumeFigure
         """
         if isinstance(geometry_data, str):
-            mask_3d = Mask3D.from_file(geometry_data)
+            mask_3d = Mask3D.create_from_file(geometry_data)
         if isinstance(geometry_data, ndarray):
             mask_3d = Mask3D(geometry_data)
         if isinstance(geometry_data, bytes):
