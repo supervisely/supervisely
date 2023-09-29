@@ -299,6 +299,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: A tuple containing the updated ann and project_meta objects.
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
         """
+
+        def generate_unique_id(object_type: Literal["figures", "objects"]):
+            import random
+
+            max_id = max(key_id_map.to_dict().get(object_type).values())
+            figure_id = max_id + (10 ** (len(str(max_id)) - 1)) + random.randint(100, 999)
+            return figure_id
+
         for nrrd_path in nrrd_paths:
             object_key = None
 
@@ -330,14 +338,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
             elif transfer_type == "upload":
                 self._api.project.update_meta(project_id, project_meta)
-                geometry = Mask3D.from_file(nrrd_path)
+                geometry = Mask3D.create_from_file(nrrd_path)
 
             new_object = VolumeObject(new_obj_class, mask_3d=geometry)
 
             # add new Volume object to VolumeAnnotation with spatial figure
             ann = ann.add_objects([new_object])
-            key_id_map.add_object(new_object.key(), id=None)
-            key_id_map.add_figure(new_object.figure.key(), id=None)
+            key_id_map.add_object(new_object.key(), generate_unique_id("objects"))
+            key_id_map.add_figure(new_object.figure.key(), generate_unique_id("figures"))
 
             if transfer_type == "download":
                 os.rename(
