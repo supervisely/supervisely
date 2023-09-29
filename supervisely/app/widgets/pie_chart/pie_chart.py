@@ -20,11 +20,10 @@ series = [
 pie_chart = sly.app.widgets.PieChart(
     title="Simple Pie",
     series=series,
-    stroke_curve="smooth"
-    stroke_width=1
-    data_labels=True
-    type="pie"
-    height=350
+    stroke_width=1,
+    data_labels=True,
+    height=350,
+    type="pie",
 )
 
 text = sly.app.widgets.Text("Click on the slice to see it's value", status="info")
@@ -55,8 +54,7 @@ class PieChart(Apexchart):
     def __init__(
         self,
         title: str,
-        series: list = [],
-        stroke_curve: Literal["smooth", "straight"] = "smooth",
+        series: List[Dict[str, Union[int, float]]] = [],
         stroke_width: int = 2,
         data_labels: bool = False,
         height: Union[int, str] = 350,
@@ -64,7 +62,6 @@ class PieChart(Apexchart):
     ):
         self._title = title
         self._series = series
-        self._stroke_curve = stroke_curve
         self._stroke_width = stroke_width
         self._data_labels = data_labels
         self._widget_height = height
@@ -80,7 +77,7 @@ class PieChart(Apexchart):
             "labels": self._series_labels,
             "chart": {"type": self._type},
             "dataLabels": {"enabled": self._data_labels},
-            "stroke": {"curve": self._stroke_curve, "width": self._stroke_width},
+            "stroke": {"width": self._stroke_width},
             "title": {"text": self._title},
         }
         super(PieChart, self).__init__(
