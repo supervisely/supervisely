@@ -257,7 +257,7 @@ class Mask3D(Geometry):
         return "mask_3d"
 
     @classmethod
-    def from_file(cls, file_path: str) -> Mask3D:
+    def create_from_file(cls, file_path: str) -> Mask3D:
         """
         Creates Mask3D geometry from file.
 
