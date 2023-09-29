@@ -1,8 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 import uuid
-from typing import Union, Optional, Literal
-from numpy import ndarray
+from typing import Optional, Literal
 from uuid import UUID
 from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
