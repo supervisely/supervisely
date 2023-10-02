@@ -81,10 +81,6 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         return super().__delitem__(key)
 
-    # def __delitem(self, key: Any):
-    #     Cache.__delitem__(self, key)
-    #     self.__del_file(key)
-
     def __del_file(self, key: Any):
         filepath = self._base_dir / f"{str(key)}.png"
         silent_remove(filepath)
@@ -94,31 +90,12 @@ class PersistentImageTTLCache(TTLCache):
 
     def expire(self, time=None):
         existing = set(self.__get_keys())
-        sly.logger.debug(f"Existing keys: {existing}")
         super().expire(time)
-        sly.logger.debug(f"New keys: {self.__get_keys()}")
         deleted = existing.difference(self.__get_keys())
         sly.logger.debug(f"Deleted keys: {deleted}")
 
         for key in deleted:
             self.__del_file(key)
-        # """Remove expired items from the cache."""
-        # if time is None:
-        #     time = self.timer()
-        # root = self._TTLCache__root
-        # curr = root.next
-        # links = self._TTLCache__links
-        # cache_delitem = PersistentImageTTLCache.__delitem
-        # sly.logger.debug(f"type curr: {type(curr)}")
-        # print(f"type curr: {type(curr)}")
-        # sly.logger.debug(f"value curr: {curr}")
-        # sly.logger.debug(curr.__dir__())
-        # while curr is not root and not (time < curr.expires):
-        #     cache_delitem(self, curr.key)
-        #     del links[curr.key]
-        #     next = curr.next
-        #     curr.unlink()
-        #     curr = next
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
