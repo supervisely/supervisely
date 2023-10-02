@@ -7,7 +7,7 @@ import numpy as np
 
 from typing import List, Dict
 from supervisely import logger
-from supervisely.io.fs import get_file_name_with_ext, file_exists
+from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists, mkdir
 
 
 def matrix_from_nrrd_header(header: Dict) -> np.ndarray:
@@ -137,6 +137,10 @@ def to_nrrd(stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None
         # doesn't need to convert if already exists interpolation in NRRD
         if file_exists(nrrd_path):
             continue
+        else:
+            nrrd_dir = os.path.dirname(nrrd_path)
+            if not dir_exists(nrrd_dir):
+                mkdir(nrrd_dir)
 
         if volume_path is None:
             volume_path = os.path.dirname(stl_path.replace("interpolation", "volume"))
