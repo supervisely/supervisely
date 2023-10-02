@@ -78,31 +78,40 @@ class PersistentImageTTLCache(TTLCache):
         sly.image.write(str(filepath), value)
 
     def __delitem__(self, key: Any) -> None:
-        cache_delitem = PersistentImageTTLCache.__delitem
-        return super().__delitem__(key, cache_delitem=cache_delitem)
+        self.__del_file(key)
+        return super().__delitem__(key)
 
-    def __delitem(self, key: Any):
-        Cache.__delitem__(self, key)
+    # def __delitem(self, key: Any):
+    #     Cache.__delitem__(self, key)
+    #     self.__del_file(key)
+
+    def __del_file(self, key: Any):
         filepath = self._base_dir / f"{str(key)}.png"
         silent_remove(filepath)
 
     def expire(self, time=None):
-        """Remove expired items from the cache."""
-        if time is None:
-            time = self.timer()
-        root = self._TTLCache__root
-        curr = root.next
-        links = self._TTLCache__links
-        cache_delitem = PersistentImageTTLCache.__delitem
-        sly.logger.debug(f"type curr: {type(curr)}")
-        sly.logger.debug(f"value curr: {curr}")
-        sly.logger.debug(curr.__dir__())
-        while curr is not root and not (time < curr.expires):
-            cache_delitem(self, curr.key)
-            del links[curr.key]
-            next = curr.next
-            curr.unlink()
-            curr = next
+        existing = set(self.keys())
+        super().expire(time)
+        deleted = existing.difference(self.keys())
+        for key in deleted:
+            self.__del_file(key)
+        # """Remove expired items from the cache."""
+        # if time is None:
+        #     time = self.timer()
+        # root = self._TTLCache__root
+        # curr = root.next
+        # links = self._TTLCache__links
+        # cache_delitem = PersistentImageTTLCache.__delitem
+        # sly.logger.debug(f"type curr: {type(curr)}")
+        # print(f"type curr: {type(curr)}")
+        # sly.logger.debug(f"value curr: {curr}")
+        # sly.logger.debug(curr.__dir__())
+        # while curr is not root and not (time < curr.expires):
+        #     cache_delitem(self, curr.key)
+        #     del links[curr.key]
+        #     next = curr.next
+        #     curr.unlink()
+        #     curr = next
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
@@ -146,11 +155,14 @@ class InferenceImageCache:
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
+            print("LOAD")
             self._load_queue.set(name, image_id)
             api.logger.debug(f"Add image #{image_id} to cache")
             img = api.image.download_np(image_id)
             self._add_to_cache(name, img)
             return img
+        else:
+            print("FOUND")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache[name]
