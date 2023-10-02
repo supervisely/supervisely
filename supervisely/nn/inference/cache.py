@@ -89,13 +89,17 @@ class PersistentImageTTLCache(TTLCache):
         filepath = self._base_dir / f"{str(key)}.png"
         silent_remove(filepath)
 
+    def __get_keys(self):
+        return self._TTLCache__links.keys()
+
     def expire(self, time=None):
-        existing = set(self._Cache__data.keys())
+        existing = set(self.__get_keys())
         sly.logger.debug(f"Existing keys: {existing}")
         super().expire(time)
-        sly.logger.debug(f"New keys: {self._Cache__data.keys()}")
-        deleted = existing.difference(self._Cache__data.keys())
+        sly.logger.debug(f"New keys: {self.__get_keys()}")
+        deleted = existing.difference(self.__get_keys())
         sly.logger.debug(f"Deleted keys: {deleted}")
+
         for key in deleted:
             self.__del_file(key)
         # """Remove expired items from the cache."""
