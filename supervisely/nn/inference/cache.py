@@ -94,6 +94,7 @@ class PersistentImageTTLCache(TTLCache):
         curr = root.next
         links = self._TTLCache__links
         cache_delitem = PersistentImageTTLCache.__delitem
+        sly.logger.debug(curr.__dir__)
         while curr is not root and not (time < curr.expires):
             cache_delitem(self, curr.key)
             del links[curr.key]
@@ -119,7 +120,7 @@ class InferenceImageCache:
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
-        base_folder: str = "/tmp/smart_cache",
+        base_folder: str = sly.env.smart_cache_container_dir(),
     ) -> None:
         self._is_persistent = is_persistent
         self._maxsize = maxsize
