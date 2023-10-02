@@ -404,11 +404,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.append_objects(volume_info.id, objects)
         """
 
-        sf_figures = [
-            volume_object.figure
-            for volume_object in objects
-            if volume_object.obj_class.geometry_type == Mask3D
-        ]
+        sf_figures = []
+        for volume_object in objects:
+            if volume_object.obj_class.geometry_type == Mask3D:
+                sf_figures.append(volume_object.figure)
+
         volume_meta = self._api.volume.get_info_by_id(volume_id).meta
         ann = VolumeAnnotation(volume_meta, objects, spatial_figures=sf_figures)
         self.append(volume_id, ann, key_id_map)
