@@ -53,3 +53,10 @@ docs/source/rst_templates/api
 docs/source/sdk
 panda.deb
 .flake8
+
+/STL_UPLOAD_TEST
+/OLD_STL
+test_py.py
+main.py
+/data
+local.env
