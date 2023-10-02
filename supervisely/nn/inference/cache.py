@@ -93,8 +93,8 @@ class PersistentImageTTLCache(TTLCache):
         existing = set(self._Cache__data.keys())
         sly.logger.debug(f"Existing keys: {existing}")
         super().expire(time)
-        sly.logger.debug(f"New keys: {self.self._Cache__data.keys()}")
-        deleted = existing.difference(self.self._Cache__data.keys())
+        sly.logger.debug(f"New keys: {self._Cache__data.keys()}")
+        deleted = existing.difference(self._Cache__data.keys())
         sly.logger.debug(f"Deleted keys: {deleted}")
         for key in deleted:
             self.__del_file(key)
