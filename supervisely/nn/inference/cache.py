@@ -4,6 +4,7 @@ import numpy as np
 
 from cacheout import Cache as CacheOut
 from cachetools import LRUCache, Cache, TTLCache
+from time import sleep
 from enum import Enum
 from fastapi import Request, FastAPI
 from logging import Logger
@@ -139,14 +140,11 @@ class InferenceImageCache:
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
-            print("LOAD")
             self._load_queue.set(name, image_id)
             api.logger.debug(f"Add image #{image_id} to cache")
             img = api.image.download_np(image_id)
             self._add_to_cache(name, img)
             return img
-        else:
-            print("FOUND")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache[name]
@@ -399,4 +397,5 @@ class InferenceImageCache:
 
         while name in self._load_queue:
             # TODO: sleep if slowdown
+            sleep(0.1)
             continue
