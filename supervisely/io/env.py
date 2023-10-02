@@ -28,7 +28,11 @@ def _int_from_env(value):
 
 
 def _parse_from_env(
-    name: str, keys: List[str], postprocess_fn: Callable, default=None, raise_not_found=False
+    name: str,
+    keys: List[str],
+    postprocess_fn: Callable,
+    default=None,
+    raise_not_found=False,
 ):
     for k in keys:
         if k in os.environ:
@@ -118,7 +122,12 @@ def dataset_id(raise_not_found=True):
 def team_files_folder(raise_not_found=True):
     return _parse_from_env(
         name="team_files_folder",
-        keys=["CONTEXT_SLYFOLDER", "context.slyFolder", "modal.state.slyFolder", "FOLDER"],
+        keys=[
+            "CONTEXT_SLYFOLDER",
+            "context.slyFolder",
+            "modal.state.slyFolder",
+            "FOLDER",
+        ],
         postprocess_fn=lambda x: str(x),
         default=None,
         raise_not_found=raise_not_found,
@@ -230,4 +239,14 @@ def smart_cache_size(raise_not_found=False, default=256):
         postprocess_fn=lambda x: max(int(x), 1),
         default=default,
         raise_not_found=raise_not_found,
+    )
+
+
+def smart_cache_container_dir(default="/tmp/smart_cache"):
+    return _parse_from_env(
+        name="smart_cache_container_dir",
+        keys=["SMART_CACHE_CONTAINER_DIR"],
+        default=default,
+        raise_not_found=False,
+        postprocess_fn=lambda x: x.strip(),
     )
