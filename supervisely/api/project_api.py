@@ -1205,7 +1205,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return response.json()
 
-
     def append_classes(self, id: int, classes: Union[List[ObjClass], ObjClassCollection]) -> None:
         """
         Append new classes to given Project.

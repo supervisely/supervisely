@@ -19,8 +19,8 @@ class VolumeObject(VideoObject):
     :type obj_class: ObjClass
     :param tags: VolumeObject :class:`tags<supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection>`.
     :type tags: VolumeTagCollection, optional
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
+    :param key: The UUID key associated with the VolumeFigure.
+    :type key: UUID, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VolumeObject belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VolumeObject.
@@ -29,6 +29,8 @@ class VolumeObject(VideoObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeObject was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param mask_3d: Path for local geometry file, array with geometry data or Mask3D geometry object
+    :type mask_3d: Union[str, ndarray, Mask3D], optional
     :Usage example:
 
      .. code-block:: python

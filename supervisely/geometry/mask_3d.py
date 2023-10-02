@@ -277,7 +277,7 @@ class Mask3D(Geometry):
         figure.geometry._space_directions = mask3d_header["space directions"]
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
-    
+
     @classmethod
     def create_from_file(cls, file_path: str) -> Mask3D:
         """
@@ -301,7 +301,7 @@ class Mask3D(Geometry):
                 "The Mask3D geometry created from the file does not contain private attributes"
             )
         return geometry
-    
+
     @classmethod
     def from_bytes(cls, geometry_bytes: bytes) -> Mask3D:
         """
@@ -428,9 +428,7 @@ class Mask3D(Geometry):
         if SPACE_ORIGIN in json_data[json_root_key]:
             x, y, z = json_data[json_root_key][SPACE_ORIGIN]
             instance._space_origin = PointVolume(x=x, y=y, z=z)
-            return instance
-        else:
-            return instance
+        return instance
 
     @classmethod
     def _impl_json_class_name(cls):

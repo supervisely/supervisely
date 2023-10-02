@@ -39,8 +39,8 @@ class VolumeFigure(VideoFigure):
     :type plane_name: str
     :param slice_index: Index of slice to which VolumeFigure belongs.
     :type slice_index: int
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
+    :param key: The UUID key associated with the VolumeFigure.
+    :type key: UUID, optional
     :param class_id: ID of :class:`VolumeObject<VolumeObject>` to which VolumeFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VolumeFigure.
@@ -108,8 +108,7 @@ class VolumeFigure(VideoFigure):
                 )
             elif slice_index is None:
                 raise TypeError(f"Argument 'slice_index' must be set as int number")
-                
-            
+
         super().__init__(
             video_object=volume_object,
             geometry=geometry,

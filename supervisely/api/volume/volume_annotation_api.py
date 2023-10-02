@@ -214,7 +214,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             if progress_cb is not None:
                 progress_cb(1)
 
-
     def append_objects(
         self,
         volume_id: int,
@@ -257,7 +256,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.append_objects(volume_info.id, objects)
         """
 
-        sf_figures = [ ]
+        sf_figures = []
         for volume_object in objects:
             if volume_object.obj_class.geometry_type == Mask3D:
                 sf_figures.append(volume_object.figure)

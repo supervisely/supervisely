@@ -217,7 +217,7 @@ class VolumeFigureApi(FigureApi):
 
             for sp_figure in vol_ann.spatial_figures:
                 figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{figure_id}.stl"
+                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
             if id_to_paths:
                 api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
         """
@@ -333,7 +333,6 @@ class VolumeFigureApi(FigureApi):
     #     # #     results.append(response.json())
     #     # return results
 
-    # def _upload_geometries_batch(ids, )
     def _upload_meshes_batch(self, figure2bytes):
         """
         Private method. Upload figures geometry by given ID to storage.
