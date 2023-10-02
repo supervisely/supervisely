@@ -49,6 +49,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
             self,
             maxsize=sly_env.smart_cache_size(),
             ttl=_smart_cache_ttl,
+            base_folder=sly_env.smart_cache_container_dir(),
         )
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
