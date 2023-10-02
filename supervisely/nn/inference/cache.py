@@ -94,7 +94,7 @@ class PersistentImageTTLCache(TTLCache):
         curr = root.next
         links = self._TTLCache__links
         cache_delitem = PersistentImageTTLCache.__delitem
-        sly.logger.debug(curr.__dir__)
+        sly.logger.debug(curr.__dir__())
         while curr is not root and not (time < curr.expires):
             cache_delitem(self, curr.key)
             del links[curr.key]
