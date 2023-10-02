@@ -529,6 +529,29 @@ class VolumeFigureApi(FigureApi):
             encoder = MultipartEncoder(fields=content_dict)
             self._api.post("figures.bulk.upload.geometry", encoder)
 
+    def upload_sf_geometry(self, spatial_figures: Dict, geometries: List, key_id_map: KeyIdMap):
+        """
+        Upload spatial figures geometry as bytes to storage by given ID.
+
+        :param spatial_figures: Dictionary with figure IDs.
+        :type spatial_figures: dict
+        :param geometries: Dictionary with geometries, which represented as content of NRRD files in byte format.
+        :type geometries: list
+        :param key_id_map: KeyIdMap object (dict with bidict values)
+        :type key_id_map: KeyIdMap
+        :rtype: :class:`NoneType`
+        :Usage example:
+        """
+
+        for sf, geometry_bytes in zip(spatial_figures, geometries):
+            figure_id = key_id_map.get_figure_id(sf.key())
+            content_dict = {
+                ApiField.FIGURE_ID: str(figure_id),
+                ApiField.GEOMETRY: (str(figure_id), geometry_bytes, "application/sla"),
+            }
+            encoder = MultipartEncoder(fields=content_dict)
+            self._api.post("figures.bulk.upload.geometry", encoder)
+
     def download_sf_geometries(self, ids: List[int], paths: List[str]):
         """
         Download spatial figure geometries for the specified figure IDs and save them to the specified paths.
