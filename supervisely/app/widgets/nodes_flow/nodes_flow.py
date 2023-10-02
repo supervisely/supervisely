@@ -133,7 +133,8 @@ class NodesFlow(Widget):
         FLOW_CHANGED = "flow_changed_cb"
         FLOW_STATE_CHANGED = "flow_state_changed_cb"
         CONTEXT_MENU_CLICKED = "context_menu_item_click_cb"
-        SIDEBAR_TOGGLE_HANDLED = "sidebar_toggled_cb"
+        SIDEBAR_TOGGLED = "sidebar_toggled_cb"
+        ITEM_DROPPED = "item_dropped_cb"
 
     def __init__(
         self,
@@ -143,6 +144,7 @@ class NodesFlow(Widget):
         color_theme: Literal["white", "black"] = None,
         drag_and_drop_menu: dict = None,
         drag_and_drop_menu_width: int = "400px",
+        show_save: bool = True,
         widget_id: str = None,
     ):
         self._nodes = nodes
@@ -152,6 +154,7 @@ class NodesFlow(Widget):
         self._dd_menu = drag_and_drop_menu
         self._show_dd_area = False
         self._dd_section_width = drag_and_drop_menu_width
+        self._show_save = show_save
         if self._dd_menu:
             self._show_dd_area = True
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -164,6 +167,8 @@ class NodesFlow(Widget):
             "nodeTypeList": self._dd_menu,
             "showDDArea": self._show_dd_area,
             "ddSectionWidth": self._dd_section_width,
+            "interfaceTypes": [{"name": f"{color}", "color": color} for color in self._node_colors],
+            "showSave": self._show_save,
         }
 
     def get_json_state(self):
@@ -263,12 +268,24 @@ class NodesFlow(Widget):
         return _click
 
     def sidebar_toggled(self, func):
-        route_path = self.get_route_path(NodesFlow.Routes.SIDEBAR_TOGGLE_HANDLED)
+        route_path = self.get_route_path(NodesFlow.Routes.SIDEBAR_TOGGLED)
         server = self._sly_app.get_server()
         self._sidebar_toggle_handled = True
 
         @server.post(route_path)
         def _click():
             func()
+
+        return _click
+
+    def item_dropped(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.ITEM_DROPPED)
+        server = self._sly_app.get_server()
+        self._item_dropped_handled = True
+
+        @server.post(route_path)
+        def _click():
+            item = StateJson()[self.widget_id]["droppedItem"]
+            func(item)
 
         return _click
