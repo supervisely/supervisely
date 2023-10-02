@@ -1,7 +1,7 @@
 import json
 import time
 import requests
-from typing import List, Union, Iterator, Dict, Any, Tuple
+from typing import List, Optional, Union, Iterator, Dict, Any, Tuple
 
 try:
     from typing import Literal
@@ -114,6 +114,19 @@ class SessionJSON:
         if self._session_info is None:
             self._session_info = self._get_from_endpoint("get_session_info")
         return self._session_info
+
+    def get_human_readable_info(self, replace_none_with: Optional[str] = None):
+        hr_info = {}
+        info = self.get_session_info()
+
+        for name, data in info.items():
+            hr_name = name.replace("_", " ").capitalize()
+            if data is None:
+                hr_info[hr_name] = replace_none_with
+            else:
+                hr_info[hr_name] = data
+
+        return hr_info
 
     def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:

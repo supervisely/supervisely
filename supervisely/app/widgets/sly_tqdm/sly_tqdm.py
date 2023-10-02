@@ -1,17 +1,22 @@
 import asyncio
 import copy
+import math
 import re
 import sys
 import weakref
+from functools import partial
+from typing import Any, Union
 
 from tqdm import tqdm
-from typing import Union, Any
 
-from supervisely.app.fastapi import run_sync
+from supervisely import is_development, is_production
+
+# from supervisely import _original_tqdm as tqdm
 from supervisely.app import DataJson
+from supervisely.app.fastapi import run_sync
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets import Widget
-from supervisely.sly_logger import logger, EventType
+from supervisely.sly_logger import EventType, logger
 
 
 def extract_by_regexp(regexp, string):
@@ -149,6 +154,17 @@ class CustomTqdm(tqdm):
         unit_scale = kwargs.get("unit_scale")
         unit = kwargs.get("unit")
 
+        self._iteration_value = 0
+        self._iteration_number = 0
+        self._iteration_locked = False
+        self._total_monitor_size = 0
+
+        self.unit_divisor = 1024
+
+        # self.n = 0
+        # self.reported_cnt = 0
+        # self.report_every = max(1, math.ceil(self.extracted_total / 100))
+
         super().__init__(
             file=_slyProgressBarIO(widget_id, message, extracted_total, unit, unit_scale),
             *args,
@@ -170,6 +186,36 @@ class CustomTqdm(tqdm):
         super(CustomTqdm, self).__del__()
         if self.fp is not None:
             self.fp.__del__()
+
+    def _progress_monitor(self, monitor):
+        if is_development() and self.n >= self.total:
+            self.refresh()
+            self.close()
+
+        if monitor.bytes_read == 8192:
+            self._total_monitor_size += monitor.len
+
+        if self._total_monitor_size > self.total:
+            self.total = self._total_monitor_size
+
+        if not self._iteration_locked:
+            # if is_development():
+            super().update(self._iteration_value + monitor.bytes_read - self.n)
+            # else:
+            #     self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
+
+        if monitor.bytes_read == monitor.len and not self._iteration_locked:
+            self._iteration_value += monitor.len
+            self._iteration_number += 1
+            self._iteration_locked = True
+            if is_development():
+                self.refresh()
+
+        if monitor.bytes_read < monitor.len:
+            self._iteration_locked = False
+
+    def get_partial(self):
+        return partial(self._progress_monitor)
 
 
 class SlyTqdm(Widget):

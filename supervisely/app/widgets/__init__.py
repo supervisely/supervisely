@@ -91,3 +91,10 @@ from supervisely.app.widgets.transfer.transfer import Transfer
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
 from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
+from supervisely.app.widgets.markdown.markdown import Markdown
+from supervisely.app.widgets.class_balance.class_balance import ClassBalance
+from supervisely.app.widgets.image_slider.image_slider import ImageSlider
+from supervisely.app.widgets.rate.rate import Rate
+from supervisely.app.widgets.carousel.carousel import Carousel
+from supervisely.app.widgets.dropdown.dropdown import Dropdown
+from supervisely.app.widgets.pie_chart.pie_chart import PieChart

@@ -52,7 +52,9 @@ from supervisely.task.progress import (
 
 
 import supervisely.project as project
+from supervisely.project import read_project, get_project_class
 from supervisely.project.download import download
+from supervisely.project.upload import upload
 from supervisely.project.project import (
     Project,
     OpenMode,
@@ -118,6 +120,8 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
 
+from supervisely.cli import _handle_creds_error_to_console
+
 from supervisely._utils import (
     rand_str,
     batched,
@@ -135,7 +139,9 @@ from supervisely._utils import (
     get_datetime,
     get_readable_datetime,
     generate_free_name,
+    setup_certificates,
 )
+
 import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
 
@@ -239,3 +245,5 @@ _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
 
 from supervisely.io.exception_handlers import handle_exceptions
+
+setup_certificates()

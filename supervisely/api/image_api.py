@@ -799,7 +799,7 @@ class ImageApi(RemoveableBulkModuleApi):
             # Get paths of all images in a directory
             images_paths = sly.fs.list_files('images_to_upload')
 
-            #Calculate hashes for all images paths
+            # Calculate hashes for all images paths
             hash_to_image = {}
             images_hashes = []
 
@@ -1139,6 +1139,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type link: str
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
+        :type force_metadata_for_links: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1189,6 +1191,11 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
+        :type force_metadata_for_links: bool, optional
+
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:

@@ -144,6 +144,11 @@ class Select(ConditionalWidget):
     def get_value(self):
         return StateJson()[self.widget_id]["value"]
 
+    def get_label(self):
+        for item in self.get_items():
+            if item.value == self.get_value():
+                return item.label
+
     def value_changed(self, func):
         route_path = self.get_route_path(Select.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -191,14 +196,18 @@ class Select(ConditionalWidget):
         if group_index is None:
             DataJson()[self.widget_id]["items"][item_index].update({"disabled": True})
         else:
-            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update({"disabled": True})
+            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update(
+                {"disabled": True}
+            )
         DataJson().send_changes()
 
     def enable_item(self, item_index, group_index=None):
         if group_index is None:
             DataJson()[self.widget_id]["items"][item_index].update({"disabled": False})
         else:
-            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update({"disabled": False})            
+            DataJson()[self.widget_id]["groups"][group_index]["options"][item_index].update(
+                {"disabled": False}
+            )
         DataJson().send_changes()
 
     def disable_group(self, group_index):
@@ -236,7 +245,9 @@ class SelectString(Select):
             for value, label, rtext in zip(values, labels, right_text):
                 items.append(Select.Item(value, label, right_text=rtext))
         else:
-            items = [Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_text)]
+            items = [
+                Select.Item(value, right_text=rtext) for value, rtext in zip(values, right_text)
+            ]
 
         super(SelectString, self).__init__(
             items=items,

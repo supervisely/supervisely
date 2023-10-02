@@ -263,7 +263,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """Api remove method name."""
 
         return "jobs.bulk.remove"
-    
+
     def _remove_batch_field_name(self):
         """Returns onstant string that represents API field name."""
 
