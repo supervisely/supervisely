@@ -446,7 +446,7 @@ class VolumeFigureApi(FigureApi):
         for figure in figures:
             empty_figures.append(
                 {
-                    "objectId": figure.volume_object.to_json(key_id_map)["id"],
+                    "objectId": key_id_map.get_object_id(figure.volume_object.key()),
                     "geometryType": Mask3D.name(),
                     "tool": Mask3D.name(),
                     "entityId": entity_id,
@@ -467,7 +467,6 @@ class VolumeFigureApi(FigureApi):
                     if figure.key() == key:
                         geometry = figure.geometry.data
                         geometry_bytes = encode(geometry.astype(uint8))
-
                         self.upload_sf_geometries([key], {key: geometry_bytes}, key_id_map)
 
     def upload_sf_geometries(
