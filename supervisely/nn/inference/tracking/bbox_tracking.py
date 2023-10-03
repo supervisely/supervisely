@@ -31,6 +31,7 @@ class BBoxTracking(Inference, InferenceImageCache):
             maxsize=sly.env.smart_cache_size(),
             ttl=sly.env.smart_cache_ttl(),
             is_persistent=True,
+            base_folder=sly.env.smart_cache_container_dir(),
         )
 
         try:

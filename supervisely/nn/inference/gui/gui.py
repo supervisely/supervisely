@@ -416,7 +416,7 @@ class InferenceGUI(BaseInferenceGUI):
             self._model_classes_plug.show()
             return
 
-        inference.update_model_meta()
+        # inference.update_model_meta()
         # collapse all info
         # self._model_info_collapse.set_active_panel([])
         self._model_classes_widget.set_project_meta(inference.model_meta)

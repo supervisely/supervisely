@@ -31,6 +31,7 @@ class PointTracking(Inference, InferenceImageCache):
             maxsize=sly.env.smart_cache_size(),
             ttl=sly.env.smart_cache_ttl(),
             is_persistent=True,
+            base_folder=sly.env.smart_cache_container_dir(),
         )
 
         try:
@@ -41,7 +42,11 @@ class PointTracking(Inference, InferenceImageCache):
 
         sly.logger.debug(
             "Smart cache params",
-            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
+            extra={
+                "ttl": sly.env.smart_cache_ttl(),
+                "maxsize": sly.env.smart_cache_size(),
+                "path": sly.env.smart_cache_container_dir(),
+            },
         )
 
     def get_info(self):
@@ -144,7 +149,9 @@ class PointTracking(Inference, InferenceImageCache):
                             video_interface,
                         )
                     else:
-                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+                        raise TypeError(
+                            f"Tracking does not work with {geom.geometry_name()}."
+                        )
 
                     video_interface.add_object_geometries(geometries, obj_id, fig_id)
                     api.logger.info(f"Object #{obj_id} tracked.")

@@ -27,6 +27,7 @@ class PromptableSegmentation(Inference, InferenceImageCache):
             maxsize=sly_env.smart_cache_size(),
             ttl=sly_env.smart_cache_ttl(),
             is_persistent=True,
+            base_folder=sly_env.smart_cache_container_dir(),
         )
         logger.debug(
             "Smart cache params",
