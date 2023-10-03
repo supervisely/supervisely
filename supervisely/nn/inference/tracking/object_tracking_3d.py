@@ -1,14 +1,13 @@
-import numpy as np
 import functools
 from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 import supervisely as sly
 from supervisely.nn.inference.tracking.tracker3d_interface import Tracker3DInterface
 from supervisely.nn.inference import Inference
 import os
 
 
-class Cuboid3DTracking(Inference):
+class ObjectTracking3D(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,

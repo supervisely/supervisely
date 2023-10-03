@@ -1,7 +1,3 @@
-import numpy as np
-from typing import Optional, List, OrderedDict, Dict
-from collections import OrderedDict
-
 import supervisely as sly
 from logging import Logger
 
