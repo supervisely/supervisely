@@ -100,3 +100,4 @@ from supervisely.app.widgets.dropdown.dropdown import Dropdown
 from supervisely.app.widgets.pie_chart.pie_chart import PieChart
 from supervisely.app.widgets.nodes_flow.nodes_flow import NodesFlow
 from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.draggable.draggable import Draggable
