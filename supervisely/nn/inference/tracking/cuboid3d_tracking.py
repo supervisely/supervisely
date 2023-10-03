@@ -3,9 +3,9 @@ import functools
 from fastapi import Request, BackgroundTasks
 from typing import Any, Dict, List, Optional, Union
 import supervisely as sly
-from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.nn.inference.tracking.tracker3d_interface import Tracker3DInterface
 from supervisely.nn.inference import Inference
-import supervisely.nn.inference.tracking.functional as F
+import os
 
 
 class Cuboid3DTracking(Inference):
@@ -20,11 +20,7 @@ class Cuboid3DTracking(Inference):
             sliding_window_mode=None,
             use_gui=False,
         )
-
-        try:
-            self.load_on_device(model_dir, "cuda")
-        except RuntimeError:
-            self.load_on_device(model_dir, "cpu")
+        self.load_on_device(model_dir, "cuda")
 
     def get_info(self):
         info = super().get_info()
@@ -35,7 +31,7 @@ class Cuboid3DTracking(Inference):
         super().serve()
         server = self._app.get_server()
 
-        @server.post("/interpolate_figures_ids")
+        @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
             task.add_task(track, request)
             return {"message": "Track task started."}
@@ -55,9 +51,9 @@ class Cuboid3DTracking(Inference):
                     api.logger.exception(exc)
 
                     api.post(
-                        "videos.notify-annotation-tool",
+                        "point-clouds.episodes.notify-annotation-tool",
                         data={
-                            "type": "videos:tracking-error",
+                            "type": "point-cloud-episodes:tracking-error",
                             "data": {
                                 "trackId": track_id,
                                 "error": {"message": repr(exc)},
@@ -70,5 +66,42 @@ class Cuboid3DTracking(Inference):
 
         @send_error_data
         def track(request: Request = None):
-            state = request.state.state
+            # initialize tracker 3d interface
+            context = request.state.context
             api: sly.Api = request.state.api
+            self.pcd_interface = Tracker3DInterface(
+                context=context,
+                api=api,
+            )
+            api.logger.info("Starting tracking process")
+            # propagate frame-by-frame
+            for geom_idx in range(len(self.pcd_interface.geometries)):
+                for i, pc_id in enumerate(self.pcd_interface.pc_ids):
+                    # download input data
+                    frame = {}
+                    cloud_info = api.pointcloud.get_info_by_id(pc_id)
+                    pcd_path = os.path.join(self.pcd_interface.pc_dir, cloud_info.name)
+                    if geom_idx == 0:
+                        api.pointcloud_episode.download_path(cloud_info.id, pcd_path)
+                        self.pcd_interface._notify(task="load frame")
+                    frame["pcd"] = pcd_path
+                    if i == 0:
+                        geometry = self.pcd_interface.geometries[geom_idx]
+                        frame["bbox"] = geometry
+                    # pass input data to model and get prediction
+                    if i == len(self.pcd_interface.pc_ids) - 1:
+                        predicted_cuboid = self.predict(frame, is_last_frame=True)
+                    else:
+                        predicted_cuboid = self.predict(frame)
+                    # add predicted cuboid to frame
+                    if i != 0:
+                        pcd_id = self.pcd_interface.pc_ids[i]
+                        fig_id = self.pcd_interface.figure_ids[geom_idx]
+                        obj_id = api.pointcloud.figure.get_info_by_id(fig_id).object_id
+                        track_id = self.pcd_interface.track_id
+                        self.pcd_interface.add_cuboid_on_frame(
+                            pcd_id, obj_id, predicted_cuboid.to_json(), track_id
+                        )
+            # clean directory with downloaded pointclouds
+            sly.fs.clean_dir(self.pcd_interface.pc_dir)
+            api.logger.info("Successfully finished tracking process")
