@@ -1,0 +1,10 @@
+<div>
+  <el-color-picker
+    v-model="state.{{{widget.widget_id}}}.color"
+    :color-format="data.{{{widget.widget_id}}}.colorFormat"
+    :show-alpha="data.{{{widget.widget_id}}}.showAlpha"
+    {% if widget._changes_handled == true %}
+        @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+  ></el-color-picker>
+</div>
