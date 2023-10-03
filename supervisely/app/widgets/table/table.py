@@ -110,11 +110,12 @@ class Table(Widget):
         UPDATE_SORT = "update_sort_cb"
 
     class ClickedDataPoint:
-        def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict):
+        def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict, row_index: int = None):
             self.column_index = column_index
             self.column_name = column_name
             self.cell_value = cell_value
             self.row = row
+            self.row_index = row_index
             self.button_name = None
             search = re.search(r"<button>(.*?)</button>", str(self.cell_value))
             if search is not None:
@@ -305,6 +306,7 @@ class Table(Widget):
             "column_index": column_index,
             "column_name": column_name,
             "row": row,
+            "row_index": row_index,
             "cell_value": row[column_name],
         }
 
