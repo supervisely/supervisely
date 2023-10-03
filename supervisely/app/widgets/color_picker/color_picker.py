@@ -79,8 +79,6 @@ class ColorPicker(Widget):
         return color
 
     def _prepare_color(self, color, color_format) -> Union[str, None]:
-        if type(color) is str:
-            color = color.lower()
         if color_format == "hex" and self._is_rgb(color):
             color = self._rgb_to_hex(color)
         elif color_format == "rgb":
