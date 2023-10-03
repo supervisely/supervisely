@@ -167,7 +167,7 @@ class NodesFlow(Widget):
             "nodeTypeList": self._dd_menu,
             "showDDArea": self._show_dd_area,
             "ddSectionWidth": self._dd_section_width,
-            "interfaceTypes": [{"name": f"{color}", "color": color} for color in self._node_colors],
+            "interfaceTypes": [{"name": f"{color}", "color": color} for color in []],
             "showSave": self._show_save,
         }
 
