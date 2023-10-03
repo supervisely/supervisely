@@ -13,6 +13,7 @@ from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.any_geometry import AnyGeometry
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
@@ -258,8 +259,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         sf_figures = []
         for volume_object in objects:
-            if volume_object.obj_class.geometry_type == Mask3D:
-                sf_figures.append(volume_object.figure)
+            if volume_object.obj_class.geometry_type in (Mask3D, AnyGeometry):
+                if isinstance(volume_object.figure.geometry, Mask3D):
+                    sf_figures.append(volume_object.figure)
 
         volume_meta = self._api.volume.get_info_by_id(volume_id).meta
         ann = VolumeAnnotation(volume_meta, objects, spatial_figures=sf_figures)

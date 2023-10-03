@@ -15,6 +15,7 @@ from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollect
 from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.constants import (
     NAME,
@@ -690,8 +691,9 @@ class VolumeAnnotation:
 
         sf_figures = []
         for volume_object in objects:
-            if volume_object.obj_class.geometry_type == Mask3D:
-                sf_figures.append(volume_object.figure)
+            if volume_object.obj_class.geometry_type in (Mask3D, AnyGeometry):
+                if isinstance(volume_object.figure.geometry, Mask3D):
+                    sf_figures.append(volume_object.figure)
 
         collection = self.objects.add_items(objects)
         new_ann = self.clone(objects=collection)
