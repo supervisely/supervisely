@@ -550,11 +550,11 @@ class Mask3D(Geometry):
         mask_2d = np.fliplr(mask_2d)
         mask_2d = np.rot90(mask_2d, 1, (1, 0))
 
-        if plane_name == "axial":
+        if plane_name == Plane.AXIAL:
             new_shape = self.data.shape[:2]
-        elif plane_name == "sagittal":
+        elif plane_name == Plane.SAGITTAL:
             new_shape = self.data.shape[1:]
-        elif plane_name == "coronal":
+        elif plane_name == Plane.CORONAL:
             new_shape = self.data.shape[::2]
 
         if origin:
@@ -562,9 +562,9 @@ class Mask3D(Geometry):
             new_mask = np.zeros(new_shape, dtype=mask_2d.dtype)
             new_mask[x : x + mask_2d.shape[0], y : y + mask_2d.shape[1]] = mask_2d
 
-        if plane_name == "axial":
+        if plane_name == Plane.AXIAL:
             self.data[:, :, slice_index] = new_mask
-        elif plane_name == "sagittal":
+        elif plane_name == Plane.SAGITTAL:
             self.data[slice_index, :, :] = new_mask
-        elif plane_name == "coronal":
+        elif plane_name == Plane.CORONAL:
             self.data[:, slice_index, :] = new_mask
