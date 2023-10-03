@@ -25,6 +25,7 @@ class Button(Widget):
         widget_id=None,
         link: str = None,
         emit_on_click: str = None,
+        style: str = None,
     ):
         self._widget_routes = {}
 
@@ -44,6 +45,7 @@ class Button(Widget):
         self._show_loading = show_loading
         self._click_handled = False
         self._emit_on_click = emit_on_click
+        self._style = style
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 

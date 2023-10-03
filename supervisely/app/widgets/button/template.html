@@ -15,6 +15,9 @@ endif
   {% if widget._get_on_click() %}
   @click="{{{widget._get_on_click()}}}"
   {% endif %}
+  {% if widget._style %}
+  style="{{{widget._style}}}"
+  {% endif %}
 >
   <span v-html="data.{{{widget.widget_id}}}.icon"></span>
   <span v-html="data.{{{widget.widget_id}}}.text"></span>
