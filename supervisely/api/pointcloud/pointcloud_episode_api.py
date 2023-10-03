@@ -96,3 +96,36 @@ class PointcloudEpisodeApi(PointcloudApi):
             frame_index_to_pcl_name = {x.frame: x.name for x in pointclouds}
 
         return frame_index_to_pcl_name
+
+    def notify_progress(
+        self,
+        track_id: int,
+        dataset_id: int,
+        pcd_ids: list,
+        current: int,
+        total: int,
+    ):
+        """
+        Send message to the Annotation Tool and return info if tracking was stopped
+
+        :param track_id: int
+        :param dataset_id: int
+        :param pcd_ids: list
+        :param current: int
+        :param total: int
+        :return: str
+        """
+
+        response = self._api.post(
+            "point-clouds.episodes.notify-annotation-tool",
+            {
+                "type": "point-cloud-episodes:fetch-figures-in-range",
+                "data": {
+                    ApiField.TRACK_ID: track_id,
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.POINTCLOUD_IDS: pcd_ids,
+                    ApiField.PROGRESS: {ApiField.CURRENT: current, ApiField.TOTAL: total},
+                },
+            },
+        )
+        return response.json()[ApiField.STOPPED]
