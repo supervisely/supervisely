@@ -1,6 +1,7 @@
 # coding: utf-8
 import re
 import os
+import tempfile
 from uuid import UUID
 from numpy import uint8
 from typing import List, Dict
@@ -548,3 +549,74 @@ class VolumeFigureApi(FigureApi):
             }
             encoder = MultipartEncoder(fields=content_dict)
             self._api.post("figures.bulk.upload.geometry", encoder)
+
+    def download_sf_geometries(self, ids: List[int], paths: List[str]):
+        """
+        Download spatial figure geometries for the specified figure IDs and save them to the specified paths.
+
+        :param ids: List of VolumeFigure IDs in Supervisely.
+        :type ids: List[int]
+        :param paths: List of paths to save the downloaded geometries.
+        :type paths: List[str]
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            STORAGE_DIR = sly.app.get_data_dir()
+
+            volume_id = 19371414
+            project_id = 17215
+
+            volume = api.volume.get_info_by_id(volume_id)
+
+            key_id_map = sly.KeyIdMap()
+            project_meta_json = api.project.get_meta(project_id)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+            vol_ann_json = api.volume.annotation.download(volume_id)
+            id_to_paths = {}
+            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+
+            for sp_figure in vol_ann.spatial_figures:
+                figure_id = key_id_map.get_figure_id(sp_figure.key())
+                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
+            if id_to_paths:
+                api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
+        """
+
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise RuntimeError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+
+        id_to_path = {id: path for id, path in zip(ids, paths)}
+        for figure_id, resp_part in self._download_geometries_batch(ids):
+            ensure_base_path(id_to_path[figure_id])
+            with open(id_to_path[figure_id], "wb") as w:
+                w.write(resp_part.content)
+
+    def load_sf_geometry(self, spatial_figure: VolumeFigure, key_id_map: KeyIdMap):
+        """
+        Download geometry of an existing in Supervisely figure
+        and load this data into the VolumeFigure object to complete this figure representation.
+
+        :param spatial_figure: The spatial figure object from VolumeAnnotation.
+        :type spatial_figure: VolumeFigure
+        :param key_id_map: The mapped keys and IDs.
+        :type key_id_map: KeyIdMap object
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            figure_id = key_id_map.get_figure_id(spatial_figure.key())
+            figure_path = f"{temp_dir}/{spatial_figure.key().hex}.nrrd"
+            self.download_sf_geometries([figure_id], [figure_path])
+            geometry = Mask3D.create_from_file(figure_path)
+            spatial_figure._set_3d_geometry(geometry)
