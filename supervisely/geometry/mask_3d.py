@@ -7,7 +7,8 @@ import base64
 import gzip
 import nrrd
 import tempfile
-from typing import Optional, Union, List, Tuple, Dict, Literal
+from typing import Optional, Union, List, Dict, Literal, Tuple
+from supervisely.io.fs import get_file_name, get_file_ext, remove_dir
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import (
     SPACE_ORIGIN,
@@ -23,7 +24,6 @@ from supervisely.geometry.constants import (
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
-from supervisely.io.fs import remove_dir
 from supervisely import logger
 
 
@@ -568,3 +568,44 @@ class Mask3D(Geometry):
             self.data[slice_index, :, :] = new_mask
         elif plane_name == Plane.CORONAL:
             self.data[:, slice_index, :] = new_mask
+
+    @staticmethod
+    def _bytes_from_file(path: str) -> Tuple[str, bytes]:
+        """
+        Read geometry from a file as bytes.
+
+        The NRRD file must be named with a hexadecimal UUID value. Only NRRD files are supported.
+
+        :param path: Path to the NRRD file containing geometry.
+        :type path: str
+        :return: A tuple containing the key hex value and geometry bytes, or (None, None) if the file is not found.
+        :rtype: Tuple[str, bytes]
+        """
+
+        if get_file_ext(path) == ".nrrd":
+            key = get_file_name(path)
+            with open(path, "rb") as file:
+                geometry_bytes = file.read()
+            return key, geometry_bytes
+        else:
+            return None, None
+
+    @staticmethod
+    def _bytes_from_file_batch(paths: List[str]) -> Dict[str, bytes]:
+        """
+        Read geometries from multiple files as bytes and map them to figure UUID hex values in a dictionary.
+
+        The NRRD files must be named with a hexadecimal UUID value. Only NRRD files are supported.
+
+        :param paths: Paths to the NRRD files containing geometry.
+        :type paths: List[str]
+        :return: A dictionary mapping figure UUID hex values to their respective geometries.
+        :rtype: Dict[str, bytes]
+        """
+        geometries_dict = {}
+        for path in paths:
+            key, geometry_bytes = Mask3D._bytes_from_file(path)
+            if key is None and geometry_bytes is None:
+                continue
+            geometries_dict[key] = geometry_bytes
+        return geometries_dict
