@@ -22,10 +22,11 @@ class Button(Widget):
         show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
         icon_gap: int = 5,
-        widget_id=None,
         link: str = None,
         emit_on_click: str = None,
         style: str = None,
+        call_on_click: str = None,
+        widget_id=None,
     ):
         self._widget_routes = {}
 
@@ -46,6 +47,7 @@ class Button(Widget):
         self._click_handled = False
         self._emit_on_click = emit_on_click
         self._style = style
+        self._call_on_click = call_on_click
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -167,6 +169,10 @@ class Button(Widget):
         on_click_actions = []
         if self._emit_on_click:
             on_click_actions.append(f"$emit('{self._emit_on_click}');")
+            
+        if self._call_on_click:
+            on_click_actions.append(f"{self._call_on_click}")
+            
         if self._click_handled:
             on_click_actions.append(f"post('/{self.widget_id}/button_clicked_cb');")
         return " ".join(on_click_actions) if on_click_actions else None

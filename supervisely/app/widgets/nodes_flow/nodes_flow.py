@@ -141,7 +141,7 @@ class NodesFlow(Widget):
         nodes: List[Node] = [],
         height: str = None,
         context_menu: dict = None,
-        color_theme: Literal["white", "black"] = None,
+        color_theme: Literal["light", "dark"] = "light",
         drag_and_drop_menu: dict = None,
         drag_and_drop_menu_width: int = "400px",
         show_save: bool = True,
