@@ -7,6 +7,7 @@ import os
 import gzip
 import json
 import copy
+import re
 from typing import List
 
 
@@ -151,7 +152,8 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
         print(color)
         # Output: [128, 64, 255]
     """
-    assert len(hex_value) == 7, "Supported only HEX RGB string format!"
+    if not _validate_hex_color(hex_value):
+        raise ValueError("Supported only HEX RGB string format!")
     color = _hex2color(hex_value)
     _validate_color(color)
     return color
@@ -219,3 +221,9 @@ def get_predefined_colors(n: int):
     for i in range(n):
         rand_colors.append(random_rgb())
     return rand_colors
+
+
+def _validate_hex_color(hex_value: str) -> bool:
+    pattern = r"^#([A-Fa-f0-9]{6})$"
+
+    return re.match(pattern, hex_value) is not None
