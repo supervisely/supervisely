@@ -248,7 +248,7 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
+            app.mount("/static", StaticFiles(directory=static_dir), name="static_files")
 
     return app
 
