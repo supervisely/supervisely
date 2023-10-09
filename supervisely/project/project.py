@@ -2585,6 +2585,7 @@ def upload_project(
 
         meta_dir = os.path.join(dir, dataset_fs.name, "meta")
         if os.path.isdir(meta_dir):
+            sly.logger.debug(f'Meta directory exists, will try to read meta files: {meta_dir}')
             metas = []
             for name in names:
                 meta_path = os.path.join(meta_dir, name + ".json")
