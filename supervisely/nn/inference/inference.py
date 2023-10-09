@@ -729,6 +729,8 @@ class Inference:
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
         elif self._deploy_with_default_params(default=True):  # change to false before merge
+            # TODO: is this message correct?
+            logger.info("Found auto deploy flag")
             self.gui.deploy_with_current_params()
 
         @server.post(f"/get_session_info")
