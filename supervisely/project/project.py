@@ -2585,7 +2585,6 @@ def upload_project(
 
         meta_dir = os.path.join(dir, dataset_fs.name, "meta")
         if os.path.isdir(meta_dir):
-            sly.logger.debug(f"Meta directory exists, will try to read meta files: {meta_dir}")
             metas = []
             for name in names:
                 meta_path = os.path.join(meta_dir, name + ".json")
@@ -2593,19 +2592,6 @@ def upload_project(
                     metas.append(sly.json.load_json_file(meta_path))
                 else:
                     metas.append({})
-        else:
-            # ! Debug, remove later!
-            sly.logger.warning(f'Meta directory does not exist: {meta_dir}')
-            
-            subdirs = sly.fs.get_subdirs(dir)
-            
-            sly.logger.warning(f'Subdirs: {subdirs}')
-            
-            for subdir in subdirs:
-                path = os.path.join(dir, subdir)
-                files = sly.fs.list_files(path)
-                sly.logger.warning(f'Files in subdir {subdir}: {files}')
-
 
         if external_progress_cb is False:
             progress_cb = None
