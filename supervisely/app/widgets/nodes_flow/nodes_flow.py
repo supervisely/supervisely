@@ -121,7 +121,7 @@ class NodesFlow(Widget):
                 "position": self._position,
                 "header": {
                     "backgroundColor": self._header_background_color,
-                    "color": self._header_color
+                    "color": self._header_color,
                 },
             }
 
