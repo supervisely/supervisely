@@ -40,7 +40,7 @@ def get_data_dir():
         value = os.environ.get(key)
         if value is not None:
             dir = value
-            logger.debug(f"Load dir from evn {key}={value}")
+            logger.debug(f"Load dir from env {key}={value}")
             break
     if dir is None:
         raise ValueError(f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}")
@@ -61,7 +61,7 @@ def get_synced_data_dir():
         value = os.environ.get(key)
         if value is not None:
             dir = value
-            logger.debug(f"Load dir from evn {key}={value}")
+            logger.debug(f"Load dir from env {key}={value}")
             break
 
     if dir_exists(dir) is False:
