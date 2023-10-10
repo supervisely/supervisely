@@ -27,7 +27,7 @@ import supervisely.io.env as env
 import yaml
 
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application
+from supervisely.app.fastapi.subapp import Application, call_on_autostart
 from supervisely.app.content import get_data_dir, StateJson
 from fastapi import Request
 
@@ -726,12 +726,14 @@ class Inference:
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
 
+        @call_on_autostart()
+        def autostart_func():
+            self.gui.deploy_with_current_params()
+
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
-        elif self._deploy_with_default_params(default=True):  # change to false before merge
-            # TODO: is this message correct?
-            logger.info("Found auto deploy flag")
-            self.gui.deploy_with_current_params()
+        else:
+            autostart_func()
 
         @server.post(f"/get_session_info")
         def get_session_info():
@@ -933,20 +935,6 @@ class Inference:
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
             return inference_request["preparing_progress"]
-
-    def _deploy_with_default_params(self, default: bool = False):
-        task_meta = self._api.task.get_info_by_id(self.task_id).get("meta", None)
-        task_params = None
-        task_state = None
-        # TODO: rename `noninteractive` argument here and in `.get`
-        noninteractive = default
-        if task_meta is not None:
-            task_params = task_meta.get("params", None)
-        if task_params is not None:
-            task_state = task_params.get("state", None)
-        if task_state is not None:
-            noninteractive = task_params.get("noninteractive", default)
-        return noninteractive
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
