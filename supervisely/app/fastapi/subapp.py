@@ -338,8 +338,6 @@ class Application(metaclass=Singleton):
                 ContentOrigin().start()
                 resp = run_sync(self.test_client.get("/"))
 
-            self.set_autostart_flag_from_state()
-
     def get_server(self):
         return self._fastapi
 
@@ -358,31 +356,32 @@ class Application(metaclass=Singleton):
     def get_static_dir(self):
         return self._static_dir
 
-    def set_autostart_flag_from_state(self, value_if_not_provided: Optional[str] = None):
-        """Set `autostart` flag recieved from task state.
 
-        :param value_if_not_provided: this value will be set
-            if the flag is undefined in state, defaults to None
-        :type value_if_not_provided: Optional[str], optional
-        """
-        if sly_env.autostart() is True:
-            logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
-            return
+def set_autostart_flag_from_state(self, value_if_not_provided: Optional[str] = None):
+    """Set `autostart` flag recieved from task state.
 
-        api = Api()
-        task_id = sly_env.task_id()
-        task_meta = api.task.get_info_by_id(task_id).get("meta", None)
-        task_params = None
-        task_state = None
-        auto_start = value_if_not_provided
-        if task_meta is not None:
-            task_params = task_meta.get("params", None)
-        if task_params is not None:
-            task_state = task_params.get("state", None)
-        if task_state is not None:
-            auto_start = task_params.get("autoStart", value_if_not_provided)
+    :param value_if_not_provided: this value will be set
+        if the flag is undefined in state, defaults to None
+    :type value_if_not_provided: Optional[str], optional
+    """
+    if sly_env.autostart() is True:
+        logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
+        return
 
-        sly_env.set_autostart(auto_start)
+    api = Api()
+    task_id = sly_env.task_id()
+    task_meta = api.task.get_info_by_id(task_id).get("meta", None)
+    task_params = None
+    task_state = None
+    auto_start = value_if_not_provided
+    if task_meta is not None:
+        task_params = task_meta.get("params", None)
+    if task_params is not None:
+        task_state = task_params.get("state", None)
+    if task_state is not None:
+        auto_start = task_params.get("autoStart", value_if_not_provided)
+
+    sly_env.set_autostart(auto_start)
 
 
 def call_on_autostart(
@@ -398,6 +397,7 @@ def call_on_autostart(
     :return: decorator
     :rtype: Callable
     """
+    set_autostart_flag_from_state()
 
     def inner(func: Callable) -> Callable:
         @wraps(func)
