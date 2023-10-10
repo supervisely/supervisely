@@ -1,7 +1,7 @@
 # coding: utf-8
 import os
 from re import L
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 
 RAISE_IF_NOT_FOUND = True
@@ -250,3 +250,26 @@ def smart_cache_container_dir(default="/tmp/smart_cache"):
         raise_not_found=False,
         postprocess_fn=lambda x: x.strip(),
     )
+
+
+# TODO: decide if this flag is int of bool
+def autostart():
+    return _parse_from_env(
+        name="autostart",
+        keys=["autoStart", "AUTO_START", "AUTOSTART"],
+        default=False,
+        raise_not_found=False,
+        postprocess_fn=flag_from_env,
+    )
+
+
+def set_autostart(value: Optional[str]):
+    if value is None:
+        os.environ.pop("autoStart", None)
+        os.environ.pop("AUTO_START", None)
+        os.environ.pop("AUTOSTART", None)
+        return
+
+    if not flag_from_env(value):
+        raise ValueError("Unknown value for `autoStart` env.")
+    os.environ["autoStart"] = value
