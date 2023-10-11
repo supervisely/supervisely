@@ -160,7 +160,7 @@ class InputTag(Widget):
         # if TagMeta ValueType is ONEOF_STRING, then we need to set items (possible values options) for RadioGroup
         if self._tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             items = [RadioGroup.Item(pv, pv) for pv in self._tag_meta.possible_values]
-            self._input_widgets[str(TagValueType.ONEOF_STRING)].set_items(items)
+            self._input_widgets[str(TagValueType.ONEOF_STRING)].set(items)
 
         self._conditional_widget.set_value(str(self._tag_meta.value_type))
         self._set_default_value()
