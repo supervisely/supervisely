@@ -13,10 +13,12 @@
     @segment-selected="val => state.{{{widget.widget_id}}}.selectedSegment = val"
     {% endif %}
 
->
+>   
+    {% if widget._tooltip_content %}
     <template slot-scope="{ activeInterval }">
-      <span v-if="activeInterval && {{{widget._tooltip_content}}}">
+      <span v-if="activeInterval">
         {{{widget._tooltip_content}}}
       </span>
     </template>
+    {% endif %}
 </sly-timeline>
