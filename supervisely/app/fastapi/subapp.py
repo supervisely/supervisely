@@ -358,14 +358,14 @@ class Application(metaclass=Singleton):
 
 
 def set_autostart_flag_from_state(self, value_if_not_provided: Optional[str] = None):
-    """Set `autostart` flag recieved from task state.
+    """Set `autoStart` flag recieved from task state. Env name: `modal.state.autoStart`.
 
     :param value_if_not_provided: this value will be set
         if the flag is undefined in state, defaults to None
     :type value_if_not_provided: Optional[str], optional
     """
     if sly_env.autostart() is True:
-        logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
+        logger.warn("`autoStart` flag already defined in env. Skip loading it from state.")
         return
 
     api = Api()

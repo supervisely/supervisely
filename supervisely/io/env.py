@@ -256,7 +256,7 @@ def smart_cache_container_dir(default="/tmp/smart_cache"):
 def autostart():
     return _parse_from_env(
         name="autostart",
-        keys=["autoStart", "AUTO_START", "AUTOSTART"],
+        keys=["modal.state.autoStart"],
         default=False,
         raise_not_found=False,
         postprocess_fn=flag_from_env,
@@ -265,11 +265,9 @@ def autostart():
 
 def set_autostart(value: Optional[str]):
     if value is None:
-        os.environ.pop("autoStart", None)
-        os.environ.pop("AUTO_START", None)
-        os.environ.pop("AUTOSTART", None)
+        os.environ.pop("modal.state.autoStart", None)
         return
 
     if not flag_from_env(value):
         raise ValueError("Unknown value for `autoStart` env.")
-    os.environ["autoStart"] = value
+    os.environ["modal.state.autoStart"] = value
