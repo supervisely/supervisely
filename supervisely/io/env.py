@@ -274,5 +274,5 @@ def set_autostart(value: Optional[str]):
         return
 
     if not flag_from_env(value):
-        raise ValueError("Unknown value for `autoStart` env.")
+        raise ValueError("Unknown value for `autoStart` env. Use `1`, `true`, `yes` or None.")
     os.environ["modal.state.autoStart"] = value
