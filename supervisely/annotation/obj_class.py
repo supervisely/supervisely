@@ -257,11 +257,14 @@ class ObjClass(KeyObject, JsonSerializable):
         geometry_type = GET_GEOMETRY_FROM_STR(data[ObjClassJsonFields.GEOMETRY_TYPE])
         try:
             color = hex2rgb(data[ObjClassJsonFields.COLOR])
-        except ValueError:
-            color = random_rgb()
-            logger.warning(
-                f"The HEX color value of the object class '{name}' is incorrect, the automatically generated RGB {color} will be used."
-            )
+        except ValueError as e:
+            if str(e) == "Supported only HEX RGB string format!":
+                color = random_rgb()
+                logger.warning(
+                    f"The HEX color value of the object class '{name}' is incorrect, the automatically generated RGB {color} will be used."
+                )
+            else:
+                raise e
 
         geometry_config = geometry_type.config_from_json(
             data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
