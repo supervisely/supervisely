@@ -126,7 +126,7 @@ def rgb2hex(color: List[int, int, int]) -> str:
 def _hex2color(hex_value: str) -> list:
     """
     Convert HEX RGB string to integer RGB format
-    :param hex_value: HEX RGBA string. Example: "#FF02А4
+    :param hex_value: HEX RGBA string. Example: "#FF02A4
     :return: RGB integer values. Example: [80, 255, 0]
     """
     assert hex_value.startswith("#")
@@ -162,7 +162,7 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
 def _hex2rgba(hex_value: str) -> list:
     """
     Convert HEX RGBA string to integer RGBA format
-    :param hex_value: HEX RGBA string. Example: "#FF02А4CC
+    :param hex_value: HEX RGBA string. Example: "#FF02A4CC
     :return: RGBA integer values. Example: [80, 255, 0, 128]
     """
     assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
