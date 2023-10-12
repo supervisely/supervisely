@@ -260,7 +260,7 @@ class ObjClass(KeyObject, JsonSerializable):
         except ValueError:
             color = random_rgb()
             logger.warning(
-                f"The HEX color value stored in the object class '{name}' is incorrect, , the automatically generated RGB {color} will be used."
+                f"The HEX color value of the object class '{name}' is incorrect, the automatically generated RGB {color} will be used."
             )
 
         geometry_config = geometry_type.config_from_json(
