@@ -13,6 +13,7 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from functools import wraps
 
 # from supervisely.app.fastapi.request import Request
 
@@ -29,13 +30,13 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import is_production, is_development, is_docker
+from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 import supervisely.io.env as sly_env
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -354,6 +355,64 @@ class Application(metaclass=Singleton):
 
     def get_static_dir(self):
         return self._static_dir
+
+
+def set_autostart_flag_from_state(self, default: Optional[str] = None):
+    """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
+
+    :param default: this value will be set
+        if the flag is undefined in state, defaults to None
+    :type default: Optional[str], optional
+    """
+    if sly_env.autostart() is True:
+        logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
+        return
+
+    api = Api()
+    task_id = sly_env.task_id()
+    task_meta = api.task.get_info_by_id(task_id).get("meta", None)
+    task_params = None
+    task_state = None
+    auto_start = default
+    if task_meta is not None:
+        task_params = task_meta.get("params", None)
+    if task_params is not None:
+        task_state = task_params.get("state", None)
+    if task_state is not None:
+        auto_start = task_params.get("autostart", default)
+
+    sly_env.set_autostart(auto_start)
+
+
+def call_on_autostart(
+    default_func: Optional[Callable] = None,
+    **default_kwargs,
+) -> Callable:
+    """Decorator to enable autostart.
+    This decorator is used to wrap functions that are executed
+    and will check if autostart is enabled in environment.
+
+    :param default_func: default function to call if autostart is not enabled, defaults to None
+    :type default_func: Optional[Callable], optional
+    :return: decorator
+    :rtype: Callable
+    """
+    set_autostart_flag_from_state()
+
+    def inner(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if sly_env.autostart() is True:
+                logger.info("Found `autostart` flag in environment.")
+                func(*args, **kwargs)
+            else:
+                logger.warn("Autostart is disabled.")
+                if default_func is not None:
+                    default_func(**default_kwargs)
+
+        return wrapper
+
+    return inner
 
 
 def get_name_from_env(default="Supervisely App"):

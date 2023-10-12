@@ -27,7 +27,7 @@ import supervisely.io.env as env
 import yaml
 
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application
+from supervisely.app.fastapi.subapp import Application, call_on_autostart
 from supervisely.app.content import get_data_dir, StateJson
 from fastapi import Request
 
@@ -726,8 +726,14 @@ class Inference:
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
 
+        @call_on_autostart()
+        def autostart_func():
+            self.gui.deploy_with_current_params()
+
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
+        else:
+            autostart_func()
 
         @server.post(f"/get_session_info")
         def get_session_info():
