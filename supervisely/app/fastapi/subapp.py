@@ -358,14 +358,14 @@ class Application(metaclass=Singleton):
 
 
 def set_autostart_flag_from_state(self, default: Optional[str] = None):
-    """Set `autoStart` flag recieved from task state. Env name: `modal.state.autoStart`.
+    """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
 
     :param default: this value will be set
         if the flag is undefined in state, defaults to None
     :type default: Optional[str], optional
     """
     if sly_env.autostart() is True:
-        logger.warn("`autoStart` flag already defined in env. Skip loading it from state.")
+        logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
         return
 
     api = Api()
@@ -379,7 +379,7 @@ def set_autostart_flag_from_state(self, default: Optional[str] = None):
     if task_params is not None:
         task_state = task_params.get("state", None)
     if task_state is not None:
-        auto_start = task_params.get("autoStart", default)
+        auto_start = task_params.get("autostart", default)
 
     sly_env.set_autostart(auto_start)
 
@@ -390,9 +390,9 @@ def call_on_autostart(
 ) -> Callable:
     """Decorator to enable autostart.
     This decorator is used to wrap functions that are executed
-    and will check if autoStart is enabled in environment.
+    and will check if autostart is enabled in environment.
 
-    :param default_func: default function to call if autoStart is not enabled, defaults to None
+    :param default_func: default function to call if autostart is not enabled, defaults to None
     :type default_func: Optional[Callable], optional
     :return: decorator
     :rtype: Callable
@@ -403,7 +403,7 @@ def call_on_autostart(
         @wraps(func)
         def wrapper(*args, **kwargs):
             if sly_env.autostart() is True:
-                logger.info("Found `autoStart` flag in environment.")
+                logger.info("Found `autostart` flag in environment.")
                 func(*args, **kwargs)
             else:
                 logger.warn("Autostart is disabled.")
