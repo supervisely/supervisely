@@ -224,6 +224,15 @@ def get_predefined_colors(n: int):
 
 
 def _validate_hex_color(hex_value: str) -> bool:
+    """
+    Checks if the HEX value is valid for the color
+
+    :param hex_value: HEX color value
+    :type hex_value: str
+    :return: If the value matches the pattern - True, otherwise - False
+    :rtype: bool
+    """
+
     pattern = r"^#([A-Fa-f0-9]{6})$"
 
     return re.match(pattern, hex_value) is not None
