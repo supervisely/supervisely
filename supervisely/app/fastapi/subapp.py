@@ -369,7 +369,10 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
         return
 
     api = Api()
-    task_id = sly_env.task_id()
+    task_id = sly_env.task_id(raise_not_found=False)
+    if task_id is None:
+        logger.warn("Can't set `autostart` env: TASK_ID variable is not defined.")
+        return
     task_meta = api.task.get_info_by_id(task_id).get("meta", None)
     task_params = None
     task_state = None
