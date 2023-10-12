@@ -18,6 +18,7 @@ class LabeledImage(GridGallery):
         fill_rectangle: bool = True,
         border_width: int = 3,
         view_height: Optional[int] = None,
+        empty_message: str = "Gallery is empty",
         widget_id: str = None,
     ):
         self._image_id = None
@@ -30,6 +31,7 @@ class LabeledImage(GridGallery):
             fill_rectangle=fill_rectangle,
             border_width=border_width,
             view_height=view_height,
+            empty_message=empty_message,
             widget_id=widget_id,
         )
 
