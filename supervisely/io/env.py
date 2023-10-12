@@ -264,6 +264,11 @@ def autostart():
 
 
 def set_autostart(value: Optional[str]):
+    """
+    Set modal.state.autoStart env.
+    Possible values (case insensetive): "1", "true", "yes".
+    Use `value=None`, to remove variable.
+    """
     if value is None:
         os.environ.pop("modal.state.autoStart", None)
         return
