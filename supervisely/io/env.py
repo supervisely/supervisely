@@ -280,7 +280,7 @@ def set_autostart(value: Optional[str]):
 def is_devcontainer():
     return _parse_from_env(
         name="is_devcontainer",
-        keys="DEVCONTAINER",
+        keys=["DEVCONTAINER"],
         default=None,
         raise_not_found=False,
         postprocess_fn=flag_from_env,
