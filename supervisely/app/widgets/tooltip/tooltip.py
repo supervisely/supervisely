@@ -25,7 +25,6 @@ class Tooltip(Widget):
                 "right-end",
             ]
         ] = "bottom",
-        disabled: Optional[bool] = False,
         offset: Optional[int] = 0,
         transition: Optional[
             Literal[
@@ -33,18 +32,26 @@ class Tooltip(Widget):
                 "el-fade-in",
             ]
         ] = "el-fade-in-linear",
+        visible_arrow: Optional[bool] = True,
         open_delay: Optional[int] = 0,
+        enterable: Optional[bool] = True,
+        hide_after: Optional[int] = 0,
         widget_id: Optional[str] = None,
     ):
         self._placement = placement
         self._element = element
         self._content = content
         self._effect = effect
-        self._disabled = disabled
         self._offset = offset
         self._transition = transition
+        self._visible_arrow = visible_arrow
         self._open_delay = open_delay
+        self._enterable = enterable
+        self._hide_after = hide_after
         self._multiline = True if isinstance(self._content, List) else False
+
+        if open_delay >= hide_after and hide_after != 0:
+            raise ValueError("The value 'open_delay' must be less than 'hide_after'")
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -53,10 +60,12 @@ class Tooltip(Widget):
             "content": self._content,
             "effect": self._effect,
             "placement": self._placement,
-            "disabled": self._disabled,
             "offset": self._offset,
             "transition": self._transition,
+            "visible_arrow": self._visible_arrow,
             "open_delay": self._open_delay,
+            "enterable": self._enterable,
+            "hide_after": self._hide_after,
             "multiline": self._multiline,
         }
 
@@ -94,11 +103,6 @@ class Tooltip(Widget):
         DataJson()[self.widget_id]["placement"] = self._placement
         DataJson().send_changes()
 
-    def set_disabled(self, disabled: bool):
-        self._disabled = disabled
-        DataJson()[self.widget_id]["disabled"] = self._disabled
-        DataJson().send_changes()
-
     def set_offset(self, offset: int):
         self._offset = offset
         DataJson()[self.widget_id]["offset"] = self._offset
@@ -112,10 +116,33 @@ class Tooltip(Widget):
         DataJson()[self.widget_id]["transition"] = self._transition
         DataJson().send_changes()
 
+    def set_arrow_visibility(self, visible_arrow: bool):
+        self._visible_arrow = visible_arrow
+        DataJson()[self.widget_id]["visible_arrow"] = self._visible_arrow
+        DataJson().send_changes()
+
     def set_open_delay(self, open_delay: int):
         """
         Milliseconds
         """
-        self._open_delay = open_delay
-        DataJson()[self.widget_id]["open_delay"] = self._open_delay
-        DataJson().send_changes()
+        if open_delay >= self._hide_after and self._hide_after != 0:
+            raise ValueError(
+                f"The value 'open_delay: {open_delay}' must be less than 'hide_after: {self._hide_after}'"
+            )
+        else:
+            self._open_delay = open_delay
+            DataJson()[self.widget_id]["open_delay"] = self._open_delay
+            DataJson().send_changes()
+
+    def set_hide_after(self, hide_after: int):
+        """
+        Milliseconds
+        """
+        if self._open_delay >= hide_after and hide_after != 0:
+            raise ValueError(
+                f"The value 'hide_after: {hide_after}' must be greater than 'open_delay: {self._open_delay}'"
+            )
+        else:
+            self._hide_after = hide_after
+            DataJson()[self.widget_id]["hide_after"] = self._hide_after
+            DataJson().send_changes()
