@@ -252,7 +252,6 @@ def smart_cache_container_dir(default="/tmp/smart_cache"):
     )
 
 
-# TODO: decide if this flag is int of bool
 def autostart():
     return _parse_from_env(
         name="autostart",
@@ -276,3 +275,13 @@ def set_autostart(value: Optional[str]):
     if not flag_from_env(value):
         raise ValueError("Unknown value for `autostart` env. Use `1`, `true`, `yes` or None.")
     os.environ["modal.state.autostart"] = value
+
+
+def is_devcontainer():
+    return _parse_from_env(
+        name="is_devcontainer",
+        keys="DEVCONTAINER",
+        default=None,
+        raise_not_found=False,
+        postprocess_fn=flag_from_env,
+    )
