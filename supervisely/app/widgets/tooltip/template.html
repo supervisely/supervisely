@@ -1,0 +1,21 @@
+<el-tooltip
+  class="item"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
+  {% if widget._multiline == false %}
+  :content="data.{{{widget.widget_id}}}.content"
+  {% endif %} 
+  :effect="data.{{{widget.widget_id}}}.effect"
+  :placement="data.{{{widget.widget_id}}}.placement"
+  :offset="data.{{{widget.widget_id}}}.offset"
+  :transition="data.{{{widget.widget_id}}}.transition"
+  :open-delay="data.{{{widget.widget_id}}}.open_delay"
+>
+  {% if widget._multiline == true %}
+    <div slot="content">
+      {% for item in widget._content %}
+        {{{item}}}<br/>
+      {% endfor %}        
+    </div>
+  {% endif %} 
+  {{{widget._element}}}
+</el-tooltip>
