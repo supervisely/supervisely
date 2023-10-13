@@ -357,7 +357,7 @@ class Application(metaclass=Singleton):
         return self._static_dir
 
 
-def set_autostart_flag_from_state(self, default: Optional[str] = None):
+def set_autostart_flag_from_state(default: Optional[str] = None):
     """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
 
     :param default: this value will be set
