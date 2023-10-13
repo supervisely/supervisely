@@ -13,6 +13,7 @@ from supervisely._utils import (
     is_debug_with_sly_net,
     rand_str,
     is_production,
+    add_callback,
 )
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
@@ -85,6 +86,7 @@ class Inference:
         self._gui = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
+        self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
         if use_gui:
             self.initialize_gui()
@@ -94,15 +96,12 @@ class Inference:
                 device = gui.get_device()
                 self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
-                self._model_served = True
 
-            def on_change_model_callback():
+            def on_change_model_callback(gui: GUI.InferenceGUI):
                 self._model_served = False
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
-        else:
-            self._model_served = True
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
@@ -724,12 +723,16 @@ class Inference:
             else:
                 raise RuntimeError(
                     (
-                        "The model has not yet been deployed."
-                        "Please select the appropriate model in the UI and press the 'Serve' button."
+                        "The model has not yet been deployed. "
+                        "Please select the appropriate model in the UI and press the 'Serve' button. "
+                        "If this app has no GUI, it signifies that 'load_on_device' was never called."
                     )
                 )
 
         return wrapper
+
+    def _set_served_callback(self):
+        self._model_served = True
 
     def serve(self):
         if not self._use_gui:
