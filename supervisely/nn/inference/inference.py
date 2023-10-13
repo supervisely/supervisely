@@ -64,6 +64,7 @@ class Inference:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
         self._model_dir = model_dir
+        self._model_served = False
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -93,11 +94,20 @@ class Inference:
                 device = gui.get_device()
                 self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
+                self._model_served = True
 
+            def on_change_model_callback():
+                self._model_served = False
+
+            self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
+        else:
+            self._model_served = True
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
+        self.predict = self._check_serve_before_call(self.predict)
+        self.predict_raw = self._check_serve_before_call(self.predict_raw)
 
     def _prepare_device(self, device):
         if device is None:
@@ -705,6 +715,21 @@ class Inference:
         inference_request = self._inference_requests.get(inference_request_uuid)
         if inference_request is not None:
             inference_request["is_inferring"] = False
+
+    def _check_serve_before_call(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_served is True:
+                return func(*args, **kwargs)
+            else:
+                raise RuntimeError(
+                    (
+                        "The model has not yet been deployed."
+                        "Please select the appropriate model in the UI and press the 'Serve' button."
+                    )
+                )
+
+        return wrapper
 
     def serve(self):
         if not self._use_gui:
