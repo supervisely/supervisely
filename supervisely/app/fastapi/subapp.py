@@ -77,12 +77,18 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
         @app.post("/session-info")
         async def send_session_info(request: Request):
             # TODO: handle case development inside docker
-            if is_production() and is_docker():
-                server_address = "/"
-            elif is_development() or (is_production() and not is_docker()):
+            production = is_production() and is_docker()
+            advanced_development = is_debug_with_sly_net()
+            development = is_development() or (is_production() and not is_docker())
+
+            if advanced_development or development:
                 server_address = sly_env.server_address()
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
+            elif production:
+                server_address = "/"
+            else:
+                raise ValueError("Unknow app state, can't define `server_address`.")
 
             response = JSONResponse(
                 content={

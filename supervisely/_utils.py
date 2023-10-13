@@ -18,7 +18,6 @@ import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import fs as sly_fs
-from supervisely.io import env as sly_env
 from supervisely.sly_logger import logger
 
 random.seed(time.time())
@@ -160,12 +159,11 @@ def is_debug_with_sly_net() -> bool:
 
 def is_docker():
     path = "/proc/self/cgroup"
-    docker = (
+    return (
         os.path.exists("/.dockerenv")
         or os.path.isfile(path)
         and any("docker" in line for line in open(path))
     )
-    return docker and not sly_env.is_devcontainer()
 
 
 def is_production() -> bool:
