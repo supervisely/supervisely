@@ -306,24 +306,6 @@ class ClassesTable(Widget):
         self.update_data()
         DataJson().send_changes()
 
-    def select_classes(self, classes) -> None:
-        self._global_checkbox = False
-        self._checkboxes = [False] * len(self._table_data)
-
-        project_classes = []
-        for i, line in enumerate(self._table_data):
-            for col in line:
-                if col["name"] == "CLASS":
-                    project_classes.append(col["data"])
-
-        for i, cls_name in enumerate(project_classes):
-            if cls_name in classes:
-                self._checkboxes[i] = True
-        self._global_checkbox = all(self._checkboxes)
-        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
-        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
-        StateJson().send_changes()
-
     def select_all(self) -> None:
         self._global_checkbox = True
         self._checkboxes = [True] * len(self._table_data)
