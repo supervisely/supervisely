@@ -25,6 +25,7 @@ class GridGallery(Widget):
         border_width: int = 3,
         show_preview: bool = False,
         view_height: Optional[int] = None,
+        empty_message: str = "Gallery is empty",
         widget_id: str = None,
     ):
         self._data = []
@@ -51,6 +52,8 @@ class GridGallery(Widget):
         self._show_preview: bool = show_preview
         self._views_bindings: list = []
         self._view_height: int = view_height
+        self._empty_message: str = empty_message
+
         #############################
 
         super().__init__(widget_id=widget_id, file_path=__file__)

@@ -13,10 +13,12 @@ class Markdown(Widget):
         self,
         content: str = "",
         height: Union[int, Literal["fit-content"]] = "fit-content",
+        show_border: bool = True,
         widget_id: str = None,
     ):
         self._content = content
         self._height = f"{height}px" if type(height) == int else height
+        self._show_border = show_border
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -24,6 +26,7 @@ class Markdown(Widget):
         return {
             "content": self._content,
             "options": {"height": self._height},
+            "showBorder": self._show_border,
         }
 
     def get_json_state(self) -> Dict:
