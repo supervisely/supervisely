@@ -17,6 +17,7 @@ from supervisely._utils import (
     is_production,
     add_callback,
 )
+from supervisely.app.exceptions import DialogWindowError
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -728,12 +729,9 @@ class Inference:
                     "Please select the appropriate model in the UI and press the 'Serve' button. "
                     "If this app has no GUI, it signifies that 'load_on_device' was never called."
                 )
-                logger.error(msg)
-                raise RuntimeError(msg)
+                raise DialogWindowError(title="Call undeployed model.", description=msg)
 
         return wrapper
-
-        return inner
 
     def _set_served_callback(self):
         self._model_served = True
