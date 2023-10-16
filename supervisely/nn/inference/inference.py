@@ -727,7 +727,10 @@ class Inference:
                         "If this app has no GUI, it signifies that 'load_on_device' was never called."
                     )
                     if raise_http:
-                        raise HTTPException(code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=msg)
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail=msg,
+                        )
                     raise RuntimeError(msg)
 
             return wrapper
