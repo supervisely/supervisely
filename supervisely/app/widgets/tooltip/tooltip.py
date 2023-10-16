@@ -1,14 +1,14 @@
 from typing import List, Optional, Dict, Union, Literal
-from supervisely.app import StateJson, DataJson
+from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
 
 class Tooltip(Widget):
     def __init__(
         self,
-        content: Union[str, List[str]],
-        element: Widget,
-        effect: Optional[Literal["dark", "light"]] = "dark",
+        text: Union[str, List[str]],
+        widget: Widget,
+        color_theme: Optional[Literal["dark", "light"]] = "dark",
         placement: Optional[
             Literal[
                 "top",
@@ -38,17 +38,17 @@ class Tooltip(Widget):
         hide_after: Optional[int] = 0,
         widget_id: Optional[str] = None,
     ):
+        self._text = text
+        self._widget = widget
+        self._color_theme = color_theme
         self._placement = placement
-        self._element = element
-        self._content = content
-        self._effect = effect
         self._offset = offset
         self._transition = transition
         self._visible_arrow = visible_arrow
         self._open_delay = open_delay
         self._enterable = enterable
         self._hide_after = hide_after
-        self._multiline = True if isinstance(self._content, List) else False
+        self._multiline = True if isinstance(self._text, List) else False
 
         if open_delay >= hide_after and hide_after != 0:
             raise ValueError("The value 'open_delay' must be less than 'hide_after'")
@@ -57,8 +57,8 @@ class Tooltip(Widget):
 
     def get_json_data(self) -> Dict:
         return {
-            "content": self._content,
-            "effect": self._effect,
+            "text": self._text,
+            "color_theme": self._color_theme,
             "placement": self._placement,
             "offset": self._offset,
             "transition": self._transition,
@@ -72,13 +72,13 @@ class Tooltip(Widget):
     def get_json_state(self):
         return None
 
-    def set_content(self, content: Union[str, List[str]]):
+    def set_text(self, text: Union[str, List[str]]):
         """
-        To make tooltip multiline - pass content as list of lines
+        To make tooltip multiline - pass text as list of lines
         """
-        self._content = content
-        self._multiline = True if isinstance(self._content, List) else False
-        DataJson()[self.widget_id]["content"] = self._content
+        self._text = text
+        self._multiline = True if isinstance(self._text, List) else False
+        DataJson()[self.widget_id]["text"] = self._text
         DataJson()[self.widget_id]["multiline"] = self._multiline
         DataJson().send_changes()
 

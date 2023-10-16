@@ -2,9 +2,9 @@
   class="item"
   :disabled="data.{{{widget.widget_id}}}.disabled"
   {% if widget._multiline == false %}
-  :content="data.{{{widget.widget_id}}}.content"
+  :content="data.{{{widget.widget_id}}}.text"
   {% endif %} 
-  :effect="data.{{{widget.widget_id}}}.effect"
+  :effect="data.{{{widget.widget_id}}}.color_theme"
   :placement="data.{{{widget.widget_id}}}.placement"
   :offset="data.{{{widget.widget_id}}}.offset"
   :transition="data.{{{widget.widget_id}}}.transition"
@@ -20,5 +20,5 @@
       {% endfor %}        
     </div>
   {% endif %} 
-  {{{widget._element}}}
+  {{{widget._widget}}}
 </el-tooltip>
