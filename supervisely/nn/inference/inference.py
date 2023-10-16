@@ -729,7 +729,8 @@ class Inference:
                     "Please select the appropriate model in the UI and press the 'Serve' button. "
                     "If this app has no GUI, it signifies that 'load_on_device' was never called."
                 )
-                raise DialogWindowError(title="Call undeployed model.", description=msg)
+                # raise DialogWindowError(title="Call undeployed model.", description=msg)
+                raise RuntimeError(msg)
 
         return wrapper
 

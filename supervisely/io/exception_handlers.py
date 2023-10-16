@@ -136,6 +136,21 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class CallUndeployedModelError(HandleException):
+            def __init__(
+                self, exception: Exception, stack: List[traceback.FrameSummary] = None, **kwargs
+            ):
+                self.code = 1004
+                self.title = "Call undeployed model error"
+                self.message = str(exception.args[0])
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -503,6 +518,7 @@ ERROR_PATTERNS = {
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
         r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
+        r"The\ model\ has\ not\ yet\ been\ deployed.*": ErrorHandler.APP.CallUndeployedModelError,
     },
     FileNotFoundError: {
         r".*api\.annotation\.upload_path.*": ErrorHandler.API.AnnotationNotFound,
