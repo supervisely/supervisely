@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from fastapi.responses import JSONResponse
 import requests
 from requests.structures import CaseInsensitiveDict
@@ -769,13 +770,10 @@ class Inference:
         def get_session_info(response: Response):
             try:
                 return self.get_info()
-            except RuntimeError:
+            except RuntimeError as exc:
                 response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-                msg = (
-                    "The model has not yet been deployed. "
-                    "Please select the appropriate model in the UI and press the 'Serve' button. "
-                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
-                )
+                msg = str(exc)
+                logger.exception(exc)
                 return msg
 
         @server.post("/get_custom_inference_settings")
