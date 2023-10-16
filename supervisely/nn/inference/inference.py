@@ -106,8 +106,9 @@ class Inference:
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
-        self.predict = self._check_serve_before_call(raise_http=False)(self.predict)
-        self.predict_raw = self._check_serve_before_call(raise_http=False)(self.predict_raw)
+        self.predict = self._check_serve_before_call(self.predict)
+        self.predict_raw = self._check_serve_before_call(self.predict_raw)
+        self.get_info = self._check_serve_before_call(self.get_info)
 
     def _prepare_device(self, device):
         if device is None:
@@ -715,26 +716,20 @@ class Inference:
         if inference_request is not None:
             inference_request["is_inferring"] = False
 
-    def _check_serve_before_call(self, raise_http=False):
-        def inner(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                if self._model_served is True:
-                    return func(*args, **kwargs)
-                else:
-                    msg = (
-                        "The model has not yet been deployed. "
-                        "Please select the appropriate model in the UI and press the 'Serve' button. "
-                        "If this app has no GUI, it signifies that 'load_on_device' was never called."
-                    )
-                    if raise_http:
-                        return JSONResponse(
-                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            content={"message": msg},
-                        )
-                    raise RuntimeError(msg)
+    def _check_serve_before_call(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_served is True:
+                return func(*args, **kwargs)
+            else:
+                msg = (
+                    "The model has not yet been deployed. "
+                    "Please select the appropriate model in the UI and press the 'Serve' button. "
+                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
+                )
+                raise RuntimeError(msg)
 
-            return wrapper
+        return wrapper
 
         return inner
 
@@ -771,9 +766,17 @@ class Inference:
             autostart_func()
 
         @server.post(f"/get_session_info")
-        @self._check_serve_before_call(raise_http=True)
-        def get_session_info():
-            return self.get_info()
+        def get_session_info(response: Response):
+            try:
+                return self.get_info()
+            except RuntimeError:
+                response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+                msg = (
+                    "The model has not yet been deployed. "
+                    "Please select the appropriate model in the UI and press the 'Serve' button. "
+                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
+                )
+                return msg
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
