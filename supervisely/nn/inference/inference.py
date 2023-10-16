@@ -311,6 +311,7 @@ class Inference:
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
+        classes = None
         try:
             classes = self.get_classes()
             num_classes = len(classes)
@@ -322,7 +323,7 @@ class Inference:
             logger.warn("Unknown exception. Please, contact support")
             logger.exception(exc)
 
-        if num_classes is None or len(classes) == 0:
+        if num_classes is None:
             logger.warn(f"get_classes() function return {classes}; skip classes processing.")
 
         return {
