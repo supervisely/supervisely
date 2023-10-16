@@ -502,6 +502,7 @@ ERROR_PATTERNS = {
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+        r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
     },
     FileNotFoundError: {
         r".*api\.annotation\.upload_path.*": ErrorHandler.API.AnnotationNotFound,
@@ -545,7 +546,6 @@ ERROR_PATTERNS = {
         r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
     },
-    RuntimeError: {r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory},
 }
 
 try:
