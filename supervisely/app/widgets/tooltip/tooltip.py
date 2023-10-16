@@ -7,7 +7,7 @@ class Tooltip(Widget):
     def __init__(
         self,
         text: Union[str, List[str]],
-        widget: Widget,
+        content: Widget,
         color_theme: Optional[Literal["dark", "light"]] = "dark",
         placement: Optional[
             Literal[
@@ -39,7 +39,7 @@ class Tooltip(Widget):
         widget_id: Optional[str] = None,
     ):
         self._text = text
-        self._widget = widget
+        self._content = content
         self._color_theme = color_theme
         self._placement = placement
         self._offset = offset
