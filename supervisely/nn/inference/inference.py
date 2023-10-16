@@ -8,7 +8,7 @@ from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, Response, UploadFile, status
+from fastapi import Form, HTTPException, Response, UploadFile, status
 from supervisely._utils import (
     is_debug_with_sly_net,
     rand_str,
@@ -105,8 +105,8 @@ class Inference:
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
-        self.predict = self._check_serve_before_call(self.predict)
-        self.predict_raw = self._check_serve_before_call(self.predict_raw)
+        self.predict = self._check_serve_before_call(raise_http=False)(self.predict)
+        self.predict_raw = self._check_serve_before_call(raise_http=False)(self.predict_raw)
 
     def _prepare_device(self, device):
         if device is None:
@@ -309,6 +309,7 @@ class Inference:
         num_classes = None
         try:
             classes = self.get_classes()
+            num_classes = len(classes)
         except NotImplementedError:
             logger.warn(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
@@ -317,10 +318,8 @@ class Inference:
             logger.warn("Unknown exception. Please, contact support")
             logger.exception(exc)
 
-        if classes is None or len(classes) == 0:
+        if num_classes is None or len(classes) == 0:
             logger.warn(f"get_classes() function return {classes}; skip classes processing.")
-        else:
-            num_classes = len(classes)
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -715,21 +714,25 @@ class Inference:
         if inference_request is not None:
             inference_request["is_inferring"] = False
 
-    def _check_serve_before_call(self, func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if self._model_served is True:
-                return func(*args, **kwargs)
-            else:
-                raise RuntimeError(
-                    (
+    def _check_serve_before_call(self, raise_http=False):
+        def inner(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                if self._model_served is True:
+                    return func(*args, **kwargs)
+                else:
+                    msg = (
                         "The model has not yet been deployed. "
                         "Please select the appropriate model in the UI and press the 'Serve' button. "
                         "If this app has no GUI, it signifies that 'load_on_device' was never called."
                     )
-                )
+                    if raise_http:
+                        raise HTTPException(code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=msg)
+                    raise RuntimeError(msg)
 
-        return wrapper
+            return wrapper
+
+        return inner
 
     def _set_served_callback(self):
         self._model_served = True
@@ -764,6 +767,7 @@ class Inference:
             autostart_func()
 
         @server.post(f"/get_session_info")
+        @self._check_serve_before_call(raise_http=True)
         def get_session_info():
             return self.get_info()
 
