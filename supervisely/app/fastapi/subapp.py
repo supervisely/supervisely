@@ -417,7 +417,7 @@ def call_on_autostart(
                 logger.info("Found `autostart` flag in environment.")
                 func(*args, **kwargs)
             else:
-                logger.warn("Autostart is disabled.")
+                logger.info("Autostart is disabled.")
                 if default_func is not None:
                     default_func(**default_kwargs)
 
