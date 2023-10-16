@@ -1,5 +1,6 @@
 import json
 import os
+from fastapi.responses import JSONResponse
 import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
@@ -727,9 +728,9 @@ class Inference:
                         "If this app has no GUI, it signifies that 'load_on_device' was never called."
                     )
                     if raise_http:
-                        raise HTTPException(
+                        return JSONResponse(
                             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail=msg,
+                            content={"message": msg},
                         )
                     raise RuntimeError(msg)
 
