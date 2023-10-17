@@ -578,7 +578,7 @@ except ModuleNotFoundError:
 ERROR_PATTERNS.update(docker_patterns)
 
 
-def handle_exception(exception: Exception) -> Union[ErrorHandler, None]:
+def handle_exception(exception: Exception) -> Union[HandleException, None]:
     """Function for handling exceptions, using the stack trace and patterns for known errors.
     Returns an instance of the ErrorHandler class if the pattern is found, otherwise returns None.
 
