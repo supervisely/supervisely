@@ -98,4 +98,5 @@ from supervisely.app.widgets.rate.rate import Rate
 from supervisely.app.widgets.carousel.carousel import Carousel
 from supervisely.app.widgets.dropdown.dropdown import Dropdown
 from supervisely.app.widgets.pie_chart.pie_chart import PieChart
+from supervisely.app.widgets.tooltip.tooltip import Tooltip
 from supervisely.app.widgets.timeline.timeline import Timeline
