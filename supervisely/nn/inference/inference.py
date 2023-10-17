@@ -110,7 +110,7 @@ class Inference:
         self._executor = ThreadPoolExecutor()
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
-        self.get_info = self._check_serve_before_call(self.get_info)
+        # self.get_info = self._check_serve_before_call(self.get_info)
 
     def _prepare_device(self, device):
         if device is None:
@@ -768,14 +768,16 @@ class Inference:
             autostart_func()
 
         @server.post(f"/get_session_info")
+        @self._check_serve_before_call()
         def get_session_info(response: Response):
-            try:
-                return self.get_info()
-            except RuntimeError as exc:
-                response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-                msg = str(exc)
-                logger.exception(exc)
-                return msg
+            return self.get_info()
+            # try:
+            #     return self.get_info()
+            # except RuntimeError as exc:
+            #     response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            #     msg = str(exc)
+            #     logger.exception(exc)
+            #     return msg
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
