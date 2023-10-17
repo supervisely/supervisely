@@ -6,6 +6,7 @@ from supervisely.app.content import StateJson, DataJson
 class Timeline(Widget):
     class Routes:
         SEGMENT_SELECTED = "segment_selected_cb"
+        CLICK = "click"
 
     def __init__(
         self,
@@ -51,6 +52,7 @@ class Timeline(Widget):
 
     def set_pointer(self, pointer):
         StateJson()[self.widget_id]["pointer"] = pointer
+        StateJson().send_changes()
 
     def get_pointer(self):
         return StateJson()[self.widget_id]["pointer"]
@@ -79,5 +81,17 @@ class Timeline(Widget):
         def _inner():
             selected_segment = StateJson()[self.widget_id]["selectedSegment"]
             func(selected_segment)
+
+        return _inner
+
+    def click(self, func):
+        route_path = self.get_route_path(Timeline.Routes.CLICK)
+        server = self._sly_app.get_server()
+        self._click_handled = True
+
+        @server.post(route_path)
+        def _inner():
+            pointer = StateJson()[self.widget_id]["pointer"]
+            func(pointer)
 
         return _inner
