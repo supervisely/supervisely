@@ -770,13 +770,7 @@ class Inference:
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
         def get_session_info(response: Response):
-            try:
                 return self.get_info()
-            except RuntimeError as exc:
-                response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-                msg = str(exc)
-                logger.exception(exc)
-                return msg
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
