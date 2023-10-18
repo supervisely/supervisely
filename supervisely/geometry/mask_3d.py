@@ -277,10 +277,10 @@ class Mask3D(Geometry):
             figure.geometry._space = mask3d_header["space"]
             figure.geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
-            header_keys = ["'space origin'", "'space'", "'space directions'"]
+            header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
                 logger.warning(
-                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes like {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
+                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
                 )
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
@@ -304,10 +304,10 @@ class Mask3D(Geometry):
             geometry._space = mask3d_header["space"]
             geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
-            header_keys = ["'space origin'", "'space'", "'space directions'"]
+            header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
                 logger.warning(
-                    f"The Mask3D geometry created from the file '{file_path}' does not contain optional space attributes like {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
+                    f"The Mask3D geometry created from the file '{file_path}' does not contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
                 )
         return geometry
 
