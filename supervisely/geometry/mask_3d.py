@@ -278,7 +278,7 @@ class Mask3D(Geometry):
             figure.geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
             if str(e) in ("'space origin'", "'space'", "'space directions'"):
-                logger.debug("The Mask 3D geometry does not contain space attributes")
+                logger.debug("The Mask 3D geometry does not contain optional space attributes")
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
 
@@ -300,10 +300,11 @@ class Mask3D(Geometry):
             )
             geometry._space = mask3d_header["space"]
             geometry._space_directions = mask3d_header["space directions"]
-        except KeyError:
-            logger.debug(
-                "The Mask3D geometry created from the file does not contain private attributes"
-            )
+        except KeyError as e:
+            if str(e) in ("'space origin'", "'space'", "'space directions'"):
+                logger.debug(
+                    "The Mask3D geometry created from the file does not contain optional space attributes"
+                )
         return geometry
 
     @classmethod
