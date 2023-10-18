@@ -752,7 +752,7 @@ class VideoApi(RemoveableBulkModuleApi):
             if hash is None:
                 no_hash_names.append(name)
 
-        if no_hash_names:
+        if len(no_hash_names) > 0:
             raise ValueError(
                 f"Video hashes are None for the following videos: {no_hash_names}. "
                 "It may occur when the videos were uploaded as links. "
