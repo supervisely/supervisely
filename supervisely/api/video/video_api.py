@@ -427,7 +427,7 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        raw_video_meta: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get Video information by ID.
@@ -456,6 +456,27 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return results
 
+        fields = [
+            "id",
+            "title",
+            "description",
+            "createdAt",
+            "updatedAt",
+            "dataId",
+            "remoteDataId",
+            "meta",
+            "pathOriginal",
+            "hash",
+            "groupId",
+            "projectId",
+            "datasetId",
+            "createdBy",
+            "customData",
+        ]
+
+        if force_metadata_for_links is True:
+            fields.append("videoMeta")
+
         dataset_id = self.get_info_by_id(ids[0]).dataset_id
         for batch in batched(ids):
             filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
@@ -465,7 +486,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     {
                         ApiField.DATASET_ID: dataset_id,
                         ApiField.FILTER: filters,
-                        ApiField.RAW_VIDEO_META: raw_video_meta,
+                        ApiField.FIELDS: fields,
                     },
                 )
             )
