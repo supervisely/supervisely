@@ -436,8 +436,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param raw_video_meta: Get normalized metadata from server.
-        :type raw_video_meta: Optional[bool]
+        :param force_metadata_for_links: Get normalized metadata from server.
+        :type force_metadata_for_links: bool
         :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
         :rtype: List[VideoInfo]
         :Usage example:
