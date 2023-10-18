@@ -423,6 +423,58 @@ class VideoApi(RemoveableBulkModuleApi):
             raise KeyError(f"Video with id={id} not found in your account")
         return info
 
+    def get_info_by_id_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        raw_video_meta: Optional[bool] = False,
+    ) -> List[VideoInfo]:
+        """
+        Get Video information by ID.
+
+        :param ids: List of Video IDs in Supervisely, they must belong to the same dataset.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param raw_video_meta: Get normalized metadata from server.
+        :type raw_video_meta: Optional[bool]
+        :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
+        :rtype: List[VideoInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+
+            video_infos = api.video.get_info_by_id_batch(video_ids)
+        """
+        results = []
+        if len(ids) == 0:
+            return results
+
+        dataset_id = self.get_info_by_id(ids[0]).dataset_id
+        for batch in batched(ids):
+            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+            results.extend(
+                self.get_list_all_pages(
+                    "videos.list",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.RAW_VIDEO_META: raw_video_meta,
+                    },
+                )
+            )
+            if progress_cb is not None:
+                progress_cb(len(batch))
+        temp_map = {info.id: info for info in results}
+        ordered_results = [temp_map[id] for id in ids]
+        return ordered_results
+
     def get_json_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> Dict:
         """
         Get Video information by ID in json format.
@@ -788,7 +840,7 @@ class VideoApi(RemoveableBulkModuleApi):
             metas = [{}] * len(names)
 
         if infos is None:
-            infos = [self.get_info_by_id(id) for id in ids]
+            infos = self.get_info_by_id_batch(ids, progress_cb=progress_cb)
 
         links, links_names, links_order, links_metas = [], [], [], []
         hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
