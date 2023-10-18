@@ -172,7 +172,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
             sly_image.write(image_path, image_np)
 
             # Prepare init_mask
-            figure_id = smtool_state["figure_id"]
+            figure_id = smtool_state.get("figure_id")
             image_id = smtool_state["image_id"]
             if smtool_state.get("init_figure") is True:
                 # Download and save in Cache
