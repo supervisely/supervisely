@@ -268,13 +268,17 @@ class Mask3D(Geometry):
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
         figure.geometry.data = mask3d_data
-        figure.geometry._space_origin = PointVolume(
-            x=mask3d_header["space origin"][0],
-            y=mask3d_header["space origin"][1],
-            z=mask3d_header["space origin"][2],
-        )
-        figure.geometry._space = mask3d_header["space"]
-        figure.geometry._space_directions = mask3d_header["space directions"]
+        try:
+            figure.geometry._space_origin = PointVolume(
+                x=mask3d_header["space origin"][0],
+                y=mask3d_header["space origin"][1],
+                z=mask3d_header["space origin"][2],
+            )
+            figure.geometry._space = mask3d_header["space"]
+            figure.geometry._space_directions = mask3d_header["space directions"]
+        except KeyError as e:
+            if str(e) in ("'space origin'", "'space'", "'space directions'"):
+                logger.debug("The Mask 3D geometry does not contain space attributes")
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
 
