@@ -607,6 +607,12 @@ class VideoApi(RemoveableBulkModuleApi):
             # )
         """
 
+        if hash is None:
+            raise ValueError(
+                "Video hash is None, it may occur when the video was uploaded as link. "
+                "Please, use upload_id() method instead."
+            )
+
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
@@ -666,6 +672,18 @@ class VideoApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 0, "total": 2, "timestamp": "2021-03-24T10:18:57.111Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
         """
+
+        no_hash_names = []
+        for name, hash in zip(names, hashes):
+            if hash is None:
+                no_hash_names.append(name)
+
+        if no_hash_names:
+            raise ValueError(
+                f"Video hashes are None for the following videos: {no_hash_names}. "
+                "It may occur when the videos were uploaded as links. "
+                "Please, use upload_ids() method instead."
+            )
 
         results = self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
