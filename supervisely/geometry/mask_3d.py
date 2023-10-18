@@ -280,7 +280,7 @@ class Mask3D(Geometry):
             header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
                 logger.warning(
-                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
+                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
                 )
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
@@ -307,7 +307,7 @@ class Mask3D(Geometry):
             header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
                 logger.warning(
-                    f"The Mask3D geometry created from the file '{file_path}' does not contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
+                    f"The Mask3D geometry created from the file '{file_path}' does not contain optional space attributes that have similar names to  {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
                 )
         return geometry
 
