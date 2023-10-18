@@ -252,7 +252,6 @@ def smart_cache_container_dir(default="/tmp/smart_cache"):
     )
 
 
-# TODO: decide if this flag is int of bool
 def autostart():
     return _parse_from_env(
         name="autostart",

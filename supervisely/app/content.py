@@ -129,7 +129,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
         if content.get("context", {}).get("outside_request", False) is True:
             return None
-
+        # TODO: should we always replace STATE with {}?
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
         return cls(d, __local__=True)

@@ -77,12 +77,20 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
         @app.post("/session-info")
         async def send_session_info(request: Request):
             # TODO: handle case development inside docker
-            if is_production() and is_docker():
-                server_address = "/"
-            elif is_development() or (is_production() and not is_docker()):
+            production_at_instance = is_production() and is_docker()
+            advanced_debug = is_debug_with_sly_net()
+            development = is_development() or (is_production() and not is_docker())
+
+            if advanced_debug or development:
                 server_address = sly_env.server_address()
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
+            elif production_at_instance:
+                server_address = "/"
+            else:
+                raise ValueError(
+                    "'Unrecognized running mode, should be one of ['advanced_debug', 'development', 'production']."
+                )
 
             response = JSONResponse(
                 content={
@@ -357,7 +365,7 @@ class Application(metaclass=Singleton):
         return self._static_dir
 
 
-def set_autostart_flag_from_state(self, default: Optional[str] = None):
+def set_autostart_flag_from_state(default: Optional[str] = None):
     """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
 
     :param default: this value will be set
@@ -369,7 +377,10 @@ def set_autostart_flag_from_state(self, default: Optional[str] = None):
         return
 
     api = Api()
-    task_id = sly_env.task_id()
+    task_id = sly_env.task_id(raise_not_found=False)
+    if task_id is None:
+        logger.warn("`autostart` env can't be setted: TASK_ID variable is not defined.")
+        return
     task_meta = api.task.get_info_by_id(task_id).get("meta", None)
     task_params = None
     task_state = None
@@ -406,7 +417,7 @@ def call_on_autostart(
                 logger.info("Found `autostart` flag in environment.")
                 func(*args, **kwargs)
             else:
-                logger.warn("Autostart is disabled.")
+                logger.info("Autostart is disabled.")
                 if default_func is not None:
                     default_func(**default_kwargs)
 
