@@ -278,7 +278,9 @@ class Mask3D(Geometry):
             figure.geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
             if str(e) in ("'space origin'", "'space'", "'space directions'"):
-                logger.debug("The Mask 3D geometry does not contain optional space attributes")
+                logger.debug(
+                    f"The Mask 3D geometry for '{figure.parent_object.obj_class.name}' figure doesn't contain optional space attributes"
+                )
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
 
