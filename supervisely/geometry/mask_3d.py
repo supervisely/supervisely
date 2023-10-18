@@ -23,7 +23,7 @@ from supervisely.geometry.constants import (
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
-from supervisely.io.fs import remove_dir
+from supervisely.io.fs import remove_dir, get_file_name
 from supervisely import logger
 
 
@@ -277,9 +277,10 @@ class Mask3D(Geometry):
             figure.geometry._space = mask3d_header["space"]
             figure.geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
-            if str(e) in ("'space origin'", "'space'", "'space directions'"):
-                logger.debug(
-                    f"The Mask3D geometry for '{figure.parent_object.obj_class.name}' object doesn't contain optional space attributes"
+            header_keys = ["'space origin'", "'space'", "'space directions'"]
+            if str(e) in header_keys:
+                logger.warning(
+                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes like {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
                 )
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
@@ -303,9 +304,10 @@ class Mask3D(Geometry):
             geometry._space = mask3d_header["space"]
             geometry._space_directions = mask3d_header["space directions"]
         except KeyError as e:
-            if str(e) in ("'space origin'", "'space'", "'space directions'"):
-                logger.debug(
-                    "The Mask3D geometry created from the file does not contain optional space attributes"
+            header_keys = ["'space origin'", "'space'", "'space directions'"]
+            if str(e) in header_keys:
+                logger.warning(
+                    f"The Mask3D geometry created from the file '{file_path}' does not contain optional space attributes like {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with these objects."
                 )
         return geometry
 
