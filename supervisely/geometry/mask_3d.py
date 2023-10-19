@@ -23,7 +23,7 @@ from supervisely.geometry.constants import (
 )
 from supervisely._utils import unwrap_if_numpy
 from supervisely.io.json import JsonSerializable
-from supervisely.io.fs import remove_dir
+from supervisely.io.fs import remove_dir, get_file_name
 from supervisely import logger
 
 
@@ -268,13 +268,20 @@ class Mask3D(Geometry):
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
         figure.geometry.data = mask3d_data
-        figure.geometry._space_origin = PointVolume(
-            x=mask3d_header["space origin"][0],
-            y=mask3d_header["space origin"][1],
-            z=mask3d_header["space origin"][2],
-        )
-        figure.geometry._space = mask3d_header["space"]
-        figure.geometry._space_directions = mask3d_header["space directions"]
+        try:
+            figure.geometry._space_origin = PointVolume(
+                x=mask3d_header["space origin"][0],
+                y=mask3d_header["space origin"][1],
+                z=mask3d_header["space origin"][2],
+            )
+            figure.geometry._space = mask3d_header["space"]
+            figure.geometry._space_directions = mask3d_header["space directions"]
+        except KeyError as e:
+            header_keys = ["'space'", "'space directions'", "'space origin'"]
+            if str(e) in header_keys:
+                logger.warning(
+                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
+                )
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
 
@@ -296,10 +303,12 @@ class Mask3D(Geometry):
             )
             geometry._space = mask3d_header["space"]
             geometry._space_directions = mask3d_header["space directions"]
-        except KeyError:
-            logger.debug(
-                "The Mask3D geometry created from the file does not contain private attributes"
-            )
+        except KeyError as e:
+            header_keys = ["'space'", "'space directions'", "'space origin'"]
+            if str(e) in header_keys:
+                logger.warning(
+                    f"The Mask3D geometry created from the file '{file_path}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
+                )
         return geometry
 
     @classmethod
