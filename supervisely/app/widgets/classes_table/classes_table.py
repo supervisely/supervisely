@@ -72,6 +72,8 @@ class ClassesTable(Widget):
                     "Both parameters project_fs and project_meta were provided to ClassesTable widget. Project meta classes taken from project_fs.meta and project_meta parameter is ignored."
                 )
             project_meta = project_fs.meta
+
+        self._project_meta = project_meta
         if project_meta is not None:
             self._update_meta(project_meta=project_meta)
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -191,6 +193,7 @@ class ClassesTable(Widget):
         self.loading = True
         self._project_fs = None
         self._project_id = None
+        self._project_meta = project_meta
         self.clear_selection()
         self._update_meta(project_meta=project_meta)
 
@@ -206,6 +209,7 @@ class ClassesTable(Widget):
         self.loading = True
         self._project_fs = project_fs
         self._project_id = None
+        self._project_meta = project_fs.meta
         self.clear_selection()
         self._update_meta(project_meta=project_fs.meta)
 
@@ -224,6 +228,7 @@ class ClassesTable(Widget):
         if self._api is None:
             self._api = sly.Api()
         project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
+        self._project_meta = project_meta
         self.clear_selection()
         self._update_meta(project_meta=project_meta)
 
@@ -260,6 +265,10 @@ class ClassesTable(Widget):
     def loading(self) -> bool:
         return self._loading
 
+    @property
+    def project_meta(self) -> bool:
+        return self._project_meta
+
     @loading.setter
     def loading(self, value: bool):
         self._loading = value
@@ -275,7 +284,10 @@ class ClassesTable(Widget):
     def get_selected_classes(self) -> List[str]:
         classes = []
         for i, line in enumerate(self._table_data):
-            if StateJson()[self.widget_id]["checkboxes"][i]:
+            checkboxes = StateJson()[self.widget_id]["checkboxes"]
+            if len(checkboxes) == 0:
+                checkboxes = [False] * len(self._table_data)
+            if checkboxes[i]:
                 for col in line:
                     if col["name"] == "CLASS":
                         classes.append(col["data"])
@@ -290,8 +302,27 @@ class ClassesTable(Widget):
 
     def set_project_meta(self, project_meta: sly.ProjectMeta):
         self._update_meta(project_meta)
+        self._project_meta = project_meta
         self.update_data()
         DataJson().send_changes()
+
+    def select_classes(self, classes) -> None:
+        self._global_checkbox = False
+        self._checkboxes = [False] * len(self._table_data)
+
+        project_classes = []
+        for i, line in enumerate(self._table_data):
+            for col in line:
+                if col["name"] == "CLASS":
+                    project_classes.append(col["data"])
+
+        for i, cls_name in enumerate(project_classes):
+            if cls_name in classes:
+                self._checkboxes[i] = True
+        self._global_checkbox = all(self._checkboxes)
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson().send_changes()
 
     def select_all(self) -> None:
         self._global_checkbox = True

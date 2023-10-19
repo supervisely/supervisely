@@ -26,9 +26,9 @@ class SelectDataset(Widget):
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         disabled: Optional[bool] = False,
-        widget_id: str = None,
         select_all_datasets: bool = False,
         allowed_project_types: List[ProjectType] = [],
+        widget_id: str = None,
     ):
         self._api = Api()
         self._default_id = default_id
@@ -81,7 +81,8 @@ class SelectDataset(Widget):
     def get_json_data(self) -> Dict:
         res = {}
         res["disabled"] = self._disabled
-        res["projectId"] = self._project_id
+        if self._compact is True:
+            res["projectId"] = self._project_id
         res["options"] = {
             "showLabel": self._show_label,
             "compact": self._compact,
@@ -96,9 +97,17 @@ class SelectDataset(Widget):
         return res
 
     def get_json_state(self) -> Dict:
-        return {
-            "datasets": [self._default_id],
-        }
+        res = {"datasets": [self._default_id]}
+        if self._compact is False:
+            res["projectId"] = self._project_id
+        return res
+
+    def get_selected_project_id(self):
+        if self._compact is True:
+            raise ValueError(
+                '"project_id" have to be passed as argument or "compact" has to be False'
+            )
+        return self._project_selector.get_selected_id()
 
     def get_selected_id(self):
         if self._multiselect is True:

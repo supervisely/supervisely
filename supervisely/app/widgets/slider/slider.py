@@ -8,19 +8,20 @@ class Slider(Widget):
         VALUE_CHANGED = "value_changed"
 
     def __init__(
-            self,
-            value: Union[int, List[int]] = 0,
-            min: int = 0,
-            max: int = 100,
-            step: int = 1,
-            show_input: bool = False,
-            show_input_controls: bool = False,
-            show_stops: bool = False,
-            show_tooltip: bool = True,
-            range: bool = False,  # requires value to be List[int, int]
-            vertical: bool = False,
-            height: int = None,
-            widget_id: str = None
+        self,
+        value: Union[int, List[int]] = 0,
+        min: int = 0,
+        max: int = 100,
+        step: int = 1,
+        show_input: bool = False,
+        show_input_controls: bool = False,
+        show_stops: bool = False,
+        show_tooltip: bool = True,
+        range: bool = False,  # requires value to be List[int, int]
+        vertical: bool = False,
+        height: int = None,
+        style: str = "padding: 20px",
+        widget_id: str = None,
     ):
         self._value = value
         self._min = min
@@ -33,6 +34,7 @@ class Slider(Widget):
         self._range = False if show_input else range
         self._vertical = vertical
         self._height = f"{height}px" if vertical else None
+        self._style = style
         self._changes_handled = False
 
         self._validate_min_max(min, max)
@@ -42,7 +44,9 @@ class Slider(Widget):
 
     def _validate_min_max(self, min_val: int, max_val: int):
         if min_val > max_val:
-            raise ValueError(f"Minimum value: '{min_val}' can't be bigger than maximum value: '{max_val}'")
+            raise ValueError(
+                f"Minimum value: '{min_val}' can't be bigger than maximum value: '{max_val}'"
+            )
 
     def _validate_default_value(self, value: Union[int, List[int]]):
         if isinstance(value, int):
@@ -78,7 +82,7 @@ class Slider(Widget):
             "showTooltip": self._show_tooltip,
             "range": self._range,
             "vertical": self._vertical,
-            "height": self._height
+            "height": self._height,
         }
 
     def get_json_state(self):
