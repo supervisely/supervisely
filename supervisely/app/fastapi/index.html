@@ -83,13 +83,20 @@
     <div id="sly-app">
       <sly-app>
         <template v-slot="{ post, state, data, session }">
-          <sly-app-header
-            v-if="session"
-            :session="session"
-            :data="data"
-            :state="state"
-            :style="{ padding: `${state.app_body_padding} ${state.app_body_padding} 0` }"
-          ></sly-app-header>
+          <div
+            style="display: flex; flex-direction: row;"
+          >
+            <sly-app-header
+              v-if="session"
+              :session="session"
+              :data="data"
+              :state="state"
+              :style="{ padding: `${state.app_body_padding} ${state.app_body_padding} 0` }"
+            ></sly-app-header>
+            {% if __app_session_info_extra_content__ %}
+            {{{__app_session_info_extra_content__}}}
+            {% endif %}
+          </div>
           <div :style="{'padding': state.app_body_padding}">
             {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
             %} {% include 'main.html' %} {% endif %} {% include
