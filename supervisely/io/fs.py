@@ -206,7 +206,12 @@ def list_files_recursively(
     ]
 
 
-def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
+def list_files(
+    dir: str,
+    valid_extensions: Optional[List[str]] = None,
+    filter_fn=None,
+    ignore_valid_extensions_case: Optional[bool] = False,
+) -> List[str]:
     """
     Returns list with file paths presented in given directory.
 
@@ -216,6 +221,8 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
     :type valid_extensions: List[str]
     :param filter_fn: Function with a single argument that determines whether to keep a given file path.
     :type filter_fn:
+    :param ignore_valid_extensions_case: If True, valid extensions will be compared with file extensions in case-insensitive manner.
+    :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
     :Usage example:
@@ -230,12 +237,30 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
          # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
-    return [
-        file_path
-        for file_path in res
-        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
-        and (filter_fn is None or filter_fn(file_path))
-    ]
+
+    list_files = []
+    for file_path in res:
+        file_ext = get_file_ext(file_path)
+
+        if ignore_valid_extensions_case:
+            file_ext = file_ext.lower()
+            valid_extensions = [ext.lower() for ext in valid_extensions]
+
+        if (
+            (valid_extensions is None or file_ext in valid_extensions)
+            and filter_fn is None
+            or filter_fn(file_path)
+        ):
+            list_files.append(file_path)
+
+    return list_files
+
+    # return [
+    #     file_path
+    #     for file_path in res
+    #     if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+    #     and (filter_fn is None or filter_fn(file_path))
+    # ]
 
 
 def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
