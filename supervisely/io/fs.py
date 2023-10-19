@@ -238,7 +238,7 @@ def list_files(
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
 
-    list_files = []
+    files = []
     for file_path in res:
         file_ext = get_file_ext(file_path)
 
@@ -251,9 +251,9 @@ def list_files(
             and filter_fn is None
             or filter_fn(file_path)
         ):
-            list_files.append(file_path)
+            files.append(file_path)
 
-    return list_files
+    return files
 
     # return [
     #     file_path
