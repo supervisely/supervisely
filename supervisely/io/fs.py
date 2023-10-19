@@ -246,10 +246,8 @@ def list_files(
             file_ext = file_ext.lower()
             valid_extensions = [ext.lower() for ext in valid_extensions]
 
-        if (
-            (valid_extensions is None or file_ext in valid_extensions)
-            and filter_fn is None
-            or filter_fn(file_path)
+        if (valid_extensions is None or file_ext in valid_extensions) and (
+            filter_fn is None or filter_fn(file_path)
         ):
             files.append(file_path)
 
