@@ -170,6 +170,8 @@ class ContentOrigin(metaclass=Singleton):
         if not self._loop_thread.is_alive():
             self._loop_thread.start()
             self._stop.clear()
+            DataJson().send_changes()
+            StateJson().send_changes()
 
     def stop(self):
         self._stop.set()
