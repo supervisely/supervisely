@@ -51,6 +51,10 @@
         width: 75px;
         border-radius: 50%;
       }
+
+      .extended-app-header .app-session-header-widget > div {
+        margin-bottom: 0;
+      }
     </style>
     <title>{{{app_name}}}</title>
   </head>
@@ -85,6 +89,9 @@
         <template v-slot="{ post, state, data, session }">
           <div
             style="display: flex; flex-direction: row;"
+            {% if __app_session_info_extra_content__ %}
+            class="extended-app-header"
+            {% endif %}
           >
             <sly-app-header
               v-if="session"
