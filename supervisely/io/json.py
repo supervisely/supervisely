@@ -1,12 +1,12 @@
 # coding: utf-8
-
+import os
 import json
 from typing import Dict, Optional
 
 
 class JsonSerializable:
     def to_json(self):
-        """ Serialize to JSON-compatible dict.
+        """Serialize to JSON-compatible dict.
         :return: dict
         """
         raise NotImplementedError()
@@ -27,6 +27,8 @@ def load_json_file(filename: str) -> Dict:
 
     :param filename: Target file path.
     :type filename: str
+    :raises FileNotFoundError: If file with given filename was not found.
+    :raises RuntimeError: If can not decode json file.
     :returns: Json format as a dict
     :rtype: :class:`dict`
     :Usage example:
@@ -113,11 +115,20 @@ def load_json_file(filename: str) -> Dict:
         #     ]
         # }
     """
-    with open(filename, encoding='utf-8') as fin:
-        return json.load(fin)
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f"File with path {filename} was not found.")
+    try:
+        with open(filename, encoding="utf-8") as fin:
+            return json.load(fin)
+    except json.decoder.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Can not decode json file with path {filename}: {e.msg} at "
+            f"line number: {e.lineno}, column: {e.colno}, position: {e.pos}. "
+            f"Document: {e.doc}"
+        )
 
 
-def dump_json_file(data: Dict, filename: str, indent: Optional[int]=4) -> None:
+def dump_json_file(data: Dict, filename: str, indent: Optional[int] = 4) -> None:
     """
     Write given data in json format in file with given name.
 
@@ -137,11 +148,11 @@ def dump_json_file(data: Dict, filename: str, indent: Optional[int]=4) -> None:
         data = {1: 'example'}
         dump_json_file(data, '/home/admin/work/projects/examples/1.json')
     """
-    with open(filename, 'w') as fout:
+    with open(filename, "w") as fout:
         json.dump(data, fout, indent=indent)
 
 
-def flatten_json(data: Dict, sep: Optional[str]=".") -> Dict:
+def flatten_json(data: Dict, sep: Optional[str] = ".") -> Dict:
     """
     Normalize semi-structured JSON data into a flat table.
 
@@ -153,11 +164,14 @@ def flatten_json(data: Dict, sep: Optional[str]=".") -> Dict:
     :rtype: :class:`dict`
     """
     import pandas as pd
+
     df = pd.json_normalize(data, sep=sep)
-    return df.to_dict(orient='records')[0]
+    return df.to_dict(orient="records")[0]
 
 
-def modify_keys(data: Dict, prefix: Optional[str]=None, suffix: Optional[str]=None) -> Dict[str, str]:
+def modify_keys(
+    data: Dict, prefix: Optional[str] = None, suffix: Optional[str] = None
+) -> Dict[str, str]:
     """
     Add prefix and suffix to keys of given dict.
 
@@ -179,6 +193,7 @@ def modify_keys(data: Dict, prefix: Optional[str]=None, suffix: Optional[str]=No
         print(new_data)
         # Output: {'pr_1_su': 'example', 'pr_3_su': 4}
     """
+
     def _modify(k):
         res = k
         if prefix is not None:
@@ -186,4 +201,5 @@ def modify_keys(data: Dict, prefix: Optional[str]=None, suffix: Optional[str]=No
         if suffix is not None:
             res += suffix
         return res
+
     return {_modify(k): v for k, v in data.items()}
