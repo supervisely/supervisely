@@ -118,7 +118,7 @@ def load_json_file(filename: str) -> Dict:
     """
     if os.path.isdir(filename):
         raise FileNotFoundError(f"The path {filename} is a directory, not a file.")
-    if not os.path.isfile(filename):
+    elif not os.path.isfile(filename):
         raise FileNotFoundError(f"File with path {filename} was not found.")
     try:
         with open(filename, encoding="utf-8") as fin:
