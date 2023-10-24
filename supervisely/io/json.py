@@ -27,6 +27,7 @@ def load_json_file(filename: str) -> Dict:
 
     :param filename: Target file path.
     :type filename: str
+    :raises FileNotFoundError: If path is a directory, not a file.
     :raises FileNotFoundError: If file with given filename was not found.
     :raises RuntimeError: If can not decode json file.
     :returns: Json format as a dict
@@ -115,6 +116,8 @@ def load_json_file(filename: str) -> Dict:
         #     ]
         # }
     """
+    if os.path.isdir(filename):
+        raise FileNotFoundError(f"The path {filename} is a directory, not a file.")
     if not os.path.isfile(filename):
         raise FileNotFoundError(f"File with path {filename} was not found.")
     try:
