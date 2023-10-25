@@ -351,7 +351,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes = ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES])
         except KeyError:
             raise KeyError(
-                f"Key {ProjectMetaJsonFields.OBJ_CLASSES} with the list of annotation classes "
+                f"Key '{ProjectMetaJsonFields.OBJ_CLASSES}' with the list of annotation classes "
                 "not found in meta.json file. Check the annotation format documentation at: "
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
                 )
