@@ -347,8 +347,16 @@ class ProjectMeta(JsonSerializable):
             obj_tag_metas = TagMetaCollection.from_json(obj_tag_metas_json)
             tag_metas = _merge_img_obj_tag_metas(img_tag_metas, obj_tag_metas)
 
+        try:
+            obj_classes = ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES])
+        except KeyError:
+            raise KeyError(
+                f"Project meta JSON does not contain the {ProjectMetaJsonFields.OBJ_CLASSES} section. "
+                "Please refer to the documentation for the format description: "
+                "https://docs.supervisely.com/data-organization/00_ann_format_navi/02_project_classes_and_tags"
+                )
         return cls(
-            obj_classes=ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
+            obj_classes=obj_classes,
             tag_metas=tag_metas,
             project_type=project_type,
         )
