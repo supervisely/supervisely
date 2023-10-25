@@ -347,8 +347,16 @@ class ProjectMeta(JsonSerializable):
             obj_tag_metas = TagMetaCollection.from_json(obj_tag_metas_json)
             tag_metas = _merge_img_obj_tag_metas(img_tag_metas, obj_tag_metas)
 
+        try:
+            obj_classes = ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES])
+        except KeyError:
+            raise KeyError(
+                f"Key '{ProjectMetaJsonFields.OBJ_CLASSES}' with the list of annotation classes "
+                "not found in meta.json file. Check the annotation format documentation at: "
+                "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
+                )
         return cls(
-            obj_classes=ObjClassCollection.from_json(data[ProjectMetaJsonFields.OBJ_CLASSES]),
+            obj_classes=obj_classes,
             tag_metas=tag_metas,
             project_type=project_type,
         )
