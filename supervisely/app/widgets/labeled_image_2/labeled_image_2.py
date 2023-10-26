@@ -1,6 +1,4 @@
-import copy
-from typing import Optional
-import uuid
+from supervisely.app.widgets_context import JinjaWidgets
 
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.app import DataJson
@@ -12,7 +10,7 @@ class LabeledImage2(Widget):
         self,
         annotations_opacity: float = 0.5,
         enable_zoom: bool = False,
-        border_width: int = 3,
+        line_width: int = 1,
         widget_id: str = None,
     ):
         self._image_url = None
@@ -20,9 +18,11 @@ class LabeledImage2(Widget):
         self._project_meta = None
         self._opacity = annotations_opacity
         self._enable_zoom = enable_zoom
-        self._border_width = border_width
+        self._line_width = line_width
 
         super().__init__(widget_id=widget_id, file_path=__file__)
+        script_path = "./sly/css/app/widgets/labeled_image_2/script.js"
+        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
         return {
@@ -36,7 +36,7 @@ class LabeledImage2(Widget):
             "options": {
                 "enableZoom": self._enable_zoom,
                 "opacity": self._opacity,
-                "borderWidth": self._border_width,
+                "lineWidth": self._line_width,
             }
         }
 
@@ -46,6 +46,7 @@ class LabeledImage2(Widget):
         ann: Annotation = None,
         project_meta: ProjectMeta = None,
     ):
+        self.clean_up()
         self._image_url = image_url
         self._annotation = ann
         self._project_meta = project_meta
@@ -53,7 +54,12 @@ class LabeledImage2(Widget):
         DataJson().send_changes()
 
     def clean_up(self):
-        self.set(image_url=None, ann=None, project_meta=None)
+        self._image_shape = None
+        self._image_url = None
+        self._annotation = None
+        self._project_meta = None
+        self.update_data()
+        DataJson().send_changes()
 
     def is_empty(self):
         return self._image_url is None
