@@ -48,8 +48,8 @@ class Slider(Widget):
                 f"Minimum value: '{min_val}' can't be bigger than maximum value: '{max_val}'"
             )
 
-    def _validate_default_value(self, value: Union[int, List[int]]):
-        if isinstance(value, int):
+    def _validate_default_value(self, value: Union[int, float, List[int]]):
+        if isinstance(value, int) or isinstance(value, float):
             if self._range:
                 raise ValueError(f"value = '{value}', should be 'list' if range is True")
             if value < self._min:
@@ -69,7 +69,9 @@ class Slider(Widget):
                 self._value[0] = self._max
                 self._value[1] = self._max
         else:
-            raise ValueError(f"value = '{value}', should be 'int' or 'list', not '{type(value)}'")
+            raise ValueError(
+                f"value = '{value}', should be 'int', 'float' or 'list', not '{type(value)}'"
+            )
 
     def get_json_data(self):
         return {
@@ -90,7 +92,8 @@ class Slider(Widget):
 
     def set_value(self, value: Union[int, List[int]]):
         self._validate_default_value(value)
-        StateJson()[self.widget_id]["value"] = value
+        self._value = value
+        StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
     def get_value(self):
