@@ -570,7 +570,7 @@ class Mask3D(Geometry):
             self.data[:, slice_index, :] = new_mask
 
     @staticmethod
-    def _bytes_from_file(path: str) -> Tuple[str, bytes]:
+    def _bytes_from_nrrd(path: str) -> Tuple[str, bytes]:
         """
         Read geometry from a file as bytes.
 
@@ -591,7 +591,7 @@ class Mask3D(Geometry):
             return None, None
 
     @staticmethod
-    def _bytes_from_file_batch(paths: List[str]) -> Dict[str, bytes]:
+    def _bytes_from_nrrd_batch(paths: List[str]) -> Dict[str, bytes]:
         """
         Read geometries from multiple files as bytes and map them to figure UUID hex values in a dictionary.
 
@@ -604,7 +604,7 @@ class Mask3D(Geometry):
         """
         geometries_dict = {}
         for path in paths:
-            key, geometry_bytes = Mask3D._bytes_from_file(path)
+            key, geometry_bytes = Mask3D._bytes_from_nrrd(path)
             if key is None and geometry_bytes is None:
                 continue
             geometries_dict[key] = geometry_bytes
