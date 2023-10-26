@@ -21,6 +21,7 @@ from supervisely.volume import stl_converter
 from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.sly_logger import logger
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
@@ -184,7 +185,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type interpolation_dirs: List[str], optional
         :param progress_cb: Function for tracking download progress
         :type progress_cb: tqdm or callable, optional
-        :param mask_dirs: Paths to dirs with 3D Mask geometries
+        :param mask_dirs: Paths to dirs with Mask3D geometries
         :type mask_dirs: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
@@ -221,9 +222,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
 
             geometries_dict = {}
+            stl_paths = None
+            nrrd_paths = None
+            keep_nrrd_paths = None
 
             if interpolation_dir is not None and dir_exists(interpolation_dir):
-                stl_paths, nrrd_paths = VolumeAnnotationAPI._prepare_convertation_paths(
+                stl_paths, nrrd_paths, keep_nrrd_paths = self._prepare_convertation_paths(
                     interpolation_dir
                 )
 
@@ -233,21 +237,29 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                         "upload", ann, project_meta, nrrd_paths, key_id_map, project_id
                     )
 
-            # list all Mask 3D geometries
+            # list all Mask3D geometries
             if mask_dir is not None and dir_exists(mask_dir):
                 mask_paths = list_files(mask_dir, valid_extensions=[".nrrd"])
-                geometries_dict.update(Mask3D._bytes_from_file_batch(mask_paths))
+                geometries_dict.update(Mask3D._bytes_from_nrrd_batch(mask_paths))
+                # it is not recommended to change the original composition of the project directory files
+                # for this purpose delete the files created during conversion
                 for nrrd_path in nrrd_paths:
-                    silent_remove(nrrd_path)
+                    if nrrd_path not in keep_nrrd_paths:
+                        silent_remove(nrrd_path)
 
             # add geometries into spatial figure objects
             for sf in ann.spatial_figures:
                 try:
                     geometry_bytes = geometries_dict[sf.key().hex]
-                except KeyError:  # skip figures that doesn't need to update geometry
+                    maks3d = Mask3D.from_bytes(geometry_bytes)
+                    sf._set_3d_geometry(maks3d)
+                except (KeyError, TypeError) as e:
+                    logger.warning(
+                        f"Skipping spatial figure for class '{sf.volume_object.obj_class.name}': {str(e)}"
+                    )
+                    # skip figures that doesn't need to update geometry
+                    # for example for old geometries that are stored in JSON
                     continue
-                maks3d = Mask3D.from_bytes(geometry_bytes)
-                sf._set_3d_geometry(maks3d)
 
             self.append(volume_id, ann, key_id_map)
 
@@ -265,7 +277,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     ) -> Tuple[VolumeAnnotation, ProjectMeta]:
         """
         Create new ObjClass and VolumeFigure annotations for converted STL.
-        Replace ClosedMeshSurface spatial figures with Mask 3D.
+        Replace ClosedMeshSurface spatial figures with Mask3D.
         Update the ann, project_meta, and key_id_map.
 
         :param transfer_type: Defines the process during which the update will be performed ("download" or "upload").
@@ -312,7 +324,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             else:
                 raise Exception(
-                    f"Can't find volume object for Mask 3D from unknown file '{nrrd_path}'. Please check the project structure."
+                    f"Can't find volume object for Mask3D from unknown file '{nrrd_path}'. Please check the project structure."
                 )
 
             new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
@@ -320,7 +332,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             try:
                 project_meta = project_meta.add_obj_class(new_obj_class)
             except DuplicateKeyError:
-                new_obj_class = project_meta.get_obj_class(f"{class_title}_mask_3d")
+                new_obj_class = project_meta.get_obj_class(new_obj_class.name)
 
             geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
 
@@ -406,23 +418,34 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         self.append(volume_id, ann, key_id_map)
 
     @staticmethod
-    def _prepare_convertation_paths(interpolation_dir: str) -> Tuple[List, List]:
+    def _prepare_convertation_paths(interpolation_dir: str) -> Tuple[List, List, List]:
         """
         Check dir and create paths for NRRD files if STL files need to be converted.
 
         :param interpolation_dir: Path to dir with interpolation STL files
         :type interpolation_dir: str
-        :return: Paths to STL and NRRD files for the subsequent conversion process
-        :rtype: Tuple[List, List]
+        :return: Paths to STL and NRRD files used in the conversion process
+        :rtype: Tuple[List, List, List]
         """
-        stl_paths = list_files(interpolation_dir, valid_extensions=[".stl"])
+        stl_paths_in = list_files(interpolation_dir, valid_extensions=[".stl"])
         nrrd_paths = []
-        for stl_path in stl_paths:
+        stl_paths = []
+        keep_nrrd_paths = []  # to keep original composition of the project
+        for stl_path in stl_paths_in:
+            # check if this is really STL file
+            with open(stl_path, "rb") as file:
+                header = file.read(84)
+                if b"solid" in header:
+                    stl_paths.append(stl_path)
+                else:
+                    continue
             nrrd_path = re.sub(r"\.[^.]+$", ".nrrd", stl_path)
             nrrd_path = nrrd_path.replace("interpolation", "mask")
-            # check if the STL + NRRD pair already exists, if True, there is no need for conversion
+            # check if the STL + NRRD pair already exists, if True, no conversion is required
+            nrrd_paths.append(nrrd_path)
             if file_exists(nrrd_path):
-                stl_paths.remove(stl_path)
-            else:
-                nrrd_paths.append(nrrd_path)
-        return stl_paths, nrrd_paths
+                keep_nrrd_paths.append(nrrd_path)
+            #     stl_paths.remove(stl_path)
+            # else:
+            #     nrrd_paths.append(nrrd_path)
+        return stl_paths, nrrd_paths, keep_nrrd_paths
