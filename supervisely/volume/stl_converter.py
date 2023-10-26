@@ -134,7 +134,7 @@ def to_nrrd(stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None
     make_warn = False
 
     for stl_path, nrrd_path in zip(stl_paths, nrrd_paths):
-        # doesn't need to convert if already exists interpolation in NRRD
+        # no need to convert if a converted interpolation in NRRD format already exists
         if file_exists(nrrd_path):
             continue
         else:

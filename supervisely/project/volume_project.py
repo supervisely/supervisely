@@ -371,10 +371,11 @@ def download_volume_project(
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
 
+                # prepare a list of paths where converted STLs will be stored
                 nrrd_paths = []
                 for file in mesh_paths:
                     file = file.replace(".stl", ".nrrd")
-                    file = file.replace("interpolation", "mask")
+                    file = file.replace("interpolation", "mask")  # change destination folder
                     nrrd_paths.append(file)
 
                 stl_converter.to_nrrd(mesh_paths, nrrd_paths)
