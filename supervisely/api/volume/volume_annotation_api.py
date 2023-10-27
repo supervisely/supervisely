@@ -222,14 +222,16 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
 
             geometries_dict = {}
-            stl_paths = None
-            nrrd_paths = None
-            keep_nrrd_paths = None
+            stl_paths = []
+            nrrd_paths = []
+            keep_nrrd_paths = []
 
             if interpolation_dir is not None and dir_exists(interpolation_dir):
-                stl_paths, nrrd_paths, keep_nrrd_paths = self._prepare_convertation_paths(
-                    interpolation_dir
-                )
+                (
+                    stl_paths,
+                    nrrd_paths,
+                    keep_nrrd_paths,
+                ) = self._prepare_convertation_paths(interpolation_dir, ann)
 
                 if len(stl_paths) != 0:
                     stl_converter.to_nrrd(stl_paths, nrrd_paths)
@@ -251,14 +253,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             for sf in ann.spatial_figures:
                 try:
                     geometry_bytes = geometries_dict[sf.key().hex]
-                    maks3d = Mask3D.from_bytes(geometry_bytes)
-                    sf._set_3d_geometry(maks3d)
+                    mask3d = Mask3D.from_bytes(geometry_bytes)
+                    sf._set_3d_geometry(mask3d)
                 except (KeyError, TypeError) as e:
-                    logger.warning(
-                        f"Skipping spatial figure for class '{sf.volume_object.obj_class.name}': {str(e)}"
-                    )
+                    if isinstance(e, TypeError):
+                        logger.warning(
+                            f"Skipping spatial figure for class '{sf.volume_object.obj_class.name}': {str(e)}"
+                        )
                     # skip figures that doesn't need to update geometry
-                    # for example for old geometries that are stored in JSON
+                    # for example for old geometries that are stored in JSON (KeyError)
                     continue
 
             self.append(volume_id, ann, key_id_map)
@@ -418,12 +421,16 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         self.append(volume_id, ann, key_id_map)
 
     @staticmethod
-    def _prepare_convertation_paths(interpolation_dir: str) -> Tuple[List, List, List]:
+    def _prepare_convertation_paths(
+        interpolation_dir: str, ann: VolumeAnnotation
+    ) -> Tuple[List, List, List]:
         """
         Check dir and create paths for NRRD files if STL files need to be converted.
 
         :param interpolation_dir: Path to dir with interpolation STL files
         :type interpolation_dir: str
+        :param ann: VolumeAnnotation object
+        :type ann: VolumeAnnotation
         :return: Paths to STL and NRRD files used in the conversion process
         :rtype: Tuple[List, List, List]
         """
@@ -441,11 +448,13 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     continue
             nrrd_path = re.sub(r"\.[^.]+$", ".nrrd", stl_path)
             nrrd_path = nrrd_path.replace("interpolation", "mask")
-            # check if the STL + NRRD pair already exists, if True, no conversion is required
             nrrd_paths.append(nrrd_path)
             if file_exists(nrrd_path):
                 keep_nrrd_paths.append(nrrd_path)
-            #     stl_paths.remove(stl_path)
-            # else:
-            #     nrrd_paths.append(nrrd_path)
+                # to prevent duplication if STL is already converted to NRRD on export
+                for sf in ann.spatial_figures:
+                    if sf.key().hex == get_file_name(nrrd_path) and isinstance(sf.geometry, Mask3D):
+                        stl_paths.remove(stl_path)
+                        nrrd_paths.remove(nrrd_path)
+                        keep_nrrd_paths.remove(nrrd_path)
         return stl_paths, nrrd_paths, keep_nrrd_paths
