@@ -26,10 +26,12 @@ class InputTag(Widget):
         self,
         tag_meta: TagMeta,
         max_width: int = 300,
+        hide_switch: bool = False,
         widget_id: int = None,
     ):
         self._input_widgets = {}
         self._init_input_components()
+
         self._conditional_widget = Select(
             items=[
                 Select.Item(value_type, content=self._input_widgets[value_type])
@@ -48,8 +50,13 @@ class InputTag(Widget):
         self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]
         self._name = f"<b>{self._tag_meta.name}</b>"
         self._max_width = self._get_max_width(max_width)
+        self._hide_switch = hide_switch
         self._activation_widget = Switch()
         self._input_widget = OneOf(self._conditional_widget)
+
+        if self._hide_switch:
+            self._activation_widget.hide()
+            self._activation_widget.on()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -96,7 +103,7 @@ class InputTag(Widget):
             self.activate()
 
     def get_tag(self):
-        if not self.is_active():
+        if not self._hide_switch and not self.is_active():
             return None
         tag_value = self._get_value()
         return Tag(self._tag_meta, tag_value)
@@ -160,10 +167,13 @@ class InputTag(Widget):
         # if TagMeta ValueType is ONEOF_STRING, then we need to set items (possible values options) for RadioGroup
         if self._tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             items = [RadioGroup.Item(pv, pv) for pv in self._tag_meta.possible_values]
-            self._input_widgets[str(TagValueType.ONEOF_STRING)].set_items(items)
+            self._input_widgets[str(TagValueType.ONEOF_STRING)].set(items)
 
         self._conditional_widget.set_value(str(self._tag_meta.value_type))
         self._set_default_value()
-        self.deactivate()
+        if self._hide_switch:
+            self.activate()
+        else:
+            self.deactivate()
         self.update_data()
         DataJson().send_changes()
