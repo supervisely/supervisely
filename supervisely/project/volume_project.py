@@ -3,10 +3,11 @@
 from collections import namedtuple
 from typing import Optional, List, Callable, Tuple, Union
 import os
+import re
 
 from tqdm import tqdm
 
-from supervisely.io.fs import touch
+from supervisely.io.fs import touch, change_directory_at_index
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely._utils import batched
@@ -374,14 +375,14 @@ def download_volume_project(
                 # prepare a list of paths where converted STLs will be stored
                 nrrd_paths = []
                 for file in mesh_paths:
-                    file = file.replace(".stl", ".nrrd")
-                    file = file.replace("interpolation", "mask")  # change destination folder
+                    file = re.sub(r"\.[^.]+$", ".nrrd", file)
+                    file = change_directory_at_index(file, "mask", -3)  # change destination folder
                     nrrd_paths.append(file)
 
                 stl_converter.to_nrrd(mesh_paths, nrrd_paths)
 
                 ann, meta = api.volume.annotation._update_on_transfer(
-                    "download", ann, project_fs.meta, nrrd_paths, key_id_map
+                    "download", ann, project_fs.meta, nrrd_paths
                 )
 
                 project_fs.set_meta(meta)
