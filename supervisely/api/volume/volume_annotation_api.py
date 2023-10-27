@@ -16,7 +16,14 @@ from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
-from supervisely.io.fs import dir_exists, get_file_name, list_files, file_exists, silent_remove
+from supervisely.io.fs import (
+    dir_exists,
+    get_file_name,
+    list_files,
+    file_exists,
+    silent_remove,
+    change_directory_at_index,
+)
 from supervisely.volume import stl_converter
 from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.volume_annotation.volume_figure import VolumeFigure
@@ -236,7 +243,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 if len(stl_paths) != 0:
                     stl_converter.to_nrrd(stl_paths, nrrd_paths)
                     ann, project_meta = self._update_on_transfer(
-                        "upload", ann, project_meta, nrrd_paths, key_id_map, project_id
+                        "upload", ann, project_meta, nrrd_paths, project_id
                     )
 
             # list all Mask3D geometries
@@ -275,7 +282,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         ann: VolumeAnnotation,
         project_meta: ProjectMeta,
         nrrd_paths: List[str],
-        key_id_map: KeyIdMap,
         project_id: Optional[int] = None,
     ) -> Tuple[VolumeAnnotation, ProjectMeta]:
         """
@@ -291,24 +297,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type project_meta: ProjectMeta
         :param nrrd_paths: Paths to the converted NRRD files from STL.
         :type nrrd_paths: List[str]
-        :param key_id_map: The Key to ID map.
-        :type key_id_map: KeyIdMap
         :param project_id: The Project ID to update metadata on upload (optional).
         :type project_id: int, optional
         :return: A tuple containing the updated ann and project_meta objects.
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
         """
-
-        def generate_unique_id(object_type: Literal["figures", "objects"]):
-            import random
-
-            entities_dict = key_id_map.to_dict().get(object_type)
-            if len(entities_dict) != 0:
-                max_id = max(entities_dict.values())
-                unique_id = max_id + (10 ** (len(str(max_id)) - 1)) + random.randint(100, 999)
-            else:
-                unique_id = 1
-            return unique_id
 
         for nrrd_path in nrrd_paths:
             object_key = None
@@ -330,26 +323,26 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     f"Can't find volume object for Mask3D from unknown file '{nrrd_path}'. Please check the project structure."
                 )
 
-            new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
+            class_created = False
+            new_obj_class = project_meta.get_obj_class(f"{class_title}_mask_3d")
 
-            try:
+            if new_obj_class is None:
+                new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
                 project_meta = project_meta.add_obj_class(new_obj_class)
-            except DuplicateKeyError:
-                new_obj_class = project_meta.get_obj_class(new_obj_class.name)
+                class_created = True
 
             geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
 
             if transfer_type == "download":
                 new_object = VolumeObject(new_obj_class, mask_3d=geometry)
             elif transfer_type == "upload":
-                self._api.project.update_meta(project_id, project_meta)
+                if class_created:
+                    self._api.project.update_meta(project_id, project_meta)
                 new_object = VolumeObject(new_obj_class)
                 new_object.figure = VolumeFigure(new_object, geometry, key=sf.key())
 
             # add new Volume object to VolumeAnnotation with spatial figure
             ann = ann.add_objects([new_object])
-            key_id_map.add_object(new_object.key(), generate_unique_id("objects"))
-            key_id_map.add_figure(new_object.figure.key(), generate_unique_id("figures"))
 
             if transfer_type == "download":
                 # as a sf.key() changes, we need to rename both files
@@ -357,11 +350,10 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     nrrd_path, f"{os.path.dirname(nrrd_path)}/{new_object.figure.key().hex}.nrrd"
                 )
                 stl_path = re.sub(r"\.[^.]+$", ".stl", nrrd_path)
-                stl_path = stl_path.replace("mask", "interpolation")
+                stl_path = change_directory_at_index(stl_path, "interpolation", -3)
                 os.rename(
                     stl_path, f"{os.path.dirname(stl_path)}/{new_object.figure.key().hex}.stl"
                 )
-
             # remove STL spatial figure from VolumeAnnotation
             if sf:
                 ann.spatial_figures.remove(sf)
@@ -447,7 +439,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 else:
                     continue
             nrrd_path = re.sub(r"\.[^.]+$", ".nrrd", stl_path)
-            nrrd_path = nrrd_path.replace("interpolation", "mask")
+            nrrd_path = change_directory_at_index(nrrd_path, "mask", -3)
             nrrd_paths.append(nrrd_path)
             if file_exists(nrrd_path):
                 keep_nrrd_paths.append(nrrd_path)
