@@ -668,7 +668,7 @@ class KeyIdMap:
         cls.add_videos_to(key_id_map, [key], [id])
 
     @classmethod
-    def merge_key_id_maps(
+    def _merge_key_id_maps(
         cls, key_id_map_1: KeyIdMap, key_id_map_2: KeyIdMap, priority: int[1, 2] = 2
     ) -> KeyIdMap:
         """
