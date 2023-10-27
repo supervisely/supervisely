@@ -478,7 +478,9 @@ class Api:
     def _check_https_redirect(self):
         if self._require_https_redirect_check is True:
             response = requests.get(self.server_address, allow_redirects=False)
-            if response.headers["Location"].startswith("https://"):
+            if (300 < response.status_code < 400) or (
+                response.headers.get("Location", "").startswith("https://")
+            ):
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
