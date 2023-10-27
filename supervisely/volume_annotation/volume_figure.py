@@ -616,13 +616,13 @@ class VolumeFigure(VideoFigure):
         """
         Create a VolumeFigure from Mask 3D geometry.
 
-        :param volume_object: The VolumeObject object to which the VolumeFigure belongs.
+        :param volume_object: The VolumeObject to which the VolumeFigure belongs.
         :type volume_object: VolumeObject
         :param geometry_data: Geometry data represented as a path, NumPy array, or bytes.
         :type geometry_data: str or ndarray or bytes
         :param key: The UUID key associated with the VolumeFigure.
         :type key: UUID, optional
-        :param class_id: The ID of the VolumeObject to which the VolumeFigure belongs.
+        :param class_id: The ID of the VolumeObject class to which the VolumeFigure belongs.
         :type class_id: int, optional
         :param labeler_login: The login of the user who created the VolumeFigure.
         :type labeler_login: str, optional
@@ -630,7 +630,7 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: The date and time when the VolumeFigure was created (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
         :type created_at: str, optional
-        :return: A VolumeFigure object created from Mask 3D geometry.
+        :return: A VolumeFigure object created from Mask3D geometry.
         :rtype: VolumeFigure
         """
         if isinstance(geometry_data, str):
