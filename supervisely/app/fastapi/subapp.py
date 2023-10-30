@@ -373,7 +373,7 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
     :type default: Optional[str], optional
     """
     if sly_env.autostart() is True:
-        logger.warn("`autostart` flag already defined in env. Skip loading it from state.")
+        logger.info("`autostart` flag already defined in env. Skip loading it from state.")
         return
 
     api = Api()
