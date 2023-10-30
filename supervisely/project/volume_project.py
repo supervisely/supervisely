@@ -3,29 +3,27 @@
 from collections import namedtuple
 from typing import Optional, List, Callable, Tuple, Union
 import os
-import nrrd
+import re
 
 from tqdm import tqdm
 
-from supervisely.io.fs import file_exists, touch, remove_dir
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.fs import touch, change_directory_at_index
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import Progress
 from supervisely._utils import batched
 from supervisely.video_annotation.key_id_map import KeyIdMap
-
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.volume import volume as sly_volume
-
-from supervisely.project.project import Dataset, Project, OpenMode
+from supervisely.project.project import OpenMode
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_type import ProjectType
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.volume import stl_converter
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -33,6 +31,7 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
     interpolation_dir = "interpolation"
+    mask_dir = "mask"
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
@@ -56,6 +55,12 @@ class VolumeDataset(VideoDataset):
 
     def get_interpolation_path(self, item_name, figure):
         return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
+
+    def get_mask_dir(self, item_name):
+        return os.path.join(self.directory, self.mask_dir, item_name)
+
+    def get_mask_path(self, item_name, figure):
+        return os.path.join(self.get_mask_dir(item_name), figure.key().hex + ".nrrd")
 
     def get_classes_stats(
         self,
@@ -349,9 +354,38 @@ def download_volume_project(
 
                 ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
+                mask_ids = []
+                mask_paths = []
+                mesh_ids = []
+                mesh_paths = []
                 for sf in ann.spatial_figures:
+                    figure_id = key_id_map.get_figure_id(sf.key())
                     if sf.geometry.name() == Mask3D.name():
-                        load_figure_data(api, volume_file_path, sf, key_id_map)
+                        mask_ids.append(figure_id)
+                        figure_path = dataset_fs.get_mask_path(volume_name, sf)
+                        mask_paths.append(figure_path)
+                    if sf.geometry.name() == ClosedSurfaceMesh.name():
+                        mesh_ids.append(figure_id)
+                        figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
+                        mesh_paths.append(figure_path)
+
+                api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
+                api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
+
+                # prepare a list of paths where converted STLs will be stored
+                nrrd_paths = []
+                for file in mesh_paths:
+                    file = re.sub(r"\.[^.]+$", ".nrrd", file)
+                    file = change_directory_at_index(file, "mask", -3)  # change destination folder
+                    nrrd_paths.append(file)
+
+                stl_converter.to_nrrd(mesh_paths, nrrd_paths)
+
+                ann, meta = api.volume.annotation._update_on_transfer(
+                    "download", ann, project_fs.meta, nrrd_paths
+                )
+
+                project_fs.set_meta(meta)
 
                 dataset_fs.add_item_file(
                     volume_name,
@@ -360,14 +394,6 @@ def download_volume_project(
                     _validate_item=False,
                 )
 
-                mesh_ids = []
-                mesh_paths = []
-                for sf in ann.spatial_figures:
-                    figure_id = key_id_map.get_figure_id(sf.key())
-                    mesh_ids.append(figure_id)
-                    figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
-                    mesh_paths.append(figure_path)
-                api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
             if log_progress:
                 ds_progress.iters_done_report(len(batch))
             if progress_cb is not None:
@@ -414,13 +440,14 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths, interpolation_dirs = [], [], [], []
+        names, item_paths, ann_paths, mask_dirs, interpolation_dirs = [], [], [], [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(img_path)
             ann_paths.append(ann_path)
             interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
+            mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
         progress_cb = None
         if log_progress:
@@ -443,7 +470,7 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
             progress_cb = ds_progress.iters_done_report
 
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb
+            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb, mask_dirs
         )
 
     return project.id, project.name

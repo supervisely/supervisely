@@ -13,6 +13,7 @@ VIDEOS = "videos"
 
 ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
+
 # @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
 class KeyIdMap:
     """
@@ -376,6 +377,32 @@ class KeyIdMap:
             simple_dict[type_str] = sub_dict
         return simple_dict
 
+    @classmethod
+    def from_dict(cls, dict: Dict[str, Dict]) -> KeyIdMap:
+        """
+        Convert dict(bidict values to dictionary with dict values) into KeyIdMap.
+
+        :return: KeyIdMap object
+        :rtype: :class:`KeyIdMap`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            dict = {
+                  "tags": {},
+                  "objects": {},
+                  "figures": {},
+                  "videos": {}
+              }
+            key_id_map = KeyIdMap.from_dict(dict)
+        """
+        result = cls()
+        for key_type, value_dict in dict.items():
+            for key_str, id in value_dict.items():
+                result._add(key_type, uuid.UUID(key_str), id)
+        return result
+
     def dump_json(self, path: str) -> None:
         """
         Write KeyIdMap to file with given path.
@@ -482,7 +509,7 @@ class KeyIdMap:
             new_tag_id = 1213
             KeyIdMap.add_tag_to(key_id_map, new_uuid, new_tag_id)
         """
-        cls._add_tags_to(key_id_map, [key], [id])
+        cls.add_tags_to(key_id_map, [key], [id])
 
     @classmethod
     def add_objects_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
@@ -534,7 +561,7 @@ class KeyIdMap:
             new_object_id = 76
             KeyIdMap.add_object_to(key_id_map, new_uuid, new_object_id)
         """
-        cls._add_objects_to(key_id_map, [key], [id])
+        cls.add_objects_to(key_id_map, [key], [id])
 
     @classmethod
     def add_figures_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
@@ -586,7 +613,7 @@ class KeyIdMap:
             new_figure_id = 3834
             KeyIdMap.add_figure_to(key_id_map, new_uuid, new_figure_id)
         """
-        cls._add_figures_to(key_id_map, [key], [id])
+        cls.add_figures_to(key_id_map, [key], [id])
 
     @classmethod
     def add_videos_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
@@ -638,4 +665,55 @@ class KeyIdMap:
             new_video_id = 3834
             KeyIdMap.add_video_to(key_id_map, new_uuid, new_video_id)
         """
-        cls._add_videos_to(key_id_map, [key], [id])
+        cls.add_videos_to(key_id_map, [key], [id])
+
+    @classmethod
+    def _merge_key_id_maps(
+        cls, key_id_map_1: KeyIdMap, key_id_map_2: KeyIdMap, priority: int[1, 2] = 2
+    ) -> KeyIdMap:
+        """
+        Merge two KeyIdMap objects and replace keys for identical IDs with keys of the prioritized KeyIdMap
+
+        :param map_1: KeyIdMap object
+        :type map_1: KeyIdMap
+        :param map_2: KeyIdMap object
+        :type map_2: KeyIdMap
+        :param priority: From which KeyIdMap to save keys for identical IDs
+        :type priority: int[1, 2]
+        :return: Merged KeyIdMap
+        :rtype: KeyIdMap
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map_1, key_id_map_2 = KeyIdMap(), KeyIdMap()
+            new_uuid_1, new_uuid_2 = uuid.uuid4(), uuid.uuid4()
+            new_video_id_1, new_video_id_2 = 3834, 4945
+
+            KeyIdMap.add_video_to(key_id_map_1, new_uuid_1, new_video_id_1)
+            KeyIdMap.add_video_to(key_id_map_2, new_uuid_2, new_video_id_2)
+
+            merged_key_id_map = KeyIdMap.merge_key_id_maps(key_id_map_1, key_id_map_2)
+        """
+        inverted_dicts = []
+        for map in [key_id_map_1, key_id_map_2]:
+            map_dict = map.to_dict()
+            inverted_dict = {}
+            for key, nested_dict in map_dict.items():
+                inverted_dict[key] = {value: subkey for subkey, value in nested_dict.items()}
+            inverted_dicts.append(inverted_dict)
+
+        if priority == 2:
+            dict_1, dict_2 = inverted_dicts
+        else:
+            dict_2, dict_1 = inverted_dicts
+
+        for key in dict_1:
+            if key in dict_2 and isinstance(dict_1[key], Dict) and isinstance(dict_2[key], Dict):
+                dict_1[key].update(dict_2[key])
+
+        inverted_dict = {}
+        for key, nested_dict in dict_1.items():
+            inverted_dict[key] = {value: subkey for subkey, value in nested_dict.items()}
+
+        return cls.from_dict(inverted_dict)

@@ -1,10 +1,10 @@
 # coding: utf-8
 
-import json
-from typing import List, Optional, Union, Callable
-
+import os
+import re
+import numpy as np
 from tqdm import tqdm
-
+from typing import List, Optional, Union, Callable, Tuple, Literal
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField
@@ -14,9 +14,21 @@ from supervisely.volume_annotation.volume_object_collection import VolumeObjectC
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
-
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.io.json import load_json_file
+from supervisely.io.fs import (
+    dir_exists,
+    get_file_name,
+    list_files,
+    file_exists,
+    silent_remove,
+    change_directory_at_index,
+)
+from supervisely.volume import stl_converter
+from supervisely.collection.key_indexed_collection import DuplicateKeyError
+from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.sly_logger import logger
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
@@ -163,22 +175,25 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_ids: List[int],
         ann_paths: List[str],
         project_meta: ProjectMeta,
-        interpolation_dirs=None,
+        interpolation_dirs: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ):
+        mask_dirs: Optional[List[str]] = None,
+    ) -> None:
         """
         Loads VolumeAnnotations from a given paths to a given volumes IDs in the API. Volumes IDs must be from one dataset.
 
         :param volume_ids: Volumes IDs in Supervisely.
         :type volume_ids: List[int]
-        :param ann_paths: Paths to annotations on local machine.
+        :param ann_paths: Paths to annotation files
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations.
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations
         :type project_meta: ProjectMeta
-        :param interpolation_dirs:
-        :type interpolation_dirs:
-        :param progress_cb: Function for tracking download progress.
+        :param interpolation_dirs: Paths to dirs with interpolation STL files
+        :type interpolation_dirs: List[str], optional
+        :param progress_cb: Function for tracking download progress
         :type progress_cb: tqdm or callable, optional
+        :param mask_dirs: Paths to dirs with Mask3D geometries
+        :type mask_dirs: List[str], optional
         :return: None
         :rtype: :class:`NoneType`
 
@@ -197,23 +212,153 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
+        # use in updating project metadata
+        project_id = self._api.volume.get_info_by_id(volume_ids[0]).project_id
+
         if interpolation_dirs is None:
             interpolation_dirs = [None] * len(ann_paths)
 
+        if mask_dirs is None:
+            mask_dirs = [None] * len(ann_paths)
+
         key_id_map = KeyIdMap()
-        for volume_id, ann_path, interpolation_dir in zip(
-            volume_ids, ann_paths, interpolation_dirs
+        for volume_id, ann_path, interpolation_dir, mask_dir in zip(
+            volume_ids, ann_paths, interpolation_dirs, mask_dirs
         ):
             ann_json = load_json_file(ann_path)
             ann = VolumeAnnotation.from_json(ann_json, project_meta)
+
+            geometries_dict = {}
+            stl_paths = []
+            nrrd_paths = []
+            keep_nrrd_paths = []
+
+            if interpolation_dir is not None and dir_exists(interpolation_dir):
+                (
+                    stl_paths,
+                    nrrd_paths,
+                    keep_nrrd_paths,
+                ) = self._prepare_convertation_paths(interpolation_dir, ann)
+
+                if len(stl_paths) != 0:
+                    stl_converter.to_nrrd(stl_paths, nrrd_paths)
+                    ann, project_meta = self._update_on_transfer(
+                        "upload", ann, project_meta, nrrd_paths, project_id
+                    )
+
+            # list all Mask3D geometries
+            if mask_dir is not None and dir_exists(mask_dir):
+                mask_paths = list_files(mask_dir, valid_extensions=[".nrrd"])
+                geometries_dict.update(Mask3D._bytes_from_nrrd_batch(mask_paths))
+                # it is not recommended to change the original composition of the project directory files
+                # for this purpose delete the files created during conversion
+                for nrrd_path in nrrd_paths:
+                    if nrrd_path not in keep_nrrd_paths:
+                        silent_remove(nrrd_path)
+
+            # add geometries into spatial figure objects
+            for sf in ann.spatial_figures:
+                try:
+                    geometry_bytes = geometries_dict[sf.key().hex]
+                    mask3d = Mask3D.from_bytes(geometry_bytes)
+                    sf._set_3d_geometry(mask3d)
+                except (KeyError, TypeError) as e:
+                    if isinstance(e, TypeError):
+                        logger.warning(
+                            f"Skipping spatial figure for class '{sf.volume_object.obj_class.name}': {str(e)}"
+                        )
+                    # skip figures that doesn't need to update geometry
+                    # for example for old geometries that are stored in JSON (KeyError)
+                    continue
+
             self.append(volume_id, ann, key_id_map)
 
-            # upload existing interpolations or create on the fly and and add them to empty mesh figures
-            self._api.volume.figure.upload_stl_meshes(
-                volume_id, ann.spatial_figures, key_id_map, interpolation_dir
-            )
             if progress_cb is not None:
                 progress_cb(1)
+
+    def _update_on_transfer(
+        self,
+        transfer_type: Literal["download", "upload"],
+        ann: VolumeAnnotation,
+        project_meta: ProjectMeta,
+        nrrd_paths: List[str],
+        project_id: Optional[int] = None,
+    ) -> Tuple[VolumeAnnotation, ProjectMeta]:
+        """
+        Create new ObjClass and VolumeFigure annotations for converted STL.
+        Replace ClosedMeshSurface spatial figures with Mask3D.
+        Update the ann, project_meta, and key_id_map.
+
+        :param transfer_type: Defines the process during which the update will be performed ("download" or "upload").
+        :type transfer_type: Literal["download", "upload"]
+        :param ann: The VolumeAnnotation object to update.
+        :type ann: VolumeAnnotation
+        :param project_meta: The ProjectMeta object.
+        :type project_meta: ProjectMeta
+        :param nrrd_paths: Paths to the converted NRRD files from STL.
+        :type nrrd_paths: List[str]
+        :param project_id: The Project ID to update metadata on upload (optional).
+        :type project_id: int, optional
+        :return: A tuple containing the updated ann and project_meta objects.
+        :rtype: Tuple[VolumeAnnotation, ProjectMeta]
+        """
+
+        for nrrd_path in nrrd_paths:
+            object_key = None
+
+            # searching connection between interpolation and spatial figure in annotations and set its object_key
+            for sf in ann.spatial_figures:
+                if sf.key().hex == get_file_name(nrrd_path):
+                    object_key = sf.parent_object.key()
+                    break
+
+            if object_key:
+                for obj in ann.objects:
+                    if obj.key() == object_key:
+                        class_title = obj.obj_class.name
+                        break
+
+            else:
+                raise Exception(
+                    f"Can't find volume object for Mask3D from unknown file '{nrrd_path}'. Please check the project structure."
+                )
+
+            class_created = False
+            new_obj_class = project_meta.get_obj_class(f"{class_title}_mask_3d")
+
+            if new_obj_class is None:
+                new_obj_class = ObjClass(f"{class_title}_mask_3d", Mask3D)
+                project_meta = project_meta.add_obj_class(new_obj_class)
+                class_created = True
+
+            geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
+
+            if transfer_type == "download":
+                new_object = VolumeObject(new_obj_class, mask_3d=geometry)
+            elif transfer_type == "upload":
+                if class_created:
+                    self._api.project.update_meta(project_id, project_meta)
+                new_object = VolumeObject(new_obj_class)
+                new_object.figure = VolumeFigure(new_object, geometry, key=sf.key())
+
+            # add new Volume object to VolumeAnnotation with spatial figure
+            ann = ann.add_objects([new_object])
+
+            if transfer_type == "download":
+                # as a sf.key() changes, we need to rename both files
+                os.rename(
+                    nrrd_path, f"{os.path.dirname(nrrd_path)}/{new_object.figure.key().hex}.nrrd"
+                )
+                stl_path = re.sub(r"\.[^.]+$", ".stl", nrrd_path)
+                stl_path = change_directory_at_index(stl_path, "interpolation", -3)
+                os.rename(
+                    stl_path, f"{os.path.dirname(stl_path)}/{new_object.figure.key().hex}.stl"
+                )
+            # remove STL spatial figure from VolumeAnnotation
+            if sf:
+                ann.spatial_figures.remove(sf)
+
+        return ann, project_meta
 
     def append_objects(
         self,
@@ -266,3 +411,42 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_meta = self._api.volume.get_info_by_id(volume_id).meta
         ann = VolumeAnnotation(volume_meta, objects, spatial_figures=sf_figures)
         self.append(volume_id, ann, key_id_map)
+
+    @staticmethod
+    def _prepare_convertation_paths(
+        interpolation_dir: str, ann: VolumeAnnotation
+    ) -> Tuple[List, List, List]:
+        """
+        Check dir and create paths for NRRD files if STL files need to be converted.
+
+        :param interpolation_dir: Path to dir with interpolation STL files
+        :type interpolation_dir: str
+        :param ann: VolumeAnnotation object
+        :type ann: VolumeAnnotation
+        :return: Paths to STL and NRRD files used in the conversion process
+        :rtype: Tuple[List, List, List]
+        """
+        stl_paths_in = list_files(interpolation_dir, valid_extensions=[".stl"])
+        nrrd_paths = []
+        stl_paths = []
+        keep_nrrd_paths = []  # to keep original composition of the project
+        for stl_path in stl_paths_in:
+            # check if this is really STL file
+            with open(stl_path, "rb") as file:
+                header = file.read(84)
+                if b"solid" in header:
+                    stl_paths.append(stl_path)
+                else:
+                    continue
+            nrrd_path = re.sub(r"\.[^.]+$", ".nrrd", stl_path)
+            nrrd_path = change_directory_at_index(nrrd_path, "mask", -3)
+            nrrd_paths.append(nrrd_path)
+            if file_exists(nrrd_path):
+                keep_nrrd_paths.append(nrrd_path)
+                # to prevent duplication if STL is already converted to NRRD on export
+                for sf in ann.spatial_figures:
+                    if sf.key().hex == get_file_name(nrrd_path) and isinstance(sf.geometry, Mask3D):
+                        stl_paths.remove(stl_path)
+                        nrrd_paths.remove(nrrd_path)
+                        keep_nrrd_paths.remove(nrrd_path)
+        return stl_paths, nrrd_paths, keep_nrrd_paths
