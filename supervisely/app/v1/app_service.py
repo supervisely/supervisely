@@ -441,8 +441,9 @@ class AppService:
 
     def stop(self, wait=True):
         # @TODO: add timeout
-        # if self._shutdown_called:
-        #     self.logger.warn("")
+        if self._shutdown_called:
+            self.logger.warn("Shutdown task is already called.")
+            return
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.processing_queue.put(event_obj)
