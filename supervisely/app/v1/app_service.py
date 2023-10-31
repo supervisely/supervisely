@@ -462,7 +462,7 @@ class AppService:
         async with asyncio.Lock():
             self._debug_counter += 1
             if self._shutdown_called is True:
-                self.logger.warn("Shutdown task is already called.")
+                self.logger.warn(f"Shutdown task is already called {self._debug_counter} times.")
                 return
             self._shutdown_called = True
 
