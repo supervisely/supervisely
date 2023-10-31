@@ -452,6 +452,9 @@ class AppService:
         self.logger.info("Nacking outstanding messages")
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
 
+        self.logger.debug(f"Current task: {asyncio.current_task()}")
+        self.logger.debug(f"len(tasks)={tasks}, len(all_tasks)={len(asyncio.all_tasks())}")
+
         [task.cancel() for task in tasks]
 
         self.logger.info(f"Cancelling {len(tasks)} outstanding tasks")
