@@ -459,7 +459,10 @@ class AppService:
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
         self.logger.debug(traceback.print_stack())
+
         async with asyncio.Lock():
+            self.logger.warn("FINISHING")
+            self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
             self._debug_counter += 1
             if self._shutdown_called is True:
                 self.logger.warn(f"Shutdown task is already called {self._debug_counter} times.")
