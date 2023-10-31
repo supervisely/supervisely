@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from collections import namedtuple
-from typing import Optional, List, Callable, Tuple, Union
+from typing import Optional, List, Callable, Tuple, Union, Dict
 import os
 import re
+import numpy
 
 from tqdm import tqdm
 
@@ -334,9 +335,11 @@ def download_volume_project(
                     raise RuntimeError(
                         "Error in api.volume.annotation.download_batch: broken order"
                     )
+                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
 
                 volume_file_path = dataset_fs.generate_item_path(volume_name)
                 if download_volumes is True:
+                    header = None
                     item_progress = None
                     if log_progress:
                         item_progress = Progress(
@@ -351,8 +354,7 @@ def download_volume_project(
                         api.volume.download_path(volume_id, volume_file_path)
                 else:
                     touch(volume_file_path)
-
-                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+                    header = _create_volume_header(ann)
 
                 mask_ids = []
                 mask_paths = []
@@ -379,7 +381,7 @@ def download_volume_project(
                     file = change_directory_at_index(file, "mask", -3)  # change destination folder
                     nrrd_paths.append(file)
 
-                stl_converter.to_nrrd(mesh_paths, nrrd_paths)
+                stl_converter.to_nrrd(mesh_paths, nrrd_paths, header=header)
 
                 ann, meta = api.volume.annotation._update_on_transfer(
                     "download", ann, project_fs.meta, nrrd_paths
@@ -474,3 +476,30 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
         )
 
     return project.id, project.name
+
+
+def _create_volume_header(ann: VolumeAnnotation) -> Dict:
+    """
+    Create volume header to use in STL converter when downloading project without volumes.
+
+    :param ann: VolumeAnnotation object
+    :type ann: VolumeAnnotation
+    :return: header with Volume meta parameters
+    :rtype: Dict
+    """
+    header = {}
+    header["sizes"] = numpy.array([value for _, value in ann.volume_meta["dimensionsIJK"].items()])
+    world_matrix = ann.volume_meta["IJK2WorldMatrix"]
+    header["space directions"] = numpy.array(
+        [world_matrix[i : i + 3] for i in range(0, len(world_matrix) - 4, 4)]
+    )
+    header["space origin"] = numpy.array(
+        [world_matrix[i + 3] for i in range(0, len(world_matrix) - 4, 4)]
+    )
+    if ann.volume_meta["ACS"] == "RAS":
+        header["space"] = "right-anterior-superior"
+    elif ann.volume_meta["ACS"] == "LAS":
+        header["space"] = "left-anterior-superior"
+    elif ann.volume_meta["ACS"] == "LPS":
+        header["space"] = "left-posterior-superior"
+    return header

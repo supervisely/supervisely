@@ -7,7 +7,13 @@ import numpy as np
 
 from typing import List, Dict
 from supervisely import logger
-from supervisely.io.fs import get_file_name_with_ext, file_exists, dir_exists, mkdir
+from supervisely.io.fs import (
+    get_file_name_with_ext,
+    file_exists,
+    dir_exists,
+    mkdir,
+    change_directory_at_index,
+)
 
 
 def matrix_from_nrrd_header(header: Dict) -> np.ndarray:
@@ -114,7 +120,9 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     return padded_mask
 
 
-def to_nrrd(stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None) -> None:
+def to_nrrd(
+    stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None, header: Dict = None
+) -> None:
     """
     Save STL files as NRRD files containing 3D Masks in the same directory with the same name.
 
@@ -124,6 +132,8 @@ def to_nrrd(stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None
     :type nrrd_paths: List[str]
     :param volume_path: Path to the Volume NRRD file, from which we obtain the header.
     :type volume_path: str
+    :param header: Dictionary with NRRD volume header parameters, used when there is no volume file available.
+    :type header: Dict
     :return: None
     :rtype: NoneType
     """
@@ -143,8 +153,9 @@ def to_nrrd(stl_paths: List[str], nrrd_paths: List[str], volume_path: str = None
                 mkdir(nrrd_dir)
 
         if volume_path is None:
-            volume_path = os.path.dirname(stl_path.replace("interpolation", "volume"))
-        _, header = nrrd.read(volume_path)
+            volume_path = os.path.dirname(change_directory_at_index(stl_path, "volume", -3))
+        if header is None:
+            _, header = nrrd.read(volume_path)
         world_matrix = matrix_from_nrrd_header(header)
         shape = header["sizes"]
         mask = voxels_to_mask(shape, world_matrix, stl_path)
