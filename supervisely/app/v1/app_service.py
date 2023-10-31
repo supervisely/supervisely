@@ -110,6 +110,7 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
         self._shutdown_called = False
+        self._debug_counter = 0
 
     def _graceful_exit(self, sig, frame):
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
@@ -441,9 +442,9 @@ class AppService:
 
     def stop(self, wait=True):
         # @TODO: add timeout
-        if self._shutdown_called:
-            self.logger.warn("Shutdown task is already called.")
-            return
+        # if self._shutdown_called:
+        #     self.logger.warn("Shutdown task is already called.")
+        #     return
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.processing_queue.put(event_obj)
@@ -459,7 +460,12 @@ class AppService:
         """Cleanup tasks tied to the service's shutdown."""
         self.logger.debug(traceback.print_stack())
         async with asyncio.Lock():
+            self._debug_counter += 1
+            if self._shutdown_called is True:
+                self.logger.warn("Shutdown task is already called.")
+                return
             self._shutdown_called = True
+
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
