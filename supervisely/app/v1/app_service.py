@@ -458,7 +458,8 @@ class AppService:
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
         self.logger.debug(traceback.print_stack())
-        self._shutdown_called = True
+        async with asyncio.Lock():
+            self._shutdown_called = True
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
