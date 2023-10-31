@@ -441,6 +441,8 @@ class AppService:
 
     def stop(self, wait=True):
         # @TODO: add timeout
+        # if self._shutdown_called:
+        #     self.logger.warn("")
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.processing_queue.put(event_obj)
@@ -454,6 +456,7 @@ class AppService:
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
+        self.logger.debug(traceback.print_stack())
         self._shutdown_called = True
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
