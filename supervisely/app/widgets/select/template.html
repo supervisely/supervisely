@@ -9,6 +9,10 @@
   :placeholder="data.{{{widget.widget_id}}}.placeholder"
   :multiple="data.{{{widget.widget_id}}}.multiple"
   :filterable="data.{{{widget.widget_id}}}.filterable"
+  :fit-input-width="data.{{{widget.widget_id}}}.fit_input_width"
+  {% if widget._width_prc is not none %}
+  :style="{ width: `${data.{{{widget.widget_id}}}.width_prc}%` }"
+  {% endif %}
 >
   <div v-if="data.{{{widget.widget_id}}}.items">
     <el-option
