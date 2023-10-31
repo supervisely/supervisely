@@ -143,8 +143,11 @@ class AppService:
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
-        self.logger.info("Shutting down...")
-        asyncio.create_task(self._shutdown())
+        if not self._shutdown_called:
+            self.logger.info("Shutting down...")
+            asyncio.create_task(self._shutdown())
+        else:
+            self.logger.error("Probably, exception was found in shutdown task. Contact support.")
 
     @property
     def session_dir(self):
