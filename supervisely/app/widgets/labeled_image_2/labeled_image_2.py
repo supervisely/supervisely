@@ -37,6 +37,7 @@ class LabeledImage2(Widget):
                 "enableZoom": self._enable_zoom,
                 "opacity": self._opacity,
                 "lineWidth": self._line_width,
+                "fitOnResize": True,
             }
         }
 
