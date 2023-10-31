@@ -109,6 +109,7 @@ class AppService:
         self._error = None
         self.stop_event = asyncio.Event()
         self.has_ui = False
+        self._shutdown_called = False
 
     def _graceful_exit(self, sig, frame):
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
@@ -334,7 +335,10 @@ class AppService:
                     )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
-                asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+                if not self._shutdown_called:
+                    asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
+                else:
+                    self.logger.error("Found exception while trying to stop app.")
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
@@ -447,6 +451,7 @@ class AppService:
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
+        self._shutdown_called = True
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
