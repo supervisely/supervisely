@@ -11,7 +11,11 @@ Vue.component('sly-py-labeled-image', {
   },
   methods: {
     imageLoaded(imageInfo) {
-      const { width: maxWidth } = this.$el.getBoundingClientRect();
+      const style = getComputedStyle(this.$el);
+      if (!style?.width) {
+        return;
+      }
+      const maxWidth = Math.round(parseFloat(style.width));
       const ratio = maxWidth / imageInfo.width;
       const height = `${Math.max(Math.floor(imageInfo.height * ratio), 100)}px`;
       this.imageWidgetStyles.height = height;
