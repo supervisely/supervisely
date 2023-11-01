@@ -475,14 +475,12 @@ class AppService:
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
         # self.logger.debug(traceback.print_stack())
+        self.logger.warn("SET STOP EVENT")
         self.stop_event.set()
 
         # async with self._shutdown_lock:
         # self.logger.warn("FINISHING")
         # self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
-
-        self.logger.info("Shutting down ThreadPoolExecutor")
-        self.executor.shutdown(wait=True)
 
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
@@ -496,6 +494,9 @@ class AppService:
 
         self.logger.info(f"Cancelling {len(tasks)} outstanding tasks")
         await asyncio.gather(*tasks, return_exceptions=True)
+
+        self.logger.info("Shutting down ThreadPoolExecutor")
+        self.executor.shutdown(wait=True)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
         for thread in self.executor._threads:
