@@ -85,7 +85,7 @@ class Select(ConditionalWidget):
         multiple: bool = False,
         widget_id: str = None,
         items_links: List[str] = None,
-        width_prc: Optional[int] = None,
+        width_percent: Optional[int] = None,
     ) -> Select:
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
@@ -101,7 +101,12 @@ class Select(ConditionalWidget):
         self._multiple = multiple
         self._with_link = False
         self._links = None
-        self._width_prc = min(max(width_prc, 1), 100)
+
+        if width_percent is not None:
+            self._width_percent = min(max(width_percent, 1), 100)
+        else:
+            self._width_percent = None
+
         if items_links is not None:
             if items is None:
                 raise ValueError("links are not supported when groups are provided to Select")
@@ -127,7 +132,7 @@ class Select(ConditionalWidget):
             "items": None,
             "groups": None,
             "with_link": self._with_link,
-            "width_prc": self._width_prc,
+            "width_percent": self._width_percent,
         }
         if self._items is not None:
             res["items"] = [item.to_json() for item in self._items]
@@ -234,7 +239,7 @@ class SelectString(Select):
         widget_id: Optional[str] = None,
         items_right_text: List[str] = None,
         items_links: List[str] = None,
-        width_prc: Optional[int] = None,
+        width_percent: Optional[int] = None,
     ):
         right_text = [None] * len(values)
         if items_right_text is not None:
@@ -262,7 +267,7 @@ class SelectString(Select):
             size=size,
             widget_id=widget_id,
             items_links=items_links,
-            width_prc=width_prc,
+            width_percent=width_percent,
         )
 
     def _get_first_value(self) -> Select.Item:

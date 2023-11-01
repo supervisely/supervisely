@@ -86,7 +86,7 @@ class InferenceGUI(BaseInferenceGUI):
         self._device_select = Widgets.SelectString(
             values=device_values,
             labels=device_names,
-            width_prc=30,
+            width_percent=30,
         )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
