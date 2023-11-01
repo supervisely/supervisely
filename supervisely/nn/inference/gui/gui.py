@@ -83,7 +83,11 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
+        self._device_select = Widgets.SelectString(
+            values=device_values,
+            labels=device_names,
+            width_percent=30,
+        )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
