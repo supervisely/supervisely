@@ -485,9 +485,9 @@ class AppService:
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        tasks = [t for t in asyncio.all_tasks(self.loop) if t is not asyncio.current_task()]
 
-        # self.logger.debug(f"Current task: {asyncio.current_task()}")
+        self.logger.debug(f"Num of tasks: {len(tasks)}")
         # self.logger.debug(f"len(tasks)={tasks}, len(all_tasks)={len(asyncio.all_tasks())}")
 
         [task.cancel() for task in tasks]
