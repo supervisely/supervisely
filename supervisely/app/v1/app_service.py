@@ -205,12 +205,16 @@ class AppService:
                 self.logger.info("App will be stopped due to error")
 
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
+                return
 
             elapsed = time.time() - then
 
             if (period - elapsed) > 0:
                 # await asyncio.sleep(period - elapsed)
                 time.sleep(period - elapsed)
+
+            if self.stop_event.is_set():
+                return
 
     # async def call_periodic_function(self, period, f):
 
@@ -360,10 +364,16 @@ class AppService:
     def consume_sync(self):
         while True:
             self.logger.debug(f"SIZE {self.processing_queue.qsize()}")
-            request_msg = self.processing_queue.get()
+            try:
+                request_msg = self.processing_queue.get(timeout=1)
+            except queue.Empty:
+                if self.stop_event.is_set():
+                    return
+                continue
+
             to_log = _remove_sensitive_information(request_msg)
-            if to_log.get("command", "") == "stop":
-                self.logger.debug(traceback.print_stack())
+            # if to_log.get("command", "") == "stop":
+            #     self.logger.debug(traceback.print_stack())
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
@@ -450,7 +460,7 @@ class AppService:
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
             self.logger.warn(f"PUT EVENT {event_obj}")
-            self.logger.debug(traceback.print_stack())
+            # self.logger.debug(traceback.print_stack())
             self.processing_queue.put(event_obj)
         else:
             self.logger.info(
@@ -462,16 +472,12 @@ class AppService:
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
-        self.logger.debug(traceback.print_stack())
+        # self.logger.debug(traceback.print_stack())
+        self.stop_event.set()
 
-        async with self._shutdown_lock:
-            # self.logger.warn("FINISHING")
-            # self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
-            self._debug_counter += 1
-            if self._shutdown_called is True:
-                self.logger.warn(f"Shutdown task is already called {self._debug_counter} times.")
-                return
-            self._shutdown_called = True
+        # async with self._shutdown_lock:
+        # self.logger.warn("FINISHING")
+        # self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
 
         self.logger.info("Shutting down ThreadPoolExecutor")
         self.executor.shutdown(wait=True)
