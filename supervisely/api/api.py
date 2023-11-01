@@ -162,8 +162,10 @@ class Api:
 
         self.logger = external_logger or logger
 
+        self._require_https_redirect_check = not self.server_address.startswith("https://")
+
     @classmethod
-    def normalize_server_address(cls, server_address):
+    def normalize_server_address(cls, server_address: str) -> str:
         """ """
         result = server_address.strip("/")
         if ("http://" not in result) and ("https://" not in result):
@@ -292,6 +294,7 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -361,6 +364,7 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -470,3 +474,19 @@ class Api:
         if key not in self.headers:
             raise KeyError(f"Header {key!r} not found")
         return self.headers.pop(key)
+
+    def _check_https_redirect(self):
+        if self._require_https_redirect_check is True:
+            response = requests.get(self.server_address, allow_redirects=False)
+            if (300 <= response.status_code < 400) or (
+                response.headers.get("Location", "").startswith("https://")
+            ):
+                self.server_address = self.server_address.replace("http://", "https://")
+                msg = (
+                    "You're using HTTP server address while the server requires HTTPS. "
+                    "Supervisely automatically changed the server address to HTTPS for you. "
+                    f"Consider updating your server address to {self.server_address}"
+                )
+                self.logger.warn(msg)
+
+            self._require_https_redirect_check = False

@@ -206,7 +206,12 @@ def list_files_recursively(
     ]
 
 
-def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
+def list_files(
+    dir: str,
+    valid_extensions: Optional[List[str]] = None,
+    filter_fn=None,
+    ignore_valid_extensions_case: Optional[bool] = False,
+) -> List[str]:
     """
     Returns list with file paths presented in given directory.
 
@@ -216,6 +221,8 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
     :type valid_extensions: List[str]
     :param filter_fn: Function with a single argument that determines whether to keep a given file path.
     :type filter_fn:
+    :param ignore_valid_extensions_case: If True, valid extensions will be compared with file extensions in case-insensitive manner.
+    :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
     :Usage example:
@@ -230,12 +237,28 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
          # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
-    return [
-        file_path
-        for file_path in res
-        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
-        and (filter_fn is None or filter_fn(file_path))
-    ]
+
+    files = []
+    for file_path in res:
+        file_ext = get_file_ext(file_path)
+
+        if ignore_valid_extensions_case:
+            file_ext = file_ext.lower()
+            valid_extensions = [ext.lower() for ext in valid_extensions]
+
+        if (valid_extensions is None or file_ext in valid_extensions) and (
+            filter_fn is None or filter_fn(file_path)
+        ):
+            files.append(file_path)
+
+    return files
+
+    # return [
+    #     file_path
+    #     for file_path in res
+    #     if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+    #     and (filter_fn is None or filter_fn(file_path))
+    # ]
 
 
 def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
@@ -1049,3 +1072,39 @@ def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, Non
         if os.path.isdir(path):
             if check_function(path):
                 yield path
+
+
+def change_directory_at_index(path: str, dir_name: str, dir_index: int) -> str:
+    """
+    Change directory name in path by index.
+    If you use counting from the end, keep in mind that if the path ends with a file, the file will be assigned to the last index.
+
+    :param path: The original path
+    :type path: str
+    :param dir_name: Directory name
+    :type dir_name: str
+    :param dir_index: Index of the directory we want to change, negative values count from the end
+    :type dir_index: int
+    :return: New path
+    :rtype: str
+    :raises IndexError: If the catalog index is out of bounds for a given path
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = 'head/dir_1/file.txt'
+        new_path = sly.io.fs.change_directory_at_index(input_path, 'dir_2', -2)
+
+        print(new_path)
+
+    """
+    path_components = path.split(os.path.sep)
+    if -len(path_components) <= dir_index < len(path_components):
+        path_components[dir_index] = dir_name
+    else:
+        raise IndexError(
+            f"Path index '{dir_index}' is out of bounds 'path_components={len(path_components)}' for a given path"
+        )
+    return os.path.sep.join(path_components)

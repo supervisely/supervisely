@@ -2,6 +2,7 @@ import os
 import threading
 import time
 from cacheout import Cache
+from cachetools import LRUCache
 from fastapi import Response, Request, status
 
 from supervisely.geometry.bitmap import Bitmap
@@ -56,6 +57,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
+        self._init_mask_cache = LRUCache(maxsize=100)  # cache of sly.Bitmaps
 
         logger.debug(
             "Smart cache params",
@@ -102,16 +104,12 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
-            # 1. parse request
-            # 2. download image
-            # 3. make crop
-            # 4. predict
-
             logger.debug(
                 f"smart_segmentation inference: context=",
                 extra={**request.state.context, "api_token": "***"},
             )
 
+            # Parse request
             try:
                 state = request.state.state
                 settings = self._get_inference_settings(state)
@@ -136,7 +134,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "400: Bad request.", "success": False}
 
-            # collect clicks
+            # Pre-process clicks
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
             clicks = functional.transform_clicks_to_crop(crop, clicks)
@@ -150,7 +148,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                     "error": None,
                 }
 
-            # download image if needed (using cache)
+            # Download the image if is not in Cache
             app_dir = get_data_dir()
             hash_str = functional.get_hash_from_context(smtool_state)
             if hash_str not in self._inference_image_cache:
@@ -168,14 +166,32 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                 logger.debug(f"image found in cache: {hash_str}")
                 image_np = self._inference_image_cache.get(hash_str)
 
-            # crop
+            # Crop the image
             image_np = functional.crop_image(crop, image_np)
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
+            # Prepare init_mask (only for images)
+            figure_id = smtool_state.get("figure_id")
+            image_id = smtool_state.get("image_id")
+            if smtool_state.get("init_figure") is True and image_id is not None:
+                # Download and save in Cache
+                init_mask = functional.download_init_mask(api, figure_id, image_id)
+                self._init_mask_cache[figure_id] = init_mask
+            elif self._init_mask_cache.get(figure_id) is not None:
+                # Load from Cache
+                init_mask = self._init_mask_cache[figure_id]
+            else:
+                init_mask = None
+            if init_mask is not None:
+                init_mask = functional.bitmap_to_mask(api, init_mask, image_id)
+                init_mask = functional.crop_image(crop, init_mask)
+                assert init_mask.shape[:2] == image_np.shape[:2]
+            settings["init_mask"] = init_mask
+
+            # Predict
             self._inference_image_lock.acquire()
             try:
-                # predict
                 logger.debug(f"predict: {smtool_state['request_uid']}")
                 clicks_to_predict = [self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks]
                 pred_mask = self.predict(image_path, clicks_to_predict, settings).mask

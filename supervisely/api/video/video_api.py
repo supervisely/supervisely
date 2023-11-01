@@ -423,6 +423,80 @@ class VideoApi(RemoveableBulkModuleApi):
             raise KeyError(f"Video with id={id} not found in your account")
         return info
 
+    def get_info_by_id_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = False,
+    ) -> List[VideoInfo]:
+        """
+        Get Video information by ID.
+
+        :param ids: List of Video IDs in Supervisely, they must belong to the same dataset.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param force_metadata_for_links: Get normalized metadata from server.
+        :type force_metadata_for_links: bool
+        :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
+        :rtype: List[VideoInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+
+            video_infos = api.video.get_info_by_id_batch(video_ids)
+        """
+        results = []
+        if len(ids) == 0:
+            return results
+
+        fields = [
+            "id",
+            "title",
+            "description",
+            "createdAt",
+            "updatedAt",
+            "dataId",
+            "remoteDataId",
+            "meta",
+            "pathOriginal",
+            "hash",
+            "groupId",
+            "projectId",
+            "datasetId",
+            "createdBy",
+            "customData",
+        ]
+
+        if force_metadata_for_links is True:
+            fields.append("videoMeta")
+
+        dataset_id = self.get_info_by_id(ids[0]).dataset_id
+        for batch in batched(ids):
+            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+            results.extend(
+                self.get_list_all_pages(
+                    "videos.list",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.FIELDS: fields,
+                        ApiField.RAW_VIDEO_META: True,
+                    },
+                )
+            )
+            if progress_cb is not None:
+                progress_cb(len(batch))
+        temp_map = {info.id: info for info in results}
+        ordered_results = [temp_map[id] for id in ids]
+        return ordered_results
+
     def get_json_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> Dict:
         """
         Get Video information by ID in json format.
@@ -607,6 +681,12 @@ class VideoApi(RemoveableBulkModuleApi):
             # )
         """
 
+        if hash is None:
+            raise ValueError(
+                "Video hash is None, it may occur when the video was uploaded as link. "
+                "Please, use upload_id() method instead."
+            )
+
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
@@ -667,6 +747,18 @@ class VideoApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
         """
 
+        no_hash_names = []
+        for name, hash in zip(names, hashes):
+            if hash is None:
+                no_hash_names.append(name)
+
+        if len(no_hash_names) > 0:
+            raise ValueError(
+                f"Video hashes are None for the following videos: {no_hash_names}. "
+                "It may occur when the videos were uploaded as links. "
+                "Please, use upload_ids() method instead."
+            )
+
         results = self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
             dataset_id,
@@ -676,6 +768,143 @@ class VideoApi(RemoveableBulkModuleApi):
             progress_cb,
         )
         return results
+
+    def upload_id(
+        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
+    ) -> VideoInfo:
+        """
+        Uploads video from given id to Dataset.
+
+        :param dataset_id: Destination dataset ID.
+        :type dataset_id: int
+        :param name: Video name.
+        :type name: str
+        :param id: Source video ID in Supervisely.
+        :type id: int
+        :param meta: Video metadata.
+        :type meta: Optional[Dict]
+        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :rtype: VideoInfo
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_video_id = 186580617
+            dst_dataset_id = 468620
+
+            new_video_info = api.video.upload_id(dst_dataset_id, 'new_video_name.mp4', src_video_id)
+        """
+        metas = None if meta is None else [meta]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
+
+    def upload_ids(
+        self,
+        dataset_id: int,
+        names: List[str],
+        ids: List[int],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        infos: Optional[List[VideoInfo]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Uploads videos from given ids to Dataset.
+
+        :param dataset_id: Destination dataset ID.
+        :type dataset_id: int
+        :param names: Videos names.
+        :type names: List[str]
+        :param ids: Source videos IDs in Supervisely.
+        :type ids: List[int]
+        :param metas: Videos metadata.
+        :type metas: Optional[List[Dict]]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param infos: Videos information.
+        :type infos: Optional[List[VideoInfo]]
+        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :rtype: List[VideoInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_dataset_id = 466639
+            dst_dataset_id = 468620
+
+            ids = []
+            names = []
+            metas = []
+
+            video_infos = api.video.get_list(src_dataset_id)
+            # Create lists of ids, videos names and meta information for each video
+            for video_info in video_infos:
+                ids.append(video_info.id)
+                # It is necessary to upload videos with the same names(extentions) as in src dataset
+                names.append(video_info.name)
+                metas.append({video_info.name: video_info.frame_height})
+
+            progress = sly.Progress("Videos upload: ", len(ids))
+            new_videos_info = api.video.upload_ids(dst_dataset_id, names, ids, metas, progress.iters_done_report)
+
+        """
+        if metas is None:
+            metas = [{}] * len(names)
+
+        if infos is None:
+            infos = self.get_info_by_id_batch(ids, progress_cb=progress_cb)
+
+        links, links_names, links_order, links_metas = [], [], [], []
+        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
+            if info.link is not None:
+                links.append(info.link)
+                links_names.append(name)
+                links_order.append(idx)
+                links_metas.append(meta)
+            else:
+                hashes.append(info.hash)
+                hashes_names.append(name)
+                hashes_order.append(idx)
+                hashes_metas.append(meta)
+
+        result = [None] * len(names)
+
+        if len(links) > 0:
+            res_infos_links = self.upload_links(
+                dataset_id,
+                links,
+                links_names,
+                metas=links_metas,
+                skip_download=True,
+            )
+
+            for info, pos in zip(res_infos_links, links_order):
+                result[pos] = info
+
+        if len(hashes) > 0:
+            res_infos_hashes = self.upload_hashes(
+                dataset_id,
+                hashes_names,
+                hashes,
+                metas=hashes_metas,
+                progress_cb=progress_cb,
+            )
+
+            for info, pos in zip(res_infos_hashes, hashes_order):
+                result[pos] = info
+
+        return result
 
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None

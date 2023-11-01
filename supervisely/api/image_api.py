@@ -1356,11 +1356,11 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image by ID to Dataset.
 
-        :param dataset_id: Dataset ID in Supervisely.
+        :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name.
         :type name: str
-        :param id: Image ID in Supervisely.
+        :param id: Source image ID in Supervisely.
         :type id: int
         :param meta: Image metadata.
         :type meta: dict, optional
@@ -1423,9 +1423,9 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Images by IDs to Dataset.
 
-        :param dataset_id: Dataset ID in Supervisely.
+        :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Images names.
+        :param names: Source images names.
         :type names: List[str]
         :param ids: Images IDs.
         :type ids: List[int]

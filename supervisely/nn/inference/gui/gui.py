@@ -83,7 +83,11 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
+        self._device_select = Widgets.SelectString(
+            values=device_values,
+            labels=device_names,
+            width_percent=30,
+        )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
@@ -254,15 +258,18 @@ class InferenceGUI(BaseInferenceGUI):
 
         @self.serve_button.click
         def serve_model():
-            for cb in self.on_serve_callbacks:
-                cb(self)
-            self.set_deployed()
+            self.deploy_with_current_params()
 
         @self._change_model_button.click
         def change_model():
             for cb in self.on_change_model_callbacks:
                 cb(self)
             self.change_model()
+
+    def deploy_with_current_params(self):
+        for cb in self.on_serve_callbacks:
+            cb(self)
+        self.set_deployed()
 
     def change_model(self):
         self._success_label.text = ""
