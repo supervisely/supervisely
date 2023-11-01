@@ -473,21 +473,21 @@ class AppService:
                 return
             self._shutdown_called = True
 
+        self.logger.info("Shutting down ThreadPoolExecutor")
+        self.executor.shutdown(wait=True)
+
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
 
-        self.logger.debug(f"Current task: {asyncio.current_task()}")
-        self.logger.debug(f"len(tasks)={tasks}, len(all_tasks)={len(asyncio.all_tasks())}")
+        # self.logger.debug(f"Current task: {asyncio.current_task()}")
+        # self.logger.debug(f"len(tasks)={tasks}, len(all_tasks)={len(asyncio.all_tasks())}")
 
         [task.cancel() for task in tasks]
 
         self.logger.info(f"Cancelling {len(tasks)} outstanding tasks")
         await asyncio.gather(*tasks, return_exceptions=True)
-
-        self.logger.info("Shutting down ThreadPoolExecutor")
-        self.executor.shutdown(wait=False)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
         for thread in self.executor._threads:
