@@ -14,7 +14,7 @@ class ProjectThumbnail(Widget):
         self._description: str = None
         self._url: str = None
         self._image_preview_url: str = None
-        self._remove_margins = remove_margins
+        self._remove_margins: bool = remove_margins
         self._set_info(info)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
