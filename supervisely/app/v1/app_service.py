@@ -110,6 +110,7 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
         self._shutdown_called = False
+        self._shutdown_lock = asyncio.Lock()
         self._debug_counter = 0
 
     def _graceful_exit(self, sig, frame):
@@ -339,10 +340,7 @@ class AppService:
                     )
                 self.logger.info("App will be stopped due to error")
                 # asyncio.create_task(self._shutdown(error=e))
-                if not self._shutdown_called:
-                    asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
-                else:
-                    self.logger.error("Found exception while trying to stop app.")
+                asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
                 self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
                 if self.has_ui:
@@ -466,9 +464,9 @@ class AppService:
         """Cleanup tasks tied to the service's shutdown."""
         self.logger.debug(traceback.print_stack())
 
-        async with asyncio.Lock():
-            self.logger.warn("FINISHING")
-            self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
+        async with self._shutdown_lock:
+            # self.logger.warn("FINISHING")
+            # self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
             self._debug_counter += 1
             if self._shutdown_called is True:
                 self.logger.warn(f"Shutdown task is already called {self._debug_counter} times.")
