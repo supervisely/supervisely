@@ -214,6 +214,7 @@ class AppService:
                 time.sleep(period - elapsed)
 
             if self.stop_event.is_set():
+                self.logger.debug("call_periodic_function_sync is finished")
                 return
 
     # async def call_periodic_function(self, period, f):
@@ -368,6 +369,7 @@ class AppService:
                 request_msg = self.processing_queue.get(timeout=1)
             except queue.Empty:
                 if self.stop_event.is_set():
+                    self.logger.debug("consume_sync is finished")
                     return
                 continue
 
