@@ -363,6 +363,8 @@ class AppService:
         while True:
             request_msg = self.processing_queue.get()
             to_log = _remove_sensitive_information(request_msg)
+            if to_log.get("command", "") == "stop":
+                self.logger.debug(traceback.print_stack())
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
