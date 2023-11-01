@@ -130,9 +130,9 @@ def to_nrrd(
     :type stl_paths: List[str]
     :param nrrd_paths: Paths to NRRD files with 3D Masks.
     :type nrrd_paths: List[str]
-    :param volume_path: Path to the Volume NRRD file, from which we obtain the header.
+    :param volume_path: Path to the Volume NRRD file, from which we obtain the header. Has priority if defined together with the header.
     :type volume_path: str
-    :param header: Dictionary with NRRD volume header parameters, used when there is no volume file available.
+    :param header: Dictionary with NRRD volume header parameters, must be used when there is no Volume NRRD file available.
     :type header: Dict
     :return: None
     :rtype: NoneType
@@ -153,9 +153,20 @@ def to_nrrd(
                 mkdir(nrrd_dir)
 
         if volume_path is None:
+            # trying to find the Volume file inside the project
             volume_path = os.path.dirname(change_directory_at_index(stl_path, "volume", -3))
-        if header is None:
-            _, header = nrrd.read(volume_path)
+
+        if file_exists(volume_path) is False and header is None:
+            raise FileNotFoundError(
+                "NRRD Volume file not found and header not set, unable to convert STL"
+            )
+        elif file_exists(volume_path) is True:
+            try:
+                _, header = nrrd.read(volume_path)
+            except Exception as e:
+                e.args = (
+                    "Unable to retrieve header from the NRRD Volume file. File is empty or corrupted",
+                )
         world_matrix = matrix_from_nrrd_header(header)
         shape = header["sizes"]
         mask = voxels_to_mask(shape, world_matrix, stl_path)
