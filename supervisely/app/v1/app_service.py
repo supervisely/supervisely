@@ -364,13 +364,14 @@ class AppService:
 
     def consume_sync(self):
         while True:
+            if self.stop_event.is_set():
+                self.logger.debug("consume_sync is finished")
+                return
+
             self.logger.debug(f"SIZE {self.processing_queue.qsize()}")
             try:
                 request_msg = self.processing_queue.get(timeout=1)
             except queue.Empty:
-                if self.stop_event.is_set():
-                    self.logger.debug("consume_sync is finished")
-                    return
                 continue
 
             to_log = _remove_sensitive_information(request_msg)
@@ -406,6 +407,9 @@ class AppService:
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.logger.debug(f"PUT EVENT {event_obj}")
                 self.processing_queue.put(event_obj)
+                if data.get("command", "") == "stop":
+                    self.logger.debug("publish_sync is finished")
+                    return
             except Exception as error:
                 self.logger.warning("App exception: ", extra={"error_message": repr(error)})
 
@@ -496,7 +500,8 @@ class AppService:
         await asyncio.gather(*tasks, return_exceptions=True)
 
         self.logger.info("Shutting down ThreadPoolExecutor")
-        self.executor.shutdown(wait=True)
+        # await asyncio.sleep(5)
+        self.executor.shutdown(wait=False)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
         for thread in self.executor._threads:
