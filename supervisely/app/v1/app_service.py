@@ -361,7 +361,7 @@ class AppService:
 
     def consume_sync(self):
         while True:
-            self.logger.debug(self.processing_queue.get())
+            self.logger.debug(f"SIZE {self.processing_queue.qsize()}")
             request_msg = self.processing_queue.get()
             to_log = _remove_sensitive_information(request_msg)
             if to_log.get("command", "") == "stop":
