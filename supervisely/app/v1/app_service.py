@@ -361,6 +361,7 @@ class AppService:
 
     def consume_sync(self):
         while True:
+            self.logger.debug(self.processing_queue.get())
             request_msg = self.processing_queue.get()
             to_log = _remove_sensitive_information(request_msg)
             if to_log.get("command", "") == "stop":
@@ -393,6 +394,7 @@ class AppService:
                     data = json.loads(gen_event.data.decode("utf-8"))
 
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
+                self.logger.debug(f"PUT EVENT {event_obj}")
                 self.processing_queue.put(event_obj)
             except Exception as error:
                 self.logger.warning("App exception: ", extra={"error_message": repr(error)})
@@ -449,6 +451,8 @@ class AppService:
         #     return
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
+            self.logger.warn(f"PUT EVENT {event_obj}")
+            self.logger.debug(traceback.print_stack())
             self.processing_queue.put(event_obj)
         else:
             self.logger.info(
