@@ -110,6 +110,9 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
+    def app_is_stoped(self):
+        return self.stop_event.is_set()
+
     def _graceful_exit(self, sig, frame):
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
 
@@ -142,8 +145,11 @@ class AppService:
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
-        self.logger.info("Shutting down...")
-        asyncio.create_task(self._shutdown())
+        if not self.stop_event.is_set():
+            self.logger.info("Shutting down...")
+            asyncio.create_task(self._shutdown())
+        else:
+            self.logger.error("Probably, exception was found in shutdown task. Contact support.")
 
     @property
     def session_dir(self):
@@ -199,12 +205,17 @@ class AppService:
                 self.logger.info("App will be stopped due to error")
 
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
+                return
 
             elapsed = time.time() - then
 
             if (period - elapsed) > 0:
                 # await asyncio.sleep(period - elapsed)
                 time.sleep(period - elapsed)
+
+            if self.stop_event.is_set():
+                self.logger.debug("call_periodic_function_sync is finished")
+                return
 
     # async def call_periodic_function(self, period, f):
 
@@ -353,7 +364,15 @@ class AppService:
 
     def consume_sync(self):
         while True:
-            request_msg = self.processing_queue.get()
+            if self.stop_event.is_set():
+                self.logger.debug("consume_sync is finished")
+                return
+
+            try:
+                request_msg = self.processing_queue.get(timeout=1)
+            except queue.Empty:
+                continue
+
             to_log = _remove_sensitive_information(request_msg)
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
@@ -384,6 +403,11 @@ class AppService:
 
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.processing_queue.put(event_obj)
+
+                # crutch
+                if data.get("command", "") == "stop":
+                    self.logger.debug("publish_sync is finished")
+                    return
             except Exception as error:
                 self.logger.warning("App exception: ", extra={"error_message": repr(error)})
 
@@ -443,10 +467,14 @@ class AppService:
                 extra={"event_type": EventType.APP_FINISHED},
             )
             # asyncio.create_task(self._shutdown())
-            asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
+            if not self.stop_event.is_set():
+                asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
+        self.logger.debug("SET STOP EVENT")
+        self.stop_event.set()
+
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
@@ -458,6 +486,9 @@ class AppService:
         await asyncio.gather(*tasks, return_exceptions=True)
 
         self.logger.info("Shutting down ThreadPoolExecutor")
+
+        # wait for some threads to stop normally
+        await asyncio.sleep(5)
         self.executor.shutdown(wait=False)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
