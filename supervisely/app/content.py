@@ -138,7 +138,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
     async def _replace_global(cls, d: dict):
         async with cls._global_lock:
             global_state = cls()
-            global_state.clear()
+            # !!! May cause problems with some apps !!!
+            # global_state.clear()
             global_state.update(copy.deepcopy(d))
             global_state._last = copy.deepcopy(d)
             ContentOrigin().update(state=copy.deepcopy(d))

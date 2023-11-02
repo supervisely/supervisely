@@ -21,6 +21,7 @@ class Input(Widget):
         readonly: bool = False,
         type: Literal["text", "password"] = "text",
         widget_id: str = None,
+        icon: Literal["search", "edit"] = None,
     ):
         self._value = value  # initial value
         self._minlength = minlength
@@ -31,6 +32,7 @@ class Input(Widget):
         self._widget_id = widget_id
         self._changes_handled = False
         self._type = type
+        self._icon = icon
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -47,6 +49,7 @@ class Input(Widget):
         return {
             "value": self._value,
             "type": self._type,
+            "icon": self._icon,
         }
 
     def set_value(self, value):
@@ -62,6 +65,13 @@ class Input(Widget):
 
     def get_type(self):
         return StateJson()[self.widget_id]["type"]
+    
+    def set_icon(self, value: Literal["search", "edit"]):
+        StateJson()[self.widget_id]["icon"] = value
+        StateJson().send_changes()
+
+    def get_icon(self):
+        return StateJson()[self.widget_id]["icon"]
 
     def is_readonly(self):
         return DataJson()[self.widget_id]["readonly"]

@@ -1,0 +1,12 @@
+.py-draggable-widget {
+    padding: 5px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.5s ease;
+    cursor: pointer;
+    margin-top: 2px;
+}
+
+.py-draggable-widget:hover {
+    border-color: #20a0ff;
+}

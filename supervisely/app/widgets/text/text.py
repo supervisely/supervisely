@@ -45,12 +45,14 @@ class Text(Widget):
         status: Literal["text", "info", "success", "warning", "error"] = "text",
         color: Optional[str] = None,
         widget_id: str = None,
+        font_size: int = 14,
     ):
         self._text = None
         self._status = None
         self._icon = None
         self._icon_color = None
         self._text_color = None
+        self._font_size = f"{font_size}px"
         super().__init__(widget_id=widget_id, file_path=__file__)
         self.set(text, status)
         if color is not None:
@@ -63,6 +65,7 @@ class Text(Widget):
             "text_color": self._text_color,
             "icon": self._icon,
             "icon_color": self._icon_color,
+            "font_size": self._font_size,
         }
 
     def get_json_state(self):

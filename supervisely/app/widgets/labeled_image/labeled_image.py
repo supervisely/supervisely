@@ -19,6 +19,7 @@ class LabeledImage(GridGallery):
         border_width: int = 3,
         view_height: Optional[int] = None,
         widget_id: str = None,
+        empty_message: str = "Gallery is empty",
     ):
         self._image_id = None
         super().__init__(
@@ -30,6 +31,7 @@ class LabeledImage(GridGallery):
             fill_rectangle=fill_rectangle,
             border_width=border_width,
             view_height=view_height,
+            empty_message=empty_message,
             widget_id=widget_id,
         )
 

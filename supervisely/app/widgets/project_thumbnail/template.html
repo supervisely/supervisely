@@ -1,9 +1,7 @@
-<sly-field title="" :description="data.{{{widget.widget_id}}}.description">
-  <a slot="title" target="_blank" :href="data.{{{widget.widget_id}}}.url"
-    >{{data.{{{widget.widget_id}}}.name}}</a
-  >
-  <sly-icon
-    slot="icon"
-    :options="{ imageUrl: `${data.{{{widget.widget_id}}}.image_preview_url}` }"
-  />
+<link rel="stylesheet" href="./sly/css/app/widgets/project_thumbnail/style.css" />
+
+<sly-field {% if widget._remove_margins %} class="remove-margins" {% endif %} title=""
+  :description="data.{{{widget.widget_id}}}.description">
+  <a slot="title" target="_blank" :href="data.{{{widget.widget_id}}}.url">{{data.{{{widget.widget_id}}}.name}}</a>
+  <sly-icon slot="icon" :options="{ imageUrl: `${data.{{{widget.widget_id}}}.image_preview_url}` }" />
 </sly-field>
