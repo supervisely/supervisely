@@ -165,7 +165,6 @@ def handle_server_errors(app: FastAPI):
 
         if handled_exception is not None:
             details = {"title": handled_exception.title, "message": handled_exception.message}
-            # return
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):
