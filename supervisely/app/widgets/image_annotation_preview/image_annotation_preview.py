@@ -5,7 +5,7 @@ from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
 
-class LabeledImage2(Widget):
+class ImageAnnotationPreview(Widget):
     def __init__(
         self,
         annotations_opacity: float = 0.5,
@@ -21,7 +21,7 @@ class LabeledImage2(Widget):
         self._line_width = line_width
 
         super().__init__(widget_id=widget_id, file_path=__file__)
-        script_path = "./sly/css/app/widgets/labeled_image_2/script.js"
+        script_path = "./sly/css/app/widgets/image_annotation_preview/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
