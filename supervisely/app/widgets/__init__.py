@@ -103,4 +103,4 @@ from supervisely.app.widgets.nodes_flow.nodes_flow import NodesFlow
 from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets.draggable.draggable import Draggable
 from supervisely.app.widgets.tooltip.tooltip import Tooltip
-from supervisely.app.widgets.labeled_image_2.labeled_image_2 import LabeledImage2
+from supervisely.app.widgets.image_annotation_preview.image_annotation_preview import ImageAnnotationPreview
