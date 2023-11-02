@@ -171,10 +171,10 @@ def handle_server_errors(app: FastAPI):
         if isinstance(exc, DialogWindowBase):
             details["title"] = exc.title
             details["message"] = exc.description
-            request,
             details["status"] = exc.status
 
         return await http_exception_handler(
+            request,
             HTTPException(status_code=500, detail=details),
         )
 
