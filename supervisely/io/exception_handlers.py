@@ -65,10 +65,9 @@ class HandleException:
         console.print(f"🔴 Error title: {self.title}")
         console.print(f"🔴 Error message: {self.message}")
 
-        console.print("🔴 Traceback (most recent call last):", style="bold red")
-
-        for i, trace in enumerate(traceback.format_list(self.stack)):
-            console.print(f"{i + 1}. {trace}")
+        # console.print("🔴 Traceback (most recent call last):", style="bold red")
+        # for i, trace in enumerate(traceback.format_list(self.stack)):
+        #    console.print(f"{i + 1}. {trace}")
         console.print("🛑 End of the error report.", style="bold red")
 
     def raise_error(self):
