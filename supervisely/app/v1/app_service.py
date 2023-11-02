@@ -109,9 +109,9 @@ class AppService:
         self._error = None
         self.stop_event = asyncio.Event()
         self.has_ui = False
-        self._shutdown_called = False
-        self._shutdown_lock = asyncio.Lock()
-        self._debug_counter = 0
+
+    def app_is_stoped(self):
+        return self.stop_event.is_set()
 
     def _graceful_exit(self, sig, frame):
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
@@ -145,7 +145,7 @@ class AppService:
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
-        if not self._shutdown_called:
+        if not self.stop_event.is_set():
             self.logger.info("Shutting down...")
             asyncio.create_task(self._shutdown())
         else:
@@ -368,15 +368,12 @@ class AppService:
                 self.logger.debug("consume_sync is finished")
                 return
 
-            self.logger.debug(f"SIZE {self.processing_queue.qsize()}")
             try:
                 request_msg = self.processing_queue.get(timeout=1)
             except queue.Empty:
                 continue
 
             to_log = _remove_sensitive_information(request_msg)
-            # if to_log.get("command", "") == "stop":
-            #     self.logger.debug(traceback.print_stack())
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
             asyncio.ensure_future(
@@ -405,8 +402,9 @@ class AppService:
                     data = json.loads(gen_event.data.decode("utf-8"))
 
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
-                self.logger.debug(f"PUT EVENT {event_obj}")
                 self.processing_queue.put(event_obj)
+
+                # crutch
                 if data.get("command", "") == "stop":
                     self.logger.debug("publish_sync is finished")
                     return
@@ -460,13 +458,8 @@ class AppService:
 
     def stop(self, wait=True):
         # @TODO: add timeout
-        # if self._shutdown_called:
-        #     self.logger.warn("Shutdown task is already called.")
-        #     return
         if wait is True:
             event_obj = {"command": "stop", "api_token": os.environ[API_TOKEN]}
-            self.logger.warn(f"PUT EVENT {event_obj}")
-            # self.logger.debug(traceback.print_stack())
             self.processing_queue.put(event_obj)
         else:
             self.logger.info(
@@ -474,25 +467,18 @@ class AppService:
                 extra={"event_type": EventType.APP_FINISHED},
             )
             # asyncio.create_task(self._shutdown())
-            asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
+            if not self.stop_event.is_set():
+                asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
-        # self.logger.debug(traceback.print_stack())
-        self.logger.warn("SET STOP EVENT")
+        self.logger.debug("SET STOP EVENT")
         self.stop_event.set()
-
-        # async with self._shutdown_lock:
-        # self.logger.warn("FINISHING")
-        # self.logger.warn(f"QUEUE LENGTH, {self.processing_queue.qsize()}")
 
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
-        tasks = [t for t in asyncio.all_tasks(self.loop) if t is not asyncio.current_task()]
-
-        self.logger.debug(f"Num of tasks: {len(tasks)}")
-        # self.logger.debug(f"len(tasks)={tasks}, len(all_tasks)={len(asyncio.all_tasks())}")
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
 
         [task.cancel() for task in tasks]
 
@@ -500,7 +486,9 @@ class AppService:
         await asyncio.gather(*tasks, return_exceptions=True)
 
         self.logger.info("Shutting down ThreadPoolExecutor")
-        # await asyncio.sleep(5)
+
+        # wait for some threads to stop normally
+        await asyncio.sleep(5)
         self.executor.shutdown(wait=False)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
