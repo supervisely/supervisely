@@ -13,8 +13,8 @@ class Markdown(Widget):
         self,
         content: str = "",
         height: Union[int, Literal["fit-content"]] = "fit-content",
-        show_border: bool = True,
         widget_id: str = None,
+        show_border: bool = True,
     ):
         self._content = content
         self._height = f"{height}px" if type(height) == int else height

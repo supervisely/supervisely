@@ -2,7 +2,7 @@ from supervisely.app.widgets import Widget
 
 
 class Empty(Widget):
-    def __init__(self, style="", widget_id: str = None):
+    def __init__(self, widget_id: str = None, style=""):
         self._style: str = style
 
         super().__init__(widget_id, file_path=__file__)

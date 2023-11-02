@@ -25,8 +25,8 @@ class GridGallery(Widget):
         border_width: int = 3,
         show_preview: bool = False,
         view_height: Optional[int] = None,
-        empty_message: str = "Gallery is empty",
         widget_id: str = None,
+        empty_message: str = "Gallery is empty",
     ):
         self._data = []
         self._layout = []

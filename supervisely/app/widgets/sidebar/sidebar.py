@@ -8,9 +8,9 @@ class Sidebar(Widget):
         left_content: Widget,
         right_content: Widget,
         width_percent: int = 25,
+        widget_id: str = None,
         height: str = "100vh",
         standalone: bool = True,
-        widget_id: str = None,
     ):
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._left_content = left_content

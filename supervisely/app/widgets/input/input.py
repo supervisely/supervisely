@@ -20,8 +20,8 @@ class Input(Widget):
         size: Literal["mini", "small", "large"] = None,
         readonly: bool = False,
         type: Literal["text", "password"] = "text",
-        icon: Literal["search", "edit"] = None,
         widget_id: str = None,
+        icon: Literal["search", "edit"] = None,
     ):
         self._value = value  # initial value
         self._minlength = minlength

@@ -6,7 +6,7 @@ from supervisely.project.project import Project
 
 class ProjectThumbnail(Widget):
     def __init__(
-        self, info: ProjectInfo = None, remove_margins: bool = False, widget_id: str = None
+        self, info: ProjectInfo = None, widget_id: str = None, remove_margins: bool = False
     ):
         self._info: ProjectInfo = None
         self._id: int = None

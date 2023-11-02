@@ -22,11 +22,11 @@ class Button(Widget):
         show_loading: bool = True,
         icon: str = None,  # for example "zmdi zmdi-play" from http://zavoloklom.github.io/material-design-iconic-font/icons.html
         icon_gap: int = 5,
+        widget_id=None,
         link: str = None,
         emit_on_click: str = None,
         style: str = None,
         call_on_click: str = None,
-        widget_id=None,
     ):
         self._widget_routes = {}
 

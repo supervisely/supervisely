@@ -20,8 +20,8 @@ class Slider(Widget):
         range: bool = False,  # requires value to be List[int, int]
         vertical: bool = False,
         height: int = None,
-        style: str = "padding: 20px",
         widget_id: str = None,
+        style: str = "padding: 20px",
     ):
         self._value = value
         self._min = min

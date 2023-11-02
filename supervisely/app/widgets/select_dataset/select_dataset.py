@@ -26,9 +26,9 @@ class SelectDataset(Widget):
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         disabled: Optional[bool] = False,
+        widget_id: str = None,
         select_all_datasets: bool = False,
         allowed_project_types: List[ProjectType] = [],
-        widget_id: str = None,
     ):
         self._api = Api()
         self._default_id = default_id
