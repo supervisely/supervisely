@@ -165,14 +165,16 @@ def handle_server_errors(app: FastAPI):
 
         if handled_exception is not None:
             details = {"title": handled_exception.title, "message": handled_exception.message}
+            return
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):
             details["title"] = exc.title
             details["message"] = exc.description
-            details["status"] = exc.status
-        return await http_exception_handler(
             request,
+            details["status"] = exc.status
+
+        return await http_exception_handler(
             HTTPException(status_code=500, detail=details),
         )
 
