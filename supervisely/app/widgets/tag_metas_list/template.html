@@ -4,10 +4,10 @@
 		<span style="margin-right: 10px">{{{widget._deselect_all_btn}}}</span>
 		<!-- style="color: #8492a6" -->
 		<span v-if="data.{{{widget.widget_id}}}.num_selected !== 1">
-			Selected: {{data.{{{widget.widget_id}}}.num_selected}} classes
+			Selected: {{data.{{{widget.widget_id}}}.num_selected}} tag metas
 		</span>
 		<span v-else>
-			Selected: {{data.{{{widget.widget_id}}}.num_selected}} class
+			Selected: {{data.{{{widget.widget_id}}}.num_selected}} tag meta
 		</span>
 	</div>
 	{{{widget._content}}}
