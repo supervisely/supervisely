@@ -307,7 +307,7 @@ class ClassesTable(Widget):
         self.update_data()
         DataJson().send_changes()
 
-    def select_classes(self, classes) -> None:
+    def select_classes(self, classes: List[str]) -> None:
         self._global_checkbox = False
         self._checkboxes = [False] * len(self._table_data)
 
