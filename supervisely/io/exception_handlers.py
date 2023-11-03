@@ -7,6 +7,7 @@ from rich.console import Console
 
 from supervisely.sly_logger import logger, EventType
 from supervisely.app import DialogWindowError
+from supervisely import is_development
 
 import traceback
 import re
@@ -39,7 +40,8 @@ class HandleException:
         #     "for solutions and troubleshooting."
         # )
 
-        self.dev_logging()
+        if is_development():
+            self.dev_logging()
 
     def dev_logging(self):
         # * Option for logging the exception with sly logger.
@@ -58,17 +60,15 @@ class HandleException:
         # * Printing the exception to the console line by line.
         console = Console()
 
-        console.print("🛑 Beginning of the error report.", style="bold red")
-        console.print(f"🔴 {self.exception.__class__.__name__}: {self.exception}")
+        console.print(self.title, style="bold red")
+        console.print(self.message, style="bold red")
         # TODO: Uncomment code line when error codes will be added.
         # console.print(f"Error code: {self.code}.", style="bold orange")
-        console.print(f"🔴 Error title: {self.title}")
-        console.print(f"🔴 Error message: {self.message}")
+        console.print(f"{self.exception.__class__.__name__}: {self.exception}")
 
-        # console.print("🔴 Traceback (most recent call last):", style="bold red")
-        # for i, trace in enumerate(traceback.format_list(self.stack)):
-        #    console.print(f"{i + 1}. {trace}")
-        console.print("🛑 End of the error report.", style="bold red")
+        console.print("Traceback (most recent call last):", style="bold red")
+        for i, trace in enumerate(traceback.format_list(self.stack)):
+            console.print(f"{i + 1}. {trace}")
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
