@@ -1,0 +1,33 @@
+<div>
+	<link rel="stylesheet" href="./sly/css/app/widgets/tag_meta_view/style.css" />
+	<span class="icon-text-line fflex">
+		<i
+			class="zmdi zmdi-label"
+			style="margin-right: 5px"
+			:style="{color: data.{{{widget.widget_id}}}.color}"
+		></i>
+
+		<span
+			v-if="data.{{{widget.widget_id}}}.limit_long_names"
+			style="
+				overflow: hidden;
+				text-overflow: ellipsis;
+				max-width: 120px;
+				flex: 0 1 auto;
+			"
+			>{{data.{{{widget.widget_id}}}.name}}
+		</span>
+		<span v-else>{{data.{{{widget.widget_id}}}.name}} </span>
+		<span
+			v-if="data.{{{widget.widget_id}}}.type_text"
+			style="
+				margin-left: 5px;
+				font-size: 12px;
+				color: #8492a6;
+				line-height: initial;
+			"
+		>
+			{{data.{{{widget.widget_id}}}.type_text}}
+		</span>
+	</span>
+</div>
