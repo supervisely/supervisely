@@ -458,6 +458,20 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class AnnotationFromJsonFailed(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 3005
+                self.title = "Annotation deserialize error"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class AgentDocker:
         class ImageNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -516,6 +530,7 @@ ERROR_PATTERNS = {
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+        r".*Annotation\.from_json.*": ErrorHandler.SDK.AnnotationFromJsonFailed,
         r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
         r"The\ model\ has\ not\ yet\ been\ deployed.*": ErrorHandler.APP.CallUndeployedModelError,
     },
