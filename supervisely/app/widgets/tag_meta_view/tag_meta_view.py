@@ -1,9 +1,5 @@
-from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely.annotation.tag_meta import TagMeta
-
-
-from supervisely import TagValueType
 
 
 class TagMetaView(Widget):
