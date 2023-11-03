@@ -17,11 +17,7 @@
 			"
 			>{{data.{{{widget.widget_id}}}.name}}
 		</span>
-
-		<span v-if="!data.{{{widget.widget_id}}}.limit_long_names"
-			>{{data.{{{widget.widget_id}}}.name}}
-		</span>
-
+		<span v-else>{{data.{{{widget.widget_id}}}.name}} </span>
 		<span
 			v-if="data.{{{widget.widget_id}}}.type_text"
 			style="
