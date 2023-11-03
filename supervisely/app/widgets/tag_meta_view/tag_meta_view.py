@@ -11,19 +11,17 @@ class TagMetaView(Widget):
         self,
         tag_meta: TagMeta,
         show_type_text: bool = True,
-        show_label_icon: bool = False,
+        limit_long_names: bool = False,
         widget_id: str = None,
     ):
         self._tag_meta = tag_meta
-        self.show_type_text = show_type_text
-        self._show_label_icon = show_label_icon
+        self._show_type_text = show_type_text
+        self._limit_long_names = limit_long_names
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         res = self._tag_meta.to_json()
-        res["icon"] = None
-        if self._show_label_icon is True:
-            res["icon"] = "zmdi zmdi-label"
+        res["limit_long_names"] = self._limit_long_names
         res["type_text"] = None
         if self._show_type_text is True:
             res["type_text"] = self._tag_meta.value_type.upper()
