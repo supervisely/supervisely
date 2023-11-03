@@ -278,6 +278,7 @@ class Application(metaclass=Singleton):
         static_dir: str = None,
         hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
         session_info_extra_content: "Widget" = None,
+        session_info_solid: bool = False,
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
@@ -310,6 +311,8 @@ class Application(metaclass=Singleton):
             JinjaWidgets().context["__no_html_mode__"] = False
         if session_info_extra_content is not None:
             session_info_extra_content_layout = Identity(session_info_extra_content, widget_id="__app_session_info_extra_content__")
+        if session_info_solid:
+            JinjaWidgets().context["__app_session_info_solid__"] = True
 
         if is_production():
             logger.info("Application is running on Supervisely Platform in production mode")
