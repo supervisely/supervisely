@@ -12,7 +12,6 @@ from fastapi import (
     WebSocketDisconnect,
     Depends,
     HTTPException,
-    status,
 )
 from functools import wraps
 
@@ -20,8 +19,6 @@ from functools import wraps
 
 import jinja2
 import arel
-import traceback
-from fastapi.encoders import jsonable_encoder
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -161,7 +158,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
-    def server_exception_handler(request, exc):
+    async def server_exception_handler(request, exc):
         from supervisely.io.exception_handlers import handle_exception
 
         handled_exception = handle_exception(exc)
@@ -175,35 +172,10 @@ def handle_server_errors(app: FastAPI):
             details["message"] = exc.description
             details["status"] = exc.status
 
-        headers = getattr(exc, "headers", None)
-        stack = traceback.format_stack()
-        details["fields"] = {
-            "stack": jsonable_encoder(stack),
-        }
-        details["level"] = "error"
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": details},
-            headers=headers,
+        return await http_exception_handler(
+            request,
+            HTTPException(status_code=500, detail=details),
         )
-    # async def server_exception_handler(request, exc):
-    #     from supervisely.io.exception_handlers import handle_exception
-
-    #     handled_exception = handle_exception(exc)
-
-    #     if handled_exception is not None:
-    #         details = {"title": handled_exception.title, "message": handled_exception.message}
-    #     else:
-    #         details = {"title": "Oops! Something went wrong", "message": repr(exc)}
-    #     if isinstance(exc, DialogWindowBase):
-    #         details["title"] = exc.title
-    #         details["message"] = exc.description
-    #         details["status"] = exc.status
-
-    #     return await http_exception_handler(
-    #         request,
-    #         HTTPException(status_code=500, detail=details),
-    #     )
 
 
 def _init(
