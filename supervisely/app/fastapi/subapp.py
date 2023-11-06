@@ -177,11 +177,11 @@ async def process_server_error(request, exc: Exception):
         stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
     details["fields"] = {"stack": stack, "main_name": "main"}
     details["level"] = "error"
-    # logger.error(
-    #     details["title"],
-    #     exc_info=True,
-    #     extra={"main_name": "main", "exc_str": details["message"]},
-    # )
+    logger.error(
+        details["title"],
+        exc_info=True,
+        extra={"main_name": "main", "exc_str": details["message"]},
+    )
     return await http_exception_handler(
         request,
         HTTPException(status_code=500, detail=details),
