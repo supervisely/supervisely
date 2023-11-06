@@ -108,3 +108,4 @@ from supervisely.app.widgets.image_annotation_preview.image_annotation_preview i
 )
 from supervisely.app.widgets.tag_meta_view.tag_meta_view import TagMetaView
 from supervisely.app.widgets.tag_metas_list.tag_metas_list import TagMetasList
+from supervisely.app.widgets.dataset_ninja_table.dataset_ninja_table import DatasetNinjaTable
