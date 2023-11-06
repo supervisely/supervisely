@@ -157,7 +157,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-def process_server_errors_details(exc: Exception):
+async def process_server_error(request, exc: Exception):
     from supervisely.io.exception_handlers import handle_exception
 
     handled_exception = handle_exception(exc)
@@ -185,18 +185,16 @@ def process_server_errors_details(exc: Exception):
         exc_info=True,
         extra={"main_name": "main", "exc_str": details["message"]},
     )
-    return details
+    return await http_exception_handler(
+        request,
+        HTTPException(status_code=500, detail=details),
+    )
 
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
-        details = process_server_errors_details(exc)
-
-        return await http_exception_handler(
-            request,
-            HTTPException(status_code=500, detail=details),
-        )
+        return await process_server_error(exc)
 
 
 def _init(
@@ -261,8 +259,7 @@ def _init(
         try:
             response = await call_next(request)
         except Exception as exc:
-            details = process_server_errors_details(exc)
-            response = JSONResponse({"detail": details}, status_code=500)
+            response = await process_server_error(request, exc)
         return response
 
     if headless is False:
