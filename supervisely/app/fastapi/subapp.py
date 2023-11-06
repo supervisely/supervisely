@@ -157,7 +157,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-def process_server_error(request, exc: Exception):
+async def process_server_error(request, exc: Exception):
     from supervisely.io.exception_handlers import handle_exception
 
     handled_exception = handle_exception(exc)
@@ -177,23 +177,22 @@ def process_server_error(request, exc: Exception):
         stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
     details["fields"] = {"stack": stack, "main_name": "main"}
     details["level"] = "error"
-    # logger.error(
-    #     details["title"],
-    #     exc_info=True,
-    #     extra={"main_name": "main", "exc_str": details["message"]},
-    # )
-    return JSONResponse({"detail": details}, status_code=500)
+    logger.error(
+        details["title"],
+        exc_info=True,
+        extra={"main_name": "main", "exc_str": details["message"]},
+    )
 
-    # return await http_exception_handler(
-    #     request,
-    #     HTTPException(status_code=500, detail=details),
-    # )
+    return await http_exception_handler(
+        request,
+        HTTPException(status_code=500, detail=details),
+    )
 
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
-    def server_exception_handler(request, exc):
-        return process_server_error(request, exc)
+    async def server_exception_handler(request, exc):
+        return await process_server_error(request, exc)
 
 
 def _init(
@@ -258,7 +257,7 @@ def _init(
         try:
             response = await call_next(request)
         except Exception as exc:
-            response = process_server_error(request, exc)
+            response = await process_server_error(request, exc)
         return response
 
     if headless is False:
