@@ -320,6 +320,7 @@ class AppService:
                         self.show_modal_window(
                             exception_handler.get_message_for_modal_window(),
                             level="error",
+                            log_message=False,
                         )
 
                 else:
@@ -336,19 +337,20 @@ class AppService:
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
-                self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
+                if exception_handler:
+                    message = exception_handler.get_message_for_modal_window()
+                else:
+                    message = (
+                        "Oops! Something went wrong, please try again or contact tech support. "
+                        f"Find more info in the app logs. {repr(e)}"
+                    )
+                self.logger.error(message, exc_info=True, extra={"exc_str": str(e)})
                 if self.has_ui:
-                    if exception_handler:
-                        message = exception_handler.get_message_for_modal_window()
-                    else:
-                        message = (
-                            "Oops! Something went wrong, please try again or contact tech support. "
-                            "Find more info in the app logs."
-                        )
 
                     self.show_modal_window(
                         message,
                         level="error",
+                        log_message=False,
                     )
 
     def consume_sync(self):
@@ -482,17 +484,18 @@ class AppService:
             addit_headers={"x-request-id": request_id},
         )
 
-    def show_modal_window(self, message, level="info"):
+    def show_modal_window(self, message, level="info", log_message=True):
         all_levels = ["warning", "info", "error"]
         if level not in all_levels:
             raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
 
-        if level == "info":
-            self.logger.info(message)
-        elif level == "warning":
-            self.logger.warning(message)
-        elif level == "error":
-            self.logger.error(message, exc_info=True)
+        if log_message is True:
+            if level == "info":
+                self.logger.info(message)
+            elif level == "warning":
+                self.logger.warning(message)
+            elif level == "error":
+                self.logger.error(message, exc_info=True)
 
         self.public_api.app.set_field(
             self.task_id, "data.notifyDialog", {"type": level, "message": message}
@@ -564,7 +567,7 @@ class AppService:
                         )
 
                     self.logger.error(
-                        f"please, contact support: task_id={self.task_id}, {repr(e)}",
+                        message,
                         exc_info=True,
                         extra={
                             "exc_str": str(e),
@@ -573,6 +576,7 @@ class AppService:
                     self.show_modal_window(
                         message,
                         level="error",
+                        log_message=False,
                     )
 
             return wrapper
