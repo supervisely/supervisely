@@ -180,18 +180,11 @@ def process_server_errors_details(exc: Exception):
         "main_name": "main",
     }
     details["level"] = "error"
-    if handled_exception is not None:
-        handled_exception.log_error_for_agent("main")
-    else:
-        logger.error(
-            details["title"],
-            exc_info=True,
-            extra={
-                "main_name": "main",
-                "exc_str": details["message"],
-                "event_type": EventType.TASK_CRASHED,
-            },
-        )
+    logger.error(
+        details["title"],
+        exc_info=True,
+        extra={"main_name": "main", "exc_str": details["message"]},
+    )
     return details
 
 
