@@ -29,7 +29,7 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
-from supervisely.sly_logger import logger, EventType
+from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
 from async_asgi_testclient import TestClient
@@ -157,7 +157,7 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-async def process_server_error(request, exc: Exception):
+def process_server_error(request, exc: Exception):
     from supervisely.io.exception_handlers import handle_exception
 
     handled_exception = handle_exception(exc)
@@ -177,21 +177,23 @@ async def process_server_error(request, exc: Exception):
         stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
     details["fields"] = {"stack": stack, "main_name": "main"}
     details["level"] = "error"
-    logger.error(
-        details["title"],
-        exc_info=True,
-        extra={"main_name": "main", "exc_str": details["message"]},
-    )
-    return await http_exception_handler(
-        request,
-        HTTPException(status_code=500, detail=details),
-    )
+    # logger.error(
+    #     details["title"],
+    #     exc_info=True,
+    #     extra={"main_name": "main", "exc_str": details["message"]},
+    # )
+    return JSONResponse({"detail": details}, status_code=500)
+
+    # return await http_exception_handler(
+    #     request,
+    #     HTTPException(status_code=500, detail=details),
+    # )
 
 
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
-    async def server_exception_handler(request, exc):
-        return await process_server_error(exc)
+    def server_exception_handler(request, exc):
+        return process_server_error(request, exc)
 
 
 def _init(
@@ -256,7 +258,7 @@ def _init(
         try:
             response = await call_next(request)
         except Exception as exc:
-            response = await process_server_error(request, exc)
+            response = process_server_error(request, exc)
         return response
 
     if headless is False:
