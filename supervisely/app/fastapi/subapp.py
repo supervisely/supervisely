@@ -172,7 +172,7 @@ def process_server_errors_details(exc: Exception):
         details["status"] = exc.status
 
     if handled_exception is not None:
-        stack = handled_exception.stack
+        stack = traceback.format_list(handled_exception.stack)
     else:
         stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
     details["fields"] = {
