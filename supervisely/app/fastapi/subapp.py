@@ -3,6 +3,7 @@ import signal
 import psutil
 import sys
 from pathlib import Path
+import traceback
 
 from fastapi import (
     FastAPI,
@@ -28,7 +29,7 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
-from supervisely.sly_logger import logger
+from supervisely.sly_logger import logger, EventType
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
 from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
 from async_asgi_testclient import TestClient
@@ -156,21 +157,48 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
+def process_server_errors_details(exc: Exception):
+    from supervisely.io.exception_handlers import handle_exception
+
+    handled_exception = handle_exception(exc)
+
+    if handled_exception is not None:
+        details = {"title": handled_exception.title, "message": handled_exception.message}
+    else:
+        details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+    if isinstance(exc, DialogWindowBase):
+        details["title"] = exc.title
+        details["message"] = exc.description
+        details["status"] = exc.status
+
+    if handled_exception is not None:
+        stack = handled_exception.stack
+    else:
+        stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
+    details["fields"] = {
+        "stack": stack,
+        "main_name": "main",
+    }
+    details["level"] = "error"
+    if handled_exception is not None:
+        handled_exception.log_error_for_agent("main")
+    else:
+        logger.error(
+            details["title"],
+            exc_info=True,
+            extra={
+                "main_name": "main",
+                "exc_str": details["message"],
+                "event_type": EventType.TASK_CRASHED,
+            },
+        )
+    return details
+
+
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
-        from supervisely.io.exception_handlers import handle_exception
-
-        handled_exception = handle_exception(exc)
-
-        if handled_exception is not None:
-            details = {"title": handled_exception.title, "message": handled_exception.message}
-        else:
-            details = {"title": "Oops! Something went wrong", "message": repr(exc)}
-        if isinstance(exc, DialogWindowBase):
-            details["title"] = exc.title
-            details["message"] = exc.description
-            details["status"] = exc.status
+        details = process_server_errors_details(exc)
 
         return await http_exception_handler(
             request,
@@ -237,7 +265,11 @@ def _init(
             else:
                 request.state.api = None
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            details = process_server_errors_details(exc)
+            response = JSONResponse({"detail": details}, status_code=500)
         return response
 
     if headless is False:
