@@ -19,7 +19,7 @@ class LabeledImage(GridGallery):
         border_width: int = 3,
         view_height: Optional[int] = None,
         widget_id: str = None,
-        empty_message: str = "Gallery is empty",
+        empty_message: str = "No image was provided",
     ):
         self._image_id = None
         super().__init__(
