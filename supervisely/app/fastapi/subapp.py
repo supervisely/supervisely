@@ -3,6 +3,7 @@ import signal
 import psutil
 import sys
 from pathlib import Path
+from threading import Event
 
 from fastapi import (
     FastAPI,
@@ -30,13 +31,18 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
+from supervisely._utils import (
+    is_production,
+    is_development,
+    is_docker,
+    is_debug_with_sly_net,
+)
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 import supervisely.io.env as sly_env
 
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -112,14 +118,27 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
 
         import supervisely
 
-        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
+        app.mount(
+            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
+        )
 
     return app
 
 
-def shutdown(process_id=None):
+def shutdown(
+    process_id=None,
+    before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
+):
+    logger.info(f"Shutting down [pid argument = {process_id}]...")
+
+    if before_shutdown_callbacks is not None:
+        logger.info("Found tasks to run before shutdown.")
+        for func in before_shutdown_callbacks:
+            logger.debug(f"Call {func.__name__}")
+            func()
     try:
-        logger.info(f"Shutting down [pid argument = {process_id}]...")
+        # logger.info(f"Shutting down [pid argument = {process_id}]...")
+
         if process_id is None:
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
@@ -164,7 +183,10 @@ def handle_server_errors(app: FastAPI):
         handled_exception = handle_exception(exc)
 
         if handled_exception is not None:
-            details = {"title": handled_exception.title, "message": handled_exception.message}
+            details = {
+                "title": handled_exception.title,
+                "message": handled_exception.message,
+            }
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):
@@ -196,7 +218,9 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
+        Jinja2Templates(
+            directory=[str(Path(__file__).parent.absolute()), templates_dir]
+        )
         if hot_reload:
             enable_hot_reload_on_debug(app)
 
@@ -231,8 +255,13 @@ def _init(
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")
-            if request.state.server_address is not None and request.state.api_token is not None:
-                request.state.api = Api(request.state.server_address, request.state.api_token)
+            if (
+                request.state.server_address is not None
+                and request.state.api_token is not None
+            ):
+                request.state.api = Api(
+                    request.state.server_address, request.state.api_token
+                )
             else:
                 request.state.api = None
 
@@ -244,7 +273,9 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            return Jinja2Templates().TemplateResponse(
+                "index.html", {"request": request}
+            )
 
         @app.on_event("shutdown")
         def shutdown():
@@ -257,7 +288,9 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
+            app.mount(
+                "/static", CustomStaticFiles(directory=static_dir), name="static_files"
+            )
 
     return app
 
@@ -285,6 +318,13 @@ class Application(metaclass=Singleton):
 
         self._static_dir = static_dir
 
+        self._stop_event = Event()
+
+        def set_stop_event():
+            self._stop_event.set()
+
+        self._before_shutdown_callbacks = [set_stop_event]
+
         headless = False
         if layout is None and templates_dir is None:
             templates_dir: str = "templates"  # for back compatibility
@@ -303,16 +343,22 @@ class Application(metaclass=Singleton):
 
             main_layout = Identity(layout, widget_id="__app_main_layout__")
             logger.info(
-                "Application is running in no-html mode", extra={"templates_dir": templates_dir}
+                "Application is running in no-html mode",
+                extra={"templates_dir": templates_dir},
             )
         else:
             JinjaWidgets().auto_widget_id = False
             JinjaWidgets().context["__no_html_mode__"] = False
         if session_info_extra_content is not None:
-            session_info_extra_content_layout = Identity(session_info_extra_content, widget_id="__app_session_info_extra_content__")
+            session_info_extra_content_layout = Identity(
+                session_info_extra_content,
+                widget_id="__app_session_info_extra_content__",
+            )
 
         if is_production():
-            logger.info("Application is running on Supervisely Platform in production mode")
+            logger.info(
+                "Application is running on Supervisely Platform in production mode"
+            )
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()
@@ -361,11 +407,17 @@ class Application(metaclass=Singleton):
     def stop(self):
         self.shutdown()
 
+    def app_is_stopped(self):
+        return self._stop_event.is_set()
+
     def reload_page(self):
         run_sync(self.hot_reload.notify.notify())
 
     def get_static_dir(self):
         return self._static_dir
+
+    def call_before_shutdown(self, func: Callable[[], None]):
+        self._before_shutdown_callbacks(func)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
@@ -376,7 +428,9 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
     :type default: Optional[str], optional
     """
     if sly_env.autostart() is True:
-        logger.info("`autostart` flag already defined in env. Skip loading it from state.")
+        logger.info(
+            "`autostart` flag already defined in env. Skip loading it from state."
+        )
         return
 
     api = Api()
