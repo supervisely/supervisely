@@ -164,7 +164,7 @@ Vue.component('dataset-ninja-table', {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in data" class="border-b border-gray-200 last:border-0 group" :class="{ 'cursor-pointer': settings.isRowClickable }" @click="settings.isRowClickable && emit('row-click', { idx: row.idx, row: row.items, columnsSettings })">
+            <tr v-for="row in data" class="border-b border-gray-200 last:border-0 group" :class="{ 'cursor-pointer': settings.isRowClickable }" @click="settings.isRowClickable && $emit('row-click', { idx: row.idx, row: row.items })">
               <td
                 v-for="(col,idx) in row.items.slice(0, columnNumberLimit)"
                 class="px-2 md:px-3 py-2 bg-white first:pl-3 last:pr-3 md:first:pl-6 md:last:pr-6 group-hover:bg-slate-50 group"

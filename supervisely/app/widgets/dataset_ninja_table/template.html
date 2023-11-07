@@ -8,13 +8,19 @@
   :total="data.{{{widget.widget_id}}}.total"
   :page-size="data.{{{widget.widget_id}}}.pageSize"
   :options="data.{{{widget.widget_id}}}.options"
-  :columns="data.{{{widget.widget_id}}}.columns"
+  :columns.sync="data.{{{widget.widget_id}}}.columns"
   :columns-options="data.{{{widget.widget_id}}}.columnsOptions"
   :project-meta="data.{{{widget.widget_id}}}.projectMeta"
   :sort.sync="data.{{{widget.widget_id}}}.sort"
-  :search.sync="data.{{{widget.widget_id}}}.search"
-  :data="data.{{{widget.widget_id}}}.data"
-  @filters-changed="data.{{{widget.widget_id}}}.updateData"
+  :search.sync="state.{{{widget.widget_id}}}.search"
+  :data.sync="data.{{{widget.widget_id}}}.data"
+  {%
+  if
+  widget._click_handled
+  %}
+  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')"
+  {%
+  endif
+  %}
+  @filters-changed="post('/{{{widget.widget_id}}}/filter_changed_cb')"
 />
-
-<!-- @row-click="state.{{{widget.widget_id}}}.SelectRow = $event" -->
