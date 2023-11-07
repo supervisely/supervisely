@@ -164,8 +164,10 @@ async def process_server_error(request, exc: Exception):
 
     if handled_exception is not None:
         details = {"title": handled_exception.title, "message": handled_exception.message}
+        log_message = handled_exception.get_message_for_modal_window()
     else:
         details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+        log_message = repr(exc)
     if isinstance(exc, DialogWindowBase):
         details["title"] = exc.title
         details["message"] = exc.description
@@ -178,7 +180,7 @@ async def process_server_error(request, exc: Exception):
     details["fields"] = {"stack": stack, "main_name": "main"}
     details["level"] = "error"
     logger.error(
-        details["title"],
+        log_message,
         exc_info=True,
         extra={"main_name": "main", "exc_str": details["message"]},
     )
