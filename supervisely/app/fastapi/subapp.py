@@ -402,7 +402,7 @@ class Application(metaclass=Singleton):
         await self._fastapi.__call__(scope, receive, send)
 
     def shutdown(self):
-        shutdown(self._process_id)
+        shutdown(self._process_id, self._before_shutdown_callbacks)
 
     def stop(self):
         self.shutdown()
