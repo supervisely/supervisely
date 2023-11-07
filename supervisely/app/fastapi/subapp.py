@@ -136,6 +136,8 @@ def shutdown(
         for func in before_shutdown_callbacks:
             logger.debug(f"Call {func.__name__}")
             func()
+    else:
+        logger.debug("No tasks to call before shutdown")
     try:
         # logger.info(f"Shutting down [pid argument = {process_id}]...")
 
@@ -417,7 +419,7 @@ class Application(metaclass=Singleton):
         return self._static_dir
 
     def call_before_shutdown(self, func: Callable[[], None]):
-        self._before_shutdown_callbacks(func)
+        self._before_shutdown_callbacks.append(func)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
