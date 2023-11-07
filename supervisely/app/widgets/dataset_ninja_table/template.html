@@ -4,23 +4,24 @@
 />
 
 <dataset-ninja-table
-  :page.sync="data.{{{widget.widget_id}}}.page"
+  :page.sync="state.{{{widget.widget_id}}}.page"
   :total="data.{{{widget.widget_id}}}.total"
   :page-size="data.{{{widget.widget_id}}}.pageSize"
   :options="data.{{{widget.widget_id}}}.options"
-  :columns.sync="data.{{{widget.widget_id}}}.columns"
+  :columns="data.{{{widget.widget_id}}}.columns"
   :columns-options="data.{{{widget.widget_id}}}.columnsOptions"
   :project-meta="data.{{{widget.widget_id}}}.projectMeta"
-  :sort.sync="data.{{{widget.widget_id}}}.sort"
+  :sort.sync="state.{{{widget.widget_id}}}.sort"
   :search.sync="state.{{{widget.widget_id}}}.search"
-  :data.sync="data.{{{widget.widget_id}}}.data"
-  {%
+  :data="data.{{{widget.widget_id}}}.data"
+  @filters-changed="data.{{{widget.widget_id}}}.updateData; post('/{{{widget.widget_id}}}/update_data')"
+/>
+
+<!-- {%
   if
   widget._click_handled
   %}
-  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')"
+  @row-click="state.{{{widget.widget_id}}}.selectedRow; post('/{{{widget.widget_id}}}/row_clicked_cb')"
   {%
   endif
-  %}
-  @filters-changed="post('/{{{widget.widget_id}}}/filter_changed_cb')"
-/>
+  %} -->

@@ -19,6 +19,7 @@ from supervisely.sly_logger import logger
 import traceback
 from fastapi.responses import StreamingResponse, RedirectResponse
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.project.project_meta import ProjectMeta
 
 
 class PackerUnpacker:
@@ -107,9 +108,10 @@ def show_image(datapoint: sly.app.widgets.Table.ClickedDataRow):
 
 class DatasetNinjaTable(Widget):
     class Routes:
-        CELL_CLICKED = "cell_clicked_cb"
+        ROW_CLICKED = "row_clicked_cb"
         UPDATE_SORT = "update_sort_cb"
         FILTER_CHANGED = "filter_changed_cb"
+        UPDATE_DATA = "update_data"
 
     class ClickedDataRow:
         def __init__(
@@ -120,22 +122,32 @@ class DatasetNinjaTable(Widget):
             self.row = row
             self.row_index = row_index
 
+    class ClickedDataCol:
+        def __init__(
+            self,
+            colummn_index: int = None,
+        ):
+            self.Column_index = colummn_index
+
     def __init__(
         self,
-        data=None,
+        data: List[List],
         columns: Optional[List] = None,
-        fixed_cols: Optional[int] = None,
-        page_size: Optional[int] = 10,
+        table_options: Optional[Dict] = None,
+        columns_options: Optional[List[Dict]] = None,
+        widget_id: Optional[str] = None,
+        project_meta: ProjectMeta = None,
         clickable_rows: Optional[bool] = True,
         width: Optional[str] = "auto",  # "200px", or "100%"
-        sort_column_id: int = 0,
-        sort_order: Optional[Literal["asc", "desc"]] = "asc",
-        widget_id: Optional[str] = None,
-        project_meta=None,
     ):
         """
         :param data: Data of table in different formats:
-        1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
+        1. Pandas Dataframe or pd.DataFrame(
+                                            data=data,
+                                            columns=columns,
+                                            table_options=table_options,
+                                            columns_options=columns_options,
+                                            )
         2. Python dict with structure {
                                         'columns': ['col_name_1', 'col_name_2', ...],
                                         'data': [
@@ -146,51 +158,84 @@ class DatasetNinjaTable(Widget):
                                       }
         """
 
+        # fixed_cols: Optional[int] = None,
+        # page_size: Optional[int] = 10,
+        # sort_column_id: int = 0,
+        # sort_order: Optional[Literal["asc", "desc"]] = "asc",
+
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         # self._parsed_data = None
         self._data_type = None
+        self._sorted_data = None
         self._filtered_data = None
-
+        self._active_page = 1
+        self._page_size = table_options["pageSize"]
         self._click_handled = False
         self._filter_handled = False
         self._sort_handled = False
 
         self._pd_data = pd.DataFrame(data=data, columns=columns)
+        self._sliced_data = self._slice_table_data(self._pd_data, self._active_page)
+
         self._parsed_data = self._update_table_data(
             input_data=pd.DataFrame(data=data, columns=columns)
         )
 
-        self._page_size = page_size
-        self._fix_columns = fixed_cols
+        self._prepared_data = self._update_table_data(self._sliced_data)
+
+        self._fix_columns = table_options["fixColumns"]
         self._width = width
-        self._loading = True
+        self._loading = False
         self._clickable_rows = clickable_rows
-
+        self._columns_options = columns_options
         self._project_meta = project_meta
-        self._pages_total = math.ceil(len(self._parsed_data["data"]) / self._page_size)
 
-        self._sort_column_id = (
-            sort_column_id if self._validate_sort(column_id=sort_column_id) else 0
-        )
-        self._sort_order = sort_order if self._validate_sort(order=sort_order) else "asc"
-        self._filtered_data = self._update_table_data(self._pd_data)
+        self._rows_total = len(self._parsed_data["data"])
+
+        # self._sort_column_id = (
+        #     table_options["sort"]["columnIndex"]
+        #     if self._validate_sort(column_id=table_options["sort"]["columnIndex"])
+        #     else 0
+        # )
+        self._sort_column_id = 1
+        self._sort_order = "desc"
+
+        # self._sort_order = (
+        #     table_options["sort"]["order"]
+        #     if self._validate_sort(order=table_options["sort"]["order"])
+        #     else "asc"
+        # )
+
+        self._search_str = ""
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         script_path = "./sly/css/app/widgets/dataset_ninja_table/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
-        filter_changed_route_path = self.get_route_path(DatasetNinjaTable.Routes.FILTER_CHANGED)
         server = self._sly_app.get_server()
+
+        filter_changed_route_path = self.get_route_path(DatasetNinjaTable.Routes.UPDATE_DATA)
 
         @server.post(filter_changed_route_path)
         def _filter_changed():
             try:
+                StateJson().get_changes()
+                self._active_page = StateJson()[self.widget_id]["page"]
+                self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
+                self._sort_column_id = StateJson()[self.widget_id]["sort"]["column"]
                 search_value = StateJson()[self.widget_id]["search"]
-                filtered_data = self.filter_rows(search_value)
-                self._filtered_data = self._update_table_data(filtered_data)
-                DataJson()[self.widget_id]["data"] = self._filtered_data["data"]
+                self._filtered_data = self.filter_rows(search_value)
+                # self._filtered_data = self._update_table_data(filtered_data)
+                self._rows_total = len(self._filtered_data)
+                self._sorted_data = self._sort_table_data(self._filtered_data)
+                self._sliced_data = self._slice_table_data(
+                    self._sorted_data, actual_page=self._active_page
+                )
+                self._prepared_data = self._update_table_data(self._sliced_data)
+                DataJson()[self.widget_id]["data"] = self._prepared_data["data"]
+                DataJson()[self.widget_id]["total"] = self._rows_total
                 DataJson().send_changes()
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
@@ -198,24 +243,27 @@ class DatasetNinjaTable(Widget):
 
     def get_json_data(self):
         return {
-            "data": self._filtered_data["data"],
+            "data": self._prepared_data["data"],
             "columns": self._parsed_data["columns"],
-            "pageSize": self._page_size,
             "projectMeta": self._project_meta,
-            "columnsOptions": [],
-            "page": 1,
-            "total": self._pages_total,
-            "options": {"isRowClickable": self._clickable_rows},
-            "sort": {
-                "column": 1,
-                "order": self._sort_order,
+            "columnsOptions": self._columns_options,
+            "total": self._rows_total,
+            "options": {
+                "isRowClickable": self._clickable_rows,
+                "fixColumns": self._fix_columns,
             },
+            "pageSize": self._page_size,
         }
 
     def get_json_state(self):
         return {
-            "search": "",
+            "search": self._search_str,
             "selectedRow": None,
+            "page": self._active_page,
+            "sort": {
+                "column": self._sort_column_id,
+                "order": self._sort_order,
+            },
         }
 
     def _update_table_data(self, input_data):
@@ -231,6 +279,31 @@ class DatasetNinjaTable(Widget):
         else:
             data = {"columns": [], "data": [], "summaryRow": None}
             self._data_type = dict
+        return data
+
+    def _slice_table_data(
+        self,
+        input_data,
+        actual_page=1,
+    ):
+        if input_data is not None:
+            data: pd.DataFrame = copy.deepcopy(input_data)
+            end_idx = self._page_size * actual_page
+            if end_idx == self._page_size:
+                start_idx = 0
+            else:
+                start_idx = end_idx - self._page_size + 1
+            data = data.iloc[start_idx:end_idx]
+        return data
+
+    def _sort_table_data(self, input_data):
+        if input_data is not None:
+            if self._sort_order == "asc":
+                ascending = True
+            else:
+                ascending = False
+            data: pd.DataFrame = copy.deepcopy(input_data)
+            data = data.sort_values(by=data.columns[self._sort_column_id], ascending=ascending)
         return data
 
     def _get_packed_data(self, input_data, data_type):
@@ -343,7 +416,7 @@ class DatasetNinjaTable(Widget):
         }
 
     def click(self, func):
-        row_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.CELL_CLICKED)
+        row_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.ROW_CLICKED)
         # update_sorting_column_route_path = self.get_route_path(DatasetNinjaTable.Routes.UPDATE_SORT)
         server = self._sly_app.get_server()
 
@@ -374,18 +447,11 @@ class DatasetNinjaTable(Widget):
         filtered_data = self._pd_data.copy()
         if filter_value == "":
             return filtered_data
-
-        # filter data by value
-        # ...
+        else:
+            filtered_data = filtered_data[
+                filtered_data.applymap(lambda x: filter_value in str(x)).any(axis=1)
+            ]
         return filtered_data
-
-    @staticmethod
-    def get_html_text_as_button(title="preview"):
-        return f"<button>{title}</button>"
-
-    @staticmethod
-    def create_button(title) -> str:
-        return f"<button>{title}</button>"
 
     @property
     def loading(self):
