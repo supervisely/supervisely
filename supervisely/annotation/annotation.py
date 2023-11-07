@@ -398,7 +398,7 @@ class Annotation:
             ]
         except Exception as e:
             raise RuntimeError(
-                f"Failed to deserialize one of the label from JSON format annotation: {repr(e)}"
+                f"Failed to deserialize one of the label from JSON format annotation: \n {repr(e)}"
             )
 
         custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
