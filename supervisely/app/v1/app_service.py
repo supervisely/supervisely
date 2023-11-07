@@ -562,8 +562,8 @@ class AppService:
                         message = exception_handler.get_message_for_modal_window()
                     else:
                         message = (
-                            f"Oops! Something went wrong, please try again or contact tech support."
-                            f" Find more info in the app logs. Error: {repr(e)}",
+                            f"Oops! Something went wrong, please try again or contact tech support. "
+                            f"Find more info in the app logs. Error: {repr(e)}"
                         )
 
                     self.logger.error(
