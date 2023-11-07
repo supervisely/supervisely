@@ -48,7 +48,12 @@ if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
+def create(
+    process_id=None,
+    headless=False,
+    auto_widget_id=False,
+    before_shutdown_callbacks=None,
+) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     JinjaWidgets().auto_widget_id = auto_widget_id
@@ -59,7 +64,7 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
 
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
-        shutdown(process_id)
+        shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
 
@@ -208,6 +213,7 @@ def _init(
     process_id=None,
     static_dir=None,
     hot_reload=False,
+    before_shutdown_callbacks=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -230,7 +236,15 @@ def _init(
     DataJson()["slyAppDialogTitle"] = ""
     DataJson()["slyAppDialogMessage"] = ""
 
-    app.mount("/sly", create(process_id, headless, auto_widget_id=True))
+    app.mount(
+        "/sly",
+        create(
+            process_id,
+            headless,
+            auto_widget_id=True,
+            before_shutdown_callbacks=before_shutdown_callbacks,
+        ),
+    )
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -372,6 +386,7 @@ class Application(metaclass=Singleton):
             process_id=self._process_id,
             static_dir=static_dir,
             hot_reload=hot_reload,
+            before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
         self.test_client = TestClient(self._fastapi)
 
