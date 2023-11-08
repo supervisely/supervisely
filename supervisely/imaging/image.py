@@ -11,7 +11,7 @@ import numpy as np
 from enum import Enum
 import nrrd
 
-from supervisely.io.fs import ensure_base_path, get_file_ext, silent_remove
+from supervisely.io.fs import ensure_base_path, get_file_ext, silent_remove, get_file_name
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.imaging.font import get_font
@@ -165,7 +165,7 @@ def validate_format(path: str) -> None:
     """
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        data, header = nrrd.read(path, index_order='C')
+        data, header = nrrd.read(path, index_order="C")
         return
     try:
         pil_img = PILImage.open(path)
@@ -207,7 +207,7 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
     """
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        data, header = nrrd.read(path, index_order='C')
+        data, header = nrrd.read(path, index_order="C")
         return data
 
     validate_format(path)
@@ -255,7 +255,7 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
         header = nrrd.read_header(file_like)
-        data = nrrd.read_data(header, file_like, index_order='C')
+        data = nrrd.read_data(header, file_like, index_order="C")
         return data
 
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
@@ -272,15 +272,11 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         return img
     else:
-        img = cv2.imdecode(
-            image_np_arr, cv2.IMREAD_COLOR
-        )  # cv2.imdecode returns BGR always
+        img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def write(
-    path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = True
-) -> None:
+def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = True) -> None:
     """
     Saves the image to the specified file. It create directory from path if the directory for this path does not exist.
 
@@ -306,7 +302,7 @@ def write(
 
     ext = get_file_ext(path)
     if ext == ".nrrd":
-        return nrrd.write(path, img, index_order='C')
+        return nrrd.write(path, img, index_order="C")
 
     res_img = img.copy()
     if len(img.shape) == 2:
@@ -373,9 +369,7 @@ def draw_text_sequence(
     col_offset = 0
     for text in texts:
         position = anchor_point[0], anchor_point[1] + col_offset
-        _, text_width = draw_text(
-            bitmap, text, position, corner_snap, font, fill_background
-        )
+        _, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background)
         col_offset += text_width + col_space
 
 
@@ -499,7 +493,7 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
     if ext == ".nrrd":
         nrrd_bytes = None
         _filename = f"./sly-nrrd-data-bytes-{rand_str(10)}{ext}"
-        nrrd.write(_filename, img, index_order='C')
+        nrrd.write(_filename, img, index_order="C")
         with open(_filename, "rb") as nrrd_file:
             nrrd_bytes = nrrd_file.read()
         silent_remove(_filename)
@@ -650,9 +644,7 @@ def restore_proportional_size(
     :rtype: :class:`Tuple[int, int]`
     """
     if out_size is not None and (frow is not None or fcol is not None) and f is None:
-        raise ValueError(
-            "Must be specified output size or scale factors not both of them."
-        )
+        raise ValueError("Must be specified output size or scale factors not both of them.")
 
     if out_size is not None:
         if out_size[0] == KEEP_ASPECT_RATIO and out_size[1] == KEEP_ASPECT_RATIO:
@@ -664,14 +656,10 @@ def restore_proportional_size(
             raise ValueError("Size dimensions must be greater than 0.")
 
         result_row = (
-            out_size[0]
-            if out_size[0] > 0
-            else max(1, round(out_size[1] / in_size[1] * in_size[0]))
+            out_size[0] if out_size[0] > 0 else max(1, round(out_size[1] / in_size[1] * in_size[0]))
         )
         result_col = (
-            out_size[1]
-            if out_size[1] > 0
-            else max(1, round(out_size[0] / in_size[0] * in_size[1]))
+            out_size[1] if out_size[1] > 0 else max(1, round(out_size[0] / in_size[0] * in_size[1]))
         )
     else:
         if f is not None:
@@ -726,9 +714,7 @@ def resize(
 
                    After
     """
-    result_height, result_width = restore_proportional_size(
-        img.shape[:2], out_size, frow, fcol
-    )
+    result_height, result_width = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     return cv2.resize(img, (result_width, result_height), interpolation=cv2.INTER_CUBIC)
 
 
@@ -776,9 +762,7 @@ def resize_inter_nearest(
     resize_kv_args = dict(order=0, preserve_range=True, mode="constant")
     if parse_version(skimage.__version__) >= parse_version("0.14.0"):
         resize_kv_args["anti_aliasing"] = False
-    return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(
-        img.dtype
-    )
+    return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(img.dtype)
 
 
 def scale(img: np.ndarray, factor: float) -> np.ndarray:
@@ -944,14 +928,10 @@ def _check_contrast_brightness_inputs(min_value, max_value):
     if min_value < 0:
         raise ValueError("Minimum value must be greater than or equal to 0.")
     if min_value > max_value:
-        raise ValueError(
-            "Maximum value must be greater than or equal to minimum value."
-        )
+        raise ValueError("Maximum value must be greater than or equal to minimum value.")
 
 
-def random_contrast(
-    image: np.ndarray, min_factor: float, max_factor: float
-) -> np.ndarray:
+def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
     Randomly changes contrast of the input image.
 
@@ -991,9 +971,7 @@ def random_contrast(
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_brightness(
-    image: np.ndarray, min_factor: float, max_factor: float
-) -> np.ndarray:
+def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
     Randomly changes brightness of the input image.
 
@@ -1068,9 +1046,7 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def random_color_scale(
-    image: np.ndarray, min_factor: float, max_factor: float
-) -> np.ndarray:
+def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) -> np.ndarray:
     """
     Changes image colors by randomly scaling each of RGB components. The scaling factors are sampled uniformly from the given range.
 
@@ -1102,9 +1078,7 @@ def random_color_scale(
                    After
     """
     image_float = image.astype(np.float64)
-    scales = np.random.uniform(
-        low=min_factor, high=max_factor, size=(1, 1, image.shape[2])
-    )
+    scales = np.random.uniform(low=min_factor, high=max_factor, size=(1, 1, image.shape[2]))
     res_image = image_float * scales
     return np.clip(res_image, 0, 255).astype(np.uint8)
 
@@ -1308,3 +1282,47 @@ def get_labeling_tool_url(team_id, workspace_id, project_id, dataset_id, image_i
 
 def get_labeling_tool_link(url, name="open in labeling tool"):
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
+
+
+def get_image_channels(
+    image_path: str, save_directory: Optional[str] = None
+) -> Union[List[str], List[np.ndarray]]:
+    """Splits image into channels. If save directory is provided, saves each channel as separate image
+    and returns list of paths to saved images. Otherwise, returns list of numpy arrays.
+
+    :param image_path: path to image
+    :type image_path: str
+    :param save_directory: path to directory where channels will be saved
+    :type save_directory: str, optional
+    :return: list of paths to saved images or list of numpy arrays
+    :rtype: Union[List[str], List[np.ndarray]]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        image_path = "/path/to/image.jpg"
+        save_directory = "/path/to/save/directory"
+
+        # To get numpy arrays:
+        channel_nps = sly.image.get_image_channels(image_path)
+
+        # To save channels as separate images:
+        channel_save_paths = sly.image.get_image_channels(image_path, save_directory)
+    """
+    image_np = read(image_path)
+    channels = cv2.split(image_np)
+
+    if save_directory is None:
+        return channels
+
+    image_name = get_file_name(image_path)
+    image_ext = get_file_ext(image_path)
+    save_paths = []
+    for i, channel in enumerate(channels):
+        save_path = os.path.join(save_directory, f"{image_name}_{i}{image_ext}")
+        write(save_path, channel)
+        save_paths.append(save_path)
+
+    return save_paths
