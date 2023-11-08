@@ -2,6 +2,8 @@ import os
 import signal
 import psutil
 import sys
+from asyncio.exceptions import CancelledError
+from contextlib import suppress
 from pathlib import Path
 from threading import Event, Thread
 from time import sleep
@@ -135,9 +137,6 @@ def shutdown(
     process_id=None,
     before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
 ):
-    from supervisely.app.content import ContentOrigin
-
-    ContentOrigin().stop()
     logger.info(f"Shutting down [pid argument = {process_id}]...")
 
     if before_shutdown_callbacks is not None:
@@ -147,20 +146,22 @@ def shutdown(
             func()
     else:
         logger.debug("No tasks to call before shutdown")
-    try:
-        # logger.info(f"Shutting down [pid argument = {process_id}]...")
+    
+    with suppress(CancelledError):
+        try:
+            # logger.info(f"Shutting down [pid argument = {process_id}]...")
 
-        if process_id is None:
-            # process_id = psutil.Process(os.getpid()).ppid()
-            process_id = os.getpid()
-        current_process = psutil.Process(process_id)
-        if os.name == "nt":
-            # for windows
-            current_process.send_signal(signal.CTRL_C_EVENT)  # emit ctrl + c
-        else:
-            current_process.send_signal(signal.SIGINT)  # emit ctrl + c
-    except KeyboardInterrupt:
-        logger.info("Application has been shut down successfully")
+            if process_id is None:
+                # process_id = psutil.Process(os.getpid()).ppid()
+                process_id = os.getpid()
+            current_process = psutil.Process(process_id)
+            if os.name == "nt":
+                # for windows
+                current_process.send_signal(signal.CTRL_C_EVENT)  # emit ctrl + c
+            else:
+                current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+        except KeyboardInterrupt:
+            logger.info("Application has been shut down successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
