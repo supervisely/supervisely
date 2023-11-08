@@ -952,7 +952,12 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_path(
-        self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        path: str,
+        meta: Optional[Dict] = None,
+        split_by_channels: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -965,6 +970,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param split_by_channels: If True, then upload each channel of image as separate image.
+        :type split_by_channels: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -980,7 +987,9 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
         """
         metas = None if meta is None else [meta]
-        return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
+        return self.upload_paths(
+            dataset_id, [name], [path], metas=metas, split_by_channels=split_by_channels
+        )[0]
 
     def upload_paths(
         self,
@@ -989,6 +998,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
+        split_by_channels: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1003,6 +1013,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param split_by_channels: If True, then upload each channel of image as separate image.
+        :type split_by_channels: bool, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1019,6 +1031,16 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_path(dataset_id, names=img_names, paths=img_paths)
         """
+        if split_by_channels:
+            channel_names, channel_nps = [], []
+            for name, path in zip(names, paths):
+                image_nps = sly_image.get_image_channels(path)
+                image_name = get_file_name(path)
+                image_ext = get_file_ext(path)
+                for idx, image_np in enumerate(image_nps):
+                    channel_names.append(f"{image_name}_{idx}{image_ext}")
+                    channel_nps.append(image_np)
+            return self.upload_nps(dataset_id, channel_names, channel_nps, progress_cb, metas)
 
         def path_to_bytes_stream(path):
             return open(path, "rb")
