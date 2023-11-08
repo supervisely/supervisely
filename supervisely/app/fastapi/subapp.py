@@ -3,6 +3,7 @@ import signal
 import psutil
 import sys
 from pathlib import Path
+import traceback
 
 from fastapi import (
     FastAPI,
@@ -156,25 +157,38 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
+async def process_server_error(request, exc: Exception):
+    from supervisely.io.exception_handlers import handle_exception
+
+    handled_exception = handle_exception(exc)
+
+    if handled_exception is not None:
+        details = {"title": handled_exception.title, "message": handled_exception.message}
+        log_message = handled_exception.get_message_for_modal_window()
+    else:
+        details = {"title": "Oops! Something went wrong", "message": repr(exc)}
+        log_message = repr(exc)
+    if isinstance(exc, DialogWindowBase):
+        details["title"] = exc.title
+        details["message"] = exc.description
+        details["status"] = exc.status
+
+    logger.error(
+        log_message,
+        exc_info=True,
+        extra={"main_name": "main", "exc_str": details["message"]},
+    )
+
+    return await http_exception_handler(
+        request,
+        HTTPException(status_code=500, detail=details),
+    )
+
+
 def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
-        from supervisely.io.exception_handlers import handle_exception
-
-        handled_exception = handle_exception(exc)
-
-        if handled_exception is not None:
-            details = {"title": handled_exception.title, "message": handled_exception.message}
-        else:
-            details = {"title": "Oops! Something went wrong", "message": repr(exc)}
-        if isinstance(exc, DialogWindowBase):
-            details["title"] = exc.title
-            details["message"] = exc.description
-            details["status"] = exc.status
-        return await http_exception_handler(
-            request,
-            HTTPException(status_code=500, detail=details),
-        )
+        return await process_server_error(request, exc)
 
 
 def _init(
@@ -236,7 +250,10 @@ def _init(
             else:
                 request.state.api = None
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            response = await process_server_error(request, exc)
         return response
 
     if headless is False:
