@@ -895,3 +895,67 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             {ApiField.TASK_ID: task_id, ApiField.PAYLOAD: payload},
         )
         return resp.json()
+
+    def set_output_error(
+        self,
+        task_id: int,
+        title: str,
+        description: Optional[str] = None,
+        show_logs: Optional[bool] = True,
+    ) -> Dict:
+        """
+        Set custom error message to the task output.
+
+        :param task_id: Application task ID.
+        :type task_id: int
+        :param title: Error message to be displayed in the task output.
+        :type title: str
+        :param description: Description to be displayed in the task output.
+        :type description: Optional[str]
+        :param show_logs: If True, the link to the task logs will be displayed in the task output.
+        :type show_logs: Optional[bool], default True
+        :return: Response JSON.
+        :rtype: Dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            task_id = 12345
+            title = "Something went wrong"
+            description = "Please check the task logs"
+            show_logs = True
+            api.task.set_output_error(task_id, title, description, show_logs)
+        """
+
+        output = {
+            ApiField.GENERAL: {
+                "icon": {
+                    "className": "zmdi zmdi-alert-octagon",
+                    "color": "#ff83a6",
+                    "backgroundColor": "#ffeae9",
+                },
+                "title": title,
+                "showLogs": show_logs,
+                "isError": True,
+            }
+        }
+
+        if description is not None:
+            output[ApiField.GENERAL]["description"] = description
+
+        resp = self._api.post(
+            "tasks.output.set",
+            {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output},
+        )
+        return resp.json()
