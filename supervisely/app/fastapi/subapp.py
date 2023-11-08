@@ -173,12 +173,6 @@ async def process_server_error(request, exc: Exception):
         details["message"] = exc.description
         details["status"] = exc.status
 
-    if handled_exception is not None:
-        stack = traceback.format_list(handled_exception.stack)
-    else:
-        stack = traceback.format_list(traceback.extract_tb(exc.__traceback__))
-    details["fields"] = {"stack": stack, "main_name": "main"}
-    details["level"] = "error"
     logger.error(
         log_message,
         exc_info=True,
