@@ -3,7 +3,7 @@ import signal
 import psutil
 import sys
 from pathlib import Path
-from threading import Event
+from threading import Event, Thread
 
 from fastapi import (
     FastAPI,
@@ -42,7 +42,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 import supervisely.io.env as sly_env
 
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -435,6 +435,32 @@ class Application(metaclass=Singleton):
 
     def call_before_shutdown(self, func: Callable[[], None]):
         self._before_shutdown_callbacks.append(func)
+
+    def abandoned_if_app_stopped(
+        self,
+        func: Callable,
+        func_kwargs: Dict[str, Any],
+        callback: Optional[Callable[[], None]] = None,
+    ):
+        """Runs a function that stops while shutdown.
+
+        :param func: function that can potentially block the shutdown
+        :type func: Callable
+        :param func_kwargs: kwargs for func
+        :type func_kwargs: Dict[str, Any]
+        :param callback: _description_, defaults to None
+        :type callback: Optional[Callable[[], None]], optional
+        """
+        thread = Thread(target=func, kwargs=func_kwargs)
+        thread.start()
+
+        while thread.is_alive():
+            if self.app_is_stopped():
+                try:
+                    thread._tstate_lock.release()
+                except Exception:
+                    pass
+                return
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
