@@ -301,6 +301,7 @@ def _init(
         def shutdown():
             from supervisely.app.content import ContentOrigin
 
+            # with suppress(CancelledError):
             ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
@@ -346,6 +347,7 @@ class Application(metaclass=Singleton):
 
         def check_abandoned():
             if self._stop_event_for_abandoned is None:
+                logger.debug("No function run in abandoned mode")
                 return
             while not self._stop_event_for_abandoned.is_set():
                 sleep(0.1)
