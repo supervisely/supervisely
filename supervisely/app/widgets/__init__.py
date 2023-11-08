@@ -108,3 +108,12 @@ from supervisely.app.widgets.image_annotation_preview.image_annotation_preview i
 )
 from supervisely.app.widgets.tag_meta_view.tag_meta_view import TagMetaView
 from supervisely.app.widgets.tag_metas_list.tag_metas_list import TagMetasList
+
+from supervisely.app.widgets.message_box.message_box import MessageBox
+from supervisely.app.widgets.docstring.docstring import Docstring
+from supervisely.app.widgets.cascader.cascader import Cascader
+from supervisely.app.widgets.pagination.pagination import Pagination
+from supervisely.app.widgets.compare_images.compare_images import CompareImages
+from supervisely.app.widgets.element_tag.element_tag import ElementTag
+from supervisely.app.widgets.time_picker.time_picker import TimePicker
+from supervisely.app.widgets.tree.tree import Tree
