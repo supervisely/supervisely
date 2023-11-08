@@ -1,0 +1,16 @@
+<el-time-select
+
+{% if widget._changes_handled == true %}
+@change="post('/{{{widget.widget_id}}}/value_changed')"
+{% endif %}
+
+v-model="state.{{{widget.widget_id}}}.value"
+:picker-options="data.{{{widget.widget_id}}}.picker_options"
+:placeholder="data.{{{widget.widget_id}}}.placeholder"
+:size="data.{{{widget.widget_id}}}.size"
+:readonly="data.{{{widget.widget_id}}}.readonly"
+:disabled="data.{{{widget.widget_id}}}.disabled"
+:editable="data.{{{widget.widget_id}}}.editable"
+:clearable="data.{{{widget.widget_id}}}.clearable"
+>
+</el-time-select>
