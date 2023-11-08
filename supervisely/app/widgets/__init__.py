@@ -110,3 +110,4 @@ from supervisely.app.widgets.tag_meta_view.tag_meta_view import TagMetaView
 from supervisely.app.widgets.tag_metas_list.tag_metas_list import TagMetasList
 from supervisely.app.widgets.color_picker.color_picker import ColorPicker
 from supervisely.app.widgets.pagination.pagination import Pagination
+from supervisely.app.widgets.cascader.cascader import Cascader
