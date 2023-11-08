@@ -132,7 +132,7 @@ setup(
             "supervisely=supervisely.cli.cli:cli",
         ]
     },
-    python_requires=">=3.8.0",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
