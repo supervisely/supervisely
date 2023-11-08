@@ -30,7 +30,7 @@ INSTALL_REQUIRES = [
     "Shapely>=1.7.1, <2.0.0",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <1.0.0",
+    "python-dotenv>=0.19.2, <=1.0.0",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <3.0.0.0",
     "pydicom>=2.3.0, <3.0.0",
