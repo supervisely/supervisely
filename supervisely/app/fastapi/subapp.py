@@ -5,7 +5,7 @@ import sys
 from asyncio.exceptions import CancelledError
 from contextlib import suppress
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event, Thread, enumerate as active_threads
 from time import sleep
 
 from fastapi import (
@@ -473,21 +473,40 @@ class Application(metaclass=Singleton):
                 callback(**callback_kwargs)
             self._stop_event_for_abandoned.set()
 
+        def make_lock_release(thread: Thread):
+            try:
+                thread._tstate_lock.release()
+            except Exception as exc:
+                logger.warn(
+                    f"Error while releasing lock of thread {thread.name}: {exc}"
+                )
+
+        def get_new_started_threads(threads_before_start: set):
+            all_threads = set(active_threads())
+            return all_threads.difference(threads_before_start)
+
         self._stop_event_for_abandoned = Event()
+
+        threads_before_start = set(active_threads())
+        new_threads = set()
+
         logger.debug(f"Call function {func.__name__} in thread.")
-        thread = Thread(target=func, kwargs=func_kwargs)
+        thread = Thread(target=func, kwargs=func_kwargs, daemon=True)
         thread.start()
 
         while thread.is_alive():
             sleep(1)
-            if self.app_is_stopped():
-                try:
-                    thread._tstate_lock.release()
-                except Exception:
-                    pass
+            new_threads.update(get_new_started_threads(threads_before_start))
 
+            if self.app_is_stopped():
+                logger.debug(f"Function {func.__name__} will be ignored.")
+                for new_thread in new_threads:
+                    make_lock_release(new_thread)
+
+                logger.debug(f"Released {len(new_threads)} threads")
                 call_callback_if_any(callback_kwargs)
                 return
+            logger.debug(f"New threads: {new_threads}")
 
         call_callback_if_any(callback_kwargs)
 
