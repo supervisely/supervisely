@@ -14,14 +14,13 @@
   :sort.sync="state.{{{widget.widget_id}}}.sort"
   :search.sync="state.{{{widget.widget_id}}}.search"
   :data="data.{{{widget.widget_id}}}.data"
-  @filters-changed="post('/{{{widget.widget_id}}}/update_data')"
-/>
-
-<!-- {%
+  {%
   if
   widget._click_handled
   %}
-  @row-click="state.{{{widget.widget_id}}}.selectedRow; post('/{{{widget.widget_id}}}/row_clicked_cb')"
+  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
   {%
   endif
-  %} -->
+  %}
+  @filters-changed="post('/{{{widget.widget_id}}}/update_data_cb')"
+/>
