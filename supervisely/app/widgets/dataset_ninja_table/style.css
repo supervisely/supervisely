@@ -648,6 +648,11 @@
     --tw-bg-opacity: 1;
     background-color: rgb(250 204 21/var(--tw-bg-opacity));
 }
+
+.tailwind .bg-secondary-500 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(14 165 233/var(--tw-bg-opacity));
+}
  @media (min-width: 768px) {
 	 .tailwind .md\:ml-0 {
 		 margin-left: 0px;
