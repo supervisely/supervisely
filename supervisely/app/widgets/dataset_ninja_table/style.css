@@ -643,6 +643,11 @@
   margin-right: 7px;
   margin-left: 7px;
 }
+
+.tailwind .bg-yellow-400 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(250 204 21/var(--tw-bg-opacity));
+}
  @media (min-width: 768px) {
 	 .tailwind .md\:ml-0 {
 		 margin-left: 0px;
