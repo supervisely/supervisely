@@ -4,6 +4,7 @@ import psutil
 import sys
 from pathlib import Path
 from threading import Event, Thread
+from time import sleep
 
 from fastapi import (
     FastAPI,
@@ -134,6 +135,9 @@ def shutdown(
     process_id=None,
     before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
 ):
+    from supervisely.app.content import ContentOrigin
+
+    ContentOrigin().stop()
     logger.info(f"Shutting down [pid argument = {process_id}]...")
 
     if before_shutdown_callbacks is not None:
@@ -335,11 +339,18 @@ class Application(metaclass=Singleton):
         self._static_dir = static_dir
 
         self._stop_event = Event()
+        self._stop_event_for_abandoned: Optional[Event] = None
 
         def set_stop_event():
             self._stop_event.set()
+        
+        def check_abandoned():
+            if self._stop_event_for_abandoned is None:
+                return
+            while not self._stop_event_for_abandoned.is_set():
+                sleep(0.1)
 
-        self._before_shutdown_callbacks = [set_stop_event]
+        self._before_shutdown_callbacks = [set_stop_event, check_abandoned]
 
         headless = False
         if layout is None and templates_dir is None:
@@ -451,15 +462,18 @@ class Application(metaclass=Singleton):
         :param callback: _description_, defaults to None
         :type callback: Optional[Callable[[], None]], optional
         """
+        self._stop_event_for_abandoned = Event()
         thread = Thread(target=func, kwargs=func_kwargs)
         thread.start()
 
         while thread.is_alive():
+            sleep(1)
             if self.app_is_stopped():
                 try:
                     thread._tstate_lock.release()
                 except Exception:
                     pass
+                self._stop_event_for_abandoned.set()
                 return
 
 
