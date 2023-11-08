@@ -1,0 +1,9 @@
+<div>
+	<el-button @click="$refs['{{{ widget.widget_id }}}'].open()"
+		>{{{ widget._button_text }}}
+	</el-button>
+	<sly-message-box
+		ref="{{{ widget.widget_id }}}"
+		:data="data.{{{widget.widget_id}}}.messageBox"
+	/>
+</div>
