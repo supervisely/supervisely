@@ -14,7 +14,7 @@
   :sort.sync="state.{{{widget.widget_id}}}.sort"
   :search.sync="state.{{{widget.widget_id}}}.search"
   :data="data.{{{widget.widget_id}}}.data"
-  @filters-changed="data.{{{widget.widget_id}}}.updateData; post('/{{{widget.widget_id}}}/update_data')"
+  @filters-changed="post('/{{{widget.widget_id}}}/update_data')"
 />
 
 <!-- {%
