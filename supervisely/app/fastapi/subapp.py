@@ -146,22 +146,21 @@ def shutdown(
             func()
     else:
         logger.debug("No tasks to call before shutdown")
-    
-    with suppress(CancelledError):
-        try:
-            # logger.info(f"Shutting down [pid argument = {process_id}]...")
 
-            if process_id is None:
-                # process_id = psutil.Process(os.getpid()).ppid()
-                process_id = os.getpid()
-            current_process = psutil.Process(process_id)
-            if os.name == "nt":
-                # for windows
-                current_process.send_signal(signal.CTRL_C_EVENT)  # emit ctrl + c
-            else:
-                current_process.send_signal(signal.SIGINT)  # emit ctrl + c
-        except KeyboardInterrupt:
-            logger.info("Application has been shut down successfully")
+    try:
+        # logger.info(f"Shutting down [pid argument = {process_id}]...")
+
+        if process_id is None:
+            # process_id = psutil.Process(os.getpid()).ppid()
+            process_id = os.getpid()
+        current_process = psutil.Process(process_id)
+        if os.name == "nt":
+            # for windows
+            current_process.send_signal(signal.CTRL_C_EVENT)  # emit ctrl + c
+        else:
+            current_process.send_signal(signal.SIGINT)  # emit ctrl + c
+    except KeyboardInterrupt:
+        logger.info("Application has been shut down successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
@@ -344,7 +343,7 @@ class Application(metaclass=Singleton):
 
         def set_stop_event():
             self._stop_event.set()
-        
+
         def check_abandoned():
             if self._stop_event_for_abandoned is None:
                 return
@@ -452,7 +451,8 @@ class Application(metaclass=Singleton):
         self,
         func: Callable,
         func_kwargs: Dict[str, Any],
-        callback: Optional[Callable[[], None]] = None,
+        callback: Optional[Callable] = None,
+        callback_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Runs a function that stops while shutdown.
 
@@ -460,10 +460,19 @@ class Application(metaclass=Singleton):
         :type func: Callable
         :param func_kwargs: kwargs for func
         :type func_kwargs: Dict[str, Any]
-        :param callback: _description_, defaults to None
+        :param callback: function to call after the application stops
+            or when the thread ends, defaults to None
         :type callback: Optional[Callable[[], None]], optional
         """
+
+        def call_callback_if_any(callback_kwargs):
+            if callback is not None:
+                callback_kwargs = callback_kwargs or {}
+                callback(**callback_kwargs)
+            self._stop_event_for_abandoned.set()
+
         self._stop_event_for_abandoned = Event()
+        logger.debug(f"Call function {func.__name__} in thread.")
         thread = Thread(target=func, kwargs=func_kwargs)
         thread.start()
 
@@ -474,8 +483,11 @@ class Application(metaclass=Singleton):
                     thread._tstate_lock.release()
                 except Exception:
                     pass
-                self._stop_event_for_abandoned.set()
+
+                call_callback_if_any(callback_kwargs)
                 return
+
+        call_callback_if_any(callback_kwargs)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
