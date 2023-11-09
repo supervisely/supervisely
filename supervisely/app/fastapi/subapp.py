@@ -33,12 +33,7 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.io.fs import mkdir, dir_exists
 from supervisely.sly_logger import logger
 from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import (
-    is_production,
-    is_development,
-    is_docker,
-    is_debug_with_sly_net,
-)
+from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
@@ -145,7 +140,6 @@ def shutdown(
         logger.debug("No tasks to call before shutdown")
 
     try:
-        # logger.info(f"Shutting down [pid argument = {process_id}]...")
 
         if process_id is None:
             # process_id = psutil.Process(os.getpid()).ppid()
@@ -191,10 +185,7 @@ def handle_server_errors(app: FastAPI):
         handled_exception = handle_exception(exc)
 
         if handled_exception is not None:
-            details = {
-                "title": handled_exception.title,
-                "message": handled_exception.message,
-            }
+            details = {"title": handled_exception.title, "message": handled_exception.message}
         else:
             details = {"title": "Oops! Something went wrong", "message": repr(exc)}
         if isinstance(exc, DialogWindowBase):
@@ -364,16 +355,14 @@ class Application(metaclass=Singleton):
 
             main_layout = Identity(layout, widget_id="__app_main_layout__")
             logger.info(
-                "Application is running in no-html mode",
-                extra={"templates_dir": templates_dir},
+                "Application is running in no-html mode", extra={"templates_dir": templates_dir}
             )
         else:
             JinjaWidgets().auto_widget_id = False
             JinjaWidgets().context["__no_html_mode__"] = False
         if session_info_extra_content is not None:
             session_info_extra_content_layout = Identity(
-                session_info_extra_content,
-                widget_id="__app_session_info_extra_content__",
+                session_info_extra_content, widget_id="__app_session_info_extra_content__"
             )
 
         if is_production():
