@@ -115,8 +115,8 @@ class DatasetNinjaTable(Widget):
 
     def __init__(
         self,
-        data: Union[dict, str] = {},
-        project_meta: Union[ProjectMeta, dict] = None,
+        data: Optional[Union[dict, str]] = {},
+        project_meta: Optional[Union[ProjectMeta, dict]] = None,
         clickable_rows: Optional[bool] = False,
         clickable_cells: Optional[bool] = False,
         width: Optional[str] = "auto",  # "200px", or "100%"
