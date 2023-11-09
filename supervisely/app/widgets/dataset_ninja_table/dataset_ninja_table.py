@@ -65,6 +65,7 @@ class PackerUnpacker:
 
     @staticmethod
     def pandas_packer(data):
+        data["data"] = [d["items"] for d in data["data"]]
         packed_data = pd.DataFrame(data=data["data"], columns=data["columns"])
         return packed_data
 
@@ -83,6 +84,7 @@ DATATYPE_TO_UNPACKER = {
 class DatasetNinjaTable(Widget):
     class Routes:
         ROW_CLICKED = "row_clicked_cb"
+        CELL_CLICKED = "cell_clicked_cb"
         UPDATE_DATA = "update_data_cb"
 
     class ClickedDataRow:
@@ -94,15 +96,31 @@ class DatasetNinjaTable(Widget):
             self.row = row
             self.row_index = row_index
 
+    class ClickedDataCell:
+        def __init__(
+            self,
+            row: list,
+            column_index: int,
+            row_index: int = None,
+            column_name: int = None,
+            column_value: int = None,
+        ):
+            self.row = row
+            self.column_index = column_index
+            self.row_index = row_index
+            self.column_name = column_name
+            self.column_value = column_value
+
     def __init__(
         self,
-        data: List[List],
-        columns: Optional[List] = None,
+        data: Union[dict, pd.DataFrame] = {},
+        columns: dict = {},
         table_options: Optional[Dict] = None,
         columns_options: Optional[List[Dict]] = None,
         widget_id: Optional[str] = None,
         project_meta: Union[ProjectMeta, dict] = None,
-        clickable_rows: Optional[bool] = True,
+        clickable_rows: Optional[bool] = False,
+        clickable_cells: Optional[bool] = False,
         width: Optional[str] = "auto",  # "200px", or "100%"
     ):
         """
@@ -120,51 +138,62 @@ class DatasetNinjaTable(Widget):
                                                 ]
                                       }
         """
+        if clickable_rows is True and clickable_cells is True:
+            raise AttributeError("You cannot use clickable rows and cells at the same time")
 
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
-        self._click_handled = False
-
+        self._row_click_handled = False
+        self._cell_click_handled = False
         self._data_type = None
         self._sorted_data = None
         self._filtered_data = None
         self._active_page = 1
-        self._page_size = table_options["pageSize"]
-        self._fix_columns = table_options["fixColumns"]
         self._width = width
+        self._selected_row = None
+        self._selected_cell = None
         self._clickable_rows = clickable_rows
+        self._clickable_cells = clickable_cells
         self._columns_options = columns_options
-
-        self._columns_first_idx = columns
-        self._columns_second_idx = [
-            "one" if i % 2 == 0 else "two" for i in range(len(self._columns_first_idx))
-        ]
-        _columns_tuples = [self._columns_first_idx, self._columns_second_idx]
-        self._multi_idx_columns = pd.MultiIndex.from_tuples(
-            list(zip(*_columns_tuples)), names=["first", "second"]
-        )
-
-        self._source_data = pd.DataFrame(data=data, columns=self._multi_idx_columns)
-        self._parsed_source_data = self._update_table_data(input_data=self._source_data)
-        self._sliced_data = self._slice_table_data(self._source_data, self._active_page)
-        self._parsed_active_data = self._update_table_data(self._sliced_data)
-
+        self._search_str = ""
         self._project_meta = self._unpack_project_meta(project_meta)
 
+        (
+            self._page_size,
+            self._fix_columns,
+            self._sort,
+        ) = self._assign_table_options_attrs(table_options)
+
+        if self._sort is not None:
+            self._sort_column_id = (
+                self._sort["columnIndex"]
+                if self._validate_sort(column_id=self._sort["columnIndex"])
+                else 0
+            )
+
+            self._sort_order = (
+                self._sort["order"] if self._validate_sort(order=self._sort["order"]) else "asc"
+            )
+        else:
+            self._sort_column_id = 0
+            self._sort_order = "asc"
+
+        self._columns_first_idx = columns
+        self._multi_idx_columns = self._create_multi_idx_columns()
+
+        if isinstance(data, pd.DataFrame):
+            self._source_data = self._sort_table_data(data)
+        else:
+            self._source_data = self._sort_table_data(
+                pd.DataFrame(data=data, columns=self._multi_idx_columns)
+            )
+
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._assign_prepared_data_attrs()
+
         self._rows_total = len(self._parsed_source_data["data"])
-
-        self._sort_column_id = (
-            table_options["sort"]["columnIndex"]
-            if self._validate_sort(column_id=table_options["sort"]["columnIndex"])
-            else 0
-        )
-
-        self._sort_order = (
-            table_options["sort"]["order"]
-            if self._validate_sort(order=table_options["sort"]["order"])
-            else "asc"
-        )
-
-        self._search_str = ""
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -205,6 +234,7 @@ class DatasetNinjaTable(Widget):
             "total": self._rows_total,
             "options": {
                 "isRowClickable": self._clickable_rows,
+                "isCellClickable": self._clickable_cells,
                 "fixColumns": self._fix_columns,
             },
             "pageSize": self._page_size,
@@ -213,7 +243,8 @@ class DatasetNinjaTable(Widget):
     def get_json_state(self):
         return {
             "search": self._search_str,
-            "selectedRow": None,
+            "selectedRow": self._selected_row,
+            "selectedCell": self._selected_cell,
             "page": self._active_page,
             "sort": {
                 "column": self._sort_column_id,
@@ -221,12 +252,221 @@ class DatasetNinjaTable(Widget):
             },
         }
 
+    @property
+    def fixed_columns_num(self) -> int:
+        return self._fix_columns
+
+    @fixed_columns_num.setter
+    def fixed_columns_num(self, value: int):
+        self._fix_columns = value
+        DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
+
+    def to_json(self) -> Dict:
+        return self._get_packed_data(self._parsed_active_data, dict)
+
+    def to_pandas(self) -> pd.DataFrame:
+        return self._get_packed_data(self._parsed_active_data, pd.DataFrame)
+
+    def clear_selection(self):
+        StateJson()[self.widget_id]["selectedRow"] = {}
+        StateJson()[self.widget_id]["selectedCell"] = {}
+        StateJson().send_changes()
+
+    def get_selected_row(self):
+        row_data = StateJson()[self.widget_id]["selectedRow"]
+        row_index = row_data["idx"]
+        row = row_data["row"]
+
+        if row_index is None or row is None:
+            # click table header or clear selection
+            return None
+
+        return {
+            "row": row,
+            "row_index": row_index,
+        }
+
+    def get_selected_cell(self):
+        cell_data = StateJson()[self.widget_id]["selectedCell"]
+        row_index = cell_data["idx"]
+        row = cell_data["row"]
+        column_index = cell_data["column"]
+        column_name = self._columns_first_idx[column_index]
+        column_value = row[column_index]
+
+        if column_index is None or row is None:
+            # click table header or clear selection
+            return None
+
+        return {
+            "row": row,
+            "column_index": column_index,
+            "row_index": row_index,
+            "column_name": column_name,
+            "column_value": column_value,
+        }
+
+    def insert_row(self, row, index=-1):
+        PackerUnpacker.validate_sizes(
+            {"columns": self._parsed_source_data["columns"], "data": [row]}
+        )
+
+        table_data = self._parsed_source_data["data"]
+        index = len(table_data) if index > len(table_data) or index < 0 else index
+
+        self._source_data = pd.concat(
+            [
+                self._source_data.iloc[:index],
+                pd.DataFrame([row], columns=self._source_data.columns),
+                self._source_data.iloc[index:],
+            ]
+        ).reset_index(drop=True)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._assign_prepared_data_attrs()
+        self._rows_total = len(self._parsed_source_data["data"])
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+
+    def pop_row(self, index=-1):
+        index = (
+            len(self._parsed_source_data["data"]) - 1
+            if index > len(self._parsed_source_data["data"]) or index < 0
+            else index
+        )
+
+        if len(self._parsed_source_data["data"]) != 0:
+            popped_row = self._source_data.loc[index].values
+            self._source_data = self._source_data.drop(index)
+            (
+                self._parsed_source_data,
+                self._sliced_data,
+                self._parsed_active_data,
+            ) = self._assign_prepared_data_attrs()
+            self._rows_total = len(self._parsed_source_data["data"])
+            DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+            DataJson()[self.widget_id]["total"] = self._rows_total
+            DataJson().send_changes()
+            return popped_row
+
+    def row_click(self, func):
+        row_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.ROW_CLICKED)
+        server = self._sly_app.get_server()
+
+        self._row_click_handled = True
+
+        @server.post(row_clicked_route_path)
+        def _click():
+            try:
+                value_dict = self.get_selected_row()
+                if value_dict is None:
+                    return
+                datapoint = DatasetNinjaTable.ClickedDataRow(**value_dict)
+                func(datapoint)
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                raise e
+
+        return _click
+
+    def cell_click(self, func):
+        cell_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.CELL_CLICKED)
+        server = self._sly_app.get_server()
+
+        self._cell_click_handled = True
+
+        @server.post(cell_clicked_route_path)
+        def _click():
+            try:
+                value_dict = self.get_selected_cell()
+                if value_dict is None:
+                    return
+                datapoint = DatasetNinjaTable.ClickedDataCell(**value_dict)
+                func(datapoint)
+            except Exception as e:
+                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
+                raise e
+
+        return _click
+
+    def filter_rows(self, filter_value) -> pd.DataFrame:
+        """
+        Filter all rows in source data that contain filter_value in any column of row
+
+        """
+        filtered_data = self._source_data.copy()
+        if filter_value == "":
+            return filtered_data
+        else:
+            if self._search_str != filter_value:
+                self._active_page = 1
+                StateJson()[self.widget_id]["page"] = self._active_page
+                StateJson().send_changes()
+            filtered_data = filtered_data[
+                filtered_data.applymap(lambda x: filter_value in str(x)).any(axis=1)
+            ]
+            self._search_str = filter_value
+        return filtered_data
+
+    def sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
+        self._validate_sort(column_id, order)
+        if column_id is not None:
+            self._sort_column_id = column_id
+            StateJson()[self.widget_id]["sort"]["column"] = column_id
+        if order is not None:
+            self._sort_order = order
+            StateJson()[self.widget_id]["sort"]["order"] = order
+        StateJson().send_changes()
+
+    def _validate_sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
+        if column_id is not None and type(column_id) is not int:
+            raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
+        if column_id is not None and column_id < 0:
+            raise ValueError(f'Incorrect value of "column_id": {column_id} < 0')
+        if order is not None and order not in ["asc", "desc"]:
+            raise ValueError(
+                f'Incorrect value of "order": {order}. Value can be one of "asc" or "desc".'
+            )
+        return True
+
+    def _assign_prepared_data_attrs(self):
+        self._parsed_source_data = self._update_table_data(input_data=self._source_data)
+        self._sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        self._parsed_active_data = self._update_table_data(self._sliced_data)
+        return self._parsed_source_data, self._sliced_data, self._parsed_active_data
+
+    def _create_multi_idx_columns(self):
+        if self._columns_first_idx is not None:
+            self._columns_second_idx = [
+                "one" if i % 2 == 0 else "two" for i in range(len(self._columns_first_idx))
+            ]
+            _columns_tuples = [self._columns_first_idx, self._columns_second_idx]
+            multi_idx_columns = pd.MultiIndex.from_tuples(
+                list(zip(*_columns_tuples)), names=["first", "second"]
+            )
+        else:
+            multi_idx_columns = None
+        return multi_idx_columns
+
+    def _assign_table_options_attrs(self, table_options: dict):
+        if table_options is not None:
+            return (
+                table_options.get("pageSize", 10),
+                table_options.get("fixColumns", None),
+                table_options.get("sort", None),
+            )
+        else:
+            return 10, None, None
+
     def _update_table_data(self, input_data: pd.DataFrame) -> dict:
         """
         Convert data to dict from pd.DataFrame
 
         """
-        if input_data is not None:
+        if len(input_data.columns) != 0:
             new_data = []
             row_idx_list = input_data.index.tolist()
             columns = input_data.columns.get_level_values("first").tolist()
@@ -312,195 +552,3 @@ class DatasetNinjaTable(Widget):
         return PackerUnpacker.unpack_data(
             data=input_data, unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type]
         )
-
-    @property
-    def fixed_columns_num(self) -> int:
-        return self._fix_columns
-
-    @fixed_columns_num.setter
-    def fixed_columns_num(self, value: int):
-        self._fix_columns = value
-        DataJson()[self.widget_id]["table_options"]["fixColumns"] = self._fix_columns
-
-    # @property
-    # def summary_row(self) -> List[Any]:
-    #     # if "summaryRow" not in self._parsed_data.keys():
-    #     #     return None
-    #     return self._parsed_data["summaryRow"]
-
-    # @summary_row.setter
-    # def summary_row(self, value: List[Any]):
-    #     cols_num = len(self._parsed_data["columns"])
-    #     if len(value) < cols_num:
-    #         value.extend([""] * (cols_num - len(value)))
-    #     elif len(value) > cols_num:
-    #         value = value[:cols_num]
-    #     DataJson()[self.widget_id]["table_data"]["summaryRow"] = value
-
-    def to_json(self) -> Dict:
-        return self._get_packed_data(self._parsed_source_data, dict)
-
-    def to_pandas(self) -> pd.DataFrame:
-        return self._get_packed_data(self._parsed_source_data, pd.DataFrame)
-
-    def read_json(self, value: dict) -> None:
-        self._update_table_data(input_data=value)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-        DataJson().send_changes()
-        self.clear_selection()
-
-    def read_pandas(self, value: pd.DataFrame) -> None:
-        self._update_table_data(input_data=value)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-        DataJson().send_changes()
-        self.clear_selection()
-
-    def insert_row(self, data, index=-1):
-        PackerUnpacker.validate_sizes(
-            {"columns": self._parsed_source_data["columns"], "data": [data]}
-        )
-
-        table_data = self._parsed_source_data["data"]
-        index = len(table_data) if index > len(table_data) or index < 0 else index
-
-        self._parsed_source_data["data"].insert(index, data)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-        DataJson().send_changes()
-
-    def pop_row(self, index=-1):
-        index = (
-            len(self._parsed_source_data["data"]) - 1
-            if index > len(self._parsed_source_data["data"]) or index < 0
-            else index
-        )
-
-        if len(self._parsed_source_data["data"]) != 0:
-            popped_row = self._parsed_source_data["data"].pop(index)
-            DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-            DataJson().send_changes()
-            return popped_row
-
-    def get_selected_row(self):
-        # logger.debug(
-        #     "Selected row",
-        #     extra={"selected_row": state[self.widget_id]["selected_row"]},
-        # )
-        row_data = StateJson()[self.widget_id]["selectedRow"]
-        row_index = row_data["idx"]
-        row = row_data["row"]
-
-        if row_index is None or row is None:
-            # click table header or clear selection
-            return None
-
-        return {
-            "row": row,
-            "row_index": row_index,
-        }
-
-    def click(self, func):
-        row_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.ROW_CLICKED)
-        server = self._sly_app.get_server()
-
-        self._click_handled = True
-
-        @server.post(row_clicked_route_path)
-        def _click():
-            try:
-                value_dict = self.get_selected_row()
-                if value_dict is None:
-                    return
-                datapoint = DatasetNinjaTable.ClickedDataRow(**value_dict)
-                func(datapoint)
-            except Exception as e:
-                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
-                raise e
-
-        return _click
-
-    def filter_rows(self, filter_value):
-        # filter all rows that contain filter_value in any column of row
-
-        filtered_data = self._source_data.copy()
-        if filter_value == "":
-            return filtered_data
-        else:
-            if self._search_str != filter_value:
-                self._active_page = 1
-                StateJson()[self.widget_id]["page"] = self._active_page
-                StateJson().send_changes()
-            filtered_data = filtered_data[
-                filtered_data.applymap(lambda x: filter_value in str(x)).any(axis=1)
-            ]
-            self._search_str = filter_value
-        return filtered_data
-
-    def clear_selection(self):
-        StateJson()[self.widget_id]["selectedRow"] = {}
-        StateJson().send_changes()
-
-    def delete_row(self, key_column_name, key_cell_value):
-        col_index = self._parsed_source_data["columns"].index(key_column_name)
-        row_indices = []
-        for idx, row in enumerate(self._parsed_source_data["data"]):
-            if row[col_index] == key_cell_value:
-                row_indices.append(idx)
-        if len(row_indices) == 0:
-            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
-        if len(row_indices) > 1:
-            raise ValueError(
-                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
-            )
-        self.pop_row(row_indices[0])
-
-    def update_cell_value(self, key_column_name, key_cell_value, column_name, new_value):
-        key_col_index = self._parsed_source_data["columns"].index(key_column_name)
-        row_indices = []
-        for idx, row in enumerate(self._parsed_source_data["data"]):
-            if row[key_col_index] == key_cell_value:
-                row_indices.append(idx)
-        if len(row_indices) == 0:
-            raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
-        if len(row_indices) > 1:
-            raise ValueError(
-                'Column "{key_column_name}" has multiple cells with the value "{key_cell_value}". Value has to be unique'
-            )
-
-        col_index = self._parsed_source_data["columns"].index(column_name)
-        self._parsed_source_data["data"][row_indices[0]][col_index] = new_value
-        DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-        DataJson().send_changes()
-
-    def update_matching_cells(self, key_column_name, key_cell_value, column_name, new_value):
-        key_col_index = self._parsed_source_data["columns"].index(key_column_name)
-        row_indices = []
-        for idx, row in enumerate(self._parsed_source_data["data"]):
-            if row[key_col_index] == key_cell_value:
-                row_indices.append(idx)
-
-        col_index = self._parsed_source_data["columns"].index(column_name)
-        for row_idx in row_indices:
-            self._parsed_source_data["data"][row_idx][col_index] = new_value
-        DataJson()[self.widget_id]["table_data"] = self._parsed_source_data
-        DataJson().send_changes()
-
-    def sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
-        self._validate_sort(column_id, order)
-        if column_id is not None:
-            self._sort_column_id = column_id
-            StateJson()[self.widget_id]["sort"]["column"] = column_id
-        if order is not None:
-            self._sort_order = order
-            StateJson()[self.widget_id]["sort"]["order"] = order
-        StateJson().send_changes()
-
-    def _validate_sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
-        if column_id is not None and type(column_id) is not int:
-            raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
-        if column_id is not None and column_id < 0:
-            raise ValueError(f'Incorrect value of "column_id": {column_id} < 0')
-        if order is not None and order not in ["asc", "desc"]:
-            raise ValueError(
-                f'Incorrect value of "order": {order}. Value can be one of "asc" or "desc".'
-            )
-        return True
