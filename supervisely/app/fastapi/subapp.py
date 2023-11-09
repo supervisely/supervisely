@@ -140,7 +140,6 @@ def shutdown(
         logger.debug("No tasks to call before shutdown")
 
     try:
-
         if process_id is None:
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
@@ -301,8 +300,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    class StopAppError(Exception):
-        """Raise to stop the function from running in app.run_with_stop_app_error_suppression"""
+    class StopApp(Exception):
+        """Raise to stop the function from running in app.run_with_stop_app_suppression"""
 
     def __init__(
         self,
@@ -433,20 +432,20 @@ class Application(metaclass=Singleton):
     def call_before_shutdown(self, func: Callable[[], None]):
         self._before_shutdown_callbacks.append(func)
 
-    def run_with_stop_app_error_suppression(self, graceful_stop: bool = True):
-        """Contextmanager to suppress StopAppError and control graceful shutdown.
+    def run_with_stop_app_suppression(self, graceful_stop: bool = True):
+        """Contextmanager to suppress StopApp and control graceful shutdown.
 
-        :param graceful_stop: Whether to perform a graceful shutdown if a StopAppError is raised.
+        :param graceful_stop: Whether to perform a graceful shutdown if a StopApp is raised.
         If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
-        :type graceful_stop: bool, optional
+        :type graceful_stop: bool
         :return: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = Event()
         if graceful_stop is False:
             self._graceful_stop_event.set()
-        return suppress(self.StopAppError)
+        return suppress(self.StopApp)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
