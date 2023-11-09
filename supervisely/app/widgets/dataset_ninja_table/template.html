@@ -17,9 +17,17 @@
   :data="data.{{{widget.widget_id}}}.data"
   {%
   if
-  widget._click_handled
+  widget._row_click_handled
   %}
   @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
+  {%
+  endif
+  %}
+  {%
+  if
+  widget._cell_click_handled
+  %}
+  @cell-click="state.{{{widget.widget_id}}}.selectedCell = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')"
   {%
   endif
   %}

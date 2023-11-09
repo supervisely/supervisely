@@ -165,10 +165,11 @@ Vue.component('dataset-ninja-table', {
           </thead>
           <tbody>
             <tr v-for="row in data" class="border-b border-gray-200 last:border-0 group" :class="{ 'cursor-pointer': settings.isRowClickable }" @click="settings.isRowClickable && $emit('row-click', { idx: row.idx, row: row.items })">
-              <td
+              <td                
                 v-for="(col,idx) in row.items.slice(0, columnNumberLimit)"
                 class="px-2 md:px-3 py-2 bg-white first:pl-3 last:pr-3 md:first:pl-6 md:last:pr-6 group-hover:bg-slate-50 group"
-                :class="{ 'first:sticky first:left-0 first:z-10 first:shadow-[inset_-2px_0_0_#dfe6ec]': settings.fixColumns }"
+                :class="{ 'first:sticky first:left-0 first:z-10 first:shadow-[inset_-2px_0_0_#dfe6ec]': settings.fixColumns, 'cursor-pointer': settings.isCellClickable }"
+                @click="settings.isCellClickable && $emit('cell-click', { idx: row.idx, row: row.items , column: idx})"
               >
                 <div class="flex items-center whitespace-nowrap">
                   <span v-if="columnsSettings[idx]?.type === 'class'" class="w-3 h-3 rounded-sm flex mr-1.5 flex-none" :style="{ backgroundColor: (classesMap[col] || { color: '#00ff00' }).color }"></span>
