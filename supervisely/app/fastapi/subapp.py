@@ -3,7 +3,7 @@ import signal
 import psutil
 import sys
 from asyncio.exceptions import CancelledError
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from threading import Event, Thread, enumerate as active_threads
 from time import sleep
@@ -325,6 +325,9 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
+    class StopAppError(Exception):
+        """Raise to stop the function from running in app.run_with_expected_error"""
+
     def __init__(
         self,
         layout: "Widget" = None,
@@ -340,19 +343,23 @@ class Application(metaclass=Singleton):
         self._static_dir = static_dir
 
         self._stop_event = Event()
-        self._stop_event_for_abandoned: Optional[Event] = None
+        # for backward compatibility
+        self._graceful_stop_event: Optional[Event] = None
 
         def set_stop_event():
             self._stop_event.set()
-
-        def check_abandoned():
-            if self._stop_event_for_abandoned is None:
-                logger.debug("No function run in abandoned mode")
+        
+        def wait_for_graceful_stop_event():
+            if self._graceful_stop_event is None:
                 return
-            while not self._stop_event_for_abandoned.is_set():
+            print_info = True
+            while not self._graceful_stop_event.is_set():
+                if print_info:
+                    logger.info("Graceful shutdown. Waiting for `app.stop()` to be called.")
+                    print_info = False
                 sleep(0.1)
 
-        self._before_shutdown_callbacks = [set_stop_event, check_abandoned]
+        self._before_shutdown_callbacks = [set_stop_event, wait_for_graceful_stop_event]
 
         headless = False
         if layout is None and templates_dir is None:
@@ -435,9 +442,14 @@ class Application(metaclass=Singleton):
         shutdown(self._process_id, self._before_shutdown_callbacks)
 
     def stop(self):
+        if self._graceful_stop_event is not None:
+            self._graceful_stop_event.set()
+        if self.app_is_stopped():
+            return
         self.shutdown()
 
     def app_is_stopped(self):
+        """Indicates whether the application is in the process of being terminated."""
         return self._stop_event.is_set()
 
     def reload_page(self):
@@ -449,66 +461,20 @@ class Application(metaclass=Singleton):
     def call_before_shutdown(self, func: Callable[[], None]):
         self._before_shutdown_callbacks.append(func)
 
-    def abandoned_if_app_stopped(
-        self,
-        func: Callable,
-        func_kwargs: Dict[str, Any],
-        callback: Optional[Callable] = None,
-        callback_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        """Runs a function that stops while shutdown.
+    def run_with_stop_app_error_suppression(self, graceful_stop: bool = True):
+        """Contextmanager to suppress StopAppError and control graceful shutdown.
 
-        :param func: function that can potentially block the shutdown
-        :type func: Callable
-        :param func_kwargs: kwargs for func
-        :type func_kwargs: Dict[str, Any]
-        :param callback: function to call after the application stops
-            or when the thread ends, defaults to None
-        :type callback: Optional[Callable[[], None]], optional
+        :param graceful_stop: Whether to perform a graceful shutdown if a StopAppError is raised. 
+        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`), 
+        the application will be terminated immediately, defaults to `True`
+        :type graceful_stop: bool, optional
+        :return: context manager
+        :rtype: _type_
         """
-
-        def call_callback_if_any(callback_kwargs):
-            if callback is not None:
-                callback_kwargs = callback_kwargs or {}
-                callback(**callback_kwargs)
-            self._stop_event_for_abandoned.set()
-
-        def make_lock_release(thread: Thread):
-            try:
-                thread._tstate_lock.release()
-            except Exception as exc:
-                logger.warn(
-                    f"Error while releasing lock of thread {thread.name}: {exc}"
-                )
-
-        def get_new_started_threads(threads_before_start: set):
-            all_threads = set(active_threads())
-            return all_threads.difference(threads_before_start)
-
-        self._stop_event_for_abandoned = Event()
-
-        threads_before_start = set(active_threads())
-        new_threads = set()
-
-        logger.debug(f"Call function {func.__name__} in thread.")
-        thread = Thread(target=func, kwargs=func_kwargs, daemon=True)
-        thread.start()
-
-        while thread.is_alive():
-            sleep(1)
-            new_threads.update(get_new_started_threads(threads_before_start))
-
-            if self.app_is_stopped():
-                logger.debug(f"Function {func.__name__} will be ignored.")
-                for new_thread in new_threads:
-                    make_lock_release(new_thread)
-
-                logger.debug(f"Released {len(new_threads)} threads")
-                call_callback_if_any(callback_kwargs)
-                return
-            logger.debug(f"New threads: {new_threads}")
-
-        call_callback_if_any(callback_kwargs)
+        self._graceful_stop_event = Event()
+        if graceful_stop is False:
+            self._graceful_stop_event.set()
+        return suppress(self.StopAppError)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
