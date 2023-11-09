@@ -17,6 +17,7 @@ class Timeline(Widget):
         pointer_color: Optional[str] = None,
         tooltip_content: Optional[Widget] = None,
         widget_id: str = None,
+        show_tooltip: bool = True,
     ):
         self._frames_count = frames_count
         self._intervals = intervals
@@ -30,7 +31,10 @@ class Timeline(Widget):
         if pointer_color is None:
             pointer_color = "rgba(151, 151, 151, 1)"
         self._pointer_color = pointer_color
+        self._show_tooltip = show_tooltip
         self._tooltip_content = tooltip_content
+        if self._tooltip_content:
+            self._show_tooltip = True
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):

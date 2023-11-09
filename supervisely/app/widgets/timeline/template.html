@@ -35,9 +35,12 @@
 	endif
 	%}
 >
-	{% if widget._tooltip_content %}
+	{% if widget._show_tooltip %}
 	<template slot-scope="{ activeInterval }">
-		<span v-if="activeInterval"> {{{widget._tooltip_content}}} </span>
+		<span v-if="activeInterval">Interval: {{ activeInterval.interval[0] }} - {{ activeInterval.interval[1] }}</span>
+		{% if widget._tooltip_content %}
+			<span v-if="activeInterval"> {{{widget._tooltip_content}}} </span>
+		{% endif %}
 	</template>
 	{% endif %}
 </sly-timeline>
