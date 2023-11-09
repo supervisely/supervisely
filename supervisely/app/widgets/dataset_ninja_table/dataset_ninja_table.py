@@ -148,6 +148,7 @@ class DatasetNinjaTable(Widget):
         self._sorted_data = None
         self._filtered_data = None
         self._active_page = 1
+        self._default_page_size = 10
         self._width = width
         self._selected_row = None
         self._selected_cell = None
@@ -157,29 +158,20 @@ class DatasetNinjaTable(Widget):
         self._search_str = ""
         self._project_meta = self._unpack_project_meta(project_meta)
 
+        # unpack table_options
         (
             self._page_size,
             self._fix_columns,
-            self._sort,
+            self._sort_column_id,
+            self._sort_order,
         ) = self._assign_table_options_attrs(table_options)
 
-        if self._sort is not None:
-            self._sort_column_id = (
-                self._sort["columnIndex"]
-                if self._validate_sort(column_id=self._sort["columnIndex"])
-                else 0
-            )
-
-            self._sort_order = (
-                self._sort["order"] if self._validate_sort(order=self._sort["order"]) else "asc"
-            )
-        else:
-            self._sort_column_id = 0
-            self._sort_order = "asc"
-
         self._columns_first_idx = columns
+
+        # to avoid errors with the same names for columns
         self._multi_idx_columns = self._create_multi_idx_columns()
 
+        # prepare source_data
         if isinstance(data, pd.DataFrame):
             self._source_data = self._sort_table_data(data)
         else:
@@ -187,6 +179,7 @@ class DatasetNinjaTable(Widget):
                 pd.DataFrame(data=data, columns=self._multi_idx_columns)
             )
 
+        # prepare parsed_source_data, sliced_data, parsed_active_data
         (
             self._parsed_source_data,
             self._sliced_data,
@@ -453,13 +446,27 @@ class DatasetNinjaTable(Widget):
 
     def _assign_table_options_attrs(self, table_options: dict):
         if table_options is not None:
+            sort = table_options.get("sort", None)
+            sort_column_id, sort_order = self._unpack_sort_attrs(sort)
             return (
-                table_options.get("pageSize", 10),
+                table_options.get("pageSize", self._default_page_size),
                 table_options.get("fixColumns", None),
-                table_options.get("sort", None),
+                sort_column_id,
+                sort_order,
             )
         else:
-            return 10, None, None
+            return self._default_page_size, None, None, None
+
+    def _unpack_sort_attrs(self, sort):
+        if sort is not None:
+            sort_column_id = (
+                sort["columnIndex"] if self._validate_sort(column_id=sort["columnIndex"]) else 0
+            )
+            sort_order = sort["order"] if self._validate_sort(order=sort["order"]) else "asc"
+        else:
+            sort_column_id = None
+            sort_order = None
+        return sort_column_id, sort_order
 
     def _update_table_data(self, input_data: pd.DataFrame) -> dict:
         """
@@ -504,6 +511,9 @@ class DatasetNinjaTable(Widget):
         Apply sorting to received data
 
         """
+        if self._sort_order is None or self._sort_column_id is None:
+            return input_data  # unsorted
+
         if input_data is not None:
             if self._sort_order == "asc":
                 ascending = True
