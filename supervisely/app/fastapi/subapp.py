@@ -2,10 +2,9 @@ import os
 import signal
 import psutil
 import sys
-from asyncio.exceptions import CancelledError
-from contextlib import contextmanager, suppress
+from contextlib import suppress
 from pathlib import Path
-from threading import Event, Thread, enumerate as active_threads
+from threading import Event
 from time import sleep
 
 from fastapi import (
@@ -126,9 +125,7 @@ def create(
 
         import supervisely
 
-        app.mount(
-            "/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static"
-        )
+        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
 
     return app
 
@@ -230,9 +227,7 @@ def _init(
     if headless is False:
         if "app_body_padding" not in StateJson():
             StateJson()["app_body_padding"] = "20px"
-        Jinja2Templates(
-            directory=[str(Path(__file__).parent.absolute()), templates_dir]
-        )
+        Jinja2Templates(directory=[str(Path(__file__).parent.absolute()), templates_dir])
         if hot_reload:
             enable_hot_reload_on_debug(app)
 
@@ -275,13 +270,8 @@ def _init(
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")
-            if (
-                request.state.server_address is not None
-                and request.state.api_token is not None
-            ):
-                request.state.api = Api(
-                    request.state.server_address, request.state.api_token
-                )
+            if request.state.server_address is not None and request.state.api_token is not None:
+                request.state.api = Api(request.state.server_address, request.state.api_token)
             else:
                 request.state.api = None
 
@@ -293,15 +283,12 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse(
-                "index.html", {"request": request}
-            )
+            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
         @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
 
-            # with suppress(CancelledError):
             ContentOrigin().stop()
             client = TestClient(app)
             resp = run_sync(client.get("/"))
@@ -309,9 +296,7 @@ def _init(
             logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
-            app.mount(
-                "/static", CustomStaticFiles(directory=static_dir), name="static_files"
-            )
+            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
 
     return app
 
@@ -326,7 +311,7 @@ class _MainServer(metaclass=Singleton):
 
 class Application(metaclass=Singleton):
     class StopAppError(Exception):
-        """Raise to stop the function from running in app.run_with_expected_error"""
+        """Raise to stop the function from running in app.run_with_stop_app_error_suppression"""
 
     def __init__(
         self,
@@ -348,7 +333,7 @@ class Application(metaclass=Singleton):
 
         def set_stop_event():
             self._stop_event.set()
-        
+
         def wait_for_graceful_stop_event():
             if self._graceful_stop_event is None:
                 return
@@ -392,9 +377,7 @@ class Application(metaclass=Singleton):
             )
 
         if is_production():
-            logger.info(
-                "Application is running on Supervisely Platform in production mode"
-            )
+            logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
         self._process_id = os.getpid()
@@ -464,8 +447,8 @@ class Application(metaclass=Singleton):
     def run_with_stop_app_error_suppression(self, graceful_stop: bool = True):
         """Contextmanager to suppress StopAppError and control graceful shutdown.
 
-        :param graceful_stop: Whether to perform a graceful shutdown if a StopAppError is raised. 
-        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`), 
+        :param graceful_stop: Whether to perform a graceful shutdown if a StopAppError is raised.
+        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
         :type graceful_stop: bool, optional
         :return: context manager
@@ -485,9 +468,7 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
     :type default: Optional[str], optional
     """
     if sly_env.autostart() is True:
-        logger.info(
-            "`autostart` flag already defined in env. Skip loading it from state."
-        )
+        logger.info("`autostart` flag already defined in env. Skip loading it from state.")
         return
 
     api = Api()
