@@ -97,6 +97,8 @@ class NodesFlow(Widget):
             position: Optional[dict] = None,
             header_color: Optional[str] = None,
             header_text_color: Optional[str] = None,
+            icon: Optional[str] = None,
+            icon_background_color: Optional[str] = None,
         ):
             self.id = id
             self.name = name
@@ -108,6 +110,8 @@ class NodesFlow(Widget):
             self._position = position
             self._header_background_color = header_color
             self._header_color = header_text_color
+            self._icon = icon
+            self._icon_background_color = icon_background_color
 
         def to_json(self):
             return {
@@ -122,6 +126,10 @@ class NodesFlow(Widget):
                 "header": {
                     "backgroundColor": self._header_background_color,
                     "color": self._header_color,
+                    "icon": {
+                        "backgroundColor": self._icon_background_color,
+                        "class": self._icon,
+                    }
                 },
             }
 

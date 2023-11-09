@@ -1,0 +1,19 @@
+<el-pagination
+
+    {% if widget._current_change == true %}
+    @current-change="post('/{{{widget.widget_id}}}/current_change')"
+    {% endif %}
+    
+    {% if widget._size_change == true %}
+    @size-change="state.{{{ widget.widget_id }}}.pageSize = $event;
+            post('/{{{ widget.widget_id }}}/size_change')"
+    {% endif %}
+    
+  :current-page.sync="state.{{{widget.widget_id}}}.currentPage"
+  :layout="data.{{{widget.widget_id}}}.layout"
+  :total="data.{{{widget.widget_id}}}.total"
+  :small="data.{{{widget.widget_id}}}.compact"
+  :page-size.sync="state.{{{widget.widget_id}}}.pageSize"
+  :page-sizes="data.{{{widget.widget_id}}}.pageSizeOptions"
+>
+</el-pagination>

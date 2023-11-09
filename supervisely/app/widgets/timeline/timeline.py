@@ -11,8 +11,8 @@ class Timeline(Widget):
     def __init__(
         self,
         frames_count: int,
-        intervals: List,
-        colors: List,
+        intervals: List[List[int]],
+        colors: List[List[int]],
         height: Optional[str] = "30px",
         pointer_color: Optional[str] = None,
         tooltip_content: Optional[Widget] = None,

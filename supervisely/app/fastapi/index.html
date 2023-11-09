@@ -54,7 +54,16 @@
 
       .extended-app-header .app-session-header-widget > div {
         margin-bottom: 0;
+        padding-left: 20px;
       }
+
+      .app-session-header-solid { 
+        background: white;
+        box-shadow: 0 5px 10px #0000000d;
+        border-bottom: 1px solid #dfe2e8;
+        position: relative;
+      }
+
     </style>
     <title>{{{app_name}}}</title>
   </head>
@@ -88,9 +97,17 @@
       <sly-app>
         <template v-slot="{ post, state, data, session }">
           <div
-            style="display: flex; flex-direction: row;"
-            {% if __app_session_info_extra_content__ %}
-            class="extended-app-header"
+            :style="{ 'padding': `${state.app_body_padding} ${state.app_body_padding} 0`, 'display': 'flex', 'flex-direction': 'row', 'place-items': 'center'}"
+            {% if __app_session_info_solid__ %}
+              {% if __app_session_info_extra_content__ %}
+                class="app-session-header-solid extended-app-header"
+              {% else %}
+                class="app-session-header-solid"
+              {% endif %}
+            {% else %}
+              {% if __app_session_info_extra_content__ %}
+              class="extended-app-header"
+              {% endif %}
             {% endif %}
           >
             <sly-app-header
@@ -98,7 +115,6 @@
               :session="session"
               :data="data"
               :state="state"
-              :style="{ padding: `${state.app_body_padding} ${state.app_body_padding} 0` }"
             ></sly-app-header>
             {% if __app_session_info_extra_content__ %}
             {{{__app_session_info_extra_content__}}}
