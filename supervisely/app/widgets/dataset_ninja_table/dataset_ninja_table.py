@@ -1,4 +1,5 @@
 import copy
+import json
 import traceback
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.io.fs import get_file_ext
 
 
 class PackerUnpacker:
@@ -113,38 +115,42 @@ class DatasetNinjaTable(Widget):
 
     def __init__(
         self,
-        data: Union[dict, pd.DataFrame] = {},
-        columns: dict = {},
-        table_options: Optional[Dict] = None,
-        columns_options: Optional[List[Dict]] = None,
-        widget_id: Optional[str] = None,
+        data: Union[dict, str] = {},
         project_meta: Union[ProjectMeta, dict] = None,
         clickable_rows: Optional[bool] = False,
         clickable_cells: Optional[bool] = False,
         width: Optional[str] = "auto",  # "200px", or "100%"
+        widget_id: Optional[str] = None,
     ):
         """
-        :param data: Data of table in different formats:
-        1. Pandas Dataframe or pd.DataFrame(
-                                            data=data,
-                                            columns=columns,
-                                            )
+        :param data: dataset or project data in different formats:
+        1. Path to JSON file: 'statistics/class_balance.json'
         2. Python dict with structure {
                                         'columns': ['col_name_1', 'col_name_2', ...],
                                         'data': [
                                                     ['row_1_column_1', 'row_1_column_2', ...],
                                                     ['row_2_column_1', 'row_2_column_2', ...],
                                                     ...
-                                                ]
+                                                ],
+                                        "columnsOptions": [{ "type": "class" }, { "maxValue": 10 }, ...],
+                                        "options": {
+                                                      "fixColumns": 1,
+                                                      "sort": { "columnIndex": 1, "order": "desc" },
+                                                      "pageSize": 10
+                                                  }
                                       }
         """
+
         if clickable_rows is True and clickable_cells is True:
             raise AttributeError("You cannot use clickable rows and cells at the same time")
 
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
         self._row_click_handled = False
         self._cell_click_handled = False
-        self._data_type = None
+        self._input_data = self._validate_input_data(data)
+        self._columns_first_idx = self._prepare_input_data("columns")
+        self._columns_options = self._prepare_input_data("columnsOptions")
+        self._table_options = self._prepare_input_data("options")
         self._sorted_data = None
         self._filtered_data = None
         self._active_page = 1
@@ -154,7 +160,6 @@ class DatasetNinjaTable(Widget):
         self._selected_cell = None
         self._clickable_rows = clickable_rows
         self._clickable_cells = clickable_cells
-        self._columns_options = columns_options
         self._search_str = ""
         self._project_meta = self._unpack_project_meta(project_meta)
 
@@ -164,20 +169,13 @@ class DatasetNinjaTable(Widget):
             self._fix_columns,
             self._sort_column_id,
             self._sort_order,
-        ) = self._assign_table_options_attrs(table_options)
-
-        self._columns_first_idx = columns
+        ) = self._assign_table_options_attrs()
 
         # to avoid errors with the same names for columns
         self._multi_idx_columns = self._create_multi_idx_columns()
 
         # prepare source_data
-        if isinstance(data, pd.DataFrame):
-            self._source_data = self._sort_table_data(data)
-        else:
-            self._source_data = self._sort_table_data(
-                pd.DataFrame(data=data, columns=self._multi_idx_columns)
-            )
+        self._source_data = self._prepare_input_data("data")
 
         # prepare parsed_source_data, sliced_data, parsed_active_data
         (
@@ -204,7 +202,7 @@ class DatasetNinjaTable(Widget):
                 self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
                 self._sort_column_id = StateJson()[self.widget_id]["sort"]["column"]
                 search_value = StateJson()[self.widget_id]["search"]
-                self._filtered_data = self.filter_rows(search_value)
+                self._filtered_data = self.search(search_value)
                 self._rows_total = len(self._filtered_data)
                 self._sorted_data = self._sort_table_data(self._filtered_data)
                 self._sliced_data = self._slice_table_data(
@@ -385,23 +383,23 @@ class DatasetNinjaTable(Widget):
 
         return _click
 
-    def filter_rows(self, filter_value) -> pd.DataFrame:
+    def search(self, search_value) -> pd.DataFrame:
         """
         Filter all rows in source data that contain filter_value in any column of row
 
         """
         filtered_data = self._source_data.copy()
-        if filter_value == "":
+        if search_value == "":
             return filtered_data
         else:
-            if self._search_str != filter_value:
+            if self._search_str != search_value:
                 self._active_page = 1
                 StateJson()[self.widget_id]["page"] = self._active_page
                 StateJson().send_changes()
             filtered_data = filtered_data[
-                filtered_data.applymap(lambda x: filter_value in str(x)).any(axis=1)
+                filtered_data.applymap(lambda x: search_value in str(x)).any(axis=1)
             ]
-            self._search_str = filter_value
+            self._search_str = search_value
         return filtered_data
 
     def sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
@@ -425,11 +423,33 @@ class DatasetNinjaTable(Widget):
             )
         return True
 
+    def _validate_input_data(self, data):
+        if isinstance(data, str):
+            if get_file_ext(data) == ".json":
+                with open(data, "r") as json_file:
+                    valid_data = json.load(json_file)
+                return valid_data
+        elif isinstance(data, dict):
+            return data
+        raise TypeError(f"Unsupported data type. Supported types: dict or .json file")
+
+    def _prepare_input_data(self, key):
+        if key in ("data", "columns"):
+            default_value = {}
+        else:
+            default_value = None
+        source_data = self._input_data.get(key, default_value)
+        if key == "data":
+            source_data = self._sort_table_data(
+                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
+            )
+        return source_data
+
     def _assign_prepared_data_attrs(self):
-        self._parsed_source_data = self._update_table_data(input_data=self._source_data)
-        self._sliced_data = self._slice_table_data(self._source_data, self._active_page)
-        self._parsed_active_data = self._update_table_data(self._sliced_data)
-        return self._parsed_source_data, self._sliced_data, self._parsed_active_data
+        parsed_source_data = self._update_table_data(input_data=self._source_data)
+        sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        parsed_active_data = self._update_table_data(sliced_data)
+        return parsed_source_data, sliced_data, parsed_active_data
 
     def _create_multi_idx_columns(self):
         if self._columns_first_idx is not None:
@@ -444,13 +464,15 @@ class DatasetNinjaTable(Widget):
             multi_idx_columns = None
         return multi_idx_columns
 
-    def _assign_table_options_attrs(self, table_options: dict):
-        if table_options is not None:
-            sort = table_options.get("sort", None)
+    def _assign_table_options_attrs(
+        self,
+    ):
+        if self._table_options is not None:
+            sort = self._table_options.get("sort", None)
             sort_column_id, sort_order = self._unpack_sort_attrs(sort)
             return (
-                table_options.get("pageSize", self._default_page_size),
-                table_options.get("fixColumns", None),
+                self._table_options.get("pageSize", self._default_page_size),
+                self._table_options.get("fixColumns", None),
                 sort_column_id,
                 sort_order,
             )
@@ -488,7 +510,6 @@ class DatasetNinjaTable(Widget):
                 "columns": [],
                 "data": [],
             }
-            self._data_type = dict
         return data
 
     def _slice_table_data(self, input_data: pd.DataFrame, actual_page: int = 1) -> pd.DataFrame:
