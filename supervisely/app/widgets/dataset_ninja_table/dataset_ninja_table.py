@@ -252,6 +252,30 @@ class DatasetNinjaTable(Widget):
         self._fix_columns = value
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
 
+    def read_json(self, data_json: dict, meta_json: dict = None) -> None:
+        self._input_data = self._validate_input_data(data_json)
+        self._columns_first_idx = self._prepare_input_data("columns")
+        self._columns_options = self._prepare_input_data("columnsOptions")
+        self._table_options = self._prepare_input_data("options")
+        self._project_meta = self._unpack_project_meta(meta_json)
+        self._multi_idx_columns = self._create_multi_idx_columns()
+        self._source_data = self._prepare_input_data("data")
+        self._sliced_data = self._slice_table_data(self._source_data)
+        self._parsed_active_data = self._update_table_data(self._sliced_data)
+        init_options = DataJson()[self.widget_id]["options"]
+        init_options.update(self._table_options)
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
+        DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
+        DataJson()[self.widget_id]["options"] = init_options
+        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["pageSize"] = self._table_options.get(
+            "pageSize", self._default_page_size
+        )
+        DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+        DataJson().send_changes()
+        self.clear_selection()
+
     def to_json(self) -> Dict:
         return self._get_packed_data(self._parsed_active_data, dict)
 
@@ -259,8 +283,8 @@ class DatasetNinjaTable(Widget):
         return self._get_packed_data(self._parsed_active_data, pd.DataFrame)
 
     def clear_selection(self):
-        StateJson()[self.widget_id]["selectedRow"] = {}
-        StateJson()[self.widget_id]["selectedCell"] = {}
+        StateJson()[self.widget_id]["selectedRow"] = None
+        StateJson()[self.widget_id]["selectedCell"] = None
         StateJson().send_changes()
 
     def get_selected_row(self):
