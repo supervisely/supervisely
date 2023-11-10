@@ -83,7 +83,7 @@ DATATYPE_TO_UNPACKER = {
 }
 
 
-class DatasetNinjaTable(Widget):
+class SmartTable(Widget):
     class Routes:
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
@@ -188,10 +188,10 @@ class DatasetNinjaTable(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-        script_path = "./sly/css/app/widgets/dataset_ninja_table/script.js"
+        script_path = "./sly/css/app/widgets/smart_table/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
-        filter_changed_route_path = self.get_route_path(DatasetNinjaTable.Routes.UPDATE_DATA)
+        filter_changed_route_path = self.get_route_path(SmartTable.Routes.UPDATE_DATA)
         server = self._sly_app.get_server()
 
         @server.post(filter_changed_route_path)
@@ -368,7 +368,7 @@ class DatasetNinjaTable(Widget):
             return popped_row
 
     def row_click(self, func):
-        row_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.ROW_CLICKED)
+        row_clicked_route_path = self.get_route_path(SmartTable.Routes.ROW_CLICKED)
         server = self._sly_app.get_server()
 
         self._row_click_handled = True
@@ -379,7 +379,7 @@ class DatasetNinjaTable(Widget):
                 value_dict = self.get_selected_row()
                 if value_dict is None:
                     return
-                datapoint = DatasetNinjaTable.ClickedDataRow(**value_dict)
+                datapoint = SmartTable.ClickedDataRow(**value_dict)
                 func(datapoint)
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
@@ -388,7 +388,7 @@ class DatasetNinjaTable(Widget):
         return _click
 
     def cell_click(self, func):
-        cell_clicked_route_path = self.get_route_path(DatasetNinjaTable.Routes.CELL_CLICKED)
+        cell_clicked_route_path = self.get_route_path(SmartTable.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
 
         self._cell_click_handled = True
@@ -399,7 +399,7 @@ class DatasetNinjaTable(Widget):
                 value_dict = self.get_selected_cell()
                 if value_dict is None:
                     return
-                datapoint = DatasetNinjaTable.ClickedDataCell(**value_dict)
+                datapoint = SmartTable.ClickedDataCell(**value_dict)
                 func(datapoint)
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
