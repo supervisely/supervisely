@@ -3,7 +3,7 @@ import json
 import traceback
 import numpy as np
 import pandas as pd
-from typing import List, Optional, Dict, Union
+from typing import Optional, Union
 
 try:
     from typing import Literal
@@ -252,12 +252,12 @@ class DatasetNinjaTable(Widget):
         self._fix_columns = value
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
 
-    def read_json(self, data_json: dict, meta_json: dict = None) -> None:
-        self._input_data = self._validate_input_data(data_json)
+    def read_json(self, data: dict, meta: dict = None) -> None:
+        self._input_data = self._validate_input_data(data)
         self._columns_first_idx = self._prepare_input_data("columns")
         self._columns_options = self._prepare_input_data("columnsOptions")
         self._table_options = self._prepare_input_data("options")
-        self._project_meta = self._unpack_project_meta(meta_json)
+        self._project_meta = self._unpack_project_meta(meta)
         self._multi_idx_columns = self._create_multi_idx_columns()
         self._source_data = self._prepare_input_data("data")
         self._sliced_data = self._slice_table_data(self._source_data)
@@ -276,7 +276,7 @@ class DatasetNinjaTable(Widget):
         DataJson().send_changes()
         self.clear_selection()
 
-    def to_json(self) -> Dict:
+    def to_json(self) -> dict:
         return self._get_packed_data(self._parsed_active_data, dict)
 
     def to_pandas(self) -> pd.DataFrame:
