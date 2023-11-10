@@ -309,8 +309,8 @@ class LabelBase:
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:
             raise RuntimeError(
-                f"Failed to deserialize a Label object from JSON: label class name {obj_class_name!r} "
-                f"was not found in the given project meta."
+                f"Failed to deserialize a Label object from JSON: "
+                f"label class name {obj_class_name} was not found in the given project meta."
             )
 
         if obj_class.geometry_type is AnyGeometry:

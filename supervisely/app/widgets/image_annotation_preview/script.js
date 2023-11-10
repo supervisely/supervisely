@@ -6,20 +6,24 @@ Vue.component('sly-py-labeled-image', {
       imageWidgetStyles: {
         width: '100%',
         height: '300px',
-      }
+      },
+      imageInfo: null,
     };
   },
   methods: {
     imageLoaded(imageInfo) {
-      const style = getComputedStyle(this.$el);
-      if (!style?.width) {
-        return;
-      }
-      const maxWidth = Math.round(parseFloat(style.width));
-      const ratio = maxWidth / imageInfo.width;
-      const height = `${Math.max(Math.floor(imageInfo.height * ratio), 100)}px`;
-      this.imageWidgetStyles.height = height;
+      this.imageInfo = imageInfo;
+      this.resizeView();
     },
+    resizeView() {
+      if (!this.imageInfo) return;
+      const style = getComputedStyle(this.$el);
+      if (!style?.width) return;
+      const maxWidth = Math.round(parseFloat(style.width));
+      const ratio = maxWidth / this.imageInfo.width;
+      const height = `${Math.max(Math.floor(this.imageInfo.height * ratio), 100)}px`;
+      this.imageWidgetStyles.height = height;
+    }
   },
   template: `
 <div class="sly-py-labeled-image" style="position: relative;">
@@ -41,6 +45,7 @@ Vue.component('sly-py-labeled-image', {
     :annotation="annotation"
     :options="options"
     @image-info="imageLoaded"
+    @resize="resizeView"
   />
 </div>
   `,

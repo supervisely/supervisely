@@ -396,12 +396,10 @@ class Annotation:
                 Label.from_json(label_json, project_meta)
                 for label_json in data[AnnotationJsonFields.LABELS]
             ]
-        except Exception:
-            logger.fatal(
-                "Failed to deserialize annotation from JSON format. One of the Label objects could not be "
-                "deserialized"
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
             )
-            raise
 
         custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
         prob_labels = None
