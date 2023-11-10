@@ -75,10 +75,10 @@ class Tree(Widget):
         self,
         data: Optional[List[Tree.Node] or List[Dict]] = [],
         node_key: str = "id",
-        show_checkbox: bool = False,
+        selectable: bool = False,
         current_node_key: Optional[str or int] = None,
-        empty_text: str = "Input data is void",
         accordion: bool = False,
+        empty_text: str = "No data",
         widget_id: str = None,
     ):
         self._data = []
@@ -88,7 +88,7 @@ class Tree(Widget):
         else:
             self._data = data
         self._node_key = node_key
-        self._show_checkbox = show_checkbox
+        self._selectable = selectable
         self._current_node_key = current_node_key
         self._empty_text = empty_text
         self._accordion = accordion
@@ -128,7 +128,7 @@ class Tree(Widget):
         res = {
             "data": None,
             "node_key": self._node_key,
-            "show_checkbox": self._show_checkbox,
+            "selectable": self._selectable,
             "empty_text": self._empty_text,
             "accordion": self._accordion,
         }
@@ -195,7 +195,7 @@ class Tree(Widget):
         DataJson()[self.widget_id]["data"] = self._data_json
         DataJson().send_changes()
 
-    def unable_node(self, id: int):
+    def enable_node(self, id: int):
         check_node = self.get_node(id)
         Tree.Node.unable(check_node)
         self._data_json = self._data_to_json()

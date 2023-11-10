@@ -16,19 +16,33 @@ class CompareImages(Widget):
     def _set_items(self, left, right):
         self._check_input_items(left=left, right=right)
         if left is None:
-            left = LabeledImage() if type(right) == LabeledImage else Image()
+            if isinstance(right, Image):
+                left = Image()
+            elif isinstance(right, LabeledImage):
+                left = LabeledImage()
+            else:
+                left = ImageAnnotationPreview()
 
         if right is None:
-            right = LabeledImage() if type(left) == LabeledImage else Image()
+            if isinstance(left, Image):
+                right = Image()
+            elif isinstance(left, LabeledImage):
+                right = LabeledImage()
+            else:
+                right = ImageAnnotationPreview()
 
         self._left, self._right = left, right
 
     def _check_input_items(self, left, right):
         if type(left) not in [Image, LabeledImage, ImageAnnotationPreview, None]:
-            raise TypeError(f"Left widget type has to be Image or LabeledImage, got {type(left)}")
+            raise TypeError(
+                f"Left widget type has to be Image, LabeledImage or ImageAnnotationPreview, got {type(left)}"
+            )
 
         if type(right) not in [Image, LabeledImage, ImageAnnotationPreview, None]:
-            raise TypeError(f"Right widget type has to be Image or LabeledImage, got {type(left)}")
+            raise TypeError(
+                f"Right widget type has to be Image, LabeledImage or ImageAnnotationPreview, got {type(left)}"
+            )
 
         if left is None and right is None:
             raise TypeError("Both left and right widgets are not set")

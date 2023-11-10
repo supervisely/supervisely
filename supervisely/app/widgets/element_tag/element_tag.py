@@ -21,19 +21,13 @@ class ElementTag(Widget):
         type: Literal["primary", "gray", "success", "warning", "danger", None] = None,
         hit: bool = False,
         color: str = "",
-        closable: bool = False,
-        close_transition: bool = False,
-        hide: bool = False,
         widget_id: str = None,
     ):
         self._text = text
         self._validate_type(type)
         self._type = type
         self._color = color
-        self._closable = closable
-        self._close_transition = close_transition
         self._hit = hit
-        self._is_hide = hide
         self._tag_close = False
         self._clicked_tag = None
 
@@ -55,18 +49,32 @@ class ElementTag(Widget):
             "type": self._type,
             "hit": self._hit,
             "color": self._color,
-            "closable": self._closable,
-            "close_transition": self._close_transition,
         }
 
-    # def get_json_state(self):
-    #     return {"clicked_tag": self._clicked_tag}
+    def get_json_state(self):
+        return {}
 
     def get_json_state(self):
         return {}
 
     # def get_clicked_tag(self):
     #     return StateJson()[self.widget_id]["clicked_tag"]
+
+    @property
+    def text(self):
+        return self._text
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def hit(self):
+        return self._hit
+
+    @property
+    def color(self):
+        return self._color
 
     def set_text(self, value: str):
         DataJson()[self.widget_id]["text"] = value
@@ -100,15 +108,3 @@ class ElementTag(Widget):
     def set_color(self, value: str):
         DataJson()[self.widget_id]["color"] = value
         DataJson().send_changes()
-
-    # def close_tag(self, func):
-    #     route_path = self.get_route_path(Tag.Routes.CLOSE)
-    #     server = self._sly_app.get_server()
-    #     self._tag_close = True
-
-    #     @server.post(route_path)
-    #     def _click():
-    #         res = self.get_clicked_tag()
-    #         func(res)
-
-    #     return _click

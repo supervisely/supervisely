@@ -2,7 +2,7 @@
 
   {% if widget._tag_close == true %}
   @close="state.{{{ widget.widget_id }}}.clicked_tag = $event;
-            post('/{{{ widget.widget_id }}}/close_tag')"
+            post('/{{{ widget.widget_id }}}/_on_close_tag')"
   {% endif %}
 
 
