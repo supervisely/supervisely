@@ -1,0 +1,18 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/color_picker/style.css" />
+
+<div 
+    {% if widget._compact == true %}
+        class="block color-picker-compact"
+    {% else %}
+        class="block"
+    {% endif %}
+    >
+  <el-color-picker
+  v-model="state.{{{widget.widget_id}}}.color"
+  {% if widget._changes_handled == true %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
+    :show-alpha="data.{{{widget.widget_id}}}.show_alpha"
+    :color-format="data.{{{widget.widget_id}}}.color_format"
+  ></el-color-picker>
+</div>

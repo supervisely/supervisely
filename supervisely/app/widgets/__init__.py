@@ -108,7 +108,7 @@ from supervisely.app.widgets.image_annotation_preview.image_annotation_preview i
 )
 from supervisely.app.widgets.tag_meta_view.tag_meta_view import TagMetaView
 from supervisely.app.widgets.tag_metas_list.tag_metas_list import TagMetasList
-
+from supervisely.app.widgets.color_picker.color_picker import ColorPicker
 from supervisely.app.widgets.message_box.message_box import MessageBox
 from supervisely.app.widgets.docstring.docstring import Docstring
 from supervisely.app.widgets.cascader.cascader import Cascader

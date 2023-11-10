@@ -2,11 +2,13 @@ from functools import wraps
 from json import JSONDecodeError, loads
 from requests.exceptions import HTTPError, RetryError
 from shutil import ReadError
+from tarfile import ReadError as TarReadError
 from typing import List, Union, Callable, Dict
 from rich.console import Console
 
 from supervisely.sly_logger import logger, EventType
 from supervisely.app import DialogWindowError
+from supervisely import is_development
 
 import traceback
 import re
@@ -39,7 +41,8 @@ class HandleException:
         #     "for solutions and troubleshooting."
         # )
 
-        self.dev_logging()
+        if is_development():
+            self.dev_logging()
 
     def dev_logging(self):
         # * Option for logging the exception with sly logger.
@@ -58,18 +61,15 @@ class HandleException:
         # * Printing the exception to the console line by line.
         console = Console()
 
-        console.print("🛑 Beginning of the error report.", style="bold red")
-        console.print(f"🔴 {self.exception.__class__.__name__}: {self.exception}")
+        console.print(self.title, style="bold red")
+        console.print(self.message, style="bold red")
         # TODO: Uncomment code line when error codes will be added.
         # console.print(f"Error code: {self.code}.", style="bold orange")
-        console.print(f"🔴 Error title: {self.title}")
-        console.print(f"🔴 Error message: {self.message}")
+        console.print(f"{self.exception.__class__.__name__}: {self.exception}")
 
-        console.print("🔴 Traceback (most recent call last):", style="bold red")
-
+        console.print("Traceback (most recent call last):", style="bold red")
         for i, trace in enumerate(traceback.format_list(self.stack)):
             console.print(f"{i + 1}. {trace}")
-        console.print("🛑 End of the error report.", style="bold red")
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
@@ -151,6 +151,40 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class FailedToReadArchive(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 1005
+                self.title = "Failed to read archive"
+                self.message = (
+                    "Error occurred while reading the archive. "
+                    "Please, check the archive format, size and it is not corrupted."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class FailedToUnpackArchive(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 1006
+                self.title = "Failed to unpack archive"
+                self.message = (
+                    "Error occurred while unpacking the archive. "
+                    "Please, check the archive format, size and it is not corrupted."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class API:
         class TeamFilesFileNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -172,7 +206,7 @@ class ErrorHandler:
         class TaskSendRequestError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2002
-                self.title = "Task send request error"
+                self.title = "Task send request error. Check the logs for more information."
                 self.message = (
                     "The application has encountered an error while sending a request to the task. "
                     "It may be caused by connection issues. "
@@ -283,7 +317,7 @@ class ErrorHandler:
         class AppSetFieldError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2009
-                self.title = "App set field error"
+                self.title = "App set field error. Check the logs for more information."
                 self.message = (
                     "The application has encountered an error while sending a request. "
                     "It may be caused by connection issues. "
@@ -397,6 +431,20 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class TaskFinished(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2017
+                self.title = "Task finished"
+                self.message = "The task is already finished. Please, check the task's logs for more information."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class SDK:
         class ProjectStructureError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -449,6 +497,34 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3004
                 self.title = "Label deserialize error"
+                self.message = exception.args[0]
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class FileNameTooLong(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 3005
+                self.title = "File name too long"
+                self.message = f"Please, check name of items: {exception.args[0]}"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class AnnotationFromJsonFailed(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 3005
+                self.title = "Annotation deserialize error"
                 self.message = exception.args[0]
 
                 super().__init__(
@@ -514,10 +590,14 @@ ERROR_PATTERNS = {
         r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*Unauthorized for url.*": ErrorHandler.Agent.AgentError,
+        r".*Operation is canceled because task with id.*already finished.*": ErrorHandler.API.TaskFinished,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
+        r".*Annotation\.from_json.*": ErrorHandler.SDK.AnnotationFromJsonFailed,
         r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
+        r".*cuda runtime error.*out of memory.*": ErrorHandler.API.OutOfMemory,
+        r".*CUDA error.*an illegal memory access was encountered.*": ErrorHandler.API.OutOfMemory,
         r"The\ model\ has\ not\ yet\ been\ deployed.*": ErrorHandler.APP.CallUndeployedModelError,
     },
     FileNotFoundError: {
@@ -543,8 +623,14 @@ ERROR_PATTERNS = {
         r".*obj_class\.geometry_type\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
     },
     ReadError: {
-        r".*shutil\.unpack_archive.*": ErrorHandler.APP.UnsupportedArchiveFormat,
+        r".*unexpected end of data.*": ErrorHandler.APP.FailedToReadArchive,
+        r".*Unknown archive format.*": ErrorHandler.APP.UnsupportedArchiveFormat,
+        r".*shutil\.unpack_archive.*": ErrorHandler.APP.FailedToUnpackArchive,
         r".*api\.file\.download_directory.*": ErrorHandler.API.TeamFilesDirectoryDownloadError,
+    },
+    TarReadError: {
+        r".*unexpected end of data.*": ErrorHandler.APP.FailedToReadArchive,
+        r".*extractall.*": ErrorHandler.APP.FailedToUnpackArchive,
     },
     KeyError: {
         r".*api\.pointcloud\.upload_paths.*": ErrorHandler.API.PointcloudsUploadError,
@@ -561,6 +647,9 @@ ERROR_PATTERNS = {
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*api\.app\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*api\.task\.send_request.*": ErrorHandler.API.TaskSendRequestError,
+    },
+    OSError: {
+        r".*Errno 36.*File name too long.*": ErrorHandler.SDK.FileNameTooLong,
     },
 }
 
