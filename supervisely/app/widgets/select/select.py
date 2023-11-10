@@ -52,6 +52,7 @@ class Select(ConditionalWidget):
             label: str = None,
             content: Widget = None,
             right_text: str = None,
+            disabled: bool = False,
         ) -> Select.Item:
             self.value = value
             self.label = label
@@ -59,9 +60,15 @@ class Select(ConditionalWidget):
                 self.label = str(self.value)
             self.content = content
             self.right_text = right_text
+            self.disabled = disabled
 
         def to_json(self):
-            return {"label": self.label, "value": self.value, "right_text": self.right_text}
+            return {
+                "label": self.label,
+                "value": self.value,
+                "right_text": self.right_text,
+                "disabled": self.disabled,
+            }
 
     class Group:
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
