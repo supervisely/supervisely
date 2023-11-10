@@ -434,6 +434,13 @@ class DatasetNinjaTable(Widget):
         if order is not None:
             self._sort_order = order
             StateJson()[self.widget_id]["sort"]["order"] = order
+        self._filtered_data = self.search(self._search_str)
+        self._rows_total = len(self._filtered_data)
+        self._sorted_data = self._sort_table_data(self._filtered_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._update_table_data(self._sliced_data)
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["total"] = self._rows_total
         StateJson().send_changes()
 
     def _validate_sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
