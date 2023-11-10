@@ -157,7 +157,7 @@ Vue.component('smart-table', {
                     <i class="zmdi zmdi-sort-amount-desc ml5" v-if="sort.column === idx && sort.order === 'desc'" />
                   </span>
                 </div>
-                <div class="text-[.7rem] text-slate-500 font-normal text-left -mt-1" v-if="oneOfRowsHasSubtitle">
+                <div class="text-[.7rem] text-slate-500 font-normal text-left" v-if="oneOfRowsHasSubtitle">
                   {{ columnsSettings[idx]?.subtitle || 'ㅤ' }}
                 </div>
               </th>
@@ -177,7 +177,7 @@ Vue.component('smart-table', {
                   <span v-if="idx === 0 && settings.isRowClickable" class="opacity-0 transition-all duration-300 text-secondary-500 text-xs group-hover:translate-x-2 group-hover:opacity-100">➔</span>
                   <span class="text-slate-400 ml-0.5 text-[.7rem]" v-if="columnsSettings[idx]?.postfix">{{ columnsSettings[idx].postfix }}</span>
                 </div>
-                <div v-if="columnsSettings[idx]?.type === 'class'" class="text-[.6rem] text-slate-500 pl-[1.2rem] -mt-0.5">
+                <div v-if="columnsSettings[idx]?.type === 'class'" class="text-[.6rem] text-slate-500 pl-[1.2rem]">
                   {{ (classesMap[col]?.shape || 'Unknown').replace('bitmap', 'mask') }}
                 </div>
                 <div v-if="columnsSettings[idx]?.maxValue" class="h-[2px] bg-slate-200 mt-0.5 w-[50px]">
