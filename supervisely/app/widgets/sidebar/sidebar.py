@@ -14,7 +14,7 @@ class Sidebar(Widget):
         clear_main_panel_paddings: bool = False,
         show_close: bool = True,
         show_open: bool = True,
-        align_sidebar_to_header: bool = False,
+        sidebar_left_padding: str = None,
     ):
         self._left_content = left_content
         self._right_content = right_content
@@ -25,7 +25,7 @@ class Sidebar(Widget):
             "clearMainPanelPaddings": clear_main_panel_paddings,
             "showOpen": show_open,
             "showClose": show_close,
-            "alignSidebarToHeader": align_sidebar_to_header,
+            "sidebarLeftPadding": sidebar_left_padding,
         }
         super().__init__(widget_id=widget_id, file_path=__file__)
 
