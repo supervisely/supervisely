@@ -1250,6 +1250,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             load_dotenv(os.path.expanduser("~/supervisely.env"))
