@@ -1,4 +1,4 @@
-Vue.component('smart-table', {
+Vue.component('fast-table', {
   props: {
     data: {
       type: Array,
@@ -114,7 +114,7 @@ Vue.component('smart-table', {
     },
   },
   template: `
- <div class="tailwind smart-table">
+ <div class="tailwind fast-table">
     <div class="rounded-lg border border-slate-200 shadow bg-white" ref="wrapper">
       <div class="py-2 px-2 md:px-5 md:py-4 flex flex-col md:flex-row gap-2 justify-between items-center">
         <div class="relative w-full md:max-w-[18rem]">

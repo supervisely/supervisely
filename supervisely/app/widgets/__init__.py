@@ -113,4 +113,4 @@ from supervisely.app.widgets.color_picker.color_picker import ColorPicker
 from supervisely.app.widgets.pagination.pagination import Pagination
 from supervisely.app.widgets.cascader.cascader import Cascader
 from supervisely.app.widgets.time_picker.time_picker import TimePicker
-from supervisely.app.widgets.smart_table.smart_table import SmartTable
+from supervisely.app.widgets.fast_table.fast_table import FastTable

@@ -17,13 +17,19 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.project.project_meta import ProjectMeta
 
 
-class SmartTable(Widget):
+class EventLinstenerError(Exception):
+    def __init__(self, message="An exception occurred due to conflicting event listeners."):
+        self.message = message
+        super().__init__(self.message)
+
+
+class FastTable(Widget):
     class Routes:
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
         UPDATE_DATA = "update_data_cb"
 
-    class ClickedDataRow:
+    class ClickedRow:
         def __init__(
             self,
             row: list,
@@ -32,7 +38,7 @@ class SmartTable(Widget):
             self.row = row
             self.row_index = row_index
 
-    class ClickedDataCell:
+    class ClickedCell:
         def __init__(
             self,
             row: list,
@@ -55,8 +61,6 @@ class SmartTable(Widget):
         project_meta: Optional[Union[ProjectMeta, dict]] = None,
         fixed_columns: Optional[Literal[1]] = None,
         page_size: Optional[int] = 10,
-        clickable_rows: Optional[bool] = False,
-        clickable_cells: Optional[bool] = False,
         sort_column_idx: int = None,
         sort_order: Optional[Literal["asc", "desc"]] = None,
         width: Optional[str] = "auto",  # "200px", or "100%"
@@ -72,9 +76,6 @@ class SmartTable(Widget):
                                         ]
         """
 
-        if clickable_rows is True and clickable_cells is True:
-            raise AttributeError("You cannot use clickable rows and cells at the same time")
-
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
         self._cell_click_handled = False
@@ -86,8 +87,8 @@ class SmartTable(Widget):
         self._width = width
         self._selected_row = None
         self._selected_cell = None
-        self._clickable_rows = clickable_rows
-        self._clickable_cells = clickable_cells
+        self._clickable_rows = False
+        self._clickable_cells = False
         self._search_str = ""
         self._project_meta = self._unpack_project_meta(project_meta)
 
@@ -116,16 +117,15 @@ class SmartTable(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-        script_path = "./sly/css/app/widgets/smart_table/script.js"
+        script_path = "./sly/css/app/widgets/fast_table/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
-        filter_changed_route_path = self.get_route_path(SmartTable.Routes.UPDATE_DATA)
+        filter_changed_route_path = self.get_route_path(FastTable.Routes.UPDATE_DATA)
         server = self._sly_app.get_server()
 
         @server.post(filter_changed_route_path)
         def _filter_changed():
             try:
-                StateJson().get_changes()
                 self._active_page = StateJson()[self.widget_id]["page"]
                 self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
                 self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
@@ -289,14 +289,9 @@ class SmartTable(Widget):
         row_data = StateJson()[self.widget_id]["selectedRow"]
         row_index = row_data["idx"]
         row = row_data["row"]
-
         if row_index is None or row is None:
             return None
-
-        return {
-            "row": row,
-            "row_index": row_index,
-        }
+        return self.ClickedRow(row, row_index)
 
     def get_selected_cell(self):
         cell_data = StateJson()[self.widget_id]["selectedCell"]
@@ -305,17 +300,9 @@ class SmartTable(Widget):
         column_index = cell_data["column"]
         column_name = self._columns_first_idx[column_index]
         column_value = row[column_index]
-
         if column_index is None or row is None:
             return None
-
-        return {
-            "row": row,
-            "column_index": column_index,
-            "row_index": row_index,
-            "column_name": column_name,
-            "column_value": column_value,
-        }
+        return self.ClickedCell(row, column_index, row_index, column_name, column_value)
 
     def insert_row(self, row, index=-1):
         self._validate_table_sizes(row)
@@ -362,19 +349,25 @@ class SmartTable(Widget):
             return popped_row
 
     def row_click(self, func):
-        row_clicked_route_path = self.get_route_path(SmartTable.Routes.ROW_CLICKED)
+        row_clicked_route_path = self.get_route_path(FastTable.Routes.ROW_CLICKED)
         server = self._sly_app.get_server()
 
         self._row_click_handled = True
+        self._clickable_rows = True
+        DataJson()[self.widget_id]["options"]["isRowClickable"] = self._clickable_rows
+        DataJson().send_changes()
+
+        if self._cell_click_handled is True:
+            message = "An exception occurred due to conflicting event listeners: 'row_click' and 'cell_click'. To avoid errors, specify only one event listener. The 'cell_click' listener includes all information about the row as well."
+            raise EventLinstenerError(message)
 
         @server.post(row_clicked_route_path)
         def _click():
             try:
-                value_dict = self.get_selected_row()
-                if value_dict is None:
+                clicked_row = self.get_selected_row()
+                if clicked_row is None:
                     return
-                datapoint = SmartTable.ClickedDataRow(**value_dict)
-                func(datapoint)
+                func(clicked_row)
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
                 raise e
@@ -382,19 +375,25 @@ class SmartTable(Widget):
         return _click
 
     def cell_click(self, func):
-        cell_clicked_route_path = self.get_route_path(SmartTable.Routes.CELL_CLICKED)
+        cell_clicked_route_path = self.get_route_path(FastTable.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
 
         self._cell_click_handled = True
+        self._clickable_cells = True
+        DataJson()[self.widget_id]["options"]["isCellClickable"] = self._clickable_cells
+        DataJson().send_changes()
+
+        if self._row_click_handled is True:
+            message = "An exception occurred due to conflicting event listeners: 'row_click' and 'cell_click'. To avoid errors, specify only one event listener. The 'cell_click' listener includes all information about the row as well."
+            raise EventLinstenerError(message)
 
         @server.post(cell_clicked_route_path)
         def _click():
             try:
-                value_dict = self.get_selected_cell()
-                if value_dict is None:
+                clicked_cell = self.get_selected_cell()
+                if clicked_cell is None:
                     return
-                datapoint = SmartTable.ClickedDataCell(**value_dict)
-                func(datapoint)
+                func(clicked_cell)
             except Exception as e:
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
                 raise e
