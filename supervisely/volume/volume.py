@@ -78,6 +78,9 @@ def is_valid_ext(ext: str) -> bool:
         sly.volume.is_valid_ext(".mp4") # False
     """
 
+    if type(ext) is not str:
+        return False
+
     return ext.lower() in ALLOWED_VOLUME_EXTENSIONS
 
 
