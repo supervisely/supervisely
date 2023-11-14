@@ -40,8 +40,6 @@ from supervisely.api.module_api import (
     RemoveableBulkModuleApi,
     _get_single_item,
 )
-
-# from supervisely.api.api import Api
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     ensure_base_path,
