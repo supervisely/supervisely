@@ -1123,7 +1123,7 @@ class Annotation:
         def _resize_label(label):
             try:
                 return [label.resize(self.img_size, out_size)]
-            except:
+            except ValueError:
                 if ignore_empty_out_labels is True:
                     return []
                 else:
