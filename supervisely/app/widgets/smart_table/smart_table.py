@@ -403,7 +403,7 @@ class SmartTable(Widget):
 
     def search(self, search_value) -> pd.DataFrame:
         """
-        Filter all rows in source data that contain filter_value in any column of row
+        Search source data for search_value
 
         """
         filtered_data = self._source_data.copy()
