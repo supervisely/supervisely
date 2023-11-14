@@ -2,7 +2,7 @@ import copy
 import traceback
 import numpy as np
 import pandas as pd
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 try:
     from typing import Literal
@@ -32,7 +32,7 @@ class FastTable(Widget):
     class ClickedRow:
         def __init__(
             self,
-            row: list,
+            row: List,
             row_index: int = None,
         ):
             self.row = row
@@ -41,7 +41,7 @@ class FastTable(Widget):
     class ClickedCell:
         def __init__(
             self,
-            row: list,
+            row: List,
             column_index: int,
             row_index: int = None,
             column_name: int = None,
@@ -55,9 +55,9 @@ class FastTable(Widget):
 
     def __init__(
         self,
-        data: Optional[Union[pd.DataFrame, list]] = None,
-        columns: Optional[list] = None,
-        columns_options: Optional[list[dict]] = None,
+        data: Optional[Union[pd.DataFrame, List]] = None,
+        columns: Optional[List] = None,
+        columns_options: Optional[List[dict]] = None,
         project_meta: Optional[Union[ProjectMeta, dict]] = None,
         fixed_columns: Optional[Literal[1]] = None,
         page_size: Optional[int] = 10,
