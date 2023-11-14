@@ -2,8 +2,10 @@ import os
 import signal
 import psutil
 import sys
+from contextlib import suppress
 from pathlib import Path
-import traceback
+from threading import Event
+from time import sleep
 
 from fastapi import (
     FastAPI,
@@ -37,13 +39,18 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 import supervisely.io.env as sly_env
 
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
+def create(
+    process_id=None,
+    headless=False,
+    auto_widget_id=False,
+    before_shutdown_callbacks=None,
+) -> FastAPI:
     from supervisely.app import DataJson, StateJson
 
     JinjaWidgets().auto_widget_id = auto_widget_id
@@ -54,7 +61,7 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
 
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
-        shutdown(process_id)
+        shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
 
@@ -118,9 +125,21 @@ def create(process_id=None, headless=False, auto_widget_id=False) -> FastAPI:
     return app
 
 
-def shutdown(process_id=None):
+def shutdown(
+    process_id=None,
+    before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
+):
+    logger.info(f"Shutting down [pid argument = {process_id}]...")
+
+    if before_shutdown_callbacks is not None:
+        logger.info("Found tasks to run before shutdown.")
+        for func in before_shutdown_callbacks:
+            logger.debug(f"Call {func.__name__}")
+            func()
+    else:
+        logger.debug("No tasks to call before shutdown")
+
     try:
-        logger.info(f"Shutting down [pid argument = {process_id}]...")
         if process_id is None:
             # process_id = psutil.Process(os.getpid()).ppid()
             process_id = os.getpid()
@@ -198,6 +217,7 @@ def _init(
     process_id=None,
     static_dir=None,
     hot_reload=False,
+    before_shutdown_callbacks=None,
 ) -> FastAPI:
     from supervisely.app.fastapi import available_after_shutdown
     from supervisely.app.content import StateJson, DataJson
@@ -218,7 +238,15 @@ def _init(
     DataJson()["slyAppDialogTitle"] = ""
     DataJson()["slyAppDialogMessage"] = ""
 
-    app.mount("/sly", create(process_id, headless, auto_widget_id=True))
+    app.mount(
+        "/sly",
+        create(
+            process_id,
+            headless,
+            auto_widget_id=True,
+            before_shutdown_callbacks=before_shutdown_callbacks,
+        ),
+    )
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
@@ -288,6 +316,9 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
+    class StopApp(Exception):
+        """Raise to stop the function from running in app.run_with_stop_app_suppression"""
+
     def __init__(
         self,
         layout: "Widget" = None,
@@ -302,6 +333,25 @@ class Application(metaclass=Singleton):
         JinjaWidgets().context["__no_html_mode__"] = True
 
         self._static_dir = static_dir
+
+        self._stop_event = Event()
+        # for backward compatibility
+        self._graceful_stop_event: Optional[Event] = None
+
+        def set_stop_event():
+            self._stop_event.set()
+
+        def wait_for_graceful_stop_event():
+            if self._graceful_stop_event is None:
+                return
+            print_info = True
+            while not self._graceful_stop_event.is_set():
+                if print_info:
+                    logger.info("Graceful shutdown. Waiting for `app.stop()` to be called.")
+                    print_info = False
+                sleep(0.1)
+
+        self._before_shutdown_callbacks = [set_stop_event, wait_for_graceful_stop_event]
 
         headless = False
         if layout is None and templates_dir is None:
@@ -327,7 +377,10 @@ class Application(metaclass=Singleton):
             JinjaWidgets().auto_widget_id = False
             JinjaWidgets().context["__no_html_mode__"] = False
         if session_info_extra_content is not None:
-            session_info_extra_content_layout = Identity(session_info_extra_content, widget_id="__app_session_info_extra_content__")
+            session_info_extra_content_layout = Identity(
+                session_info_extra_content, widget_id="__app_session_info_extra_content__"
+            )
+
         if session_info_solid:
             JinjaWidgets().context["__app_session_info_solid__"] = True
 
@@ -344,6 +397,7 @@ class Application(metaclass=Singleton):
             process_id=self._process_id,
             static_dir=static_dir,
             hot_reload=hot_reload,
+            before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
         self.test_client = TestClient(self._fastapi)
 
@@ -376,16 +430,42 @@ class Application(metaclass=Singleton):
         await self._fastapi.__call__(scope, receive, send)
 
     def shutdown(self):
-        shutdown(self._process_id)
+        shutdown(self._process_id, self._before_shutdown_callbacks)
 
     def stop(self):
+        if self._graceful_stop_event is not None:
+            self._graceful_stop_event.set()
+        if self.app_is_stopped():
+            return
         self.shutdown()
+
+    def app_is_stopped(self):
+        """Indicates whether the application is in the process of being terminated."""
+        return self._stop_event.is_set()
 
     def reload_page(self):
         run_sync(self.hot_reload.notify.notify())
 
     def get_static_dir(self):
         return self._static_dir
+
+    def call_before_shutdown(self, func: Callable[[], None]):
+        self._before_shutdown_callbacks.append(func)
+
+    def run_with_stop_app_suppression(self, graceful_stop: bool = True):
+        """Contextmanager to suppress StopApp and control graceful shutdown.
+
+        :param graceful_stop: Whether to perform a graceful shutdown if a StopApp is raised.
+        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`),
+        the application will be terminated immediately, defaults to `True`
+        :type graceful_stop: bool
+        :return: context manager
+        :rtype: _type_
+        """
+        self._graceful_stop_event = Event()
+        if graceful_stop is False:
+            self._graceful_stop_event.set()
+        return suppress(self.StopApp)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):

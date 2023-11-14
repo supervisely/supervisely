@@ -146,7 +146,8 @@ class InferenceGUI(BaseInferenceGUI):
         )
 
         self._model_full_info_card.collapse()
-        self.get_ui = self.add_model_info_to_get_ui(self._model_full_info_card)
+        self._additional_ui_content = []
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
 
         tabs_titles = []
         tabs_contents = []
@@ -485,7 +486,15 @@ class InferenceGUI(BaseInferenceGUI):
             gap=3,
         )
 
-    def add_model_info_to_get_ui(
+    def add_content_to_default_ui(
+        self, widgets: Union[Widgets.Widget, List[Widgets.Widget]]
+    ) -> None:
+        if isinstance(widgets, List):
+            self._additional_ui_content.extend(widgets)
+        else:
+            self._additional_ui_content.append(widgets)
+
+    def __add_content_and_model_info_to_default_ui(
         self,
         model_info_widget: Widgets.Widget,
     ) -> Callable:
@@ -493,7 +502,8 @@ class InferenceGUI(BaseInferenceGUI):
             @wraps(get_ui)
             def wrapper(*args, **kwargs):
                 ui = get_ui(*args, **kwargs)
-                ui_with_info = Widgets.Container([ui, model_info_widget])
+                content = [ui, *self._additional_ui_content, model_info_widget]
+                ui_with_info = Widgets.Container(content)
                 return ui_with_info
 
             return wrapper

@@ -114,3 +114,5 @@ from supervisely.app.widgets.pagination.pagination import Pagination
 from supervisely.app.widgets.cascader.cascader import Cascader
 from supervisely.app.widgets.time_picker.time_picker import TimePicker
 from supervisely.app.widgets.fast_table.fast_table import FastTable
+from supervisely.app.widgets.element_tag.element_tag import ElementTag
+from supervisely.app.widgets.element_tags_list.element_tags_list import ElementTagsList
