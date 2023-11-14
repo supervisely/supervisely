@@ -1,5 +1,4 @@
 import copy
-import json
 import traceback
 import numpy as np
 import pandas as pd
@@ -16,71 +15,6 @@ from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.io.fs import get_file_ext
-
-
-class PackerUnpacker:
-    SUPPORTED_TYPES = tuple([dict, pd.DataFrame])
-
-    @staticmethod
-    def validate_sizes(unpacked_data):
-        for row in unpacked_data["data"]:
-            if len(row) != len(unpacked_data["columns"]):
-                raise ValueError(
-                    "Sizes mismatch:\n"
-                    f'{len(row)} != {len(unpacked_data["columns"])}\n'
-                    f"{row}\n"
-                    f'{unpacked_data["columns"]}'
-                )
-
-    @staticmethod
-    def unpack_data(data, unpacker_cb):
-        unpacked_data = unpacker_cb(data)
-        PackerUnpacker.validate_sizes(unpacked_data)
-        return unpacked_data
-
-    @staticmethod
-    def pack_data(data, packer_cb):
-        packed_data = packer_cb(data)
-        return packed_data
-
-    @staticmethod
-    def dict_unpacker(data: dict):
-        unpacked_data = copy.deepcopy(data)
-        return unpacked_data
-
-    @staticmethod
-    def pandas_unpacker(data: pd.DataFrame):
-        data = data.replace({np.nan: None})
-        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
-
-        unpacked_data = {
-            "columns": data.columns.to_list(),
-            "data": data.values.tolist(),
-        }
-        return unpacked_data
-
-    @staticmethod
-    def dict_packer(data):
-        packed_data = {"columns": data["columns"], "data": data["data"]}
-        return packed_data
-
-    @staticmethod
-    def pandas_packer(data):
-        data["data"] = [d["items"] for d in data["data"]]
-        packed_data = pd.DataFrame(data=data["data"], columns=data["columns"])
-        return packed_data
-
-
-DATATYPE_TO_PACKER = {
-    pd.DataFrame: PackerUnpacker.pandas_packer,
-    dict: PackerUnpacker.dict_packer,
-}
-
-DATATYPE_TO_UNPACKER = {
-    pd.DataFrame: PackerUnpacker.pandas_unpacker,
-    dict: PackerUnpacker.dict_unpacker,
-}
 
 
 class SmartTable(Widget):
@@ -115,46 +49,40 @@ class SmartTable(Widget):
 
     def __init__(
         self,
-        data: Optional[Union[dict, str]] = {},
+        data: Optional[Union[pd.DataFrame, list]] = None,
+        columns: Optional[list] = None,
+        columns_options: Optional[list[dict]] = None,
         project_meta: Optional[Union[ProjectMeta, dict]] = None,
+        fixed_columns: Optional[Literal[1]] = None,
+        page_size: Optional[int] = 10,
         clickable_rows: Optional[bool] = False,
         clickable_cells: Optional[bool] = False,
+        sort_column_idx: int = None,
+        sort_order: Optional[Literal["asc", "desc"]] = None,
         width: Optional[str] = "auto",  # "200px", or "100%"
         widget_id: Optional[str] = None,
     ):
         """
         :param data: dataset or project data in different formats:
-        1. Path to JSON file: 'statistics/class_balance.json'
-        2. Python dict with structure {
-                                        'columns': ['col_name_1', 'col_name_2', ...],
-                                        'data': [
-                                                    ['row_1_column_1', 'row_1_column_2', ...],
-                                                    ['row_2_column_1', 'row_2_column_2', ...],
-                                                    ...
-                                                ],
-                                        "columnsOptions": [{ "type": "class" }, { "maxValue": 10 }, ...],
-                                        "options": {
-                                                      "fixColumns": 1,
-                                                      "sort": { "columnIndex": 1, "order": "desc" },
-                                                      "pageSize": 10
-                                                  }
-                                      }
+        1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
+        2. Python list with structure [
+                                            ['row_1_column_1', 'row_1_column_2', ...],
+                                            ['row_2_column_1', 'row_2_column_2', ...],
+                                            ...
+                                        ]
         """
 
         if clickable_rows is True and clickable_cells is True:
             raise AttributeError("You cannot use clickable rows and cells at the same time")
 
-        self._supported_types = PackerUnpacker.SUPPORTED_TYPES
+        self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
         self._cell_click_handled = False
-        self._input_data = self._validate_input_data(data)
-        self._columns_first_idx = self._prepare_input_data("columns")
-        self._columns_options = self._prepare_input_data("columnsOptions")
-        self._table_options = self._prepare_input_data("options")
+        self._columns_first_idx = columns
+        self._columns_options = columns_options
         self._sorted_data = None
         self._filtered_data = None
         self._active_page = 1
-        self._default_page_size = 10
         self._width = width
         self._selected_row = None
         self._selected_cell = None
@@ -163,19 +91,19 @@ class SmartTable(Widget):
         self._search_str = ""
         self._project_meta = self._unpack_project_meta(project_meta)
 
-        # unpack table_options
-        (
-            self._page_size,
-            self._fix_columns,
-            self._sort_column_id,
-            self._sort_order,
-        ) = self._assign_table_options_attrs()
+        # table_options
+        self._page_size = page_size
+        self._fix_columns = self._check_fix_columns_value(fixed_columns)
+        self._sort_column_idx = sort_column_idx
+        self._sort_order = sort_order
+        self._validate_sort_attrs()
 
-        # to avoid errors with the same names for columns
-        self._multi_idx_columns = self._create_multi_idx_columns()
+        # to avoid errors with the duplicated names in columns
+        self._multi_idx_columns = None
 
         # prepare source_data
-        self._source_data = self._prepare_input_data("data")
+        self._validate_input_data(data)
+        self._source_data = self._prepare_input_data(data)
 
         # prepare parsed_source_data, sliced_data, parsed_active_data
         (
@@ -200,7 +128,7 @@ class SmartTable(Widget):
                 StateJson().get_changes()
                 self._active_page = StateJson()[self.widget_id]["page"]
                 self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
-                self._sort_column_id = StateJson()[self.widget_id]["sort"]["column"]
+                self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
                 search_value = StateJson()[self.widget_id]["search"]
                 self._filtered_data = self.search(search_value)
                 self._rows_total = len(self._filtered_data)
@@ -208,7 +136,7 @@ class SmartTable(Widget):
                 self._sliced_data = self._slice_table_data(
                     self._sorted_data, actual_page=self._active_page
                 )
-                self._parsed_active_data = self._update_table_data(self._sliced_data)
+                self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
                 DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
                 DataJson()[self.widget_id]["total"] = self._rows_total
                 DataJson().send_changes()
@@ -238,7 +166,7 @@ class SmartTable(Widget):
             "selectedCell": self._selected_cell,
             "page": self._active_page,
             "sort": {
-                "column": self._sort_column_id,
+                "column": self._sort_column_idx,
                 "order": self._sort_order,
             },
         }
@@ -252,35 +180,79 @@ class SmartTable(Widget):
         self._fix_columns = value
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
 
+    def _prepare_json_data(self, data: dict, key: str):
+        if key in ("data", "columns"):
+            default_value = []
+        else:
+            default_value = None
+        source_data = data.get(key, default_value)
+        if key == "data":
+            source_data = self._sort_table_data(
+                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
+            )
+        if key == "options":
+            options = data.get(key, default_value)
+            if options is not None:
+                sort = options.get("sort", None)
+                if sort is not None:
+                    column_idx = sort.get("columnIndex", None)
+                    if column_idx is not None:
+                        sort["column"] = sort.get("columnIndex")
+                        sort.pop("columnIndex")
+        return source_data
+
     def read_json(self, data: dict, meta: dict = None) -> None:
-        self._input_data = self._validate_input_data(data)
-        self._columns_first_idx = self._prepare_input_data("columns")
-        self._columns_options = self._prepare_input_data("columnsOptions")
-        self._table_options = self._prepare_input_data("options")
+        self._columns_first_idx = self._prepare_json_data(data, "columns")
+        self._columns_options = self._prepare_json_data(data, "columnsOptions")
+        self._table_options = self._prepare_json_data(data, "options")
         self._project_meta = self._unpack_project_meta(meta)
-        self._multi_idx_columns = self._create_multi_idx_columns()
-        self._source_data = self._prepare_input_data("data")
+        self._parsed_source_data = data.get("data", None)
+        self._source_data = self._prepare_input_data(self._parsed_source_data)
         self._sliced_data = self._slice_table_data(self._source_data)
-        self._parsed_active_data = self._update_table_data(self._sliced_data)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
+        sort = init_options.pop("sort", {})
+        page_size = init_options.pop("pageSize", 10)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
         DataJson()[self.widget_id]["total"] = len(self._source_data)
-        DataJson()[self.widget_id]["pageSize"] = self._table_options.get(
-            "pageSize", self._default_page_size
-        )
+        DataJson()[self.widget_id]["pageSize"] = page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+        StateJson()[self.widget_id]["sort"] = sort
+        DataJson().send_changes()
+        StateJson().send_changes()
+        self.clear_selection()
+
+    def read_pandas(self, value: pd.DataFrame) -> None:
+        self._source_data = self._prepare_input_data(value)
+        self._sorted_data = self._sort_table_data(self._source_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
+        DataJson()[self.widget_id]["total"] = len(self._source_data)
         DataJson().send_changes()
         self.clear_selection()
 
     def to_json(self) -> dict:
-        return self._get_packed_data(self._parsed_active_data, dict)
+        widget_data = {}
+        widget_data["data"] = self._parsed_source_data
+        widget_data["columns"] = DataJson()[self.widget_id]["columns"]
+        widget_data["options"] = copy.deepcopy(DataJson()[self.widget_id]["options"])
+        widget_data["columnsOptions"] = DataJson()[self.widget_id]["columnsOptions"]
+        sort = copy.deepcopy(StateJson()[self.widget_id]["sort"])
+        sort["columnIndex"] = sort.get("column", None)
+        sort.pop("column", None)
+        widget_data["options"]["sort"] = sort
+        return widget_data
 
     def to_pandas(self) -> pd.DataFrame:
-        return self._get_packed_data(self._parsed_active_data, pd.DataFrame)
+        temp_parsed_active_data = [d["items"] for d in self._parsed_active_data["data"]]
+        packed_data = pd.DataFrame(data=temp_parsed_active_data, columns=temp_parsed_active_data)
+        return packed_data
 
     def clear_selection(self):
         StateJson()[self.widget_id]["selectedRow"] = None
@@ -293,7 +265,6 @@ class SmartTable(Widget):
         row = row_data["row"]
 
         if row_index is None or row is None:
-            # click table header or clear selection
             return None
 
         return {
@@ -310,7 +281,6 @@ class SmartTable(Widget):
         column_value = row[column_index]
 
         if column_index is None or row is None:
-            # click table header or clear selection
             return None
 
         return {
@@ -322,11 +292,9 @@ class SmartTable(Widget):
         }
 
     def insert_row(self, row, index=-1):
-        PackerUnpacker.validate_sizes(
-            {"columns": self._parsed_source_data["columns"], "data": [row]}
-        )
-
-        table_data = self._parsed_source_data["data"]
+        self._validate_table_sizes({"columns": self._columns_first_idx, "data": [row]})
+        self._validate_row_values_types(row)
+        table_data = self._parsed_source_data
         index = len(table_data) if index > len(table_data) or index < 0 else index
 
         self._source_data = pd.concat(
@@ -426,67 +394,66 @@ class SmartTable(Widget):
             self._search_str = search_value
         return filtered_data
 
-    def sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
-        self._validate_sort(column_id, order)
-        if column_id is not None:
-            self._sort_column_id = column_id
-            StateJson()[self.widget_id]["sort"]["column"] = column_id
-        if order is not None:
-            self._sort_order = order
-            StateJson()[self.widget_id]["sort"]["order"] = order
+    def sort(self, column_idx: int = None, order: Optional[Literal["asc", "desc"]] = None):
+        self._sort_column_idx = column_idx
+        self._sort_order = order
+        self._validate_sort_attrs()
+        if self._sort_column_idx is not None:
+            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        if self._sort_order is not None:
+            StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
         self._filtered_data = self.search(self._search_str)
         self._rows_total = len(self._filtered_data)
         self._sorted_data = self._sort_table_data(self._filtered_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
-        self._parsed_active_data = self._update_table_data(self._sliced_data)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["total"] = self._rows_total
         StateJson().send_changes()
 
-    def _validate_sort(self, column_id: int = None, order: Optional[Literal["asc", "desc"]] = None):
-        if column_id is not None and type(column_id) is not int:
-            raise ValueError(f'Incorrect value of "column_id": {type(column_id)} is not "int".')
-        if column_id is not None and column_id < 0:
-            raise ValueError(f'Incorrect value of "column_id": {column_id} < 0')
-        if order is not None and order not in ["asc", "desc"]:
-            raise ValueError(
-                f'Incorrect value of "order": {order}. Value can be one of "asc" or "desc".'
+    def _validate_sort(
+        self, column_idx: int = None, order: Optional[Literal["asc", "desc"]] = None
+    ):
+        if column_idx is not None and type(column_idx) is not int:
+            logger.warning(
+                f"Incorrect value of 'column_id': {type(column_idx)} is not 'int'. Set to 'None'"
             )
+            return False
+        if column_idx is not None and column_idx < 0:
+            logger.warning(f"Incorrect value of 'column_id': {column_idx} < 0. Set to 'None'")
+            return False
+        if order is not None and order not in ["asc", "desc"]:
+            logger.warning(
+                f"Incorrect value of 'order': {order}. Value can be one of 'asc' or 'desc'. Set to 'None'"
+            )
+            return False
         return True
 
+    def _validate_sort_attrs(self):
+        if not self._validate_sort(column_idx=self._sort_column_idx):
+            self._sort_column_idx = None
+        if not self._validate_sort(order=self._sort_order):
+            self._sort_order = None
+
     def _validate_input_data(self, data):
-        if isinstance(data, str):
-            if get_file_ext(data) == ".json":
-                with open(data, "r") as json_file:
-                    valid_data = json.load(json_file)
-                return valid_data
-        elif isinstance(data, dict):
-            return data
-        raise TypeError(f"Unsupported data type. Supported types: dict or .json file")
+        input_data_type = type(data)
 
-    def _prepare_input_data(self, key):
-        if key in ("data", "columns"):
-            default_value = {}
-        else:
-            default_value = None
-        source_data = self._input_data.get(key, default_value)
-        if key == "data":
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
+        if input_data_type not in self._supported_types:
+            raise TypeError(
+                f"Cannot parse input data, please use one of supported datatypes: {self._supported_types}\n"
+                """
+                            1. Pandas Dataframe \n
+                            2. Python list with structure [
+                                                            ['row_1_column_1', 'row_1_column_2', ...],
+                                                            ['row_2_column_1', 'row_2_column_2', ...],
+                                                            ...
+                                                          ]
+                            """
             )
-        return source_data
-
-    def _assign_prepared_data_attrs(self):
-        parsed_source_data = self._update_table_data(input_data=self._source_data)
-        sliced_data = self._slice_table_data(self._source_data, self._active_page)
-        parsed_active_data = self._update_table_data(sliced_data)
-        return parsed_source_data, sliced_data, parsed_active_data
 
     def _create_multi_idx_columns(self):
         if self._columns_first_idx is not None:
-            self._columns_second_idx = [
-                "one" if i % 2 == 0 else "two" for i in range(len(self._columns_first_idx))
-            ]
+            self._columns_second_idx = list(range(len(self._columns_first_idx)))
             _columns_tuples = [self._columns_first_idx, self._columns_second_idx]
             multi_idx_columns = pd.MultiIndex.from_tuples(
                 list(zip(*_columns_tuples)), names=["first", "second"]
@@ -495,33 +462,44 @@ class SmartTable(Widget):
             multi_idx_columns = None
         return multi_idx_columns
 
-    def _assign_table_options_attrs(
-        self,
-    ):
-        if self._table_options is not None:
-            sort = self._table_options.get("sort", None)
-            sort_column_id, sort_order = self._unpack_sort_attrs(sort)
-            return (
-                self._table_options.get("pageSize", self._default_page_size),
-                self._table_options.get("fixColumns", None),
-                sort_column_id,
-                sort_order,
-            )
-        else:
-            return self._default_page_size, None, None, None
+    def _prepare_input_data(self, data):
+        if isinstance(data, pd.DataFrame):
+            source_data = copy.deepcopy(data)
 
-    def _unpack_sort_attrs(self, sort):
-        if sort is not None:
-            sort_column_id = (
-                sort["columnIndex"] if self._validate_sort(column_id=sort["columnIndex"]) else 0
+            if self._columns_first_idx is None and isinstance(source_data.columns, pd.RangeIndex):
+                self._columns_first_idx = None
+                self._multi_idx_columns = None
+                return source_data
+            elif self._columns_first_idx is None and isinstance(source_data.columns, pd.Index):
+                self._columns_first_idx = source_data.columns.tolist()
+            self._multi_idx_columns = self._create_multi_idx_columns()
+            source_data.columns = self._multi_idx_columns
+        elif isinstance(data, (list, type(None))):
+            self._multi_idx_columns = self._create_multi_idx_columns()
+            source_data = self._sort_table_data(
+                pd.DataFrame(data=data, columns=self._multi_idx_columns)
             )
-            sort_order = sort["order"] if self._validate_sort(order=sort["order"]) else "asc"
-        else:
-            sort_column_id = None
-            sort_order = None
-        return sort_column_id, sort_order
+        return source_data
 
-    def _update_table_data(self, input_data: pd.DataFrame) -> dict:
+    def _assign_prepared_data_attrs(self):
+        parsed_source_data = self._unpack_pandas_table_data(input_data=self._source_data)
+        sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        parsed_active_data = self._unpack_pandas_table_data(sliced_data)
+        return parsed_source_data, sliced_data, parsed_active_data
+
+    def _get_pandas_unpacked_data(self, data: pd.DataFrame) -> dict:
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError(f"Cannot parse input data, please use Pandas Dataframe as input data")
+        data = data.replace({np.nan: None})
+        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
+
+        unpacked_data = {
+            "columns": data.columns.to_list(),
+            "data": data.values.tolist(),
+        }
+        return unpacked_data
+
+    def _unpack_pandas_table_data(self, input_data: pd.DataFrame) -> dict:
         """
         Convert data to dict from pd.DataFrame
 
@@ -529,8 +507,11 @@ class SmartTable(Widget):
         if len(input_data.columns) != 0:
             new_data = []
             row_idx_list = input_data.index.tolist()
-            columns = input_data.columns.get_level_values("first").tolist()
-            data = copy.deepcopy(self._get_unpacked_data(input_data=input_data))
+            try:
+                columns = input_data.columns.get_level_values("first").tolist()
+            except KeyError:
+                columns = []
+            data = copy.deepcopy(self._get_pandas_unpacked_data(input_data))
             for idx, row in zip(row_idx_list, data["data"]):
                 data_entity = {"idx": idx, "items": row}
                 new_data.append(data_entity)
@@ -563,7 +544,7 @@ class SmartTable(Widget):
         Apply sorting to received data
 
         """
-        if self._sort_order is None or self._sort_column_id is None:
+        if self._sort_order is None or self._sort_column_idx is None:
             return input_data  # unsorted
 
         if input_data is not None:
@@ -572,7 +553,14 @@ class SmartTable(Widget):
             else:
                 ascending = False
             data: pd.DataFrame = copy.deepcopy(input_data)
-            data = data.sort_values(by=data.columns[self._sort_column_id], ascending=ascending)
+            try:
+                data = data.sort_values(by=data.columns[self._sort_column_idx], ascending=ascending)
+            except IndexError as e:
+                e.args = (
+                    f"Sorting by column idx = {self._sort_column_idx} is not possible, your table has only {len(data.columns)} columns with idx from 0 to {len(data.columns) - 1}",
+                )
+                raise e
+
         return data
 
     def _unpack_project_meta(self, project_meta: Union[ProjectMeta, dict]) -> dict:
@@ -589,28 +577,58 @@ class SmartTable(Widget):
                 )
         return project_meta
 
-    def _get_packed_data(self, input_data, data_type):
-        return PackerUnpacker.pack_data(data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type])
-
-    def _get_unpacked_data(self, input_data):
-        input_data_type = type(input_data)
-
-        if input_data_type not in self._supported_types:
-            raise TypeError(
-                f"Cannot parse input data, please use one of supported datatypes: {self._supported_types}\n"
-                """
-                            1. Pandas Dataframe \n
-                            2. Python dict with structure {
-                                        'columns': ['col_name_1', 'col_name_2', ...],
-                                        'data': [
-                                                            ['row_1_column_1', 'row_1_column_2', ...],
-                                                            ['row_2_column_1', 'row_2_column_2', ...],
-                                                            ...
-                                                          ]
-                                      }
-                            """
+    def _check_fix_columns_value(self, fixed_columns: int) -> int:
+        if isinstance(fixed_columns, int):
+            if fixed_columns <= 0:
+                logger.warning(
+                    f"The value for 'fixed_columns' should be > 0, instead '{fixed_columns}' is obtained. Set the value to 'None'"
+                )
+                fixed_columns = None
+            elif fixed_columns > 1:
+                logger.warning(
+                    f"Value for 'fixed_columns' is currently only supported as '1', instead '{fixed_columns}' is obtained. Set the value to '1'"
+                )
+                fixed_columns = 1
+        else:
+            logger.warning(
+                f"The value for 'fixed_columns' should be 'int', instead '{type(fixed_columns)}' is obtained. Set the value to 'None'"
             )
+            fixed_columns = None
+        return fixed_columns
 
-        return PackerUnpacker.unpack_data(
-            data=input_data, unpacker_cb=DATATYPE_TO_UNPACKER[input_data_type]
-        )
+    def _validate_table_sizes(self, unpacked_data):
+        for row in unpacked_data["data"]:
+            if len(row) != len(unpacked_data["columns"]):
+                raise ValueError(
+                    "Sizes mismatch:\n"
+                    f'{len(row)} != {len(unpacked_data["columns"])}\n'
+                    f"{row}\n"
+                    f'{unpacked_data["columns"]}'
+                )
+
+    def _validate_row_values_types(self, row):
+        failed_column_idxs = []
+        failed_column_idx = 0
+        for column, value in zip(self._source_data.columns, row):
+            col_type = type(self._source_data[column][0])
+            if col_type == str and not isinstance(value, str):
+                failed_column_idxs.append(
+                    {
+                        "idx": failed_column_idx,
+                        "type": col_type.__name__,
+                        "row_value_type": type(value).__name__,
+                    }
+                )
+            elif col_type != str and isinstance(value, str):
+                failed_column_idxs.append(
+                    {
+                        "idx": failed_column_idx,
+                        "type": col_type.__name__,
+                        "row_value_type": type(value).__name__,
+                    }
+                )
+            failed_column_idx += 1
+        if len(failed_column_idxs) != 0:
+            raise TypeError(
+                f"Row contains values of types that do not match the data types in the columns: {failed_column_idxs}"
+            )
