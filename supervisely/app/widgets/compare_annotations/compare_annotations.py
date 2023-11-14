@@ -3,7 +3,7 @@ from supervisely import Annotation
 from supervisely.app.widgets import GridGallery
 
 
-class CompareImages(GridGallery):
+class CompareAnnotations(GridGallery):
     def __init__(
         self,
         columns_number: int,
@@ -21,7 +21,7 @@ class CompareImages(GridGallery):
     ):
         self._image_url = None
         self._annotations = []
-        self._annotation_titles = []
+        self._titles = []
         self._set_items(self._annotations)
 
         super().__init__(
@@ -49,10 +49,10 @@ class CompareImages(GridGallery):
     def append(
         self,
         annotation: Annotation = None,
-        annotation_title: str = "",
+        title: str = "",
         column_index: int = None,
     ):
-        super().append(self._image_url, annotation, annotation_title, column_index)
+        super().append(self._image_url, annotation, title, column_index)
 
     def is_empty(self):
         return self._image_url == None or self._image_url == ""
@@ -61,7 +61,7 @@ class CompareImages(GridGallery):
         super().clean_up()
         self._image_url = None
         self._annotations = []
-        self._annotation_titles = []
+        self._titles = []
 
     def _set_items(self, annotations):
         for ann in annotations:

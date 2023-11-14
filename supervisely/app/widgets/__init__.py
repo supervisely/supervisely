@@ -112,4 +112,4 @@ from supervisely.app.widgets.color_picker.color_picker import ColorPicker
 from supervisely.app.widgets.pagination.pagination import Pagination
 from supervisely.app.widgets.cascader.cascader import Cascader
 from supervisely.app.widgets.time_picker.time_picker import TimePicker
-from supervisely.app.widgets.compare_images.compare_images import CompareImages
+from supervisely.app.widgets.compare_annotations.compare_annotations import CompareAnnotations
