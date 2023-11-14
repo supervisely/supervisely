@@ -1,0 +1,17 @@
+<div class="fflex">
+	<div>
+		<el-tag
+			v-for="(tag, idx) in state.{{{widget.widget_id}}}.tags"
+			class="mr5"
+			:key="idx"
+			:type="tag.type"
+			:hit="tag.hit"
+			:closable="tag.closable"
+			:close-transition="tag.close_transition"
+			@close="state.{{{widget.widget_id}}}.tags = state.{{{widget.widget_id}}}.tags.filter((item, index) => index !== idx);
+              post('/{{{ widget.widget_id }}}/tag_close_cb')"
+		>
+			{{ tag.text }}
+		</el-tag>
+	</div>
+</div>
