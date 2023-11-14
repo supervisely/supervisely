@@ -93,7 +93,7 @@ class SmartTable(Widget):
 
         # table_options
         self._page_size = page_size
-        self._fix_columns = self._check_fix_columns_value(fixed_columns)
+        self._fix_columns = self._validate_fix_columns_value(fixed_columns)
         self._sort_column_idx = sort_column_idx
         self._sort_order = sort_order
         self._validate_sort_attrs()
@@ -110,7 +110,7 @@ class SmartTable(Widget):
             self._parsed_source_data,
             self._sliced_data,
             self._parsed_active_data,
-        ) = self._assign_prepared_data_attrs()
+        ) = self._prepare_working_data()
 
         self._rows_total = len(self._parsed_source_data["data"])
 
@@ -177,31 +177,31 @@ class SmartTable(Widget):
 
     @fixed_columns_num.setter
     def fixed_columns_num(self, value: int):
-        self._fix_columns = value
+        self._fix_columns = self._validate_fix_columns_value(value)
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
 
-    def _prepare_json_data(self, data: dict, key: str):
-        if key in ("data", "columns"):
-            default_value = []
-        else:
-            default_value = None
-        source_data = data.get(key, default_value)
-        if key == "data":
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
-            )
-        if key == "options":
-            options = data.get(key, default_value)
-            if options is not None:
-                sort = options.get("sort", None)
-                if sort is not None:
-                    column_idx = sort.get("columnIndex", None)
-                    if column_idx is not None:
-                        sort["column"] = sort.get("columnIndex")
-                        sort.pop("columnIndex")
-        return source_data
+    @property
+    def project_meta(self) -> dict:
+        return self._project_meta
+
+    @project_meta.setter
+    def project_meta(self, meta: Union[ProjectMeta, dict]):
+        self._project_meta = self._unpack_project_meta(meta)
+        DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+
+    @property
+    def page_size(self) -> int:
+        return self._page_size
+
+    @page_size.setter
+    def page_size(self, size: int):
+        self._page_size = size
+        DataJson()[self.widget_id]["pageSize"] = self._page_size
 
     def read_json(self, data: dict, meta: dict = None) -> None:
+        """
+        Replace table data with options and project meta in the widget
+        """
         self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
         self._table_options = self._prepare_json_data(data, "options")
@@ -226,8 +226,11 @@ class SmartTable(Widget):
         StateJson().send_changes()
         self.clear_selection()
 
-    def read_pandas(self, value: pd.DataFrame) -> None:
-        self._source_data = self._prepare_input_data(value)
+    def read_pandas(self, data: pd.DataFrame) -> None:
+        """
+        Replace table data (rows and columns) in the widget
+        """
+        self._source_data = self._prepare_input_data(data)
         self._sorted_data = self._sort_table_data(self._source_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
@@ -237,9 +240,21 @@ class SmartTable(Widget):
         DataJson().send_changes()
         self.clear_selection()
 
-    def to_json(self) -> dict:
+    def to_json(self, active_page=False) -> dict:
+        """
+        Export table data with current options as dict.
+
+        :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
+        :type active_page: bool
+        :return: Table data with current options
+        :rtype: dict
+        """
+        if active_page is True:
+            temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
+        else:
+            temp_parsed_data = self._parsed_source_data
         widget_data = {}
-        widget_data["data"] = self._parsed_source_data
+        widget_data["data"] = temp_parsed_data
         widget_data["columns"] = DataJson()[self.widget_id]["columns"]
         widget_data["options"] = copy.deepcopy(DataJson()[self.widget_id]["options"])
         widget_data["columnsOptions"] = DataJson()[self.widget_id]["columnsOptions"]
@@ -249,9 +264,20 @@ class SmartTable(Widget):
         widget_data["options"]["sort"] = sort
         return widget_data
 
-    def to_pandas(self) -> pd.DataFrame:
-        temp_parsed_active_data = [d["items"] for d in self._parsed_active_data["data"]]
-        packed_data = pd.DataFrame(data=temp_parsed_active_data, columns=temp_parsed_active_data)
+    def to_pandas(self, active_page=False) -> pd.DataFrame:
+        """
+        Export only table data (rows and columns) as Pandas Dataframe.
+
+        :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
+        :type active_page: bool
+        :return: Table data
+        :rtype: pd.DataFrame
+        """
+        if active_page is True:
+            temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
+        else:
+            temp_parsed_data = self._parsed_source_data
+        packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
         return packed_data
 
     def clear_selection(self):
@@ -308,7 +334,7 @@ class SmartTable(Widget):
             self._parsed_source_data,
             self._sliced_data,
             self._parsed_active_data,
-        ) = self._assign_prepared_data_attrs()
+        ) = self._prepare_working_data()
         self._rows_total = len(self._parsed_source_data["data"])
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["total"] = self._rows_total
@@ -328,7 +354,7 @@ class SmartTable(Widget):
                 self._parsed_source_data,
                 self._sliced_data,
                 self._parsed_active_data,
-            ) = self._assign_prepared_data_attrs()
+            ) = self._prepare_working_data()
             self._rows_total = len(self._parsed_source_data["data"])
             DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
             DataJson()[self.widget_id]["total"] = self._rows_total
@@ -411,6 +437,27 @@ class SmartTable(Widget):
         DataJson()[self.widget_id]["total"] = self._rows_total
         StateJson().send_changes()
 
+    def _prepare_json_data(self, data: dict, key: str):
+        if key in ("data", "columns"):
+            default_value = []
+        else:
+            default_value = None
+        source_data = data.get(key, default_value)
+        if key == "data":
+            source_data = self._sort_table_data(
+                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
+            )
+        if key == "options":
+            options = data.get(key, default_value)
+            if options is not None:
+                sort = options.get("sort", None)
+                if sort is not None:
+                    column_idx = sort.get("columnIndex", None)
+                    if column_idx is not None:
+                        sort["column"] = sort.get("columnIndex")
+                        sort.pop("columnIndex")
+        return source_data
+
     def _validate_sort(
         self, column_idx: int = None, order: Optional[Literal["asc", "desc"]] = None
     ):
@@ -481,7 +528,7 @@ class SmartTable(Widget):
             )
         return source_data
 
-    def _assign_prepared_data_attrs(self):
+    def _prepare_working_data(self):
         parsed_source_data = self._unpack_pandas_table_data(input_data=self._source_data)
         sliced_data = self._slice_table_data(self._source_data, self._active_page)
         parsed_active_data = self._unpack_pandas_table_data(sliced_data)
@@ -577,7 +624,7 @@ class SmartTable(Widget):
                 )
         return project_meta
 
-    def _check_fix_columns_value(self, fixed_columns: int) -> int:
+    def _validate_fix_columns_value(self, fixed_columns: int) -> int:
         if isinstance(fixed_columns, int):
             if fixed_columns <= 0:
                 logger.warning(
