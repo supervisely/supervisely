@@ -16,7 +16,7 @@ class ElementTagsList(Widget):
     class Routes:
         CLOSE = "tag_close_cb"
 
-    class ElementTag:
+    class Tag:
         def __init__(
             self,
             text: str,
@@ -72,7 +72,7 @@ class ElementTagsList(Widget):
 
     def __init__(
         self,
-        tags: List[ElementTag] = [],
+        tags: List[Tag] = [],
         widget_id: str = None,
     ):
         self._clicked_tag = None
@@ -86,8 +86,8 @@ class ElementTagsList(Widget):
 
     def _validate_tags(self, tags):
         for tag in tags:
-            if not isinstance(tag, ElementTagsList.ElementTag):
-                raise ValueError(f"tag type should be class ElementTagsList.ElementTag")
+            if not isinstance(tag, ElementTagsList.Tag):
+                raise ValueError(f"tag type should be class ElementTagsList.Tag")
 
     def get_json_data(self):
         return {}
@@ -95,17 +95,15 @@ class ElementTagsList(Widget):
     def get_json_state(self):
         return {"tags": [tag.to_json() for tag in self._tags]}
 
-    def set_tags(self, tags: List[ElementTag]):
+    def set_tags(self, tags: List[Tag]):
         self._tags = tags
         self.update_state()
         StateJson().send_changes()
 
     def get_tags(self):
-        return [
-            ElementTagsList.ElementTag.from_json(tag) for tag in StateJson()[self.widget_id]["tags"]
-        ]
+        return [ElementTagsList.Tag.from_json(tag) for tag in StateJson()[self.widget_id]["tags"]]
 
-    def add_tags(self, tags: List[ElementTag]):
+    def add_tags(self, tags: List[Tag]):
         self._tags = self.get_tags()
         self._tags.extend(tags)
         self.update_state()

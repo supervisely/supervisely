@@ -16,7 +16,6 @@ class ElementTag(Widget):
 
     def __init__(
         self,
-        # tags: list = [],
         text: str = "",
         type: Literal["primary", "gray", "success", "warning", "danger", None] = None,
         hit: bool = False,
@@ -53,12 +52,6 @@ class ElementTag(Widget):
 
     def get_json_state(self):
         return {}
-
-    def get_json_state(self):
-        return {}
-
-    # def get_clicked_tag(self):
-    #     return StateJson()[self.widget_id]["clicked_tag"]
 
     @property
     def text(self):
@@ -102,9 +95,9 @@ class ElementTag(Widget):
         DataJson()[self.widget_id]["hit"] = False
         DataJson().send_changes()
 
-    def get_color(self):
-        return DataJson()[self.widget_id]["color"]
-
     def set_color(self, value: str):
         DataJson()[self.widget_id]["color"] = value
         DataJson().send_changes()
+
+    def get_color(self):
+        return DataJson()[self.widget_id]["color"]

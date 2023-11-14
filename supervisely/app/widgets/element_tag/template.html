@@ -1,33 +1,7 @@
 <el-tag
-
-  {% if widget._tag_close == true %}
-  @close="state.{{{ widget.widget_id }}}.clicked_tag = $event;
-            post('/{{{ widget.widget_id }}}/_on_close_tag')"
-  {% endif %}
-
-
-  :type="data.{{{widget.widget_id}}}.type"
-  :hit="data.{{{widget.widget_id}}}.hit"
-  :color="data.{{{widget.widget_id}}}.color"
-  :closable="data.{{{widget.widget_id}}}.closable"
-  :close-transition="data.{{{widget.widget_id}}}.close_transition"
+	:type="data.{{{widget.widget_id}}}.type"
+	:hit="data.{{{widget.widget_id}}}.hit"
+	:color="data.{{{widget.widget_id}}}.color"
 >
-  {{data.{{{widget.widget_id}}}.text}}
+	{{data.{{{widget.widget_id}}}.text}}
 </el-tag>
-
-
-<!-- <el-tag
-  v-for="tag in data.{{{widget.widget_id}}}.tags"
-  :key="tag.name"
-  :closable="data.{{{widget.widget_id}}}.closable"
-  :type="data.{{{widget.widget_id}}}.type"
-  :hit="data.{{{widget.widget_id}}}.hit"
-  :color="data.{{{widget.widget_id}}}.color"
->
-{{data.{{{widget.widget_id}}}.text}}
-</el-tag> -->
-
-
-<!-- {% if widget._tag_close == true %}
-    @close="post('/{{{widget.widget_id}}}/tag_close_cb')"
-    {% endif %} -->

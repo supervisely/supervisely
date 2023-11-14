@@ -1,74 +1,82 @@
+import uuid
+import time
+from typing import List, Optional
+from supervisely import Annotation
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget, LabeledImage, Image, ImageAnnotationPreview
+from supervisely.app.widgets import Widget, LabeledImage, Image, ImageAnnotationPreview, GridGallery
 from typing import Optional
 
 
-class CompareImages(Widget):
+class CompareImages(GridGallery):
     def __init__(
         self,
-        left: Optional[Image or LabeledImage or ImageAnnotationPreview] = None,
-        right: Optional[Image or LabeledImage or ImageAnnotationPreview] = None,
+        columns_number: int,
+        image_url: str = None,
+        annotations: List[Annotation] = [],
+        annotation_names: List[str] = [],
+        annotations_opacity: int = 0.5,
+        show_opacity_slider: bool = True,
+        enable_zoom: bool = False,
+        resize_on_zoom: bool = False,
+        sync_views: bool = False,
+        fill_rectangle: bool = True,
+        border_width: int = 3,
+        show_preview: bool = False,
+        empty_message: str = "No image to display",
         widget_id: str = None,
     ):
-        self._set_items(left=left, right=right)
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        # self._validate_annotations(annotations)
+        # self._validate_annotation_names(annotation_names)
+        self._set_items(annotations)
 
-    def _set_items(self, left, right):
-        self._check_input_items(left=left, right=right)
-        if left is None:
-            if isinstance(right, Image):
-                left = Image()
-            elif isinstance(right, LabeledImage):
-                left = LabeledImage()
-            else:
-                left = ImageAnnotationPreview()
+        self._image_url = image_url
+        self._annotations = annotations
+        self._annotation_names = annotation_names
+        self._columns_number = columns_number
+        self._annotations_opacity = annotations_opacity
+        self._show_opacity_slider = show_opacity_slider
+        self._enable_zoom = enable_zoom
+        self._resize_on_zoom = resize_on_zoom
+        self._sync_views = sync_views
+        self._fill_rectangle = fill_rectangle
+        self._border_width = border_width
+        self._show_preview = show_preview
+        self._empty_message = empty_message
+        self._widget_id = widget_id
 
-        if right is None:
-            if isinstance(left, Image):
-                right = Image()
-            elif isinstance(left, LabeledImage):
-                right = LabeledImage()
-            else:
-                right = ImageAnnotationPreview()
+        self._layout = []
 
-        self._left, self._right = left, right
+        super().__init__(
+            columns_number=columns_number,
+            annotations_opacity=annotations_opacity,
+            show_opacity_slider=show_opacity_slider,
+            enable_zoom=enable_zoom,
+            resize_on_zoom=resize_on_zoom,
+            sync_views=sync_views,
+            fill_rectangle=fill_rectangle,
+            border_width=border_width,
+            show_preview=show_preview,
+            empty_message=empty_message,
+            widget_id=widget_id,
+        )
 
-    def _check_input_items(self, left, right):
-        if type(left) not in [Image, LabeledImage, ImageAnnotationPreview, None]:
-            raise TypeError(
-                f"Left widget type has to be Image, LabeledImage or ImageAnnotationPreview, got {type(left)}"
-            )
+    def set_image_url(self, image_url: str):
+        self._image_url = image_url
 
-        if type(right) not in [Image, LabeledImage, ImageAnnotationPreview, None]:
-            raise TypeError(
-                f"Right widget type has to be Image, LabeledImage or ImageAnnotationPreview, got {type(left)}"
-            )
+    def _set_items(self, annotations):
+        for ann in annotations:
+            self.append(self._image_url, ann)
 
-        if left is None and right is None:
-            raise TypeError("Both left and right widgets are not set")
+    def append(
+        self,
+        annotation: Annotation = None,
+        title: str = "",
+        column_index: int = None,
+    ):
+        super().append(self._image_url, annotation, title, column_index)
 
-        if left is not None and right is not None:
-            if type(left) != type(right):
-                raise TypeError(f"Please provide the same type of widgets for left and right.")
+    # def get_json_data(self):
+    #     return {}
 
-    def get_json_data(self):
-        return {}
-
-    def get_json_state(self):
-        return {}
-
-    def update_left(self, *args, **kwargs):
-        self._left.set(*args, **kwargs)
-
-    def update_right(self, *args, **kwargs):
-        self._right.set(*args, **kwargs)
-
-    def clean_up_left(self):
-        self._left.clean_up()
-
-    def clean_up_right(self):
-        self._right.clean_up()
-
-    def clean_up(self):
-        self.clean_up_left()
-        self.clean_up_right()
+    # def get_json_state(self):
+    #     return {}
