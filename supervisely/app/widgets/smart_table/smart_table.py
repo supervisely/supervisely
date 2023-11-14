@@ -318,7 +318,7 @@ class SmartTable(Widget):
         }
 
     def insert_row(self, row, index=-1):
-        self._validate_table_sizes({"columns": self._columns_first_idx, "data": [row]})
+        self._validate_table_sizes(row)
         self._validate_row_values_types(row)
         table_data = self._parsed_source_data
         index = len(table_data) if index > len(table_data) or index < 0 else index
@@ -643,15 +643,12 @@ class SmartTable(Widget):
             fixed_columns = None
         return fixed_columns
 
-    def _validate_table_sizes(self, unpacked_data):
-        for row in unpacked_data["data"]:
-            if len(row) != len(unpacked_data["columns"]):
-                raise ValueError(
-                    "Sizes mismatch:\n"
-                    f'{len(row)} != {len(unpacked_data["columns"])}\n'
-                    f"{row}\n"
-                    f'{unpacked_data["columns"]}'
-                )
+    def _validate_table_sizes(self, row):
+        if len(row) != len(self._source_data.columns):
+            raise ValueError(
+                "Sizes mismatch:\n"
+                f"Lenght of row -> {len(row)} != {len(self._source_data.columns)} <- leght of columns"
+            )
 
     def _validate_row_values_types(self, row):
         failed_column_idxs = []
