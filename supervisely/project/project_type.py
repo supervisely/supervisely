@@ -9,3 +9,7 @@ class ProjectType(StrEnum):
     VOLUMES = "volumes"
     POINT_CLOUDS = "point_clouds"
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
+
+
+# Constants for multispectral projects.
+_MULTISPECTRAL_TAG_NAME = "multispectral"
