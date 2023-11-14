@@ -116,3 +116,4 @@ from supervisely.app.widgets.time_picker.time_picker import TimePicker
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.element_tag.element_tag import ElementTag
 from supervisely.app.widgets.element_tags_list.element_tags_list import ElementTagsList
+from supervisely.app.widgets.compare_annotations.compare_annotations import CompareAnnotations
