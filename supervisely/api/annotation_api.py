@@ -4,11 +4,12 @@
 # docs
 from __future__ import annotations
 import json
-from typing import List, Optional, NamedTuple, Dict, Callable, Union
+from typing import List, Optional, NamedTuple, Dict, Callable, Union, Any
 from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
 
 from supervisely.annotation.annotation import Annotation
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
 from tqdm import tqdm
@@ -929,3 +930,40 @@ class AnnotationApi(ModuleApi):
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
+
+    def get_image_label_by_id(
+        self, label_id: int, class_title: str, project_meta: ProjectMeta
+    ) -> Label:
+        resp = self._api.get("figures.info", {ApiField.ID: label_id, "decompressBitmap": False})
+        label_json = resp.json()
+
+        label_json["classTitle"] = class_title
+        geometry = label_json.pop("geometry")
+        label_json.update(geometry)
+        label_json["tags"] = self.get_label_tags(label_id)
+
+        return Label.from_json(label_json, project_meta)
+
+    def get_label_tags(self, label_id: int) -> Dict[str, Any]:
+        return self._api.get("figures.tags.list", {ApiField.ID: label_id}).json()
+
+    def update_label(self, label_id: int, label: Label):
+        label_json = label.to_json()
+        payload = {
+            "id": label_id,
+        }
+
+        shape = label_json.get("shape")
+        if shape == "bitmap":
+            geometry = label_json.get(shape)
+
+            payload["geometry"] = {
+                shape: geometry,
+            }
+        else:
+            geometry = label_json.get("points")
+            payload["geometry"] = {
+                "points": geometry,
+            }
+
+        self._api.post("figures.editInfo", payload)
