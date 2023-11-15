@@ -2495,16 +2495,24 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
 
     def upload_multispectral(
-        self, dataset_id: int, image_name: str, channels: List[np.ndarray]
+        self,
+        dataset_id: int,
+        image_name: str,
+        channels: Optional[List[np.ndarray]] = None,
+        images: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
-        """Uploads multispectral image to Supervisely, splitting it into separate images for each channel.
+        """Uploads multispectral image to Supervisely, if channels are provided, they will
+        be uploaded as separate images. If images are provided, they will be uploaded without
+        splitting into channels as RGB images.
 
         :param dataset_id: dataset ID to upload images to
         :type dataset_id: int
         :param image_name: name of the image
         :type image_name: str
         :param channels: list of numpy arrays with image channels
-        :type channels: List[np.ndarray]
+        :type channels: List[np.ndarray], optional
+        :param images: list of paths to images
+        :type images: List[str], optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
         :Usage example:
@@ -2535,16 +2543,25 @@ class ImageApi(RemoveableBulkModuleApi):
         group_tag = Tag(meta=group_tag_meta, value=image_name)
         image_basename = get_file_name(image_name)
 
-        channel_anns = []
-        channel_names = []
+        nps_for_upload = []
+        if images is not None:
+            for image in images:
+                nps_for_upload.append(sly_image.read(image))
 
-        for i, channel_np in enumerate(channels):
-            channel_anns.append(Annotation(channel_np.shape).add_tag(group_tag))
-            channel_names.append(f"{image_basename}_{i}.png")
+        if channels is not None:
+            for channel in channels:
+                nps_for_upload.append(channel)
 
-        image_infos = self.upload_nps(dataset_id, channel_names, channels)
+        anns = []
+        names = []
+
+        for i, np_for_upload in enumerate(nps_for_upload):
+            anns.append(Annotation(np_for_upload.shape).add_tag(group_tag))
+            names.append(f"{image_basename}_{i}.png")
+
+        image_infos = self.upload_nps(dataset_id, names, nps_for_upload)
         image_ids = [image_info.id for image_info in image_infos]
 
-        self._api.annotation.upload_anns(image_ids, channel_anns)
+        self._api.annotation.upload_anns(image_ids, anns)
 
         return image_infos
