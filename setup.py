@@ -40,6 +40,7 @@ INSTALL_REQUIRES = [
     "scikit-video>=1.1.11, <2.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
     "pydantic>=1.7.4, <2.0.0",
+    "anyio>=3.7.1,<4.0.0",  # TODO: remove after upgrade fastapi version to 0.103.1
     "fastapi>=0.79.0, <0.100.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",
