@@ -1063,17 +1063,18 @@ class Annotation:
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
     def resize(
-        self, out_size: Tuple[int, int], ignore_empty_out_labels: bool = False
+        self, out_size: Tuple[int, int], skip_empty_masks: bool = False
     ) -> Annotation:
         """
         Resizes current Annotation.
 
         :param out_size: Desired output image size (height, width).
         :type out_size: Tuple[int, int]
-        :param ignore_empty_out_labels: Ignore exception raising for the resized labels
-        :type ignore_empty_out_labels: bool
+        :param skip_empty_masks: Skip the raising of the error when you have got an empty label mask after a resizing procedure.
+        :type skip_empty_masks: bool
+
         :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class: Annotation
 
         :Usage Example:
 
@@ -1124,7 +1125,7 @@ class Annotation:
             try:
                 return [label.resize(self.img_size, out_size)]
             except ValueError:
-                if ignore_empty_out_labels is True:
+                if skip_empty_masks is True:
                     return []
                 else:
                     raise
