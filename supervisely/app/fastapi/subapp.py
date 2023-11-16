@@ -89,7 +89,7 @@ def create(
             development = is_development() or (is_production() and not is_docker())
 
             if advanced_debug or development:
-                server_address = sly_env.server_address()
+                server_address = sly_env.server_address(raise_not_found=False)
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
             elif production_at_instance:
@@ -175,10 +175,10 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-async def process_server_error(request, exc: Exception):
+async def process_server_error(request, exc: Exception, need_to_handle_error=True):
     from supervisely.io.exception_handlers import handle_exception
 
-    handled_exception = handle_exception(exc)
+    handled_exception = handle_exception(exc) if need_to_handle_error else None
 
     if handled_exception is not None:
         details = {"title": handled_exception.title, "message": handled_exception.message}
@@ -191,11 +191,14 @@ async def process_server_error(request, exc: Exception):
         details["message"] = exc.description
         details["status"] = exc.status
 
-    logger.error(
-        log_message,
-        exc_info=True,
-        extra={"main_name": "main", "exc_str": details["message"]},
-    )
+    if is_production():
+        logger.error(
+            log_message,
+            exc_info=True,
+            extra={"main_name": "main", "exc_str": details["message"]},
+        )
+    else:
+        raise exc
 
     return await http_exception_handler(
         request,
@@ -280,7 +283,8 @@ def _init(
         try:
             response = await call_next(request)
         except Exception as exc:
-            response = await process_server_error(request, exc)
+            need_to_handle_error = is_production()
+            response = await process_server_error(request, exc, need_to_handle_error)
         return response
 
     if headless is False:
