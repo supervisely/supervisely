@@ -934,7 +934,7 @@ class AnnotationApi(ModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
 
-    def get_image_label_by_id(self, label_id: int, project_meta: ProjectMeta) -> Label:
+    def get_label_by_id(self, label_id: int, project_meta: ProjectMeta) -> Label:
         """Returns Supervisely Label object by it's ID.
 
         :param label_id: ID of the label to get
