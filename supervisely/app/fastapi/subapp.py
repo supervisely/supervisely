@@ -504,6 +504,8 @@ class Application(metaclass=Singleton):
                 context = request_state.context
                 return func(api, context)
 
+            return wrapper
+
         return inner
 
 
