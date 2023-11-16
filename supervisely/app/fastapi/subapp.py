@@ -37,12 +37,19 @@ from supervisely._utils import is_production, is_development, is_docker, is_debu
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
+from supervisely.collection.str_enum import StrEnum
 import supervisely.io.env as sly_env
 
 from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
+
+
+class Events(StrEnum):
+    BRUSH_DRAW_LEFT_MOUSE_RELEASE = "/tools_bitmap_brush_figure_changed"
+    MANUAL_SELECTED_FIGURE_CHANGED = "/manual_selected_figure_changed"
+    MANUAL_SELECTED_IMAGE_CHANGED = "/manual_selected_image_changed"
 
 
 def create(
@@ -481,7 +488,7 @@ class Application(metaclass=Singleton):
 
             app = sly.Application(layout=layout)
 
-            @app.event(sly.Event.BRUSH_DRAW_LEFT_MOUSE_RELEASE)
+            @app.event(sly.Events.BRUSH_DRAW_LEFT_MOUSE_RELEASE)
             def some_function(api: sly.Api, context: Dict[str, Any]):
                 # do something
                 pass
