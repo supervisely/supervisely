@@ -9,6 +9,7 @@ from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
 
 from supervisely.annotation.annotation import Annotation
+from supervisely.geometry.bitmap import Bitmap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
@@ -786,7 +787,9 @@ class AnnotationApi(ModuleApi):
         for cur_batch in batched(list(zip(src_image_ids, dst_image_ids))):
             src_ids_batch, dst_ids_batch = zip(*cur_batch)
             ann_infos = self.download_batch(
-                src_dataset_id, src_ids_batch, force_metadata_for_links=force_metadata_for_links
+                src_dataset_id,
+                src_ids_batch,
+                force_metadata_for_links=force_metadata_for_links,
             )
             ann_jsons = [ann_info.annotation for ann_info in ann_infos]
             self.upload_jsons(
@@ -931,15 +934,11 @@ class AnnotationApi(ModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
 
-    def get_image_label_by_id(
-        self, label_id: int, class_title: str, project_meta: ProjectMeta
-    ) -> Label:
+    def get_image_label_by_id(self, label_id: int, project_meta: ProjectMeta) -> Label:
         """Returns Supervisely Label object by it's ID.
 
         :param label_id: ID of the label to get
         :type label_id: int
-        :param class_title: title of the label's class
-        :type class_title: str
         :param project_meta: Supervisely ProjectMeta object
         :type project_meta: ProjectMeta
         :return: Supervisely Label object
@@ -967,14 +966,20 @@ class AnnotationApi(ModuleApi):
             label = api.annotation.get_image_label_by_id(label_id, class_title, project_meta)
         """
         resp = self._api.get("figures.info", {ApiField.ID: label_id, "decompressBitmap": False})
-        label_json = resp.json()
+        geometry = resp.json()
 
-        label_json["classTitle"] = class_title
-        geometry = label_json.pop("geometry")
-        label_json.update(geometry)
-        label_json["tags"] = self.get_label_tags(label_id)
+        class_id = geometry.get("classId")
+        class_title = None
+        for obj_class in project_meta.obj_classes:
+            if obj_class.sly_id == class_id:
+                class_title = obj_class.name
+                break
 
-        return Label.from_json(label_json, project_meta)
+        geometry["classTitle"] = class_title
+        geometry.update(geometry.get("geometry"))
+        geometry["tags"] = self.get_label_tags(label_id)
+
+        return Label.from_json(geometry, project_meta)
 
     def get_label_tags(self, label_id: int) -> List[Dict[str, Any]]:
         """Returns tags of the label with given ID in JSON format.
@@ -1029,22 +1034,10 @@ class AnnotationApi(ModuleApi):
 
             api.annotation.update_label(label_id, new_label)
         """
-        label_json = label.to_json()
-        payload = {
-            "id": label_id,
-        }
-
-        shape = label_json.get("shape")
-        if shape == "bitmap":
-            geometry = label_json.get(shape)
-
-            payload["geometry"] = {
-                shape: geometry,
-            }
-        else:
-            geometry = label_json.get("points")
-            payload["geometry"] = {
-                "points": geometry,
-            }
-
-        self._api.post("figures.editInfo", payload)
+        self._api.post(
+            "figures.editInfo",
+            {
+                "id": label_id,
+                "geometry": label.geometry.to_json(),
+            },
+        )
