@@ -467,6 +467,38 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopApp)
 
+    def event(self, event_name: str):
+        """Decorator to register posts to specific endpoints.
+
+        :param event_name: event name
+        :type event_name: str
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            app = sly.Application(layout=layout)
+
+            @app.event(sly.Event.BRUSH_DRAW_LEFT_MOUSE_RELEASE)
+            def some_function(api: sly.Api, context: Dict[str, Any]):
+                # do something
+                pass
+        """
+
+        def inner(func: Callable) -> Callable:
+            server = self.get_server()
+
+            @server.post(f"{event_name}")
+            def wrapper(request: Request):
+                request_state = request.state
+                api = request_state.api
+                context = request_state.context
+                return func(api, context)
+
+        return inner
+
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
     """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
