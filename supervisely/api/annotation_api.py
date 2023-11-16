@@ -7,7 +7,7 @@ import json
 from typing import List, Optional, NamedTuple, Dict, Callable, Union, Any
 from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
-
+from supervisely.annotation.annotation import Annotation
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
