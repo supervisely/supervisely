@@ -67,9 +67,9 @@ class HandleException:
         # console.print(f"Error code: {self.code}.", style="bold orange")
         console.print(f"{self.exception.__class__.__name__}: {self.exception}")
 
-        console.print("Traceback (most recent call last):", style="bold red")
-        for i, trace in enumerate(traceback.format_list(self.stack)):
-            console.print(f"{i + 1}. {trace}")
+        # console.print("Traceback (most recent call last):", style="bold red")
+        # for i, trace in enumerate(traceback.format_list(self.stack)):
+        #     console.print(f"{i + 1}. {trace}")
 
     def raise_error(self):
         raise DialogWindowError(self.title, self.message)
