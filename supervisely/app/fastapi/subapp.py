@@ -319,8 +319,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    class StopApp(Exception):
-        """Raise to stop the function from running in app.run_with_stop_app_suppression"""
+    class StopException(Exception):
+        """Raise to stop the function from running in app.handle_stop"""
 
     def __init__(
         self,
@@ -438,11 +438,11 @@ class Application(metaclass=Singleton):
     def stop(self):
         if self._graceful_stop_event is not None:
             self._graceful_stop_event.set()
-        if self.app_is_stopped():
+        if self.is_stopped():
             return
         self.shutdown()
 
-    def app_is_stopped(self):
+    def is_stopped(self):
         """Indicates whether the application is in the process of being terminated."""
         return self._stop_event.is_set()
 
@@ -455,20 +455,20 @@ class Application(metaclass=Singleton):
     def call_before_shutdown(self, func: Callable[[], None]):
         self._before_shutdown_callbacks.append(func)
 
-    def run_with_stop_app_suppression(self, graceful_stop: bool = True):
-        """Contextmanager to suppress StopApp and control graceful shutdown.
+    def handle_stop(self, graceful: bool = True):
+        """Contextmanager to suppress StopException and control graceful shutdown.
 
-        :param graceful_stop: Whether to perform a graceful shutdown if a StopApp is raised.
-        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`),
+        :param graceful: Whether to perform a graceful shutdown if a StopException is raised.
+        If set to `False` and shutdown request recieved (i.e. `app.is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
-        :type graceful_stop: bool
+        :type graceful: bool
         :return: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = Event()
-        if graceful_stop is False:
+        if graceful is False:
             self._graceful_stop_event.set()
-        return suppress(self.StopApp)
+        return suppress(self.StopException)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
