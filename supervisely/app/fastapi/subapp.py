@@ -474,11 +474,14 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopApp)
 
-    def event(self, event_name: str):
+    def event(self, event_name: str) -> Callable:
         """Decorator to register posts to specific endpoints.
+        Decorated function must have two arguments: `api` and `context`.
 
         :param event_name: event name
         :type event_name: str
+        :return: decorator
+        :rtype: Callable
 
         :Usage example:
 
