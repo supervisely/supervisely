@@ -74,7 +74,6 @@ def create(
         @app.post("/state")
         async def send_state(request: Request):
             state = StateJson()
-            logger.debug("Full app state", extra={"state": state})
 
             response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
