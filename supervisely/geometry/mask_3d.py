@@ -324,9 +324,7 @@ class Mask3D(Geometry):
         """
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(geometry_bytes)
-            data_array, _ = nrrd.read(temp_file.name)
-
-        return cls(data_array)
+            return cls.create_from_file(temp_file.name)
 
     def to_json(self) -> Dict:
         """

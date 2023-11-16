@@ -666,3 +666,6 @@ class VolumeFigure(VideoFigure):
             )
 
         self.geometry.data = new_geometry.data
+        self.geometry._space = new_geometry._space
+        self.geometry._space_origin = new_geometry._space_origin
+        self.geometry._space_directions = new_geometry._space_directions
