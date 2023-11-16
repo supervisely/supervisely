@@ -958,12 +958,11 @@ class AnnotationApi(ModuleApi):
             api = sly.Api.from_env()
 
             label_id = 121236918
-            class_title = "car"
 
             project_id = 254737
             project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
 
-            label = api.annotation.get_image_label_by_id(label_id, class_title, project_meta)
+            label = api.annotation.get_image_label_by_id(label_id, project_meta)
         """
         resp = self._api.get("figures.info", {ApiField.ID: label_id, "decompressBitmap": False})
         geometry = resp.json()
