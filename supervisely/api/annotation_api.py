@@ -968,13 +968,7 @@ class AnnotationApi(ModuleApi):
         geometry = resp.json()
 
         class_id = geometry.get("classId")
-        class_title = None
-        for obj_class in project_meta.obj_classes:
-            if obj_class.sly_id == class_id:
-                class_title = obj_class.name
-                break
-
-        geometry["classTitle"] = class_title
+        geometry["classTitle"] = project_meta.get_obj_class_by_id(class_id).name
         geometry.update(geometry.get("geometry"))
         geometry["tags"] = self.get_label_tags(label_id)
 
