@@ -468,6 +468,12 @@ class tqdm_sly(tqdm, Progress):
                 if keyword in kwargs:
                     kwargs.pop(keyword)
 
+            if kwargs.get("total_cnt") is None:
+                try:
+                    kwargs["total_cnt"] = len(kwargs["iterable"])
+                except KeyError:
+                    kwargs["total_cnt"] = len(args[0])  # 'iterable' is always first
+
             Progress.__init__(
                 self,
                 **kwargs,
