@@ -627,6 +627,8 @@ class VideoAnnotation:
 
         if key_id_map is not None:
             key_id_map.add_video(video_key, data.get(VIDEO_ID, None))
+        else:
+            key_id_map = KeyIdMap()
 
         img_size_dict = data[IMG_SIZE]
         img_height = img_size_dict[IMG_SIZE_HEIGHT]
