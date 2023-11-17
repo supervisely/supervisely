@@ -9,16 +9,16 @@ class Switch(ConditionalWidget):
         VALUE_CHANGED = "value_changed"
 
     def __init__(
-            self,
-            switched: bool = False,
-            width: int = 58,  # default value 46 for empty text
-            on_text: str = "ON",
-            off_text: str = "OFF",
-            on_color: str = None,  # default: "#20a0ff"
-            off_color: str = None,  # default: "#bfcbd9"
-            on_content: Widget = None,
-            off_content: Widget = None,
-            widget_id: str = None,
+        self,
+        switched: bool = False,
+        width: int = 58,  # default value 46 for empty text
+        on_text: str = "ON",
+        off_text: str = "OFF",
+        on_color: str = None,  # default: "#20a0ff"
+        off_color: str = None,  # default: "#bfcbd9"
+        on_content: Widget = None,
+        off_content: Widget = None,
+        widget_id: str = None,
     ):
         self._switched = switched
         self._width = width
@@ -29,7 +29,7 @@ class Switch(ConditionalWidget):
         self._changes_handled = False
         items = [
             ConditionalItem(value=True, content=on_content),
-            ConditionalItem(value=False, content=off_content)
+            ConditionalItem(value=False, content=off_content),
         ]
         super().__init__(items=items, widget_id=widget_id, file_path=__file__)
 
@@ -39,11 +39,15 @@ class Switch(ConditionalWidget):
             "onText": self._on_text,
             "offText": self._off_text,
             "onColor": self._on_color,
-            "offColor": self._off_color
+            "offColor": self._off_color,
         }
 
     def get_json_state(self) -> Dict:
         return {"value": self._switched}
+
+    def is_on(self):
+        # For more convenient and understandable use.
+        return self._switched
 
     def is_switched(self):
         return StateJson()[self.widget_id]["value"]
