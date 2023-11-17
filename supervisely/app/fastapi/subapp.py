@@ -514,8 +514,6 @@ class Application(metaclass=Singleton):
 
 
 class Context:
-    # ['datasetId', 'teamId', 'workspaceId', 'projectId', 'imageId', 'figureId', 'figureClassId',
-    # 'figureClassTitle', 'toolClassId', 'sessionId', 'tool', 'userId', 'jobId', 'toolState']
     """Class for representing context of the event (POST request to the application).
 
     :param team_id: ID of the Team where the event occured
@@ -523,7 +521,30 @@ class Context:
     :param workspace_id: ID of the Workspace where the event occured
     :type workspace_id: int
     :param project_id: ID of the Project where the event occured
-    :type project_id: int"""
+    :type project_id: int
+    :param dataset_id: ID of the Dataset where the event occured
+    :type dataset_id: int
+    :param image_id: ID of the Image where the event occured
+    :type image_id: int
+    :param object_id: ID of the Object (a.k.a. Figure, a.k.a. Label)
+    :type object_id: int
+    :param object_class_id: ID of the Object Class
+    :type object_class_id: int
+    :param object_class_title: Title of the Object Class
+    :type object_class_title: str
+    :param tool_class_id: ID of the Tool Class
+    :type tool_class_id: int
+    :param session_id: ID of the Session
+    :type session_id: int
+    :param tool: Name of the Tool
+    :type tool: str
+    :param user_id: ID of the User
+    :type user_id: int
+    :param job_id: ID of the Job
+    :type job_id: int
+    :param tool_option: Option of the Tool
+    :type tool_option: str
+    """
 
     def __init__(
         self,
@@ -540,7 +561,6 @@ class Context:
         tool: str,
         user_id: int,
         job_id: int,
-        # tool_state: Dict[str, str],
         tool_option: str,
     ):
         self.dataset_id = dataset_id
@@ -556,16 +576,13 @@ class Context:
         self.tool = tool
         self.user_id = user_id
         self.job_id = job_id
-        # self.tool_state = tool_state
         self.tool_option = tool_option
 
     @classmethod
     def from_json(cls, json: Dict[str, Any]):
-        # ! Not in ApiField
-        tool_state = json.get("toolState")
+        tool_state = json.get(ApiField.TOOL_STATE)
         if tool_state is not None:
-            # ! Not in ApiField
-            tool_option = tool_state.get("option")
+            tool_option = tool_state.get(ApiField.OPTION)
         else:
             tool_option = None
         return cls(
@@ -575,16 +592,13 @@ class Context:
             dataset_id=json.get(ApiField.DATASET_ID),
             image_id=json.get(ApiField.IMAGE_ID),
             object_id=json.get(ApiField.FIGURE_ID),
-            # ! Not in ApiField
-            object_class_id=json.get("figureClassId"),
-            object_class_title=json.get("figureClassTitle"),
-            tool_class_id=json.get("toolClassId"),
-            # ! end of not in ApiField
+            object_class_id=json.get(ApiField.FIGURE_CLASS_ID),
+            object_class_title=json.get(ApiField.FIGURE_CLASS_TITLE),
+            tool_class_id=json.get(ApiField.TOOL_CLASS_ID),
             session_id=json.get(ApiField.SESSION_ID),
             tool=json.get(ApiField.LABELING_TOOL),
             user_id=json.get(ApiField.USER_ID),
             job_id=json.get(ApiField.JOB_ID),
-            # tool_state=tool_state,
             tool_option=tool_option,
         )
 
