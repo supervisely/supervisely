@@ -962,7 +962,9 @@ class AnnotationApi(ModuleApi):
 
             label = api.annotation.get_label_by_id(label_id, project_meta)
         """
-        resp = self._api.get("figures.info", {ApiField.ID: label_id, "decompressBitmap": False})
+        resp = self._api.get(
+            "figures.info", {ApiField.ID: label_id, ApiField.DECOMPRESS_BITMAP: False}
+        )
         geometry = resp.json()
 
         class_id = geometry.get("classId")
@@ -1034,7 +1036,8 @@ class AnnotationApi(ModuleApi):
         self._api.post(
             "figures.editInfo",
             {
-                "id": label_id,
-                "geometry": label.geometry.to_json(),
+                ApiField.ID: label_id,
+                ApiField.TAGS: [tag.to_json() for tag in label.tags],
+                ApiField.GEOMETRY: label.geometry.to_json(),
             },
         )

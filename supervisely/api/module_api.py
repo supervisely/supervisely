@@ -487,6 +487,8 @@ class ApiField:
     """"""
     OPTION = "option"
     """"""
+    DECOMPRESS_BITMAP = "decompressBitmap"
+    """"""
 
 
 def _get_single_item(items):
