@@ -589,7 +589,7 @@ class VideoAnnotation:
 
     @classmethod
     def from_json(
-        cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
+        cls, data: Dict, project_meta: ProjectMeta, key_id_map: KeyIdMap = None
     ) -> VideoAnnotation:
         """
         Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
@@ -599,7 +599,7 @@ class VideoAnnotation:
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: Union[KeyIdMap, None]
         :return: VideoAnnotation object
         :rtype: :class:`VideoAnnotation`
 
@@ -619,16 +619,16 @@ class VideoAnnotation:
                 "frames": [],
                 "framesCount": 1
             }
+            key_id_map = sly.KeyIdMap()
             meta = sly.ProjectMeta()
-            video_ann = sly.VideoAnnotation.from_json(video_ann_json, meta)
+
+            video_ann = sly.VideoAnnotation.from_json(video_ann_json, meta, key_id_map)
         """
         # video_name = data[VIDEO_NAME]
         video_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
             key_id_map.add_video(video_key, data.get(VIDEO_ID, None))
-        else:
-            key_id_map = KeyIdMap()
 
         img_size_dict = data[IMG_SIZE]
         img_height = img_size_dict[IMG_SIZE_HEIGHT]
