@@ -623,7 +623,10 @@ class VolumeFigureApi(FigureApi):
             geometry = Mask3D.create_from_file(figure_path)
             spatial_figure._set_3d_geometry(geometry)
 
-    def _create_header_for_geometry(self, geometry: Mask3D):
+    def _create_header_for_geometry(self, geometry: Mask3D) -> OrderedDict:
+        """
+        Create header for encoding Mask3D to NRRD bytes
+        """
         header = OrderedDict()
         if geometry._space is not None:
             header["space"] = geometry._space
