@@ -73,7 +73,7 @@ class Progress:
     def __init__(
         self,
         message: str,
-        total_cnt: int,
+        total_cnt: Optional[int],
         ext_logger: Optional[logger] = None,
         is_size: Optional[bool] = False,
         need_info_log: Optional[bool] = False,
@@ -83,7 +83,7 @@ class Progress:
         self.message = message
         self.total = total_cnt
         self.current = 0
-        self.is_total_unknown = total_cnt == 0
+        self.is_total_unknown = True if total_cnt in [None, 0] else False
 
         self.total_label = ""
         self.current_label = ""
@@ -467,6 +467,20 @@ class tqdm_sly(tqdm, Progress):
             for keyword in tqdm_init_params:
                 if keyword in kwargs:
                     kwargs.pop(keyword)
+
+            # see original tqdm.__init__ for logic behaviour
+            iterable_is_not_none = (
+                False if kwargs.get("iterable") is None and len(args) == 0 else True
+            )
+            if kwargs.get("total_cnt") is None and iterable_is_not_none is True:
+                try:
+                    iterable = kwargs.get("iterable", args[0])
+                    kwargs["total_cnt"] = len(iterable)
+                except (TypeError, AttributeError):
+                    kwargs["total_cnt"] = None
+            if kwargs.get("total_cnt") == float("inf"):
+                # Infinite iterations, behave same as unknown
+                kwargs["total_cnt"] = None
 
             Progress.__init__(
                 self,
