@@ -83,8 +83,7 @@ class Progress:
         self.message = message
         self.total = total_cnt
         self.current = 0
-        if total_cnt in [None, 0]:
-            self.is_total_unknown = True
+        self.is_total_unknown = True if total_cnt in [None, 0] else False
 
         self.total_label = ""
         self.current_label = ""
