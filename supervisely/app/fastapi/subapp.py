@@ -540,7 +540,7 @@ class Context:
         tool: str,
         user_id: int,
         job_id: int,
-        tool_state: Dict[str, str],
+        # tool_state: Dict[str, str],
         tool_option: str,
     ):
         self.dataset_id = dataset_id
@@ -556,7 +556,7 @@ class Context:
         self.tool = tool
         self.user_id = user_id
         self.job_id = job_id
-        self.tool_state = tool_state
+        # self.tool_state = tool_state
         self.tool_option = tool_option
 
     @classmethod
@@ -584,7 +584,7 @@ class Context:
             tool=json.get(ApiField.LABELING_TOOL),
             user_id=json.get(ApiField.USER_ID),
             job_id=json.get(ApiField.JOB_ID),
-            tool_state=tool_state,
+            # tool_state=tool_state,
             tool_option=tool_option,
         )
 
