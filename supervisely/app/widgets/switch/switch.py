@@ -47,7 +47,7 @@ class Switch(ConditionalWidget):
 
     def is_on(self):
         # For more convenient and understandable use.
-        return self._switched
+        return self.is_switched()
 
     def is_switched(self):
         return StateJson()[self.widget_id]["value"]
