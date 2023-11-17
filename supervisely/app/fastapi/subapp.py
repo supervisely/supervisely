@@ -39,6 +39,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 from supervisely.collection.str_enum import StrEnum
 import supervisely.io.env as sly_env
+from supervisely.api.module_api import ApiField
 
 from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
 
@@ -504,12 +505,88 @@ class Application(metaclass=Singleton):
             def wrapper(request: Request):
                 request_state = request.state
                 api = request_state.api
-                context = request_state.context
+                context = Context.from_json(request_state.context)
                 return func(api, context)
 
             return wrapper
 
         return inner
+
+
+class Context:
+    # ['datasetId', 'teamId', 'workspaceId', 'projectId', 'imageId', 'figureId', 'figureClassId',
+    # 'figureClassTitle', 'toolClassId', 'sessionId', 'tool', 'userId', 'jobId', 'toolState']
+    """Class for representing context of the event (POST request to the application).
+
+    :param team_id: ID of the Team where the event occured
+    :type team_id: int
+    :param workspace_id: ID of the Workspace where the event occured
+    :type workspace_id: int
+    :param project_id: ID of the Project where the event occured
+    :type project_id: int"""
+
+    def __init__(
+        self,
+        team_id: int,
+        workspace_id: int,
+        project_id: int,
+        dataset_id: int,
+        image_id: int,
+        object_id: int,
+        object_class_id: int,
+        object_class_title: str,
+        tool_class_id: int,
+        session_id: int,
+        tool: str,
+        user_id: int,
+        job_id: int,
+        tool_state: Dict[str, str],
+        tool_option: str,
+    ):
+        self.dataset_id = dataset_id
+        self.team_id = team_id
+        self.workspace_id = workspace_id
+        self.project_id = project_id
+        self.image_id = image_id
+        self.object_id = object_id
+        self.object_class_id = object_class_id
+        self.object_class_title = object_class_title
+        self.tool_class_id = tool_class_id
+        self.session_id = session_id
+        self.tool = tool
+        self.user_id = user_id
+        self.job_id = job_id
+        self.tool_state = tool_state
+        self.tool_option = tool_option
+
+    @classmethod
+    def from_json(cls, json: Dict[str, Any]):
+        # ! Not in ApiField
+        tool_state = json.get("toolState")
+        if tool_state is not None:
+            # ! Not in ApiField
+            tool_option = tool_state.get("option")
+        else:
+            tool_option = None
+        return cls(
+            team_id=json.get(ApiField.TEAM_ID),
+            workspace_id=json.get(ApiField.WORKSPACE_ID),
+            project_id=json.get(ApiField.PROJECT_ID),
+            dataset_id=json.get(ApiField.DATASET_ID),
+            image_id=json.get(ApiField.IMAGE_ID),
+            object_id=json.get(ApiField.FIGURE_ID),
+            # ! Not in ApiField
+            object_class_id=json.get("figureClassId"),
+            object_class_title=json.get("figureClassTitle"),
+            tool_class_id=json.get("toolClassId"),
+            # ! end of not in ApiField
+            session_id=json.get(ApiField.SESSION_ID),
+            tool=json.get(ApiField.LABELING_TOOL),
+            user_id=json.get(ApiField.USER_ID),
+            job_id=json.get(ApiField.JOB_ID),
+            tool_state=tool_state,
+            tool_option=tool_option,
+        )
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
