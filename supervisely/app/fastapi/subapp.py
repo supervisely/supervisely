@@ -544,7 +544,7 @@ class Application(metaclass=Singleton):
         """Decorator to register posts to specific endpoints.
 
         :param event: event to register (e.g. `Events.Brush.LeftMouseReleased`)
-        :type event_name: Events
+        :type event: Events
         :return: decorator
         :rtype: Callable
 
