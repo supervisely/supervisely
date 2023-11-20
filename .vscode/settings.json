@@ -21,7 +21,12 @@
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
     },
+    "isort.args":["--profile", "black"],    
     "debug.inlineValues": "off",
     "python.analysis.typeCheckingMode": "off",
     "python.analysis.autoImportCompletions": false,

@@ -147,7 +147,6 @@ def create(
         @app.post("/state")
         async def send_state(request: Request):
             state = StateJson()
-            logger.debug("Full app state", extra={"state": state})
 
             response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
@@ -163,7 +162,7 @@ def create(
             development = is_development() or (is_production() and not is_docker())
 
             if advanced_debug or development:
-                server_address = sly_env.server_address()
+                server_address = sly_env.server_address(raise_not_found=False)
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
             elif production_at_instance:
@@ -249,10 +248,10 @@ def enable_hot_reload_on_debug(app: FastAPI):
         logger.debug("In runtime mode ...")
 
 
-async def process_server_error(request, exc: Exception):
+async def process_server_error(request, exc: Exception, need_to_handle_error=True):
     from supervisely.io.exception_handlers import handle_exception
 
-    handled_exception = handle_exception(exc)
+    handled_exception = handle_exception(exc) if need_to_handle_error else None
 
     if handled_exception is not None:
         details = {"title": handled_exception.title, "message": handled_exception.message}
@@ -265,11 +264,14 @@ async def process_server_error(request, exc: Exception):
         details["message"] = exc.description
         details["status"] = exc.status
 
-    logger.error(
-        log_message,
-        exc_info=True,
-        extra={"main_name": "main", "exc_str": details["message"]},
-    )
+    if is_production():
+        logger.error(
+            log_message,
+            exc_info=True,
+            extra={"main_name": "main", "exc_str": details["message"]},
+        )
+    else:
+        raise exc
 
     return await http_exception_handler(
         request,
@@ -354,7 +356,8 @@ def _init(
         try:
             response = await call_next(request)
         except Exception as exc:
-            response = await process_server_error(request, exc)
+            need_to_handle_error = is_production()
+            response = await process_server_error(request, exc, need_to_handle_error)
         return response
 
     if headless is False:
@@ -389,8 +392,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
-    class StopApp(Exception):
-        """Raise to stop the function from running in app.run_with_stop_app_suppression"""
+    class StopException(Exception):
+        """Raise to stop the function from running in app.handle_stop"""
 
     def __init__(
         self,
@@ -508,11 +511,11 @@ class Application(metaclass=Singleton):
     def stop(self):
         if self._graceful_stop_event is not None:
             self._graceful_stop_event.set()
-        if self.app_is_stopped():
+        if self.is_stopped():
             return
         self.shutdown()
 
-    def app_is_stopped(self):
+    def is_stopped(self):
         """Indicates whether the application is in the process of being terminated."""
         return self._stop_event.is_set()
 
@@ -525,20 +528,20 @@ class Application(metaclass=Singleton):
     def call_before_shutdown(self, func: Callable[[], None]):
         self._before_shutdown_callbacks.append(func)
 
-    def run_with_stop_app_suppression(self, graceful_stop: bool = True):
-        """Contextmanager to suppress StopApp and control graceful shutdown.
+    def handle_stop(self, graceful: bool = True):
+        """Contextmanager to suppress StopException and control graceful shutdown.
 
-        :param graceful_stop: Whether to perform a graceful shutdown if a StopApp is raised.
-        If set to `False` and shutdown request recieved (i.e. `app.app_is_stopped()` is `True`),
+        :param graceful: Whether to perform a graceful shutdown if a StopException is raised.
+        If set to `False` and shutdown request recieved (i.e. `app.is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
-        :type graceful_stop: bool
+        :type graceful: bool
         :return: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = ThreadingEvent()
-        if graceful_stop is False:
+        if graceful is False:
             self._graceful_stop_event.set()
-        return suppress(self.StopApp)
+        return suppress(self.StopException)
 
     def event(self, event: Event) -> Callable:
         """Decorator to register posts to specific endpoints.

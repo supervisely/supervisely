@@ -110,7 +110,7 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
-    def app_is_stoped(self):
+    def is_stopped(self):
         return self.stop_event.is_set()
 
     def _graceful_exit(self, sig, frame):

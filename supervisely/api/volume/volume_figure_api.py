@@ -5,6 +5,7 @@ import tempfile
 from uuid import UUID
 from numpy import uint8
 from typing import List, Dict
+from collections import OrderedDict
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from supervisely.io.fs import ensure_base_path, file_exists
 from supervisely._utils import batched
@@ -466,8 +467,9 @@ class VolumeFigureApi(FigureApi):
 
                 for figure in figures:
                     if figure.key() == key:
-                        geometry = figure.geometry.data
-                        geometry_bytes = encode(geometry.astype(uint8))
+                        geometry_data = figure.geometry.data
+                        header = self._create_header_for_geometry(figure.geometry)
+                        geometry_bytes = encode(geometry_data.astype(uint8), header)
                         self.upload_sf_geometries([key], {key: geometry_bytes}, key_id_map)
 
     def upload_sf_geometries(
@@ -620,3 +622,16 @@ class VolumeFigureApi(FigureApi):
             self.download_sf_geometries([figure_id], [figure_path])
             geometry = Mask3D.create_from_file(figure_path)
             spatial_figure._set_3d_geometry(geometry)
+
+    def _create_header_for_geometry(self, geometry: Mask3D) -> OrderedDict:
+        """
+        Create header for encoding Mask3D to NRRD bytes
+        """
+        header = OrderedDict()
+        if geometry._space is not None:
+            header["space"] = geometry._space
+        if geometry._space_directions is not None:
+            header["space directions"] = geometry._space_directions
+        if geometry._space_origin is not None:
+            header["space origin"] = geometry._space_origin.to_json()["space_origin"]
+        return header

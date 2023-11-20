@@ -1,5 +1,6 @@
 # coding: utf-8
-import pkg_resources
+# isort: skip_file
+import pkg_resources  # isort: skip
 
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
