@@ -4,7 +4,7 @@ import psutil
 import sys
 from contextlib import suppress
 from pathlib import Path
-from threading import Event
+from threading import Event as ThreadingEvent
 from time import sleep
 
 from fastapi import (
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-class Events:
+class Event:
     class Brush:
         class DrawLeftMouseReleased:
             endpoint = "/tools_bitmap_brush_figure_changed"
@@ -407,9 +407,9 @@ class Application(metaclass=Singleton):
 
         self._static_dir = static_dir
 
-        self._stop_event = Event()
+        self._stop_event = ThreadingEvent()
         # for backward compatibility
-        self._graceful_stop_event: Optional[Event] = None
+        self._graceful_stop_event: Optional[ThreadingEvent] = None
 
         def set_stop_event():
             self._stop_event.set()
@@ -535,16 +535,16 @@ class Application(metaclass=Singleton):
         :return: context manager
         :rtype: _type_
         """
-        self._graceful_stop_event = Event()
+        self._graceful_stop_event = ThreadingEvent()
         if graceful_stop is False:
             self._graceful_stop_event.set()
         return suppress(self.StopApp)
 
-    def event(self, event: Events) -> Callable:
+    def event(self, event: Event) -> Callable:
         """Decorator to register posts to specific endpoints.
 
-        :param event: event to register (e.g. `Events.Brush.LeftMouseReleased`)
-        :type event: Events
+        :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
+        :type event: Event
         :return: decorator
         :rtype: Callable
 
@@ -556,8 +556,8 @@ class Application(metaclass=Singleton):
 
             app = sly.Application(layout=layout)
 
-            @app.event(sly.Events.Brush.LeftMouseReleased)
-            def some_function(api: sly.Api, event: sly.Events.Brush.LeftMouseReleased):
+            @app.event(sly.Event.Brush.LeftMouseReleased)
+            def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
                 # do something
                 pass
         """

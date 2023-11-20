@@ -932,13 +932,17 @@ class AnnotationApi(ModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
 
-    def get_label_by_id(self, label_id: int, project_meta: ProjectMeta) -> Label:
+    def get_label_by_id(
+        self, label_id: int, project_meta: ProjectMeta, with_tags: Optional[bool] = True
+    ) -> Label:
         """Returns Supervisely Label object by it's ID.
 
         :param label_id: ID of the label to get
         :type label_id: int
         :param project_meta: Supervisely ProjectMeta object
         :type project_meta: ProjectMeta
+        :param with_tags: If True, tags will be added to the Label object
+        :type with_tags: bool, optional
         :return: Supervisely Label object
         :rtype: Label
         :Usage example:
@@ -970,11 +974,11 @@ class AnnotationApi(ModuleApi):
         class_id = geometry.get("classId")
         geometry["classTitle"] = project_meta.get_obj_class_by_id(class_id).name
         geometry.update(geometry.get("geometry"))
-        geometry["tags"] = self.get_label_tags(label_id)
+        geometry["tags"] = self._get_label_tags(label_id) if with_tags else []
 
         return Label.from_json(geometry, project_meta)
 
-    def get_label_tags(self, label_id: int) -> List[Dict[str, Any]]:
+    def _get_label_tags(self, label_id: int) -> List[Dict[str, Any]]:
         """Returns tags of the label with given ID in JSON format.
 
         :param label_id: ID of the label to get tags
