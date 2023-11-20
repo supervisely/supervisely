@@ -115,7 +115,6 @@ class ProjectMeta(JsonSerializable):
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[ProjectType] = None,
     ):
-
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
         elif isinstance(obj_classes, list):
@@ -354,7 +353,7 @@ class ProjectMeta(JsonSerializable):
                 f"Key '{ProjectMetaJsonFields.OBJ_CLASSES}' with the list of annotation classes "
                 "not found in meta.json file. Check the annotation format documentation at: "
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
-                )
+            )
         return cls(
             obj_classes=obj_classes,
             tag_metas=tag_metas,
@@ -919,6 +918,28 @@ class ProjectMeta(JsonSerializable):
             # None
         """
         return self._obj_classes.get(obj_class_name)
+
+    def get_obj_class_by_id(self, obj_class_id: int) -> ObjClass:
+        """
+        Get given ObjClass by name from ProjectMeta.
+
+        :param obj_class_id: ObjClass id.
+        :type obj_class_id: int
+        :return: ObjClass object
+        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+
+            obj_class_id = 123
+        """
+        for obj_class in self.obj_classes:
+            if obj_class.sly_id == obj_class_id:
+                return obj_class
 
     def get_tag_meta(self, tag_name: str) -> TagMeta:
         """

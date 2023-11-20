@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from copy import deepcopy
+from typing import List, Tuple
 
 import numpy as np
 from supervisely.io.json import JsonSerializable
@@ -151,6 +152,22 @@ class Geometry(JsonSerializable):
         :param config: drawing config specific to a concrete subclass, e.g. per edge colors
         """
         self._draw_bool_compatible(self._draw_impl, bitmap, color, thickness, config)
+
+    def get_mask(self, img_size: Tuple[int, int]):
+        """Returns 2D boolean mask of the geometry.
+        With shape as img_size (height, width) and filled
+        with True values inside the geometry and False values outside.
+        dtype = np.bool
+        shape = img_size
+
+        :param img_size: size of the image (height, width)
+        :type img_size: Tuple[int, int]
+        :return: 2D boolean mask of the geometry
+        :rtype: np.ndarray
+        """
+        bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
+        self.draw(bitmap, color=[255, 255, 255], thickness=-1)
+        return np.any(bitmap != 0, axis=-1)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """

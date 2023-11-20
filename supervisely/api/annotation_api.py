@@ -4,11 +4,11 @@
 # docs
 from __future__ import annotations
 import json
-from typing import List, Optional, NamedTuple, Dict, Callable, Union
+from typing import List, Optional, NamedTuple, Dict, Callable, Union, Any
 from supervisely.task.progress import Progress
 from supervisely.annotation.label import Label
-
 from supervisely.annotation.annotation import Annotation
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely._utils import batched
 from tqdm import tqdm
@@ -785,7 +785,9 @@ class AnnotationApi(ModuleApi):
         for cur_batch in batched(list(zip(src_image_ids, dst_image_ids))):
             src_ids_batch, dst_ids_batch = zip(*cur_batch)
             ann_infos = self.download_batch(
-                src_dataset_id, src_ids_batch, force_metadata_for_links=force_metadata_for_links
+                src_dataset_id,
+                src_ids_batch,
+                force_metadata_for_links=force_metadata_for_links,
             )
             ann_jsons = [ann_info.annotation for ann_info in ann_infos]
             self.upload_jsons(
@@ -929,3 +931,111 @@ class AnnotationApi(ModuleApi):
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
+
+    def get_label_by_id(
+        self, label_id: int, project_meta: ProjectMeta, with_tags: Optional[bool] = True
+    ) -> Label:
+        """Returns Supervisely Label object by it's ID.
+
+        :param label_id: ID of the label to get
+        :type label_id: int
+        :param project_meta: Supervisely ProjectMeta object
+        :type project_meta: ProjectMeta
+        :param with_tags: If True, tags will be added to the Label object
+        :type with_tags: bool, optional
+        :return: Supervisely Label object
+        :rtype: Label
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            label_id = 121236918
+
+            project_id = 254737
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+
+            label = api.annotation.get_label_by_id(label_id, project_meta)
+        """
+        resp = self._api.get(
+            "figures.info", {ApiField.ID: label_id, ApiField.DECOMPRESS_BITMAP: False}
+        )
+        geometry = resp.json()
+
+        class_id = geometry.get("classId")
+        geometry["classTitle"] = project_meta.get_obj_class_by_id(class_id).name
+        geometry.update(geometry.get("geometry"))
+        geometry["tags"] = self._get_label_tags(label_id) if with_tags else []
+
+        return Label.from_json(geometry, project_meta)
+
+    def _get_label_tags(self, label_id: int) -> List[Dict[str, Any]]:
+        """Returns tags of the label with given ID in JSON format.
+
+        :param label_id: ID of the label to get tags
+        :type label_id: int
+        :return: list of tags in JSON format
+        :rtype: List[Dict[str, Any]]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            label_id = 121236918
+            tags_json = api.annotation.get_label_tags(label_id)
+        """
+        return self._api.get("figures.tags.list", {ApiField.ID: label_id}).json()
+
+    def update_label(self, label_id: int, label: Label) -> None:
+        """Updates label with given ID in Supervisely with new Label object.
+        NOTE: This method only updates label's geometry and tags, not class title, etc.
+
+        :param label_id: ID of the label to update
+        :type label_id: int
+        :param label: Supervisely Label object
+        :type label: Label
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            new_label: sly.Label
+            label_id = 121236918
+
+            api.annotation.update_label(label_id, new_label)
+        """
+        self._api.post(
+            "figures.editInfo",
+            {
+                ApiField.ID: label_id,
+                ApiField.TAGS: [tag.to_json() for tag in label.tags],
+                ApiField.GEOMETRY: label.geometry.to_json(),
+            },
+        )

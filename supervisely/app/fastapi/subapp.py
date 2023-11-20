@@ -4,7 +4,7 @@ import psutil
 import sys
 from contextlib import suppress
 from pathlib import Path
-from threading import Event
+from threading import Event as ThreadingEvent
 from time import sleep
 
 from fastapi import (
@@ -38,11 +38,84 @@ from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
 import supervisely.io.env as sly_env
+from supervisely.api.module_api import ApiField
 
 from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
+
+
+class Event:
+    class Brush:
+        class DrawLeftMouseReleased:
+            endpoint = "/tools_bitmap_brush_figure_changed"
+
+            def __init__(
+                self,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                dataset_id: int,
+                image_id: int,
+                label_id: int,
+                object_class_id: int,
+                object_class_title: str,
+                tool_class_id: int,
+                session_id: int,
+                tool: str,
+                user_id: int,
+                job_id: int,
+                is_fill: bool,
+                is_erase: bool,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.image_id = image_id
+                self.label_id = label_id
+                self.object_class_id = object_class_id
+                self.object_class_title = object_class_title
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+                self.is_fill = is_fill
+                self.is_erase = is_erase
+
+            @classmethod
+            def from_json(cls, data: Dict[str, Any]):
+                tool_state = data.get(ApiField.TOOL_STATE)
+                if tool_state is not None:
+                    tool_option = tool_state.get(ApiField.OPTION)
+                    if tool_option == "fill":
+                        is_fill = True
+                        is_erase = False
+                    elif tool_option == "erase":
+                        is_fill = False
+                        is_erase = True
+                else:
+                    is_fill = False
+                    is_erase = False
+                return cls(
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    image_id=data.get(ApiField.IMAGE_ID),
+                    label_id=data.get(ApiField.FIGURE_ID),
+                    object_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    object_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                    is_fill=is_fill,
+                    is_erase=is_erase,
+                )
 
 
 def create(
@@ -337,9 +410,9 @@ class Application(metaclass=Singleton):
 
         self._static_dir = static_dir
 
-        self._stop_event = Event()
+        self._stop_event = ThreadingEvent()
         # for backward compatibility
-        self._graceful_stop_event: Optional[Event] = None
+        self._graceful_stop_event: Optional[ThreadingEvent] = None
 
         def set_stop_event():
             self._stop_event.set()
@@ -465,10 +538,43 @@ class Application(metaclass=Singleton):
         :return: context manager
         :rtype: _type_
         """
-        self._graceful_stop_event = Event()
+        self._graceful_stop_event = ThreadingEvent()
         if graceful is False:
             self._graceful_stop_event.set()
         return suppress(self.StopException)
+
+    def event(self, event: Event) -> Callable:
+        """Decorator to register posts to specific endpoints.
+
+        :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
+        :type event: Event
+        :return: decorator
+        :rtype: Callable
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            app = sly.Application(layout=layout)
+
+            @app.event(sly.Event.Brush.LeftMouseReleased)
+            def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
+                # do something
+                pass
+        """
+
+        def inner(func: Callable) -> Callable:
+            server = self.get_server()
+
+            @server.post(event.endpoint)
+            def wrapper(request: Request):
+                return func(request.state.api, event.from_json(request.state.context))
+
+            return wrapper
+
+        return inner
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):

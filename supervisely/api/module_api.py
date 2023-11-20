@@ -477,6 +477,18 @@ class ApiField:
     """"""
     IS_DIR = "isDir"
     """"""
+    FIGURE_CLASS_ID = "figureClassId"
+    """"""
+    FIGURE_CLASS_TITLE = "figureClassTitle"
+    """"""
+    TOOL_CLASS_ID = "toolClassId"
+    """"""
+    TOOL_STATE = "toolState"
+    """"""
+    OPTION = "option"
+    """"""
+    DECOMPRESS_BITMAP = "decompressBitmap"
+    """"""
 
 
 def _get_single_item(items):

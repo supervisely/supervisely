@@ -246,5 +246,6 @@ _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
 
 from supervisely.io.exception_handlers import handle_exceptions
+from supervisely.app.fastapi.subapp import Event
 
 setup_certificates()
