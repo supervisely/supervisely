@@ -640,15 +640,19 @@ class LabelBase:
             self._draw_tags(bitmap, tags_font)
 
     def get_mask(self, img_size: Tuple[int, int]) -> np.ndarray:
-        """Returns a mask of the label.
+        """Returns 2D boolean mask of the label.
+        With shape as img_size (height, width) and filled
+        with True values inside the label and False values outside.
+        dtype = np.bool
+        shape = img_size
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :return: mask of the label
+        :return: 2D boolean mask of the Label
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
-        self.draw(bitmap, thickness=-1)
+        self.draw(bitmap, thickness=-1, color=[255, 255, 255])
         return np.any(bitmap != 0, axis=-1)
 
     def draw_contour(
