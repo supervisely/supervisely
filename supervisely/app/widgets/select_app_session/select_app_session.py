@@ -65,7 +65,6 @@ class SelectAppSession(Widget):
     def set_session_id(self, session_id):
         self._session_id = session_id
         StateJson()[self.widget_id]["sessionId"] = self._session_id
-        self.update_state()
         StateJson().send_changes()
 
     def get_selected_id(self):
