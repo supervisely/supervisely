@@ -58,7 +58,7 @@ class Events:
                 project_id: int,
                 dataset_id: int,
                 image_id: int,
-                object_id: int,
+                label_id: int,
                 object_class_id: int,
                 object_class_title: str,
                 tool_class_id: int,
@@ -74,7 +74,7 @@ class Events:
                 self.workspace_id = workspace_id
                 self.project_id = project_id
                 self.image_id = image_id
-                self.object_id = object_id
+                self.label_id = label_id
                 self.object_class_id = object_class_id
                 self.object_class_title = object_class_title
                 self.tool_class_id = tool_class_id
@@ -105,7 +105,7 @@ class Events:
                     project_id=data.get(ApiField.PROJECT_ID),
                     dataset_id=data.get(ApiField.DATASET_ID),
                     image_id=data.get(ApiField.IMAGE_ID),
-                    object_id=data.get(ApiField.FIGURE_ID),
+                    label_id=data.get(ApiField.FIGURE_ID),
                     object_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                     object_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
                     tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
