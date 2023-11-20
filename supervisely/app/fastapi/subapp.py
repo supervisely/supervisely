@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 class Events:
     class Brush:
-        class LeftMouseReleased:
+        class DrawLeftMouseReleased:
             endpoint = "/tools_bitmap_brush_figure_changed"
 
             def __init__(
