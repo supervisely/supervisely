@@ -649,7 +649,7 @@ class LabelBase:
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
         self.draw(bitmap, thickness=-1)
-        return bitmap
+        return bitmap[:, :, 0]
 
     def draw_contour(
         self,

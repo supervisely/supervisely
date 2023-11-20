@@ -165,7 +165,7 @@ class Geometry(JsonSerializable):
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
         self.draw(bitmap, color, thickness=-1)
-        return bitmap
+        return bitmap[:, :, 0]
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """
