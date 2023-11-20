@@ -7,18 +7,19 @@ from __future__ import annotations
 import io
 import json
 import re
+import time
 import urllib.parse
 from typing import (
+    Any,
     Callable,
     Dict,
+    Generator,
     Iterator,
     List,
     NamedTuple,
     Optional,
-    Union,
-    Generator,
     Tuple,
-    Any,
+    Union,
 )
 
 import numpy as np
@@ -45,6 +46,7 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_name,
 )
+from supervisely.io.network_exceptions import REQUEST_FAILED
 from supervisely.sly_logger import logger
 
 
@@ -597,26 +599,55 @@ class ImageApi(RemoveableBulkModuleApi):
         self.download_path(id=id, path=path)
 
     def _download_batch(
-        self, dataset_id: int, ids: List[int], progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        dataset_id: int,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        retries: Optional[int] = None,
     ):
         """
         Get image id and it content from given dataset and list of images ids.
         """
-        for batch_ids in batched(ids):
-            response = self._api.post(
-                "images.bulk.download",
-                {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids},
-            )
-            decoder = MultipartDecoder.from_response(response)
-            for part in decoder.parts:
-                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-                # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
 
+        if retries is None:
+            retries = self._api.retry_count
+
+        for batch_ids in batched(ids):
+            id_to_img = {}
+            for retry_idx in range(retries):
+                id_to_img = {}
+                if retry_idx > 0:
+                    logger.warn(
+                        f"{REQUEST_FAILED} Retrying ({retry_idx}/{retries})",
+                        extra={"dataset_id": dataset_id, "ids": batch_ids},
+                    )
+                    sleep_time = min(2**retry_idx, 60)
+                    time.sleep(sleep_time)
+                response = self._api.post(
+                    "images.bulk.download",
+                    {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids},
+                )
+                decoder = MultipartDecoder.from_response(response)
+                for part in decoder.parts:
+                    content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                    # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                    # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                    img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                    id_to_img[img_id] = part
+
+                if len(id_to_img) == len(batch_ids):
+                    break
+                elif retry_idx == retries - 1:
+                    raise RuntimeError(
+                        f"Failed to download images with ids: {batch_ids}. \n"
+                        "Make sure that all images are present in the dataset. \n"
+                        "If you are using images uploaded directly from third-party sources "
+                        "make sure that they are available at the moment."
+                    )
+            for img_id, resp_part in id_to_img.items():
                 if progress_cb is not None:
                     progress_cb(1)
-                yield img_id, part
+                yield img_id, resp_part
 
     def download_paths(
         self,
