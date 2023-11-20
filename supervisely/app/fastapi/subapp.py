@@ -37,7 +37,6 @@ from supervisely._utils import is_production, is_development, is_docker, is_debu
 from async_asgi_testclient import TestClient
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.exceptions import DialogWindowBase
-from supervisely.collection.str_enum import StrEnum
 import supervisely.io.env as sly_env
 from supervisely.api.module_api import ApiField
 
@@ -47,10 +46,76 @@ if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
 
-class Events(StrEnum):
-    BRUSH_DRAW_LEFT_MOUSE_RELEASE = "/tools_bitmap_brush_figure_changed"
-    MANUAL_SELECTED_FIGURE_CHANGED = "/manual_selected_figure_changed"
-    MANUAL_SELECTED_IMAGE_CHANGED = "/manual_selected_image_changed"
+class Events:
+    class Brush:
+        class LeftMouseReleased:
+            endpoint = "/tools_bitmap_brush_figure_changed"
+
+            def __init__(
+                self,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                dataset_id: int,
+                image_id: int,
+                object_id: int,
+                object_class_id: int,
+                object_class_title: str,
+                tool_class_id: int,
+                session_id: int,
+                tool: str,
+                user_id: int,
+                job_id: int,
+                is_fill: bool,
+                is_erase: bool,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.image_id = image_id
+                self.object_id = object_id
+                self.object_class_id = object_class_id
+                self.object_class_title = object_class_title
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+                self.is_fill = is_fill
+                self.is_erase = is_erase
+
+            @classmethod
+            def from_json(cls, data: Dict[str, Any]):
+                tool_state = data.get(ApiField.TOOL_STATE)
+                if tool_state is not None:
+                    tool_option = tool_state.get(ApiField.OPTION)
+                    if tool_option == "fill":
+                        is_fill = True
+                        is_erase = False
+                    elif tool_option == "erase":
+                        is_fill = False
+                        is_erase = True
+                else:
+                    is_fill = False
+                    is_erase = False
+                return cls(
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    image_id=data.get(ApiField.IMAGE_ID),
+                    object_id=data.get(ApiField.FIGURE_ID),
+                    object_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    object_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                    is_fill=is_fill,
+                    is_erase=is_erase,
+                )
 
 
 def create(
@@ -475,12 +540,11 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopApp)
 
-    def event(self, event_name: str) -> Callable:
+    def event(self, event: Events) -> Callable:
         """Decorator to register posts to specific endpoints.
-        Decorated function must have two arguments: `api` and `context`.
 
-        :param event_name: event name
-        :type event_name: str
+        :param event: event to register (e.g. `Events.Brush.LeftMouseReleased`)
+        :type event_name: Events
         :return: decorator
         :rtype: Callable
 
@@ -492,8 +556,8 @@ class Application(metaclass=Singleton):
 
             app = sly.Application(layout=layout)
 
-            @app.event(sly.Events.BRUSH_DRAW_LEFT_MOUSE_RELEASE)
-            def some_function(api: sly.Api, context: Dict[str, Any]):
+            @app.event(sly.Events.Brush.LeftMouseReleased)
+            def some_function(api: sly.Api, event: sly.Events.Brush.LeftMouseReleased):
                 # do something
                 pass
         """
@@ -501,106 +565,13 @@ class Application(metaclass=Singleton):
         def inner(func: Callable) -> Callable:
             server = self.get_server()
 
-            @server.post(f"{event_name}")
+            @server.post(event.endpoint)
             def wrapper(request: Request):
-                request_state = request.state
-                api = request_state.api
-                context = Context.from_json(request_state.context)
-                return func(api, context)
+                return func(request.state.api, event.from_json(request.state.context))
 
             return wrapper
 
         return inner
-
-
-class Context:
-    """Class for representing context of the event (POST request to the application).
-
-    :param team_id: ID of the Team where the event occured
-    :type team_id: int
-    :param workspace_id: ID of the Workspace where the event occured
-    :type workspace_id: int
-    :param project_id: ID of the Project where the event occured
-    :type project_id: int
-    :param dataset_id: ID of the Dataset where the event occured
-    :type dataset_id: int
-    :param image_id: ID of the Image where the event occured
-    :type image_id: int
-    :param object_id: ID of the Object (a.k.a. Figure, a.k.a. Label)
-    :type object_id: int
-    :param object_class_id: ID of the Object Class
-    :type object_class_id: int
-    :param object_class_title: Title of the Object Class
-    :type object_class_title: str
-    :param tool_class_id: ID of the Tool Class
-    :type tool_class_id: int
-    :param session_id: ID of the Session
-    :type session_id: int
-    :param tool: Name of the Tool
-    :type tool: str
-    :param user_id: ID of the User
-    :type user_id: int
-    :param job_id: ID of the Job
-    :type job_id: int
-    :param tool_option: Option of the Tool
-    :type tool_option: str
-    """
-
-    def __init__(
-        self,
-        team_id: int,
-        workspace_id: int,
-        project_id: int,
-        dataset_id: int,
-        image_id: int,
-        object_id: int,
-        object_class_id: int,
-        object_class_title: str,
-        tool_class_id: int,
-        session_id: int,
-        tool: str,
-        user_id: int,
-        job_id: int,
-        tool_option: str,
-    ):
-        self.dataset_id = dataset_id
-        self.team_id = team_id
-        self.workspace_id = workspace_id
-        self.project_id = project_id
-        self.image_id = image_id
-        self.object_id = object_id
-        self.object_class_id = object_class_id
-        self.object_class_title = object_class_title
-        self.tool_class_id = tool_class_id
-        self.session_id = session_id
-        self.tool = tool
-        self.user_id = user_id
-        self.job_id = job_id
-        self.tool_option = tool_option
-
-    @classmethod
-    def from_json(cls, json: Dict[str, Any]):
-        tool_state = json.get(ApiField.TOOL_STATE)
-        if tool_state is not None:
-            tool_option = tool_state.get(ApiField.OPTION)
-        else:
-            tool_option = None
-        return cls(
-            team_id=json.get(ApiField.TEAM_ID),
-            workspace_id=json.get(ApiField.WORKSPACE_ID),
-            project_id=json.get(ApiField.PROJECT_ID),
-            dataset_id=json.get(ApiField.DATASET_ID),
-            image_id=json.get(ApiField.IMAGE_ID),
-            object_id=json.get(ApiField.FIGURE_ID),
-            object_class_id=json.get(ApiField.FIGURE_CLASS_ID),
-            object_class_title=json.get(ApiField.FIGURE_CLASS_TITLE),
-            tool_class_id=json.get(ApiField.TOOL_CLASS_ID),
-            session_id=json.get(ApiField.SESSION_ID),
-            tool=json.get(ApiField.LABELING_TOOL),
-            user_id=json.get(ApiField.USER_ID),
-            job_id=json.get(ApiField.JOB_ID),
-            tool_option=tool_option,
-        )
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
