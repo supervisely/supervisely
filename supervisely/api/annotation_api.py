@@ -1002,7 +1002,7 @@ class AnnotationApi(ModuleApi):
 
     def update_label(self, label_id: int, label: Label) -> None:
         """Updates label with given ID in Supervisely with new Label object.
-        NOTE: This method only updates label's geometry, not class title, etc.
+        NOTE: This method only updates label's geometry and tags, not class title, etc.
 
         :param label_id: ID of the label to update
         :type label_id: int
