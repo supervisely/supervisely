@@ -603,14 +603,11 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        retries: Optional[int] = None,
+        retries: Optional[int] = 3,
     ):
         """
         Get image id and it content from given dataset and list of images ids.
         """
-
-        if retries is None:
-            retries = self._api.retry_count
 
         for batch_ids in batched(ids):
             id_to_img = {}
@@ -621,7 +618,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         f"{REQUEST_FAILED} Retrying ({retry_idx}/{retries})",
                         extra={"dataset_id": dataset_id, "ids": batch_ids},
                     )
-                    sleep_time = min(2**retry_idx, 60)
+                    sleep_time = min(2**retry_idx, 10)
                     time.sleep(sleep_time)
                 response = self._api.post(
                     "images.bulk.download",
