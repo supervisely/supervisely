@@ -536,19 +536,47 @@ class ErrorHandler:
                 )
 
     class AgentDocker:
+        @classmethod
+        def parse_docker_exception(cls, docker_exception: Exception) -> str:
+            default_msg = str(docker_exception)
+            if isinstance(docker_exception, HTTPError):
+                try:
+                    json_text = docker_exception.response.text
+                    info = loads(json_text)
+                    return info.get("message", default_msg)
+                except JSONDecodeError:
+                    pass
+            return default_msg
+
         class ImageNotFound(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
-                # TODO: rule for error codes inside side apps/modules
                 self.code = 4001
                 self.title = "Docker image not found"
-                default_msg = str(exception)
+                self.message = ErrorHandler.AgentDocker.parse_docker_exception(exception)
 
-                try:
-                    json_text = exception.args[0].response.text
-                    info = loads(json_text)
-                    self.message = info.get("message", default_msg)
-                except JSONDecodeError:
-                    self.message = default_msg
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class NetworkNotFound(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 4002
+                self.title = "Docker image not found"
+                self.message = ErrorHandler.AgentDocker.parse_docker_exception(exception)
+
+                connect_url = (
+                    "https://developer.supervisely.com/getting-started/connect-your-computer"
+                )
+                additional = (
+                    "Probably your network was deleted. "
+                    "Try to restart docker with `systemctl restart docker` "
+                    f"or reinstall your Agent using <a href='{connect_url}'>instructions</a>"
+                )
+                self.message = "{exc_msg}. {add}".format(exc_msg=self.message, add=additional)
 
                 super().__init__(
                     exception,
@@ -654,12 +682,15 @@ ERROR_PATTERNS = {
 }
 
 try:
-    from docker.errors import ImageNotFound
+    from docker.errors import ImageNotFound, NotFound
 
     docker_patterns = {
         ImageNotFound: {
             r".*sly\.docker_utils\.docker_pull_if_needed.*": ErrorHandler.AgentDocker.ImageNotFound
-        }
+        },
+        NotFound: {
+            r".*network\ supervisely-net-(.*)?\ not\ found.*": ErrorHandler.AgentDocker.NetworkNotFound
+        },
     }
 except ModuleNotFoundError:
     docker_patterns = {}
@@ -706,8 +737,12 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
         for frame in stack[::-1]:
             if re.match(pattern, frame.line):
                 return handler(exception, stack)
-        if re.match(pattern, exception.args[0]):
+        if isinstance(exception.args[0], str) and re.match(pattern, exception.args[0]):
             return handler(exception, stack)
+        if isinstance(exception, HTTPError):
+            msg = exception.response.text
+            if re.match(pattern, msg):
+                return handler(exception, stack)
 
 
 def handle_exceptions(func: Callable) -> Callable:
