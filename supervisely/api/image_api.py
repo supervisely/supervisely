@@ -628,12 +628,12 @@ class ImageApi(RemoveableBulkModuleApi):
                     {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids},
                 )
                 decoder = MultipartDecoder.from_response(response)
-                for part in decoder.parts:
-                    content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                for resp_part in decoder.parts:
+                    content_utf8 = resp_part.headers[b"Content-Disposition"].decode("utf-8")
                     # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
                     # The regex has 2 capture group: one for the prefix and one for the actual name value.
                     img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-                    id_to_img[img_id] = part
+                    id_to_img[img_id] = resp_part
 
                 if len(id_to_img) == len(batch_ids):
                     break
@@ -644,10 +644,10 @@ class ImageApi(RemoveableBulkModuleApi):
                         "If you are using images uploaded directly from third-party sources "
                         "make sure that they are available at the moment."
                     )
-            for img_id, resp_part in id_to_img.items():
+            for img_id, part in id_to_img.items():
                 if progress_cb is not None:
                     progress_cb(1)
-                yield img_id, resp_part
+                yield img_id, part
 
     def download_paths(
         self,
