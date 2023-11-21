@@ -686,7 +686,7 @@ try:
 
     docker_patterns = {
         ImageNotFound: {
-            r".*sly\.docker_utils\.docker_pull_if_needed.*": ErrorHandler.AgentDocker.ImageNotFound
+            r".*pull\ access\ denied\ for\ (.*)?,\ repository does not exist.*": ErrorHandler.AgentDocker.ImageNotFound
         },
         NotFound: {
             r".*network\ supervisely-net-(.*)?\ not\ found.*": ErrorHandler.AgentDocker.NetworkNotFound
