@@ -357,7 +357,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes = ObjClassCollection.from_json(obj_classes_json)
         except Exception as e:
             raise Exception(
-                f"Failed to deserialize annotation classes from Project meta JSON. "
+                f"Failed to deserialize classes from Project meta JSON. "
                 "Check the annotation format documentation at: "
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
             ) from e
