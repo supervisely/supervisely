@@ -633,7 +633,15 @@ class GraphNodes(Geometry):
         :param config: dictionary(graph template) in json format
         :return: dictionary(graph template)
         """
-        return GraphNodes._transform_config_colors(config, hex2rgb)
+
+        try:
+            return GraphNodes._transform_config_colors(config, hex2rgb)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to parse graph template from JSON format. "
+                "Check the example of graph template in JSON format: "
+                "https://developer.supervisely.com/getting-started/python-sdk-tutorials/images/keypoints#click-to-see-the-example-of-template-in-json-format"
+            )
 
     @staticmethod
     def config_to_json(config: Dict) -> Dict:
