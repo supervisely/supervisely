@@ -639,7 +639,7 @@ class GraphNodes(Geometry):
         except Exception as e:
             raise RuntimeError(
                 f"Failed to parse graph template from JSON format. "
-                "Check the example of graph template in JSON format: "
+                "Check out an example of a graph template in JSON format at: "
                 "https://developer.supervisely.com/getting-started/python-sdk-tutorials/images/keypoints#click-to-see-the-example-of-template-in-json-format"
             )
 
