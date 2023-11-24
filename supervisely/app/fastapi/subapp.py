@@ -110,14 +110,15 @@ class Event:
                 else:
                     is_fill = False
                     is_erase = False
+                geometry_type = None
+                mask = None
                 figure_state = data.get(ApiField.FIGURE_STATE)
-                if figure_state is not None:
+                try:
                     geometry_type = figure_state.get(ApiField.GEOMETRY_TYPE)
                     geometry = figure_state.get(ApiField.GEOMETRY).get(ApiField.BITMAP)
                     mask = Bitmap.base64_2_data(geometry.get(ApiField.DATA))
-                else:
-                    geometry_type = None
-                    mask = None
+                except AttributeError:
+                    pass
                 return cls(
                     team_id=data.get(ApiField.TEAM_ID),
                     workspace_id=data.get(ApiField.WORKSPACE_ID),
