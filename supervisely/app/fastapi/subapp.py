@@ -111,11 +111,11 @@ class Event:
                 figure_state = data.get(ApiField.FIGURE_STATE)
                 if figure_state is not None:
                     geometry_type = figure_state.get(ApiField.GEOMETRY_TYPE)
-                    geometry = figure_state.get(ApiField.GEOMETRY)[ApiField.BITMAP]
+                    geometry = figure_state.get(ApiField.GEOMETRY).get(ApiField.BITMAP)
                     print("Figure state", figure_state)
                     print("Geometry", geometry)
                     print(f"String geometry: {geometry.get(geometry[ApiField.DATA])}")
-                    mask = Bitmap.base64_2_data(geometry.get([ApiField.DATA]))
+                    mask = Bitmap.base64_2_data(geometry.get(ApiField.DATA))
                 else:
                     geometry_type = None
                     mask = None
