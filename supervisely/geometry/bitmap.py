@@ -305,9 +305,7 @@ class Bitmap(BitmapBase):
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
         """
-        Convert base64 encoded string to numpy array.
-        Supports both compressed and uncompressed masks.
-        Uncompressed mask will be returned as 2D boolean numpy array.
+        Convert base64 encoded string to numpy array. Supports both compressed and uncompressed masks.
 
         :param s: Input base64 encoded string.
         :type s: str
