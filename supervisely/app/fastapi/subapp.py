@@ -115,7 +115,7 @@ class Event:
                     print("Figure state", figure_state)
                     print("Geometry", geometry)
                     print(f"String geometry: {geometry.get(geometry[ApiField.DATA])}")
-                    mask = Bitmap.base64_2_data(geometry.get(geometry[ApiField.DATA]))
+                    mask = Bitmap.base64_2_data(geometry.get([ApiField.DATA]))
                 else:
                     geometry_type = None
                     mask = None
