@@ -334,7 +334,7 @@ class Bitmap(BitmapBase):
         try:
             z = zlib.decompress(base64.b64decode(s))
         except zlib.error:
-            # If the string is not compressed, try to decode it as an image.
+            # If the string is not compressed, we'll not use zlib.
             img = Image.open(io.BytesIO(base64.b64decode(s)))
             return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
