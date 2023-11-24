@@ -325,7 +325,12 @@ class Bitmap(BitmapBase):
               #   [ True False  True]
               #   [ True  True  True]]
         """
-        z = zlib.decompress(base64.b64decode(s))
+        try:
+            z = zlib.decompress(base64.b64decode(s))
+        except zlib.error:
+            # If the string is not compressed, try to decode it as an image.
+            img = Image.open(io.BytesIO(base64.b64decode(s)))
+            return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
         imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)
