@@ -1,36 +1,40 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple, NamedTuple, Dict, Optional, Callable, Union
-from requests import Response
+
 import datetime
-import os
 import json
+import os
 import urllib.parse
 from functools import partial
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Union
+
 from numerize.numerize import numerize
+from requests import Response
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
+import supervisely.io.fs as sly_fs
+from supervisely._utils import abs_url, batched, is_development, rand_str
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.video.video_annotation_api import VideoAnnotationAPI
-from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
+from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_tag_api import VideoTagApi
+from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_ext,
+    get_file_hash,
+    get_file_size,
+)
 from supervisely.sly_logger import logger
-from supervisely.io.fs import get_file_ext, get_file_hash, get_file_size
-import supervisely.io.fs as sly_fs
-
-from supervisely.io.fs import ensure_base_path
-from supervisely._utils import batched, is_development, abs_url, rand_str
+from supervisely.task.progress import Progress
 from supervisely.video.video import (
+    gen_video_stream_name,
     get_info,
     get_video_streams,
-    gen_video_stream_name,
     validate_ext,
 )
-
-from supervisely.task.progress import Progress
 
 
 class VideoInfo(NamedTuple):
@@ -352,6 +356,37 @@ class VideoApi(RemoveableBulkModuleApi):
                 ApiField.FILTER: filters or [],
                 ApiField.RAW_VIDEO_META: raw_video_meta,
             },
+        )
+
+    def get_list_generator(
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        sort: Optional[str] = "id",
+        sort_order: Optional[str] = "asc",
+        limit: Optional[int] = None,
+        raw_video_meta: Optional[bool] = False,
+        batch_size: Optional[int] = None,
+    ) -> Iterator[List[VideoInfo]]:
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+            ApiField.RAW_VIDEO_META: raw_video_meta,
+            ApiField.PAGINATION_MODE: ApiField.TOKEN,
+        }
+        if batch_size is not None:
+            data[ApiField.PER_PAGE] = batch_size
+        else:
+            # use default value on instance (20k)
+            # #tag/Images/paths/~1images.list/get
+            pass
+        return self.get_list_all_pages_generator(
+            "videos.list",
+            data,
+            limit=limit,
+            return_first_response=False,
         )
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
