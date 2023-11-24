@@ -1,46 +1,53 @@
 import os
 import signal
-import psutil
 import sys
 from contextlib import suppress
+from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
 from time import sleep
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
+import arel
+import jinja2
+import numpy as np
+import psutil
+from async_asgi_testclient import TestClient
 from fastapi import (
+    Depends,
     FastAPI,
+    HTTPException,
     Request,
     Response,
     WebSocket,
     WebSocketDisconnect,
-    Depends,
-    HTTPException,
 )
-from functools import wraps
-
-# from supervisely.app.fastapi.request import Request
-
-import jinja2
-import arel
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from supervisely.app.fastapi.utils import run_sync
-from supervisely.app.fastapi.custom_static_files import CustomStaticFiles
-from supervisely.app.singleton import Singleton
-from supervisely.app.fastapi.templating import Jinja2Templates
-from supervisely.app.fastapi.websocket import WebsocketManager
-from supervisely.io.fs import mkdir, dir_exists
-from supervisely.sly_logger import logger
-from supervisely.api.api import SERVER_ADDRESS, API_TOKEN, TASK_ID, Api
-from supervisely._utils import is_production, is_development, is_docker, is_debug_with_sly_net
-from async_asgi_testclient import TestClient
-from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.app.exceptions import DialogWindowBase
-import supervisely.io.env as sly_env
-from supervisely.api.module_api import ApiField
 
-from typing import TYPE_CHECKING, Callable, List, Optional, Dict, Any
+import supervisely.io.env as sly_env
+from supervisely._utils import (
+    is_debug_with_sly_net,
+    is_development,
+    is_docker,
+    is_production,
+)
+from supervisely.api.api import API_TOKEN, SERVER_ADDRESS, TASK_ID, Api
+from supervisely.api.module_api import ApiField
+from supervisely.app.exceptions import DialogWindowBase
+from supervisely.app.fastapi.custom_static_files import CustomStaticFiles
+from supervisely.app.fastapi.templating import Jinja2Templates
+from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.io.fs import dir_exists, mkdir
+from supervisely.sly_logger import logger
+
+# from supervisely.app.fastapi.request import Request
+
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -68,6 +75,8 @@ class Event:
                 job_id: int,
                 is_fill: bool,
                 is_erase: bool,
+                geometry_type: str,
+                mask: np.ndarray,
             ):
                 self.dataset_id = dataset_id
                 self.team_id = team_id
@@ -84,6 +93,8 @@ class Event:
                 self.job_id = job_id
                 self.is_fill = is_fill
                 self.is_erase = is_erase
+                self.geometry_type = geometry_type
+                self.mask = mask
 
             @classmethod
             def from_json(cls, data: Dict[str, Any]):
@@ -99,6 +110,15 @@ class Event:
                 else:
                     is_fill = False
                     is_erase = False
+                geometry_type = None
+                mask = None
+                figure_state = data.get(ApiField.FIGURE_STATE)
+                try:
+                    geometry_type = figure_state.get(ApiField.GEOMETRY_TYPE)
+                    geometry = figure_state.get(ApiField.GEOMETRY).get(ApiField.BITMAP)
+                    mask = Bitmap.base64_2_data(geometry.get(ApiField.DATA))
+                except AttributeError:
+                    pass
                 return cls(
                     team_id=data.get(ApiField.TEAM_ID),
                     workspace_id=data.get(ApiField.WORKSPACE_ID),
@@ -115,6 +135,8 @@ class Event:
                     job_id=data.get(ApiField.JOB_ID),
                     is_fill=is_fill,
                     is_erase=is_erase,
+                    geometry_type=geometry_type,
+                    mask=mask,
                 )
 
 
@@ -294,8 +316,8 @@ def _init(
     hot_reload=False,
     before_shutdown_callbacks=None,
 ) -> FastAPI:
+    from supervisely.app.content import DataJson, StateJson
     from supervisely.app.fastapi import available_after_shutdown
-    from supervisely.app.content import StateJson, DataJson
 
     if app is None:
         app = _MainServer().get_server()

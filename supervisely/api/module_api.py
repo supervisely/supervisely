@@ -1,12 +1,11 @@
 # coding: utf-8
-import requests
 from collections import namedtuple
 from copy import deepcopy
-from supervisely._utils import batched
-
-from supervisely._utils import camel_to_snake
-
 from typing import TYPE_CHECKING
+
+import requests
+
+from supervisely._utils import batched, camel_to_snake
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -488,6 +487,10 @@ class ApiField:
     OPTION = "option"
     """"""
     DECOMPRESS_BITMAP = "decompressBitmap"
+    """"""
+    FIGURE_STATE = "figureState"
+    """"""
+    BITMAP = "bitmap"
     """"""
 
 
