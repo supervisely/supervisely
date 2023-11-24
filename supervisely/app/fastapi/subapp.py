@@ -93,6 +93,8 @@ class Event:
                 self.job_id = job_id
                 self.is_fill = is_fill
                 self.is_erase = is_erase
+                self.geometry_type = geometry_type
+                self.mask = mask
 
             @classmethod
             def from_json(cls, data: Dict[str, Any]):
