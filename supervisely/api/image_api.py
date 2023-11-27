@@ -2499,10 +2499,10 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         image_name: str,
         channels: Optional[List[np.ndarray]] = None,
-        images: Optional[List[str]] = None,
+        rgb_images: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """Uploads multispectral image to Supervisely, if channels are provided, they will
-        be uploaded as separate images. If images are provided, they will be uploaded without
+        be uploaded as separate images. If rgb_images are provided, they will be uploaded without
         splitting into channels as RGB images.
 
         :param dataset_id: dataset ID to upload images to
@@ -2511,8 +2511,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type image_name: str
         :param channels: list of numpy arrays with image channels
         :type channels: List[np.ndarray], optional
-        :param images: list of paths to images
-        :type images: List[str], optional
+        :param rgb_images: list of paths to RGB images which will be uploaded as is
+        :type rgb_images: List[str], optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
         :Usage example:
@@ -2544,9 +2544,9 @@ class ImageApi(RemoveableBulkModuleApi):
         image_basename = get_file_name(image_name)
 
         nps_for_upload = []
-        if images is not None:
-            for image in images:
-                nps_for_upload.append(sly_image.read(image))
+        if rgb_images is not None:
+            for rgb_image in rgb_images:
+                nps_for_upload.append(sly_image.read(rgb_image))
 
         if channels is not None:
             for channel in channels:
