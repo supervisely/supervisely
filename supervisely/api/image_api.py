@@ -32,7 +32,9 @@ from supervisely._utils import (
     generate_free_name,
     is_development,
 )
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -45,6 +47,7 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_name,
 )
+from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME
 from supervisely.sly_logger import logger
 
 
@@ -2490,3 +2493,75 @@ class ImageApi(RemoveableBulkModuleApi):
     def exists(self, parent_id, name):
         """exists"""
         return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
+
+    def upload_multispectral(
+        self,
+        dataset_id: int,
+        image_name: str,
+        channels: Optional[List[np.ndarray]] = None,
+        rgb_images: Optional[List[str]] = None,
+    ) -> List[ImageInfo]:
+        """Uploads multispectral image to Supervisely, if channels are provided, they will
+        be uploaded as separate images. If rgb_images are provided, they will be uploaded without
+        splitting into channels as RGB images.
+
+        :param dataset_id: dataset ID to upload images to
+        :type dataset_id: int
+        :param image_name: name of the image
+        :type image_name: str
+        :param channels: list of numpy arrays with image channels
+        :type channels: List[np.ndarray], optional
+        :param rgb_images: list of paths to RGB images which will be uploaded as is
+        :type rgb_images: List[str], optional
+        :return: list of uploaded images infos
+        :rtype: List[ImageInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            image_name = "demo1.png"
+            image = cv2.imread(f"demo_data/{image_name}")
+
+            # Extract channels as 2d numpy arrays: channels = [a, b, c]
+            channels = [image[:, :, i] for i in range(image.shape[2])]
+
+            image_infos = api.image.upload_multispectral(api, dataset.id, image_name, channels)
+        """
+        group_tag_meta = TagMeta(_MULTISPECTRAL_TAG_NAME, TagValueType.ANY_STRING)
+        group_tag = Tag(meta=group_tag_meta, value=image_name)
+        image_basename = get_file_name(image_name)
+
+        nps_for_upload = []
+        if rgb_images is not None:
+            for rgb_image in rgb_images:
+                nps_for_upload.append(sly_image.read(rgb_image))
+
+        if channels is not None:
+            for channel in channels:
+                nps_for_upload.append(channel)
+
+        anns = []
+        names = []
+
+        for i, np_for_upload in enumerate(nps_for_upload):
+            anns.append(Annotation(np_for_upload.shape).add_tag(group_tag))
+            names.append(f"{image_basename}_{i}.png")
+
+        image_infos = self.upload_nps(dataset_id, names, nps_for_upload)
+        image_ids = [image_info.id for image_info in image_infos]
+
+        self._api.annotation.upload_anns(image_ids, anns)
+
+        return image_infos
