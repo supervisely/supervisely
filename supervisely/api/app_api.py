@@ -465,8 +465,34 @@ class AppApi(TaskApi):
         response = self._api.post("ecosystem.info", data)
         return response.json()
 
-    def get_ecosystem_module_info(self, module_id, version=None) -> ModuleInfo:
-        """get_module_info"""
+    def get_ecosystem_module_info(
+        self, module_id: int, version: Optional[str] = None
+    ) -> ModuleInfo:
+        """Returns ModuleInfo object by module id and version.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param version: version of the module, e.g. "v1.0.0"
+        :type version: Optional[str]
+        :return: ModuleInfo object
+        :rtype: ModuleInfo
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            module_id = 81
+            module_info = api.app.get_ecosystem_module_info(module_id)
+        """
         data = {ApiField.ID: module_id}
         if version is not None:
             data[ApiField.VERSION] = version
