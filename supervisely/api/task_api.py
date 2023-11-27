@@ -496,16 +496,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         description: Optional[str] = "application description",
         params: Dict[str, Any] = None,
         log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
-        users_ids=None,  # ! TYPING!
+        users_ids: Optional[List[int]] = None,
         app_version: Optional[str] = "",
         is_branch: Optional[bool] = False,
         task_name: Optional[str] = "pythonSpawned",
-        restart_policy: Optional[
-            Literal["never"]
-        ] = "never",  # ! TYPING! Should be Literal["never", "on_error"]
+        restart_policy: Optional[Literal["never", "on_error"]] = "never",
         proxy_keep_url: Optional[bool] = False,
         module_id: Optional[int] = None,
-        redirect_requests={},  # ! TYPING!
+        redirect_requests: Optional[Dict[str, int]] = {},
     ) -> Dict[str, Any]:
         """Starts the application task on the agent.
 
@@ -522,22 +520,23 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type params: Dict[str, Any], optional
         :param log_level: Log level for the application.
         :type log_level: Literal["info", "debug", "warning", "error"], optional
-        :param users_ids: # TODO: add description
-        :type users_ids: # TODO: add type
+        :param users_ids: List of user IDs for which will be created an instance of the application.
+            For each user a separate task will be created.
+        :type users_ids: List[int], optional
         :param app_version: Application version e.g. "v1.0.0" or branch name e.g. "dev".
         :type app_version: str, optional
         :param is_branch: If the application version is a branch name, set this parameter to True.
         :type is_branch: bool, optional
-        :param task_name: # TODO: add description
+        :param task_name: Task name which will be shown in UI.
         :type task_name: str, optional
-        :param restart_policy: # TODO: add description
-        :type restart_policy: # TODO: add type
-        :param proxy_keep_url: # TODO: add description
+        :param restart_policy: when the task should be restarted: never or if error occurred.
+        :type restart_policy: Literal["never", "on_error"], optional
+        :param proxy_keep_url: For internal usage only.
         :type proxy_keep_url: bool, optional
         :param module_id: Module ID. Can be obtained from the apps page in UI.
         :type module_id: int, optional
-        :param redirect_requests: # TODO: add description
-        :type redirect_requests: # TODO: add type
+        :param redirect_requests: For internal usage only in Develop and Debug mode.
+        :type redirect_requests: Dict[str, int], optional
         :return: Task information in JSON format.
         :rtype: Dict[str, Any]
 
