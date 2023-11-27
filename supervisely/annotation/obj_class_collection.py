@@ -3,15 +3,16 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Iterator
-from supervisely import logger
-from supervisely.annotation.renamer import Renamer
 
 from collections import defaultdict
-from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.json import JsonSerializable
+from typing import Dict, Iterator, List, Optional
+
+from supervisely import logger
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.imaging.color import rgb2hex, hex2rgb
+from supervisely.annotation.renamer import Renamer
+from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.imaging.color import hex2rgb, rgb2hex
+from supervisely.io.json import JsonSerializable
 
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
@@ -290,7 +291,12 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     def __iter__(self) -> Iterator[ObjClass]:
         return next(self)
 
-    def refresh_ids_from(self, classes: ObjClassCollection):
+    def refresh_ids_from(self, classes: ObjClassCollection) -> None:
+        """Updates ids of classes in the collection from given classes.
+
+        :param classes: Collection with classes to update ids from.
+        :type classes: ObjClassCollection
+        """
         for new_class in classes:
             my_class = self.get(new_class.name)
             if my_class is None:
@@ -303,6 +309,18 @@ def make_renamed_classes(
     renamer: Renamer,
     skip_missing: Optional[bool] = False,
 ) -> ObjClassCollection:
+    """Returns a new ObjClassCollection with renamed classes.
+
+    :param src_obj_classes: ObjClassCollection to rename.
+    :type src_obj_classes: ObjClassCollection
+    :param renamer: Renamer object, which will handle renaming process.
+    :type renamer: Renamer
+    :param skip_missing: If True, missing classes will be skipped, otherwise KeyError will be raised.
+    :type skip_missing: Optional[bool]
+    :return: New ObjClassCollection with renamed classes.
+    :rtype: ObjClassCollection
+    :raises KeyError: If skip_missing is False and some classes could not be renamed.
+    """
     renamed_classes = []
     for src_cls in src_obj_classes:
         renamed_name = renamer.rename(src_cls.name)
