@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
@@ -192,7 +192,49 @@ class ModuleInfo(NamedTuple):
         params = self.config.get("modalTemplateState", {})
         return params
 
-    def get_arguments(self, **kwargs) -> dict:
+    def get_arguments(self, **kwargs) -> Dict[str, Any]:
+        """Returns arguments for launching the application.
+        It should be used with api.app.start() method.
+        See usage example below.
+
+        :return: arguments for launching the application
+        :rtype: Dict[str, Any]
+        :raises ValueError: if arguments was not passed, and the application is not
+            starting from the context menu Ecosystem
+        :raises KeyError: if more than one target was passed
+        :raises KeyError: if invalid target was passed
+        :raises ValueError: if invalid type of target value was passed
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            module_id = 81
+            module_info = api.app.get_ecosystem_module_info(module_id)
+
+            project_id = 12345
+            params = module_info.get_arguments(images_project=project_id)
+
+            # Now we can use params to start the application:
+            session = api.app.start(
+                agent_id=agent_id,
+                module_id=module_id,
+                workspace_id=workspace_id,
+                task_name="Prepare download link",
+                params=params,
+                app_version="dninja",
+                is_branch=True,
+            )
+        """
         params = self.config.get("modalTemplateState", {})
         targets = self.get_context_menu_targets()
         if len(targets) > 0 and len(kwargs) == 0 and "ecosystem" not in targets:
