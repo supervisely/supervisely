@@ -71,7 +71,7 @@ def _set_logging_levels(levels, the_logger):
         def construct_logger_member(lvl_val, default_exc_info):
             return lambda self, msg, *args, exc_info=default_exc_info, **kwargs: \
                 self.log(lvl_val,
-                         msg,
+                         str(msg),
                          *args,
                          exc_info=exc_info,
                          **kwargs)
