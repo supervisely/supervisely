@@ -3,13 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional, Iterator
+
+from typing import Dict, Iterator, List, Optional
+
 from supervisely.annotation.renamer import Renamer
-
-
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.json import JsonSerializable
-from supervisely.annotation.tag_meta import TagMeta
 
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
@@ -274,6 +274,11 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         return next(self)
 
     def refresh_ids_from(self, tags: TagMetaCollection) -> None:
+        """Update ids of TagMetas in collection from given collection.
+
+        :param tags: TagMetaCollection to update ids from.
+        :type tags: TagMetaCollection
+        """
         for new_tag in tags:
             my_tag = self.get(new_tag.name)
             if my_tag is None:
@@ -281,6 +286,13 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
             my_tag._set_id(new_tag.sly_id)
 
     def get_by_id(self, tag_meta_id: int) -> TagMeta:
+        """Return TagMeta with given id.
+
+        :param tag_meta_id: TagMeta id to search for.
+        :type tag_meta_id: int
+        :return: TagMeta with given id.
+        :rtype: TagMeta
+        """
         for tag_meta in self:
             if tag_meta.sly_id == tag_meta_id:
                 return tag_meta

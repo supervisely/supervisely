@@ -1,22 +1,23 @@
 # coding: utf-8
 from __future__ import annotations
 
-import os
 import json
-from typing import NamedTuple, List, Dict, Optional
+import os
+from typing import Any, Dict, List, NamedTuple, Optional
+
+from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
-from supervisely._utils import take_with_default
 
 # from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
 STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
+from supervisely import logger
+from supervisely._utils import sizeof_fmt
 from supervisely.io.fs import ensure_base_path
 from supervisely.task.progress import Progress
-from supervisely._utils import sizeof_fmt
-from supervisely import logger
 
 _context_menu_targets = {
     "files_folder": {
@@ -191,7 +192,49 @@ class ModuleInfo(NamedTuple):
         params = self.config.get("modalTemplateState", {})
         return params
 
-    def get_arguments(self, **kwargs) -> dict:
+    def get_arguments(self, **kwargs) -> Dict[str, Any]:
+        """Returns arguments for launching the application.
+        It should be used with api.app.start() method.
+        See usage example below.
+
+        :return: arguments for launching the application
+        :rtype: Dict[str, Any]
+        :raises ValueError: if arguments was not passed, and the application is not
+            starting from the context menu Ecosystem
+        :raises KeyError: if more than one target was passed
+        :raises KeyError: if invalid target was passed
+        :raises ValueError: if invalid type of target value was passed
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            module_id = 81
+            module_info = api.app.get_ecosystem_module_info(module_id)
+
+            project_id = 12345
+            params = module_info.get_arguments(images_project=project_id)
+
+            # Now we can use params to start the application:
+            session = api.app.start(
+                agent_id=agent_id,
+                module_id=module_id,
+                workspace_id=workspace_id,
+                task_name="Prepare download link",
+                params=params,
+                app_version="dninja",
+                is_branch=True,
+            )
+        """
         params = self.config.get("modalTemplateState", {})
         targets = self.get_context_menu_targets()
         if len(targets) > 0 and len(kwargs) == 0 and "ecosystem" not in targets:
@@ -464,15 +507,70 @@ class AppApi(TaskApi):
         response = self._api.post("ecosystem.info", data)
         return response.json()
 
-    def get_ecosystem_module_info(self, module_id, version=None) -> ModuleInfo:
-        """get_module_info"""
+    def get_ecosystem_module_info(
+        self, module_id: int, version: Optional[str] = None
+    ) -> ModuleInfo:
+        """Returns ModuleInfo object by module id and version.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param version: version of the module, e.g. "v1.0.0"
+        :type version: Optional[str]
+        :return: ModuleInfo object
+        :rtype: ModuleInfo
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            module_id = 81
+            module_info = api.app.get_ecosystem_module_info(module_id)
+        """
         data = {ApiField.ID: module_id}
         if version is not None:
             data[ApiField.VERSION] = version
         response = self._api.post("ecosystem.info", data)
         return ModuleInfo.from_json(response.json())
 
-    def get_ecosystem_module_id(self, slug: str):
+    def get_ecosystem_module_id(self, slug: str) -> int:
+        """Returns ecosystem module id by slug.
+        E.g. slug = "supervisely-ecosystem/export-to-supervisely-format".
+        Slug can be obtained from the application URL in browser.
+
+        :param slug: module slug, starts with "supervisely-ecosystem/"
+        :type slug: str
+        :return: ID of the module
+        :rtype: int
+        :raises KeyError: if module with given slug not found
+        :raises KeyError: if there are multiple modules with the same slug
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            slug = "supervisely-ecosystem/export-to-supervisely-format"
+            module_id = api.app.get_ecosystem_module_id(slug)
+            print(f"Module {slug} has id {module_id}")
+            # Module supervisely-ecosystem/export-to-supervisely-format has id 81
+        """
         modules = self.get_list_all_pages(
             method="ecosystem.list",
             data={"filter": [{"field": "slug", "operator": "=", "value": slug}]},

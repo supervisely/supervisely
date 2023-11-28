@@ -1,24 +1,26 @@
 # coding: utf-8
 """api for working with tasks"""
 
-# docs
-from typing import List, NamedTuple, Dict, Optional, Callable, Union
+import json
 import os
 import time
-from collections import defaultdict, OrderedDict
-import json
+from collections import OrderedDict, defaultdict
+
+# docs
+from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
+
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
+from supervisely._utils import batched, take_with_default
 from supervisely.api.module_api import (
     ApiField,
     ModuleApiBase,
     ModuleWithStatus,
     WaitingTimeExceeded,
 )
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-from supervisely.io.fs import get_file_name, ensure_base_path, get_file_hash
 from supervisely.collection.str_enum import StrEnum
-from supervisely._utils import batched, take_with_default
+from supervisely.io.fs import ensure_base_path, get_file_hash, get_file_name
 
 
 class TaskFinishedWithError(Exception):
@@ -489,21 +491,81 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def start(
         self,
         agent_id,
-        app_id=None,
-        workspace_id=None,
-        description="application description",
-        params=None,
-        log_level="info",
-        users_ids=None,
-        app_version="",
-        is_branch=False,
-        task_name="pythonSpawned",
-        restart_policy="never",
-        proxy_keep_url=False,
-        module_id=None,
-        redirect_requests={},
-    ):
-        """start"""
+        app_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
+        description: Optional[str] = "application description",
+        params: Dict[str, Any] = None,
+        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
+        users_ids: Optional[List[int]] = None,
+        app_version: Optional[str] = "",
+        is_branch: Optional[bool] = False,
+        task_name: Optional[str] = "pythonSpawned",
+        restart_policy: Optional[Literal["never", "on_error"]] = "never",
+        proxy_keep_url: Optional[bool] = False,
+        module_id: Optional[int] = None,
+        redirect_requests: Optional[Dict[str, int]] = {},
+    ) -> Dict[str, Any]:
+        """Starts the application task on the agent.
+
+        :param agent_id: Agent ID. Can be obtained from TeamCluster page in UI.
+        :type agent_id: int
+        :param app_id: Deprecated. Use module_id instead.
+        :type app_id: int, optional
+        :param workspace_id: Workspace ID where the task will be created.
+        :type workspace_id: int, optional
+        :param description: Task description which will be shown in UI.
+        :type description: str, optional
+        :param params: Task parameters which will be passed to the application, check the
+            code example below for more details.
+        :type params: Dict[str, Any], optional
+        :param log_level: Log level for the application.
+        :type log_level: Literal["info", "debug", "warning", "error"], optional
+        :param users_ids: List of user IDs for which will be created an instance of the application.
+            For each user a separate task will be created.
+        :type users_ids: List[int], optional
+        :param app_version: Application version e.g. "v1.0.0" or branch name e.g. "dev".
+        :type app_version: str, optional
+        :param is_branch: If the application version is a branch name, set this parameter to True.
+        :type is_branch: bool, optional
+        :param task_name: Task name which will be shown in UI.
+        :type task_name: str, optional
+        :param restart_policy: when the task should be restarted: never or if error occurred.
+        :type restart_policy: Literal["never", "on_error"], optional
+        :param proxy_keep_url: For internal usage only.
+        :type proxy_keep_url: bool, optional
+        :param module_id: Module ID. Can be obtained from the apps page in UI.
+        :type module_id: int, optional
+        :param redirect_requests: For internal usage only in Develop and Debug mode.
+        :type redirect_requests: Dict[str, int], optional
+        :return: Task information in JSON format.
+        :rtype: Dict[str, Any]
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            app_slug = "supervisely-ecosystem/export-to-supervisely-format"
+            module_id = api.app.get_ecosystem_module_id(app_slug)
+            module_info = api.app.get_ecosystem_module_info(module_id)
+
+            project_id = 12345
+            agent_id = 12345
+            workspace_id = 12345
+
+            params = module_info.get_arguments(images_project=project_id)
+
+            session = api.app.start(
+                agent_id=agent_id,
+                module_id=module_id,
+                workspace_id=workspace_id,
+                task_name="Prepare download link",
+                params=params,
+                app_version="dninja",
+                is_branch=True,
+            )
+        """
         if app_id is not None and module_id is not None:
             raise ValueError("Only one of the arguments (app_id or module_id) have to be defined")
         if app_id is None and module_id is None:

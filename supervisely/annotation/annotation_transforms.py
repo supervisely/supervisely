@@ -1,40 +1,47 @@
 # coding: utf-8
 
-import collections
 import operator
+from typing import Callable, Dict, List, Optional
+
 import numpy as np
-from typing import List, Callable
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.bitmap import Bitmap, SkeletonizeMethod
+from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.point_location import PointLocation
+
+if not hasattr(np, "int"):
+    np.int = np.int_
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
 
 
-if not hasattr(np, 'int'): np.int = np.int_
-if not hasattr(np, 'bool'): np.bool = np.bool_
+def skeletonize_bitmap(
+    ann: Annotation, classes: List[str], method_id: SkeletonizeMethod
+) -> Annotation:
+    """Extracts skeletons from bitmap figures.
 
-def skeletonize_bitmap(ann: Annotation, classes: List[str], method_id: SkeletonizeMethod) -> Annotation:
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param classes: List of classes to skeletonize.
+    :type classes: List[str]
+    :param method_id: Algorithm of processing. See supervisely.geometry.bitmap.SkeletonizeMethod enum.
+    :type method_id: SkeletonizeMethod
+    :return: Annotation with skeletonized labels.
+    :rtype: Annotation
+    :raises RuntimeError: If input class is not a Bitmap.
     """
-    Extracts skeletons from bitmap figures.
 
-    Args:
-        ann: Input annotation.
-        classes: List of classes to skeletonize.
-        method_id: Algorithm of processing. See supervisely.geometry.bitmap.SkeletonizeMethod enum.
-    Returns:
-        Annotation with skeletonized labels.
-    """
     def _skel(label: Label):
         if label.obj_class.name not in classes:
             return [label]
 
         if not isinstance(label.geometry, Bitmap):
-            raise RuntimeError('Input class must be a Bitmap.')
+            raise RuntimeError("Input class must be a Bitmap.")
 
         return [label.clone(geometry=label.geometry.skeletonize(method_id))]
 
@@ -42,22 +49,25 @@ def skeletonize_bitmap(ann: Annotation, classes: List[str], method_id: Skeletoni
 
 
 def approximate_vector(ann: Annotation, classes: List[str], epsilon: float) -> Annotation:
-    """
-    Approximates vector figures: lines and polygons.
+    """Approximates vector figures: lines and polygons.
 
-    Args:
-        ann: Input annotations.
-        classes: List of classes to apply transformation.
-        epsilon: Approximation accuracy (maximum distance between the original curve and its approximation)
-    Returns:
-        Annotation with approximated vector figures of selected classes.
+    :param ann: Input annotations.
+    :type ann: Annotation
+    :param classes: List of classes to apply transformation.
+    :type classes: List[str]
+    :param epsilon: Approximation accuracy (maximum distance between the original curve and its approximation)
+    :type epsilon: float
+    :return: Annotation with approximated vector figures of selected classes.
+    :rtype: Annotation
+    :raises RuntimeError: If input class is not a Polygon or a Line.
     """
+
     def _approx(label: Label):
         if label.obj_class.name not in classes:
             return [label]
 
         if not isinstance(label.geometry, (Polygon, Polyline)):
-            raise RuntimeError('Input class must be a Polygon or a Line.')
+            raise RuntimeError("Input class must be a Polygon or a Line.")
 
         return [label.clone(geometry=label.geometry.approx_dp(epsilon))]
 
@@ -65,14 +75,14 @@ def approximate_vector(ann: Annotation, classes: List[str], epsilon: float) -> A
 
 
 def add_background(ann: Annotation, bg_class: ObjClass) -> Annotation:
-    """
-    Adds background rectangle (size equals to image size) to annotation.
+    """Adds background rectangle (size equals to image size) to annotation.
 
-    Args:
-        ann: Input annotation.
-        bg_class: ObjClass instance for background class label.
-    Returns:
-        Annotation with added background rectangle.
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param bg_class: ObjClass instance for background class label.
+    :type bg_class: ObjClass
+    :return: Annotation with added background rectangle.
+    :rtype: Annotation
     """
     img_size = ann.img_size
     rect = Rectangle(0, 0, img_size[0] - 1, img_size[1] - 1)
@@ -81,34 +91,42 @@ def add_background(ann: Annotation, bg_class: ObjClass) -> Annotation:
 
 
 def drop_object_by_class(ann: Annotation, classes: List[str]) -> Annotation:
-    """
-    Removes labels of specified classes from annotation.
+    """Removes labels of specified classes from annotation.
 
-    Args:
-        ann: Input annotation.
-        classes: List of classes to remove.
-    Returns:
-        Annotation with removed labels of specified classes.
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param classes: List of classes to remove.
+    :type classes: List[str]
+    :return: Annotation with removed labels of specified classes.
+    :rtype: Annotation
     """
+
     def _filter(label: Label):
         if label.obj_class.name in classes:
             return [label]
         return []
+
     return ann.transform_labels(_filter)
 
 
-def filter_objects_by_area(ann: Annotation, classes: List[str], comparator=operator.lt,
-                           thresh_percent: float = None) -> Annotation:  # @ TODO: add size mode
-    """
-    Deletes labels less (or greater) than specified percentage of image area.
+def filter_objects_by_area(
+    ann: Annotation,
+    classes: List[str],
+    comparator: Optional[Callable] = operator.lt,
+    thresh_percent: Optional[float] = None,
+) -> Annotation:  # @ TODO: add size mode
+    """Deletes labels less (or greater) than specified percentage of image area.
 
-    Args
-        ann: Input annotation.
-        classes: List of classes to filter.
-        comparator: Comparison function.
-        thresh_percent: Threshold percent value of image area.
-    Returns:
-        Annotation containing filtered labels.
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param classes: List of classes to filter.
+    :type classes: List[str]
+    :param comparator: Comparison function.
+    :type comparator: Callable, optional
+    :param thresh_percent: Threshold percent value of image area.
+    :type thresh_percent: float, optional
+    :return: Annotation containing filtered labels.
+    :rtype: Annotation
     """
     imsize = ann.img_size
     img_area = float(imsize[0] * imsize[1])
@@ -124,19 +142,25 @@ def filter_objects_by_area(ann: Annotation, classes: List[str], comparator=opera
     return ann.transform_labels(imsize, _del_filter_percent)
 
 
-def bitwise_mask(ann: Annotation, class_mask: str, classes_to_correct: List[str],
-                 bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray] = np.logical_and) -> Annotation:
-    """
-    Performs bitwise operation between two masks. Uses one target mask to correct all others.
+def bitwise_mask(
+    ann: Annotation,
+    class_mask: str,
+    classes_to_correct: List[str],
+    bitwise_op: Optional[Callable[[np.ndarray, np.ndarray], np.ndarray]] = np.logical_and,
+) -> Annotation:
+    """Performs bitwise operation between two masks. Uses one target mask to correct all others.
 
-    Args
-        ann: Input annotation.
-        class_mask: Class name of target mask.
-        classes_to_correct: List of classes which will be corrected using target mask.
-        bitwise_op: Bitwise numpy function to process masks.For example: "np.logical_or", "np.logical_and",
-         "np.logical_xor".
-    Returns:
-        Annotation containing corrected Bitmaps.
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param class_mask: Class name of target mask.
+    :type class_mask: str
+    :param classes_to_correct: List of classes which will be corrected using target mask.
+    :type classes_to_correct: List[str]
+    ;param bitwise_op: Bitwise numpy function to process masks.For example: "np.logical_or", "np.logical_and",
+    :type bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray], optional
+    :return: Annotation containing corrected Bitmaps.
+    :rtype: Annotation
+    :raises RuntimeError: If input class is not a Bitmap.
     """
     imsize = ann.img_size
 
@@ -144,7 +168,7 @@ def bitwise_mask(ann: Annotation, class_mask: str, classes_to_correct: List[str]
         for label in labels:
             if label.obj_class.name == class_mask_name:
                 if not isinstance(label.geometry, Bitmap):
-                    raise RuntimeError('Class <{}> must be a Bitmap.'.format(class_mask_name))
+                    raise RuntimeError("Class <{}> must be a Bitmap.".format(class_mask_name))
                 return label
 
     mask_label = find_mask_class(ann.labels, class_mask)
@@ -152,15 +176,17 @@ def bitwise_mask(ann: Annotation, class_mask: str, classes_to_correct: List[str]
         target_original, target_mask = mask_label.geometry.origin, mask_label.geometry.data
         full_target_mask = np.full(imsize, False, bool)
 
-        full_target_mask[target_original.row:target_original.row + target_mask.shape[0],
-                         target_original.col:target_original.col + target_mask.shape[1]] = target_mask
+        full_target_mask[
+            target_original.row : target_original.row + target_mask.shape[0],
+            target_original.col : target_original.col + target_mask.shape[1],
+        ] = target_mask
 
         def perform_op(label):
             if label.obj_class.name not in classes_to_correct or label.obj_class.name == class_mask:
                 return [label]
 
             if not isinstance(label.geometry, Bitmap):
-                raise RuntimeError('Input class must be a Bitmap.')
+                raise RuntimeError("Input class must be a Bitmap.")
 
             new_geom = label.geometry.bitwise_mask(full_target_mask, bitwise_op)
             return [label.clone(geometry=new_geom)] if new_geom is not None else []
@@ -172,39 +198,49 @@ def bitwise_mask(ann: Annotation, class_mask: str, classes_to_correct: List[str]
     return res_ann
 
 
-def find_contours(ann: Annotation, classes_mapping: dict) -> Annotation:  # @TODO: approximation dropped
+def find_contours(
+    ann: Annotation, classes_mapping: Dict[str, ObjClass]
+) -> Annotation:  # @TODO: approximation dropped
+    """Finds contours of Bitmaps and converts them to Polygons.
+
+    :param ann: Input annotation.
+    :type ann: Annotation
+    :param classes_mapping: Dict matching source class names and new ObjClasses
+    :type classes_mapping: Dict[str, ObjClass]
+    :return: Annotation with Bitmaps converted to contours Polygons.
+    :rtype: Annotation
+    :raises RuntimeError: If input class is not a Bitmap.
     """
 
-    Args:
-        ann: Input annotation.
-        classes_mapping: Dict matching source class names and new ObjClasses
-    Returns:
-        Annotation with Bitmaps converted to contours Polygons.
-    """
     def to_contours(label: Label):
         new_obj_cls = classes_mapping.get(label.obj_class.name)
         if new_obj_cls is None:
             return [label]
         if not isinstance(label.geometry, Bitmap):
-            raise RuntimeError('Input class must be a Bitmap.')
+            raise RuntimeError("Input class must be a Bitmap.")
 
-        return [Label(geometry=geom, obj_class=new_obj_cls) for geom in label.geometry.to_contours()]
+        return [
+            Label(geometry=geom, obj_class=new_obj_cls) for geom in label.geometry.to_contours()
+        ]
 
     return ann.transform_labels(to_contours)
 
 
-def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: dict) -> list:
+def extract_labels_from_mask(
+    mask: np.ndarray, color_id_to_obj_class: Dict[int, ObjClass]
+) -> List[Label]:
     """
     Extract multiclass instances from grayscale mask and save it to labels list.
-    Args:
-        mask: multiclass grayscale mask
-        color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: ObjClass('cat), ...})
-    Returns:
-        list of labels with bitmap geometry
+    :param mask: multiclass grayscale mask
+    :type mask: np.ndarray
+    :param color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: ObjClass('cat), ...})
+    :type color_id_to_obj_class: Dict[int, ObjClass]
+    :return: list of labels with bitmap geometry
+    :rtype: List[Label]
     """
-    from skimage import measure
     from scipy import ndimage
-    
+    from skimage import measure
+
     zero_offset = 1 if 0 in color_id_to_obj_class else 0
     if zero_offset > 0:
         mask = mask + zero_offset
@@ -220,7 +256,10 @@ def extract_labels_from_mask(mask: np.ndarray, color_id_to_obj_class: dict) -> l
         class_index = np.max(sub_mask) - zero_offset
 
         if class_index in color_id_to_obj_class:
-            bitmap = Bitmap(data=sub_mask.astype(np.bool), origin=PointLocation(slices[0].start, slices[1].start))
+            bitmap = Bitmap(
+                data=sub_mask.astype(np.bool),
+                origin=PointLocation(slices[0].start, slices[1].start),
+            )
             label = Label(geometry=bitmap, obj_class=color_id_to_obj_class.get(class_index))
             labels.append(label)
     return labels

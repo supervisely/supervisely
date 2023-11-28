@@ -1062,9 +1062,7 @@ class Annotation:
 
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
-    def resize(
-        self, out_size: Tuple[int, int], skip_empty_masks: bool = False
-    ) -> Annotation:
+    def resize(self, out_size: Tuple[int, int], skip_empty_masks: bool = False) -> Annotation:
         """
         Resizes current Annotation.
 
@@ -2890,13 +2888,19 @@ class Annotation:
                 new_labels.append(lbl.clone())
         return self.clone(labels=new_labels)
 
-    def get_bindings(self):
+    def get_bindings(self) -> Dict[str, List[Label]]:
+        """Returns dictionary with bindings keys as keys and list of labels as values.
+
+        :return: Dictionary with bindings keys as keys and list of labels as values.
+        :rtype: Dict[str, List[Label]]
+        """
         d = defaultdict(list)
         for label in self.labels:
             # if label.binding_key is not None:
             d[label.binding_key].append(label)
         return d
 
-    def discard_bindings(self):
+    def discard_bindings(self) -> None:
+        """Remove binding keys from all labels."""
         for label in self.labels:
             label.binding_key = None
