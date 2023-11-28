@@ -4,6 +4,7 @@ from enum import Enum
 import json
 from typing import Optional
 from supervisely.task.progress import Progress
+from supervisely.app import DialogWindowError
 
 
 class PullPolicy(Enum):
@@ -72,8 +73,12 @@ def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progres
     else:
         raise RuntimeError(f"Unknown pull policy {str(policy)}")
     if not _docker_image_exists(docker_api, docker_image_name):
-        raise RuntimeError(
-            f"Docker image {docker_image_name} not found. Agent's PULL_POLICY is {str(policy)}"
+        raise DialogWindowError(
+            (
+                f"Docker image {docker_image_name} not found. Agent's PULL_POLICY is {str(policy)}. "
+                "The initiation of the pulling process was either prevented due to the pull policy settings "
+                "or it was halted mid-way because the host lacks sufficient disk space."
+            )
         )
 
 
