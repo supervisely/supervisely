@@ -91,7 +91,7 @@ class Progress:
 
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
-        self.report_every = max(1, math.ceil(total_cnt / 100 * min_report_percent))
+        self.report_every = max(1, math.ceil(total_cnt or 0 / 100 * min_report_percent))
         self.need_info_log = need_info_log
 
         mb5 = 5 * 1024 * 1024
@@ -119,7 +119,7 @@ class Progress:
             )
             self.current_label = sizeof_fmt(self.current)
         else:
-            self.total_label = str(self.total if self.total > 0 else self.current)
+            self.total_label = str(self.current if self.is_total_unknown else self.total)
             self.current_label = str(self.current)
 
     def iter_done(self) -> None:
@@ -161,7 +161,7 @@ class Progress:
             "event_type": EventType.PROGRESS,
             "subtask": self.message,
             "current": math.ceil(self.current),
-            "total": math.ceil(self.total) if self.total > 0 else math.ceil(self.current),
+            "total": math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total),
         }
 
         if self.is_size:
@@ -418,6 +418,15 @@ class tqdm_sly(tqdm, Progress):
                 *args,
                 **kwargs_tqdm,
             )
+            if self.total is None and self.iterable is not None:
+                try:
+                    self.total = len(self.iterable)
+                except (TypeError, AttributeError):
+                    self.total = None
+            if self.total == float("inf"):
+                # Infinite iterations, behave same as unknown
+                self.total = None
+
             self.offset = 0  # to prevent overfilling of tqdm in console
         else:
             # disable tqdm on prod but keep attributes
@@ -491,19 +500,16 @@ class tqdm_sly(tqdm, Progress):
 
     def update(self, count):
         if is_development():
-            tqdm.update(
-                self,
-                min(count, self.total - self.offset),
-            )
-            self.offset += count
+            if self.total is not None:
+                count = min(count, self.total - self.offset)
+                self.offset += count
+
+            tqdm.update(self, count)
 
             if self.n == self.total:
                 self.close()
         else:
-            Progress.iters_done_report(
-                self,
-                count,
-            )
+            Progress.iters_done_report(self, count)
             self.n += count
 
     def __call__(
