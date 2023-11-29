@@ -379,7 +379,8 @@ class tqdm_sly(tqdm, Progress):
         self._iteration_locked = False
         self._total_monitor_size = 0
 
-        self._total = kwargs.get("total", kwargs.get("total_cnt"))
+        # self.n = None
+        # self._total = kwargs.get("total", kwargs.get("total_cnt"))
 
         for _tqdm, _progress in {
             "total": "total_cnt",
@@ -426,17 +427,16 @@ class tqdm_sly(tqdm, Progress):
             )
             self.n = 0
 
-    @property
-    def total(self):
-        """Getter method for my_attribute."""
-        return self._total
+    # @property
+    # def total(self):
+    #     return self._total
 
-    @total.setter
-    def total(self, value):
-        if is_development():
-            self._total = value
-        else:
-            Progress.set(self, self.n, value)
+    # @total.setter
+    # def total(self, value):
+    #     if is_development():
+    #         self._total = value
+    #     else:
+    #         Progress.set(self, self.n or 0, value)
 
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
