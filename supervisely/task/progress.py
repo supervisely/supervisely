@@ -115,7 +115,7 @@ class Progress:
     def _refresh_labels(self):
         if self.is_size:
             self.total_label = (
-                sizeof_fmt(self.total) if self.total > 0 else sizeof_fmt(self.current)
+                sizeof_fmt(self.current) if self.is_total_unknown else sizeof_fmt(self.total)
             )
             self.current_label = sizeof_fmt(self.current)
         else:
