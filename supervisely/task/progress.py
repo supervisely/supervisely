@@ -283,7 +283,7 @@ class Progress:
         :param current: Current count.
         :type current: int
         :param total: Total count.
-        :type total: int
+        :type total: int, optional
         :param report: Defines whether to report to log or not.
         :type report: bool
         :return: None
@@ -379,6 +379,8 @@ class tqdm_sly(tqdm, Progress):
         self._iteration_locked = False
         self._total_monitor_size = 0
 
+        self._total = kwargs.get("total", kwargs.get("total_cnt"))
+
         for _tqdm, _progress in {
             "total": "total_cnt",
             "desc": "message",
@@ -423,6 +425,18 @@ class tqdm_sly(tqdm, Progress):
                 **kwargs,
             )
             self.n = 0
+
+    @property
+    def total(self):
+        """Getter method for my_attribute."""
+        return self._total
+
+    @total.setter
+    def total(self, value):
+        if is_development():
+            self._total = value
+        else:
+            Progress.set(self, self.n, value)
 
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
