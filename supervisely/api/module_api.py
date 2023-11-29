@@ -492,6 +492,8 @@ class ApiField:
     """"""
     BITMAP = "bitmap"
     """"""
+    PLAN = "plan"
+    """"""
 
 
 def _get_single_item(items):
