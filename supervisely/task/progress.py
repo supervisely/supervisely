@@ -24,7 +24,7 @@ class Progress:
     :param message: Progress message e.g. "Images uploaded:", "Processing:".
     :type message: str
     :param total_cnt: Total count.
-    :type total_cnt: int
+    :type total_cnt: int, optional
     :param ext_logger: Logger object.
     :type ext_logger: logger, optional
     :param is_size: Shows Label size.
