@@ -189,22 +189,6 @@ class Event:
                 )
 
 
-# {
-#     "datasetId": 77612,
-#     "teamId": 448,
-#     "workspaceId": 690,
-#     "projectId": 29276,
-#     "figureId": None,
-#     "entityId": 25637057,
-#     "frame": 0,
-#     "toolClassId": 8934524,
-#     "sessionId": "faf86272-0da0-45fa-a08e-523aea35937e",
-#     "tool": "moveScene",
-#     "userId": 340,
-#     "jobId": None,
-# }
-
-
 def create(
     process_id=None,
     headless=False,
