@@ -2,49 +2,49 @@
 """api connection to the server which allows user to communicate with Supervisely"""
 
 from __future__ import annotations
-import os
-import requests
+
 import json
-from typing import List, Optional, NamedTuple, Dict
-from requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
+import os
+from typing import Dict, List, NamedTuple, Optional
+
+import requests
 from dotenv import load_dotenv
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
-
-import supervisely.api.team_api as team_api
-import supervisely.api.workspace_api as workspace_api
-import supervisely.api.project_api as project_api
-import supervisely.api.neural_network_api as neural_network_api
-import supervisely.api.task_api as task_api
-import supervisely.api.dataset_api as dataset_api
-import supervisely.api.image_api as image_api
-import supervisely.api.annotation_api as annotation_api
-import supervisely.api.plugin_api as plugin_api
+import supervisely.api.advanced_api as advanced_api
 import supervisely.api.agent_api as agent_api
-import supervisely.api.role_api as role_api
-import supervisely.api.user_api as user_api
+import supervisely.api.annotation_api as annotation_api
+import supervisely.api.app_api as app_api
+import supervisely.api.dataset_api as dataset_api
+import supervisely.api.file_api as file_api
+import supervisely.api.github_api as github_api
+import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
+import supervisely.api.image_api as image_api
+import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.video.video_api as video_api
+import supervisely.api.neural_network_api as neural_network_api
+import supervisely.api.object_class_api as object_class_api
+import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
 import supervisely.api.pointcloud.pointcloud_episode_api as pointcloud_episode_api
-import supervisely.api.object_class_api as object_class_api
-import supervisely.api.report_api as report_api
-import supervisely.api.app_api as app_api
-import supervisely.api.file_api as file_api
-import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
-import supervisely.api.advanced_api as advanced_api
-import supervisely.api.import_storage_api as import_stoarge_api
+import supervisely.api.project_api as project_api
 import supervisely.api.remote_storage_api as remote_storage_api
-import supervisely.api.github_api as github_api
+import supervisely.api.report_api as report_api
+import supervisely.api.role_api as role_api
+import supervisely.api.task_api as task_api
+import supervisely.api.team_api as team_api
+import supervisely.api.user_api as user_api
+import supervisely.api.video.video_api as video_api
+import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
-from supervisely.sly_logger import logger
+import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
 from supervisely._utils import is_development
-
-
 from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
+from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -151,6 +151,7 @@ class Api:
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
         self.img_ann_tool = image_annotation_tool_api.ImageAnnotationToolApi(self)
+        self.vid_ann_tool = video_annotation_tool_api.VideoAnnotationToolApi(self)
         self.advanced = advanced_api.AdvancedApi(self)
         self.import_storage = import_stoarge_api.ImportStorageApi(self)
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
