@@ -475,7 +475,7 @@ def get_labeling_tool_url(
     if is_development():
         res = abs_url(res)
     if link:
-        res = get_labeling_tool_link(res)
+        res = get_labeling_tool_link(res, name=link_text)
     return res
 
 
