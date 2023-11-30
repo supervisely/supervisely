@@ -174,7 +174,8 @@ class Progress:
 
     def need_report(self) -> bool:
         if (
-            (self.current >= self.total or 0)
+            (self.is_total_unknown)
+            or (self.current >= self.total)
             or (self.current % self.report_every == 0)
             or ((self.reported_cnt - 1) < (self.current // self.report_every))
         ):
@@ -467,6 +468,7 @@ class tqdm_sly(tqdm, Progress):
                         cur_t = time()
                         dt = cur_t - last_print_t
                         if dt >= mininterval and cur_t >= min_start_t:
+                            Progress.need_report()
                             Progress.iters_done_report(self, (n - last_print_n))
 
                             last_print_n = self.n  # self.last_print_n
