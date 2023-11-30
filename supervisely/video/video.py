@@ -116,12 +116,15 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
         print(video_info)
         # Output: ((720, 1280), 152)
     """
-    import skvideo.io
+    import cv2
 
-    vreader = skvideo.io.FFmpegReader(path)
-    vlength = vreader.getShape()[0]
-    img_height = vreader.getShape()[1]
-    img_width = vreader.getShape()[2]
+    img_height, img_width, vlength = None, None, None
+    vcap = cv2.VideoCapture(path)
+    if vcap.isOpened():
+        img_height = int(vcap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        img_width = int(vcap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        vlength = int(vcap.get(cv2.CAP_PROP_FRAME_COUNT))
+    vcap.release()
 
     img_size = (img_height, img_width)
 
@@ -341,7 +344,7 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
             "-show_streams",
             "-show_frames",
             "-show_entries",
-            "frame=stream_index,pkt_pts_time",
+            "frame=stream_index,pkt_pts_time,pts_time",
         ],
         stdout=PIPE,
         stderr=PIPE,
@@ -361,7 +364,9 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
 
     for frame in video_meta["frames"]:
         if frame["stream_index"] == 0:
-            frames_to_timecodes.append(float(frame.get("pkt_pts_time", frame.get("pts_time"))))
+            timecode = frame.get("pkt_pts_time", frame.get("pts_time"))
+            timecode = float(timecode) if timecode else None
+            frames_to_timecodes.append(timecode)
 
     stream_infos = []
     for stream in video_meta["streams"]:
