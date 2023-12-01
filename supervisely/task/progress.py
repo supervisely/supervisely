@@ -408,7 +408,7 @@ class tqdm_sly(tqdm, Progress):
             for k, v in {
                 "disable": False,  # do not disable for now
                 "delay": 0,  # sec init delay
-                "mininterval": 5,  # sec between reports
+                "mininterval": 3,  # sec between reports
                 "miniters": 0,
                 "delay": 0,
             }.items():
