@@ -47,10 +47,11 @@ class VideoAnnotationToolApi(ModuleApiBase):
     def set_video(self, session_id: str, video_id: int, frame: Optional[int] = 0) -> Dict[str, Any]:
         """Sets video in the Video Labeling Tool and switches to the specified frame
         if frame number is provided.
+        NOTE: Video from the same dataset should be set in the Video Labeling Tool.
 
         :param session_id: ID of the session in the Video Labeling Tool where video should be set.
         :type session_id: str
-        :param video_id: ID of the video which should be set.
+        :param video_id: ID of the video in the same dataset which should be set.
         :type video_id: int
         :param frame: Frame number which should be set, defaults to 0.
         :type frame: Optional[int]
