@@ -494,6 +494,10 @@ class ApiField:
     """"""
     PLAN = "plan"
     """"""
+    SILENT = "silent"
+    """"""
+    PAGE = "page"
+    """"""
 
 
 def _get_single_item(items):
