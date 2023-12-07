@@ -520,12 +520,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             res = res._replace(items_count=res.images_count)
         return DatasetInfo(**res._asdict())
 
-    def remove_permanently(self, ids: Union[int, List]):
+    def remove_permanently(self, ids: Union[int, List]) -> dict:
         """
         Delete permanently datasets with given IDs from the Supervisely server.
 
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
+        :return: Response content in JSON format
+        :rtype: dict
         """
         if isinstance(ids, int):
             datasets = [{"id": ids}]
