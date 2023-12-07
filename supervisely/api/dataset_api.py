@@ -545,7 +545,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         page: Union[int, str] = None,
     ) -> dict:
         """
-        List all available Datasets for the user.
+        List all available datasets for the user that match the specified filtering criteria.
 
         :param filters: List of parameters for filtering the available Datasets.
                         Every Dict must consist of keys:
