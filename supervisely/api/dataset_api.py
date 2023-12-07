@@ -520,14 +520,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             res = res._replace(items_count=res.images_count)
         return DatasetInfo(**res._asdict())
 
-    def remove_permanently(self, ids):
+    def remove_permanently(self, ids: Union[int, List]):
         """
         Delete permanently datasets with given IDs from the Supervisely server.
 
         :param ids: IDs of datasets in Supervisely.
-        :type ids: List[int]
+        :type ids: Union[int, List]
         """
-        datasets = [{"id": id} for id in ids]
+        if isinstance(ids, int):
+            datasets = [{"id": ids}]
+        else:
+            datasets = [{"id": id} for id in ids]
         response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: datasets})
         return response.json()
 
@@ -635,9 +638,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         first_response = self._api.post(method, request_body).json()
 
-        total = first_response["total"]
-        per_page = first_response["perPage"]
-        pages_count = first_response["pagesCount"]
+        total = first_response.get("total")
+        per_page = first_response.get("perPage")
+        pages_count = first_response.get("pagesCount")
 
         if page == "all":
             request_body[ApiField.PER_PAGE] = total
