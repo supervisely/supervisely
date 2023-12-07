@@ -643,8 +643,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         pages_count = first_response.get("pagesCount")
 
         if page == "all":
-            request_body[ApiField.PER_PAGE] = total
-            return self._api.post(method, request_body).json()
+            if total > 0 and total > per_page:
+                request_body[ApiField.PER_PAGE] = total
+                return self._api.post(method, request_body).json()
+            elif total >= 0 and total < per_page:
+                return first_response
         elif page <= pages_count:
             return first_response
         else:
