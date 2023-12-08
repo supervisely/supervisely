@@ -552,8 +552,8 @@ class VideoFigure:
             else:
                 details["slice_index"] = self.slice_index
                 details["plane"] = self.plane_name
-            details_str = ", ".join([f"{k}: {v}" for k, v in details.items()])
-            raise OutOfImageBoundsException(f"Figure is out of image bounds ({details_str}).")
+            details_str = ", ".join([f"{k}={v}" for k, v in details.items()])
+            raise OutOfImageBoundsException(f"Figure is out of image bounds. Frame details: {details_str}.")
 
         if _auto_correct is True:
             geometries_after_crop = [
