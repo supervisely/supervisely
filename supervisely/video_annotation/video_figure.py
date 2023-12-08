@@ -542,7 +542,7 @@ class VideoFigure:
             # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         canvas_rect = Rectangle.from_size(img_size)
-        if canvas_rect.contains(self.geometry.to_bbox()) is False:
+        if not canvas_rect.contains(self.geometry.to_bbox()) is False: # TODO: remove after testing
             details = {
                 "obj_class name": self.parent_object.obj_class.name,
                 "geometry": self.geometry.geometry_name(),
