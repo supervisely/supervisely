@@ -544,7 +544,7 @@ class VideoFigure:
         canvas_rect = Rectangle.from_size(img_size)
         if not canvas_rect.contains(self.geometry.to_bbox()) is False: # TODO: remove after testing
             details = {
-                "obj_class name": self.parent_object.obj_class.name,
+                "class_name": self.parent_object.obj_class.name,
                 "geometry": self.geometry.geometry_name(),
             }
             if type(self) is VideoFigure:
@@ -552,7 +552,7 @@ class VideoFigure:
             else:
                 details["slice_index"] = self.slice_index
                 details["plane"] = self.plane_name
-            details_str = ", ".join([f"{k}={v}" for k, v in details.items()])
+            details_str = ", ".join([f"{k}: {v}" for k, v in details.items()])
             raise OutOfImageBoundsException(f"Figure is out of image bounds ({details_str}).")
 
         if _auto_correct is True:
