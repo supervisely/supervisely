@@ -544,14 +544,16 @@ class VideoFigure:
         canvas_rect = Rectangle.from_size(img_size)
         if canvas_rect.contains(self.geometry.to_bbox()) is False:
             details = {
-                "frame_index": self.frame_index,
-                "obj_class name": self.video_object.obj_class.name,
-                "shape": self.geometry.name(),
+                "obj_class name": self.parent_object.obj_class.name,
+                "geometry": self.geometry.geometry_name(),
             }
+            if type(self) is VideoFigure:
+                details["frame_index"] = self.frame_index
+            else:
+                details["slice_index"] = self.slice_index
+                details["plane"] = self.plane_name
             details_str = ", ".join([f"{k}={v}" for k, v in details.items()])
-            raise OutOfImageBoundsException(
-                f"Figure is out of image bounds ({details_str})."
-            )
+            raise OutOfImageBoundsException(f"Figure is out of image bounds ({details_str}).")
 
         if _auto_correct is True:
             geometries_after_crop = [
