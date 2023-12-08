@@ -91,7 +91,7 @@ class Progress:
 
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
-        self.report_every = max(1, math.ceil(total_cnt or 0 / 100 * min_report_percent))
+        self.report_every = max(1, math.ceil((total_cnt or 0) / 100 * min_report_percent))
         self.need_info_log = need_info_log
 
         mb5 = 5 * 1024 * 1024
@@ -295,7 +295,7 @@ class Progress:
         self.is_total_unknown = True if self.total in [None, 0] else False
         self.current = current
         self.reported_cnt = 0
-        self.report_every = max(1, math.ceil(total or 0 / 100))
+        self.report_every = max(1, math.ceil((total or 0) / 100))
         self._refresh_labels()
         if report is True:
             self.report_if_needed()
