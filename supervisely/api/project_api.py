@@ -810,7 +810,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             res = abs_url(res)
         return res
 
-    def update_custom_data(self, id: int, data: Dict) -> Dict:
+    def update_custom_data(self, id: int, data: Dict, silent: bool = False) -> Dict:
         """
         Updates custom data of the Project by ID
 
@@ -818,6 +818,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param data: Custom data
         :type data: dict
+        :param silent: determines whether the `updatedAt` timestamp should be updated or not, if False - update `updatedAt`
+        :type silent: bool
         :return: Project information in dict format
         :rtype: :class:`dict`
         :Usage example:
@@ -838,7 +840,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if type(data) is not dict:
             raise TypeError("Meta must be dict, not {!r}".format(type(data)))
         response = self._api.post(
-            "projects.editInfo", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.CUSTOM_DATA: data, ApiField.SILENT: silent},
         )
         return response.json()
 
@@ -1277,6 +1280,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.SORT] = sort
         if sort_order is not None:
             request_body[ApiField.SORT_ORDER] = sort_order
+        if account_type is not None:
+            request_body[ApiField.ACCOUNT_TYPE] = account_type
 
         response = self._api.post("projects.list.all", request_body)
 
