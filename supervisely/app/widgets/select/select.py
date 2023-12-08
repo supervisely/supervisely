@@ -164,6 +164,16 @@ class Select(ConditionalWidget):
             if item.value == self.get_value():
                 return item.label
 
+    def get_labels(self):
+        labels = []
+        current_values = self.get_value()
+        if not isinstance(current_values, list):
+            current_values = [current_values]
+        for item in self.get_items():
+            if item.value in current_values:
+                labels.append(item.label)
+        return labels
+
     def value_changed(self, func):
         route_path = self.get_route_path(Select.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()

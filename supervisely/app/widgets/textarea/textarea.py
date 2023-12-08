@@ -21,7 +21,6 @@ class TextArea(Widget):
 
     def get_json_data(self):
         return {
-            "value": self._value,
             "placeholder": self._placeholder,
             "rows": self._rows,
             "autosize": self._autosize,
