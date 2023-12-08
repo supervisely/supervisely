@@ -1,30 +1,29 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import Tuple, Dict, Optional, List
+
 import uuid
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
+
 from bidict import bidict
 
-from supervisely.api.module_api import ApiField
-
 from supervisely._utils import take_with_default
-from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
-from supervisely.api.module_api import ApiField
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
-from supervisely.video_annotation.key_id_map import KeyIdMap
-
-from supervisely.video_annotation.video_object import VideoObject
-from supervisely.geometry.geometry import Geometry
+from supervisely.api.module_api import ApiField
+from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
     LABELER_LOGIN,
     UPDATED_AT,
-    CREATED_AT,
-    CLASS_ID,
 )
+from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.video_annotation.constants import ID, KEY, META, OBJECT_ID, OBJECT_KEY
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
 class OutOfImageBoundsException(Exception):
@@ -544,7 +543,15 @@ class VideoFigure:
         """
         canvas_rect = Rectangle.from_size(img_size)
         if canvas_rect.contains(self.geometry.to_bbox()) is False:
-            raise OutOfImageBoundsException("Figure is out of image bounds")
+            details = {
+                "frame_index": self.frame_index,
+                "obj_class name": self.video_object.obj_class.name,
+                "shape": self.geometry.name(),
+            }
+            details_str = ", ".join([f"{k}={v}" for k, v in details.items()])
+            raise OutOfImageBoundsException(
+                f"Figure is out of image bounds ({details_str})."
+            )
 
         if _auto_correct is True:
             geometries_after_crop = [
