@@ -5,18 +5,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from supervisely._utils import is_development, abs_url, compress_image_url
+from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
@@ -24,7 +24,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.project_type import ProjectType, _MULTISPECTRAL_TAG_NAME
+from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME, ProjectType
 
 
 class ProjectNotFound(Exception):
@@ -800,7 +800,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             res = abs_url(res)
         return res
 
-    def update_custom_data(self, id: int, data: Dict) -> Dict:
+    def update_custom_data(self, id: int, data: Dict, silent: bool = False) -> Dict:
         """
         Updates custom data of the Project by ID
 
@@ -808,6 +808,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param data: Custom data
         :type data: dict
+        :param silent: determines whether the `updatedAt` timestamp should be updated or not, if False - update `updatedAt`
+        :type silent: bool
         :return: Project information in dict format
         :rtype: :class:`dict`
         :Usage example:
@@ -828,7 +830,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if type(data) is not dict:
             raise TypeError("Meta must be dict, not {!r}".format(type(data)))
         response = self._api.post(
-            "projects.editInfo", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.CUSTOM_DATA: data, ApiField.SILENT: silent},
         )
         return response.json()
 
@@ -1098,6 +1101,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ]
         ] = None,
         sort_order: Optional[str["asc", "desc"]] = None,
+        account_type: Optional[str] = None,
     ) -> List[ProjectInfo]:
         """
         List of all projects in all available workspaces that can be archived.
@@ -1112,6 +1116,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type sort: str, optional.
         :param sort_order: Determines which value to list from.
         :type sort_order: str, optional.
+        :param account_type: Type of the user account.
+        :type account_type: str, optional.
         :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ProjectInfo]`
         :Usage example:
@@ -1167,6 +1173,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.SORT] = sort
         if sort_order is not None:
             request_body[ApiField.SORT_ORDER] = sort_order
+        if account_type is not None:
+            request_body[ApiField.ACCOUNT_TYPE] = account_type
 
         response = self._api.post("projects.list.all", request_body)
 

@@ -492,6 +492,12 @@ class ApiField:
     """"""
     BITMAP = "bitmap"
     """"""
+    ACCOUNT_TYPE = "plan"
+    """"""
+    SILENT = "silent"
+    """"""
+    PAGE = "page"
+    """"""
 
 
 def _get_single_item(items):
