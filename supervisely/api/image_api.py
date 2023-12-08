@@ -9,16 +9,16 @@ import json
 import re
 import urllib.parse
 from typing import (
+    Any,
     Callable,
     Dict,
+    Generator,
     Iterator,
     List,
     NamedTuple,
     Optional,
-    Union,
-    Generator,
     Tuple,
-    Any,
+    Union,
 )
 
 import numpy as np
@@ -32,9 +32,9 @@ from supervisely._utils import (
     generate_free_name,
     is_development,
 )
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.annotation.tag import Tag
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -446,8 +446,20 @@ class ImageApi(RemoveableBulkModuleApi):
         items = self.get_list(parent_id, filters, force_metadata_for_links=force_metadata_for_links)
         return _get_single_item(items)
 
-    def get_info_by_name(self, dataset_id, name, force_metadata_for_links=True):
-        """get_info_by_name"""
+    def get_info_by_name(
+        self, dataset_id: int, name: str, force_metadata_for_links: Optional[bool] = True
+    ) -> ImageInfo:
+        """Returns image info by image name from given dataset id.
+
+        :param dataset_id: Dataset ID in Supervisely, where Image is located.
+        :type dataset_id: int
+        :param name: Image name in Supervisely.
+        :type name: str
+        :param force_metadata_for_links: If True, returns full_storage_url and path_original fields in ImageInfo.
+        :type force_metadata_for_links: bool, optional
+        :return: Object with image information from Supervisely.
+        :rtype: :class:`ImageInfo<ImageInfo>`
+        """
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
                 dataset_id, module_name, force_metadata_for_links
@@ -2490,8 +2502,15 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         super(ImageApi, self).remove(image_id)
 
-    def exists(self, parent_id, name):
-        """exists"""
+    def exists(self, parent_id: int, name: str) -> bool:
+        """Check if image with given name exists in dataset with given id.
+
+        :param parent_id: Dataset ID in Supervisely.
+        :type parent_id: int
+        :param name: Image name in Supervisely.
+        :type name: str
+        :return: True if image exists, False otherwise.
+        :rtype: bool"""
         return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
 
     def upload_multispectral(
