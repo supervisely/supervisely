@@ -1211,6 +1211,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ]
         ] = None,
         sort_order: Optional[Literal["asc", "desc"]] = None,
+        account_type: Optional[str] = None,
     ) -> List[ProjectInfo]:
         """
         List of all projects in all available workspaces that can be archived.
