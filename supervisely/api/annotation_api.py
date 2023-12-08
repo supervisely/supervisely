@@ -3,15 +3,17 @@
 
 # docs
 from __future__ import annotations
+
 import json
-from typing import List, Optional, NamedTuple, Dict, Callable, Union, Any
-from supervisely.task.progress import Progress
-from supervisely.annotation.label import Label
-from supervisely.annotation.annotation import Annotation
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.api.module_api import ApiField, ModuleApi
-from supervisely._utils import batched
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
+
 from tqdm import tqdm
+
+from supervisely._utils import batched
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+from supervisely.api.module_api import ApiField, ModuleApi
+from supervisely.project.project_meta import ProjectMeta
 
 
 class AnnotationInfo(NamedTuple):
