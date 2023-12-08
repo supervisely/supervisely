@@ -492,7 +492,7 @@ class ApiField:
     """"""
     BITMAP = "bitmap"
     """"""
-    PLAN = "plan"
+    ACCOUNT_TYPE = "plan"
     """"""
     SILENT = "silent"
     """"""
