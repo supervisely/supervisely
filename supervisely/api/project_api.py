@@ -1101,7 +1101,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ]
         ] = None,
         sort_order: Optional[str["asc", "desc"]] = None,
-        plan: Optional[str] = None,
+        account_type: Optional[str] = None,
     ) -> List[ProjectInfo]:
         """
         List of all projects in all available workspaces that can be archived.
@@ -1116,8 +1116,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type sort: str, optional.
         :param sort_order: Determines which value to list from.
         :type sort_order: str, optional.
-        :param plan: Name of plan.
-        :type plan: str, optional.
+        :param account_type: Type of the user account.
+        :type account_type: str, optional.
         :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ProjectInfo]`
         :Usage example:
@@ -1173,8 +1173,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.SORT] = sort
         if sort_order is not None:
             request_body[ApiField.SORT_ORDER] = sort_order
-        if plan is not None:
-            request_body[ApiField.PLAN] = plan
+        if account_type is not None:
+            request_body[ApiField.ACCOUNT_TYPE] = account_type
 
         response = self._api.post("projects.list.all", request_body)
 
