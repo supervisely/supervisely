@@ -50,26 +50,23 @@ class SelectDataset(Widget):
             self._project_id = info.project_id
         self._project_id = _get_int_or_env(self._project_id, "modal.state.slyProjectId")
 
-        if compact is True:
-            if self._project_id is None:
-                raise ValueError(
-                    '"project_id" have to be passed as argument or "compact" has to be False'
-                )
-        else:
-            # if self._show_label is False:
-            #     logger.warn(
-            #         "show_label can not be false if compact is True and default_id / project_id are not defined"
-            #     )
-            self._show_label = True
-            self._project_selector = SelectProject(
-                default_id=self._project_id,
-                show_label=True,
-                size=self._size,
-                allowed_types=allowed_project_types,
-                widget_id=generate_id(),
-            )
-            if self._disabled is True:
-                self._project_selector.disable()
+        # NOW PROJECT CAN BE SET LATER WITH SET_PROJECT_ID METHOD
+        # if compact is True:
+        #     if self._project_id is None:
+        #         raise ValueError(
+        #             '"project_id" have to be passed as argument or "compact" has to be False'
+        #         )
+        # else:
+        self._show_label = True
+        self._project_selector = SelectProject(
+            default_id=self._project_id,
+            show_label=True,
+            size=self._size,
+            allowed_types=allowed_project_types,
+            widget_id=generate_id(),
+        )
+        if self._disabled is True:
+            self._project_selector.disable()
 
         if self._multiselect is True:
             self._all_datasets_checkbox = Checkbox(
@@ -133,6 +130,34 @@ class SelectDataset(Widget):
             return ids
         else:
             return StateJson()[self.widget_id]["datasets"]
+
+    def set_project_id(self, id: int):
+        self._project_id = id
+        if self._compact is True:
+            DataJson()[self.widget_id]["projectId"] = self._project_id
+            DataJson().send_changes()
+        else:
+            StateJson()[self.widget_id]["projectId"] = self._project_id
+            StateJson().send_changes()
+
+    def set_dataset_id(self, id: int):
+        if self._multiselect is True:
+            raise ValueError(
+                "Multiselect is enabled. Use another method 'set_dataset_ids' instead of 'set_dataset_id'"
+            )
+
+        self._default_id = [id]
+        StateJson()[self.widget_id]["datasets"] = self._default_id
+        StateJson().send_changes()
+
+    def set_dataset_ids(self, ids: List[int]):
+        if self._multiselect is False:
+            raise ValueError(
+                "Multiselect is disabled. Use another method 'set_dataset_id' instead of 'set_dataset_ids'"
+            )
+        self._default_id = ids
+        StateJson()[self.widget_id]["datasets"] = self._default_id
+        StateJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(SelectDataset.Routes.VALUE_CHANGED)
