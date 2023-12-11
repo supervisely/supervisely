@@ -1,17 +1,22 @@
 import json
 import os
-import mimetypes
 from os.path import basename, join
 
 import supervisely.io.env as env
+import supervisely.io.env as sly_env
+from supervisely import rand_str
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import get_name_from_env
-from supervisely.io.fs import get_file_name_with_ext, silent_remove, archive_directory, remove_dir
-import supervisely.io.env as sly_env
-from supervisely import rand_str
-from supervisely.task.progress import Progress
+from supervisely.io.fs import (
+    archive_directory,
+    get_file_name_with_ext,
+    is_archive,
+    remove_dir,
+    silent_remove,
+)
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 from supervisely.team_files import RECOMMENDED_EXPORT_PATH
 
 
@@ -107,34 +112,6 @@ def set_download(local_path: str):
                 )
             upload_progress[0].set_current_value(monitor.bytes_read)
 
-        def _is_archive(local_path: str) -> bool:
-            """
-            Checks if the file is an archive by its mimetype using list of the most common archive mimetypes.
-
-            :param local_path: path to the local file
-            :type local_path: str
-            :return: True if the file is an archive, False otherwise
-            :rtype: bool
-            """
-            archive_mimetypes = [
-                "application/zip",
-                "application/x-tar",
-                "application/x-gzip",
-                "application/x-bzip2",
-                "application/x-7z-compressed",
-                "application/x-rar-compressed",
-                "application/x-xz",
-                "application/x-lzip",
-                "application/x-lzma",
-                "application/x-lzop",
-                "application/x-bzip",
-                "application/x-bzip2",
-                "application/x-compress",
-                "application/x-compressed",
-            ]
-
-            return mimetypes.guess_type(local_path)[0] in archive_mimetypes
-
         remote_path = join(
             RECOMMENDED_EXPORT_PATH,
             get_name_from_env(),
@@ -148,7 +125,7 @@ def set_download(local_path: str):
             progress_cb=lambda m: _print_progress(m, upload_progress),
         )
 
-        if _is_archive(local_path):
+        if is_archive(local_path):
             api.task.set_output_archive(task_id, file_info.id, file_info.name)
         else:
             api.task.set_output_file_download(task_id, file_info.id, file_info.name)
