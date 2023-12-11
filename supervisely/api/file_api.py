@@ -578,9 +578,39 @@ class FileApi(ModuleApiBase):
     def download_input(
         self,
         save_path: str,
-        download_if_on_agent: Optional[bool] = True,
         unpack_if_archive: Optional[bool] = True,
-    ):
+    ) -> None:
+        """Downloads data for application from input using environment variables.
+        Automatically detects is data is a file or a directory and saves it to the specified directory.
+        If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
+
+        :param save_path: path to a directory where data will be saved
+        :type save_path: str
+        :param unpack_if_archive: if True, archive will be unpacked to the specified directory
+        :type unpack_if_archive: Optional[bool]
+        :raises RuntimeError: if both file and folder paths not found in environment variables
+        :raises RuntimeError: if both file and folder paths found in environment variables (debug)
+        :raises RuntimeError: if team id not found in environment variables
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Application is started...
+            save_path = "/my_app_data"
+            api.file.download_input(save_path)
+
+            # The data is downloaded to the specified directory.
+        """
         remote_file_path = env.file(raise_not_found=False)
         remote_folder_path = env.folder(raise_not_found=False)
         team_id = env.team_id()
@@ -603,7 +633,10 @@ class FileApi(ModuleApiBase):
         if remote_file_path is not None:
             file_name = sly_fs.get_file_name_with_ext(remote_file_path)
             local_file_path = os.path.join(save_path, file_name)
-            self.download(team_id, remote_file_path, local_file_path)
+            if self.is_on_agent(remote_file_path):
+                self.download_from_agent(remote_file_path, local_file_path)
+            else:
+                self.download(team_id, remote_file_path, local_file_path)
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
                 os.remove(local_file_path)
