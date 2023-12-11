@@ -1,19 +1,19 @@
 # coding: utf-8
 
 # docs
-from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal, Generator
-
+import errno
+import mimetypes
 import os
 import re
 import shutil
-import errno
-import tarfile
 import subprocess
+import tarfile
+from collections.abc import Mapping
+from re import L
+from typing import Callable, Dict, Generator, List, Literal, Optional, Union
+
 import requests
 from requests.structures import CaseInsensitiveDict
-from collections.abc import Mapping
-
 from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_string_hash
@@ -1108,3 +1108,32 @@ def change_directory_at_index(path: str, dir_name: str, dir_index: int) -> str:
             f"Path index '{dir_index}' is out of bounds 'path_components={len(path_components)}' for a given path"
         )
     return os.path.sep.join(path_components)
+
+
+def is_archive(file_path: str) -> bool:
+    """
+    Checks if the file is an archive by its mimetype using list of the most common archive mimetypes.
+
+    :param local_path: path to the local file
+    :type local_path: str
+    :return: True if the file is an archive, False otherwise
+    :rtype: bool
+    """
+    archive_mimetypes = [
+        "application/zip",
+        "application/x-tar",
+        "application/x-gzip",
+        "application/x-bzip2",
+        "application/x-7z-compressed",
+        "application/x-rar-compressed",
+        "application/x-xz",
+        "application/x-lzip",
+        "application/x-lzma",
+        "application/x-lzop",
+        "application/x-bzip",
+        "application/x-bzip2",
+        "application/x-compress",
+        "application/x-compressed",
+    ]
+
+    return mimetypes.guess_type(file_path)[0] in archive_mimetypes
