@@ -3,37 +3,37 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional, Callable, Union
-from typing_extensions import Literal
-
+import mimetypes
 import os
+import re
 import shutil
 import tarfile
-from pathlib import Path
 import urllib
-import re
+from pathlib import Path
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import batched, rand_str
-from supervisely.api.module_api import ModuleApiBase, ApiField
-import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-import mimetypes
-from supervisely.imaging.image import write_bytes, get_hash
-from supervisely.task.progress import Progress
-from supervisely.io.fs_cache import FileCache
+from tqdm import tqdm
+from typing_extensions import Literal
+
+import supervisely.io.env as env
+import supervisely.io.fs as sly_fs
+from supervisely._utils import batched, rand_str
+from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.imaging.image import get_hash, write_bytes
 from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_ext,
     get_file_hash,
     get_file_name,
-    get_file_ext,
+    get_file_name_with_ext,
     get_file_size,
     list_files_recursively,
     silent_remove,
-    ensure_base_path,
-    get_file_name_with_ext,
 )
+from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
-import supervisely.io.env as env
-from tqdm import tqdm
+from supervisely.task.progress import Progress
 
 
 class FileInfo(NamedTuple):
@@ -574,6 +574,74 @@ class FileApi(ModuleApiBase):
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
         shutil.rmtree(temp_dir)
+
+    def download_input(
+        self,
+        save_path: str,
+        unpack_if_archive: Optional[bool] = True,
+    ) -> None:
+        """Downloads data for application from input using environment variables.
+        Automatically detects is data is a file or a directory and saves it to the specified directory.
+        If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
+
+        :param save_path: path to a directory where data will be saved
+        :type save_path: str
+        :param unpack_if_archive: if True, archive will be unpacked to the specified directory
+        :type unpack_if_archive: Optional[bool]
+        :raises RuntimeError: if both file and folder paths not found in environment variables
+        :raises RuntimeError: if both file and folder paths found in environment variables (debug)
+        :raises RuntimeError: if team id not found in environment variables
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Application is started...
+            save_path = "/my_app_data"
+            api.file.download_input(save_path)
+
+            # The data is downloaded to the specified directory.
+        """
+        remote_file_path = env.file(raise_not_found=False)
+        remote_folder_path = env.folder(raise_not_found=False)
+        team_id = env.team_id()
+
+        sly_fs.mkdir(save_path)
+
+        if remote_file_path is None and remote_folder_path is None:
+            raise RuntimeError(
+                "Both file and folder paths not found in environment variables. "
+                "Please, specify one of them."
+            )
+        elif remote_file_path is not None and remote_folder_path is not None:
+            raise RuntimeError(
+                "Both file and folder paths found in environment variables. "
+                "Please, specify only one of them."
+            )
+        if team_id is None:
+            raise RuntimeError("Team id not found in environment variables.")
+
+        if remote_file_path is not None:
+            file_name = sly_fs.get_file_name_with_ext(remote_file_path)
+            local_file_path = os.path.join(save_path, file_name)
+            if self.is_on_agent(remote_file_path):
+                self.download_from_agent(remote_file_path, local_file_path)
+            else:
+                self.download(team_id, remote_file_path, local_file_path)
+            if unpack_if_archive and sly_fs.is_archive(local_file_path):
+                sly_fs.unpack_archive(local_file_path, save_path)
+                os.remove(local_file_path)
+        elif remote_folder_path is not None:
+            self.download_directory(team_id, remote_folder_path, save_path)
 
     def _upload_legacy(self, team_id, src, dst):
         """ """
