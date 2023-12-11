@@ -262,8 +262,12 @@ def setup_certificates():
             with open(new_bundle_path, "w", encoding="ascii") as f:
                 f.write("\n".join(certificates))
 
+            old_request_ca_bundle_path = os.environ["REQUESTS_CA_BUNDLE"]
             os.environ["REQUESTS_CA_BUNDLE"] = new_bundle_path
-            if os.environ.get("SSL_CERT_FILE") is None:
+            if (
+                os.environ.get("SSL_CERT_FILE") is None
+                or os.environ.get("SSL_CERT_FILE") == old_request_ca_bundle_path
+            ):
                 os.environ["SSL_CERT_FILE"] = new_bundle_path
             logger.info(f"Certificates were added to the bundle: {path_to_certificate}")
         else:
