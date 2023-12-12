@@ -1,30 +1,31 @@
 # coding: utf-8
 
-from collections import namedtuple
-from typing import Optional, List, Callable, Tuple, Union, Dict
 import os
 import re
-import numpy
+from collections import namedtuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import numpy
 from tqdm import tqdm
 
-from supervisely.io.fs import touch, change_directory_at_index
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
 from supervisely._utils import batched
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.volume import volume as sly_volume
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.mask_3d import Mask3D
+from supervisely.io.fs import change_directory_at_index, touch
 from supervisely.project.project import OpenMode
-from supervisely.project.video_project import VideoDataset, VideoProject
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
+from supervisely.project.video_project import VideoDataset, VideoProject
+from supervisely.task.progress import Progress
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.volume import stl_converter
+from supervisely.volume import volume as sly_volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.geometry.mask_3d import Mask3D
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-from supervisely.volume import stl_converter
+from supervisely.sly_logger import logger
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -335,7 +336,20 @@ def download_volume_project(
                     raise RuntimeError(
                         "Error in api.volume.annotation.download_batch: broken order"
                     )
-                ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+                try:
+                    ann = VolumeAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "volume_id": volume_id,
+                            "volume_name": volume_name,
+                            "ann_json": ann_json,
+                        },
+                    )
+                    raise e
 
                 volume_file_path = dataset_fs.generate_item_path(volume_name)
                 if download_volumes is True:
