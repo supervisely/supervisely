@@ -1265,7 +1265,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self.update_meta(id, project_meta)
         self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
 
-    def set_multispectral_settings(self, id: int) -> None:
+    def set_multispectral_settings(self, project_id: int) -> None:
         """Sets the project settings for multispectral images.
         Images will be grouped by tag and have synchronized view and labeling.
 
@@ -1288,17 +1288,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
 
-            api.project.set_multispectral_settings(id=123)
+            api.project.set_multispectral_settings(project_id=123)
         """
 
         self._set_custom_grouping_settings(
-            id=id,
+            id=project_id,
             group_images=True,
             tag_name=_MULTISPECTRAL_TAG_NAME,
             sync=True,
         )
 
-    def set_multiview_settings(self, id: int) -> None:
+    def set_multiview_settings(self, project_id: int) -> None:
         """Sets the project settings for multiview images.
         Images will be grouped by tag and have synchronized view and labeling.
 
@@ -1321,11 +1321,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
 
-            api.project.set_multiview_settings(id=123)
+            api.project.set_multiview_settings(project_id=123)
         """
 
         self._set_custom_grouping_settings(
-            id=id,
+            id=project_id,
             group_images=True,
             tag_name=_MULTIVIEW_TAG_NAME,
             sync=False,
