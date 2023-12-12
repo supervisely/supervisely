@@ -639,7 +639,7 @@ class FileApi(ModuleApiBase):
                 self.download(team_id, remote_file_path, local_file_path)
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
-                os.remove(local_file_path)
+                sly_fs.silent_remove(local_file_path)
         elif remote_folder_path is not None:
             self.download_directory(team_id, remote_folder_path, save_path)
 
