@@ -2567,7 +2567,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return image_infos
 
-    def upload_grouped_images(
+    def upload_multiview_images(
         self,
         dataset_id: int,
         tag_name: str,
@@ -2623,7 +2623,7 @@ class ImageApi(RemoveableBulkModuleApi):
             tag_name = 'car'
             group_name = 'audi'
 
-            image_infos = api.image.upload_grouped_images(dataset_id, tag_name, group_name, paths)
+            image_infos = api.image.upload_multiview_images(dataset_id, tag_name, group_name, paths)
         """
 
         dataset_info = self._api.dataset.get_info_by_id(dataset_id)
