@@ -48,7 +48,10 @@ from supervisely.io.fs import (
     get_file_name,
 )
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME
+from supervisely.project.project_type import (
+    _MULTISPECTRAL_TAG_NAME,
+    _MULTIVIEW_TAG_NAME,
+)
 from supervisely.sly_logger import logger
 
 
@@ -2570,7 +2573,6 @@ class ImageApi(RemoveableBulkModuleApi):
     def upload_multiview_images(
         self,
         dataset_id: int,
-        tag_name: str,
         group_name: str,
         paths: List[str],
         names: List[str] = None,
@@ -2620,37 +2622,30 @@ class ImageApi(RemoveableBulkModuleApi):
 
             dataset_id = 123456
             paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
-            tag_name = 'car'
             group_name = 'audi'
 
-            image_infos = api.image.upload_multiview_images(dataset_id, tag_name, group_name, paths)
+            image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
+
         """
-
-        dataset_info = self._api.dataset.get_info_by_id(dataset_id)
-        project_meta_json = self._api.project.get_meta(dataset_info.project_id)
-        project_meta = ProjectMeta.from_json(project_meta_json)
-        tag_meta = project_meta.get_tag_meta(tag_name)
-
-        if tag_meta is None:
-            raise Exception(f"Tag {tag_name} not found in project ID:{dataset_info.project_id}.")
-        if tag_meta.value_type != TagValueType.ANY_STRING:
-            raise Exception(f"Tag {tag_name} must be of type ANY_STRING.")
+        group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
+        group_tag = Tag(meta=group_tag_meta, value=group_name)
 
         if names is None:
             names = [get_file_name(path) for path in paths]
 
         image_infos = self.upload_paths(
-            dataset_id,
-            names,
-            paths,
+            dataset_id=dataset_id,
+            names=names,
+            paths=paths,
             progress_cb=progress_cb,
             metas=metas,
         )
+
+        anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
         image_ids = [image_info.id for image_info in image_infos]
-        self._api.image.add_tag_batch(image_ids, tag_meta.sly_id, group_name)
+        self._api.annotation.upload_anns(image_ids, anns)
 
         uploaded_image_infos = self.get_list(
             dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
         )
-
         return uploaded_image_infos
