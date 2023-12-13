@@ -9,16 +9,16 @@ import json
 import re
 import urllib.parse
 from typing import (
+    Any,
     Callable,
     Dict,
+    Generator,
     Iterator,
     List,
     NamedTuple,
     Optional,
-    Union,
-    Generator,
     Tuple,
-    Any,
+    Union,
 )
 
 import numpy as np
@@ -32,9 +32,9 @@ from supervisely._utils import (
     generate_free_name,
     is_development,
 )
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.annotation.tag import Tag
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -47,7 +47,11 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_name,
 )
-from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import (
+    _MULTISPECTRAL_TAG_NAME,
+    _MULTIVIEW_TAG_NAME,
+)
 from supervisely.sly_logger import logger
 
 
@@ -2565,3 +2569,85 @@ class ImageApi(RemoveableBulkModuleApi):
         self._api.annotation.upload_anns(image_ids, anns)
 
         return image_infos
+
+    def upload_multiview_images(
+        self,
+        dataset_id: int,
+        group_name: str,
+        paths: List[str],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[ImageInfo]:
+        """
+        Uploads images to Supervisely and adds a tag to them.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param tag_name: Tag name in Supervisely.
+                         If tag does not exist in project, create it first.
+                         Tag must be of type ANY_STRING.
+        :type tag_name: str
+        :param group_name: Group name. All images will be assigned by tag with this group name.
+        :type group_name: str
+        :param paths: List of paths to images.
+        :type paths: List[str]
+        :param metas: List of image metas (optional)
+        :type metas: Optional[List[Dict]]
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded images infos
+        :rtype: List[ImageInfo]
+        :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            dataset_id = 123456
+            paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
+            group_name = 'audi'
+
+            image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
+
+        """
+        group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
+        group_tag = Tag(meta=group_tag_meta, value=group_name)
+
+        for path in paths:
+            if get_file_ext(path) not in sly_image.SUPPORTED_IMG_EXTS:
+                raise RuntimeError(
+                    f"Image {path} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
+                )
+
+        names = [get_file_name(path) for path in paths]
+
+        image_infos = self.upload_paths(
+            dataset_id=dataset_id,
+            names=names,
+            paths=paths,
+            progress_cb=progress_cb,
+            metas=metas,
+        )
+
+        anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
+        image_ids = [image_info.id for image_info in image_infos]
+        self._api.annotation.upload_anns(image_ids, anns)
+
+        uploaded_image_infos = self.get_list(
+            dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
+        )
+        return uploaded_image_infos

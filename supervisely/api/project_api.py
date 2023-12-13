@@ -24,7 +24,11 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME, ProjectType
+from supervisely.project.project_type import (
+    _MULTISPECTRAL_TAG_NAME,
+    _MULTIVIEW_TAG_NAME,
+    ProjectType,
+)
 
 
 class ProjectNotFound(Exception):
@@ -1243,6 +1247,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
 
+    def _set_custom_grouping_settings(self, id: int, group_images: bool, tag_name: str, sync: bool):
+        """Sets the project settings for custom grouping.
+
+        :param id: Project ID to set custom grouping settings.
+        :type id: int
+        :param group_images: if True enables images grouping by tag
+        :type group_images: bool
+        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :type tag_name: str
+        :param sync: if True images will have synchronized view and labeling
+        :type sync: bool
+        """
+        group_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+        project_meta = ProjectMeta.from_json(self.get_meta(id))
+        project_meta = project_meta.add_tag_meta(group_tag_meta)
+        self.update_meta(id, project_meta)
+        self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
+
     def set_multispectral_settings(self, project_id: int) -> None:
         """Sets the project settings for multispectral images.
         Images will be grouped by tag and have synchronized view and labeling.
@@ -1268,8 +1290,43 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.set_multispectral_settings(project_id=123)
         """
-        group_tag_meta = TagMeta(_MULTISPECTRAL_TAG_NAME, TagValueType.ANY_STRING)
-        project_meta = ProjectMeta.from_json(self.get_meta(project_id))
-        project_meta = project_meta.add_tag_meta(group_tag_meta)
-        self.update_meta(project_id, project_meta)
-        self.images_grouping(project_id, enable=True, tag_name=_MULTISPECTRAL_TAG_NAME, sync=True)
+
+        self._set_custom_grouping_settings(
+            id=project_id,
+            group_images=True,
+            tag_name=_MULTISPECTRAL_TAG_NAME,
+            sync=True,
+        )
+
+    def set_multiview_settings(self, project_id: int) -> None:
+        """Sets the project settings for multiview images.
+        Images will be grouped by tag and have synchronized view and labeling.
+
+        :param project_id: Project ID to set multiview settings.
+        :type project_id: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            api.project.set_multiview_settings(project_id=123)
+        """
+
+        self._set_custom_grouping_settings(
+            id=project_id,
+            group_images=True,
+            tag_name=_MULTIVIEW_TAG_NAME,
+            sync=False,
+        )
