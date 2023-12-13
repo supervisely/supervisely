@@ -1,21 +1,8 @@
 # coding: utf-8
+from typing import Optional
 
-import json
-import os
-import time
-from collections import OrderedDict, defaultdict
-
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-
-from supervisely._utils import batched
-from supervisely.api.module_api import (
-    ApiField,
-    ModuleApiBase,
-    ModuleWithStatus,
-    WaitingTimeExceeded,
-)
+from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.collection.str_enum import StrEnum
-from supervisely.io.fs import ensure_base_path, get_file_hash, get_file_name
 
 
 class ImageAnnotationToolAction(StrEnum):
@@ -32,40 +19,57 @@ class ImageAnnotationToolAction(StrEnum):
 
 
 class ImageAnnotationToolApi(ModuleApiBase):
-    def set_figure(self, session_id, figure_id):
-        """ """
+    def set_figure(self, session_id: int, figure_id: int):
+        """Sets the figure as the current figure (selected figure) in the annotation tool.
+
+        :param session_id: Annotation tool session id.
+        :type session_id: int
+        :param figure_id: Figure id.
+        :type figure_id: int"""
         return self._act(
             session_id, ImageAnnotationToolAction.SET_FIGURE, {ApiField.FIGURE_ID: figure_id}
         )
 
-    def next_image(self, session_id, image_id):
-        """ """
-        return self._act(
-            session_id, ImageAnnotationToolAction.NEXT_IMAGE, {ApiField.IMAGE_ID: image_id}
-        )
+    def next_image(self, session_id: int, *args, **kwargs):
+        """Changes the current image in the annotation tool to the next image.
 
-    def prev_image(self, session_id, image_id):
-        """ """
-        return self._act(
-            session_id, ImageAnnotationToolAction.PREV_IMAGE, {ApiField.IMAGE_ID: image_id}
-        )
+        :param session_id: Annotation tool session id.
+        :type session_id: int"""
+        return self._act(session_id, ImageAnnotationToolAction.NEXT_IMAGE, {})
 
-    def set_image(self, session_id, image_id):
-        """ """
+    def prev_image(self, session_id: int, *args, **kwargs):
+        """Changes the current image in the annotation tool to the previous image.
+
+        :param session_id: Annotation tool session id.
+        :type session_id: int"""
+        return self._act(session_id, ImageAnnotationToolAction.PREV_IMAGE, {})
+
+    def set_image(self, session_id: int, image_id: int):
+        """Sets the image as the current image in the annotation tool.
+        NOTE: The image must be in the same dataset as the current image.
+
+        :param session_id: Annotation tool session id.
+        :type session_id: int
+        :param image_id: Image id in the same dataset as the current image.
+        :type image_id: int"""
         return self._act(
             session_id, ImageAnnotationToolAction.SET_IMAGE, {ApiField.IMAGE_ID: image_id}
         )
 
-    def zoom_to_figure(self, session_id, figure_id, zoom_factor=1):
-        """ """
+    def zoom_to_figure(self, session_id: int, figure_id: int, zoom_factor: Optional[float] = 1):
+        """Zooms the scene to the figure with the given id and zoom factor.
+
+        :param session_id: Annotation tool session id.
+        :type session_id: int
+        :param figure_id: Figure id.
+        :type figure_id: int
+        :param zoom_factor: Zoom factor. Default is 1.
+        :type zoom_factor: float, optional"""
         return self._act(
             session_id,
             ImageAnnotationToolAction.ZOOM_TO_FIGURE,
             {ApiField.FIGURE_ID: figure_id, ApiField.ZOOM_FACTOR: zoom_factor},
         )
-
-    def disable_buttons(self, session_id, buttons):
-        pass
 
     def _act(self, session_id: int, action: ImageAnnotationToolAction, payload: dict):
         """ """

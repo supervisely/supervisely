@@ -5,7 +5,17 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from tqdm import tqdm
 
@@ -24,7 +34,11 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.project_type import _MULTISPECTRAL_TAG_NAME, ProjectType
+from supervisely.project.project_type import (
+    _MULTISPECTRAL_TAG_NAME,
+    _MULTIVIEW_TAG_NAME,
+    ProjectType,
+)
 
 
 class ProjectNotFound(Exception):
@@ -893,13 +907,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return tag2images
 
     def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
-        """
-        Enables images grouping in project.
+        """Enables and disables images grouping by given tag name.
 
-        :param id: Project ID
+        :param id: Project ID, where images grouping will be enabled
         :type id: int
-        :param enable: if True groups images by given tag name
-        :type enable: Dict[str, str]
+        :param enable: if True groups images by given tag name, otherwise disables images grouping
+        :type enable: bool
         :param tag_name: Name of the tag. Images will be grouped by this tag
         :type tag_name: str
         """
@@ -917,8 +930,44 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         }
         self.update_settings(id=id, settings=project_settings)
 
-    def get_or_create(self, workspace_id, name, type=ProjectType.IMAGES, description=""):
-        """ """
+    def get_or_create(
+        self,
+        workspace_id: int,
+        name: str,
+        type: Optional[str] = ProjectType.IMAGES,
+        description: Optional[str] = "",
+    ) -> ProjectInfo:
+        """Returns project info if project with given name exists in given workspace, otherwise creates new project
+        and returns info about it.
+
+        :param workspace_id: Workspace ID in which the Project will be searched or created.
+        :type workspace_id: int
+        :param name: name of the project to search or create
+        :type name: str
+        :param type: type of the project to create
+        :type type: Optional[str], default ProjectType.IMAGES
+        :param description: description of the project to create
+        :type description: Optional[str]
+        :return: ProjectInfo about found or created project
+        :rtype: ProjectInfo
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            project_name = "my_project"
+            workspace_id = 123
+            project_info = api.project.get_or_create(workspace_id, project_name)
+        """
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
             info = self.create(workspace_id, name, type=type, description=description)
@@ -926,14 +975,52 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def edit_info(
         self,
-        id,
-        name=None,
-        description=None,
-        readme=None,
-        custom_data=None,
-        project_type=None,
-    ):
-        """ """
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        readme: Optional[str] = None,
+        custom_data: Optional[Dict[Any, Any]] = None,
+        project_type: Optional[str] = None,
+    ) -> ProjectInfo:
+        """Edits the project info by given parameters.
+
+        :param id: ID of the project to edit info
+        :type id: int
+        :param name: new name of the project
+        :type name: Optional[str]
+        :param description: new description of the project
+        :type description: Optional[str]
+        :param readme: new readme of the project
+        :type readme: Optional[str]
+        :param custom_data: new custom data of the project
+        :type custom_data: Optional[Dict[Any, Any]]
+        :param project_type: new type of the project
+        :type project_type: Optional[str]
+        :return: ProjectInfo of the edited project
+        :rtype: ProjectInfo
+        :raises ValueError: if no arguments are specified
+        :raises ValueError: if invalid project type is specified
+        :raises ValueError: if project with given id already has given type
+        :raises ValueError: if conversion from current project type to given project type is not supported
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            project_id = 123
+            new_name = "new_name"
+            new_description = "new_description"
+            project_info = api.project.edit_info(project_id, name=new_name, description=new_description)
+        """
         if (
             name is None
             and description is None
@@ -973,7 +1060,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post(self._get_update_method(), body)
         return self._convert_json_info(response.json())
 
-    def pull_meta_ids(self, id, meta: ProjectMeta):
+    def pull_meta_ids(self, id: int, meta: ProjectMeta) -> None:
+        """Updates given ProjectMeta with ids from server.
+
+        :param id: Project ID
+        :type id: int
+        :param meta: ProjectMeta to update ids
+        :type meta: ProjectMeta
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            project_id = 123
+            # We already have ProjectMeta and now we want to update ids in it
+            # from server
+            meta: sly.ProjectMeta
+
+            api.project.pull_meta_ids(project_id, meta)
+        """
         # to update ids in existing project meta
         meta_json = self.get_meta(id)
         server_meta = ProjectMeta.from_json(meta_json)
@@ -1092,7 +1206,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         from_day: Optional[int] = None,
         skip_exported: Optional[bool] = None,
         sort: Optional[
-            str[
+            Literal[
                 "id",
                 "title",
                 "size",
@@ -1100,7 +1214,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 "updatedAt",
             ]
         ] = None,
-        sort_order: Optional[str["asc", "desc"]] = None,
+        sort_order: Optional[Literal["asc", "desc"]] = None,
         account_type: Optional[str] = None,
     ) -> List[ProjectInfo]:
         """
@@ -1113,11 +1227,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param skip_exported: Determines whether to skip already archived projects.
         :type skip_exported: bool, optional.
         :param sort: Specifies by which parameter to sort the project list.
-        :type sort: str, optional.
+        :type sort: Optional[Literal["id", "title", "size", "createdAt", "updatedAt"]]
         :param sort_order: Determines which value to list from.
-        :type sort_order: str, optional.
-        :param account_type: Type of the user account.
-        :type account_type: str, optional.
+        :type sort_order: Optional[Literal["asc", "desc"]]
         :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ProjectInfo]`
         :Usage example:
@@ -1243,6 +1355,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
 
+    def _set_custom_grouping_settings(self, id: int, group_images: bool, tag_name: str, sync: bool):
+        """Sets the project settings for custom grouping.
+
+        :param id: Project ID to set custom grouping settings.
+        :type id: int
+        :param group_images: if True enables images grouping by tag
+        :type group_images: bool
+        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :type tag_name: str
+        :param sync: if True images will have synchronized view and labeling
+        :type sync: bool
+        """
+        group_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+        project_meta = ProjectMeta.from_json(self.get_meta(id))
+        project_meta = project_meta.add_tag_meta(group_tag_meta)
+        self.update_meta(id, project_meta)
+        self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
+
     def set_multispectral_settings(self, project_id: int) -> None:
         """Sets the project settings for multispectral images.
         Images will be grouped by tag and have synchronized view and labeling.
@@ -1268,8 +1398,43 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api.project.set_multispectral_settings(project_id=123)
         """
-        group_tag_meta = TagMeta(_MULTISPECTRAL_TAG_NAME, TagValueType.ANY_STRING)
-        project_meta = ProjectMeta.from_json(self.get_meta(project_id))
-        project_meta = project_meta.add_tag_meta(group_tag_meta)
-        self.update_meta(project_id, project_meta)
-        self.images_grouping(project_id, enable=True, tag_name=_MULTISPECTRAL_TAG_NAME, sync=True)
+
+        self._set_custom_grouping_settings(
+            id=project_id,
+            group_images=True,
+            tag_name=_MULTISPECTRAL_TAG_NAME,
+            sync=True,
+        )
+
+    def set_multiview_settings(self, project_id: int) -> None:
+        """Sets the project settings for multiview images.
+        Images will be grouped by tag and have synchronized view and labeling.
+
+        :param project_id: Project ID to set multiview settings.
+        :type project_id: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            api.project.set_multiview_settings(project_id=123)
+        """
+
+        self._set_custom_grouping_settings(
+            id=project_id,
+            group_images=True,
+            tag_name=_MULTIVIEW_TAG_NAME,
+            sync=False,
+        )

@@ -1,13 +1,22 @@
 # coding: utf-8
 import os
-from re import L
-from typing import Callable, List, Optional
-
+from typing import Callable, List, Literal, Optional, Union
 
 RAISE_IF_NOT_FOUND = True
 
 
-def flag_from_env(s):
+def flag_from_env(s: str) -> bool:
+    """Returns True if passed string is a flag, False otherwise.
+    Possible values to set the flag to True:
+        - "1"
+        - "true"
+        - "yes"
+
+    :param s: string to check
+    :type s: str
+    :return: True if passed string is a flag, False otherwise
+    :rtype: bool
+    """
     return s.upper() in ["TRUE", "YES", "1"]
 
 
@@ -47,7 +56,15 @@ def _parse_from_env(
     return default
 
 
-def agent_id(raise_not_found=True):
+def agent_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns agent id from environment variable using following keys:
+        - AGENT_ID
+
+    :param raise_not_found: if True, raises KeyError if agent id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: agent id
+    :rtype: int
+    """
     return _parse_from_env(
         name="agent_id",
         keys=["AGENT_ID"],
@@ -57,7 +74,15 @@ def agent_id(raise_not_found=True):
     )
 
 
-def agent_storage(raise_not_found=True):
+def agent_storage(raise_not_found: Optional[bool] = True) -> str:
+    """Returns path to the agent's storafe from environment variable using following keys:
+        - AGENT_STORAGE
+
+    :param raise_not_found: if True, raises KeyError if agent storage is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the agent's storage
+    :rtype: str
+    """
     return _parse_from_env(
         name="agent_storage",
         keys=["AGENT_STORAGE"],
@@ -67,7 +92,17 @@ def agent_storage(raise_not_found=True):
     )
 
 
-def team_id(raise_not_found=True):
+def team_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns team id from environment variable using following keys:
+        - TEAM_ID
+        - CONTEXT_TEAMID
+        - context.teamId
+
+    :param raise_not_found: if True, raises KeyError if team id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: team id
+    :rtype: int
+    """
     return _parse_from_env(
         name="team_id",
         keys=["CONTEXT_TEAMID", "context.teamId", "TEAM_ID"],
@@ -77,7 +112,17 @@ def team_id(raise_not_found=True):
     )
 
 
-def workspace_id(raise_not_found=True):
+def workspace_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns workspace id from environment variable using following keys:
+        - WORKSPACE_ID
+        - CONTEXT_WORKSPACEID
+        - context.workspaceId
+
+    :param raise_not_found: if True, raises KeyError if workspace id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: workspace id
+    :rtype: int
+    """
     return _parse_from_env(
         name="workspace_id",
         keys=["CONTEXT_WORKSPACEID", "context.workspaceId", "WORKSPACE_ID"],
@@ -87,7 +132,19 @@ def workspace_id(raise_not_found=True):
     )
 
 
-def project_id(raise_not_found=True):
+def project_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns project id from environment variable using following keys:
+        - PROJECT_ID
+        - CONTEXT_PROJECTID
+        - context.projectId
+        - modal.state.slyProjectId
+        - modal.state.inputProjectId
+
+    :param raise_not_found: if True, raises KeyError if project id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: project id
+    :rtype: int
+    """
     return _parse_from_env(
         name="project_id",
         keys=[
@@ -103,7 +160,19 @@ def project_id(raise_not_found=True):
     )
 
 
-def dataset_id(raise_not_found=True):
+def dataset_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns dataset id from environment variable using following keys:
+        - DATASET_ID
+        - CONTEXT_DATASETID
+        - context.datasetId
+        - modal.state.slyDatasetId
+        - modal.state.inputDatasetId
+
+    :param raise_not_found: if True, raises KeyError if dataset id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: dataset id
+    :rtype: int
+    """
     return _parse_from_env(
         name="dataset_id",
         keys=[
@@ -119,7 +188,18 @@ def dataset_id(raise_not_found=True):
     )
 
 
-def team_files_folder(raise_not_found=True):
+def team_files_folder(raise_not_found: Optional[bool] = True) -> str:
+    """Returns path to the team files folder from environment variable using following keys:
+        - CONTEXT_SLYFOLDER
+        - context.slyFolder
+        - modal.state.slyFolder
+        - FOLDER
+    NOTE: same as folder
+    :param raise_not_found: if True, raises KeyError if team files folder is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folder
+    :rtype: str
+    """
     return _parse_from_env(
         name="team_files_folder",
         keys=[
@@ -134,11 +214,34 @@ def team_files_folder(raise_not_found=True):
     )
 
 
-def folder(raise_not_found=True):
+def folder(raise_not_found: Optional[bool] = True) -> str:
+    """Returns path to the team files folder from environment variable using following keys:
+        - CONTEXT_SLYFOLDER
+        - context.slyFolder
+        - modal.state.slyFolder
+        - FOLDER
+    NOTE: Same as team_files_folder
+    :param raise_not_found: if True, raises KeyError if team files folder is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folder
+    :rtype: str
+    """
     return team_files_folder(raise_not_found)
 
 
-def team_files_file(raise_not_found=True):
+def team_files_file(raise_not_found: Optional[bool] = True) -> str:
+    """Returns path to the file in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILE
+        - context.slyFile
+        - modal.state.slyFile
+        - FILE
+
+    NOTE: same as file
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
     return _parse_from_env(
         name="team_files_file",
         keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile", "FILE"],
@@ -148,7 +251,15 @@ def team_files_file(raise_not_found=True):
     )
 
 
-def server_address(raise_not_found=True):
+def server_address(raise_not_found: Optional[bool] = True) -> str:
+    """Returns server address from environment variable using following keys:
+        - SERVER_ADDRESS
+
+    :param raise_not_found: if True, raises KeyError if server address is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: server address
+    :rtype: str
+    """
     return _parse_from_env(
         name="server_address",
         keys=["SERVER_ADDRESS"],
@@ -158,7 +269,15 @@ def server_address(raise_not_found=True):
     )
 
 
-def api_token(raise_not_found=True):
+def api_token(raise_not_found: Optional[bool] = True) -> str:
+    """Returns an API token from environment variable using following keys:
+        - API_TOKEN
+
+    :param raise_not_found: if True, raises KeyError if API token is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: API token
+    :rtype: str
+    """
     return _parse_from_env(
         name="api_token",
         keys=["API_TOKEN"],
@@ -168,11 +287,31 @@ def api_token(raise_not_found=True):
     )
 
 
-def file(raise_not_found=True):
+def file(raise_not_found: Optional[bool] = True) -> str:
+    """Returns path to the file in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILE
+        - context.slyFile
+        - modal.state.slyFile
+        - FILE
+
+    NOTE: Same as team_files_file
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
     return team_files_file(raise_not_found)
 
 
-def task_id(raise_not_found=True):
+def task_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns task id from environment variable using following keys:
+        - TASK_ID
+
+    :param raise_not_found: if True, raises KeyError if task id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: task id
+    :rtype: int
+    """
     return _parse_from_env(
         name="task_id",
         keys=["TASK_ID"],
@@ -182,7 +321,17 @@ def task_id(raise_not_found=True):
     )
 
 
-def user_login(raise_not_found=True):
+def user_login(raise_not_found: Optional[bool] = True) -> str:
+    """Returns user login from environment variable using following keys:
+        - USER_LOGIN
+        - CONTEXT_USERLOGIN
+        - context.userLogin
+
+    :param raise_not_found: if True, raises KeyError if user login is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: user login
+    :rtype: str
+    """
     return _parse_from_env(
         name="user_login",
         keys=["USER_LOGIN", "context.userLogin", "CONTEXT_USERLOGIN"],
@@ -192,7 +341,15 @@ def user_login(raise_not_found=True):
     )
 
 
-def app_name(raise_not_found=True):
+def app_name(raise_not_found: Optional[bool] = True) -> str:
+    """Returns application's name from environment variable using following keys:
+        - APP_NAME
+
+    :param raise_not_found: if True, raises KeyError if application's name is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: application's name
+    :rtype: str
+    """
     return _parse_from_env(
         name="app_name",
         keys=["APP_NAME"],
@@ -202,7 +359,17 @@ def app_name(raise_not_found=True):
     )
 
 
-def user_id(raise_not_found=True):
+def user_id(raise_not_found: Optional[bool] = True) -> int:
+    """Returns user id from environment variable using following keys:
+        - USER_ID
+        - CONTEXT_USERID
+        - context.userId
+
+    :param raise_not_found: if True, raises KeyError if user id is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: user id
+    :rtype: int
+    """
     return _parse_from_env(
         name="user_id",
         keys=["USER_ID", "context.userId", "CONTEXT_USERID"],
@@ -212,7 +379,13 @@ def user_id(raise_not_found=True):
     )
 
 
-def content_origin_update_interval():
+def content_origin_update_interval() -> float:
+    """Returns interval of updating the content origin from environment variable using following keys:
+        - CONTENT_ORIGIN_UPDATE_INTERVAL
+
+    :return: content origin update interval
+    :rtype: float
+    """
     return _parse_from_env(
         name="content_origin_update_interval",
         keys=["CONTENT_ORIGIN_UPDATE_INTERVAL"],
@@ -222,7 +395,17 @@ def content_origin_update_interval():
     )
 
 
-def smart_cache_ttl(raise_not_found=False, default=120):
+def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[int] = 120) -> int:
+    """Returns TTL of the smart cache from environment variable using following keys:
+        - SMART_CACHE_TTL
+
+    :param raise_not_found: if True, raises KeyError if smart cache TTL is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :param default: default value of smart cache TTL
+    :type default: Optional[int]
+    :return: smart cache TTL
+    :rtype: int
+    """
     return _parse_from_env(
         name="smart_cache_ttl",
         keys=["SMART_CACHE_TTL"],
@@ -232,7 +415,17 @@ def smart_cache_ttl(raise_not_found=False, default=120):
     )
 
 
-def smart_cache_size(raise_not_found=False, default=256):
+def smart_cache_size(raise_not_found: Optional[bool] = False, default: Optional[int] = 256) -> int:
+    """Returns the size of the smart cache from environment variable using following keys:
+        - SMART_CACHE_SIZE
+
+    :param raise_not_found: if True, raises KeyError if smart cache size is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :default: default value of smart cache size
+    :type default: Optional[int]
+    :return: smart cache size
+    :rtype: int
+    """
     return _parse_from_env(
         name="smart_cache_size",
         keys=["SMART_CACHE_SIZE"],
@@ -242,7 +435,15 @@ def smart_cache_size(raise_not_found=False, default=256):
     )
 
 
-def smart_cache_container_dir(default="/tmp/smart_cache"):
+def smart_cache_container_dir(default: Optional[str] = "/tmp/smart_cache") -> str:
+    """Returns a path to the smart cache dir in the container from environment variable using following keys:
+        - SMART_CACHE_CONTAINER_DIR
+
+    :param default: default value of smart cache container dir
+    :type default: Optional[str]
+    :return: path to the smart cache dir in the container
+    :rtype: str
+    """
     return _parse_from_env(
         name="smart_cache_container_dir",
         keys=["SMART_CACHE_CONTAINER_DIR"],
@@ -252,7 +453,13 @@ def smart_cache_container_dir(default="/tmp/smart_cache"):
     )
 
 
-def autostart():
+def autostart() -> bool:
+    """Returns autostart flag from environment variable using following keys:
+        - modal.state.autostart
+
+    :return: autostart flag
+    :rtype: bool
+    """
     return _parse_from_env(
         name="autostart",
         keys=["modal.state.autostart"],
@@ -262,11 +469,17 @@ def autostart():
     )
 
 
-def set_autostart(value: Optional[str]):
-    """
-    Set modal.state.autostart env.
-    Possible values (case insensetive): "1", "true", "yes".
-    Use `value=None`, to remove variable.
+def set_autostart(value: Optional[Union[Literal["1", "true", "yes"]], None] = None) -> None:
+    """Set modal.state.autostart env to the given value.
+    Possible values to set the autostart to True:
+        - "1"
+        - "true"
+        - "yes"
+
+    To remove the variable, use `value=None`, or omit the argument.
+
+    :param value: value to set the autostart to
+    :type value: Optional[Union[Literal["1", "true", "yes"]], None]
     """
     if value is None:
         os.environ.pop("modal.state.autostart", None)
