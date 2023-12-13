@@ -18,7 +18,7 @@ from typing_extensions import Literal
 
 import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
-from supervisely._utils import batched, rand_str
+from supervisely._utils import batched, is_development, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.imaging.image import get_hash, write_bytes
 from supervisely.io.fs import (
@@ -579,6 +579,8 @@ class FileApi(ModuleApiBase):
         self,
         save_path: str,
         unpack_if_archive: Optional[bool] = True,
+        remove_archive: Optional[bool] = True,
+        force: Optional[bool] = False,
     ) -> None:
         """Downloads data for application from input using environment variables.
         Automatically detects is data is a file or a directory and saves it to the specified directory.
@@ -588,6 +590,10 @@ class FileApi(ModuleApiBase):
         :type save_path: str
         :param unpack_if_archive: if True, archive will be unpacked to the specified directory
         :type unpack_if_archive: Optional[bool]
+        :param remove_archive: if True, archive will be removed after unpacking
+        :type remove_archive: Optional[bool]
+        :param force: if True, data will be downloaded even if it already exists in the specified directory
+        :type force: Optional[bool]
         :raises RuntimeError: if both file and folder paths not found in environment variables
         :raises RuntimeError: if both file and folder paths found in environment variables (debug)
         :raises RuntimeError: if team id not found in environment variables
@@ -633,15 +639,42 @@ class FileApi(ModuleApiBase):
         if remote_file_path is not None:
             file_name = sly_fs.get_file_name_with_ext(remote_file_path)
             local_file_path = os.path.join(save_path, file_name)
+
+            if os.path.isfile(local_file_path) and not force:
+                logger.info(
+                    f"The file {local_file_path} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.silent_remove(local_file_path)
             if self.is_on_agent(remote_file_path):
                 self.download_from_agent(remote_file_path, local_file_path)
             else:
                 self.download(team_id, remote_file_path, local_file_path)
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
-                sly_fs.silent_remove(local_file_path)
+                if remove_archive:
+                    sly_fs.silent_remove(local_file_path)
+                else:
+                    logger.info(
+                        f"Achive {local_file_path} was unpacked, but not removed. "
+                        "If you want to remove it, use remove_archive=True."
+                    )
         elif remote_folder_path is not None:
-            self.download_directory(team_id, remote_folder_path, save_path)
+            folder_name = os.path.basename(os.path.normpath(remote_folder_path))
+            local_folder_path = os.path.join(save_path, folder_name)
+            if os.path.isdir(local_folder_path) and not force:
+                logger.info(
+                    f"The folder {folder_name} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.remove_dir(local_folder_path)
+            self.download_directory(team_id, remote_folder_path, local_folder_path)
 
     def _upload_legacy(self, team_id, src, dst):
         """ """
