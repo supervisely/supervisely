@@ -2575,7 +2575,6 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         group_name: str,
         paths: List[str],
-        names: List[str] = None,
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
@@ -2592,8 +2591,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :type group_name: str
         :param paths: List of paths to images.
         :type paths: List[str]
-        :param names: List of names for images (optional)
-        :type names: List[str]
         :param metas: List of image metas (optional)
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
@@ -2630,8 +2627,13 @@ class ImageApi(RemoveableBulkModuleApi):
         group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
-        if names is None:
-            names = [get_file_name(path) for path in paths]
+        for path in paths:
+            if get_file_ext(path) not in sly_image.SUPPORTED_IMG_EXTS:
+                raise RuntimeError(
+                    f"Image {path} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
+                )
+
+        names = [get_file_name(path) for path in paths]
 
         image_infos = self.upload_paths(
             dataset_id=dataset_id,
