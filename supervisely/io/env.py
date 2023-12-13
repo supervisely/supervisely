@@ -395,7 +395,9 @@ def content_origin_update_interval() -> float:
     )
 
 
-def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[int] = 120) -> int:
+def smart_cache_ttl(
+    raise_not_found: Optional[bool] = False, default: Optional[int] = 120
+) -> int:
     """Returns TTL of the smart cache from environment variable using following keys:
         - SMART_CACHE_TTL
 
@@ -415,7 +417,9 @@ def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[i
     )
 
 
-def smart_cache_size(raise_not_found: Optional[bool] = False, default: Optional[int] = 256) -> int:
+def smart_cache_size(
+    raise_not_found: Optional[bool] = False, default: Optional[int] = 256
+) -> int:
     """Returns the size of the smart cache from environment variable using following keys:
         - SMART_CACHE_SIZE
 
@@ -469,7 +473,7 @@ def autostart() -> bool:
     )
 
 
-def set_autostart(value: Optional[Union[Literal["1", "true", "yes"]], None] = None) -> None:
+def set_autostart(value: Optional[Literal["1", "true", "yes"]] = None) -> None:
     """Set modal.state.autostart env to the given value.
     Possible values to set the autostart to True:
         - "1"
@@ -486,5 +490,7 @@ def set_autostart(value: Optional[Union[Literal["1", "true", "yes"]], None] = No
         return
 
     if not flag_from_env(value):
-        raise ValueError("Unknown value for `autostart` env. Use `1`, `true`, `yes` or None.")
+        raise ValueError(
+            "Unknown value for `autostart` env. Use `1`, `true`, `yes` or None."
+        )
     os.environ["modal.state.autostart"] = value
