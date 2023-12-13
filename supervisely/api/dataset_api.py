@@ -3,16 +3,16 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Optional, Dict, Union
 
-import urllib
+from typing import Dict, List, NamedTuple, Optional, Union
+
+from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
-    UpdateableModule,
     RemoveableModuleApi,
+    UpdateableModule,
 )
-from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class DatasetInfo(NamedTuple):

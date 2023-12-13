@@ -1,19 +1,16 @@
 # coding: utf-8
 
 # docs
-from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal, Generator
-
+import errno
 import os
 import re
 import shutil
-import errno
-import tarfile
 import subprocess
+import tarfile
+from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
+
 import requests
 from requests.structures import CaseInsensitiveDict
-from collections.abc import Mapping
-
 from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_string_hash
@@ -949,14 +946,48 @@ def copy_dir_recursively(
                 progress_cb(get_file_size(src_file_path))
 
 
-def is_on_agent(remote_path: str):
+def is_on_agent(remote_path: str) -> bool:
+    """Check if remote_path starts is on agent (e.g. starts with 'agent://<agent-id>/').
+
+    :param remote_path: path to check
+    :type remote_path: str
+    :return: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
+    :rtype: bool
+    """
     if remote_path.startswith("agent://"):
         return True
     else:
         return False
 
 
-def parse_agent_id_and_path(remote_path: str) -> int:
+def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
+    """Return agent id and path in agent folder from remote_path.
+
+    :param remote_path: path to parse
+    :type remote_path: str
+    :return: agent id and path in agent folder
+    :rtype: Tuple[int, str]
+    :raises ValueError: if remote_path doesn't start with 'agent://<agent-id>/'
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Parse agent id and path in agent folder from remote_path
+        remote_path = "agent://1/agent_folder/subfolder/file.txt"
+        agent_id, path_in_agent_folder = sly.fs.parse_agent_id_and_path(remote_path)
+        print(agent_id)  # 1
+        print(path_in_agent_folder)  # /agent_folder/subfolder/file.txt
+    """
     if is_on_agent(remote_path) is False:
         raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
     search = re.search("agent://(\d+)(.*)", remote_path)
