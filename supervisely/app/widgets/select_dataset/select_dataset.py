@@ -1,16 +1,16 @@
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 try:
-    from typing import Literal
+    from typing import Literal, Union
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.project.project_type import ProjectType
-from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget, SelectProject, generate_id, Checkbox, Empty
 from supervisely.api.api import Api
-from supervisely.sly_logger import logger
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import Checkbox, Empty, SelectProject, Widget, generate_id
 from supervisely.app.widgets.select_sly_utils import _get_int_or_env
+from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
 
 
 class SelectDataset(Widget):
@@ -19,7 +19,7 @@ class SelectDataset(Widget):
 
     def __init__(
         self,
-        default_id: int = None,
+        default_id: Union[int, List] = None,
         project_id: int = None,
         multiselect: bool = False,
         compact: bool = False,
@@ -44,8 +44,18 @@ class SelectDataset(Widget):
         self._changes_handled = False
         self._disabled = disabled
 
+        if self._multiselect is False:
+            if isinstance(self._default_id, list):
+                raise ValueError(
+                    "Multiselect is disabled. To set 'default_id' use integers insted of a list of integers or switch multiselect to 'True'"
+                )
+        else:
+            self._all_datasets_checkbox = Checkbox(
+                "Select all datasets", checked=select_all_datasets, widget_id=generate_id()
+            )
+
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyDatasetId")
-        if self._default_id is not None:
+        if self._default_id is not None and isinstance(self._default_id, int):
             info = self._api.dataset.get_info_by_id(self._default_id, raise_error=True)
             self._project_id = info.project_id
         self._project_id = _get_int_or_env(self._project_id, "modal.state.slyProjectId")
@@ -67,11 +77,6 @@ class SelectDataset(Widget):
         )
         if self._disabled is True:
             self._project_selector.disable()
-
-        if self._multiselect is True:
-            self._all_datasets_checkbox = Checkbox(
-                "Select all datasets", checked=select_all_datasets, widget_id=generate_id()
-            )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -146,7 +151,7 @@ class SelectDataset(Widget):
                 "Multiselect is enabled. Use another method 'set_dataset_ids' instead of 'set_dataset_id'"
             )
 
-        self._default_id = [id]
+        self._default_id = id
         StateJson()[self.widget_id]["datasets"] = self._default_id
         StateJson().send_changes()
 
