@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 import tarfile
-from typing import Callable, Dict, Generator, List, Literal, Optional, Union
+from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import requests
 from requests.structures import CaseInsensitiveDict
