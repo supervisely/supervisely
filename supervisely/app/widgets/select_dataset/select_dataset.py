@@ -55,9 +55,8 @@ class SelectDataset(Widget):
             )
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyDatasetId")
-        if self._default_id is not None and isinstance(self._default_id, int):
-            info = self._api.dataset.get_info_by_id(self._default_id, raise_error=True)
-            self._project_id = info.project_id
+        if self._default_id is not None:
+            self._update_project_id()
         self._project_id = _get_int_or_env(self._project_id, "modal.state.slyProjectId")
 
         # NOW PROJECT CAN BE SET LATER WITH SET_PROJECT_ID METHOD
@@ -150,17 +149,28 @@ class SelectDataset(Widget):
             raise ValueError(
                 "Multiselect is enabled. Use another method 'set_dataset_ids' instead of 'set_dataset_id'"
             )
-
+        elif isinstance(id, list):
+            raise ValueError(
+                "Enable multiselect and use another method 'set_dataset_ids' instead of 'set_dataset_id' to set list of ids"
+            )
         self._default_id = id
+        self._update_project_id()
+        self.set_project_id(self._project_id)
+        self._project_selector.set_project_id(self._project_id)
         StateJson()[self.widget_id]["datasets"] = self._default_id
         StateJson().send_changes()
 
-    def set_dataset_ids(self, ids: List[int]):
+    def set_dataset_ids(self, ids: Union[List[int], int]):
         if self._multiselect is False:
             raise ValueError(
                 "Multiselect is disabled. Use another method 'set_dataset_id' instead of 'set_dataset_ids'"
             )
+        if isinstance(ids, int):
+            ids = [ids]
         self._default_id = ids
+        self._update_project_id()
+        self.set_project_id(self._project_id)
+        self._project_selector.set_project_id(self._project_id)
         StateJson()[self.widget_id]["datasets"] = self._default_id
         StateJson().send_changes()
 
@@ -216,3 +226,10 @@ class SelectDataset(Widget):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
+
+    def _update_project_id(self):
+        if isinstance(self._default_id, list) and len(self._default_id) != 0:
+            info = self._api.dataset.get_info_by_id(self._default_id[0], raise_error=True)
+        elif isinstance(self._default_id, int):
+            info = self._api.dataset.get_info_by_id(self._default_id, raise_error=True)
+        self._project_id = info.project_id
