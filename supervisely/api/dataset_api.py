@@ -658,7 +658,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         first_response = self._api.post(method, request_body).json()
 
-        total = first_response.get("total")
+        total = first_response.get(ApiField.TOTAL)
         per_page = first_response.get("perPage")
         pages_count = first_response.get("pagesCount")
 
@@ -666,8 +666,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             """
             Convert entities dict to DatasetInfo
             """
-            response_dict["entities"] = [
-                self._convert_json_info(item) for item in response_dict["entities"]
+            response_dict[ApiField.ENTITIES] = [
+                self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
             ]
 
         if page is None:
