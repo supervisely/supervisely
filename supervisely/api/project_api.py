@@ -22,6 +22,8 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
+from datetime import datetime, timedelta
+
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -71,6 +73,7 @@ class ProjectInfo(NamedTuple):
     reference_image_url: str
     custom_data: dict
     backup_archive: dict
+    team_id: int
 
     @property
     def image_preview_url(self):
@@ -141,8 +144,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         updated_at='2021-03-01T10:51:57.545Z',
                         type='images',
                         reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
-                        custom_data={}
-                        backup_archive={}
+                        custom_data={},
+                        backup_archive={},
+                        team_id=2
         """
         return [
             ApiField.ID,
@@ -160,6 +164,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.REFERENCE_IMAGE_URL,
             ApiField.CUSTOM_DATA,
             ApiField.BACKUP_ARCHIVE,
+            ApiField.TEAM_ID,
         ]
 
     @staticmethod
@@ -1274,23 +1279,45 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
-        request_body = {}
+        kwargs = {}
+
+        filters = []
         if from_day is not None:
-            request_body[ApiField.FROM] = from_day
+            date = (datetime.utcnow() - timedelta(days=from_day)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            filer_from = {
+                ApiField.FIELD: ApiField.UPDATED_AT,
+                "operator": ">=",
+                ApiField.VALUE: date,
+            }
+            filters.append(filer_from)
         if to_day is not None:
-            request_body[ApiField.TO] = to_day
-        if skip_exported is not None:
-            request_body[ApiField.SKIP_EXPORTED] = skip_exported
+            date = (datetime.utcnow() - timedelta(days=to_day)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            filer_to = filer_from = {
+                ApiField.FIELD: ApiField.UPDATED_AT,
+                "operator": "<=",
+                ApiField.VALUE: date,
+            }
+            filters.append(filer_to)
+        if len(filters) != 0:
+            kwargs["filters"] = filters
+
+        if skip_exported is None:
+            kwargs["skip_exported"] = skip_exported
+
         if sort is not None:
-            request_body[ApiField.SORT] = sort
+            kwargs["sort"] = sort
+
         if sort_order is not None:
-            request_body[ApiField.SORT_ORDER] = sort_order
+            kwargs["sort_order"] = sort_order
+
         if account_type is not None:
-            request_body[ApiField.ACCOUNT_TYPE] = account_type
+            kwargs["account_type"] = account_type
 
-        response = self._api.post("projects.list.all", request_body)
+        kwargs["page"] = "all"
 
-        return [self._convert_json_info(item) for item in response.json()]
+        response = self.get_list_all(**kwargs)
+
+        return response.get("entities")
 
     def check_imageset_backup(self, id: int) -> Optional[Dict]:
         """
@@ -1438,3 +1465,194 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             tag_name=_MULTIVIEW_TAG_NAME,
             sync=False,
         )
+
+    def remove_permanently(self, ids: Union[int, List]) -> dict:
+        """
+        Delete permanently projects with given IDs from the Supervisely server.
+
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
+        :param ids: IDs of projects in Supervisely.
+        :type ids: Union[int, List]
+        :return: Response content in JSON format
+        :rtype: dict
+        """
+
+        if isinstance(ids, int):
+            projects = [{"id": ids}]
+        else:
+            projects = [{"id": id} for id in ids]
+
+        request_body = {
+            ApiField.PROJECTS: projects,
+            ApiField.PRESERVE_PROJECT_CARD: False,
+        }
+
+        response = self._api.post("projects.remove.permanently", request_body)
+
+        return response.json()
+
+    def get_list_all(
+        self,
+        filters: Optional[List[Dict[str, str]]] = None,
+        skip_exported: Optional[bool] = True,
+        sort: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        per_page: Optional[int] = None,
+        page: Union[int, Literal["all"]] = None,
+        account_type: Optional[str] = None,
+    ) -> dict:
+        """
+        List all available projects for the user that match the specified filtering criteria.
+
+        :param filters: List of parameters for filtering the available Projects.
+                        Every Dict must consist of keys:
+                        - 'field': Takes values 'id', 'projectId', 'workspaceId', 'groupId', 'createdAt', 'updatedAt', 'type'
+                        - 'operator': Takes values '=', 'eq', '!=', 'not', 'in', '!in', '>', 'gt', '>=', 'gte', '<', 'lt', '<=', 'lte'
+                        - 'value': Takes on values according to the meaning of 'field' or null
+        :type filters: List[Dict[str, str]], optional
+
+        :param skip_exported: Determines whether to skip archived projects.
+        :type skip_exported: bool, optional.
+
+        :param sort: Specifies by which parameter to sort the project list.
+                        Takes values 'id', 'name', 'size', 'createdAt', 'updatedAt'
+        :type sort: str, optional
+
+        :param sort_order: Determines which value to list from.
+        :type sort_order: str, optional
+
+        :param per_page: Number of first items found to be returned.
+                        'None' will return the first page with a default size of 20000 projects.
+        :type per_page: int, optional
+
+        :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
+                     Use 'all' to retrieve all available projects.
+                     'None' will return the first page with projects, the amount of which is set in param 'per_page'.
+        :type page: Union[int, Literal["all"]], optional
+
+        :param account_type: Type of user account
+        :type account_type: str, optional
+
+        :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
+        :rtype: dict
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            import os
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            filter_1 = {
+                "field": "updatedAt",
+                "operator": "<",
+                "value": "2023-12-03T14:53:00.952Z"
+            }
+            filter_2 = {
+                "field": "updatedAt",
+                "operator": ">",
+                "value": "2023-04-03T14:53:00.952Z"
+            }
+            filters = [filter_1, filter_2]
+            projects = api.projects.get_list_all(filters, True)
+            print(projects)
+            # Output:
+            # {
+            #     "total": 2,
+            #     "perPage": 20000,
+            #     "pagesCount": 1,
+            #     "entities": [ ProjectInfo(id = 22,
+            #                       name = 'lemons_annotated',
+            #                       description = None,
+            #                       size = '861069',
+            #                       readme = None,
+            #                       workspace_id = 2,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       datasets_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       type = 'images',
+            #                       reference_image_url = None,
+            #                       custom_data = None,
+            #                       backup_archive = None,
+            #                       teamd_id = 1),
+            #                   ProjectInfo(id = 23,
+            #                       name = 'lemons_test',
+            #                       description = None,
+            #                       size = '1177212',
+            #                       readme = None,
+            #                       workspace_id = 2,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       datasets_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       type = 'images',
+            #                       reference_image_url = None,
+            #                       custom_data = None,
+            #                       backup_archive = None),
+            #                       teamd_id = 1)
+            #                 ]
+            # }
+
+        """
+
+        method = "projects.list.all"
+
+        request_body = {}
+        if filters is not None:
+            request_body[ApiField.FILTER] = filters
+        if skip_exported is not None:
+            request_body[ApiField.SKIP_EXPORTED] = skip_exported
+        if sort is not None:
+            request_body[ApiField.SORT] = sort
+        if sort_order is not None:
+            request_body[ApiField.SORT_ORDER] = sort_order
+        if per_page is not None:
+            request_body[ApiField.PER_PAGE] = per_page
+        if page is not None:
+            if page != "all":
+                request_body[ApiField.PAGE] = page
+        if account_type is not None:
+            request_body[ApiField.ACCOUNT_TYPE] = account_type
+
+        first_response = self._api.post(method, request_body).json()
+
+        total = first_response.get(ApiField.TOTAL)
+        per_page = first_response.get("perPage")
+        pages_count = first_response.get("pagesCount")
+
+        def _convert_entities(response_dict: dict):
+            """
+            Convert entities dict to ProjectInfo
+            """
+            response_dict[ApiField.ENTITIES] = [
+                self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
+            ]
+
+        if page is None:
+            _convert_entities(first_response)
+            return first_response
+        elif page == "all":
+            if total > 0 and total > per_page:
+                request_body[ApiField.PER_PAGE] = total
+                response = self._api.post(method, request_body).json()
+                _convert_entities(response)
+                return response
+            elif total >= 0 and total < per_page:
+                _convert_entities(first_response)
+                return first_response
+        elif page <= pages_count:
+            _convert_entities(first_response)
+            return first_response
+        else:
+            raise RuntimeError(
+                f"Method {method}: error during pagination, some items are missed. Number of total pages [{pages_count}] is less than the page number requested [{page}]."
+            )

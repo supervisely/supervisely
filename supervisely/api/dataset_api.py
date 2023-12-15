@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, Literal, NamedTuple, Optional, Union
 
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
@@ -28,6 +28,8 @@ class DatasetInfo(NamedTuple):
     created_at: str
     updated_at: str
     reference_image_url: str
+    team_id: int
+    workspace_id: int
 
     @property
     def image_preview_url(self):
@@ -84,7 +86,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         items_count=11,
                         created_at='2021-03-03T15:54:08.802Z',
                         updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png')
+                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
+                        team_id=1,
+                        workspace_id=2
         """
         return [
             ApiField.ID,
@@ -97,6 +101,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
             ApiField.REFERENCE_IMAGE_URL,
+            ApiField.TEAM_ID,
+            ApiField.WORKSPACE_ID,
         ]
 
     @staticmethod
@@ -524,15 +530,18 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         Delete permanently datasets with given IDs from the Supervisely server.
 
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
         :return: Response content in JSON format
         :rtype: dict
         """
         if isinstance(ids, int):
-            datasets = [{"id": ids}]
+            datasets = [{ApiField.ID: ids}]
         else:
-            datasets = [{"id": id} for id in ids]
+            datasets = [{ApiField.ID: id} for id in ids]
         response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: datasets})
         return response.json()
 
@@ -542,7 +551,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         sort: Optional[str] = None,
         sort_order: Optional[str] = None,
         per_page: Optional[int] = None,
-        page: Union[int, str] = None,
+        page: Union[int, Literal["all"]] = None,
     ) -> dict:
         """
         List all available datasets for the user that match the specified filtering criteria.
@@ -550,24 +559,27 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param filters: List of parameters for filtering the available Datasets.
                         Every Dict must consist of keys:
                         - 'field': Takes values 'id', 'projectId', 'workspaceId', 'groupId', 'createdAt', 'updatedAt'
-                        - 'operator': Takes values 'id', 'projectId', 'workspaceId', 'groupId', 'createdAt', 'updatedAt'
+                        - 'operator': Takes values '=', 'eq', '!=', 'not', 'in', '!in', '>', 'gt', '>=', 'gte', '<', 'lt', '<=', 'lte'
                         - 'value': Takes on values according to the meaning of 'field' or null
         :type filters: List[Dict[str, str]], optional
 
         :param sort: Specifies by which parameter to sort the project list.
+                        Takes values 'id', 'name', 'size', 'createdAt', 'updatedAt'
         :type sort: str, optional
 
         :param sort_order: Determines which value to list from.
         :type sort_order: str, optional
 
         :param per_page: Number of first items found to be returned.
+                        'None' will return the first page with a default size of 20000 datasets.
         :type per_page: int, optional
 
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
-                     Or use 'all' to retrieve all available datasets.
-        :type page: Union[int, str], optional
+                     Use 'all' to retrieve all available datasets.
+                     'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
+        :type page: Union[int, Literal["all"]], optional
 
-        :return: Information about all datasets that are searched by a given criterion.
+        :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
         :rtype: dict
 
         :Usage example:
@@ -599,26 +611,32 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #     "total": 2,
             #     "perPage": 20000,
             #     "pagesCount": 1,
-            #     "entities": [{
-            #             "id": 16,
-            #             "size": "861069",
-            #             "projectId": 22,
-            #             "workspaceId": 2,
-            #             "createdAt": "2020-04-03T14:53:00.952Z",
-            #             "updatedAt": "2020-04-03T14:53:00.952Z",
-            #             "name": "ds1",
-            #             "teamId": 2
-            #         }, {
-            #             "id": 17,
-            #             "size": "1177212",
-            #             "projectId": 23,
-            #             "workspaceId": 2,
-            #             "createdAt": "2020-04-03T14:53:03.625Z",
-            #             "updatedAt": "2020-04-03T14:53:03.625Z",
-            #             "name": "ds1",
-            #             "teamId": 2
-            #         }
-            #     ]
+            #     "entities": [ DatasetInfo(id = 16,
+            #                       name = 'ds1',
+            #                       description = None,
+            #                       size = '861069',
+            #                       project_id = 22,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       reference_image_url = None,
+            #                       team_id = 2,
+            #                       workspace_id = 2),
+            #                   DatasetInfo(id = 17,
+            #                       name = 'ds1',
+            #                       description = None,
+            #                       size = '1177212',
+            #                       project_id = 23,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       reference_image_url = None,
+            #                       team_id = 2,
+            #                       workspace_id = 2
+            #                       )
+            #                 ]
             # }
 
         """
@@ -640,17 +658,32 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         first_response = self._api.post(method, request_body).json()
 
-        total = first_response.get("total")
+        total = first_response.get(ApiField.TOTAL)
         per_page = first_response.get("perPage")
         pages_count = first_response.get("pagesCount")
 
-        if page == "all":
+        def _convert_entities(response_dict: dict):
+            """
+            Convert entities dict to DatasetInfo
+            """
+            response_dict[ApiField.ENTITIES] = [
+                self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
+            ]
+
+        if page is None:
+            _convert_entities(first_response)
+            return first_response
+        elif page == "all":
             if total > 0 and total > per_page:
                 request_body[ApiField.PER_PAGE] = total
-                return self._api.post(method, request_body).json()
+                response = self._api.post(method, request_body).json()
+                _convert_entities(response)
+                return response
             elif total >= 0 and total < per_page:
+                _convert_entities(first_response)
                 return first_response
         elif page <= pages_count:
+            _convert_entities(first_response)
             return first_response
         else:
             raise RuntimeError(
