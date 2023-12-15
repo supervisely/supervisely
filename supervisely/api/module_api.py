@@ -498,6 +498,7 @@ class ApiField:
     """"""
     PAGE = "page"
     """"""
+    PRESERVE_PROJECT_CARD = "preserveProjectCard"
 
 
 def _get_single_item(items):
