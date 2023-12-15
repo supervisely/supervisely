@@ -1285,17 +1285,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if from_day is not None:
             date = (datetime.utcnow() - timedelta(days=from_day)).strftime("%Y-%m-%dT%H:%M:%SZ")
             filer_from = {
-                "field": "updatedAt",
+                ApiField.FIELD: ApiField.UPDATED_AT,
                 "operator": ">=",
-                "value": date,
+                ApiField.VALUE: date,
             }
             filters.append(filer_from)
         if to_day is not None:
             date = (datetime.utcnow() - timedelta(days=to_day)).strftime("%Y-%m-%dT%H:%M:%SZ")
             filer_to = filer_from = {
-                "field": "updatedAt",
+                ApiField.FIELD: ApiField.UPDATED_AT,
                 "operator": "<=",
-                "value": date,
+                ApiField.VALUE: date,
             }
             filters.append(filer_to)
         if len(filters) != 0:
@@ -1470,6 +1470,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         Delete permanently projects with given IDs from the Supervisely server.
 
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
         :return: Response content in JSON format
@@ -1521,10 +1524,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type sort_order: str, optional
 
         :param per_page: Number of first items found to be returned.
+                        'None' will return the first page with a default size of 20000 projects.
         :type per_page: int, optional
 
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
-                     Or use 'all' to retrieve all available projects.
+                     Use 'all' to retrieve all available projects.
+                     'None' will return the first page with projects, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
 
         :param account_type: Type of user account
@@ -1620,7 +1625,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         first_response = self._api.post(method, request_body).json()
 
-        total = first_response.get("total")
+        total = first_response.get(ApiField.TOTAL)
         per_page = first_response.get("perPage")
         pages_count = first_response.get("pagesCount")
 
@@ -1628,8 +1633,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             """
             Convert entities dict to ProjectInfo
             """
-            response_dict["entities"] = [
-                self._convert_json_info(item) for item in response_dict["entities"]
+            response_dict[ApiField.ENTITIES] = [
+                self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
             ]
 
         if page is None:

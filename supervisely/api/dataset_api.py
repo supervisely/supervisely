@@ -530,15 +530,18 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         Delete permanently datasets with given IDs from the Supervisely server.
 
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
         :return: Response content in JSON format
         :rtype: dict
         """
         if isinstance(ids, int):
-            datasets = [{"id": ids}]
+            datasets = [{ApiField.ID: ids}]
         else:
-            datasets = [{"id": id} for id in ids]
+            datasets = [{ApiField.ID: id} for id in ids]
         response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: datasets})
         return response.json()
 
@@ -568,10 +571,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type sort_order: str, optional
 
         :param per_page: Number of first items found to be returned.
+                        'None' will return the first page with a default size of 20000 datasets.
         :type per_page: int, optional
 
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
-                     Or use 'all' to retrieve all available datasets.
+                     Use 'all' to retrieve all available datasets.
+                     'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
 
         :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
