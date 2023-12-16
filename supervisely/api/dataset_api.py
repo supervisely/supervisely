@@ -551,10 +551,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         sort: Optional[str] = None,
         sort_order: Optional[str] = None,
         per_page: Optional[int] = None,
-        page: Union[int, Literal["all"]] = None,
+        page: Union[int, Literal["all"]] = "all",
     ) -> dict:
         """
-        List all available datasets for the user that match the specified filtering criteria.
+        List all available datasets from all available teams for the user that match the specified filtering criteria.
 
         :param filters: List of parameters for filtering the available Datasets.
                         Every Dict must consist of keys:
@@ -575,7 +575,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type per_page: int, optional
 
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
-                     Use 'all' to retrieve all available datasets.
+                     The default value is 'all', which retrieves all available datasets.
                      'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
 
@@ -652,9 +652,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.SORT_ORDER] = sort_order
         if per_page is not None:
             request_body[ApiField.PER_PAGE] = per_page
-        if page is not None:
-            if page != "all":
-                request_body[ApiField.PAGE] = page
+        if page is not None and page != "all":
+            request_body[ApiField.PAGE] = page
 
         first_response = self._api.post(method, request_body).json()
 
@@ -670,22 +669,28 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
             ]
 
-        if page is None:
-            _convert_entities(first_response)
-            return first_response
-        elif page == "all":
-            if total > 0 and total > per_page:
-                request_body[ApiField.PER_PAGE] = total
-                response = self._api.post(method, request_body).json()
-                _convert_entities(response)
-                return response
-            elif total >= 0 and total < per_page:
-                _convert_entities(first_response)
-                return first_response
-        elif page <= pages_count:
-            _convert_entities(first_response)
-            return first_response
+        if page == "all":
+            results = first_response["entities"]
+            if pages_count == 1 and len(results) == total:
+                pass
+            else:
+                for page_idx in range(2, pages_count + 1):
+                    temp_resp = self._api.post(
+                        method, {**request_body, "page": page_idx, "per_page": per_page}
+                    )
+                    temp_items = temp_resp.json()["entities"]
+                    results.extend(temp_items)
+
+                if len(results) != total:
+                    raise RuntimeError(
+                        "Method {!r}: error during pagination, some items are missed".format(method)
+                    )
+            pass
+        elif page is None or page <= pages_count:
+            pass
         else:
             raise RuntimeError(
                 f"Method {method}: error during pagination, some items are missed. Number of total pages [{pages_count}] is less than the page number requested [{page}]."
             )
+        _convert_entities(first_response)
+        return first_response
