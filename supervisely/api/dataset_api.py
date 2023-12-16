@@ -554,7 +554,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         page: Union[int, Literal["all"]] = "all",
     ) -> dict:
         """
-        List all available datasets for the user that match the specified filtering criteria.
+        List all available datasets from all available teams for the user that match the specified filtering criteria.
 
         :param filters: List of parameters for filtering the available Datasets.
                         Every Dict must consist of keys:

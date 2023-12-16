@@ -1502,7 +1502,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         account_type: Optional[str] = None,
     ) -> dict:
         """
-        List all available projects for the user that match the specified filtering criteria.
+        List all available projects from all available teams for the user that match the specified filtering criteria.
 
         :param filters: List of parameters for filtering the available Projects.
                         Every Dict must consist of keys:
