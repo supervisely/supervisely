@@ -6,23 +6,24 @@ from supervisely.app.widgets import Widget
 
 class Badge(Widget):
     """Badge widget in Supervisely is a versatile tool for displaying notifications or counts on elements such as buttons, text.
-    Read about it in Developer Portal (including screenshots and examples):
-        https://developer.supervisely.com/app-development/widgets/status-elements/badge
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/badge>`_
+        (including screenshots and examples).
 
     :param value: Value to be displayed on the badge.
-    :type value: Union[int, str, float]
+    :type value: Optional[Union[int, str, float]]
     :param widget: Widget to be displayed on the badge.
-    :type widget: Widget
+    :type widget: Optional[Widget]
     :param max: Maximum value of the badge. If value is greater than max, max will be displayed on the badge.
-    :type max: Union[int, float]
+    :type max: Optional[Union[int, float]]
     :param is_dot: If True, the badge will be displayed as a dot.
-    :type is_dot: bool
+    :type is_dot: Optional[bool]
     :param hidden: If True, the badge will be hidden.
-    :type hidden: bool
+    :type hidden: Optional[bool]
     :param widget_id: Unique widget identifier.
-    :type widget_id: str
+    :type widget_id: Optional[str]
 
-    :Example:
+    :Usage example:
+    .. code-block:: python
         from supervisely.app.widgets import Badge
 
         badge = Badge(value=5, max=10)
@@ -30,12 +31,12 @@ class Badge(Widget):
 
     def __init__(
         self,
-        value: Union[int, str, float] = None,
+        value: Optional[Union[int, str, float]] = None,
         widget: Optional[Widget] = None,
-        max: Union[int, float] = None,
-        is_dot: bool = False,
-        hidden: bool = False,
-        widget_id: str = None,
+        max: Optional[Union[int, float]] = None,
+        is_dot: Optional[bool] = False,
+        hidden: Optional[bool] = False,
+        widget_id: Optional[str] = None,
     ):
         self._value = value
         self._widget = widget
@@ -69,7 +70,7 @@ class Badge(Widget):
         return res
 
     def get_json_state(self) -> Dict[str, Union[str, int, float]]:
-        """Returns dictionary with widget state, which defines the current value of the widget.
+        """Returns dictionary with widget state.
 
         Dictionary contains the following fields:
             - value: Value to be displayed on the badge.
