@@ -272,9 +272,9 @@ class Button(Widget):
         self._disabled = value
         DataJson()[self.widget_id]["disabled"] = self._disabled
 
-    def click(self, func: Callable) -> Callable:
+    def click(self, func: Callable[[], None]) -> Callable[[], None]:
         """Decorator that allows to handle button click. Decorated function
-        must receive no arguments and will be called on button click.
+        will be called on button click.
 
         :param func: Function to be called on button click.
         :type func: Callable
