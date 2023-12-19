@@ -40,6 +40,19 @@ class Carousel(Widget):
 
     :Usage example:
     .. code-block:: python
+
+        from supervisely.app.widgets import Carousel
+
+        carousel_items = [
+            Carousel.Item(name="item1", label="Item 1"),
+            Carousel.Item(name="item2", label="Item 2"),
+            Carousel.Item(name="item3", label="Item 3"),
+        ]
+
+        carousel = Carousel(
+            items=carousel_items, height=350, initial_index=0, trigger="click",
+            autoplay=False, interval=3000, indicator_position="none", arrow="hover", type=None
+            )
     """
 
     class Routes:
@@ -67,6 +80,13 @@ class Carousel(Widget):
             self.is_link = is_link
 
         def to_json(self) -> Dict[str, Union[str, bool]]:
+            """Returns dictionary with item data.
+
+            Dictionary contains the following fields:
+                - name: Name of the item.
+                - label: Label of the item.
+                - is_link: If True, the item will be displayed as a link.
+            """
             return {
                 "name": self.name,
                 "label": self.label,
