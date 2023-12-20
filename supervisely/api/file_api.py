@@ -595,6 +595,8 @@ class FileApi(ModuleApiBase):
         :type remove_archive: Optional[bool]
         :param force: if True, data will be downloaded even if it already exists in the specified directory
         :type force: Optional[bool]
+        :param log_progress: if True, progress bar will be displayed
+        :type log_progress: Optional[bool]
         :raises RuntimeError: if both file and folder paths not found in environment variables
         :raises RuntimeError: if both file and folder paths found in environment variables (debug)
         :raises RuntimeError: if team id not found in environment variables
