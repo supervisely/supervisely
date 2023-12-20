@@ -1292,7 +1292,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             filters.append(filer_from)
         if to_day is not None:
             date = (datetime.utcnow() - timedelta(days=to_day)).strftime("%Y-%m-%dT%H:%M:%SZ")
-            filer_to = filer_from = {
+            filer_to = {
                 ApiField.FIELD: ApiField.UPDATED_AT,
                 "operator": "<=",
                 ApiField.VALUE: date,
