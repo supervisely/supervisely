@@ -1005,16 +1005,83 @@ class CloneableModuleApi(ModuleApi):
         )
         return response.json()[ApiField.TASK_ID]
 
-    def clone(self, id, dst_workspace_id, dst_name):
-        """clone"""
+    def clone(self, id: int, dst_workspace_id: int, dst_name: str) -> int:
+        """Clones the entity with the given ID to the given workspace with the given name.
+        Returns the ID of the task that is created to perform the cloning operation.
+
+        :param id: ID of the entity to clone.
+        :type id: int
+        :param dst_workspace_id: ID of the workspace to clone to.
+        :type dst_workspace_id: int
+        :param dst_name: Name of the cloned entity.
+        :type dst_name: str
+        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # ID of the entity to clone
+            project_id = 123456
+
+            # ID of the destination workspace
+            workspace_id = 123456
+
+            # Create a task to clone the project
+            task_id = api.project.clone(project_id, workspace_id, "my_cloned_project")
+
+            # Wait until the task is finished
+            api.task.wait(task_id, api.task.Status.FINISHED)
+
+            task_info = api.task.get_info_by_id(task_id)
+
+            dst_project_id = task_info["meta"]["output"]["project"]["id"]
+            print(f"Cloned project ID: {dst_project_id}")
+        """
+
         return self._clone({ApiField.ID: id}, dst_workspace_id, dst_name)
 
-    def clone_by_shared_link(self, shared_link, dst_workspace_id, dst_name):
-        """clone_by_shared_link"""
+    def clone_by_shared_link(self, shared_link: str, dst_workspace_id: int, dst_name: str) -> int:
+        """Clones the entity with the given shared link to the given workspace with the given name.
+        Returns the ID of the task that is created to perform the cloning operation.
+
+        :param shared_link: Shared link of the entity to clone.
+        :type shared_link: str
+        :param dst_workspace_id: ID of the workspace to clone to.
+        :type dst_workspace_id: int
+        :param dst_name: Name of the cloned entity.
+        :type dst_name: str
+        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :rtype: int
+        """
         return self._clone({ApiField.SHARED_LINK: shared_link}, dst_workspace_id, dst_name)
 
-    def clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
-        """clone_from_explore"""
+    def clone_from_explore(self, explore_path: str, dst_workspace_id: int, dst_name: str) -> int:
+        """Clones the entity with the given explore path to the given workspace with the given name.
+        Returns the ID of the task that is created to perform the cloning operation.
+
+        :param explore_path: Explore path of the entity to clone.
+        :type explore_path: str
+        :param dst_workspace_id: ID of the workspace to clone to.
+        :type dst_workspace_id: int
+        :param dst_name: Name of the cloned entity.
+        :type dst_name: str
+        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :rtype: int
+        """
         return self._clone({ApiField.EXPLORE_PATH: explore_path}, dst_workspace_id, dst_name)
 
     def get_or_clone_from_explore(self, explore_path, dst_workspace_id, dst_name):
