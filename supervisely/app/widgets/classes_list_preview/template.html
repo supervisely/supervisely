@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/classes_list_preview/style.css" />
+
+<div style="display: flex; flex-direction: column; max-height: 128px; overflow-y: auto;">
+    <link rel="stylesheet" href="./sly/css/app/widgets/object_class_view/style.css" />
+    {% if widget._empty_text %}
+        <span v-if="state.{{{widget.widget_id}}}.classes.length == 0">
+            {{{ widget._empty_text }}}
+        </span>
+    {% endif %}
+    <div v-for="(obj_class, idx) in state.{{{widget.widget_id}}}.classes">
+        <span class="icon-text-line classes-list-preview">
+            <i class="zmdi zmdi-circle" style="margin-right: 5px" :style="{color: obj_class.color}"></i>
+            <i v-if="obj_class.icon" :class="obj_class.icon" style="margin-right: 5px"></i>
+            <img 
+                v-if="obj_class.icon8" 
+                style="height: 15px; margin-right: 5px"
+                :src="obj_class.icon8">
+            </img>
+            <b style="font-size: 16;"> {{ obj_class.title }} </b>
+            <span v-if="obj_class.shape_text"
+                style="flex: none; margin-left: 5px; font-size: 12px; color: #8492A6; line-height: initial;">
+                {{ obj_class.shape_text }}
+            </span>
+        </span>
+    </div>
+</div>
