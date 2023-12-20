@@ -468,7 +468,7 @@ class tqdm_sly(tqdm, Progress):
                         cur_t = time()
                         dt = cur_t - last_print_t
                         if dt >= mininterval and cur_t >= min_start_t:
-                            Progress.need_report()
+                            Progress.need_report(self)
                             Progress.iters_done_report(self, (n - last_print_n))
 
                             last_print_n = self.n  # self.last_print_n

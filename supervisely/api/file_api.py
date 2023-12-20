@@ -581,6 +581,7 @@ class FileApi(ModuleApiBase):
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,
+        log_progress: Optional[bool] = False,
     ) -> None:
         """Downloads data for application from input using environment variables.
         Automatically detects is data is a file or a directory and saves it to the specified directory.
@@ -594,6 +595,8 @@ class FileApi(ModuleApiBase):
         :type remove_archive: Optional[bool]
         :param force: if True, data will be downloaded even if it already exists in the specified directory
         :type force: Optional[bool]
+        :param log_progress: if True, progress bar will be displayed
+        :type log_progress: Optional[bool]
         :raises RuntimeError: if both file and folder paths not found in environment variables
         :raises RuntimeError: if both file and folder paths found in environment variables (debug)
         :raises RuntimeError: if team id not found in environment variables
@@ -649,10 +652,18 @@ class FileApi(ModuleApiBase):
                 return
 
             sly_fs.silent_remove(local_file_path)
+
+            progress_cb = None
+            file_info = self.get_info_by_path(team_id, remote_file_path)
+            if log_progress is True and file_info is not None:
+                progress = Progress(
+                    f"Downloading {remote_file_path}", file_info.sizeb, is_size=True
+                )
+                progress_cb = progress.iters_done_report
             if self.is_on_agent(remote_file_path):
-                self.download_from_agent(remote_file_path, local_file_path)
+                self.download_from_agent(remote_file_path, local_file_path, progress_cb=progress_cb)
             else:
-                self.download(team_id, remote_file_path, local_file_path)
+                self.download(team_id, remote_file_path, local_file_path, progress_cb=progress_cb)
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
                 if remove_archive:
@@ -674,7 +685,15 @@ class FileApi(ModuleApiBase):
                 return
 
             sly_fs.remove_dir(local_folder_path)
-            self.download_directory(team_id, remote_folder_path, local_folder_path)
+
+            progress_cb = None
+            if log_progress is True:
+                sizeb = self.get_directory_size(team_id, remote_folder_path)
+                progress = Progress(f"Downloading: {remote_folder_path}", sizeb, is_size=True)
+                progress_cb = progress.iters_done_report
+            self.download_directory(
+                team_id, remote_folder_path, local_folder_path, progress_cb=progress_cb
+            )
 
     def _upload_legacy(self, team_id, src, dst):
         """ """
