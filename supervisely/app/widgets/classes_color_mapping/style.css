@@ -1,0 +1,26 @@
+.classes-color-mapping-table {
+    width: 100%;
+}
+
+.classes-color-mapping-table td {
+    max-width: 0;
+
+}
+
+.classes-color-mapping-table-td-class-title {
+    width: calc(100% - 171px);
+}
+
+.classes-color-mapping-table-td-title-wrapper i {
+    flex: none;
+}
+
+.classes-color-mapping-table-td-title-wrapper b {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.classes-color-mapping-table-td-class-color {
+    width: 130px;
+}

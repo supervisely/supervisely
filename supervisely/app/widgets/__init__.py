@@ -117,3 +117,16 @@ from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.element_tag.element_tag import ElementTag
 from supervisely.app.widgets.element_tags_list.element_tags_list import ElementTagsList
 from supervisely.app.widgets.compare_annotations.compare_annotations import CompareAnnotations
+
+from supervisely.app.widgets.circle_progress.circle_progress import CircleProgress
+from supervisely.app.widgets.classes_color_mapping.classes_color_mapping import ClassesColorMapping
+from supervisely.app.widgets.classes_mapping.classes_mapping import ClassesMapping
+from supervisely.app.widgets.classes_mapping_preview.classes_mapping_preview import (
+    ClassesMappingPreview,
+)
+from supervisely.app.widgets.classes_list_selector.classes_list_selector import ClassesListSelector
+from supervisely.app.widgets.classes_list_preview.classes_list_preview import ClassesListPreview
+from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsListSelector
+from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
+from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
+from supervisely.app.widgets.members_list_preview.members_list_preview import MembersListPreview

@@ -1,0 +1,131 @@
+<link
+	rel="stylesheet"
+	href="./sly/css/app/widgets/classes_list_selector/style.css"
+/>
+
+<div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
+	{{{widget.empty_notification}}}
+</div>
+<div v-show="data.{{{widget.widget_id}}}.classes.length != 0">
+	<link
+		rel="stylesheet"
+		href="./sly/css/app/widgets/object_class_view/style.css"
+	/>
+	{% if widget._multiple %}
+	<div>
+		<el-button
+			style="margin-right: 10px"
+			type="text"
+			{%
+			if
+			widget._checkboxes_handled
+			%}
+			@click="{
+					state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => true);
+					post('/{{{widget.widget_id}}}/checkbox_cb');
+				}"
+			{%
+			else
+			%}
+			@click="state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => true)"
+			{%
+			endif
+			%}
+		>
+			<i class="zmdi zmdi-check-all"></i>
+			Select all
+		</el-button>
+		<el-button
+			style="margin-right: 10px"
+			type="text"
+			{%
+			if
+			widget._checkboxes_handled
+			%}
+			@click="{
+					state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => false);
+					post('/{{{widget.widget_id}}}/checkbox_cb');
+				}"
+			{%
+			else
+			%}
+			@click="state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => false)"
+			{%
+			endif
+			%}
+		>
+			<i class="zmdi zmdi-square-o"></i>
+			Deselect all
+		</el-button>
+	</div>
+	{% endif %}
+	<div
+		class="fflex"
+		v-for="(obj_class, idx) in data.{{{widget.widget_id}}}.classes"
+	>
+		<el-checkbox
+			v-model="state.{{{widget.widget_id}}}.selected[idx]"
+			style="margin-right: 10px"
+			{%
+			if
+			widget._checkboxes_handled
+			%}
+			{%
+			if
+			not
+			widget._multiple
+			%}
+			@change="() => {
+						if ($event.target.checked) {
+							state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map((_, i) => i == idx);
+						}
+						post('/{{{widget.widget_id}}}/checkbox_cb');
+					}"
+			{%
+			else
+			%}
+			@change="() => {
+						post('/{{{widget.widget_id}}}/checkbox_cb');
+					}"
+			{%
+			endif
+			%}
+			{%
+			else
+			%}
+			{%
+			if
+			not
+			widget._multiple
+			%}
+			@change="if ($event.target.checked) {state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map((_, i) => i == idx);}"
+			{%
+			endif
+			%}
+			{%
+			endif
+			%}
+		>
+		</el-checkbox>
+		<span class="icon-text-line classes-list-preview-sidebar">
+			<i
+				class="zmdi zmdi-circle"
+				style="margin-right: 5px"
+				:style="{color: obj_class.color}"
+			></i>
+			<b style="font-size: 16">{{obj_class.title}}</b>
+			<span
+				v-if="obj_class.shape_text"
+				style="
+					flex: none;
+					margin-left: 5px;
+					font-size: 12px;
+					color: #8492a6;
+					line-height: initial;
+				"
+			>
+				{{obj_class.shape_text}}
+			</span>
+		</span>
+	</div>
+</div>

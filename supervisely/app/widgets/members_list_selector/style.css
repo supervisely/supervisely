@@ -1,0 +1,12 @@
+.members-list-preview-sidebar {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.members-list-preview-sidebar b {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

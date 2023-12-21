@@ -1,0 +1,107 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/color_picker/style.css" />
+<link
+	rel="stylesheet"
+	href="./sly/css/app/widgets/object_class_view/style.css"
+/>
+
+<div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
+	{{{widget.empty_notification}}}
+</div>
+<div v-show="data.{{{widget.widget_id}}}.classes.length != 0">
+	<link
+		rel="stylesheet"
+		href="./sly/css/app/widgets/object_class_view/style.css"
+	/>
+	<table class="classes-color-mapping-table">
+		<tr>
+			<th style="padding: 3px; width: 20px"></th>
+			<th>Class</th>
+			<th style="width: 130px">New Color</th>
+		</tr>
+		<tr v-for="(obj_class, idx) in data.{{{widget.widget_id}}}.classes">
+			<td>
+				<el-checkbox
+					v-model="state.{{{widget.widget_id}}}.classes_values[idx].selected"
+				>
+				</el-checkbox>
+			</td>
+			<td
+				class="icon-text-line classes-color-mapping-table-td-class-title"
+				style="display: table-cell; vertical-align: middle; padding: 3px 0px"
+			>
+				<div class="fflex classes-color-mapping-table-td-title-wrapper">
+					<i
+						class="zmdi zmdi-circle"
+						style="margin-right: 5px"
+						:style="{color: obj_class.color}"
+					></i>
+
+					<b style="font-size: 16">{{obj_class.title}}</b>
+					<span
+						style="
+							flex: none;
+							margin-left: 5px;
+							font-size: 12px;
+							color: #8492a6;
+							line-height: initial;
+						"
+					>
+						{{obj_class.shape_text}}
+					</span>
+				</div>
+			</td>
+			<td
+				class="classes-color-mapping-table-td-class-color"
+				style="display: table-cell; vertical-align: middle; text-align: center"
+			>
+				<div class="color-picker-compact">
+					<script></script>
+					<el-color-picker
+						v-model="state.{{{widget.widget_id}}}.classes_values[idx].value"
+						:disabled="!state.{{{widget.widget_id}}}.classes_values[idx].selected"
+						{%
+						if
+						widget._greyscale
+						%}
+						@change="() => {
+							function hexToRgb(hex) {
+								var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+								hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+									return r + r + g + g + b + b;
+								});
+
+								var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+								return result ? {
+									r: parseInt(result[1], 16),
+									g: parseInt(result[2], 16),
+									b: parseInt(result[3], 16)
+								} : null;
+							}
+							function componentToHex(c) {
+								var hex = c.toString(16);
+								return hex.length == 1 ? '0' + hex : hex;
+							}
+
+							function rgbToHex(r, g, b) {
+								return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
+							}
+							const rgb = hexToRgb(state.{{{widget.widget_id}}}.classes_values[idx].value);
+							const grey = Math.round((rgb.r + rgb.g + rgb.b)/3);
+							const greyHex = rgbToHex(grey, grey, grey);
+							state.{{{widget.widget_id}}}.classes_values[idx].value = greyHex;
+							state.{{{widget.widget_id}}}.classes_values[idx].selected = true;
+						}"
+						{%
+						else
+						%}
+						@change="state.{{{widget.widget_id}}}.classes_values[idx].selected = true"
+						{%
+						endif
+						%}
+					>
+					</el-color-picker>
+				</div>
+			</td>
+		</tr>
+	</table>
+</div>

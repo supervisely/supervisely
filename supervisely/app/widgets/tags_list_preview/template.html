@@ -1,0 +1,35 @@
+<div
+	:style="{ flex: '1 1 auto', 'max-width': data.{{{widget.widget_id}}}.maxWidth }"
+>
+	{% if widget._empty_text %}
+	<span v-if="state.{{{widget.widget_id}}}.tags.length == 0">
+		{{{ widget._empty_text }}}
+	</span>
+	{% endif %}
+	<div v-for="tag in state.{{{widget.widget_id}}}.tags">
+		<div style="display: flex; gap: 10px">
+			<i class="zmdi zmdi-label" :style="{color: tag.color}"></i>
+			<span
+				style="padding-bottom: 3px; overflow: hidden; text-overflow: ellipsis"
+			>
+				<span
+					style="align-items: center; height: 100%"
+					v-html="tag.name"
+				></span>
+			</span>
+			<span style="padding-bottom: 3px">
+				<span
+					style="
+						display: flex;
+						align-items: center;
+						height: 100%;
+						font-size: 12px;
+						color: #8492a6;
+						line-height: initial;
+					"
+					v-html="tag.valueType"
+				></span>
+			</span>
+		</div>
+	</div>
+</div>
