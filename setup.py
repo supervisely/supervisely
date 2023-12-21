@@ -1,11 +1,39 @@
 import os
 import re
+
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
-
 from setuptools import find_packages, setup
+from setuptools.command.install import install
 
 # @TODO: change manifest location
+
+
+class InstallCommand(install):
+    user_options = install.user_options + [
+        ("light", None, "Install light version of the library"),
+    ]
+
+    def initialize_options(self):
+        install.initialize_options(self)
+        self.light = None
+
+    def finalize_options(self):
+        install.finalize_options(self)
+
+    def run(self):
+        install.run(self)
+
+        if self.light:
+            self.modify_package_data_for_light_version()
+
+    def modify_package_data_for_light_version(self):
+        if "supervisely" in self.distribution.package_data:
+            light_supervisely_files_to_include = [
+                # prepared list by Nicholas
+            ]
+
+            self.distribution.package_data["supervisely"] = light_supervisely_files_to_include
 
 
 def read(fname):
@@ -196,5 +224,8 @@ setup(
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
         ],
+    },
+    cmdclass={
+        "install": InstallCommand,
     },
 )
