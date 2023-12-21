@@ -367,6 +367,7 @@ class FileApi(ModuleApiBase):
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
         Get directory size in the Team Files.
+        If directory is on local agent, then optimized method will be used (without api requests)
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
