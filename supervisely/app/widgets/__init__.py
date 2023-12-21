@@ -130,5 +130,3 @@ from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsLi
 from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
 from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
 from supervisely.app.widgets.members_list_preview.members_list_preview import MembersListPreview
-from supervisely.app.widgets.input_tag.input_tag import InputTag
-from supervisely.app.widgets.input_tag_list.input_tag_list import InputTagList
