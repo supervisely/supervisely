@@ -67,9 +67,22 @@ class ClassesColorMapping(Widget):
     def get_classes(self):
         return self._classes
 
-    def get_selected_classes(self):
+    def get_selected_classes_original(self):
         classes_values = StateJson()[self.widget_id]["classes_values"]
         return [cls for idx, cls in enumerate(self._classes) if classes_values[idx]["selected"]]
+
+    def get_selected_classes_edited(self):
+        classes_values = StateJson()[self.widget_id]["classes_values"]
+        selected_classes = [
+            cls for idx, cls in enumerate(self._classes) if classes_values[idx]["selected"]
+        ]
+        mapping = self.get_mapping()
+        new_classes = [
+            cls.clone(color=hex2rgb(mapping[cls.name]["value"]))
+            for cls in selected_classes
+            if cls.name in mapping
+        ]
+        return new_classes
 
     def get_mapping(self):
         classes_values = StateJson()[self.widget_id]["classes_values"]

@@ -1,5 +1,8 @@
-<link rel="stylesheet" href="./static/css/color-picker-compact.css" />
-<link rel="stylesheet" href="./static/css/classes-color-mapping-table.css" />
+<link rel="stylesheet" href="./sly/css/app/widgets/color_picker/style.css" />
+<link
+	rel="stylesheet"
+	href="./sly/css/app/widgets/object_class_view/style.css"
+/>
 
 <div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
 	{{{widget.empty_notification}}}
@@ -11,13 +14,7 @@
 	/>
 	<table class="classes-color-mapping-table">
 		<tr>
-			<th style="padding: 3px; width: 41px">
-				<!-- <el-checkbox
-					:value="state.{{{widget.widget_id}}}.classes_values.every(v => v.selected)"
-					@change="state.{{{widget.widget_id}}}.classes_values.forEach(v => v.selected = $event)"
-				>
-				</el-checkbox> -->
-			</th>
+			<th style="padding: 3px; width: 20px"></th>
 			<th>Class</th>
 			<th style="width: 130px">New Color</th>
 		</tr>
@@ -55,7 +52,7 @@
 			</td>
 			<td
 				class="classes-color-mapping-table-td-class-color"
-				style="display: table-cell; vertical-align: middle"
+				style="display: table-cell; vertical-align: middle; text-align: center"
 			>
 				<div class="color-picker-compact">
 					<script></script>
