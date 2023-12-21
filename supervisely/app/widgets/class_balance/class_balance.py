@@ -399,7 +399,7 @@ class ClassBalance(Widget):
         return StateJson()[self.widget_id]["selectedRows"]
 
     def click(self, func: Callable[[str], None]) -> Callable[[], None]:
-        """Decorator for the function to be called when
+        """Decorator for the function to be called when the widget is clicked.
 
         :param func: Function to be called when the widget is clicked.
         :type func: Callable[[str], None]
