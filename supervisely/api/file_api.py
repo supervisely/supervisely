@@ -572,6 +572,8 @@ class FileApi(ModuleApiBase):
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
                 logger.info(f"Optimized download from agent: {dir_on_agent}")
                 sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
+                if progress_cb is not None:
+                    progress_cb(sly_fs.get_directory_size(dir_on_agent))
                 return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
