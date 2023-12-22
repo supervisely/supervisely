@@ -141,6 +141,8 @@ class DateTimePicker(Widget):
 
         :param value: current value
         :type value: Union[int, str, datetime, list, tuple]
+        :raises ValueError: if value type is not supported
+        :raises ValueError: if value length is not equal 2
         """
         if self._w_type in ["year", "month", "date", "datetime", "week"]:
             if type(value) not in [int, str, datetime]:
