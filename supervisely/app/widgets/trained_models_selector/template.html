@@ -1,0 +1,48 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/radio_table/style.css"/>
+
+<div
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+    >
+
+    <div v-if="data.{{{widget.widget_id}}}.rows_html.length === 0"> You don't have any trained models</div>
+    <div v-else>
+    <table class="beautiful-table">
+        <thead>
+        <tr>
+            {% for col in widget._columns %}
+            <th>
+                <div> {{{col}}} </div>
+            </th>
+            {% endfor %}
+        </tr> 
+        </thead>
+        <tbody>
+        {% for row in widget._rows_html %}
+        {% set outer_loop = loop %}
+        <tr>
+            {% for col in row %}
+            <td>
+                <div
+                    {% if loop.index == 1 %}
+                        style="display: flex;"
+                    {% endif %}
+                >
+                    {% if loop.index == 1 %}
+                    <el-radio
+                    style="display: flex;"
+                    v-model="state.{{{widget.widget_id}}}.selectedRow"
+                    :label="{{{ outer_loop.index - 1 }}}"
+                    >&#8205;</el-radio>
+                    {% endif %}
+                    {{{ col }}}
+                </div>
+            </td>
+            {% endfor %}            
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
