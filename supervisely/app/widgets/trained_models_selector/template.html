@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="./sly/css/app/widgets/radio_table/style.css"/>
+<link rel="stylesheet" href="./sly/css/app/widgets/trained_models_selector/style.css"/>
 
 <div
     {% if widget._changes_handled == true %}
@@ -8,7 +8,7 @@
 
     <div v-if="data.{{{widget.widget_id}}}.rows_html.length === 0"> You don't have any trained models</div>
     <div v-else>
-    <table class="beautiful-table">
+    <table class="trained-models-selector-table">
         <thead>
         <tr>
             {% for col in widget._columns %}

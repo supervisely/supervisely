@@ -119,18 +119,23 @@ class TrainedModelsSelector(Widget):
             return f"{self._api.server_address}/files/{task_file_id}"
 
         def _create_task_widget(self) -> Flexbox:
-            task_widget = Flexbox(
+            task_widget = Container(
                 [
                     Text(f"<a href='{self._task_link}'>{self._task_id}</a>", "text"),
                     Text(
-                        f"<span class='text-muted'>{self._task_date}</span>", "text", font_size=10
+                        f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
+                        "text",
+                        font_size=13,
                     ),
-                ]
+                ],
+                gap=0,
             )
             return task_widget
 
         def _create_training_project_widget(self) -> ProjectThumbnail:
-            training_project_widget = ProjectThumbnail(self._training_project_info)
+            training_project_widget = ProjectThumbnail(
+                self._training_project_info, remove_margins=True
+            )
             return training_project_widget
 
         def _create_artifacts_widget(self) -> Select:
@@ -143,9 +148,7 @@ class TrainedModelsSelector(Widget):
             return artifact_selector
 
         def _create_session_widget(self) -> Text:
-            session_link_widget = Text(
-                f"<a href='{self._session_link}'>Preview session</a>", "text"
-            )
+            session_link_widget = Text(f"<a href='{self._session_link}'>Preview</a>", "text")
             return session_link_widget
 
     def __init__(
