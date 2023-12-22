@@ -1,32 +1,72 @@
+from datetime import datetime
+from typing import Any, Callable, Dict, Literal, Optional, Union
+
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
-from datetime import datetime
-from typing import Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 
 
 class DateTimePicker(Widget):
+    """DateTimePicker is a widget in Supervisely that allows you to choose a date and time on the UI.
+
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/datetimepicker>`_
+        (including screenshots and examples).
+
+    :param value: initial value
+    :type value: Optional[Union[int, str, datetime, list, tuple]]
+    :param readonly: if True, date picker will be readonly
+    :type readonly: Optional[bool]
+    :param disabled: if True, date picker will be disabled
+    :type disabled: Optional[bool]
+    :param editable: if True, date picker will be editable
+    :type editable: Optional[bool]
+    :param clearable: if True, date picker will be clearable
+    :type clearable: Optional[bool]
+    :param size: size of the input box, one of: large, small, mini
+    :type size: Optional[Literal["large", "small", "mini"]]
+    :param placeholder: placeholder text, default: "Select date and time"
+    :type placeholder: Optional[str]
+    :param w_type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange, default: datetime
+    :type w_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
+    :param format: date format, one of: yyyy, MM, dd, HH, mm, ss, default: yyyy-MM-dd HH:mm:ss
+    :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
+    :param widget_id: An identifier of the widget.
+    :type widget_id: str, optional
+
+    :Usage example:
+    .. code-block:: python
+
+            from supervisely.app.widgets import DateTimePicker
+
+            date_time_picker = DateTimePicker(
+                value=datetime.now(),
+                readonly=False,
+                disabled=False,
+                editable=False,
+                clearable=True,
+                size="small",
+                placeholder="Select date and time",
+                w_type="datetime",
+                format="yyyy-MM-dd HH:mm:ss",
+            )
+    """
+
     class Routes:
         VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
-        value: Union[int, str, list, tuple] = None,
-        readonly: bool = False,
-        disabled: bool = False,
-        editable: bool = False,
-        clearable: bool = True,
-        size: Literal["large", "small", "mini"] = None,
-        placeholder: str = "Select date and time",
-        w_type: Literal[
-            "year", "month", "date", "datetime", "week", "datetimerange", "daterange"
+        value: Optional[Union[int, str, list, tuple]] = None,
+        readonly: Optional[bool] = False,
+        disabled: Optional[bool] = False,
+        editable: Optional[bool] = False,
+        clearable: Optional[bool] = True,
+        size: Optional[Literal["large", "small", "mini"]] = None,
+        placeholder: Optional[str] = "Select date and time",
+        w_type: Optional[
+            Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]
         ] = "datetime",
-        format: Literal["yyyy", "MM", "dd", "HH", "mm", "ss"] = "yyyy-MM-dd HH:mm:ss",
-        widget_id: str = None,
+        format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]] = "yyyy-MM-dd HH:mm:ss",
+        widget_id: Optional[str] = None,
     ):
         self._value = value
         self._readonly = readonly
@@ -41,7 +81,22 @@ class DateTimePicker(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict[str, Union[str, bool]]:
+        """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
+
+        Dictionary contains the following fields:
+            - placeholder: placeholder text
+            - size: size of the input box, one of: large, small, mini
+            - readonly: if True, date picker will be readonly
+            - disabled: if True, date picker will be disabled
+            - editable: if True, date picker will be editable
+            - clearable: if True, date picker will be clearable
+            - type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange
+            - format: date format, one of: yyyy, MM, dd, HH, mm, ss
+
+        :return: dictionary with widget data
+        :rtype: Dict[str, Union[str, bool]]
+        """
         return {
             "placeholder": self._placeholder,
             "size": self._size,
@@ -53,10 +108,23 @@ class DateTimePicker(Widget):
             "format": self._format,
         }
 
-    def get_json_state(self):
+    def get_json_state(self) -> Dict[str, Union[str, list]]:
+        """Returns dictionary with widget state.
+
+        Dictionary contains the following fields:
+            - value: current value
+
+        :return: dictionary with widget state
+        :rtype: Dict[str, Union[str, list]]
+        """
         return {"value": self._value}
 
-    def get_value(self):
+    def get_value(self) -> Union[int, str, datetime, list, tuple]:
+        """Returns current value.
+
+        :return: current value
+        :rtype: Union[int, str, datetime, list, tuple]
+        """
         if "value" not in StateJson()[self.widget_id].keys():
             return None
         value = StateJson()[self.widget_id]["value"]
@@ -68,7 +136,12 @@ class DateTimePicker(Widget):
             return None
         return value
 
-    def set_value(self, value: Union[int, str, datetime, list, tuple]):
+    def set_value(self, value: Union[int, str, datetime, list, tuple]) -> None:
+        """Sets current value.
+
+        :param value: current value
+        :type value: Union[int, str, datetime, list, tuple]
+        """
         if self._w_type in ["year", "month", "date", "datetime", "week"]:
             if type(value) not in [int, str, datetime]:
                 raise ValueError(
@@ -90,7 +163,16 @@ class DateTimePicker(Widget):
         StateJson()[self.widget_id]["value"] = self._value
         StateJson().send_changes()
 
-    def value_changed(self, func):
+    def value_changed(
+        self, func: Callable[[Union[int, str, datetime, list, tuple]], Any]
+    ) -> Callable[[], None]:
+        """Decorator for the function that will be called when the value of the widget is changed.
+
+        :param func: function that will be called when the value of the widget is changed
+        :type func: Callable[[Union[int, str, datetime, list, tuple]], Any]
+        :return: decorated function
+        :rtype: Callable[[], None]
+        """
         route_path = self.get_route_path(DateTimePicker.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
