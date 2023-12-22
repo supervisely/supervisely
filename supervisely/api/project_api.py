@@ -447,8 +447,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #     "projectType":"images"
             # }
         """
-        response = self._api.post("projects.meta", {"id": id})
-        return response.json()
+        json_response = self._api.post("projects.meta", {"id": id}).json()
+        json_settings = self.get_settings(id)
+
+        groupTag = (None, None)
+        if json_settings["groupImagesByTagId"] is not None:
+            groupTag = [
+                (tag["id"], tag["name"])
+                for tag in json_response["tags"]
+                if tag["id"] == json_settings["groupImagesByTagId"]
+            ][0]
+
+        # TODO camel or snake in meta.json ???
+        json_response["projectSettings"] = {
+            "groupImages": json_settings["groupImages"],
+            "groupImagesByTagId": groupTag[0],
+            "groupImagesByTagName": groupTag[1],  # neccessary for identification
+            "groupImagesSync": json_settings["groupImagesSync"],
+        }
+
+        return json_response
 
     def clone_advanced(
         self,
@@ -615,7 +633,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             meta_json = meta.to_json()
         else:
             meta_json = meta
+
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
+
+        if meta_json.get("projectSettings") is not None:
+            s = meta_json.pop("projectSettings")
+
+            parent_project_tag = s.pop("groupImagesByTagName")
+            groupTag = [
+                (tag["id"], tag["name"])
+                for tag in self.get_meta(id)["tags"]
+                if tag["name"] == parent_project_tag
+            ][0]
+
+            s["groupImagesByTagId"] = groupTag[0]
+
+            self.update_settings(id, s)
+            # ? ApiField.SETTINGS=='settings' ???
+            # ? ProjectMetaJsonFields.PROJECT_SETTINGS ???
 
     def _clone_api_method_name(self):
         """ """

@@ -24,7 +24,7 @@ class ProjectMetaJsonFields:
     OBJ_TAGS = "tags_objects"
     TAGS = "tags"
     PROJECT_TYPE = "projectType"
-    PROJECT_SETTINGS = "settings"
+    PROJECT_SETTINGS = "projectSettings"
 
 
 def _merge_img_obj_tag_metas(
