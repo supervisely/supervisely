@@ -1,14 +1,12 @@
-import fastapi
-import pandas as pd
-from varname import varname
-import numpy as np
 import copy
-from typing import Any
 import traceback
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
+import pandas as pd
 
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-
 from supervisely.sly_logger import logger
 
 
@@ -17,7 +15,6 @@ class PackerUnpacker:
 
     @staticmethod
     def validate_sizes(unpacked_data):
-
         if len(unpacked_data["data"]) != len(unpacked_data["classes"]):
             raise ValueError(
                 "Sizes mismatch:\n"
@@ -100,10 +97,76 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ConfusionMatrix(Widget):
+    """ConfusionMatrix is a widget that display a given confusion matrix with color-coded visualization for better interpretation.
+    It also shows row and column totals.
+
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/charts-and-plots/confusionmatrix>`_
+        (including screenshots and examples).
+
+
+    :param data: Data of table in different formats (see usage example)
+    :type data: Optional[Union[pd.DataFrame, Dict]]
+    :param columns: List of column names
+    :type columns: Optional[List[str]]
+    :param x_label: Label for x axis
+    :type x_label: Optional[str]
+    :param y_label: Label for y axis
+    :type y_label: Optional[str]
+    :param widget_id: An unique identifier of the widget.
+    :type widget_id: str, optional
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely.app.widgets import ConfusionMatrix
+
+        # Option 1: Python dict
+        confusion_matrix = ConfusionMatrix(
+            data={
+                "columns": ["class_1", "class_2", "class_3"],
+                "data": [
+                    ["1", "2", "3"],
+                    ["4", "5", "6"],
+                    ["7", "8", "9"],
+                ],
+            },
+            x_label="Predicted Values",
+            y_label="Actual Values",
+        )
+
+        # Option 2: Pandas DataFrame
+
+        data = []
+        for row in b:
+            temp = [round(row * number, 1) for number in a]
+            data.append(temp)
+
+        a = [str(i) for i in a]
+        b = [str(i) for i in b]
+
+        data = pd.DataFrame(data=data, index=b, columns=a)
+        confusion_matrix = ConfusionMatrix(data=data)
+
+    """
+
     class Routes:
         CELL_CLICKED = "cell_clicked_cb"
 
     class ClickedDataPoint:
+        """Represents data point of clicked cell in ConfusionMatrix.
+
+        :param column_name: Name of column
+        :type column_name: str
+        :param column_index: Index of column
+        :type column_index: int
+        :param row_name: Name of row
+        :type row_name: str
+        :param row_index: Index of row
+        :type row_index: int
+        :param cell_value: Value of cell
+        :type cell_value: Any
+        """
+
         def __init__(
             self,
             column_name: str,
@@ -120,24 +183,12 @@ class ConfusionMatrix(Widget):
 
     def __init__(
         self,
-        data: list = None,
-        columns: list = None,
-        x_label: str = "Predicted Values",
-        y_label: str = "Actual Values",
-        widget_id: str = None,
+        data: Optional[Union[pd.DataFrame, Dict]] = None,
+        columns: Optional[List[str]] = None,
+        x_label: Optional[str] = "Predicted Values",
+        y_label: Optional[str] = "Actual Values",
+        widget_id: Optional[str] = None,
     ):
-        """
-        :param data: Data of table in different formats:
-        1. Pandas Dataframe \n
-                            2. Python dict with structure {
-                                        'columns': ['col_name_1', 'col_name_2', ...],
-                                        'data': [
-                                                            ['row_1_column_1', 'row_1_column_2', ...],
-                                                            ['row_2_column_1', 'row_2_column_2', ...],
-                                                            ...
-                                                          ]
-                                      }
-        """
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
@@ -153,7 +204,21 @@ class ConfusionMatrix(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict[str, Any]:
+        """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
+
+        Dictionary contains the following fields:
+            - matrix_data: data of matrix
+            - matrix_options: dictionary with options for matrix
+                - selectable: if True, matrix will be selectable
+                - horizontalLabel: label for horizontal axis
+                - verticalLabel: label for vertical axis
+            - loading: if True, loading animation will be shown
+
+        :return: dictionary with widget data
+        :rtype: Dict[str, Any]
+        """
+
         return {
             "matrix_data": self._parsed_data_with_totals,
             "matrix_options": {
@@ -164,7 +229,15 @@ class ConfusionMatrix(Widget):
             "loading": self._loading,
         }
 
-    def get_json_state(self):
+    def get_json_state(self) -> Dict[str, Dict]:
+        """Returns dictionary with widget state.
+
+        Dictionary contains the following fields:
+            - selected_row: dictionary with empty dict
+
+        :return: dictionary with widget state
+        :rtype: Dict[str, Dict]
+        """
         return {"selected_row": {}}
 
     def _update_matrix_data(self, input_data):
@@ -209,7 +282,19 @@ class ConfusionMatrix(Widget):
     def _get_packed_data(self, input_data, data_type):
         return PackerUnpacker.pack_data(data=input_data, packer_cb=DATATYPE_TO_PACKER[data_type])
 
-    def get_unpacked_data(self, input_data, validate_sizes=True):
+    def get_unpacked_data(
+        self, input_data, validate_sizes: Optional[bool] = True
+    ) -> Dict[str, Any]:
+        """Returns dictionary with unpacked data.
+
+        :param input_data: Data of table in different formats (see usage example)
+        :type input_data: Optional[Union[pd.DataFrame, Dict]]
+        :param validate_sizes: If True, sizes of data will be validated, defaults to True
+        :type validate_sizes: Optional[bool], optional
+        :raises TypeError: If input data type is not supported
+        :return: dictionary with unpacked data
+        :rtype: Dict[str, Any]
+        """
         input_data_type = type(input_data)
 
         if input_data_type not in self._supported_types:
@@ -234,21 +319,54 @@ class ConfusionMatrix(Widget):
             validate_sizes=validate_sizes,
         )
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict[str, Any]:
+        """Returns dictionary with widget data in JSON format.
+
+        :return: dictionary with widget data in JSON format
+        :rtype: Dict[str, Any]
+        """
         return self._get_packed_data(self._parsed_data, dict)
 
     def to_pandas(self) -> pd.DataFrame:
+        """Returns pandas DataFrame with widget data.
+
+        :return: pandas DataFrame with widget data
+        :rtype: pd.DataFrame
+        """
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
 
-    def read_json(self, value: dict):
+    def read_json(self, value: Dict[str, Any]) -> None:
+        """Sets widget data from JSON.
+
+        :param value: dictionary with widget data in JSON format
+        :type value: Dict[str, Any]
+        """
         self._update_matrix_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
 
-    def read_pandas(self, value: pd.DataFrame):
+    def read_pandas(self, value: pd.DataFrame) -> None:
+        """Sets widget data from pandas DataFrame.
+
+        :param value: pandas DataFrame with widget data
+        :type value: pd.DataFrame
+        """
         self._update_matrix_data(input_data=value)
         DataJson()[self.widget_id]["table_data"] = self._parsed_data
 
-    def get_selected_cell(self, state):
+    def get_selected_cell(self, state: Dict[str, Dict]) -> Dict[str, Any]:
+        """Returns dictionary with selected cell data.
+
+        Dictionary contains the following fields:
+            - row_index: index of row
+            - col_index: index of column
+            - row_data: data of row
+            - cell_data: data of cell
+
+        :param state: dictionary with widget state
+        :type state: Dict[str, Dict]
+        :return: dictionary with selected cell data
+        :rtype: Dict[str, Any]
+        """
         row_index = state[self.widget_id]["selected_row"].get("row")
         col_index = state[self.widget_id]["selected_row"].get("col")
 
@@ -277,15 +395,32 @@ class ConfusionMatrix(Widget):
         }
 
     @property
-    def loading(self):
+    def loading(self) -> bool:
+        """Returns True if loading animation is shown, False otherwise.
+
+        :return: True if loading animation is shown, False otherwise
+        :rtype: bool
+        """
         return self._loading
 
     @loading.setter
-    def loading(self, value: bool):
+    def loading(self, value: bool) -> None:
+        """Sets loading animation.
+
+        :param value: True if loading animation is shown, False otherwise
+        :type value: bool
+        """
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
 
-    def click(self, func):
+    def click(self, func: Callable[[ClickedDataPoint], Any]) -> Callable[[], None]:
+        """Decorator for function that will be called when cell is clicked.
+
+        :param func: function that will be called when cell is clicked
+        :type func: Callable[[ClickedDataPoint], Any]
+        :return: decorated function
+        :rtype: Callable[[], None]
+        """
         route_path = self.get_route_path(ConfusionMatrix.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
 
