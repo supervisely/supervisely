@@ -76,30 +76,30 @@ class ColorPicker(Widget):
             "compact": self._compact,
         }
 
-    def get_json_state(self) -> Dict[str, Union[str, List[int, int, int]]]:
+    def get_json_state(self) -> Dict[str, Union[str, List[int]]]:
         """Returns dictionary with widget state.
 
         Dictionary contains the following fields:
             - color: current color
 
         :return: dictionary with widget state
-        :rtype: Dict[str, str]
+        :rtype: Dict[str, Union[str, List[int]]]
         """
         return {"color": self._color}
 
-    def get_value(self) -> Union[str, List[int, int, int]]:
+    def get_value(self) -> Union[str, List[int]]:
         """Returns current color.
 
         :return: current color
-        :rtype: Union[str, List[int, int, int]]
+        :rtype: Union[str, List[int]]
         """
         return StateJson()[self.widget_id]["color"]
 
-    def set_value(self, value: Optional[Union[str, List[int, int, int]]]) -> None:
+    def set_value(self, value: Optional[Union[str, List[int]]]) -> None:
         """Sets current color.
 
         :param value: current color
-        :type value: Union[str, List[int, int, int]]]
+        :type value: Union[str, List[int]]]
         """
         self._color = value
         if isinstance(self._color, list) and len(self._color) == 3 and self._color_format == "rgb":
@@ -159,13 +159,11 @@ class ColorPicker(Widget):
         DataJson()[self.widget_id]["color_format"] = self._color_format
         DataJson().send_changes()
 
-    def value_changed(
-        self, func: Callable[[Union[str, List[int, int, int]]], Any]
-    ) -> Callable[[], None]:
+    def value_changed(self, func: Callable[[Union[str, List[int]]], Any]) -> Callable[[], None]:
         """Decortator for function that will be called when color is changed.
 
         :param func: function that will be called when color is changed
-        :type func: Callable[[Union[str, List[int, int, int]]], Any]
+        :type func: Callable[[Union[str, List[int]]], Any]
         :return: decorated function
         :rtype: Callable[[], None]
         """

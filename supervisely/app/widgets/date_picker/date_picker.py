@@ -117,14 +117,14 @@ class DatePicker(Widget):
             "options": {"firstDayOfWeek": self._first_day_of_week},
         }
 
-    def get_json_state(self) -> Dict[str, Union[str, List[int, int, int]]]:
+    def get_json_state(self) -> Dict[str, Union[str, List[int]]]:
         """Returns dictionary with widget state.
 
         Dictionary contains the following fields:
             - value: current value
 
         :return: dictionary with widget state
-        :rtype: Dict[str, Union[str, List[int, int, int]]]
+        :rtype: Dict[str, Union[str, List[int]]]
         """
         return {"value": self._value}
 
