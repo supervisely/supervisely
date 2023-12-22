@@ -2,20 +2,20 @@
 
 # docs
 from __future__ import annotations
-from supervisely.project.project_type import ProjectType
-from supervisely.annotation.tag_meta import TagMeta
-from typing import List, Dict, Optional, Tuple, Union
 
+from typing import Dict, List, Optional, Tuple, Union
 
-from supervisely.io.json import JsonSerializable
-from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely._utils import take_with_default
-
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.geometry.polygon import Polygon
+from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.io.json import JsonSerializable
+from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.project_type import ProjectType
 
 
 class ProjectMetaJsonFields:
@@ -24,6 +24,7 @@ class ProjectMetaJsonFields:
     OBJ_TAGS = "tags_objects"
     TAGS = "tags"
     PROJECT_TYPE = "projectType"
+    PROJECT_SETTINGS = "settings"
 
 
 def _merge_img_obj_tag_metas(
@@ -114,6 +115,7 @@ class ProjectMeta(JsonSerializable):
         obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[ProjectType] = None,
+        project_settings: Optional[Union[ProjectSettings, Dict]] = None,
     ):
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
@@ -134,6 +136,7 @@ class ProjectMeta(JsonSerializable):
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
 
         self._project_type = project_type
+        self._project_settings = project_settings
 
     @property
     def obj_classes(self) -> ObjClassCollection:
@@ -234,6 +237,26 @@ class ProjectMeta(JsonSerializable):
         """
         return self._project_type
 
+    @property
+    def project_settings(self):
+        """
+        Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
+
+        :return: Project type
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
+
+            print(meta.project_type)
+            # Output: <ProjectType.IMAGES: 'images'>
+        """
+        return self._project_settings
+
     def to_json(self) -> Dict:
         """
         Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
@@ -282,6 +305,8 @@ class ProjectMeta(JsonSerializable):
         }
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
+        if self._project_settings is not None:
+            res[ProjectMetaJsonFields.PROJECT_SETTINGS] = self._project_settings
         return res
 
     @classmethod
@@ -326,6 +351,7 @@ class ProjectMeta(JsonSerializable):
         img_tag_metas_json = data.get(ProjectMetaJsonFields.IMG_TAGS, [])
         obj_tag_metas_json = data.get(ProjectMetaJsonFields.OBJ_TAGS, [])
         project_type = data.get(ProjectMetaJsonFields.PROJECT_TYPE, None)
+        project_settings = data.get(ProjectMetaJsonFields.PROJECT_SETTINGS, None)
 
         if len(tag_metas_json) > 0:
             # New format - all project tags in a single collection.
@@ -366,6 +392,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes=obj_classes,
             tag_metas=tag_metas,
             project_type=project_type,
+            project_settings=project_settings,
         )
 
     def merge(self, other: ProjectMeta) -> ProjectMeta:
@@ -445,6 +472,7 @@ class ProjectMeta(JsonSerializable):
         obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[str] = None,
+        project_settings: Optional[dict] = None,  # TODO
     ) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
@@ -500,6 +528,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes=take_with_default(obj_classes, self.obj_classes),
             tag_metas=take_with_default(tag_metas, self.tag_metas),
             project_type=take_with_default(project_type, self.project_type),
+            project_settings=take_with_default(project_settings, self.project_settings),
         )
 
     def add_obj_class(self, new_obj_class: ObjClass) -> ProjectMeta:

@@ -149,6 +149,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         team_id=2
         """
         return [
+            # ApiField.SETTINGS,
             ApiField.ID,
             ApiField.NAME,
             ApiField.DESCRIPTION,
@@ -854,6 +855,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
         return response.json()
 
+    def get_settings(
+        self,
+        id: int,
+        # expected_type: Optional[str] = None,
+        # raise_error: Optional[bool] = False,
+    ) -> Dict:
+        r = self._api.post("projects.info", {ApiField.ID: id})
+        return r.json()[ApiField.SETTINGS]
+
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
         Updates project wuth given project settings by id.
@@ -863,6 +873,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param settings: Project settings
         :type settings: Dict[str, str]
         """
+        # TODO update both settings and meta
+        # self.update_meta(id, self.meta + settings)
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(

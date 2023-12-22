@@ -6,6 +6,7 @@ from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProj
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import Project, read_single_project
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoProject
 from supervisely.project.volume_project import VolumeProject
