@@ -1,18 +1,44 @@
-from supervisely.app import DataJson
-from supervisely.api.project_api import ProjectInfo
-from supervisely.app.widgets import Widget
-from supervisely.api.project_api import ProjectInfo
+from typing import Dict, Optional, Union
+
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.project.project import Project, Dataset
+from supervisely.api.project_api import ProjectInfo
+from supervisely.app import DataJson
+from supervisely.app.widgets import Widget
+from supervisely.project.project import Dataset, Project
 
 
 class DatasetThumbnail(Widget):
+    """DatasetThumbnail widget in Supervisely is a widget that allows to display a thumbnail image that represents supervisely dataset.
+
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/thumbnails/datasetthumbnail>`_
+        (including screenshots and examples).
+
+    :param project_info: project info
+    :type project_info: Optional[ProjectInfo]
+    :param dataset_info: dataset info
+    :type dataset_info: Optional[DatasetInfo]
+    :param show_project_name: if True, project name will be shown
+    :type show_project_name: Optional[bool]
+    :param widget_id: An identifier of the widget.
+    :type widget_id: str, optional
+
+    :Usage example:
+    .. code-block:: python
+
+            from supervisely.app.widgets import DatasetThumbnail
+
+            dataset_thumbnail = DatasetThumbnail(
+                project_info=project_info,
+                dataset_info=dataset_info,
+            )
+    """
+
     def __init__(
         self,
-        project_info: ProjectInfo = None,
-        dataset_info: DatasetInfo = None,
-        show_project_name: bool = True,
-        widget_id: str = None,
+        project_info: Optional[ProjectInfo] = None,
+        dataset_info: Optional[DatasetInfo] = None,
+        show_project_name: Optional[bool] = True,
+        widget_id: Optional[str] = None,
     ):
         self._project_info: ProjectInfo = None
         self._dataset_info: DatasetInfo = None
@@ -28,7 +54,22 @@ class DatasetThumbnail(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict[str, Union[int, str, bool]]:
+        """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
+
+        Dictionary contains the following fields:
+            - id: dataset id
+            - name: dataset name
+            - description: dataset description
+            - url: dataset url
+            - image_preview_url: dataset image preview url
+            - show_project_name: if True, project name will be shown
+            - project_name: project name
+            - project_url: project url
+
+        :return: dictionary with widget data
+        :rtype: Dict[str, Union[int, str, bool]]
+        """
         return {
             "id": self._id,
             "name": self._name,
@@ -40,7 +81,8 @@ class DatasetThumbnail(Widget):
             "project_url": self._project_url,
         }
 
-    def get_json_state(self):
+    def get_json_state(self) -> None:
+        """DatasetThumbnail widget doesn't have state and returns None."""
         return None
 
     def _set_info(
@@ -63,8 +105,20 @@ class DatasetThumbnail(Widget):
         self._project_url = Project.get_url(project_info.id)
 
     def set(
-        self, project_info: ProjectInfo, dataset_info: DatasetInfo, show_project_name: bool = True
+        self,
+        project_info: ProjectInfo,
+        dataset_info: DatasetInfo,
+        show_project_name: Optional[bool] = True,
     ):
+        """Sets the data for the widget.
+
+        :param project_info: project info
+        :type project_info: ProjectInfo
+        :param dataset_info: dataset info
+        :type dataset_info: DatasetInfo
+        :param show_project_name: if True, project name will be shown
+        :type show_project_name: Optional[bool]
+        """
         self._set_info(project_info, dataset_info, show_project_name)
         self.update_data()
         DataJson().send_changes()
