@@ -145,7 +145,8 @@ class DateTimePicker(Widget):
         if self._w_type in ["year", "month", "date", "datetime", "week"]:
             if type(value) not in [int, str, datetime]:
                 raise ValueError(
-                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["int", "str", "datetime].'
+                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: '
+                    f'"{str(type(value))}". Value type has to be one of: ["int", "str", "datetime].'
                 )
             if isinstance(value, datetime):
                 value = str(value)
@@ -153,7 +154,8 @@ class DateTimePicker(Widget):
         if self._w_type in ["datetimerange", "daterange"]:
             if type(value) not in [list, tuple]:
                 raise ValueError(
-                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: "{str(type(value))}". Value type has to be one of: ["list", "tuple"].'
+                    f'Datetime picker type "{self._w_type}" does not support value "{value}" of type: '
+                    f'"{str(type(value))}". Value type has to be one of: ["list", "tuple"].'
                 )
             if len(value) != 2:
                 raise ValueError(f"Value length has to be equal 2: {len(value)} != 2")
