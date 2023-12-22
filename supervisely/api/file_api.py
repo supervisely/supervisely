@@ -367,6 +367,7 @@ class FileApi(ModuleApiBase):
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
         Get directory size in the Team Files.
+        If directory is on local agent, then optimized method will be used (without api requests)
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -391,8 +392,19 @@ class FileApi(ModuleApiBase):
             print(size)
             # Output: 3478687
         """
+        if self.is_on_agent(path) is True:
+            agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+            if (
+                agent_id == env.agent_id(raise_not_found=False)
+                and env.agent_storage(raise_not_found=False) is not None
+            ):
+                path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                logger.info(f"Optimized getting directory size from agent: {path_on_agent}")
+                dir_size = sly_fs.get_directory_size(path_on_agent)
+                return dir_size
+
         dir_size = 0
-        file_infos = self.list2(team_id, path)
+        file_infos = self.list(team_id=team_id, path=path, recursive=True, return_type="fileinfo")
         for file_info in file_infos:
             dir_size += file_info.sizeb
         return dir_size
@@ -560,6 +572,8 @@ class FileApi(ModuleApiBase):
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
                 logger.info(f"Optimized download from agent: {dir_on_agent}")
                 sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
+                if progress_cb is not None:
+                    progress_cb(sly_fs.get_directory_size(dir_on_agent))
                 return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
