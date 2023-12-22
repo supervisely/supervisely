@@ -1,12 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Empty, Widget
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 
 
 class ColorPicker(Widget):
