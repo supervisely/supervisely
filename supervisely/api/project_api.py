@@ -406,7 +406,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 )
             )
 
-    def get_meta(self, id: int, with_settings=False) -> Dict:
+    def get_meta(self, id: int) -> Dict:
         """
         Get ProjectMeta by Project ID.
 
@@ -449,6 +449,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
 
+        with_settings = True  # later add to argument
         if with_settings is True:
             json_settings = self.get_settings(id)
             if json_settings.get("groupImagesByTagId") is not None:
