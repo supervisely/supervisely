@@ -406,7 +406,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 )
             )
 
-    def get_meta(self, id: int) -> Dict:
+    def get_meta(self, id: int, with_settings=False) -> Dict:
         """
         Get ProjectMeta by Project ID.
 
@@ -448,19 +448,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # }
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
-        json_settings = self.get_settings(id)
-        if json_settings.get("groupImagesByTagId") is not None:
-            for tag in json_response["tags"]:
-                if tag["id"] == json_settings["groupImagesByTagId"]:
-                    json_response["projectSettings"] = {
-                        "multiView": {
-                            "enabled": json_settings["groupImages"],
-                            "tagId": tag["id"],
-                            "tagName": tag["name"],  # necessary for identification
-                            "viewsAreSynched": json_settings["groupImagesSync"],
+
+        if with_settings is True:
+            json_settings = self.get_settings(id)
+            if json_settings.get("groupImagesByTagId") is not None:
+                for tag in json_response["tags"]:
+                    if tag["id"] == json_settings["groupImagesByTagId"]:
+                        json_response["projectSettings"] = {
+                            "multiView": {
+                                "enabled": json_settings["groupImages"],
+                                "tagId": tag["id"],
+                                "tagName": tag["name"],  # necessary for identification
+                                "viewsAreSynched": json_settings["groupImagesSync"],
+                            }
                         }
-                    }
-                    break
+                        break
 
         return json_response
 
