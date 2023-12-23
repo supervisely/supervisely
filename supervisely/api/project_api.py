@@ -449,22 +449,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
         json_settings = self.get_settings(id)
-
-        groupTag = (None, None)
-        if json_settings["groupImagesByTagId"] is not None:
-            groupTag = [
-                (tag["id"], tag["name"])
-                for tag in json_response["tags"]
-                if tag["id"] == json_settings["groupImagesByTagId"]
-            ][0]
-
-        # TODO camel or snake in meta.json ???
-        json_response["projectSettings"] = {
-            "groupImages": json_settings["groupImages"],
-            "groupImagesByTagId": groupTag[0],
-            "groupImagesByTagName": groupTag[1],  # neccessary for identification
-            "groupImagesSync": json_settings["groupImagesSync"],
-        }
+        if json_settings.get("groupImagesByTagId") is not None:
+            for tag in json_response["tags"]:
+                if tag["id"] == json_settings["groupImagesByTagId"]:
+                    json_response["projectSettings"] = {
+                        "multiView": {
+                            "enabled": json_settings["groupImages"],
+                            "tagId": tag["id"],
+                            "tagName": tag["name"],  # necessary for identification
+                            "viewsAreSynched": json_settings["groupImagesSync"],
+                        }
+                    }
+                    break
 
         return json_response
 
