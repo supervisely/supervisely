@@ -1,51 +1,52 @@
 import json
 import os
 import sys
-from fastapi.responses import JSONResponse
-import requests
-from requests.structures import CaseInsensitiveDict
-import uuid
 import time
-from functools import partial, wraps
+import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, HTTPException, Response, UploadFile, status
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    rand_str,
-    is_production,
-    add_callback,
-)
-from supervisely.app.exceptions import DialogWindowError
-from supervisely.app.fastapi.subapp import get_name_from_env
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from functools import partial, wraps
+from typing import Any, Dict, List, Optional, Union
 
+import requests
+import yaml
+from fastapi import Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.responses import JSONResponse
+from requests.structures import CaseInsensitiveDict
+
+import supervisely.app.development as sly_app_development
+import supervisely.imaging.image as sly_image
+import supervisely.io.env as env
+import supervisely.io.fs as fs
+import supervisely.nn.inference.gui as GUI
+from supervisely._utils import (
+    add_callback,
+    is_debug_with_sly_net,
+    is_production,
+    rand_str,
+)
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
-import supervisely.imaging.image as sly_image
-import supervisely.io.fs as fs
-from supervisely.sly_logger import logger
-import supervisely.io.env as env
-import yaml
-
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application, call_on_autostart
-from supervisely.app.content import get_data_dir, StateJson
-from fastapi import Request
-
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
+from supervisely.app.content import StateJson, get_data_dir
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.fastapi.subapp import (
+    Application,
+    call_on_autostart,
+    get_name_from_env,
+)
 from supervisely.app.widgets import Widget
-from supervisely.nn.prediction_dto import Prediction
-import supervisely.app.development as sly_app_development
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.task.progress import Progress
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-import supervisely.nn.inference.gui as GUI
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.prediction_dto import Prediction
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -770,7 +771,7 @@ class Inference:
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
         def get_session_info(response: Response):
-                return self.get_info()
+            return self.get_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
@@ -968,6 +969,19 @@ class Inference:
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
             return inference_request["preparing_progress"]
+
+        @server.post("/deploy_nn_serving")
+        def deploy_nn_serving(self, request: Request):
+            try:
+                state = request.state.state
+                device = state["device"]
+                model_dir = state["model_dir"]  # ???
+                self.load_on_device(
+                    model_dir, device, started_via_api=True, deploy_params=state["deploy_params"]
+                )
+                return {"result": "model was successfully deployed"}
+            except Exception as e:
+                return {"result": f"an error occured: {repr(e)}"}
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
