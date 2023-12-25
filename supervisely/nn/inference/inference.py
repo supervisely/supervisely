@@ -971,11 +971,11 @@ class Inference:
             return inference_request["preparing_progress"]
 
         @server.post("/deploy_nn_serving")
-        def deploy_nn_serving(self, request: Request):
+        def deploy_nn_serving(response: Response, request: Request):
             try:
                 state = request.state.state
                 device = state["device"]
-                model_dir = state["model_dir"]  # ???
+                model_dir = state["model_dir"]
                 self.load_on_device(
                     model_dir, device, started_via_api=True, deploy_params=state["deploy_params"]
                 )
