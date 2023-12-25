@@ -121,7 +121,10 @@ class TrainedModelsSelector(Widget):
         def _create_task_widget(self) -> Flexbox:
             task_widget = Container(
                 [
-                    Text(f"<a href='{self._task_link}'>{self._task_id}</a>", "text"),
+                    Text(
+                        f"<a href='{self._task_link}'>{self._task_id}</a> <i class='zmdi zmdi-link'></i>",
+                        "text",
+                    ),
                     Text(
                         f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
                         "text",
@@ -148,7 +151,9 @@ class TrainedModelsSelector(Widget):
             return artifact_selector
 
         def _create_session_widget(self) -> Text:
-            session_link_widget = Text(f"<a href='{self._session_link}'>Preview</a>", "text")
+            session_link_widget = Text(
+                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-link'></i>", "text"
+            )
             return session_link_widget
 
     def __init__(
