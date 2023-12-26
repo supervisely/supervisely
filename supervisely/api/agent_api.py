@@ -8,6 +8,23 @@ from enum import Enum
 from supervisely.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
 
+class AgentInfo(NamedTuple):
+    """
+    AnnotationInfo
+    """
+
+    id: int
+    name: str
+    token: str
+    status: str
+    user_id: int
+    team_id: int
+    capabilities: dict
+    created_at: str
+    updated_at: str
+    # host: dict
+
+
 class AgentNotFound(Exception):
     """class AgentNotFound"""
 
@@ -77,6 +94,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
             ApiField.CAPABILITIES,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
+            # ApiField.HOST,
         ]
 
     @staticmethod

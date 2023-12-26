@@ -499,6 +499,8 @@ class ApiField:
     PAGE = "page"
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
+    """"""
+    HOST = "host"
 
 
 def _get_single_item(items):
@@ -735,6 +737,9 @@ class ModuleApiBase(_JsonConvertibleModule):
             if skip_missing is True:
                 return dict.get(field_name, None)
             else:
+                # if field_name == ApiField.HOST:
+                #     return dict.get(field_name, {"envs": {}})
+                # else:
                 return dict[field_name]
 
         if info is None:
