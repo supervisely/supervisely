@@ -1,0 +1,35 @@
+<el-select
+  v-model="state.{{{widget.widget_id}}}.value"
+  {% if widget._changes_handled == true %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
+  {% if widget._size is not none %}
+  :size="data.{{{widget.widget_id}}}.size"
+  {% endif %}
+  :multiple="data.{{{widget.widget_id}}}.multiple"
+>
+  <div v-if="data.{{{widget.widget_id}}}.items">
+    <el-option
+      v-for="item in data.{{{widget.widget_id}}}.items"
+      :key="item.id"
+      :label="item.name"
+      :value="item.id"
+      :disabled="item.disabled"
+    >
+    <div 
+    {% if widget._multiple == true %}
+      style="padding-right: 20px; display: inline-flex; width: calc(100% - 20px);"
+    {% else %}
+      style="display: inline-flex; width: 100%;"
+    {% endif %}
+    >
+      <span style="flex: 1">
+        <i v-if="item.status == 'running'" class="zmdi zmdi-circle" style="color: rgb(19, 206, 102);"></i>
+        <i v-else class="zmdi zmdi-circle" style="color: rgb(225, 75, 15);"></i>
+        {{ item.name }}
+      </span>
+      <span style="margin-left: 5px; color: #8492a6; font-size: 13px">{{ item.status }}</span>
+    </div>
+    </el-option>
+  </div>
+</el-select>
