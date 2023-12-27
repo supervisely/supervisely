@@ -414,6 +414,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
+        :param with_settings: Add settings field to the meta. By default False.
+        :type with_settings: bool
+
         :return: ProjectMeta dict
         :rtype: :class:`dict`
         :Usage example:
@@ -588,6 +591,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
         :type meta: :class:`ProjectMeta` or dict
+
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:

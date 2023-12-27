@@ -61,7 +61,9 @@ class ProjectMeta(JsonSerializable):
     :param tag_metas: TagMetaCollection or just list that stores TagMeta instances with unique names.
     :type tag_metas: TagMetaCollection or List[TagMeta], optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
-    :type project_type: str, optional
+    :type project_type: ProjectType, optional
+    :param project_settings: Additional project properties. For example, multi-view settings
+    :type project_settings: dict or ProjectSettings, optional
 
     :Usage example:
 
@@ -93,7 +95,12 @@ class ProjectMeta(JsonSerializable):
         # or objects = [lemon, kiwi]
         tags = sly.TagMetaCollection([tag_fruit])
         # or tags = [tag_fruit]
-        meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
+        s = sly.ProjectSettings(
+            enable_multiview = True,
+            multiview_tag_id= 3322,
+            views_are_synched=False,
+        )
+        meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES, project_settings=s)
         print(meta)
         # Output:
         # +-------+-----------+----------------+--------+
@@ -242,27 +249,39 @@ class ProjectMeta(JsonSerializable):
             meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
 
             print(meta.project_type)
-            # Output: <ProjectType.IMAGES: 'images'>
+            # Output: 'images'
         """
         return self._project_type
 
     @property
-    def project_settings(self):
+    def project_settings(self) -> Dict[str, str]:
         """
-        Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
+        Settings of the project. See possible values in :class: `ProjectSettings`.
 
-        :return: Project type
-        :rtype: :class:`str`
+        :return: Project settings
+        :rtype: :class: `Dict[str, str]`
         :Usage example:
 
          .. code-block:: python
 
             import supervisely as sly
 
-            meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
+            s = sly.ProjectSettings(
+                enable_multiview = True,
+                multiview_tag_id= 3322,
+                views_are_synched=False,
+            )
+            meta = sly.ProjectMeta(project_settings=s)
 
-            print(meta.project_type)
-            # Output: <ProjectType.IMAGES: 'images'>
+            print(meta.project_settings)
+            # Output: {
+            #   'multiView': {
+            #       'enabled': True,
+            #       'tagId': 27855,
+            #       'tagName': 'im_id',
+            #       'viewsAreSynched': False
+            #   }
+            #}
         """
         return self._project_settings
 
@@ -492,6 +511,9 @@ class ProjectMeta(JsonSerializable):
         :type tag_metas: TagMetaCollection or List[TagMeta], optional
         :param project_type: Type of items in project: images, videos, volumes, point_clouds.
         :type project_type: str, optional
+        :param project_settings: Additional project properties. For example, multi-view settings
+        :type project_settings: dict or ProjectSettings, optional
+
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
         :Usage example:
