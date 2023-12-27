@@ -136,7 +136,10 @@ class ProjectMeta(JsonSerializable):
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
 
         self._project_type = project_type
-        self._project_settings = project_settings
+        if isinstance(project_settings, ProjectSettings):
+            self._project_settings = project_settings.to_json()
+        else:
+            self._project_settings = project_settings
 
     @property
     def obj_classes(self) -> ObjClassCollection:
@@ -472,7 +475,7 @@ class ProjectMeta(JsonSerializable):
         obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[str] = None,
-        project_settings: Optional[dict] = None,  # TODO
+        project_settings: Optional[Union[dict, ProjectSettings]] = None,
     ) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
@@ -1093,6 +1096,7 @@ class ProjectMeta(JsonSerializable):
         result = "ProjectMeta:\n"
         result += "Object Classes\n{}\n".format(str(self._obj_classes))
         result += "Tags\n{}\n".format(str(self._tag_metas))
+        result += "Settings\n{}\n".format(str(self._project_settings))
         return result
 
     def __eq__(self, other: ProjectMeta):

@@ -1,48 +1,50 @@
 # coding: utf-8
 
 from __future__ import annotations
+
+import os
+import random
 import shutil
 from collections import namedtuple
-import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
-import random
+from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+
 import numpy as np
 from tqdm import tqdm
-import supervisely as sly
 
-from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
+import supervisely as sly
+from supervisely._utils import abs_url, batched, is_development
+from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
 )
-from supervisely.imaging import image as sly_image
-from supervisely.io.fs import (
-    list_files,
-    list_files_recursively,
-    list_dir_recursively,
-    get_file_name_with_ext,
-    mkdir,
-    copy_file,
-    get_subdirs,
-    dir_exists,
-    dir_empty,
-    silent_remove,
-    file_exists,
-)
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
-from supervisely._utils import batched, is_development, abs_url
-from supervisely.io.fs import ensure_base_path
-from supervisely.api.api import Api
-from supervisely.sly_logger import logger
-from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import (
+    copy_file,
+    dir_empty,
+    dir_exists,
+    ensure_base_path,
+    file_exists,
+    get_file_name_with_ext,
+    get_subdirs,
+    list_dir_recursively,
+    list_files,
+    list_files_recursively,
+    mkdir,
+    silent_remove,
+)
+from supervisely.io.fs_cache import FileCache
+from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
@@ -2471,7 +2473,7 @@ def _download_project(
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
     if only_image_tags is True:
@@ -2604,7 +2606,9 @@ def upload_project(
             progress_cb = ds_progress.iters_done_report
 
         if len(img_paths) != 0:
-            uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb, metas=metas)
+            uploaded_img_infos = api.image.upload_paths(
+                dataset.id, names, img_paths, progress_cb, metas=metas
+            )
         elif len(img_paths) == 0 and len(img_infos) != 0:
             # uploading links and hashes (the code from api.image.upload_ids)
             img_metas = [{}] * len(names)
@@ -2789,7 +2793,7 @@ def _download_project_optimized(
     project_id = project_info.id
     logger.info(f"Annotations are not cached (always download latest version from server)")
     project_fs = Project(project_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
     for dataset_info in api.dataset.get_list(project_id):
         dataset_name = dataset_info.name

@@ -74,6 +74,7 @@ class ProjectInfo(NamedTuple):
     custom_data: dict
     backup_archive: dict
     team_id: int
+    settings: dict
 
     @property
     def image_preview_url(self):
@@ -149,7 +150,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         team_id=2
         """
         return [
-            # ApiField.SETTINGS,
             ApiField.ID,
             ApiField.NAME,
             ApiField.DESCRIPTION,
@@ -166,6 +166,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.CUSTOM_DATA,
             ApiField.BACKUP_ARCHIVE,
             ApiField.TEAM_ID,
+            ApiField.SETTINGS,
         ]
 
     @staticmethod
@@ -406,7 +407,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 )
             )
 
-    def get_meta(self, id: int) -> Dict:
+    def get_meta(self, id: int, with_settings: bool = False) -> Dict:
         """
         Get ProjectMeta by Project ID.
 
@@ -449,7 +450,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
 
-        with_settings = True  # later add to argument
+        # with_settings = True  # later add to argument
         if with_settings is True:
             json_settings = self.get_settings(id)
             if json_settings.get("groupImagesByTagId") is not None:
@@ -636,16 +637,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
         if meta_json.get("projectSettings") is not None:
-            s = meta_json.pop("projectSettings")
+            s = meta_json["projectSettings"]
+            parent_project_tag_name = s["multiView"]["tagName"]
 
-            parent_project_tag = s.pop("groupImagesByTagName")
-            groupTag = [
-                (tag["id"], tag["name"])
-                for tag in self.get_meta(id)["tags"]
-                if tag["name"] == parent_project_tag
-            ][0]
-
-            s["groupImagesByTagId"] = groupTag[0]
+            for tag in self.get_meta(id)["tags"]:
+                if tag["name"] == parent_project_tag_name:
+                    s = {
+                        "groupImages": s["multiView"]["enabled"],
+                        "groupImagesByTagId": tag["id"],
+                        "groupImagesSync": s["multiView"]["viewsAreSynched"],
+                    }
+                    break
 
             self.update_settings(id, s)
             # ? ApiField.SETTINGS=='settings' ???
@@ -892,11 +894,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def get_settings(
         self,
         id: int,
-        # expected_type: Optional[str] = None,
-        # raise_error: Optional[bool] = False,
-    ) -> Dict:
-        r = self._api.post("projects.info", {ApiField.ID: id})
-        return r.json()[ApiField.SETTINGS]
+    ) -> Dict[str, str]:
+        info = self._get_info_by_id(id, "projects.info")
+        return info.settings
 
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
@@ -907,8 +907,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param settings: Project settings
         :type settings: Dict[str, str]
         """
-        # TODO update both settings and meta
-        # self.update_meta(id, self.meta + settings)
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(
