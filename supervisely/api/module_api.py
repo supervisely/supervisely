@@ -608,11 +608,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         if progress_cb is not None:
             progress_cb(len(results))
         if (pages_count == 1 and len(results) == total) or limit_exceeded is True:
-            if len(results) == 1:
-                id = results[0][ApiField.ID]
-                info = self.get_info_by_id(id)
-                results[0][ApiField.ITEMS_COUNT] = info.items_count
-
+            pass
         else:
             for page_idx in range(2, pages_count + 1):
                 temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
