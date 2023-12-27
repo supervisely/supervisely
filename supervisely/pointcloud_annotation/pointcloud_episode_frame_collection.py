@@ -5,7 +5,10 @@ from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
-from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
+)
+
 
 class PointcloudEpisodeFrameCollection(FrameCollection):
     """
@@ -17,12 +20,12 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
 
         import supervisely as sly
         from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-        from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+        from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
         # Create pointcloud object
         obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-        objects = PointcloudObjectCollection([pointcloud_obj_car])
+        pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+        objects = PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
         # Create two figures
         frame_index_1 = 7
@@ -219,7 +222,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
 
     item_type = PointcloudEpisodeFrame
 
-    def get(self, key: str, default: Optional[Any]=None) -> PointcloudEpisodeFrame:
+    def get(self, key: str, default: Optional[Any] = None) -> PointcloudEpisodeFrame:
         """
         Get a PointcloudEpisodeFrame by its key and set default value if it does not exist.
 
@@ -241,7 +244,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
             print(pcd_episodes_fr_collection.get(2).to_json())
             # Output: {'index': 2, 'figures': []}
         """
-    
+
         return super().get(key, default)
 
     def __iter__(self) -> Iterator[PointcloudEpisodeFrame]:
@@ -249,19 +252,19 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
 
     @classmethod
     def from_json(
-        cls, 
-        data: List[Dict], 
-        objects: PointcloudObjectCollection, 
+        cls,
+        data: List[Dict],
+        objects: PointcloudEpisodeObjectCollection,
         frames_count: Optional[int] = None,
-        key_id_map: Optional[KeyIdMap] = None
+        key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeFrameCollection:
         """
         Convert a list of json dicts to PointcloudEpisodeFrameCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param objects: PointcloudObjectCollection object.
-        :type objects: PointcloudObjectCollection
+        :param objects: PointcloudEpisodeObjectCollection object.
+        :type objects: PointcloudEpisodeObjectCollection
         :param frames_count: Number of frames in point cloud episodes.
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
@@ -328,12 +331,12 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
 
             import supervisely as sly
             from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+            from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
             # Create pointcloud object
             obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            objects = PointcloudObjectCollection([pointcloud_obj_car])
+            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+            objects = PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
             # Create two figures
             frame_index_1 = 7

@@ -49,6 +49,8 @@ class PointcloudObject(VideoObject):
         # }
     """
 
+    tag_collection_type = PointcloudTagCollection
+
     @classmethod
     def from_json(cls, data, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None):
         """
@@ -88,8 +90,10 @@ class PointcloudObject(VideoObject):
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
         if obj_class is None:
-            raise RuntimeError(f'Failed to deserialize a object from JSON: class name {obj_class_name!r} '
-                               f'was not found in the given project meta.')
+            raise RuntimeError(
+                f"Failed to deserialize a object from JSON: class name {obj_class_name!r} "
+                f"was not found in the given project meta."
+            )
 
         object_id = data.get(ID, None)
 
@@ -98,8 +102,11 @@ class PointcloudObject(VideoObject):
             existing_key = key_id_map.get_object_key(object_id)
         json_key = uuid.UUID(data[KEY]) if KEY in data else None
         if (existing_key is not None) and (json_key is not None) and (existing_key != json_key):
-            raise RuntimeError("Object id = {!r}: existing_key {!r} != json_key {!r}"
-                               .format(object_id, existing_key, json_key))
+            raise RuntimeError(
+                "Object id = {!r}: existing_key {!r} != json_key {!r}".format(
+                    object_id, existing_key, json_key
+                )
+            )
 
         if existing_key is not None:
             key = existing_key
@@ -116,7 +123,14 @@ class PointcloudObject(VideoObject):
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
 
-        return cls(obj_class=obj_class,
-                   key=key,
-                   tags=PointcloudTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
-                   class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            obj_class=obj_class,
+            key=key,
+            tags=cls.tag_collection_type.from_json(
+                data[LabelJsonFields.TAGS], project_meta.tag_metas
+            ),
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
