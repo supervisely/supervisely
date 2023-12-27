@@ -30,7 +30,7 @@ class ProjectMetaJsonFields:
     ENABLED = "enabled"
     TAG_ID = "tagId"
     TAG_NAME = "tagName"
-    VIEWS_SYNCHED = "viewsAreSynched"
+    VIEWS_SYNCED = "viewsAreSynced"
 
 
 def _merge_img_obj_tag_metas(
@@ -98,7 +98,7 @@ class ProjectMeta(JsonSerializable):
         s = sly.ProjectSettings(
             enable_multiview = True,
             multiview_tag_id= 3322,
-            views_are_synched=False,
+            views_are_synced=False,
         )
         meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES, project_settings=s)
         print(meta)
@@ -269,7 +269,7 @@ class ProjectMeta(JsonSerializable):
             s = sly.ProjectSettings(
                 enable_multiview = True,
                 multiview_tag_id= 3322,
-                views_are_synched=False,
+                views_are_synced=False,
             )
             meta = sly.ProjectMeta(project_settings=s)
 
@@ -279,7 +279,7 @@ class ProjectMeta(JsonSerializable):
             #       'enabled': True,
             #       'tagId': 27855,
             #       'tagName': 'im_id',
-            #       'viewsAreSynched': False
+            #       'viewsAreSynced': False
             #   }
             #}
         """

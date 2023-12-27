@@ -25,14 +25,14 @@ class ProjectSettings:
         self,
         enable_multiview: bool = False,
         multiview_tag_id: int = None,
-        views_are_synched: bool = None,
+        views_are_synced: bool = None,
     ):
         self.enable_multiview = enable_multiview
         self.multiview_tag_id = multiview_tag_id
-        self.views_are_synched = views_are_synched
+        self.views_are_synced = views_are_synced
 
         if enable_multiview is True:
-            if multiview_tag_id is None or views_are_synched is None:
+            if multiview_tag_id is None or views_are_synced is None:
                 raise ValueError(
                     "When is_group is True, the values of group_tag_id and group_images_sync should be defined."
                 )

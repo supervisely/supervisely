@@ -464,7 +464,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                                 PMJsonF.ENABLED: json_settings["groupImages"],
                                 PMJsonF.TAG_ID: tag["id"],
                                 PMJsonF.TAG_NAME: tag["name"],  # necessary for identification
-                                PMJsonF.VIEWS_SYNCHED: json_settings["groupImagesSync"],
+                                PMJsonF.VIEWS_SYNCED: json_settings["groupImagesSync"],
                             }
                         }
                         break
@@ -649,7 +649,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     s = {
                         "groupImages": s[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
                         "groupImagesByTagId": tag["id"],
-                        "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_SYNCHED],
+                        "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_SYNCED],
                     }
                     break
 
