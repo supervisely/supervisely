@@ -30,7 +30,7 @@ class ProjectMetaJsonFields:
     ENABLED = "enabled"
     TAG_ID = "tagId"
     TAG_NAME = "tagName"
-    VIEWS_SYNCED = "viewsAreSynced"
+    VIEWS_ARE_SYNCED = "viewsAreSynced"
 
 
 def _merge_img_obj_tag_metas(
@@ -71,7 +71,7 @@ class ProjectMeta(JsonSerializable):
 
         import supervisely as sly
 
-        #Empty ProjectMeta example
+        # Example 1: Empty ProjectMeta
         meta = sly.ProjectMeta()
         print(meta)
         # Output:
@@ -87,7 +87,7 @@ class ProjectMeta(JsonSerializable):
         # +------+------------+-----------------+--------+---------------+--------------------+
         # +------+------------+-----------------+--------+---------------+--------------------+
 
-        #More complex ProjectMeta example
+        # Example 2: Complex ProjectMeta
         lemon = sly.ObjClass('lemon', sly.Rectangle)
         kiwi = sly.ObjClass('kiwi', sly.Polygon)
         tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
@@ -95,12 +95,7 @@ class ProjectMeta(JsonSerializable):
         # or objects = [lemon, kiwi]
         tags = sly.TagMetaCollection([tag_fruit])
         # or tags = [tag_fruit]
-        s = sly.ProjectSettings(
-            enable_multiview = True,
-            multiview_tag_id= 3322,
-            views_are_synced=False,
-        )
-        meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES, project_settings=s)
+        meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
         print(meta)
         # Output:
         # +-------+-----------+----------------+--------+
@@ -116,8 +111,25 @@ class ProjectMeta(JsonSerializable):
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
 
-        # Example 2
+        # Example 3: Add multi-view to the project
 
+        lemon = sly.ObjClass('lemon', sly.Rectangle)
+        kiwi = sly.ObjClass('kiwi', sly.Polygon)
+        tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+
+        s = sly.ProjectSettings(
+            enable_multiview = True,
+            multiview_tag_name= tag_fruit.name,
+            views_are_synced=False,
+        )
+        meta = sly.ProjectMeta(
+            obj_classes=lemon, kiwi],
+            tag_metas=tag_fruit,
+            project_type=sly.ProjectType.IMAGES,
+            project_settings=s
+        )
+
+        # Example 4: Custom color
         cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
         scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
         meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
@@ -150,7 +162,7 @@ class ProjectMeta(JsonSerializable):
 
         self._project_type = project_type
         if isinstance(project_settings, ProjectSettings):
-            self._project_settings = project_settings.to_json()
+            self._project_settings = project_settings.to_json(ProjectMetaJsonFields)
         else:
             self._project_settings = project_settings
 

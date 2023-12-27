@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 from datetime import datetime, timedelta
 
+from supervisely import logger
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -464,7 +465,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                                 PMJsonF.ENABLED: json_settings["groupImages"],
                                 PMJsonF.TAG_ID: tag["id"],
                                 PMJsonF.TAG_NAME: tag["name"],  # necessary for identification
-                                PMJsonF.VIEWS_SYNCED: json_settings["groupImagesSync"],
+                                PMJsonF.VIEWS_ARE_SYNCED: json_settings["groupImagesSync"],
                             }
                         }
                         break
@@ -642,16 +643,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
             s = meta_json[PMJsonF.PROJECT_SETTINGS].copy()
-            parent_project_tag_name = s[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
 
-            for tag in self.get_meta(id)["tags"]:
-                if tag["name"] == parent_project_tag_name:
+            if s.get(PMJsonF.MULTI_VIEW) is not None:
+                try:
+                    group_tag_name = s[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
+                    for tag in self.get_meta(id)["tags"]:
+                        if tag["name"] == group_tag_name:
+                            s = {
+                                "groupImages": s[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
+                                "groupImagesByTagId": tag["id"],
+                                "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_ARE_SYNCED],
+                            }
+                            break
+                except KeyError as e:
+                    logger.warn(f"The field {e} doesn't exist in the meta. Set default values.")
                     s = {
-                        "groupImages": s[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
-                        "groupImagesByTagId": tag["id"],
-                        "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_SYNCED],
+                        "groupImages": False,
+                        "groupImagesByTagId": None,
+                        "groupImagesSync": False,
                     }
-                    break
 
             self.update_settings(id, s)
 
