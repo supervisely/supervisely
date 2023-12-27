@@ -641,7 +641,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
         if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
-            s = meta_json[PMJsonF.PROJECT_SETTINGS]
+            s = meta_json[PMJsonF.PROJECT_SETTINGS].copy()
             parent_project_tag_name = s[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
 
             for tag in self.get_meta(id)["tags"]:
