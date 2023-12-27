@@ -73,34 +73,44 @@ class TrainedModelsSelector(Widget):
             self._session_widget = self._create_session_widget()
 
         @property
-        def task_id(self):
+        def task_id(self) -> int:
             return self._task_id
 
         @property
-        def task_date(self):
+        def task_date(self) -> str:
             return self._task_date
 
         @property
-        def task_link(self):
+        def task_link(self) -> str:
             return self._task_link
 
         @property
-        def training_project_info(self):
+        def training_project_info(self) -> ProjectInfo:
             return self._training_project_info
 
         @property
-        def get_artifacts_names(self):
+        def artifacts_names(self) -> List[str]:
             return self._artifacts_names
 
         @property
-        def artifacts_selector(self):
+        def artifacts_paths(self) -> List[str]:
+            return self._artifacts_paths
+
+        @property
+        def artifacts_selector(self) -> Select:
             return self._artifacts_widget
 
         @property
-        def session_link(self):
+        def session_link(self) -> str:
             return self._session_link
 
-        def to_html(self):
+        def get_selected_artifact_path(self) -> str:
+            return self._artifacts_widget.get_value()
+
+        def get_selected_artifact_name(self) -> str:
+            return self._artifacts_widget.get_label()
+
+        def to_html(self) -> List[str]:
             return [
                 self._task_widget.to_html(),
                 self._training_project_widget.to_html(),
@@ -159,14 +169,14 @@ class TrainedModelsSelector(Widget):
     def __init__(
         self,
         team_id: int,
-        remote_path_to_models: str,
-        task_type: Literal["instance segmentation", "object detection", "pose estimation"],
+        training_app_directory: str,
+        task_type: str,
         widget_id: str = None,
     ):
         self._api = Api.from_env()
 
         self._team_id = team_id
-        self._remote_path_to_models = remote_path_to_models
+        self._training_app_directory = training_app_directory
         self._task_type = task_type
         table_rows = self._generate_table_rows()
 
@@ -177,19 +187,27 @@ class TrainedModelsSelector(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def get_json_data(self):
+    @property
+    def columns(self) -> List[str]:
+        return self._columns
+
+    @property
+    def rows(self) -> List[ModelRow]:
+        return self._rows
+
+    def get_json_data(self) -> Dict:
         return {
             "columns": self._columns,
             "rows_html": self._rows_html,
         }
 
-    def get_json_state(self):
+    def get_json_state(self) -> Dict:
         return {"selectedRow": 0}
 
     def _generate_table_rows(self) -> List[Dict]:
-        """Method to generate table rows from remote path to models"""
+        """Method to generate table rows from remote path to training app save directory"""
         table_rows = []
-        path_to_projects = os.path.join(self._remote_path_to_models, f"{self._task_type}")
+        path_to_projects = os.path.join(self._training_app_directory, f"{self._task_type}")
         project_files_infos = self._api.file.list(
             self._team_id, path_to_projects, recursive=False, return_type="fileinfo"
         )
@@ -221,7 +239,7 @@ class TrainedModelsSelector(Widget):
                 )
         return table_rows
 
-    def get_selected_row(self, state=StateJson()):
+    def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
         if len(self._rows) == 0:
             return
         widget_actual_state = state[self.widget_id]
@@ -230,11 +248,17 @@ class TrainedModelsSelector(Widget):
             selected_row_index = int(widget_actual_state["selectedRow"])
             return self._rows[selected_row_index]
 
-    def get_selected_row_index(self, state=StateJson()):
+    def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
+
+    def select_row(self, row_index):
+        if row_index < 0 or row_index > len(self._rows) - 1:
+            raise ValueError(f'Row with index "{row_index}" does not exist')
+        StateJson()[self.widget_id]["selectedRow"] = row_index
+        StateJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(TrainedModelsSelector.Routes.VALUE_CHANGED)
@@ -248,23 +272,3 @@ class TrainedModelsSelector(Widget):
             func(res)
 
         return _value_changed
-
-    @property
-    def columns(self) -> List[str]:
-        return self._columns
-
-    @property
-    def rows(self):
-        return self._rows
-
-    @rows.setter
-    def rows(self, value):
-        self._rows = value
-        DataJson()[self.widget_id]["rows"] = self._rows
-        DataJson().send_changes()
-
-    def select_row(self, row_index):
-        if row_index < 0 or row_index > len(self._rows) - 1:
-            raise ValueError(f'Row with index "{row_index}" does not exist')
-        StateJson()[self.widget_id]["selectedRow"] = row_index
-        StateJson().send_changes()
