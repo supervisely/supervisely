@@ -1,20 +1,19 @@
 # coding: utf-8
 
-import os
 import json
+import os
 import urllib.parse
 import uuid
-from typing import List, NamedTuple, Dict, Optional
+from typing import Dict, List, NamedTuple, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.collection.str_enum import StrEnum
 
 
 class NotificationType(StrEnum):
-    """
-    """
+    """ """
 
-    INFO = 'info'
+    INFO = "info"
     """"""
     NOTE = "note"
     """"""
@@ -24,7 +23,7 @@ class NotificationType(StrEnum):
     """"""
 
 
-# @TODO: стандартизовать title/description/name и так жалее у всех одинакого
+# @TODO: standardise title/description/name and so on for everyone the same way
 class ReportApi(ModuleApiBase):
     """
     API for working with Reports. :class:`ReportApi<ReportApi>` object is immutable.
@@ -66,9 +65,9 @@ class ReportApi(ModuleApiBase):
             ApiField.TEAM_ID: team_id,
             ApiField.NAME: name,
             ApiField.WIDGETS: widgets,
-            ApiField.LAYOUT: layout
+            ApiField.LAYOUT: layout,
         }
-        response = self._api.post('reports.create', data)
+        response = self._api.post("reports.create", data)
         return response.json()[ApiField.ID]
 
     # def create_table(self, df, name, subtitle, per_page=20, pageSizes=[10, 20, 50, 100, 500], fix_columns=None):
@@ -130,7 +129,7 @@ class ReportApi(ModuleApiBase):
         :returns: Report URL
         :rtype: :class:`str`
         """
-        return urllib.parse.urljoin(self._api.server_address, 'reports/{}'.format(id))
+        return urllib.parse.urljoin(self._api.server_address, "reports/{}".format(id))
 
     def get_widget(self, report_id: int, widget_id: int):
         """
@@ -143,13 +142,24 @@ class ReportApi(ModuleApiBase):
         :returns: Report Widget
         :rtype:
         """
-        response = self._api.post('reports.widgets.get', {"reportId": report_id, "widgetId": widget_id})
+        response = self._api.post(
+            "reports.widgets.get", {"reportId": report_id, "widgetId": widget_id}
+        )
         return response.json()
 
-    def _change_widget(self, method, report_id, widget_id, widget_type=None, name=None, description=None, area=None,
-                       content=None, options=None):
-        """
-        """
+    def _change_widget(
+        self,
+        method,
+        report_id,
+        widget_id,
+        widget_type=None,
+        name=None,
+        description=None,
+        area=None,
+        content=None,
+        options=None,
+    ):
+        """ """
         data = dict()
         data[ApiField.ID] = widget_id
         if name is not None:
@@ -167,9 +177,16 @@ class ReportApi(ModuleApiBase):
         response = self._api.post(method, {ApiField.REPORT_ID: report_id, ApiField.WIDGET: data})
         return response.json()
 
-    def update_widget(self, report_id: int, widget_id: int, name: Optional[str] = None,
-                      description: Optional[str] = None,
-                      area=None, content=None, options=None):
+    def update_widget(
+        self,
+        report_id: int,
+        widget_id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        area=None,
+        content=None,
+        options=None,
+    ):
         """
         Method description
 
@@ -191,11 +208,28 @@ class ReportApi(ModuleApiBase):
         :returns: Report Widget
         :rtype:
         """
-        return self._change_widget('reports.widgets.update', report_id, widget_id, name, description, area, content,
-                                   options)
+        return self._change_widget(
+            "reports.widgets.update",
+            report_id,
+            widget_id,
+            name,
+            description,
+            area,
+            content,
+            options,
+        )
 
-    def rewrite_widget(self, report_id: int, widget_id: int, widget_type, name: str = None, description: str = None,
-                       area=None, content=None, options=None):
+    def rewrite_widget(
+        self,
+        report_id: int,
+        widget_id: int,
+        widget_type,
+        name: str = None,
+        description: str = None,
+        area=None,
+        content=None,
+        options=None,
+    ):
         """
         Method description
 
@@ -219,5 +253,14 @@ class ReportApi(ModuleApiBase):
         :returns: Report Widget
         :rtype:
         """
-        return self._change_widget('reports.widgets.rewrite', report_id, widget_id, widget_type, name, description,
-                                   area, content, options)
+        return self._change_widget(
+            "reports.widgets.rewrite",
+            report_id,
+            widget_id,
+            widget_type,
+            name,
+            description,
+            area,
+            content,
+            options,
+        )

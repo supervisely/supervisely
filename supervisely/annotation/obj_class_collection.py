@@ -110,8 +110,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         c_1 = sly.ObjClassCollection([class_car, class_bicycle])
         c_2 = sly.ObjClassCollection([class_pedestrian, class_road])
 
-        с_3 = c_1.merge(c_2)
-        print(с_3.to_json())
+        c_3 = c_1.merge(c_2)
+        print(c_3.to_json())
         # Output: [
         #     {
         #         "title":"pedestrian",

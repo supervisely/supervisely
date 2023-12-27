@@ -1,9 +1,10 @@
-from typing import List, Dict
-from supervisely.app.widgets import Widget, Container, generate_id, LinePlot
-from supervisely.sly_logger import logger
+from typing import Dict, List
+
 from supervisely._utils import batched, rand_str
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.widgets import Container, LinePlot, Widget, generate_id
 from supervisely.app.widgets.empty.empty import Empty
-from supervisely.app.content import StateJson, DataJson
+from supervisely.sly_logger import logger
 
 
 class GridPlot(Widget):
@@ -21,7 +22,7 @@ class GridPlot(Widget):
         for plot_data in data:
             if isinstance(plot_data, dict):
                 # self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data.get('series', []), show_legend=plot_data.get('show_legend', True))
-                # передача параметров таким образом в конечном итоге приводит к ошибке JsonPatchConflict
+                # passing parameters in this way will eventually result in a JsonPatchConflict error
                 self._widgets[plot_data["title"]] = LinePlot(**plot_data)
             else:
                 self._widgets[plot_data] = LinePlot(title=plot_data, series=[])

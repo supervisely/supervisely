@@ -1,9 +1,9 @@
 import os
+
 import numpy as np
 from dotenv import load_dotenv
 
 import supervisely as sly
-
 
 if sly.is_development():
     load_dotenv(os.path.expanduser("~/supervisely.env"))
@@ -17,7 +17,7 @@ image_hashes = [info.hash for info in image_infos]
 
 image_nps = [api.image.download_np(img_id) for img_id in image_ids]
 
-# цшер generator using id
+# with generator using id
 image_nps_gen = [img for _, img in api.image.download_nps_generator(dataset_id, image_ids)]
 
 # with generator using hash
