@@ -642,28 +642,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
         if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
-            s = meta_json[PMJsonF.PROJECT_SETTINGS].copy()
-
-            if s.get(PMJsonF.MULTI_VIEW) is not None:
+            meta_settings = meta_json[PMJsonF.PROJECT_SETTINGS]
+            new_settings = {}
+            if meta_settings.get(PMJsonF.MULTI_VIEW) is not None:
                 try:
-                    group_tag_name = s[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
+                    group_tag_name = meta_settings[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
                     for tag in self.get_meta(id)["tags"]:
                         if tag["name"] == group_tag_name:
-                            s = {
-                                "groupImages": s[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
+                            tmp = {
+                                "groupImages": meta_settings[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
                                 "groupImagesByTagId": tag["id"],
-                                "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_ARE_SYNCED],
+                                "groupImagesSync": meta_settings[PMJsonF.MULTI_VIEW][
+                                    PMJsonF.VIEWS_ARE_SYNCED
+                                ],
                             }
+                            new_settings.update(tmp)
                             break
                 except KeyError as e:
                     logger.warn(f"The field {e} doesn't exist in the meta. Set default values.")
-                    s = {
-                        "groupImages": False,
-                        "groupImagesByTagId": None,
-                        "groupImagesSync": False,
-                    }
+                    new_settings.update(
+                        {
+                            "groupImages": False,
+                            "groupImagesByTagId": None,
+                            "groupImagesSync": False,
+                        }
+                    )
 
-            self.update_settings(id, s)
+            self.update_settings(id, new_settings)
 
     def _clone_api_method_name(self):
         """ """
