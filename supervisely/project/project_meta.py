@@ -62,7 +62,7 @@ class ProjectMeta(JsonSerializable):
     :type tag_metas: TagMetaCollection or List[TagMeta], optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
     :type project_type: ProjectType, optional
-    :param project_settings: Additional project properties. For example, multi-view settings
+    :param project_settings: Additional project properties. For example, multi-view settings.
     :type project_settings: dict or ProjectSettings, optional
 
     :Usage example:
@@ -123,7 +123,7 @@ class ProjectMeta(JsonSerializable):
             views_are_synced=False,
         )
         meta = sly.ProjectMeta(
-            obj_classes=lemon, kiwi],
+            obj_classes=[lemon, kiwi],
             tag_metas=tag_fruit,
             project_type=sly.ProjectType.IMAGES,
             project_settings=s
@@ -280,7 +280,7 @@ class ProjectMeta(JsonSerializable):
 
             s = sly.ProjectSettings(
                 enable_multiview = True,
-                multiview_tag_id= 3322,
+                multiview_tag_name='multi_tag',
                 views_are_synced=False,
             )
             meta = sly.ProjectMeta(project_settings=s)
@@ -290,7 +290,7 @@ class ProjectMeta(JsonSerializable):
             #   'multiView': {
             #       'enabled': True,
             #       'tagId': 27855,
-            #       'tagName': 'im_id',
+            #       'tagName': 'multi_tag',
             #       'viewsAreSynced': False
             #   }
             #}
