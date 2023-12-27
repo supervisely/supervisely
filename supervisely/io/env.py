@@ -287,6 +287,24 @@ def api_token(raise_not_found: Optional[bool] = True) -> str:
     )
 
 
+def spawn_api_token(raise_not_found: Optional[bool] = True) -> str:
+    """Returns SPAWN API token from environment variable using following keys:
+        - context.spawnApiToken
+
+    :param raise_not_found: if True, raises KeyError if API token is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: API token
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="spawn_api_token",
+        keys=["context.spawnApiToken"],
+        postprocess_fn=lambda x: str(x),
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
 def file(raise_not_found: Optional[bool] = True) -> str:
     """Returns path to the file in the team files from environment variable using following keys:
         - CONTEXT_SLYFILE
@@ -395,9 +413,7 @@ def content_origin_update_interval() -> float:
     )
 
 
-def smart_cache_ttl(
-    raise_not_found: Optional[bool] = False, default: Optional[int] = 120
-) -> int:
+def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[int] = 120) -> int:
     """Returns TTL of the smart cache from environment variable using following keys:
         - SMART_CACHE_TTL
 
@@ -417,9 +433,7 @@ def smart_cache_ttl(
     )
 
 
-def smart_cache_size(
-    raise_not_found: Optional[bool] = False, default: Optional[int] = 256
-) -> int:
+def smart_cache_size(raise_not_found: Optional[bool] = False, default: Optional[int] = 256) -> int:
     """Returns the size of the smart cache from environment variable using following keys:
         - SMART_CACHE_SIZE
 
@@ -490,7 +504,5 @@ def set_autostart(value: Optional[Literal["1", "true", "yes"]] = None) -> None:
         return
 
     if not flag_from_env(value):
-        raise ValueError(
-            "Unknown value for `autostart` env. Use `1`, `true`, `yes` or None."
-        )
+        raise ValueError("Unknown value for `autostart` env. Use `1`, `true`, `yes` or None.")
     os.environ["modal.state.autostart"] = value
