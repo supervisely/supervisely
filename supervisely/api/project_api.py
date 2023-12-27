@@ -36,6 +36,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_meta import ProjectMetaJsonFields as PMJsonF
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -450,18 +451,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
 
-        # with_settings = True  # later add to argument
         if with_settings is True:
             json_settings = self.get_settings(id)
             if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
-                        json_response["projectSettings"] = {
-                            "multiView": {
-                                "enabled": json_settings["groupImages"],
-                                "tagId": tag["id"],
-                                "tagName": tag["name"],  # necessary for identification
-                                "viewsAreSynched": json_settings["groupImagesSync"],
+                        json_response[PMJsonF.PROJECT_SETTINGS] = {
+                            PMJsonF.MULTI_VIEW: {
+                                PMJsonF.ENABLED: json_settings["groupImages"],
+                                PMJsonF.TAG_ID: tag["id"],
+                                PMJsonF.TAG_NAME: tag["name"],  # necessary for identification
+                                PMJsonF.VIEWS_SYNCHED: json_settings["groupImagesSync"],
                             }
                         }
                         break
@@ -636,22 +636,20 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
-        if meta_json.get("projectSettings") is not None:
-            s = meta_json["projectSettings"]
-            parent_project_tag_name = s["multiView"]["tagName"]
+        if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
+            s = meta_json[PMJsonF.PROJECT_SETTINGS]
+            parent_project_tag_name = s[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
 
             for tag in self.get_meta(id)["tags"]:
                 if tag["name"] == parent_project_tag_name:
                     s = {
-                        "groupImages": s["multiView"]["enabled"],
+                        "groupImages": s[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
                         "groupImagesByTagId": tag["id"],
-                        "groupImagesSync": s["multiView"]["viewsAreSynched"],
+                        "groupImagesSync": s[PMJsonF.MULTI_VIEW][PMJsonF.VIEWS_SYNCHED],
                     }
                     break
 
             self.update_settings(id, s)
-            # ? ApiField.SETTINGS=='settings' ???
-            # ? ProjectMetaJsonFields.PROJECT_SETTINGS ???
 
     def _clone_api_method_name(self):
         """ """
